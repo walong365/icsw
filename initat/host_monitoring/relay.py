@@ -68,9 +68,17 @@ class relay_code(threading_tools.process_pool):
         self.global_config = global_config
         self.__verbose = global_config["VERBOSE"]
         self.__autosense = global_config["AUTOSENSE"]
+        self.__force_resolve = global_config["FORCERESOLVE"]
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
+        # ip resolving
+        if self.__force_resolve:
+            self.log("automatic resolving is enabled", logging_tools.LOG_LEVEL_WARN)
+            self._resolve_address = self._resolve_address_resolve
+        else:
+            self.log("automatic resolving is disabled")
+            self._resolve_address = self._resolve_address_noresolve
         # pending_connection.init(self)
         self.__global_timeout = global_config["TIMEOUT"]
         self._show_config()
@@ -258,10 +266,11 @@ class relay_code(threading_tools.process_pool):
         write_file = False
         if self.__autosense:
             check_names = [c_ip]
-            if c_ip in self.__ip_lut:
-                real_name = self.__ip_lut[c_ip]
-                if real_name != c_ip:
-                    check_names.append(real_name)
+            if self.__force_resolve:
+                if c_ip in self.__ip_lut:
+                    real_name = self.__ip_lut[c_ip]
+                    if real_name != c_ip:
+                        check_names.append(real_name)
             for c_name in check_names:
                 if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
                     self.log("setting client '%s:%d' to '%s'" % (c_name, c_port, c_type))
@@ -363,8 +372,9 @@ class relay_code(threading_tools.process_pool):
         self.sender_socket.send_unicode(ret_str)
     def _init_ipc_sockets(self):
         # init IP lookup table
-        self.__ip_lut = {}
-        self.__forward_lut = {}
+        if self.__force_resolve:
+            self.__ip_lut = {}
+            self.__forward_lut = {}
         self.__num_messages = 0
         # nhm (not host monitoring) dictionary for timeout
         self.__nhm_dict = {}
@@ -443,7 +453,9 @@ class relay_code(threading_tools.process_pool):
             self.log("bound to %s (ID %s)" % (conn_str, uuid))
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.network_socket = client
-    def _resolve_address(self, target):
+    def _resolve_address_noresolve(self, target):
+        return target
+    def _resolve_address_resolve(self, target):
         # to avoid loops in the 0MQ connection scheme (will result to nasty asserts)
         if target in self.__forward_lut:
             ip_addr = self.__forward_lut[target]
@@ -456,10 +468,13 @@ class relay_code(threading_tools.process_pool):
             try:
                 ip_addr = socket.gethostbyname(target)
             except:
-                self.log("cannot resolve target '%s': %s" % (
-                    target,
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "cannot resolve target '{}': {}".format(
+                        target,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
                 raise
             try:
                 # step 2: try to get full name
@@ -469,17 +484,17 @@ class relay_code(threading_tools.process_pool):
                 pass
             else:
                 # resolve full name
-                self.log("ip_addr %s resolved to '%s' (%s), %s" % (ip_addr, full_name, ", ".join(aliases) or "N/A", ", ".join(ip_addrs) or "N/A"))
+                self.log("ip_addr {} resolved to '{}' ({}), {}".format(ip_addr, full_name, ", ".join(aliases) or "N/A", ", ".join(ip_addrs) or "N/A"))
                 try:
                     new_ip_addr = socket.gethostbyname(full_name)
                 except:
-                    self.log("cannot resolve full_name '%s': %s" % (
+                    self.log("cannot resolve full_name '{}': {}".format(
                         full_name,
                         process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_CRITICAL)
                     raise
                 else:
-                    self.log("full_name %s resolves back to %s (was: %s)" % (
+                    self.log("full_name {} resolves back to {} (was: {})".format(
                         full_name,
                         new_ip_addr,
                         ip_addr),
@@ -490,10 +505,10 @@ class relay_code(threading_tools.process_pool):
                 self.log("resolved %s to %s" % (target, ip_addr))
                 self.__ip_lut[ip_addr] = target
             self.__forward_lut[target] = ip_addr
-            self.log("ip resolving: %s -> %s" % (target, ip_addr))
+            self.log("ip resolving: {} -> {}" % (target, ip_addr))
             if orig_target != target:
                 self.__forward_lut[orig_target] = ip_addr
-                self.log("ip resolving: %s -> %s" % (orig_target, ip_addr))
+                self.log("ip resolving: {} -> {}".format(orig_target, ip_addr))
         return ip_addr
     def _recv_command(self, zmq_sock):
         data = zmq_sock.recv()
@@ -572,7 +587,7 @@ class relay_code(threading_tools.process_pool):
                     srv_com = None
         if srv_com is not None:
             if self.__verbose:
-                self.log("got command '%s' for '%s' (XML: %s)" % (
+                self.log("got command '{}' for '{}' (XML: {})".format(
                     srv_com["command"].text,
                     srv_com["host"].text,
                     str(xml_input)))
@@ -585,10 +600,10 @@ class relay_code(threading_tools.process_pool):
                     try:
                         ip_addr = self._resolve_address(t_host)
                     except socket.gaierror:
-                        self.log("resolve error for '%s'" % (t_host),
+                        self.log("resolve error for '{}'".format(t_host),
                                  logging_tools.LOG_LEVEL_ERROR)
                         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
-                        self.sender_socket.send_unicode("%d\0resolve error" % (limits.nag_STATE_CRITICAL))
+                        self.sender_socket.send_unicode("{:d}\0resolve error".format(limits.nag_STATE_CRITICAL))
                     else:
                         _e = srv_com.builder()
                         srv_com[""].append(_e.host_unresolved(t_host))

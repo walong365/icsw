@@ -81,47 +81,60 @@ def run_code(prog_name, global_config):
 def main():
     global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG"              , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
-        ("LOG_NAME"               , configfile.str_c_var(prog_name, autoconf_exclude=True)),
-        ("KILL_RUNNING"           , configfile.bool_c_var(True, autoconf_exclude=True)),
-        ("SHOW_COMMAND_INFO"      , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
-        ("BACKLOG_SIZE"           , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
-        ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("OBJGRAPH"               , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
-        ("NICE_LEVEL"             , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
-        ("PID_NAME"               , configfile.str_c_var(
-            os.path.join(
-                prog_name,
-                prog_name), autoconf_exclude=True))])
+    global_config.add_config_entries(
+        [
+            ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG"              , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
+            ("LOG_NAME"               , configfile.str_c_var(prog_name, autoconf_exclude=True)),
+            ("KILL_RUNNING"           , configfile.bool_c_var(True, autoconf_exclude=True)),
+            ("SHOW_COMMAND_INFO"      , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
+            ("BACKLOG_SIZE"           , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
+            ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            ("OBJGRAPH"               , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
+            ("NICE_LEVEL"             , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
+            ("PID_NAME"               , configfile.str_c_var(
+                os.path.join(
+                    prog_name,
+                    prog_name
+                ),
+                autoconf_exclude=True)
+            )
+        ]
+    )
     if prog_name == "collserver":
-        global_config.add_config_entries([
-            ("COM_PORT"   , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p", autoconf_exclude=True)),
-            ("ENABLE_KSM" , configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]")),
-            ("ENABLE_HUGE", configfile.bool_c_var(False, info="enable hugepages", help_string="enable hugepages [%(default)s]")),
-            ("HUGEPAGES"  , configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]")),
-            ("NO_INOTIFY" , configfile.bool_c_var(False, info="disable inotify process", help_string="disable inotify proces [%(default)s]", action="store_true")),
-            ("AFFINITY"   , configfile.bool_c_var(False, info="enable process_affinity tools", help_string="enables pinning of processes to certain cores", action="store_true")),
-            ("TRACK_IPMI" , configfile.bool_c_var(False, info="enable tracking of IPMI sensors", help_string="enable tracking of IPMI sensor data", action="store_true")),
-            ("INOTIFY_IDLE_TIMEOUT"   , configfile.int_c_var(5, info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]")),
-            ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)s]")),
-            ("MACHVECTOR_POLL_COUNTER", configfile.int_c_var(30, help_string="machvector poll counter")),
-        ])
+        global_config.add_config_entries(
+            [
+                ("COM_PORT"   , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p", autoconf_exclude=True)),
+                ("ENABLE_KSM" , configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]")),
+                ("ENABLE_HUGE", configfile.bool_c_var(False, info="enable hugepages", help_string="enable hugepages [%(default)s]")),
+                ("HUGEPAGES"  , configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]")),
+                ("NO_INOTIFY" , configfile.bool_c_var(False, info="disable inotify process", help_string="disable inotify proces [%(default)s]", action="store_true")),
+                ("AFFINITY"   , configfile.bool_c_var(False, info="enable process_affinity tools", help_string="enables pinning of processes to certain cores", action="store_true")),
+                ("TRACK_IPMI" , configfile.bool_c_var(False, info="enable tracking of IPMI sensors", help_string="enable tracking of IPMI sensor data", action="store_true")),
+                ("INOTIFY_IDLE_TIMEOUT"   , configfile.int_c_var(5, info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]")),
+                ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)s]")),
+                ("MACHVECTOR_POLL_COUNTER", configfile.int_c_var(30, help_string="machvector poll counter")),
+            ]
+        )
     elif prog_name == "collclient":
-        global_config.add_config_entries([
-            ("IDENTITY_STRING", configfile.str_c_var("collclient", help_string="identity string", short_options="i")),
-            ("TIMEOUT"        , configfile.int_c_var(10, help_string="set timeout [%(default)d", only_commandline=True)),
-            ("COM_PORT"       , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
-            ("HOST"           , configfile.str_c_var("localhost", help_string="host to connect to"))
-        ])
+        global_config.add_config_entries(
+            [
+                ("IDENTITY_STRING", configfile.str_c_var("collclient", help_string="identity string", short_options="i")),
+                ("TIMEOUT"        , configfile.int_c_var(10, help_string="set timeout [%(default)d", only_commandline=True)),
+                ("COM_PORT"       , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
+                ("HOST"           , configfile.str_c_var("localhost", help_string="host to connect to")),
+            ]
+        )
     elif prog_name == "collrelay":
-        global_config.add_config_entries([
-            ("COM_PORT" , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
-            ("TIMEOUT"  , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
-            ("AUTOSENSE", configfile.bool_c_var(True, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
-            ])
+        global_config.add_config_entries(
+            [
+                ("COM_PORT"    , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
+                ("TIMEOUT"     , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
+                ("AUTOSENSE"   , configfile.bool_c_var(True, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
+                ("FORCERESOLVE", configfile.bool_c_var(False, action="store_true", info="enable automatic resolving (dangerous) [%(default)s]")),
+            ]
+        )
     if prog_name in ["collrelay", "collserver"]:
         pass
     global_config.parse_file()
