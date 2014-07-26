@@ -105,7 +105,8 @@ class server_process(threading_tools.process_pool):
             proc_socket = self.add_process(new_proc, start=True)
             _struct = {
                 "socket"       : proc_socket,
-                "call_count"   : 0,
+                "calls_done"   : 0,
+                "calls_init"   : 0,
                 "process_name" : full_name,
                 "in_use"       : False,
                 "state"        : "waiting",
@@ -154,7 +155,8 @@ class server_process(threading_tools.process_pool):
         proc_struct = self.__process_dict[_loc_name]
         # set state to running
         proc_struct["state"] = "running"
-        proc_struct["call_count"] = 0
+        proc_struct["calls_done"] = 0
+        proc_struct["calls_init"] = 0
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=3, fuzzy_ceiling=3, process_name=_loc_name)
@@ -262,6 +264,7 @@ class server_process(threading_tools.process_pool):
         _loc_name = self.__process_mapping[src_proc]
         proc_struct = self.__process_dict[_loc_name]
         proc_struct["in_use"] = False
+        proc_struct["calls_done"] += 1
         envelope, error_list, _received, snmp_dict = args
         cur_scheme = self.__pending_schemes[envelope]
         cur_scheme.snmp = snmp_dict
@@ -270,10 +273,10 @@ class server_process(threading_tools.process_pool):
         self._snmp_end(cur_scheme)
         del self.__pending_schemes[envelope]
         # call count can be higher than MAX_CALLS
-        if proc_struct["call_count"] > self.__max_calls and proc_struct["state"] in ["running"]:
+        if proc_struct["calls_done"] > self.__max_calls and proc_struct["state"] in ["running"]:
             self.log("recycling helper process {} after {:d} calls".format(
                 src_proc,
-                proc_struct["call_count"],
+                proc_struct["calls_done"],
             ))
             self.stop_process(src_proc)
             proc_struct["state"] = "stopping"
@@ -281,7 +284,7 @@ class server_process(threading_tools.process_pool):
             self.log("sending request from buffer (size: {:d})".format(len(self.__queued_requests)))
             self._start_snmp_fetch(self.__queued_requests.pop(0))
     def _start_snmp_fetch(self, scheme):
-        free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
+        free_processes = sorted([(value["calls_init"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
         _cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
         if self.__verbose:
             self.log("{}info for {}: {}".format(
@@ -296,7 +299,7 @@ class server_process(threading_tools.process_pool):
             if free_processes:
                 proc_struct = self.__process_dict[free_processes[0][1]]
                 proc_struct["in_use"] = True
-                proc_struct["call_count"] += 1
+                proc_struct["calls_init"] += 1
                 self.send_to_process(proc_struct["process_name"], "fetch_snmp", *scheme.proc_data)
                 self.__pending_schemes[scheme.envelope] = scheme
             else:
@@ -452,7 +455,10 @@ class server_process(threading_tools.process_pool):
                 logging_tools.get_plural("message", self.__num_messages)))
         if not self.__num_messages % 50:
             # log process usage
-            self.log("process usage: {}".format(", ".join(["{:d}".format(self.__process_dict[key]["call_count"]) for key in sorted(self.__process_dict.iterkeys())])))
+            self.log("process usage (init/done): {}".format(", ".join(["{:d}/{:d}".format(
+                self.__process_dict[key]["calls_init"],
+                self.__process_dict[key]["calls_done"],
+                ) for key in sorted(self.__process_dict.iterkeys())])))
     def _send_return(self, envelope, ret_state, ret_str):
         if self.__verbose > 3:
             self.log("_send_return, envelope is {} ({:d}, {})".format(
