@@ -26,6 +26,7 @@ from django.db.models import Q
 from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr
+from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import os
@@ -455,3 +456,4 @@ of the user_dn_template plus the user_base template:<br>
 USER_DN={USER_DN_TEMPLATE},{USER_BASE_TEMPLATE}
 """
         )
+        add_fixtures(**options)

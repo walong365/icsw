@@ -1,3 +1,7 @@
+#
+# -*- coding: utf-8 -*-
+#
+
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
@@ -241,7 +245,12 @@ class config(models.Model):
     config_catalog = models.ForeignKey(config_catalog, null=True)
     description = models.CharField(max_length=765, default="", blank=True)
     priority = models.IntegerField(null=True, default=0)
+    # valid for servers (activate special functionalities)
+    server_config = models.BooleanField(default=False)
+    # system config, not user generated
+    system_config = models.BooleanField(default=False)
     # config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
+    # can not be used for server configs
     parent_config = models.ForeignKey("config", null=True, blank=True)
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
