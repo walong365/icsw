@@ -90,7 +90,7 @@ class relay_code(threading_tools.process_pool):
         self.add_process(socket_process("socket", icmp=False), start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
-        id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
+        id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose, self.__force_resolve)
         self._init_filecache()
         self._init_msi_block()
         self._change_rlimits()

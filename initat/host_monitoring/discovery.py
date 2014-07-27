@@ -101,10 +101,10 @@ class id_discovery(object):
                 cur_reply = server_command.srv_command(source=zmq_sock.recv())
                 zmq_id = cur_reply["zmq_id"].text
         except:
-            self.send_return("error extracting 0MQ id (discovery): %s" % (process_tools.get_except_info()))
+            self.send_return("error extracting 0MQ id (discovery): {}".format(process_tools.get_except_info()))
         else:
-            if zmq_id in id_discovery.reverse_mapping and self.host not in id_discovery.reverse_mapping[zmq_id]:
-                self.log("0MQ is %s but already used by %s: %s" % (
+            if zmq_id in id_discovery.reverse_mapping and (self.host not in id_discovery.reverse_mapping[zmq_id]) and id_discovery.force_resolve:
+                self.log("0MQ is {} but already used by {}: {}".format(
                     zmq_id,
                     logging_tools.get_plural("host", len(id_discovery.reverse_mapping[zmq_id])),
                     ", ".join(sorted(id_discovery.reverse_mapping[zmq_id]))),
@@ -112,9 +112,9 @@ class id_discovery(object):
                 self.send_return("0MQ id not unique, virtual host setup found ?")
             else:
                 if zmq_id.lower().count("unknown command"):
-                    self.log("received illegal zmq_id '%s'" % (zmq_id), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("received illegal zmq_id '{}'".format(zmq_id), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.log("0MQ id is %s" % (zmq_id))
+                    self.log("0MQ id is {}".format(zmq_id))
                     id_discovery.set_mapping(self.conn_str, zmq_id) # mapping[self.conn_str] = zmq_id
                     # reinject
                     if self.port == 2001:
@@ -153,7 +153,7 @@ class id_discovery(object):
                 id_discovery.mapping_xml = etree.fromstring(map_content)
                 for host_el in id_discovery.mapping_xml.findall(".//host"):
                     for uuid_el in host_el.findall(".//uuid"):
-                        conn_str = "%s://%s:%s" % (
+                        conn_str = "{}://{}:{}".format(
                             uuid_el.get("proto"),
                             host_el.get("address"),
                             uuid_el.get("port"),
@@ -183,11 +183,12 @@ class id_discovery(object):
             id_discovery.mapping = {}
             id_discovery.mapping_xml = E.zmq_mapping()
     @staticmethod
-    def init(r_process, backlog_size, timeout, verbose):
+    def init(r_process, backlog_size, timeout, verbose, force_resolve):
         id_discovery.relayer_process = r_process
         id_discovery.backlog_size = backlog_size
         id_discovery.timeout = timeout
         id_discovery.verbose = verbose
+        id_discovery.force_resolve = force_resolve
         id_discovery.pending = {}
         # last discovery try
         id_discovery.last_try = {}
