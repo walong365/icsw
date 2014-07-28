@@ -416,11 +416,17 @@ class init_handler(zmq_handler):
     zmq_context = None
     def __init__(self, filename=None):
         if not init_handler.zmq_context:
-            init_handler.zmq_context = zmq.Context()
+            self._init_zmq()
+        pub = self._socket()
+        zmq_handler.__init__(self, pub, None)
+    def _init_zmq(self):
+        init_handler.init_pid = os.getpid()
+        init_handler.zmq_context = zmq.Context()
+    def _socket(self):
         cur_context = init_handler.zmq_context
         pub = cur_context.socket(zmq.PUSH)
         pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
-        zmq_handler.__init__(self, pub, None)
+        return pub
     def emit(self, record):
         if not record.name.startswith("init.at."):
             record.name = "init.at.{}".format(record.name)
