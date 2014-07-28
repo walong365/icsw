@@ -94,7 +94,7 @@ class _general(hm_module):
         if psycopg2:
             self.read_config()
         else:
-            self.log("disabled postgres monitoring because not psycopg2 module available")
+            self.log("disabled postgres monitoring because no psycopg2 module available")
             self.enabled = False
         # pprint.pprint(self.query("SELECT * FROM pg_stat_activity;"))
     def read_config(self):
@@ -116,7 +116,7 @@ class _general(hm_module):
                     process_tools.get_except_info()))
                 self.enabled = False
         else:
-            self.log("disabled postgres monitoring because not config-file found")
+            self.log("disabled postgres monitoring because no config-file found")
             self.enabled = False
         # self.config["password"] = "dd"
     def query(self, sql):
