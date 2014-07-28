@@ -25,7 +25,8 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr
+from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, log_source, \
+    get_related_models
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
@@ -70,6 +71,11 @@ class Command(BaseCommand):
         # create fixtures
         for lic_name in ALL_LICENSES:
             factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
+        # remove duplicate entries due to bug in factories (sigh)
+        cur_cusl = log_source.objects.filter(Q(identifier="user"))
+        for _cc in cur_cusl:
+            if not get_related_models(_cc):
+                _cc.delete()
         # log source
         factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
         # device type
