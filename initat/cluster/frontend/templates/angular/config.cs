@@ -78,6 +78,7 @@ config_table_template = """
         <tr>
             <th>Name</th>
             <th>Pri</th>
+            <th>Flags</th>
             <th>Catalog</th>
             <th>enabled</th>
             <th>Description</th>
@@ -99,6 +100,13 @@ config_table_template = """
                 {{ config.name }}
             </td>
             <td class="text-right">{{ config.priority }}</td>
+            <td class="text-center">
+                <div class="btn-group btn-group-xs">
+                    <!-- tooltips not working right now -->
+                    <input type="button" class="btn disabled" ng-class="config.server_config && 'btn-success'" value="S" data-toggle="tooltip" title="is server config"></input>
+                    <input type="button" class="btn disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"></input>
+                </div>
+            </td>
             <td>{{ config.config_catalog | array_lookup:this.config_catalogs:'name':'-' }}</td>
             <td class="text-center">{{ config.enabled | yesno1 }}</td>
             <td>{{ config.description }}</td>
@@ -156,17 +164,17 @@ config_table_template = """
             </td>
         </tr>
         <tr ng-show="config.var_expanded">
-            <td colspan="13">
+            <td colspan="14">
                 <vartable></vartable>
             </td>
         </tr>
         <tr ng-show="config.script_expanded">
-            <td colspan="13">
+            <td colspan="14">
                 <scripttable></scripttable>
             </td>
         </tr>
         <tr ng-repeat-end ng-show="config.mon_expanded">
-            <td colspan="13">
+            <td colspan="14">
                 <montable></montable>
             </td>
         </tr>

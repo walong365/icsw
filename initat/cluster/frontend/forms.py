@@ -2171,7 +2171,7 @@ class config_form(ModelForm):
                     typeahead_min_length=1,
                 ),
                 Field("description"),
-                Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True),
+                Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True, wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config"),
             ),
             HTML(
                 "<div ng-bind-html='show_config_help()'></div>",
@@ -2180,6 +2180,7 @@ class config_form(ModelForm):
                 "other settings",
                 Field("enabled"),
                 Field("priority"),
+                Field("server_config", wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.parent_config"),
             ),
             Fieldset(
                 "Categories",
@@ -2197,7 +2198,7 @@ class config_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = config
-        fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog",)
+        fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog", "server_config",)
 
 class config_catalog_form(ModelForm):
     helper = FormHelper()
