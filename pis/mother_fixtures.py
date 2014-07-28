@@ -24,5 +24,7 @@
 from initat.cluster.backbone import factories
 
 def add_fixtures(**kwargs):
-    factories.Config(name="mother_server", description="enables basic nodeboot via PXE functionalities")
-    
+    factories.Config(name="mother_server", description="enables basic nodeboot via PXE functionalities",
+        server_config=True, system_config=True,
+        )
+
