@@ -12,11 +12,11 @@ enter_password_template = """
     <form name="form">
         <div ng-class="dyn_check(pwd.pwd1)">
             <label>Password:</label>
-            <input type="password" ng-model="pwd.pwd1" placeholder="enter password" class="form-control"></input>
+            <input type="password" ng-model="pwd.pwd1" placeholder="enter password" ng-trim="false" class="form-control"></input>
         </div>
         <div ng-class="dyn_check(pwd.pwd2)">
             <label>again:</label>
-            <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" class="form-control"></input>
+            <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" ng-trim="false" class="form-control"></input>
         </div>
     </form>
 </div>
