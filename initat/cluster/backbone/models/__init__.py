@@ -232,6 +232,14 @@ class config_catalog(models.Model):
     # extraction time
     extraction_time = models.DateTimeField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    @staticmethod
+    def create_local_catalog():
+        def_cc = config_catalog.objects.create(
+            name="local",
+            url="http://www.initat.org/",
+            author="Andreas Lang-Nevyjel",
+        )
+        return def_cc
     def __unicode__(self):
         return self.name
 
@@ -371,6 +379,8 @@ def config_post_save(sender, **kwargs):
             else:
                 break
         if not cur_inst.config_catalog_id:
+            if not config_catalog.objects.all().count():
+                config_catalog.create_local_catalog()
             cur_inst.config_catalog = config_catalog.objects.all()[0]
 
 class config_str(models.Model):
