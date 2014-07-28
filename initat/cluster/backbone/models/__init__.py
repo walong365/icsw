@@ -286,6 +286,8 @@ def config_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         cur_inst.description = cur_inst.description or ""
         _check_empty_string(cur_inst, "name")
+        if cur_inst.server_config:
+            cur_inst.parent_config = None
         # priority
         _check_integer(cur_inst, "priority", min_val= -9999, max_val=9999)
 
