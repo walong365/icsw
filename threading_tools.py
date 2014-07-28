@@ -532,6 +532,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                     "type"   : list(args)[0],
                     "args"   : list(args)[1:]})
             except zmq.error.ZMQError:
+                logging_tools.my_syslog("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter))
                 if _iter > 10:
                     raise
                 time.sleep(0.1)
