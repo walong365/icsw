@@ -27,3 +27,9 @@ def add_fixtures(**kwargs):
     factories.Config(name="mother_server", description="enables basic nodeboot via PXE functionalities",
         server_config=True, system_config=True,
         )
+    factories.Config(name="kernel_server", description="device holds kernels for nodes",
+        server_config=True, system_config=True,
+        )
+    factories.Config(name="image_server", description="device holds images for nodes",
+        server_config=True, system_config=True,
+        )
