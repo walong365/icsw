@@ -22,10 +22,9 @@
 
 """ basic session views """
 
-from django.contrib.auth import authenticate
 from django.contrib.auth import login, logout, authenticate
 from django.core.urlresolvers import reverse
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
@@ -99,7 +98,6 @@ class sess_logout(View):
         return login_page(request, from_logout=from_logout)
 
 def _login(request, _user_object, login_form=None):
-    print _user_object
     login(request, _user_object)
     request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in _user_object.user_variable_set.all()])
     # for alias logins login_name != login
@@ -115,7 +113,7 @@ def _login(request, _user_object, login_form=None):
 class sess_login(View):
     def get(self, request):
         if user.objects.all().count():
-            if sum(user.objects.all().values_list("login_count", flat=True)) == 0:
+            if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:
                 first_user = authenticate(username=user.objects.all().values_list("login", flat=True)[0], password="AUTO_LOGIN")
                 if first_user is not None:
                     _login(request, first_user)
