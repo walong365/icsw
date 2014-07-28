@@ -409,10 +409,13 @@ def migrate_db(opts):
         sys.exit(5)
 
 def call_update_funcs():
-    call_manage(["create_fixtures"])
-    call_manage(["init_csw_permissions"])
+    create_fixtures()
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
+
+def create_fixtures():
+    call_manage(["create_fixtures"])
+    call_manage(["init_csw_permissions"])
 
 def check_db_rights():
     if os.path.isfile(DB_FILE):
@@ -461,6 +464,8 @@ def main():
     create_opts.add_argument("--email", default="admin@localhost", type=str, help="admin address of superuser [%(default)s]")
     create_opts.add_argument("--no-superuser", default=False, action="store_true", help="do not create a superuser [%(default)s]")
     create_opts.add_argument("--system-group-name", default="system", type=str, help="name of system group [%(default)s]")
+    upd_opts = my_p.add_argument_group("update options")
+    upd_opts.add_argument("--only-fixtures", default=False, action="store_true", help="only call create_fixtures")
     auc_flags = my_p.add_argument_group("automatic update options")
     auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
     auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
@@ -506,8 +511,14 @@ def main():
         db_exists = os.path.exists(DB_FILE)
         call_create_db = True
         call_migrate_db = False
+        call_create_fixtures = False
         if db_exists:
-            if opts.migrate:
+            if opts.only_fixtures:
+                setup_db_cf = False
+                call_create_db = False
+                call_migrate_db = False
+                call_create_fixtures = True
+            elif opts.migrate:
                 setup_db_cf = False
                 call_create_db = False
                 call_migrate_db = True
@@ -535,6 +546,8 @@ def main():
             create_db(opts)
         if call_migrate_db:
             migrate_db(opts)
+        if call_create_fixtures:
+            create_fixtures()
 
 if __name__ == "__main__":
     main()
