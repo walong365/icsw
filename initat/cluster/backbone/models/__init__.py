@@ -1301,6 +1301,11 @@ def device_post_save(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         if _cur_inst.bootserver_id:
             bootsettings_changed.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
+        if _cur_inst.device_type.identifier in ["MD"]:
+            _stripped = strip_metadevice_name(_cur_inst.name)
+            if _stripped != _cur_inst.device_group.name:
+                _cur_inst.device_group.name = _stripped
+                _cur_inst.device_group.save()
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -1357,6 +1362,9 @@ def device_pre_save(sender, **kwargs):
                     unicode(cur_inst),
                     unicode(present_dev),
                     ))
+        # check for device group
+        if cur_inst.device_group.cluster_device_group and cur_inst.device_type.idenifier != ["MD"]:
+            raise ValidationError("no devices allowed in cluster_device_group")
         # Check if the device limit is reached, disabled as of 2013-10-14 (AL)
         if False:
             dev_count = settings.CLUSTER_LICENSE["device_count"]
@@ -1431,8 +1439,8 @@ class device_group(models.Model):
         self.device = new_md
         self.save()
         return new_md
-    def get_metadevice_name(self):
-        return "METADEV_{}".format(self.name)
+    def get_metadevice_name(self, name=None):
+        return "METADEV_{}".format(name if name else self.name)
     class Meta:
         db_table = u'device_group'
         ordering = ("-cluster_device_group", "name",)
@@ -1442,6 +1450,12 @@ class device_group(models.Model):
             " ({})".format(self.description) if self.description else "",
             "[*]" if self.cluster_device_group else ""
         )
+
+def strip_metadevice_name(name):
+    if name.startswith("METADEV_"):
+        return name[8:]
+    else:
+        return name
 
 class device_group_serializer(serializers.ModelSerializer):
     def validate(self, in_dict):
@@ -1463,7 +1477,6 @@ def device_group_pre_save(sender, **kwargs):
 @receiver(signals.post_save, sender=device_group)
 def device_group_post_save(sender, **kwargs):
     cur_inst = kwargs["instance"]
-
     if kwargs["created"] and not kwargs["raw"]:
         # first is always cdg
         if device_group.objects.count() == 1 and not cur_inst.cluster_device_group:
