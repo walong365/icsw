@@ -247,14 +247,17 @@ class create_device(permission_required_mixin, View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        # domain name tree
+        dnt = domain_name_tree()
         device_data = json.loads(_post["device_data"])
-        print device_data
         try:
             cur_dg = device_group.objects.get(Q(name=device_data["device_group"]))
         except device_group.DoesNotExist:
             try:
                 cur_dg = device_group.objects.create(
-                    name=device_data["device_group"]
+                    name=device_data["device_group"],
+                    domain_tree_node=dnt.get_domain_tree_node(""),
+                    description="auto created device group {}".format(device_data["device_group"]),
                     )
             except:
                 request.xml_response.error(
@@ -266,8 +269,14 @@ class create_device(permission_required_mixin, View):
                 cur_dg = None
             else:
                 request.xml_response.info(u"created new device group '{}'".format(unicode(cur_dg)), logger=logger)
+        else:
+            if cur_dg.cluster_device_group:
+                request.xml_response.error(
+                    u"no devices allowed in system (cluster) group",
+                    logger=logger
+                )
+                cur_dg = None
         if cur_dg is not None:
-            dnt = domain_name_tree()
             if device_data["full_name"].count("."):
                 short_name, domain_name = device_data["full_name"].split(".", 1)
                 dnt_node = dnt.add_domain(domain_name)
