@@ -492,34 +492,6 @@ simple_modal_template = """
 </div>
 """
 
-enter_password_template = """
-<div class="modal-header"><h3>Please enter the new password</h3></div>
-<div class="modal-body">
-    <form name="form">
-        <div ng-class="dyn_check(pwd.pwd1)">
-            <label>Password:</label>
-            <input type="password" ng-model="pwd.pwd1" placeholder="enter password" class="form-control"></input>
-        </div>
-        <div ng-class="dyn_check(pwd.pwd2)">
-            <label>again:</label>
-            <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" class="form-control"></input>
-        </div>
-    </form>
-</div>
-<div class="modal-footer">
-    <div ng-class="pwd_error_class">
-       {% verbatim %}
-           {{ pwd_error }}
-       {% endverbatim %}
-    </div>
-    <div>
-        <button class="btn btn-primary" ng-click="check()">Check</button>
-        <button class="btn btn-success" ng-click="ok()" ng-show="check()">Save</button>
-        <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
-    </div>
-</div>
-"""
-
 angular_add_simple_list_controller = (module, name, settings) ->
     $(settings.template_cache_list).each (idx, t_name) ->
         short_name = t_name.replace(/.html$/g, "").replace(/_/g, "")
@@ -968,10 +940,12 @@ class angular_edit_mixin
         if @edit_div
             @edit_div.remove()
     form_error : (field_name) =>
-        if @scope.form[field_name].$valid
-            return ""
-        else
-            return "has-error"
+        # hm, hack. needed in partition_table.cs / part_overview.html
+        if field_name of @scope.form
+            if @scope.form[field_name].$valid
+                return ""
+            else
+                return "has-error"
     modify : () ->
         if not @scope.form.$invalid
             if @scope.create_mode
@@ -1099,12 +1073,13 @@ class angular_modal_mixin
                 text : "form validation problem"
                 type : "warning"
 
-# codemirror ui
-angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive("uiCodemirror", [
+# codemirror ui, based on version 0.1.0, not 100% OK
+angular.module("ui.codemirrornew", []).constant("uiCodemirrorConfig", {}).directive("uiCodemirror", [
     "uiCodemirrorConfig", "$timeout", (uiCodemirrorConfig, $timeout) ->
         return {
             restrict: "EA"
             require: "?ngModel"
+            priority : 1
             compile: (tElement) ->
                 return (scope, iElement, iAttrs, ngModel) ->
                     value = scope.$eval(iAttrs.ngModel)
@@ -1171,6 +1146,79 @@ angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive
         }
 ])
 
+# codemirror ui, based on version 0.1.2, seems to work
+angular.module('ui.codemirror', []).constant('uiCodemirrorConfig', {}).directive('uiCodemirror', ["uiCodemirrorConfig", (uiCodemirrorConfig) ->
+    return {
+        restrict : "EA"
+        require  : "?ngModel"
+        priority : 1
+        compile : () ->
+            return postLink = (scope, iElement, iAttrs, ngModel) ->
+                value = iElement.text()
+                if iElement[0].tagName == 'TEXTAREA'
+                    codeMirror = window.CodeMirror.fromTextArea(iElement[0], { value: value })
+                else
+                    iElement.html("")
+                    codeMirror = new window.CodeMirror(
+                        (cm_el) ->
+                            iElement.replaceWith(cm_el)
+                        { value : value }
+                    )
+                options = uiCodemirrorConfig.codemirror || {}
+                opts = angular.extend(
+                    {},
+                    uiCodemirrorConfig.codemirror || {},
+                    scope.$eval(iAttrs.uiCodemirror),
+                    scope.$eval(iAttrs.uiCodemirrorOpts)
+                )
+                updateOptions = (newValues) ->
+                    for key of newValues
+                        if newValues.hasOwnProperty(key)
+                            codeMirror.setOption(key, newValues[key])
+                updateOptions(opts)
+                if iAttrs.uiCodemirror
+                    scope.$watch(iAttrs.uiCodemirror, updateOptions, true);
+                if ngModel
+                    ngModel.$formatters.push((value) ->
+                        if angular.isUndefined(value) || value is null
+                            return ''
+                        else if angular.isObject(value) || angular.isArray(value)
+                            throw new Error('ui-codemirror cannot use an object or an array as a model')
+                        else
+                            return value
+                    )
+                    ngModel.$render = () ->
+                        safeViewValue = ngModel.$viewValue || ''
+                        cur_cursor = codeMirror.doc.getCursor()
+                        # not needed ?
+                        cur_cinfo = codeMirror.getScrollInfo()
+                        #console.log cur_cursor, cur_cinfo
+                        codeMirror.setValue(safeViewValue)
+                        codeMirror.refresh()
+                        codeMirror.doc.setCursor(cur_cursor)
+                    codeMirror.on('change', (instance) ->
+                        newValue = instance.getValue()
+                        if newValue != ngModel.$viewValue or true
+                            ngModel.$setViewValue(newValue)
+                        if !scope.$$phase
+                            scope.$apply()
+                    )
+                if iAttrs.uiRefresh
+                    scope.$watch(iAttrs.uiRefresh, (newVal, oldVal) ->
+                        if newVal != oldVal
+                            codeMirror.refresh()
+                    )
+                scope.$on('CodeMirror', (event, callback) ->
+                    if angular.isFunction(callback)
+                        callback(codeMirror)
+                    else
+                        throw new Error('the CodeMirror event requires a callback function')
+                )
+                if angular.isFunction(opts.onLoad)
+                    opts.onLoad(codeMirror)
+    }
+])
+
 reload_sidebar_tree = (pk_list) ->
     sidebar_div = $("div[id='icsw.sidebar.ctrl']")
     # sidebar found ?
@@ -1198,6 +1246,7 @@ root.angular_add_simple_list_controller = angular_add_simple_list_controller
 root.angular_add_mixin_list_controller = angular_add_mixin_list_controller
 root.build_lut = build_lut
 root.simple_modal_template = simple_modal_template
+root.simple_modal_ctrl = simple_modal_ctrl
 root.simple_modal = simple_modal
 root.reload_sidebar_tree = reload_sidebar_tree
 root.set_index_visibility = set_index_visibility

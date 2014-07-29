@@ -9,141 +9,143 @@ root = exports ? this
 {% verbatim %}
 
 dc_row_template = """
-    <td>
-        <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
-            <span ng_class="get_expand_class(obj)">
-            </span> {{ obj.device_variable_set.length }}
-            <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
-        </button>
-    </td>
-    <td>{{ get_name(obj) }}</td>
-    <td>{{ obj.device_group_name }}</td>
-    <td>{{ obj.comment }}</td>
-    <td>local: {{ obj.local_selected.length }}<span ng-show="obj.device_type_identifier != 'MD'">, meta: {{ meta_devices[devg_md_lut[obj.device_group]].local_selected.length }}</span></td>
+<td>
+    <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
+        <span ng_class="get_expand_class(obj)">
+        </span> {{ obj.device_variable_set.length }}
+        <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
+    </button>
+</td>
+<td>{{ get_name(obj) }}</td>
+<td>{{ obj.device_group_name }}</td>
+<td>{{ obj.comment }}</td>
+<td>local: {{ obj.local_selected.length }}<span ng-show="obj.device_type_identifier != 'MD'">, meta: {{ meta_devices[devg_md_lut[obj.device_group]].local_selected.length }}</span></td>
 """
 
 devconftable_template = """
-    <table ng-show="active_configs.length" class="table table-condensed table-hover table-bordered" style="width:auto;">
-        <tbody>
-            <tr ng-repeat="sub_list in line_list">
-                <td ng-repeat="conf_idx in sub_list" ng-class="get_td_class(conf_idx)" ng-click="click(conf_idx)">
-                    <span ng-class="get_td_class_icon(conf_idx)"></span> {{ get_config_info(conf_idx) }}
-                 </td>
-            </tr>
-        </tbody>
-    </table>
+<table ng-show="active_configs.length" class="table table-condensed table-hover table-bordered" style="width:auto;">
+    <tbody>
+        <tr ng-repeat="sub_list in line_list">
+            <td ng-repeat="conf_idx in sub_list" ng-class="get_td_class(conf_idx)" ng-click="click(conf_idx)">
+                <div ng-show="show_config(conf_idx)">
+                    <span ng-class="get_td_class_icon(conf_idx)"></span>&nbsp;{{ get_config_info(conf_idx) }}&nbsp;<span class="pull-right badge" ng-bind-html="get_config_type(conf_idx)"></span>
+                </div>
+             </td>
+        </tr>
+    </tbody>
+</table>
 """
 
 device_config_template = """
-    <h2>
-        Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ active_configs.length }} shown)
-    </h2>
-    <div class="form-inline">
-        <input class="form-control" ng-model="name_filter" placeholder="filter"></input>,
-        <input
-            type="button"
-            ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
-            ng-click="only_selected = !only_selected"
-            value="only selected"
-            title="show only configs selected anywhere in the curren selection"
-        ></input>
-        <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
-            <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
-            <div class="btn-group" ng-show="new_config_name">
-                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                    Create in catalog <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
-                </ul>
-            </div>
+<h2>
+    Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ active_configs.length }} shown)
+</h2>
+<div class="form-inline">
+    <input class="form-control" ng-model="name_filter" placeholder="filter"></input>,
+    <input
+        type="button"
+        ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
+        ng-click="only_selected = !only_selected"
+        value="only selected"
+        title="show only configs selected anywhere in the curren selection"
+    ></input>
+    <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
+        <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
+        <div class="btn-group" ng-show="new_config_name">
+            <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                Create in catalog <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
+            </ul>
         </div>
     </div>
-    <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Device</th>
-                <th>Group</th>
-                <th>Comment</th>
-                <th>Info</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr dcrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
-            <tr ng-repeat-end ng-if="obj.expanded">
-                <td colspan="9"><deviceconfigtable></deviceconfigtable></td>
-            </tr>
-        </tbody>
-    </table>
+</div>
+<table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Device</th>
+            <th>Group</th>
+            <th>Comment</th>
+            <th>Info</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr dcrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+        <tr ng-repeat-end ng-if="obj.expanded">
+            <td colspan="9"><deviceconfigtable></deviceconfigtable></td>
+        </tr>
+    </tbody>
+</table>
 """
 
 devconf_vars_template = """
-    <h2>Config variables for {{ devsel_list.length }} devices, <input type="button" class="btn btn-xs btn-primary" value="show vars" ng-click="load_vars()"></input></h2>
-    <div class="row">
-        <div class="col-sm-5 form-inline" ng-show="loaded">
-            <div class="form-group">
-                <input class="form-control" ng-model="var_filter" placeholder="filter"></input>
-            </div>
+<h2>Config variables for {{ devsel_list.length }} devices, <input type="button" class="btn btn-xs btn-primary" value="show vars" ng-click="load_vars()"></input></h2>
+<div class="row">
+    <div class="col-sm-5 form-inline" ng-show="loaded">
+        <div class="form-group">
+            <input class="form-control" ng-model="var_filter" placeholder="filter"></input>
         </div>
     </div>
-    <div ng-show="loaded">
-        <tree treeconfig="devvar_tree"></tree>
-    </div>
+</div>
+<div ng-show="loaded">
+    <tree treeconfig="devvar_tree"></tree>
+</div>
 """
 
 partinfo_template = """
-    <div>
-        <tabset>
-            <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
-                <div ng-show="dev.act_partition_table">
-                    <h4>
-                        Partition table '{{ dev.act_partition_table.name}}',
-                        <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
-                        <input type="button" class="btn btn-sm btn-danger" value="clear" ng-click="clear(dev.idx)" ng-show="dev.act_partition_table"></input>
-                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
-                    </h4>
-                    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
-                        <tbody>
-                            <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
-                                <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
-                                <th>Size</th>
-                                <th>warn</th>
-                                <th>crit</th>
-                            </tr>
-                            <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
-                                <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
-                                <td>{{ part.mountpoint }}</td>
-                                <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
-                                <td class="text-center">{{ part.warn_threshold }} %</td>
-                                <td class="text-center">{{ part.crit_threshold }} %</td>
-                            </tr>
-                            <tr>
-                                <th colspan="2">Logical Volumes</th>
-                                <th>Size</th>
-                                <th>warn</th>
-                                <th>crit</th>
-                            </tr>
-                            <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
-                                <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
-                                <td>{{ lvm.mountpoint }}</td>
-                                <td class="text-right">{{ lvm.size | get_size:1:1000 }}</td>
-                                <td class="text-center">{{ lvm.warn_threshold }} %</td>
-                                <td class="text-center">{{ lvm.crit_threshold }} %</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div ng-show="!dev.act_partition_table">
-                    <h4>
-                        <span class="text-danger">No partition table defined</span>, 
-                        <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
-                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
-                    </h4>
-                </div>
-            </tab> 
-        </tabset>
-    </div>
+<div>
+    <tabset>
+        <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
+            <div ng-show="dev.act_partition_table">
+                <h4>
+                    Partition table '{{ dev.act_partition_table.name}}',
+                    <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                    <input type="button" class="btn btn-sm btn-danger" value="clear" ng-click="clear(dev.idx)" ng-show="dev.act_partition_table"></input>
+                    <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
+                </h4>
+                <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+                    <tbody>
+                        <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
+                            <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
+                            <th>Size</th>
+                            <th>warn</th>
+                            <th>crit</th>
+                        </tr>
+                        <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
+                            <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
+                            <td>{{ part.mountpoint }}</td>
+                            <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+                            <td class="text-center">{{ part.warn_threshold }} %</td>
+                            <td class="text-center">{{ part.crit_threshold }} %</td>
+                        </tr>
+                        <tr>
+                            <th colspan="2">Logical Volumes</th>
+                            <th>Size</th>
+                            <th>warn</th>
+                            <th>crit</th>
+                        </tr>
+                        <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
+                            <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
+                            <td>{{ lvm.mountpoint }}</td>
+                            <td class="text-right">{{ lvm.size | get_size:1:1000 }}</td>
+                            <td class="text-center">{{ lvm.warn_threshold }} %</td>
+                            <td class="text-center">{{ lvm.crit_threshold }} %</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div ng-show="!dev.act_partition_table">
+                <h4>
+                    <span class="text-danger">No partition table defined</span>, 
+                    <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                    <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
+                </h4>
+            </div>
+        </tab> 
+    </tabset>
+</div>
 """
 
 {% endverbatim %}
@@ -387,11 +389,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     if not dev.expanded and dev.device_type_identifier != "MD"
                         dev.expanded = $scope.meta_devices[$scope.devg_md_lut[dev.device_group]].expanded
             $scope.set_line_list()
-        $scope.get_config_info = (conf_idx) ->
-            if conf_idx != null
-                cur_conf = $scope.configs_lut[conf_idx]
-                return cur_conf.info_str
-        install_devsel_link($scope.new_devsel, false)
+        install_devsel_link($scope.new_devsel, true)
 ]).directive("dcrow", ($templateCache) ->
     return {
         restrict : "EA"
@@ -420,6 +418,30 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     if conf_idx in meta_dev.local_selected and not is_meta_dev
                         _cls = "warn"
                 return _cls
+            scope.get_config_info = (conf_idx) ->
+                if conf_idx != null
+                    cur_conf = scope.configs_lut[conf_idx]
+                    return cur_conf.info_str
+            scope.show_config = (conf_idx) ->
+                if conf_idx != null
+                    cur_conf = scope.configs_lut[conf_idx]
+                    if scope.obj.device_type_identifier == "MD" and cur_conf.server_config
+                        return false
+                    else
+                        return true
+                else
+                    return false
+            scope.get_config_type = (conf_idx) ->
+                if conf_idx != null
+                    r_v = []
+                    cur_conf = scope.configs_lut[conf_idx]
+                    if cur_conf.server_config
+                        r_v.push("S")
+                    if cur_conf.system_config
+                        r_v.push("Y")
+                    return r_v.join("/")
+                else
+                    return ""
             scope.get_td_class_icon = (conf_idx) ->
                 _cls = "glyphicon"
                 is_meta_dev = scope.obj.device_type_identifier == "MD"
@@ -431,7 +453,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                         _cls = "glyphicon glyphicon-ok-circle"
                 return _cls
             scope.click = (conf_idx) ->
-                if conf_idx != null and scope.acl_create(scope.obj, 'backbone.device.change_config')
+                if conf_idx != null and scope.acl_create(scope.obj, 'backbone.device.change_config') and scope.show_config(conf_idx)
                     meta_dev = scope.meta_devices[scope.devg_md_lut[scope.obj.device_group]]
                     value = 1
                     if conf_idx in scope.obj.local_selected
@@ -895,6 +917,8 @@ mh_devrow_template = """
 mh_row_template = """
 <td>{{ hint.m_type }}</td>
 <td>{{ hint.key }}</td>
+<td>{{ hint.persistent | yesno1 }}</td>
+<td>{{ hint.datasource }}</td>
 <td>{{ get_v_type() }}</td>
 <td class="text-right" ng-class="get_td_class('lower_crit')">{{ get_limit('lower_crit') }}</td>
 <td class="text-right" ng-class="get_td_class('lower_warn')">{{ get_limit('lower_warn') }}</td>
@@ -910,6 +934,8 @@ mh_table_template = """
         <tr>
             <th>Source</th>
             <th>key</th>
+            <th title="entry is persistent">pers</th>
+            <th title="datasource">ds</th>
             <th>Type</th>
             <th>lower crit</th>
             <th>lower warn</th>
@@ -1003,7 +1029,6 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
             scope.get_v_type = () ->
                 return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
             scope.get_value = () ->
-                console.log "value_" + scope.get_v_type()
                 return scope.hint["value_" + scope.get_v_type()]
             scope.get_td_class = (name) ->
                 v_type = scope.get_v_type()

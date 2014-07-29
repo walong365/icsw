@@ -90,7 +90,7 @@ class authentication_form(Form):
             for pk, al_list in all_aliases:
                 for cur_al in al_list:
                     if cur_al in rev_dict:
-                        raise ValidationError("Alias '%s' is not unique" % (cur_al))
+                        raise ValidationError("Alias '{}' is not unique".format(cur_al))
                     elif cur_al in all_logins:
                         # ignore aliases which are also logins
                         pass
@@ -917,15 +917,11 @@ class partition_table_form(ModelForm):
                         css_class="col-md-4",
                     ),
                     Div(
-                        Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                        Submit("submit", "", css_class="primaryAction", ng_value="submit"),
                         css_class="col-md-4",
                     ),
                     css_class="row",
                 ),
-            ),
-            Fieldset(
-                "Detailed partition layout",
-                HTML('<div disklayout ng-if="!create_mode && modal_active && !settings.use_modal">'),
             ),
         )
     )
@@ -983,17 +979,20 @@ class partition_form(ModelForm):
                 Field("partition_hex", readonly=True),
             ),
             Fieldset(
+                "Partition flags",
+                Field("bootable"),
+            ),
+            Fieldset(
                 "Mount options",
                 Field("mountpoint", wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
-                Field("mount_options"),
-                Field("bootable"),
-                Field("fs_freq", min=0, max=1),
-                Field("fs_passno", min=0, max=2),
+                Field("mount_options", wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
+                Field("fs_freq", min=0, max=1, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
+                Field("fs_passno", min=0, max=2, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
             ),
             Fieldset(
                 "Check thresholds",
-                Field("warn_threshold", min=0, max=100),
-                Field("crit_threshold", min=0, max=100),
+                Field("warn_threshold", min=0, max=100, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
+                Field("crit_threshold", min=0, max=100, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2172,7 +2171,7 @@ class config_form(ModelForm):
                     typeahead_min_length=1,
                 ),
                 Field("description"),
-                Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True),
+                Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True, wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config"),
             ),
             HTML(
                 "<div ng-bind-html='show_config_help()'></div>",
@@ -2181,6 +2180,7 @@ class config_form(ModelForm):
                 "other settings",
                 Field("enabled"),
                 Field("priority"),
+                Field("server_config", wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.parent_config"),
             ),
             Fieldset(
                 "Categories",
@@ -2198,7 +2198,7 @@ class config_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = config
-        fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog",)
+        fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog", "server_config",)
 
 class config_catalog_form(ModelForm):
     helper = FormHelper()
@@ -2755,7 +2755,28 @@ class boot_single_form(Form):
         HTML("<h2>{% verbatim %}Device setting for {{ device_info_str }}{% endverbatim %}</h2>"),
             Fieldset(
                 "basic settings",
-                Field("target_state", ng_options="value.idx as value.info for value in valid_states", chosen=True, wrapper_ng_show="bo_enabled['t']"),
+                HTML(
+"""
+{% verbatim %}
+<div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t']">
+    <label class='control-label col-sm-4'>
+        network {{ netstate.info }}
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in netstate.states" chosen="1"></select>
+    </div>
+</div>
+<div class='form-group' ng-show="bo_enabled['t']">
+    <label class='control-label col-sm-4'>
+        special state
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in special_states" chosen="1"></select>
+    </div>
+</div>
+{% endverbatim %}
+"""
+                ),
                 Field("new_kernel", ng_options="value.idx as value.name for value in kernels", chosen=True, wrapper_ng_show="bo_enabled['k']"),
                 Field("stage1_flavour", ng_options="value.val as value.name for value in stage1_flavours", chosen=True, wrapper_ng_show="bo_enabled['k']"),
                 Field("kernel_append", wrapper_ng_show="bo_enabled['k']"),
@@ -2816,10 +2837,47 @@ class boot_many_form(Form):
     helper.layout = Layout(
         HTML("<h2>Change boot settings of {%verbatim %}{{ device_info_str }}{% endverbatim %}</h2>"),
     )
+    helper.layout.append(
+        Fieldset(
+            "target state",
+            Div(
+                Field(
+                   "change_target_state",
+                   wrapper_ng_show="bo_enabled['t']",
+                ),
+                css_class="col-md-3",
+            ),
+            HTML(
+"""
+{% verbatim %}
+<div class="col-md-9">
+<div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+    <label class='control-label col-sm-4'>
+        network {{ netstate.info }}
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in netstate.states" chosen="1"></select>
+    </div>
+</div>
+<div class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+    <label class='control-label col-sm-4'>
+        special state
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in special_states" chosen="1"></select>
+    </div>
+</div>
+</div>
+{% endverbatim %}
+"""
+            ),
+            css_class="row",
+        )
+    )
     for fs_string, el_list in [
         (
-            "Basic settings", [
-                ("target_state", "value.idx as value.info for value in valid_states", {"chosen" : True}, "t", "target_state"),
+            "settings", [
+                # ("target_state", "value.idx as value.info for value in valid_states", {"chosen" : True}, "t", "target_state"),
                 ("new_kernel", "value.idx as value.name for value in kernels", {"chosen" : True}, "k", "new_kernel"),
                 ("stage1_flavour", "value.val as value.name for value in stage1_flavours", {"chosen" : True}, "k", ""),
                 ("kernel_append", None, {}, "k", ""),
@@ -2839,15 +2897,15 @@ class boot_many_form(Form):
                     Div(
                         Div(
                             Field(
-                               "change_%s" % (en_field),
-                               wrapper_ng_show="bo_enabled['%s']" % (en_flag),
+                               "change_{}".format(en_field),
+                               wrapper_ng_show="bo_enabled['{}']".format(en_flag),
                             ) if en_field else HTML(""),
                             css_class="col-md-3",
                         ),
                         Div(
                             Field(
                                 f_name,
-                                wrapper_ng_show="_edit_obj.change_%s && bo_enabled['%s']" % (
+                                wrapper_ng_show="_edit_obj.change_{} && bo_enabled['{}']".format(
                                     {
                                         "k" : "new_kernel",
                                         "i" : "new_image",

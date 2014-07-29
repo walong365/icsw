@@ -29,7 +29,8 @@
 {% verbatim %}
 
 <script type="text/ng-template" id="layout.html">
-    <h4 ng-class="edit_obj.valid && 'text-success' || 'text-danger'">Problems: {{ error_list.length }}</h4>
+    <partdata></partdata>
+    <h4 ng-class="part.valid && 'text-success' || 'text-danger'">Problems: {{ error_list.length }}</h4>
     <ul ng-show="error_list.length" class="list-group">
         <li ng-repeat="error in error_list" class="list-group-item">
             {{ error.msg }}
@@ -45,16 +46,16 @@
                 </th>
                 <th colspan="2"></th>
             </tr>
-            <tr partclean ng-repeat="disc in edit_obj.partition_disc_set"></tr>
-            <tr partdisc ng-repeat="disc in edit_obj.partition_disc_set"></tr>
-            <tr class="danger">
+            <tr partdisc partition_fs="partition_fs" ng-repeat-start="disc in part.partition_disc_set"></tr>
+            <tr part ng-repeat-end ng-repeat="part in disc.partition_set"></tr> 
+            <tr class="warning">
                 <th colspan="10">system partitions ({{ edit_obj.sys_partition_set.length }} defined)</th>
                 <th>
                     <input type="button" class="btn btn-success btn-xs" ng-click="sys_edit.create($event)" value="create sys"/>
                 </th>
                 <th colspan="2"></th>
             </tr>
-            <tr partsys class="icsw_dyn" ng-repeat="sys in edit_obj.sys_partition_set | orderBy:'mountpoint'"></tr>
+            <tr partsys ng-repeat="sys in edit_obj.sys_partition_set | orderBy:'mountpoint'"></tr>
         </tbody>
     </table>
 </script>
@@ -72,26 +73,24 @@
 </script>
 
 <script type="text/ng-template" id="part_disc.html">
-    <tr class="success icsw_dyn">
-        <th colspan="10">Disc: {{ disc.disc }}, {{ disc.partition_set.length }} partitions, label_type is {{ disc.label_type }}</th>
-        <th><input type="button" class="btn btn-success btn-xs" ng-click="disc_edit.create($event)" value="create part"/></th>
-        <th><input type="button" class="btn btn-primary btn-xs" ng-click="disc_edit.edit(disc, $event)" value="modify"/></th>
-        <th><input type="button" class="btn btn-danger btn-xs" ng-click="disc_edit.delete_obj(disc)" value="delete"/></th>
-    </tr>
-    <tr class="icsw_dyn" ng-show="disc.partition_set.length">
-        <th>Part</th>
-        <th>hex</th>
-        <th>Mountpoint</th>
-        <th>options</th>
-        <th>boot</th>
-        <th>size</th>
-        <th>freq</th>
-        <th>passno</th>
-        <th>filesys</th>
-        <th class="text-center">limit</th>
-        <th class="text-center" colspan="3">Action</th>
-    </tr>
-    <tr class="icsw_dyn" part ng-repeat="part in disc.partition_set"></tr>
+    <th colspan="10">Disc: {{ disc.disc }}, {{ disc.partition_set.length }} partitions, label_type is {{ disc.label_type }}</th>
+    <th><input type="button" class="btn btn-success btn-xs" ng-click="disc_edit.create($event)" value="create part"/></th>
+    <th><input type="button" class="btn btn-primary btn-xs" ng-click="disc_edit.edit(disc, $event)" value="modify"/></th>
+    <th><input type="button" class="btn btn-danger btn-xs" ng-click="disc_edit.delete_obj(disc)" value="delete"/></th>
+</script>
+
+<script type="text/ng-template" id="part_header.html">
+    <th>Part</th>
+    <th>hex</th>
+    <th>Mountpoint</th>
+    <th>options</th>
+    <th>boot</th>
+    <th>size</th>
+    <th>freq</th>
+    <th>passno</th>
+    <th>filesys</th>
+    <th class="text-center">limit</th>
+    <th class="text-center" colspan="3">Action</th>
 </script>
 
 <script type="text/ng-template" id="part.html">
@@ -103,7 +102,7 @@
     <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
     <td>{{ part.fs_freq }}</td>
     <td>{{ part.fs_passno }}</td>
-    <td>{{ part.partition_fs | array_lookup:this.rest_data.partition_fs:'name' }}</td>
+    <td>{{ part.partition_fs | array_lookup:this.partition_fs:'name' }}</td>
     <td>
         <span ng-if="part.warn_threshold || part.crit_threshold">{{ part.warn_threshold }} / {{ part.crit_threshold }}</span>
         <span ng-if="!(part.warn_threshold && part.crit_threshold)">---</span>
@@ -137,13 +136,13 @@
     <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.valid | yesno1  }}</td>
     <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
     <td class="text-center">{{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}</td>
-    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-xs" ng-show="fn.delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-show="not_open(obj)" ng-click="edit_part(obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<tabset>
-    <tab heading="Partitions">
-        <div ng-controller="partition_table_base">
+<div ng-controller="partition_table_base">
+    <tabset>
+        <tab heading="Partitions">
             <div class="col-sm-12">
                 <h2>Partition tables ({{entries.length}} entries),
                     <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/>&nbsp;
@@ -159,17 +158,17 @@
                     </tfoot>
                 </table>
             </div>
-            <div ng-if="modal_active && !settings.use_modal" class="col-sm-12">
-                <div class="panel panel-default">
-                    <div class="panel-body">
-                        <div edittemplate ng-if="modal_active && !settings.use_modal" class="col-sm-12">
-                        </div>
-                    </div>
-                </div>
+        </tab>
+        <tab ng-repeat="part in edit_pts" active="part.tab_active">
+            <tab-heading>
+                <span class="glyphicon glyphicon-remove" ng-click="close_part(part)"></span>{{ part.name }}
+            </tab-heading>
+            <div>
+                <disklayout partition_fs="partition_fs" part_table="part"></disklayout>
             </div>
-        </div>
-    </tab>
-</tabset>
+        </tab>
+    </tabset>
+</div>
 
 </div>
 

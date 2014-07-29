@@ -6,7 +6,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views
+    base_views, setup_views, doc_views
 from initat.cluster.rms import rms_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 
@@ -166,7 +166,7 @@ rrd_patterns = patterns(
 )
 
 rpl = []
-for obj_name in rest_views.REST_LIST:
+for src_mod, obj_name in rest_views.REST_LIST:
     rpl.extend([
         url("^%s$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
         url("^%s/(?P<pk>[0-9]+)$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
@@ -187,9 +187,15 @@ rest_patterns = patterns(
 )
 # rest_patterns = format_suffix_patterns(rest_patterns)
 
+dyndoc_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"^hb/root$"        , doc_views.test_page.as_view(), name="doc_root"),
+    url(r"^hb/(?P<page>.*)$", doc_views.doc_page.as_view(), name="doc_page"),
+)
+
 doc_patterns = patterns(
     "",
-    url(r"^%s/(?P<path>.*)$" % (settings.REL_SITE_ROOT)    ,
+    url(r"^{}/(?P<path>.*)$".format(settings.REL_SITE_ROOT)    ,
         "django.views.static.serve", {
             "document_root" : os.path.join(settings.FILE_ROOT, "doc", "build", "html")
             }, name="show"),
@@ -214,6 +220,7 @@ my_url_patterns = patterns(
     url(r"^pack/"     , include(pack_patterns      , namespace="pack")),
     url(r"^rrd/"      , include(rrd_patterns       , namespace="rrd")),
     url(r"^doc/"      , include(doc_patterns       , namespace="doc")),
+    url(r"^dyndoc/"   , include(dyndoc_patterns    , namespace="dyndoc")),
     url(r"^rest/"     , include(rest_patterns      , namespace="rest")),
 )
 
@@ -224,4 +231,3 @@ url_patterns = patterns(
 )
 
 url_patterns += staticfiles_urlpatterns()
-

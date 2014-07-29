@@ -71,7 +71,7 @@ iostruct = """
     </h4>
     <div ng-show="io_struct.valid"> 
         <tt>
-            <textarea ui-codemirror="editorOptions" ng-model="io_struct.text" ui-refresh="io_struct.refresh">
+            <textarea ui-codemirror="editorOptions" ng-model="io_struct.text">
             </textarea>
         </tt>
     </div>
@@ -115,7 +115,7 @@ filesinfo = """
 rmsnodeline = """
 <td ng-show="node_struct.toggle['host']">
     {{ data.host }}
-    <button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
+    <button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
         <span class="glyphicon glyphicon-pencil"></span>
     </button>
 </td>

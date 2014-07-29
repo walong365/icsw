@@ -80,7 +80,7 @@ class json_network(View):
             ))
         r_obj = config_tools.topology_object(self.log, graph_mode, dev_list=dev_list)
         r_obj.add_full_names()
-        json_obj = json_graph.dumps(r_obj.nx)
+        json_obj = json.dumps(json_graph.node_link_data(r_obj.nx))
         # import time
         # time.sleep(10)
         # pprint.pprint(json_obj)
@@ -207,5 +207,6 @@ class get_domain_name_tree(permission_required_mixin, View):
     def get(self, request):
         return render_me(request, "domain_name_tree.html", {
             "domain_name_tree_form" : domain_tree_node_form(),
+            "doc_page"              : "domain_name_tree",
             })()
 
