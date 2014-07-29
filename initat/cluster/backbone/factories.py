@@ -9,24 +9,29 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     config_hint, config_var_hint, config_script_hint
 
 class Device(factory.django.DjangoModelFactory):
-    FACTORY_FOR = device
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = device
+        django_get_or_create = ("name",)
 
 class DeviceGroup(factory.django.DjangoModelFactory):
-    FACTORY_FOR = device_group
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = device_group
+        django_get_or_create = ("name",)
 
 class NetDeviceSpeed(factory.django.DjangoModelFactory):
-    FACTORY_FOR = netdevice_speed
-    FACTORY_DJANGO_GET_OR_CREATE = ("speed_bps", "check_via_ethtool", "full_duplex",)
+    class Meta:
+        model = netdevice_speed
+        django_get_or_create = ("speed_bps", "check_via_ethtool", "full_duplex",)
 
 class LogSource(factory.django.DjangoModelFactory):
-    FACTORY_FOR = log_source
-    FACTORY_DJANOG_GET_OR_CREATE = ("identifier",)
+    class Meta:
+        model = log_source
+        django_get_or_create = ("identifier",)
 
 class DeviceType(factory.django.DjangoModelFactory):
-    FACTORY_FOR = device_type
-    FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
+    class Meta:
+        model = device_type
+        django_get_or_create = ("identifier",)
     priority = 0
     @factory.post_generation
     def priority(self, create, extracted, **kwargs):
@@ -35,8 +40,9 @@ class DeviceType(factory.django.DjangoModelFactory):
             self.save()
 
 class PartitionFS(factory.django.DjangoModelFactory):
-    FACTORY_FOR = partition_fs
-    FACTORY_DJANGO_GET_OR_CREATE = ("name", "identifier",)
+    class Meta:
+        model = partition_fs
+        django_get_or_create = ("name", "identifier",)
     kernel_module = ""
     @factory.post_generation
     def kernel_module(self, create, extracted, **kwargs):
@@ -47,8 +53,9 @@ class PartitionFS(factory.django.DjangoModelFactory):
             self.save()
 
 class LogStatus(factory.django.DjangoModelFactory):
-    FACTORY_FOR = log_status
-    FACTORY_DJANGO_GET_OR_CREATE = ("identifier", "log_level",)
+    class Meta:
+        model = log_status
+        django_get_or_create = ("identifier", "log_level",)
     @factory.post_generation
     def name(self, create, extracted, **kwargs):
         if self.name != extracted:
@@ -56,8 +63,9 @@ class LogStatus(factory.django.DjangoModelFactory):
             self.save()
 
 class Status(factory.django.DjangoModelFactory):
-    FACTORY_FOR = status
-    FACTORY_DJANGO_GET_OR_CREATE = ("status",)
+    class Meta:
+        model = status
+        django_get_or_create = ("status",)
     memory_test = False
     prod_link = False
     boot_local = False
@@ -66,76 +74,112 @@ class Status(factory.django.DjangoModelFactory):
     allow_boolean_modify = False
 
 class NetworkDeviceType(factory.django.DjangoModelFactory):
-    FACTORY_FOR = network_device_type
-    FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
+    class Meta:
+        model = network_device_type
+        django_get_or_create = ("identifier",)
 
 class NetworkType(factory.django.DjangoModelFactory):
-    FACTORY_FOR = network_type
-    FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
+    class Meta:
+        model = network_type
+        django_get_or_create = ("identifier",)
 
 class HostCheckCommand(factory.django.DjangoModelFactory):
-    FACTORY_FOR = host_check_command
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = host_check_command
+        django_get_or_create = ("name",)
 
 class Config(factory.django.DjangoModelFactory):
-    FACTORY_FOR = config
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = config
+        django_get_or_create = ("name",)
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if not self.description:
+            self.description = extracted
+            self.save()
+    @factory.post_generation
+    def server_config(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.server_config != extracted:
+            self.server_config = extracted
+            self.save()
+    @factory.post_generation
+    def system_config(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.system_config != extracted:
+            self.system_config = extracted
+            self.save()
 
 class MonCheckCommand(factory.django.DjangoModelFactory):
-    FACTORY_FOR = mon_check_command
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = mon_check_command
+        django_get_or_create = ("name",)
 
 class MonPeriod(factory.django.DjangoModelFactory):
-    FACTORY_FOR = mon_period
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = mon_period
+        django_get_or_create = ("name",)
 
 class MonServiceTempl(factory.django.DjangoModelFactory):
-    FACTORY_FOR = mon_service_templ
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = mon_service_templ
+        django_get_or_create = ("name",)
 
 class MonDeviceTempl(factory.django.DjangoModelFactory):
-    FACTORY_FOR = mon_device_templ
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = mon_device_templ
+        django_get_or_create = ("name",)
 
 class User(factory.django.DjangoModelFactory):
-    FACTORY_FOR = user
-    FACTORY_DJANGO_GET_OR_CREATE = ("login",)
+    class Meta:
+        model = user
+        django_get_or_create = ("login",)
 
 class Group(factory.django.DjangoModelFactory):
-    FACTORY_FOR = group
-    FACTORY_DJANGO_GET_OR_CREATE = ("groupname",)
+    class Meta:
+        model = group
+        django_get_or_create = ("groupname",)
 
 class MonContact(factory.django.DjangoModelFactory):
-    FACTORY_FOR = mon_contact
-    FACTORY_DJANGO_GET_OR_CREATE = ("user",)
+    class Meta:
+        model = mon_contact
+        django_get_or_create = ("user",)
 
 class Network(factory.django.DjangoModelFactory):
-    FACTORY_FOR = network
-    FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
+    class Meta:
+        model = network
+        django_get_or_create = ("identifier",)
 
 class NetDevice(factory.django.DjangoModelFactory):
-    FACTORY_FOR = netdevice
-    FACTORY_DJANGO_GET_OR_CREATE = ("device", "devname",)
+    class Meta:
+        model = netdevice
+        django_get_or_create = ("device", "devname",)
 
 class NetIp(factory.django.DjangoModelFactory):
-    FACTORY_FOR = net_ip
-    FACTORY_DJANGO_GET_OR_CREATE = ("ip", "network",)
+    class Meta:
+        model = net_ip
+        django_get_or_create = ("ip", "network",)
 
 class DeviceConfig(factory.django.DjangoModelFactory):
-    FACTORY_FOR = device_config
-    FACTORY_DJANGO_GET_OR_CREATE = ("device", "config",)
+    class Meta:
+        model = device_config
+        django_get_or_create = ("device", "config",)
 
 class ClusterSetting(factory.django.DjangoModelFactory):
-    FACTORY_FOR = cluster_setting
-    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+    class Meta:
+        model = cluster_setting
+        django_get_or_create = ("name",)
 
 class ClusterLicense(factory.django.DjangoModelFactory):
-    FACTORY_FOR = cluster_license
-    FACTORY_DJANGO_GET_OR_CREATE = ("cluster_setting", "name",)
+    class Meta:
+        model = cluster_license
+        django_get_or_create = ("cluster_setting", "name",)
 
 class ConfigHint(factory.django.DjangoModelFactory):
-    FACTORY_FOR = config_hint
-    FACTORY_DJANGO_GET_OR_CREATE = ("config_name",)
+    class Meta:
+        model = config_hint
+        django_get_or_create = ("config_name",)
     help_text_short = ""
     help_text_html = ""
     config_description = ""
@@ -165,8 +209,9 @@ class ConfigHint(factory.django.DjangoModelFactory):
             self.save()
 
 class ConfigVarHint(factory.django.DjangoModelFactory):
-    FACTORY_FOR = config_var_hint
-    FACTORY_DJANGO_GET_OR_CREATE = ("var_name", "config_hint")
+    class Meta:
+        model = config_var_hint
+        django_get_or_create = ("var_name", "config_hint")
     help_text_short = ""
     help_text_html = ""
     ac_flag = False
@@ -204,8 +249,9 @@ class ConfigVarHint(factory.django.DjangoModelFactory):
             self.save()
 
 class ConfigScriptHint(factory.django.DjangoModelFactory):
-    FACTORY_FOR = config_script_hint
-    FACTORY_DJANGO_GET_OR_CREATE = ("script_name", "config_hint")
+    class Meta:
+        model = config_script_hint
+        django_get_or_create = ("script_name", "config_hint")
     help_text_short = ""
     help_text_html = ""
     ac_flag = False

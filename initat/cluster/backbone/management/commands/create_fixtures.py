@@ -25,7 +25,9 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr
+from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, log_source, \
+    get_related_models
+from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import os
@@ -69,6 +71,11 @@ class Command(BaseCommand):
         # create fixtures
         for lic_name in ALL_LICENSES:
             factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
+        # remove duplicate entries due to bug in factories (sigh)
+        cur_cusl = log_source.objects.filter(Q(identifier="user"))
+        for _cc in cur_cusl:
+            if not get_related_models(_cc):
+                _cc.delete()
         # log source
         factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
         # device type
@@ -102,6 +109,7 @@ class Command(BaseCommand):
         # status
         factories.Status(status="memtest", memory_test=True)
         factories.Status(status="boot_local", boot_local=True)
+        factories.Status(status="boot_iso", boot_iso=True)
         factories.Status(status="boot_clean", prod_link=True, is_clean=True)
         factories.Status(status="installation_clean", prod_link=True, do_install=True, is_clean=True)
         factories.Status(status="boot", prod_link=True) # # FIXME ?
@@ -115,7 +123,7 @@ class Command(BaseCommand):
         factories.NetworkDeviceType(identifier="ib", name_re="^ib\d+$", description="infiniband devices", mac_bytes=20)
         factories.NetworkDeviceType(identifier="bridge", name_re="^.*bridge.*$", description="generic bridge", mac_bytes=6)
         factories.NetworkDeviceType(identifier="vlan", name_re="^vlan\d+$", description="VLAN device", mac_bytes=6)
-        factories.NetworkDeviceType(identifier="en", name_re="^en(s|p)\d+$", description="Ethernet new scheme", mac_bytes=6)
+        factories.NetworkDeviceType(identifier="en", name_re="^(em|en(s|p).*|p\d+p)\d+$", description="Ethernet new scheme", mac_bytes=6)
         # network types
         factories.NetworkType(identifier="b", description="boot network")
         factories.NetworkType(identifier="p", description="production network")
@@ -454,3 +462,4 @@ of the user_dn_template plus the user_base template:<br>
 USER_DN={USER_DN_TEMPLATE},{USER_BASE_TEMPLATE}
 """
         )
+        add_fixtures(**options)

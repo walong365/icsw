@@ -15,9 +15,11 @@ class db_backend(object):
         try:
             cur_user = user.objects.get(Q(login=username))
         except user.DoesNotExist:
-            logger.error("user '%s' not found" % (username))
+            logger.error("user '{}' not found".format(username))
             return None
         else:
+            if password is "AUTO_LOGIN" and cur_user.login_count == 0 and sum(user.objects.all().values_list("login_count", flat=True)) == 0:
+                return cur_user
             # check password
             cur_pw = cur_user.password
             if cur_pw.count(":"):

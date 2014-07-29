@@ -22,7 +22,6 @@
 """ migrate to configuration catalogs """
 
 from django.core.management.base import BaseCommand
-from django.db.models import Q
 from initat.cluster.backbone.models import config, config_catalog
 import logging_tools
 
@@ -33,10 +32,7 @@ class Command(BaseCommand):
     def handle(self, **options):
         num_cc = config_catalog.objects.all().count()
         if not num_cc:
-            def_cc = config_catalog.objects.create(
-                name="local",
-                url="http://www.initat.org/",
-                author="Andreas Lang-Nevyjel")
+            def_cc = config_catalog.create_local_catalog()
             print "created config_catalog '{}'".format(unicode(def_cc))
             for conf in config.objects.all():
                 conf.config_catalog = def_cc

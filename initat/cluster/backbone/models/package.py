@@ -367,31 +367,35 @@ class package_device_connection(models.Model):
             else:
                 pp_src = "main"
             if pp_src == "main":
-                lines = xml.findtext("stdout").strip().split("\n")
-                if len(lines) == 1:
-                    line = lines[0]
-                    if line.startswith("package") and line.endswith("installed"):
-                        if line.count("not installed"):
-                            self.installed = "n"
+                yum_stdout = xml.findtext("stdout")
+                if yum_stdout is not None:
+                    lines = xml.findtext("stdout").strip().split("\n")
+                    if len(lines) == 1:
+                        line = lines[0]
+                        if line.startswith("package") and line.endswith("installed"):
+                            if line.count("not installed"):
+                                self.installed = "n"
+                            else:
+                                self.installed = "y"
                         else:
-                            self.installed = "y"
+                            # unsure
+                            self.installed = "u"
                     else:
-                        # unsure
                         self.installed = "u"
+                        cur_mode = 0
+                        for _line_num, line in enumerate(lines):
+                            if line.startswith("Installed:"):
+                                cur_mode = 1
+                            elif line.startswith("Removed:"):
+                                cur_mode = 2
+                            elif not line.strip():
+                                cur_mode = 0
+                            else:
+                                if cur_mode:
+                                    if line.startswith(" ") and line.count(self.package.name):
+                                        self.installed = "y" if cur_mode == 1 else "n"
                 else:
                     self.installed = "u"
-                    cur_mode = 0
-                    for _line_num, line in enumerate(lines):
-                        if line.startswith("Installed:"):
-                            cur_mode = 1
-                        elif line.startswith("Removed:"):
-                            cur_mode = 2
-                        elif not line.strip():
-                            cur_mode = 0
-                        else:
-                            if cur_mode:
-                                if line.startswith(" ") and line.count(self.package.name):
-                                    self.installed = "y" if cur_mode == 1 else "n"
             else:
                 pp_lines = pp_text.split("\n")
                 self.installed_name, self.installed_release, self.installed_version = ("", "", "")

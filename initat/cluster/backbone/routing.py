@@ -56,7 +56,6 @@ _SRV_TYPE_UUID_MAPPING = {
     "package"   : "package-server"
 }
 
-
 # mapping: server type -> valid config names
 _SRV_NAME_TYPE_MAPPING = {
     "mother"    : ["mother_server"],
@@ -173,6 +172,7 @@ class srv_type_routing(object):
                 for _dev in _sc[_conf_name]:
                     # routing info
                     if _dev.effective_device.device_type.identifier == "MD":
+                        # server-like config is set for an md-device, not good
                         self.logger.error("device '{}' (srv_type {}) has an illegal device_type {}".format(
                             _dev.effective_device.full_name,
                             _srv_type,
@@ -183,7 +183,7 @@ class srv_type_routing(object):
                             _first_ip = "127.0.0.1"
                             _penalty = 1
                         else:
-                            _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True)
+                            _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True, prefer_production_net=True)
                             if _ri:
                                 _first_ri = _ri[0]
                                 _first_ip = _first_ri[2][1][0]
@@ -282,7 +282,7 @@ class srv_type_routing(object):
     def start_result_feed(self):
         self.result = None
     def _log(self, request, log_lines, log_str, log_level=logging_tools.LOG_LEVEL_OK):
-        if request:
+        if request and hasattr(request, "xml_response"):
             request.xml_response.log(log_level, log_str)
         else:
             log_lines.append((log_level, log_str))
@@ -322,4 +322,3 @@ class srv_type_routing(object):
                                 _sub_name,
                             )
                         )
-

@@ -823,6 +823,10 @@ class monitoring_hint(models.Model):
     # used in monitoring
     check_created = models.BooleanField(default=False)
     changed = models.DateTimeField(auto_now_add=True, auto_now=True, default=datetime.datetime.now())
+    # persistent: do not remove even when missing from server (for instance openvpn)
+    persistent = models.BooleanField(default=False)
+    # datasource : (c)ache, (s)erver, (p)ersistent
+    datasource = models.CharField(max_length=6, default="s", choices=[("c", "cache"), ("s", "server"), ("p", "persistent")])
     date = models.DateTimeField(auto_now_add=True)
     def update_limits(self, m_value, limit_dict):
         if type(m_value) in [int, long]:
