@@ -23,7 +23,6 @@ from initat.cluster_server.config import global_config
 import config_tools
 import cs_base_class
 import os
-import pprint
 import process_tools
 import server_command
 

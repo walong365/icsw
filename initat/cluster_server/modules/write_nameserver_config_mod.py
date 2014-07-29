@@ -74,14 +74,16 @@ class write_nameserver_config(cs_base_class.server_com):
             named_gid = grp.getgrnam(named_group)[2]
         except KeyError:
             named_gid = 0
-        cf_lines = ["options {",
-                    "  default-server localhost;",
-                    "};",
-                    "server localhost {",
-                    "  key key1;",
-                    "};",
-                    "key key1 {",
-                    "  algorithm hmac-md5;"]
+        cf_lines = [
+            "options {",
+            "  default-server localhost;",
+            "};",
+            "server localhost {",
+            "  key key1;",
+            "};",
+            "key key1 {",
+            "  algorithm hmac-md5;"
+        ]
         if act_conf_dict.has_key("SECRET"):
             cf_lines.append("  secret \"%s\" ;" % (act_conf_dict["SECRET"].value))
         cf_lines.append("};")
@@ -102,18 +104,24 @@ class write_nameserver_config(cs_base_class.server_com):
         my_ips = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).values_list("ip", flat=True)
         for my_ip in my_ips:
             ncf_lines.append("    %s;" % (my_ip))
-        ncf_lines.extend(["  };",
-                          "};",
-                          "",
-                          "controls {",
-                          "  inet * allow { any ; } keys { \"key1\"; };",
-                          "};",
-                          "",
-                          # "include \"/etc/rndc.key\";",
-                          # "",
-                          # ])
-                          "key key1 {",
-                          "  algorithm hmac-md5;"])
+        ncf_lines.extend(
+            [
+                "  };",
+                "  allow-query { any; };",
+                "  allow-recursion { any; };",
+                "};",
+                "",
+                "controls {",
+                "  inet * allow { any ; } keys { \"key1\"; };",
+                "};",
+                "",
+                # "include \"/etc/rndc.key\";",
+                # "",
+                # ])
+                "key key1 {",
+                "  algorithm hmac-md5;",
+            ]
+        )
         if act_conf_dict.has_key("SECRET"):
             ncf_lines.append("  secret \"%s\" ;" % (act_conf_dict["SECRET"].value))
         ncf_lines.extend(["};"])
@@ -177,6 +185,8 @@ class write_nameserver_config(cs_base_class.server_com):
             pass
         for cur_dtn in all_dtns:
             nwname = cur_dtn.full_name
+            if not nwname:
+                continue
             write_zone_file = True
             name, name2 = (nwname, nwname)
             ncf_lines.append("\nzone \"%s\" IN {" % (name))
@@ -279,6 +289,8 @@ class write_nameserver_config(cs_base_class.server_com):
             nw_flipped_ip = ".".join(["%d" % (value) for value in nw_flipped_parts])
             nw_ip = ".".join(["%d" % (value) for value in nw_ip_parts])
             write_zone_file = True
+            if not nw_flipped_ip:
+                continue
             for name, name2 in [("%s.in-addr.arpa" % (nw_flipped_ip), nw_ip)]:
                 ncf_lines.append("\nzone \"%s\" IN {" % (name))
                 zonefile_name = "%s.zone" % (name2)

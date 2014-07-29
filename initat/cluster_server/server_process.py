@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -89,14 +87,15 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.__next_backup_dt = datetime.datetime.now().replace(microsecond=0)
         if global_config["BACKUP_DATABASE"] and first:
             self.log("initiate immediate backup run")
-            self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(seconds=2))
+            self.__next_backup_dt = None
         else:
             self.__next_backup_dt = (self.__next_backup_dt + datetime.timedelta(days=0)).replace(hour=2, minute=0, second=0)
-        while self.__next_backup_dt < datetime.datetime.now():
-            self.__next_backup_dt += datetime.timedelta(days=1)
+        if self.__next_backup_dt:
+            while self.__next_backup_dt < datetime.datetime.now():
+                self.__next_backup_dt += datetime.timedelta(days=1)
         self.log("setting {} backup-time to {}".format(
             "first" if first else "next",
-            self.__next_backup_dt))
+            self.__next_backup_dt if self.__next_backup_dt else "now"))
     def _bg_finished(self, *args, **kwargs):
         func_name = args[2]
         self.log("background task for '{}' finished".format(func_name))
@@ -267,7 +266,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
             except:
                 self.log("error parsing option_key from '{}': {}".format(
                     keyval,
-                    process_tools.getcept_info()),
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 cur_com["server_key:{}".format(key)] = value
@@ -276,6 +275,8 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self["exit_requested"] = True
         # show result
         print cur_com["result"].attrib["reply"]
+        if global_config["SHOW_RESULT"]:
+            print cur_com.pretty_print()
     def _execute_command(self, srv_com):
         com_name = srv_com["command"].text
         if com_name in initat.cluster_server.modules.command_dict:
@@ -353,7 +354,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         cur_dt = datetime.datetime.now().replace(microsecond=0)
         if not global_config["DEBUG"]:
             cur_dt = cur_dt.replace(minute=0, second=0)
-        if cur_dt == self.__next_backup_dt:
+        if cur_dt == self.__next_backup_dt or self.__next_backup_dt == None:
             self._set_next_backup_time()
             self.log("start DB-backup")
             self.add_process(backup_process("backup_process"), start=True)

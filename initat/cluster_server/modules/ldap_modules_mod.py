@@ -28,8 +28,8 @@ import ldap.modlist # important, do not remove  @UnresolvedImport
 import logging_tools
 import os
 import pprint # @UnusedImport
-import re
 import process_tools
+import re
 import server_command
 import sys
 import time
@@ -319,7 +319,26 @@ class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
                     print par_dict
                     print root_hash, cmd_stat
 
-class init_ldap_config(cs_base_class.server_com, ldap_mixin):
+class command_mixin(object):
+    def call_command(self, command, *args):
+        success, result = (False, [])
+        bin_com = process_tools.find_file(command)
+        if bin_com:
+            c_stat, c_out = commands.getstatusoutput(u"{} {}".format(bin_com, " " .join(args)))
+            if c_stat:
+                result = ["{:d}".format(c_stat)] + c_out.split("\n")
+            else:
+                success = True
+                result = c_out.split("\n")
+        return success, result
+
+# class create_ldap_certs(cs_base_class.server_com, ldap_mixin, command_mixin):
+#    class Meta:
+#        needed_configs = ["ldap_server"]
+#    def _call(self, cur_inst):
+#        pass
+
+class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
     class Meta:
         needed_configs = ["ldap_server"]
     def call_command(self, command, *args):
@@ -457,7 +476,7 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin):
                             {
                                 "objectClass" : ["sambaDomain"],
                                 # "structuralObjectClass" : "sambaDomain",
-                                "sambaDomainName"               : par_dict["sambadomain"],
+                                "sambaDomainName"               : [par_dict["sambadomain"]],
                                 "sambaSID"                      : local_sid,
                                 "sambaAlgorithmicRidBase"       : "1000",
                                 "sambaMinPwdLength"             : "5",
@@ -568,7 +587,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     primary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id == g_idx]
                     secondary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id != g_idx and any([sec_g.pk == g_idx for sec_g in cur_u.secondary_groups.all()])]
                     g_stuff.attributes = {
-                        "objectClass" : par_dict["group_object_classes"],
+                        "objectClass" : [_entry for _entry in par_dict["group_object_classes"]],
                         "cn"          : [g_stuff.groupname],
                         "gidNumber"   : [str(g_stuff.gid)],
                         "memberUid"   : primary_users + secondary_users,
@@ -582,7 +601,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         g_stuff.attributes["sambaGroupType"] = "2"
                         g_stuff.attributes["sambaSID"] = "%s-%d" % (
                             samba_sid,
-                            g_stuff["gid"] * 2 + 1)
+                            g_stuff.gid * 2 + 1)
                 for _u_idx, u_stuff in all_users.iteritems():
                     g_stuff = all_groups[u_stuff.group_id]
                     u_stuff.dn = self._expand_dn("user", u_stuff, g_stuff)
@@ -593,7 +612,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     else:
                         self.log(u"user_password for {} is not parseable, using value".format(unicode(u_stuff)))
                     u_stuff.attributes = {
-                        "objectClass"      : par_dict["user_object_classes"],
+                        "objectClass"      : [_entry for _entry in par_dict["user_object_classes"]],
                         # "structuralObjectClass" : ["namedObject"],
                         "cn"               : [u_stuff.login],
                         "userid"           : [u_stuff.login],
@@ -619,14 +638,17 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         "host"             : devlog_dict.get(u_stuff.pk, ["*"]),
                         "description"      : [u_stuff.comment or "no description"]}
                     if "sambadomain" in par_dict:
-                        u_stuff["attrs"]["objectClass"].append("sambaSamAccount")
-                        u_stuff["attrs"]["sambaSID"] = "%s-%d" % (
+                        u_stuff.attributes["objectClass"].append("sambaSamAccount")
+                        u_stuff.attributes["sambaSID"] = "%s-%d" % (
                             samba_sid,
-                            u_stuff["uid"] * 2)
-                        u_stuff["attrs"]["sambaAcctFlags"] = "[U          ]"
-                        u_stuff["attrs"]["sambaPwdLastSet"] = u"{:d}".format(int(time.time()))
-                        u_stuff["attrs"]["sambaNTPassword"] = u_stuff["nt_password"]
-                        u_stuff["attrs"]["sambaLMPassword"] = u_stuff["lm_password"]
+                            u_stuff.uid * 2)
+                        u_stuff.attributes["sambaAcctFlags"] = "[U          ]"
+                        u_stuff.attributes["sambaPwdLastSet"] = [u"{:d}".format(int(time.time()))]
+                        u_stuff.attributes["sambaNTPassword"] = [u_stuff.nt_password]
+                        u_stuff.attributes["sambaLMPassword"] = [u_stuff.lm_password]
+                        u_stuff.attributes["sambaPwdCanChange"] = ["0"]
+                        u_stuff.attributes["sambaPwdMustChange"] = ["0"]
+                        u_stuff.attributes["sambaBadPasswordCount"] = ["0"]
                 # fetch all groups from ldap
                 groups_ok, groups_to_change, groups_to_remove = ([], [], [])
                 for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(&(objectClass=posixGroup)(objectClass=clusterGroup))"):
@@ -812,7 +834,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 "options"      : "-soft"})
                     for c_str in entry.config.config_str_set.all():
                         if c_str.name in ei_dict[dev_name][act_pk]:
-                            ei_dict[dev_name][act_pk][c_str.name] = c_str.value
+                            ei_dict[dev_name][act_pk][c_str.name] = c_str.value.replace("%h", dev_name)
                 for mach, aeid_d in ei_dict.iteritems():
                     for _aeid_idx, aeid in aeid_d.iteritems():
                         if aeid["export"] and aeid["import"]:
@@ -957,7 +979,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     else:
                         errors.append(err_str)
                         self.log(
-                            u"cannot add map {}: {}".foramt(
+                            u"cannot add map {}: {}".format(
                                 map_to_add,
                                 err_str),
                             logging_tools.LOG_LEVEL_ERROR
@@ -1005,7 +1027,3 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
             cur_inst.srv_com.set_result(
                 "ok synced LDAP tree",
             )
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

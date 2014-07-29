@@ -59,11 +59,13 @@ def main():
         ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
         ("BACKUP_DATABASE"     , configfile.bool_c_var(False, only_commandline=True, help_string="start backup of database immediately [%(default)s], only works in DEBUG mode")),
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
+        ("SHOW_RESULT"         , configfile.bool_c_var(False, only_commandline=True, help_string="show full XML result [%(default)s]")),
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(
-        description="%s, version is %s" % (prog_name,
-                                           VERSION_STRING),
+        description="{}, version is {}".format(
+            prog_name,
+            VERSION_STRING),
         add_writeback_option=True,
         positional_arguments=False)
     global_config.write_file()
@@ -98,7 +100,7 @@ def main():
         ("MONITOR_QUOTA_USAGE"  , configfile.bool_c_var(False, info="enabled quota usage tracking")),
         ("TRACK_ALL_QUOTAS"     , configfile.bool_c_var(False, info="also track quotas without limit")),
         ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
-        ("USER_MAIL_SEND_TIME"  , configfile.int_c_var(3600, info="time in seconds between to mails")),
+        ("USER_MAIL_SEND_TIME"  , configfile.int_c_var(3600, info="time in seconds between two mails")),
         ("SERVER_FULL_NAME"     , configfile.str_c_var(long_host_name, database=False)),
         ("SERVER_SHORT_NAME"    , configfile.str_c_var(mach_name, database=False)),
         ("DATABASE_DUMP_DIR"    , configfile.str_c_var("/opt/cluster/share/db_backup")),
