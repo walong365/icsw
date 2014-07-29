@@ -212,7 +212,10 @@ class srv_command(object):
         else:
             return (value, "str")
     def __setitem__(self, key, value):
-        cur_element = self._create_element(key)
+        if key:
+            cur_element = self._create_element(key)
+        else:
+            cur_element = self.__tree
         if etree.iselement(value):
             cur_element.append(value)
         else:
@@ -344,13 +347,14 @@ class srv_command(object):
         return etree.tostring(self.__tree, encoding=unicode)
     def tostring(self, **kwargs):
         return etree.tostring(self.__tree, **kwargs)
-    def get_log_tuple(self, swap=False):
+    def get_log_tuple(self, swap=False, map_to_log_level=True):
         # returns the reply / state attribute, mapped to logging_tool levels
         res_node = self.xpath(".//ns:result", smart_strings=False)
         if len(res_node):
             res_node = res_node[0]
             ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])
-            ret_state = srv_reply_to_log_level(ret_state)
+            if map_to_log_level:
+                ret_state = srv_reply_to_log_level(ret_state)
         else:
             ret_str, ret_state = ("no result element found", logging_tools.LOG_LEVEL_CRITICAL)
         if swap:
@@ -364,3 +368,18 @@ class srv_command(object):
         # print "del", srv_command.srvc_open
     def __len__(self):
         return len(etree.tostring(self.tree))
+    def check_msi_block(self, msi_block):
+        if msi_block:
+            msi_block.check_block()
+            self.set_result(
+                "{}, {}".format(
+                    msi_block.get_info(),
+                    msi_block.pid_check_string,
+                ),
+                SRV_REPLY_STATE_OK if msi_block.pid_checks_failed == 0 else SRV_REPLY_STATE_ERROR,
+            )
+        else:
+            self.set_result(
+                "no MSI-block defined",
+                SRV_REPLY_STATE_WARN,
+            )

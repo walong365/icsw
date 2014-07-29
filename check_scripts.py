@@ -32,6 +32,7 @@ from lxml.builder import E # @UnresolvedImport
 import argparse
 import commands
 import datetime
+import psutil
 import logging_tools
 import process_tools
 import stat
@@ -220,7 +221,7 @@ def check_system(opt_ns):
                 key, level_list = line.split(None, 1)
                 level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
                 stat_dict[key.lower()] = level_list
-    if config_tools:
+    if config_tools and not opt_ns.no_database:
         dev_config = config_tools.device_with_config("server")
     else:
         dev_config = None
@@ -237,10 +238,15 @@ def check_system(opt_ns):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         if entry.attrib["check_type"] == "simple":
             if os.path.isfile(init_script_name):
-                running_procs = [pid for pid in act_proc_dict.values() if pid.is_running() and pid.name() == entry.attrib["process_name"]]
-                if running_procs:
+                act_pids = []
+                for _proc in psutil.process_iter():
+                    try:
+                        if _proc.is_running() and _proc.name() == entry.attrib["process_name"]:
+                            act_pids.append(_proc.pid)
+                    except psutil.NoSuchProcess:
+                        pass
+                if act_pids:
                     act_state, act_str = (0, "running")
-                    act_pids = [p_struct.pid for p_struct in running_procs]
                 else:
                     act_state, act_str = (7, "not running")
             else:
@@ -302,6 +308,7 @@ def check_system(opt_ns):
             else:
                 if os.path.isfile(init_script_name):
                     if pid_file_name == "":
+                        # never used ?
                         found_procs = {key : (value, pid_thread_dict.get(value.pid, 1)) for key, value in act_proc_dict.iteritems() if value.name() == entry.attrib["process_name"]}
                         act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
                         threads_found = sum([value[1] for value in found_procs.itervalues()])
@@ -542,6 +549,7 @@ def main():
     my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
     my_parser.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
     my_parser.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
+    my_parser.add_argument("--no-database", default=False, action="store_true", help="disable use of database [%(default)s]")
     opt_ns = my_parser.parse_args()
     if opt_ns.all or opt_ns.almost_all:
         opt_ns.thread = True

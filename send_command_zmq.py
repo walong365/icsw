@@ -40,6 +40,7 @@ def main():
     parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="sc", dest="identity_substring")
     parser.add_argument("-I", help="set identity string [%(default)s], has precedence over -i", type=str, default="", dest="identity_string")
     parser.add_argument("-n", help="set number of iterations [%(default)d]", type=int, default=1, dest="iterations")
+    parser.add_argument("-q", help="be quiet [%(default)s], overrides verbose", default=False, action="store_true", dest="quiet")
     parser.add_argument("--raw", help="do not convert to server_command", default=False, action="store_true")
     parser.add_argument("--root", help="connect to root-socket [%(default)s]", default=False, action="store_true")
     parser.add_argument("--kv", help="key-value pair, colon-separated [key:value]", action="append")
@@ -50,6 +51,8 @@ def main():
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
+    if args.quiet:
+        args.verbose = False
     # print args.arguments, other_args
     command = args.arguments.pop(0)
     other_args = args.arguments + other_args
@@ -76,12 +79,13 @@ def main():
     else:
         recv_sock = None
     if args.verbose:
-        print "socket_type is {}\nIdentity_string is '{}'\nconnection_string is '{}'".format(
+        print("socket_type is {}\nIdentity_string is '{}'\nconnection_string is '{}'".format(
             s_type,
             identity_str,
             conn_str)
+        )
         if args.split:
-            print "receive connection string is '{}'".format(recv_conn_str)
+            print("receive connection string is '{}'".format(recv_conn_str))
     try:
         client.connect(conn_str)
     except:
@@ -96,7 +100,7 @@ def main():
         recv_sock.connect(recv_conn_str)
     for cur_iter in xrange(args.iterations):
         if args.verbose:
-            print "iteration {:d}".format(cur_iter)
+            print("iteration {:d}".format(cur_iter))
         if args.raw:
             srv_com = command
         else:
@@ -111,7 +115,7 @@ def main():
                         else:
                             srv_com[key] = value
                     else:
-                        print "cannot parse key '{}'".format(kv_pair)
+                        print("cannot parse key '{}'".format(kv_pair))
             if args.kva:
                 for kva_pair in args.kva:
                     key, attr, value = kva_pair.split(":")
@@ -121,17 +125,18 @@ def main():
                         srv_com[key].attrib[attr] = value
         for arg_index, arg in enumerate(other_args):
             if args.verbose:
-                print " arg {:2d}: {}".format(arg_index, arg)
+                print(" arg {:2d}: {}".format(arg_index, arg))
                 srv_com["arguments:arg{:d}".format(arg_index)] = arg
+        # not in raw mode, arg_list must always be set (even if empty)
         if not args.raw:
             srv_com["arg_list"] = " ".join(other_args)
         s_time = time.time()
         client.send_unicode(unicode(srv_com))
         if args.verbose:
             if args.raw:
-                print srv_com
+                print(srv_com)
             else:
-                print srv_com.pretty_print()
+                print(srv_com.pretty_print())
         if not args.only_send:
             r_client = client if not recv_sock else recv_sock
             if r_client.poll(args.timeout * 1000):
@@ -143,25 +148,25 @@ def main():
                     recv_id = ""
                 timeout = False
             else:
-                print "error timeout"
+                print("error timeout")
                 timeout = True
             e_time = time.time()
             if args.verbose:
                 if timeout:
-                    print "communication took {}".format(
+                    print("communication took {}".format(
                         logging_tools.get_diff_time_str(e_time - s_time),
-                    )
+                    ))
                 else:
-                    print "communication took {}, received {:d} bytes".format(
+                    print("communication took {}, received {:d} bytes".format(
                         logging_tools.get_diff_time_str(e_time - s_time),
                         len(recv_str),
-                    )
+                    ))
             if not timeout:
                 try:
                     srv_reply = server_command.srv_command(source=recv_str)
                 except:
-                    print "cannot interpret reply: {}".format(process_tools.get_except_info())
-                    print "reply was: {}".format(recv_str)
+                    print("cannot interpret reply: {}".format(process_tools.get_except_info()))
+                    print("reply was: {}".format(recv_str))
                     ret_state = 1
                 else:
                     if args.verbose:
@@ -171,7 +176,8 @@ def main():
                         print srv_reply.pretty_print()
                         print
                     if "result" in srv_reply:
-                        print srv_reply["result"].attrib["reply"]
+                        if not args.quiet:
+                            print srv_reply["result"].attrib["reply"]
                         ret_state = int(srv_reply["result"].attrib["state"])
                     elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
                         print srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text
