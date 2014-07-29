@@ -157,25 +157,30 @@ class server_process(threading_tools.process_pool):
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"] , self._new_com),
-            ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
+            ("router", "ROUTER", global_config["SERVER_PUB_PORT"] , self._new_com),
+            ("pull"  , "PULL"  , global_config["SERVER_PULL_PORT"], self._new_com),
             ]:
-            client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, self.bind_id)
-            client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.SNDHWM, 256)
-            client.setsockopt(zmq.RCVHWM, 256)
-            client.setsockopt(zmq.BACKLOG, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-            if key == "router":
-                # set mandatory flag
-                client.setsockopt(zmq.ROUTER_MANDATORY, 1)
+            client = process_tools.get_socket(
+                self.zmq_context,
+                sock_type,
+                identity=self.bind_id,
+            )
+            # client = self.zmq_context.socket(sock_type)
+            # client.setsockopt(zmq.IDENTITY, self.bind_id)
+            # client.setsockopt(zmq.LINGER, 100)
+            # client.setsockopt(zmq.SNDHWM, 256)
+            # client.setsockopt(zmq.RCVHWM, 256)
+            # client.setsockopt(zmq.BACKLOG, 1)
+            # client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            # client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            # if key == "router":
+            #    # set mandatory flag
+            #    client.setsockopt(zmq.ROUTER_MANDATORY, 1)
             conn_str = "tcp://*:{:d}".format(bind_port)
             try:
                 client.bind(conn_str)
             except zmq.ZMQError:
-                self.log("error binding to {}{{{:d}}}: {}".format(
+                self.log("error binding to {}{{{}}}: {}".format(
                     conn_str,
                     sock_type,
                     process_tools.get_except_info()),
@@ -183,7 +188,7 @@ class server_process(threading_tools.process_pool):
                 client.close()
                 success = False
             else:
-                self.log("bind to port {}{{{:d}}}".format(
+                self.log("bind to port {}{{{}}}".format(
                     conn_str,
                     sock_type))
                 self.register_poller(client, zmq.POLLIN, target_func)
@@ -485,7 +490,7 @@ class server_process(threading_tools.process_pool):
         global_config.add_config_entries([
             ("PXEBOOT", configfile.bool_c_var(False, source="default")),
             ("XENBOOT", configfile.bool_c_var(False, source="default"))])
-        pxe_paths = ["%s/share/mother/syslinux/pxelinux.0" % (global_config["CLUSTER_DIR"])]
+        pxe_paths = [os.path.join(global_config["SHARE_DIR"], "syslinux/pxelinux.0")]
         nb_ok = False
         for pxe_path in pxe_paths:
             if os.path.isfile(pxe_path):
@@ -498,7 +503,8 @@ class server_process(threading_tools.process_pool):
                     global_config.add_config_entries([
                         ("PXEBOOT"   , configfile.bool_c_var(True, source="filesystem")),
                         ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem")),
-                        ("LDLINUX"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "ldlinux.c32"), "r").read(), source="filesystem")),
+                        ("MEMDISK"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "memdisk"), "rb").read(), source="filesystem")),
+                        ("LDLINUX"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "ldlinux.c32"), "rb").read(), source="filesystem")),
                         ])
                     self.log("Found pxelinux.0 and ldlinux.c32 in {}".format(pxe_dir))
                     nb_ok = True
@@ -507,7 +513,7 @@ class server_process(threading_tools.process_pool):
                 self.log("Found no pxelinux.0 in {}".format(pxe_path), logging_tools.LOG_LEVEL_WARN)
         if not nb_ok:
             self.log("cannot provide netboot functionality", logging_tools.LOG_LEVEL_CRITICAL)
-        mb32_paths = [os.path.join(global_config["CLUSTER_DIR"], "share/mother/syslinux/mboot.c32")]
+        mb32_paths = [os.path.join(global_config["SHARE_DIR"], "syslinux/mboot.c32")]
         for mb32_path in mb32_paths:
             if os.path.isfile(mb32_path):
                 try:

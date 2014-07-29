@@ -81,7 +81,9 @@ def main():
     global_config.add_config_entries([
         ("CONFIG_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("ETHERBOOT_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "etherboot"))),
-        ("KERNEL_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
+        ("KERNEL_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels"))),
+        ("SHARE_DIR"    , configfile.str_c_var(os.path.join(global_config["CLUSTER_DIR"], "share", "mother"))),
+        ])
     global_config.add_config_entries([
         ("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.device).pk)),
         ("NODE_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("node", "Clusternode").pk)),

@@ -139,6 +139,7 @@ class hc_command(object):
                     hc_command.register(self)
                     # snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout
                     self.process.send_pool_message(
+                        "fetch_snmp",
                         int(var_dict["SNMP_VERSION"]),
                         com_ip,
                         var_dict["SNMP_WRITE_COMMUNITY"],
