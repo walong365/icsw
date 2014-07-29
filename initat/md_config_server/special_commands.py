@@ -20,19 +20,16 @@
 """ special tasks for md-config-server, should be split into submodules, FIXME """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import partition, netdevice, lvm_lv, device_variable, \
-    monitoring_hint, cluster_timezone
+from initat.cluster.backbone.models import partition, netdevice, lvm_lv, monitoring_hint, \
+    cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
 from lxml.builder import E # @UnresolvedImport
 import datetime
 import logging_tools
-import os
 import process_tools
 import re
 import time
-
-EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
 
 """
 cache_modes, how to handle to cache for special commands
@@ -44,30 +41,6 @@ REFRESH  : always try to contact device
 
 CACHE_MODES = ["ALWAYS", "DYNAMIC", "REFRESH"]
 DEFAULT_CACHE_MODE = "ALWAYS"
-
-def parse_expected():
-    ret_dict = {}
-    if os.path.isfile(EXPECTED_FILE):
-        in_field = open(EXPECTED_FILE, "r").read().split("\n")
-        lines = [line.strip() for line in in_field if line.strip() and not line.strip().startswith("#")]
-        for line in lines:
-            if line.count("=") == 1:
-                dev_name, dev_stuff = line.split("=", 1)
-                dev_dict = {}
-                ret_dict[dev_name.strip()] = dev_dict
-                instances = dev_stuff.split()
-                for instance in instances:
-                    inst_parts = instance.split(":")
-                    inst_dict = {}
-                    dev_dict[inst_parts.pop(0)] = inst_dict
-                    for inst_part in inst_parts:
-                        c_parts = inst_part.split(",")
-                        client_name = c_parts.pop(0)
-                        inst_dict[client_name] = True
-                        # inst_dict[client_name] = limits.nag_STATE_CRITICAL
-                        # if c_parts and c_parts[0].lower() in ["w"]:
-                        #    inst_dict[client_name] = limits.nag_STATE_WARNING
-    return ret_dict
 
 class special_base(object):
     class Meta:
@@ -106,6 +79,10 @@ class special_base(object):
     def _load_cache(self):
         self.__cache_created, self.__cache_age, self.__cache_valid = (0, 0, False)
         self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
+        # set datasource to cache
+        for _entry in self.__cache:
+            _entry.datasource = "c"
+            _entry.save(update_fields=["datasource"])
         self.log(
             "loaded hints ({}) from db".format(
                 logging_tools.get_plural("entry", len(self.__cache))
@@ -127,6 +104,22 @@ class special_base(object):
             )
         else:
             self.log("no cache set")
+    def add_persistent_entries(self, hint_list):
+        pers_dict = {_hint.key : _hint for _hint in self.__cache if _hint.persistent}
+        cache_keys = set([_hint.key for _hint in hint_list])
+        missing_keys = set(pers_dict.keys()) - cache_keys
+        if missing_keys:
+            self.log(
+                "add {} to hint_list: {}".format(
+                    logging_tools.get_plural("persistent entry", len(missing_keys)),
+                    ", ".join(sorted(list(missing_keys))),
+                )
+            )
+            for mis_key in missing_keys:
+                _hint = pers_dict[mis_key]
+                _hint.datasource = "p"
+                _hint.save(update_fields=["datasource"])
+                hint_list.append(_hint)
     def cleanup(self):
         self.build_process = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -152,6 +145,7 @@ class special_base(object):
         return []
     def _salt_hints(self, in_list):
         for hint in in_list:
+            hint.datasource = "s"
             hint.device = self.host
             hint.m_type = self.ds_name
         return in_list
@@ -236,6 +230,10 @@ class special_base(object):
         if self.__use_cache:
             hint_list = self.__cache
             self.log("take result from cache")
+        else:
+            self.add_persistent_entries(hint_list)
+            self.__hint_list = hint_list
+            # print "feed"
             # print "uc"
             # hint_list = []
             # if len(self.__cache) > self.__call_idx:
@@ -367,38 +365,33 @@ class special_openvpn(special_base):
                                 v_type="s",
                                 value_string="used",
                                 info="Client {} on instance {}".format(c_name, inst_name),
+                                persistent=True,
                                 )
                             )
         return _hints
     def _call(self):
         sc_array = []
-        exp_dict = parse_expected()
-        if exp_dict.has_key(self.host.name):
-            exp_dict = {} # exp_dict[host["name"]]
-        else:
-            exp_dict = {}
-        if exp_dict:
-            for inst_name in sorted(exp_dict):
-                for peer_name in sorted(exp_dict[inst_name]):
-                    sc_array.append(
-                        self.get_arg_template(
-                            "OpenVPN peer {} on {}".format(
-                                peer_name,
-                                inst_name),
-                            arg1=inst_name,
-                            arg2=peer_name
-                        )
-                    )
-        else:
-            # no expected_dict found, try to get the actual config from the server
-            hint_list = self.collrelay("openvpn_status")
-            for hint in hint_list:
-                inst_name, peer_name = hint.key.split("|")
+        # no expected_dict found, try to get the actual config from the server
+        hint_list = self.collrelay("openvpn_status")
+        ip_dict = {}
+        for hint in hint_list:
+            inst_name, peer_name = hint.key.split("|")
+            ip_dict.setdefault(inst_name, []).append(peer_name)
+            sc_array.append(
+                self.get_arg_template(
+                    hint.info,
+                    arg1=inst_name,
+                    arg2=peer_name
+                )
+            )
+        for inst_name in sorted(ip_dict.keys()):
+            _clients = ip_dict[inst_name]
+            if len(_clients) > 1:
                 sc_array.append(
                     self.get_arg_template(
-                        hint.info,
+                        "OpenVPN clients for {} ({:d})".format(inst_name, len(_clients)),
                         arg1=inst_name,
-                        arg2=peer_name
+                        arg2=",".join(_clients),
                     )
                 )
         if not sc_array:
