@@ -1,5 +1,3 @@
-#!/usr/bin/python -Ot
-#
 # Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -47,7 +45,7 @@ class status(cs_base_class.server_com):
         cur_inst.srv_com.set_result(
             "%s running,%s clustername is %s, version is %s" % (
                 logging_tools.get_plural("process", num_running),
-                "%s stopped, " % (logging_tools.get_plural("process", num_stopped)) if num_stopped else "",
+                "{} stopped, ".format(logging_tools.get_plural("process", num_stopped)) if num_stopped else "",
                 cluster_name,
                 global_config["VERSION"]),
             server_command.SRV_REPLY_STATE_OK if all_running else server_command.SRV_REPLY_STATE_ERROR,
@@ -96,7 +94,7 @@ class modify_service(cs_base_class.server_com):
         full_service_name = "/etc/init.d/{}".format(self.option_dict["service"])
         if self.option_dict["mode"] in ["start", "stop", "restart"]:
             if os.path.isfile(full_service_name):
-                at_com = "%s %s" % (full_service_name, self.option_dict["mode"])
+                at_com = "{} {}".format(full_service_name, self.option_dict["mode"])
                 cstat, _c_logs = process_tools.submit_at_command(at_com, self.option_dict.get("timediff", 0))
                 if cstat:
                     cur_inst.srv_com.set_result(
@@ -151,7 +149,7 @@ class version(cs_base_class.server_com):
             "version is {}".format(global_config["VERSION"])
         )
 
-# mergef from get_uuid_mod
+# merged from get_uuid_mod
 class get_uuid(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
@@ -165,7 +163,7 @@ class get_0mq_id(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
     def _call(self, cur_inst):
-        zmq_id = "%s:clusterserver:" % (uuid_tools.get_uuid().get_urn())
+        zmq_id = "{}:clusterserver:".format(uuid_tools.get_uuid().get_urn())
         cur_inst.srv_com["zmq_id"] = zmq_id
         cur_inst.srv_com.set_result(
             "0MQ_ID is {}".format(zmq_id),
