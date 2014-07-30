@@ -321,13 +321,13 @@ config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSan
 
 angular_module_setup([config_module])
 
-config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$fileUploader", "$http",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $fileUploader, $http) ->
+config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http) ->
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
         $scope.cached_uploads = []
         $scope.catalog = 0
-        $scope.uploader = $fileUploader.create(
+        $scope.uploader = new FileUploader(
             scope : $scope
             url : "{% url 'config:upload_config' %}"
             queueLimit : 1
@@ -338,9 +338,12 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             removeAfterUpload : true
         )
         $scope.upload_list = []
-        $scope.uploader.bind("completeall", () ->
+        $scope.uploader.onBeforeUploadItem = () ->
+            $.blockUI()
+        $scope.uploader.onCompleteAll = () ->
+            $.unblockUI()
+            $scope.uploader.clearQueue()
             $scope.reload_upload()
-        )
         $scope.$on("icsw.reload_upload", () ->
             $scope.reload_upload()
         )

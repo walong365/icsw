@@ -48,7 +48,7 @@
                         <input type="button" class="btn btn-success btn-sm" value="download selected configs" ng-show="pagSettings.conf.filtered_len > 0" ng-click="download_selected()"></input>
                     </div>
                     <div class="col-md-4">
-                        <input ng-file-select type="file" name="config" class="btn btn-default btn-sm"></input>
+                        <input type="file" nv-file-select="" class="form-control" uploader="uploader"></input>
                     </div>
                     <div class="col-md-4">
                         <input type="button" ng-show="uploader.queue.length "class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input>
