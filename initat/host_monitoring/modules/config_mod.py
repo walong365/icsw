@@ -194,6 +194,7 @@ class resync_config_command(object): # s.hmb_command):
         self.timeout = 30
         self.net_only = True
     def server_call(self, cm):
+        msock = None
         return self.module_info.start_resync()
         boot_server_name = "/etc/motherserver"
         mount_options = "-o noacl,udp"
