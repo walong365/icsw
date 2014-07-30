@@ -353,9 +353,10 @@ class call_script_command(hm_classes.hm_command):
         self.parser.add_argument("--use-at", dest="use_at", default=False, action="store_true")
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({
-                "reply" : "missing argument",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result(
+                "call_script(): missing argument",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
             script_name = srv_com["arguments:arg0"].text
             args = []
@@ -498,9 +499,10 @@ class check_dir_command(hm_classes.hm_command):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
     def __call__(self, srv_com, cur_ns):
         if len(cur_ns.arguments) != 1:
-            srv_com["result"].attrib.update({
-                "reply" : "missing argument",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result(
+                "missing argument",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
             dir_name = cur_ns.arguments[0]
             link_followed = False
