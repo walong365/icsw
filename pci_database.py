@@ -99,9 +99,9 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                     subclass = "0"
                     revision = "0"
                 else:
-                    pclass = "{:02x}".format(struct.unpack("B", fbytes[11]))
-                    subclass = "{:02x}".format(struct.unpack("B", fbytes[10]))
-                    revision = "{:02x}".format(struct.unpack("B", fbytes[8]))
+                    pclass = "{:02x}".format(struct.unpack("B", fbytes[11])[0])
+                    subclass = "{:02x}".format(struct.unpack("B", fbytes[10])[0])
+                    revision = "{:02x}".format(struct.unpack("B", fbytes[8])[0])
                 actd = {"domain"       : pcdomain,
                         "vendor"       : vendor,
                         "device"       : device,

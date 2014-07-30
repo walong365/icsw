@@ -126,7 +126,7 @@ def main():
         for arg_index, arg in enumerate(other_args):
             if args.verbose:
                 print(" arg {:2d}: {}".format(arg_index, arg))
-                srv_com["arguments:arg{:d}".format(arg_index)] = arg
+            srv_com["arguments:arg{:d}".format(arg_index)] = arg
         # not in raw mode, arg_list must always be set (even if empty)
         if not args.raw:
             srv_com["arg_list"] = " ".join(other_args)
