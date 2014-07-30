@@ -37,6 +37,7 @@ import commands
 import config_tools
 import configfile
 import logging_tools
+import net_tools
 import networkx
 import operator
 import os
@@ -169,7 +170,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 try:
                     pid = file(self.__nagios_lock_file_name, "r").read().strip()
                 except:
-                    self.log("Cannot read %s LockFile named '%s', trying to start %s" % (
+                    self.log("Cannot read {} LockFile named '{}', trying to start {}".format(
                         global_config["MD_TYPE"],
                         self.__nagios_lock_file_name,
                         global_config["MD_TYPE"]),
@@ -209,16 +210,24 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     logging_tools.LOG_LEVEL_WARN)
                 start_daemon = True
         if start_daemon:
-            self.log("Trying to start %s via at-command" % (global_config["MD_TYPE"]))
-            sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s start" % (global_config["MD_TYPE"]), as_root=True)
+            _cmd = "start"
         elif restart_daemon:
-            self.log("Trying to restart %s via at-command" % (global_config["MD_TYPE"]))
-            sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s restart" % (global_config["MD_TYPE"]), as_root=True)
+            _cmd = "restart"
         else:
-            log_lines = []
-        if log_lines:
-            for log_line in log_lines:
-                self.log(log_line)
+            _cmd = None
+        if _cmd:
+            self.log("Trying to {} {} via collserver-call_script".format(_cmd, global_config["MD_TYPE"]))
+            reply = net_tools.zmq_connection("md_config_server", timeout=10).add_connection(
+                "tcp://localhost:2001",
+                server_command.srv_command(
+                    command="call_script",
+                    **{
+                        "arguments:arg0" : "/etc/init.d/{}".format(global_config["MD_TYPE"]),
+                        "arguments:arg1" : _cmd,
+                    }
+                )
+            )
+            self.log(*reply.get_log_tuple())
     def _sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
         self.__gen_config._create_access_entries()
