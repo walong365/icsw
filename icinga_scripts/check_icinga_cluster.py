@@ -72,9 +72,9 @@ def main():
                 info_dict = {0 : "up", 1 : "down", 2 : "unreachable"}
             count_dict = {key : opts.data.count(key) for key, value in info_dict.iteritems()}
             prob_count = sum([value for key, value in count_dict.iteritems() if key])
-            if prob_count >= opts.critical:
+            if prob_count >= opts.critical and opts.critical:
                 ret_value = 2
-            elif prob_count >= opts.warning:
+            elif prob_count >= opts.warning and opts.warning:
                 ret_value = 1
             else:
                 ret_value = 0
