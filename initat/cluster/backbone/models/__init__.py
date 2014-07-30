@@ -1363,7 +1363,7 @@ def device_pre_save(sender, **kwargs):
                     unicode(present_dev),
                     ))
         # check for device group
-        if cur_inst.device_group.cluster_device_group and cur_inst.device_type.idenifier != ["MD"]:
+        if cur_inst.device_group.cluster_device_group and cur_inst.device_type.identifier not in ["MD"]:
             raise ValidationError("no devices allowed in cluster_device_group")
         # Check if the device limit is reached, disabled as of 2013-10-14 (AL)
         if False:
