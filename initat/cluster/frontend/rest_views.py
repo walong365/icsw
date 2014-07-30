@@ -61,6 +61,7 @@ for key in dir(models):
         REST_LIST.append((models, "_".join(key.split("_")[:-1])))
 
 init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
+
 if "initat.cluster.liebherr" in init_apps:
     from initat.cluster.liebherr import models as liebherr_models
     for key in dir(liebherr_models):
@@ -640,3 +641,4 @@ for src_mod, obj_name in REST_LIST:
              "permission_classes"     : (IsAuthenticated,),
              "model"                  : ser_class.Meta.model,
              "serializer_class"       : ser_class})
+

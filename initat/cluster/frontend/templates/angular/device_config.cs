@@ -30,7 +30,8 @@ devconftable_template = """
                 <div ng-show="show_config(conf_idx)">
                     <span ng-class="get_td_class_icon(conf_idx)"></span>&nbsp;{{ get_config_info(conf_idx) }}&nbsp;<span class="pull-right badge" ng-bind-html="get_config_type(conf_idx)"></span>
                 </div>
-             </td>
+                <span ng-show="!show_config(conf_idx) && config_exists(conf_idx)">---</span>
+            </td>
         </tr>
     </tbody>
 </table>
@@ -47,7 +48,7 @@ device_config_template = """
         ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
         ng-click="only_selected = !only_selected"
         value="only selected"
-        title="show only configs selected anywhere in the curren selection"
+        title="show only configs selected anywhere in the current selection"
     ></input>
     <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
         <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
@@ -422,6 +423,8 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 if conf_idx != null
                     cur_conf = scope.configs_lut[conf_idx]
                     return cur_conf.info_str
+            scope.config_exists = (conf_idx) ->
+                return if conf_idx != null then true else false
             scope.show_config = (conf_idx) ->
                 if conf_idx != null
                     cur_conf = scope.configs_lut[conf_idx]
