@@ -209,14 +209,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         if self.__run_command:
             client = None
         else:
-            client = self.zmq_context.socket(zmq.ROUTER)
-            client.setsockopt(zmq.IDENTITY, self.bind_id)
-            client.setsockopt(zmq.SNDHWM, 256)
-            client.setsockopt(zmq.RCVHWM, 256)
-            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-            client.setsockopt(zmq.RECONNECT_IVL, 200)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id)
             try:
                 client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
             except zmq.ZMQError:
@@ -368,6 +361,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
             self.__server_cap_dict[cap_name](cur_time, drop_com)
         self.vector_socket.send_unicode(unicode(drop_com))
     def send_to_server(self, conn_str, srv_uuid, srv_com, **kwargs):
+        _success = True
         local = kwargs.get("local", False)
         if local:
             self._execute_command(srv_com)
@@ -377,9 +371,13 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 self.log("connecting to {} (uuid {})".format(conn_str, srv_uuid))
                 self.__other_server_dict = srv_uuid
                 self.com_socket.connect(conn_str)
-                time.sleep(0.5)
-            self.com_socket.send_unicode(srv_uuid, zmq.SNDMORE)
-            self.com_socket.send_unicode(unicode(srv_com))
+            try:
+                self.com_socket.send_unicode(srv_uuid, zmq.SNDMORE)
+                self.com_socket.send_unicode(unicode(srv_com))
+            except:
+                self.log("cannot send to {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                _success = False
+        return _success
     def _recv_discovery(self, sock):
         result = server_command.srv_command(source=sock.recv_unicode())
         discovery_id = result["discovery_id"].text
@@ -457,3 +455,4 @@ class server_process(threading_tools.process_pool, notify_mixin):
             initat.cluster_server.modules.command_names.remove(del_name)
             del initat.cluster_server.modules.command_dict[del_name]
         self.log("Found {}".format(logging_tools.get_plural("command", len(initat.cluster_server.modules.command_names))))
+

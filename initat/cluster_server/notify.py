@@ -238,11 +238,17 @@ class notify_mixin(object):
                         _send_xml["*command"],
                         "local" if _is_local else "remote",
                         ))
-                    self.send_to_server(
+                    _ok = self.send_to_server(
                         _conn_str,
                         _srv_uuid,
                         _send_xml,
                         local=_is_local,
                     )
+                    if not _ok:
+                        _send_xml.set_result(
+                            "error sending to {}".format(_conn_str),
+                            server_command.SRV_REPLY_STATE_CRITICAL
+                        )
+                        self.notify_handle_result(_send_xml)
         else:
             self.notify_check_for_bgj_finish(cur_bg)
