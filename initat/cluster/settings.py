@@ -342,7 +342,6 @@ PIPELINE_CSS = {
             "js/libs/dynatree/skin/ui.dynatree.css",
             "js/libs/chosen/chosen.min.css",
             "js/libs/angular-chosen-1.0.6/chosen-spinner.css",
-            "css/jquery.dataTables.css",
             "css/msdropdown/dd.css",
             "css/jqModal.css",
             "css/codemirror.css",
@@ -373,7 +372,6 @@ PIPELINE_JS = {
             "js/libs/jquery-migrate-1.2.1.min.js",
             "js/libs/jquery.layout-latest.min.js",
             "js/libs/select2/select2.min.js",
-            "js/jquery.dataTables.min.js",
             "js/jquery.sprintf.js_8.txt",
             "js/jquery.timers-1.2.js",
             "js/jquery.noty.packaged.js",
@@ -393,7 +391,6 @@ PIPELINE_JS = {
     },
     "js_extra1" : {
         "source_filenames" : {
-            "js/jquery.dataTables.rowGrouping.js",
             "js/codemirror/addon/selection/active-line.js",
             "js/codemirror/mode/python/python.js",
             "js/codemirror/mode/xml/xml.js",
