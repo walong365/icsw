@@ -46,11 +46,11 @@ class license_check(object):
             self.server_port = int(self.server_port)
         self.log("license server at %s (port %d)" % (self.server_addr, self.server_port))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        what = u"[lc] %s" % (what)
+        what = u"[lc] {}".format(what)
         if self.log_com:
             self.log_com(log_level, what)
         else:
-            logging_tools.my_syslog("[%d] %s" % (log_level, what))
+            logging_tools.my_syslog("[{:d}] {}".format(log_level, what))
     def call_external(self, com_line):
         popen = subprocess.Popen(com_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ret_code = popen.wait()
