@@ -625,12 +625,16 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         restrict : "EA"
         template : $templateCache.get("running_table.html")
         link : (scope, el, attrs) ->
+            if "filter" of attrs
+                scope.pagRun.conf.filter = attrs["filter"]
     }
 ).directive("waiting", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("waiting_table.html")
         link : (scope, el, attrs) ->
+            if "filter" of attrs
+                scope.pagRun.conf.filter = attrs["filter"]
     }
 ).directive("node", ($templateCache) ->
     return {
