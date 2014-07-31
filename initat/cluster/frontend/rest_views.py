@@ -156,6 +156,8 @@ class db_prefetch_mixin(object):
         return ["net_ip_set"]
     def _user_related(self):
         return ["group"]
+    def _background_job_related(self):
+        return ["initiator__domain_tree_node", "user"]
     def _user_prefetch(self):
         return ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]
     def _group_related(self):
