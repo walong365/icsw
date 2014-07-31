@@ -164,6 +164,8 @@ def get_socket(context, r_type, **kwargs):
         ("BACKLOG", 1),
         ("TCP_KEEPALIVE", 1),
         ("TCP_KEEPALIVE_IDLE", 300),
+        ("RECONNECT_IVL_MAX", 500),
+        ("RECONNECT_IVL", 200),
         ]:
         _sock.setsockopt(getattr(zmq, _opt), _value)
     return _sock
