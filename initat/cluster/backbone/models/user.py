@@ -694,11 +694,12 @@ class user(models.Model):
         ordering = ("login", "group__groupname")
         app_label = "backbone"
     def __unicode__(self):
-        return u"{} ({}; {}, {})".format(
+        return u"{} ({}, {} [{}])".format(
             self.login,
-            "{:d}".format(self.pk) if type(self.pk) in [int, long] else "???",
             self.first_name or "first",
-            self.last_name or "last")
+            self.last_name or "last",
+            "{:d}".format(self.pk) if type(self.pk) in [int, long] else "???",
+        )
 
 class user_serializer(serializers.ModelSerializer):
     # object_perms = csw_object_permission_serializer(many=True, read_only=True)

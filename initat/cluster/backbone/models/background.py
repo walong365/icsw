@@ -1,4 +1,26 @@
-#!/usr/bin/python-init
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+""" DB definitions for background jobs """
 
 from django.db import models
 from rest_framework import serializers
@@ -42,6 +64,10 @@ class background_job(models.Model):
     num_servers = models.IntegerField(default=0)
     def __unicode__(self):
         return "background_job {:d}".format(self.idx)
+    def initiator_name(self):
+        return self.initiator.full_name
+    def user_name(self):
+        return unicode(self.user) if self.user_id else "---"
     class Meta:
         ordering = ("-date",)
         app_label = "backbone"
@@ -51,6 +77,8 @@ class background_job(models.Model):
         )
 
 class background_job_serializer(serializers.ModelSerializer):
+    initiator_name = serializers.Field(source="initiator_name")
+    user_name = serializers.Field(source="user_name")
     class Meta:
         model = background_job
 
