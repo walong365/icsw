@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-config-server
+# This file is part of logcheck-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -19,11 +19,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" creates fixtures for cluster-config-server """
+""" creates fixtures for logcheck-server """
 
 from initat.cluster.backbone import factories
 
 def add_fixtures(**kwargs):
-    factories.Config(name="config_server", description="enables node provisioning features",
+    factories.Config(name="logcheck_server", description="store and check node logs",
         server_config=True, system_config=True,
         )
