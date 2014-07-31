@@ -392,8 +392,8 @@ app.factory('ngTableParams', ['$q', '$log', function ($q, $log) {
          * @description Reload table data
          */
         this.reload = function () {
-            var $defer = $q.defer(),
-                self = this;
+            var $defer = $q.defer();
+            var self = this;
 
             settings.$loading = true;
             if (settings.groupBy) {
