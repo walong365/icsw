@@ -33,7 +33,7 @@ import initat.cluster_server.modules
 import process_tools
 
 try:
-    from initat.cluster_server.cluster_server_version import VERSION_STRING
+    from initat.cluster_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 
