@@ -191,7 +191,7 @@ class relay_code(threading_tools.process_pool):
         sync_id = int(srv_com["*sync_id"])
         ok = sync_id == self.__master_sync_id
         self.log(
-            "got ack for syncer_id {:d} (sent: {:d})".format(
+            "got ack for syncer_id {:d} (sent: {})".format(
                 sync_id,
                 self.__master_sync_id,
             ),
