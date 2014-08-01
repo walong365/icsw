@@ -19,7 +19,6 @@
 #
 """ sends a command to one of the python-servers, 0MQ version"""
 
-from lxml import etree # @UnresolvedImports
 import argparse
 import logging_tools
 import process_tools
@@ -28,7 +27,7 @@ import sys
 import time
 import zmq
 
-def main():
+def _get_parser():
     parser = argparse.ArgumentParser("send command to servers of the init.at Clustersoftware")
     parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command")
     parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
@@ -48,148 +47,190 @@ def main():
     parser.add_argument("--kv-path", help="path to store key-value pairs under", type=str, default="")
     parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", type=str, default="")
     parser.add_argument("--only-send", help="only send command, [%(default)s]", default=False, action="store_true")
-    # parser.add_argument("arguments", nargs="+", help="additional arguments")
-    ret_state = 1
-    args, other_args = parser.parse_known_args()
-    if args.quiet:
-        args.verbose = False
-    # print args.arguments, other_args
-    command = args.arguments.pop(0)
-    other_args = args.arguments + other_args
-    if args.identity_string:
-        identity_str = args.identity_string
-    else:
-        identity_str = process_tools.zmq_identity_str(args.identity_substring)
-    zmq_context = zmq.Context(1)
-    s_type = "DEALER" if not args.split else "PUSH"
-    client = zmq_context.socket(getattr(zmq, s_type))
-    client.setsockopt(zmq.IDENTITY, identity_str)
-    client.setsockopt(zmq.LINGER, args.timeout)
-    if args.protocoll == "ipc":
-        if args.root:
-            process_tools.ALLOW_MULTIPLE_INSTANCES = False
-        conn_str = "{}".format(process_tools.get_zmq_ipc_name(args.host, s_name=args.server_name, connect_to_root_instance=args.root))
-    else:
-        conn_str = "{}://{}:{:d}".format(args.protocoll, args.host, args.port)
-    if args.split:
-        recv_conn_str = "{}".format(process_tools.get_zmq_ipc_name(args.split, s_name=args.server_name, connect_to_root_instance=args.root))
-        recv_sock = zmq_context.socket(zmq.ROUTER)
-        recv_sock.setsockopt(zmq.IDENTITY, identity_str)
-        recv_sock.setsockopt(zmq.LINGER, args.timeout)
-    else:
-        recv_sock = None
-    if args.verbose:
-        print("socket_type is {}\nIdentity_string is '{}'\nconnection_string is '{}'".format(
-            s_type,
-            identity_str,
-            conn_str)
-        )
-        if args.split:
-            print("receive connection string is '{}'".format(recv_conn_str))
-    try:
-        client.connect(conn_str)
-    except:
-        print(
-            "error connecting to {}: {}".format(
+    return parser
+
+class send_com(object):
+    def __init__(self):
+        self.ret_state = 0
+        self.parser = _get_parser()
+        self.zmq_context = zmq.Context(1)
+    def parse(self):
+        self.args, self.other_args = self.parser.parse_known_args()
+        if self.args.quiet:
+            self.args.verbose = False
+        self.command = self.args.arguments.pop(0)
+        self.other_args = self.args.arguments + self.other_args
+    def init_connection(self):
+        if self.args.identity_string:
+            self.identity_str = self.args.identity_string
+        else:
+            self.identity_str = process_tools.zmq_identity_str(self.args.identity_substring)
+        s_type = "DEALER" if not self.args.split else "PUSH"
+        client = self.zmq_context.socket(getattr(zmq, s_type))
+        client.setsockopt(zmq.IDENTITY, self.identity_str)
+        client.setsockopt(zmq.LINGER, self.args.timeout)
+        if self.args.protocoll == "ipc":
+            if self.args.root:
+                process_tools.ALLOW_MULTIPLE_INSTANCES = False
+            conn_str = "{}".format(process_tools.get_zmq_ipc_name(self.args.host, s_name=self.args.server_name, connect_to_root_instance=self.args.root))
+        else:
+            conn_str = "{}://{}:{:d}".format(self.args.protocoll, self.args.host, self.args.port)
+        if self.args.split:
+            recv_conn_str = "{}".format(process_tools.get_zmq_ipc_name(self.args.split, s_name=self.args.server_name, connect_to_root_instance=self.args.root))
+            recv_sock = self.zmq_context.socket(zmq.ROUTER)
+            recv_sock.setsockopt(zmq.IDENTITY, self.identity_str)
+            recv_sock.setsockopt(zmq.LINGER, self.args.timeout)
+        else:
+            recv_conn_str = None
+            recv_sock = None
+        self.send_sock = client
+        self.recv_sock = recv_sock
+        self.conn_str = conn_str
+        self.recv_conn_str = recv_conn_str
+        self.verbose(
+            "socket_type is {}\nIdentity_string is '{}'\nconnection_string is '{}'".format(
+                s_type,
+                self.identity_str,
                 conn_str,
-                process_tools.get_except_info()
             )
         )
-        sys.exit(-1)
-    if recv_sock:
-        recv_sock.connect(recv_conn_str)
-    for cur_iter in xrange(args.iterations):
-        if args.verbose:
-            print("iteration {:d}".format(cur_iter))
-        if args.raw:
-            srv_com = command
+        if self.args.split:
+            self.verbose("receive connection string is '{}'".format(recv_conn_str))
+    def connect(self):
+        try:
+            self.send_sock.connect(self.conn_str)
+        except:
+            print(
+                "error connecting to {}: {}".format(
+                    self.conn_str,
+                    process_tools.get_except_info()
+                )
+            )
+            self.ret_state = -1
+            success = False
         else:
-            srv_com = server_command.srv_command(command=command)
-            srv_com["identity"] = identity_str
-            if args.kv:
-                for kv_pair in args.kv:
-                    if kv_pair.count(":"):
-                        key, value = kv_pair.split(":", 1)
-                        if args.kv_path:
-                            srv_com["{}:{}".format(args.kv_path, key)] = value
-                        else:
-                            srv_com[key] = value
+            if self.recv_sock:
+                self.recv_sock.connect(self.recv_conn_str)
+            success = True
+        return success
+    def verbose(self, what):
+        if self.args.verbose:
+            print(what)
+    def close(self):
+        if self.send_sock:
+            self.send_sock.close()
+            self.send_sock = None
+        if self.recv_sock:
+            self.recv_sock.close()
+            self.recv_sock = None
+        self.zmq_context.term()
+    def send_and_receive(self):
+        for cur_iter in xrange(self.args.iterations):
+            self.verbose("iteration {:d}".format(cur_iter))
+            srv_com = self._build_com()
+            self.send(srv_com)
+            if not self.args.only_send:
+                _timeout, _recv_id, _recv_str = self.receive()
+                if not _timeout:
+                    self._handle_return(_recv_id, _recv_str)
+            else:
+                break
+    def _build_com(self):
+        if self.args.raw:
+            srv_com = self.command
+        else:
+            srv_com = server_command.srv_command(command=self.command)
+            srv_com["identity"] = self.identity_str
+            self._add_args(srv_com)
+        return srv_com
+    def _add_args(self, srv_com):
+        if self.args.kv:
+            for kv_pair in self.args.kv:
+                if kv_pair.count(":"):
+                    key, value = kv_pair.split(":", 1)
+                    if self.args.kv_path:
+                        srv_com["{}:{}".format(self.args.kv_path, key)] = value
                     else:
-                        print("cannot parse key '{}'".format(kv_pair))
-            if args.kva:
-                for kva_pair in args.kva:
-                    key, attr, value = kva_pair.split(":")
-                    if args.kv_path:
-                        srv_com["{}:{}".format(args.kv_path, key)].attrib[attr] = value
-                    else:
-                        srv_com[key].attrib[attr] = value
-        for arg_index, arg in enumerate(other_args):
-            if args.verbose:
-                print(" arg {:2d}: {}".format(arg_index, arg))
-            srv_com["arguments:arg{:d}".format(arg_index)] = arg
+                        srv_com[key] = value
+                else:
+                    print("cannot parse key '{}'".format(kv_pair))
+        if self.args.kva:
+            for kva_pair in self.args.kva:
+                key, attr, value = kva_pair.split(":")
+                if self.args.kv_path:
+                    srv_com["{}:{}".format(self.args.kv_path, key)].attrib[attr] = value
+                else:
+                    srv_com[key].attrib[attr] = value
         # not in raw mode, arg_list must always be set (even if empty)
-        if not args.raw:
-            srv_com["arg_list"] = " ".join(other_args)
-        s_time = time.time()
-        client.send_unicode(unicode(srv_com))
-        if args.verbose:
-            if args.raw:
-                print(srv_com)
-            else:
-                print(srv_com.pretty_print())
-        if not args.only_send:
-            r_client = client if not recv_sock else recv_sock
-            if r_client.poll(args.timeout * 1000):
+        if not self.args.raw:
+            srv_com["arg_list"] = " ".join(self.other_args)
+        for arg_index, arg in enumerate(self.other_args):
+            self.verbose(" arg {:2d}: {}".format(arg_index, arg))
+            srv_com["arguments:arg{:d}".format(arg_index)] = arg
+    def send(self, srv_com):
+        self.s_time = time.time()
+        self.send_sock.send_unicode(unicode(srv_com))
+        if self.args.raw:
+            self.verbose(srv_com)
+        else:
+            self.verbose(srv_com.pretty_print())
+    def receive(self):
+        r_client = self.send_sock if not self.recv_sock else self.recv_sock
+        if r_client.poll(self.args.timeout * 1000):
+            recv_str = r_client.recv()
+            if r_client.getsockopt(zmq.RCVMORE):
+                recv_id = recv_str
                 recv_str = r_client.recv()
-                if r_client.getsockopt(zmq.RCVMORE):
-                    recv_id = recv_str
-                    recv_str = r_client.recv()
-                else:
-                    recv_id = ""
-                timeout = False
             else:
-                print("error timeout")
-                timeout = True
-            e_time = time.time()
-            if args.verbose:
-                if timeout:
-                    print("communication took {}".format(
-                        logging_tools.get_diff_time_str(e_time - s_time),
-                    ))
-                else:
-                    print("communication took {}, received {:d} bytes".format(
-                        logging_tools.get_diff_time_str(e_time - s_time),
-                        len(recv_str),
-                    ))
-            if not timeout:
-                try:
-                    srv_reply = server_command.srv_command(source=recv_str)
-                except:
-                    print("cannot interpret reply: {}".format(process_tools.get_except_info()))
-                    print("reply was: {}".format(recv_str))
-                    ret_state = 1
-                else:
-                    if args.verbose:
-                        print
-                        print "XML response (id: '{}'):".format(recv_id)
-                        print
-                        print srv_reply.pretty_print()
-                        print
-                    if "result" in srv_reply:
-                        if not args.quiet:
-                            print srv_reply["result"].attrib["reply"]
-                        ret_state = int(srv_reply["result"].attrib["state"])
-                    elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
-                        print srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text
-                        ret_state = 0
-                    else:
-                        print "no result tag found in reply"
-                        ret_state = 2
-    client.close()
-    if recv_sock:
-        recv_sock.close()
-    zmq_context.term()
-    sys.exit(ret_state)
+                recv_id = None
+            timeout = False
+        else:
+            print("error timeout")
+            timeout = True
+            recv_id, recv_str = (None, None)
+        self.e_time = time.time()
+        if timeout:
+            self.verbose(
+                "communication took {}".format(
+                    logging_tools.get_diff_time_str(self.e_time - self.s_time),
+                )
+            )
+        else:
+            self.verbose(
+                "communication took {}, received {:d} bytes".format(
+                    logging_tools.get_diff_time_str(self.e_time - self.s_time),
+                    len(recv_str),
+                )
+            )
+        return timeout, recv_id, recv_str
+    def _handle_return(self, recv_id, recv_str):
+        try:
+            srv_reply = server_command.srv_command(source=recv_str)
+        except:
+            print("cannot interpret reply: {}".format(process_tools.get_except_info()))
+            print("reply was: {}".format(recv_str))
+            self.ret_state = 1
+        else:
+            self.verbose("\nXML response (id: '{}'):\n{}\n".format(recv_id, srv_reply.pretty_print()))
+            if "result" in srv_reply:
+                if not self.args.quiet:
+                    print(srv_reply["result"].attrib["reply"])
+                self.ret_state = int(srv_reply["result"].attrib["state"])
+            elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
+                print(srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text)
+                self.ret_state = 0
+            else:
+                print("no result tag found in reply")
+                self.ret_state = 2
+
+def main():
+    my_com = send_com()
+    my_com.parse()
+    my_com.init_connection()
+    if my_com.connect():
+        my_com.send_and_receive()
+    my_com.close()
+    sys.exit(my_com.ret_state)
 
 if __name__ == "__main__":
     main()
