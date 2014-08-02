@@ -1176,7 +1176,7 @@ class ctrl_type_hpacu(ctrl_type):
             num_ctrl = len([True for line in cur_lines if line.lower().count("smart array")])
             if num_ctrl:
                 for ctrl_num in range(1, num_ctrl + 1):
-                    slot_num = int(cur_lines[ctrl_num - 1].strip().split()[5])
+                    slot_num = int(cur_lines[ctrl_num - 1].strip().split()[-2])
                     c_stat, c_result = self.exec_command(" ctrl slot=%d show status" % (slot_num))
                     ctrl_stuff = {}
                     ctrl_stuff["config"] = {"slot" : slot_num}
