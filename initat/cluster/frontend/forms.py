@@ -2596,7 +2596,7 @@ class net_ip_form(ModelForm):
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
             ),
             Fieldset(
-                "Alias settings",
+                "Alias settings (will be written without node postfixes)",
                 Field("alias"),
                 Field("alias_excl"),
             ),
