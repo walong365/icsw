@@ -608,7 +608,7 @@ def peer_information_pre_save(sender, **kwargs):
             pass
         else:
             if _cur_peer.pk != cur_inst.pk:
-                raise ValidationError("peer already exists")
+                raise ValidationError("peer already exists ({:d}, {:d})".format(cur_inst.s_netdevice_d, cur_inst.d_netdevice_id))
         _check_integer(cur_inst, "penalty", min_val=1)
 
 @receiver(signals.post_save, sender=peer_information)
