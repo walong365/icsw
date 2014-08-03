@@ -150,6 +150,8 @@ class db_prefetch_mixin(object):
         return ["exclude_devices", "categories"]
     def _mon_host_cluster_prefetch(self):
         return ["devices"]
+    def _mon_host_dependency_prefetch(self):
+        return ["devices", "dependent_devices"]
     def _network_prefetch(self):
         return ["network_device_type", "net_ip_set"]
     def _netdevice_prefetch(self):
