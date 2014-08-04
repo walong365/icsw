@@ -308,8 +308,14 @@ def check_system(opt_ns):
             else:
                 if os.path.isfile(init_script_name):
                     if pid_file_name == "":
-                        # never used ?
-                        found_procs = {key : (value, pid_thread_dict.get(value.pid, 1)) for key, value in act_proc_dict.iteritems() if value.name() == entry.attrib["process_name"]}
+                        # only used for gmond ?
+                        found_procs = {}
+                        for key, value in act_proc_dict.iteritems():
+                            try:
+                                if value.name() == entry.attrib["process_name"]:
+                                    found_procs[key] = (value, pid_thread_dict.get(value.pid, 1))
+                            except psutil.NoSuchProcess:
+                                pass
                         act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
                         threads_found = sum([value[1] for value in found_procs.itervalues()])
                         entry.append(
