@@ -126,6 +126,7 @@ def main():
         ("SERVER_SHORT_NAME"               , configfile.str_c_var(mach_name)),
         ("CHECK_SERVICE_FRESHNESS"         , configfile.bool_c_var(False)),
         ("CHECK_HOST_FRESHNESS"            , configfile.bool_c_var(False)),
+        ("SAFE_CC_NAME"                    , configfile.bool_c_var(False)),
         ("SERVICE_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
         ("HOST_FRESHNESS_CHECK_INTERVAL"   , configfile.int_c_var(60)),
     ])

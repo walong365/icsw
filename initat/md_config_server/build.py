@@ -48,6 +48,13 @@ import stat
 import threading_tools
 import time
 
+# also used in parse_anovis
+def build_safe_name(in_str):
+    in_str = in_str.replace("/", "_").replace(" ", "_").replace("(", "[").replace(")", "]")
+    while in_str.count("__"):
+        in_str = in_str.replace("__", "_")
+    return in_str
+
 class build_process(threading_tools.process_obj, version_check_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -84,7 +91,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.__slave_configs, self.__slave_lut = ({}, {})
         if len(slave_servers):
             self.log(
-                "found %s: %s" % (
+                "found {}: {}".format(
                     logging_tools.get_plural("slave_server", len(slave_servers)),
                     ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
             for cur_dev in slave_servers:
@@ -100,12 +107,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.log("no slave-servers found")
         self.__ready = True
         if self.__pending_commands:
-            self.log("processing %s" % (logging_tools.get_plural("pending command", len(self.__pending_commands))))
+            self.log("processing {}".format(logging_tools.get_plural("pending command", len(self.__pending_commands))))
             while self.__pending_commands:
                 _pc = self.__pending_commands.pop(0)
                 self._check_call(*_pc["args"], **_pc["kwargs"])
     def send_command(self, src_id, srv_com):
-        self.send_pool_message("send_command", "urn:uuid:%s:relayer" % (src_id), srv_com)
+        self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
         if mach_name is None:
             mach_name = self.__cached_mach_name
@@ -113,8 +120,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.__cached_mach_name = mach_name
         if mach_name not in self.__mach_loggers:
             self.__mach_loggers[mach_name] = logging_tools.get_logger(
-                "%s.%s" % (global_config["LOG_NAME"],
-                           mach_name.replace(".", r"\.")),
+                "{}.{}".format(
+                    global_config["LOG_NAME"],
+                    mach_name.replace(".", r"\."),
+                ),
                 global_config["LOG_DESTINATION"],
                 zmq=True,
                 context=self.zmq_context,
@@ -130,24 +139,27 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.__mach_loggers[mach_name].close()
             del self.__mach_loggers[mach_name]
     def _check_md_config(self):
-        c_stat, out = commands.getstatusoutput("%s/bin/%s -v %s/etc/%s.cfg" % (
+        c_stat, out = commands.getstatusoutput("{}/bin/{} -v {}/etc/{}.cfg".format(
             global_config["MD_BASEDIR"],
             global_config["MD_TYPE"],
             global_config["MD_BASEDIR"],
             global_config["MD_TYPE"]))
         if c_stat:
-            self.log("Checking the %s-configuration resulted in an error (%d)" % (
-                global_config["MD_TYPE"],
-                c_stat),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "Checking the {}-configuration resulted in an error ({:d})".format(
+                    global_config["MD_TYPE"],
+                    c_stat,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             ret_stat = False
         else:
-            self.log("Checking the %s-configuration returned no error" % (global_config["MD_TYPE"]))
+            self.log("Checking the {}-configuration returned no error".format(global_config["MD_TYPE"]))
             ret_stat = True
         return ret_stat, out
     def _check_call(self, *args, **kwargs):
         if self.__ready:
-            getattr(self, "_%s" % (kwargs["func_name"]))(*args, **kwargs)
+            getattr(self, "_{}".format(kwargs["func_name"]))(*args, **kwargs)
         else:
             self.__pending_commands.append(
                 {
@@ -159,12 +171,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         start_daemon, restart_daemon = (False, False)
         cs_stat, cs_out = self._check_md_config()
         if not cs_stat:
-            self.log("Checking the %s-config resulted in an error, not trying to (re)start" % (global_config["MD_TYPE"]), logging_tools.LOG_LEVEL_ERROR)
-            self.log("error_output has %s" % (logging_tools.get_plural("line", cs_out.split("\n"))),
+            self.log("Checking the {}-config resulted in an error, not trying to (re)start".format(global_config["MD_TYPE"]), logging_tools.LOG_LEVEL_ERROR)
+            self.log("error_output has {}".format(logging_tools.get_plural("line", cs_out.split("\n"))),
                      logging_tools.LOG_LEVEL_ERROR)
             for line in cs_out.split("\n"):
                 if line.strip().lower().startswith("error"):
-                    self.log(" - %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
         else:
             if os.path.isfile(self.__nagios_lock_file_name):
                 try:
@@ -181,29 +193,35 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     try:
                         pid = int(pid)
                     except:
-                        self.log("PID read from '%s' is not an integer (%s, %s), trying to restart %s" % (
-                            self.__nagios_lock_file_name,
-                            str(pid),
-                            process_tools.get_except_info(),
-                            global_config["MD_TYPE"]),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "PID read from '{}' is not an integer ({}, {}), trying to restart {}".format(
+                                self.__nagios_lock_file_name,
+                                str(pid),
+                                process_tools.get_except_info(),
+                                global_config["MD_TYPE"],
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         restart_daemon = True
                     else:
                         try:
                             os.kill(pid, signal.SIGHUP)
                         except OSError:
-                            self.log("Error signaling pid %d with SIGHUP (%d), trying to restart %s (%s)" % (
-                                pid,
-                                signal.SIGHUP,
-                                global_config["MD_TYPE"],
-                                process_tools.get_except_info()),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "Error signaling pid {:d} with SIGHUP ({:d}), trying to restart {} ({})".format(
+                                    pid,
+                                    signal.SIGHUP,
+                                    global_config["MD_TYPE"],
+                                    process_tools.get_except_info(),
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                             restart_daemon = True
                         else:
-                            self.log("Successfully signaled pid %d with SIGHUP (%d)" % (pid, signal.SIGHUP))
+                            self.log("Successfully signaled pid {:d} with SIGHUP ({:d})".format(pid, signal.SIGHUP))
             else:
                 self.log(
-                    "%s LockFile '%s' not found, trying to start %s" % (
+                    "{} LockFile '{}' not found, trying to start {}".format(
                         global_config["MD_TYPE"],
                         self.__nagios_lock_file_name,
                         global_config["MD_TYPE"]),
@@ -235,11 +253,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")]
-        self.log("starting single build with %s: %s" % (
+        self.log("starting single build with {}: {}".format(
             logging_tools.get_plural("device", len(dev_names)),
             ", ".join(sorted(dev_names))))
         srv_com["result"] = self._rebuild_config(*dev_names)
-        srv_com.set_result("rebuilt config for %s" % (", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
+        srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
     def _rebuild_config(self, *args, **kwargs):
         single_build = True if len(args) > 0 else False
@@ -262,11 +280,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if cache_mode not in special_commands.CACHE_MODES:
             # take first cache mode
             cache_mode = special_commands.DEFAULT_CACHE_MODE
-        self.log("rebuild_config called, single_build is %s, cache_mode is %s, hdep_from_topo is %s" % (
-            str(single_build),
-            cache_mode,
-            str(hdep_from_topo),
-            ))
+        self.log(
+            "rebuild_config called, single_build is {}, cache_mode is {}, hdep_from_topo is {}".format(
+                str(single_build),
+                cache_mode,
+                str(hdep_from_topo),
+            )
+        )
         if self.gc["DEBUG"]:
             cur_query_count = len(connection.queries)
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
@@ -280,7 +300,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 device=cdg,
                 is_public=False,
                 name="_SYS_GAUGE_",
-                description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name if self.__gen_config else "unknown"),
+                description="mon config rebuild on {}".format(self.__gen_config.monitor_server.full_name if self.__gen_config else "unknown"),
                 var_type="i")
             # bump version
             if int(time.time()) > self.version:
@@ -294,7 +314,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         rebuild_gen_config = False
         if not h_list:
             self.log(
-                "rebuilding complete config (for master and %s)" % (
+                "rebuilding complete config (for master and {})".format(
                     logging_tools.get_plural("slave", len(self.__slave_configs))
                 )
             )
@@ -302,7 +322,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         else:
             # FIXME, handle host-related config for only specified slaves
             self.log(
-                "rebuilding config for %s: %s" % (
+                "rebuilding config for {}: {}".format(
                     logging_tools.get_plural("host", len(h_list)),
                     logging_tools.compress_list(h_list)
                 )
@@ -386,7 +406,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if single_build:
             return res_node
     def _build_distance_map(self, root_node, show_unroutable=True):
-        self.log("building distance map, root node is '%s'" % (root_node))
+        self.log("building distance map, root node is '{}'".format(root_node))
         # exclude all without attached netdevices
         dm_dict = {cur_dev.pk : cur_dev for cur_dev in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).exclude(netdevice=None) \
             .select_related("domain_tree_node") \
@@ -421,18 +441,25 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         if dst_nd not in src_nds:
                             nb_list.append((src_nd, dst_nd))
                 except networkx.exception.NetworkXError:
-                    self.log("netdevice %s is not in graph: %s" % (src_nd,
-                                                                   process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "netdevice {} is not in graph: {}".format(
+                            src_nd,
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
             for src_nd, dst_nd, in nb_list:
                 if src_nd in all_nd_pks and dst_nd in all_nd_pks:
                     src_dev, dst_dev = (dm_dict[nd_lut[src_nd]], dm_dict[nd_lut[dst_nd]])
                     new_level = src_dev.md_dist_level + 1
                     if dst_dev.md_dist_level >= 0 and new_level > dst_dev.md_dist_level:
-                        self.log("pushing node %s farther away from root (%d => %d)" % (
-                            unicode(dst_dev),
-                            dst_dev.md_dist_level,
-                            new_level))
+                        self.log(
+                            "pushing node {} farther away from root ({:d} => {:d})".format(
+                                unicode(dst_dev),
+                                dst_dev.md_dist_level,
+                                new_level,
+                            )
+                        )
                     dst_dev.md_dist_level = max(dst_dev.md_dist_level, new_level)
                     max_level = max(max_level, dst_dev.md_dist_level)
                     run_again = True
@@ -443,17 +470,19 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.log("max distance level: %d" % (max_level))
         nodes_ur = [unicode(value) for value in dm_dict.itervalues() if value.md_dist_level < 0]
         if nodes_ur and show_unroutable:
-            self.log("%s: %s" % (
-                logging_tools.get_plural("unroutable node", len(nodes_ur)),
-                ", ".join(sorted(nodes_ur))
+            self.log(
+                "{}: {}".format(
+                    logging_tools.get_plural("unroutable node", len(nodes_ur)),
+                    ", ".join(sorted(nodes_ur)),
+                )
             )
-                     )
         for level in xrange(max_level + 1):
-            self.log("nodes in level %d: %s" % (
-                level,
-                len([True for value in dm_dict.itervalues() if value.md_dist_level == level])
+            self.log(
+                "nodes in level {:d}: {}".format(
+                    level,
+                    len([True for value in dm_dict.itervalues() if value.md_dist_level == level]),
+                )
             )
-                     )
         return {key : value.md_dist_level for key, value in dm_dict.iteritems()}
     def _create_general_config(self, write_entries=None):
         self.__gen_config_built = True
@@ -471,7 +500,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             for cur_conf in config_list:
                 # restore to previous value
                 cur_conf.allow_write_entries = prev_awc
-        self.log("creating the total general config took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
+        self.log("creating the total general config took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
     def _create_gen_config_files(self, gc_list):
         for cur_gc in gc_list:
             start_time = time.time()
@@ -498,26 +527,26 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # host_dependencies
             cur_gc.add_config(all_host_dependencies(cur_gc, self))
             end_time = time.time()
-            cur_gc.log("created host_configs in %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
+            cur_gc.log("created host_configs in {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
     def _get_mon_ext_hosts(self):
         return {cur_ext.pk : cur_ext for cur_ext in mon_ext_host.objects.all()}
     def _check_image_maps(self):
         min_width, max_width, min_height, max_height = (16, 64, 16, 64)
         all_image_stuff = self._get_mon_ext_hosts()
-        self.log("Found %s" % (logging_tools.get_plural("ext_host entry", len(all_image_stuff.keys()))))
-        logos_dir = "%s/share/images/logos" % (self.gc["MD_BASEDIR"])
+        self.log("Found {}".format(logging_tools.get_plural("ext_host entry", len(all_image_stuff.keys()))))
+        logos_dir = "{}/share/images/logos".format(self.gc["MD_BASEDIR"])
         base_names = set()
         if os.path.isdir(logos_dir):
             logo_files = os.listdir(logos_dir)
             for log_line in [entry.split(".")[0] for entry in logo_files]:
                 if log_line not in base_names:
-                    if "%s.png" % (log_line) in logo_files and "%s.gd2" % (log_line) in logo_files:
+                    if "{}.png".format(log_line) in logo_files and "{}.gd2".format(log_line) in logo_files:
                         base_names.add(log_line)
         name_case_lut = {}
         if base_names:
-            stat, out = commands.getstatusoutput("file %s" % (" ".join([os.path.join(logos_dir, "%s.png" % (entry)) for entry in base_names])))
+            stat, out = commands.getstatusoutput("file {}".format(" ".join([os.path.join(logos_dir, "{}.png".format(entry)) for entry in base_names])))
             if stat:
-                self.log("error getting filetype of %s" % (logging_tools.get_plural("logo", len(base_names))), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error getting filetype of {}".format(logging_tools.get_plural("logo", len(base_names))), logging_tools.LOG_LEVEL_ERROR)
             else:
                 base_names = set()
                 for logo_name, logo_data in [
@@ -545,20 +574,22 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         del_images = all_images_present_lower - base_names_lower
         present_images = base_names_lower & all_images_present_lower
         for new_image in new_images:
-            mon_ext_host(name=new_image,
-                         icon_image="%s.png" % (new_image),
-                         statusmap_image="%s.gd2" % (new_image)).save()
+            mon_ext_host(
+                name=new_image,
+                icon_image="{}.png".format(new_image),
+                statusmap_image="%s.gd2" % (new_image)
+            ).save()
         for p_i in present_images:
             img_stuff = all_image_stuff[name_lut[p_i]]
             # check for wrong case
-            if img_stuff.icon_image != "%s.png" % (name_case_lut[img_stuff.name]):
+            if img_stuff.icon_image != "{}.png".format(name_case_lut[img_stuff.name]):
                 # correct case
-                img_stuff.icon_image = "%s.png" % (name_case_lut[img_stuff.name])
-                img_stuff.statusmap_image = "%s.gd2" % (name_case_lut[img_stuff.name])
+                img_stuff.icon_image = "{}.png".format(name_case_lut[img_stuff.name])
+                img_stuff.statusmap_image = "{}.gd2".format(name_case_lut[img_stuff.name])
                 img_stuff.save()
         if del_images:
             mon_ext_host.objects.filter(Q(name__in=del_images)).delete()
-        self.log("Inserted %s, deleted %s" % (
+        self.log("Inserted {}, deleted {}".format(
             logging_tools.get_plural("new ext_host_entry", len(new_images)),
             logging_tools.get_plural("ext_host_entry", len(del_images))))
     def _create_single_host_config(
@@ -585,7 +616,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                    single_build,
                                    mccs_dict,
                                    ):
-
+        # optimize
+        self.__safe_cc_name = global_config["SAFE_CC_NAME"]
         start_time = time.time()
         # time.sleep(10)
         # mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
@@ -604,7 +636,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 checks_are_active = False
         # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         self.__cached_mach_name = host.full_name
-        self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
+        self.mach_log("-------- {} ---------".format("master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)))
         glob_log_str = "device {:<48s}{} ({}), d={:>3s}".format(
             host.full_name[:48],
             "*" if len(host.name) > 48 else " ",
@@ -613,16 +645,23 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         )
         self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.full_name)
         num_ok, num_warning, num_error = (0, 0, 0)
-        # print "%s : %s" % (host["name"], host["identifier"])
         if host.valid_ips:
             net_devices = host.valid_ips
         elif host.invalid_ips:
-            self.mach_log("Device %s has no valid netdevices associated, using invalid ones..." % (host.full_name),
-                          logging_tools.LOG_LEVEL_WARN)
+            self.mach_log(
+                "Device {} has no valid netdevices associated, using invalid ones...".format(
+                    host.full_name
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
             net_devices = host.invalid_ips
         else:
-            self.mach_log("Device %s has no netdevices associated, skipping..." % (host.full_name),
-                          logging_tools.LOG_LEVEL_ERROR)
+            self.mach_log(
+                "Device {} has no netdevices associated, skipping...".format(
+                    host.full_name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             num_error += 1
             net_devices = {}
         use_host_deps, use_service_deps = (
@@ -641,34 +680,42 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             act_def_dev = dev_templates[host.mon_device_templ_id or 0]
             if not valid_ips and single_build:
                 valid_ips = [(net_ip(ip="0.0.0.0"), host.full_name)]
-                self.mach_log("no ips found using %s as dummy IP" % (str(valid_ips)))
+                self.mach_log("no ips found using {} as dummy IP".format(str(valid_ips)))
             if valid_ips and act_def_dev:
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
                 # print "***", valid_ips
                 host.valid_ip = valid_ip
-                self.mach_log("Found %s for host %s : %s, mon_resolve_name is %s, using %s" % (
-                    logging_tools.get_plural("target ip", len(valid_ips)),
-                    host.full_name,
-                    ", ".join(["%s%s" % (cur_ip, " (.%s)" % (dom_name) if dom_name else "") for cur_ip, dom_name in valid_ips]),
-                    str(host.mon_resolve_name),
-                    unicode(host.valid_ip)))
+                self.mach_log(
+                    "Found {} for host {} : {}, mon_resolve_name is {}, using {}".format(
+                        logging_tools.get_plural("target ip", len(valid_ips)),
+                        host.full_name,
+                        ", ".join(["{}{}".format(cur_ip, " (.{})".format(dom_name) if dom_name else "") for cur_ip, dom_name in valid_ips]),
+                        str(host.mon_resolve_name),
+                        unicode(host.valid_ip)
+                    )
+                )
                 if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
                     self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
                 else:
                     act_def_serv = serv_templates[act_def_dev.mon_service_templ_id]
                     # tricky part: check the actual service_template for the various services
-                    self.mach_log("Using default device_template '%s' and service_template '%s' for host %s" % (
-                        act_def_dev.name,
-                        act_def_serv.name,
-                        host.full_name))
+                    self.mach_log(
+                        "Using default device_template '{}' and service_template '{}' for host {}".format(
+                            act_def_dev.name,
+                            act_def_serv.name,
+                            host.full_name,
+                        )
+                    )
                     # get device variables
                     dev_variables, var_info = var_stack.get_vars(host)
                     host.dev_variables = dev_variables
-                    self.mach_log("device has %s (%s)" % (
-                        logging_tools.get_plural("device_variable", len(host.dev_variables.keys())),
-                        ", ".join(["%s: %d" % (key, var_info[key]) for key in ["d", "g", "c"]])
-                        ))
+                    self.mach_log(
+                        "device has {} ({})".format(
+                            logging_tools.get_plural("device_variable", len(host.dev_variables.keys())),
+                            ", ".join(["{}: {:d}".format(key, var_info[key]) for key in ["d", "g", "c"]]),
+                        )
+                    )
                     # now we have the device- and service template
                     host_config_list = []
                     act_host = nag_config("host", host.full_name)
@@ -679,18 +726,18 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     if self.gc["ENABLE_PNP"] or self.gc["ENABLE_COLLECTD"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                         if host.enable_perfdata:
-                            act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (self.gc["PNP_URL"])
+                            act_host["action_url"] = "{}/index.php/graph?host=$HOSTNAME$&srv=_HOST_".format(self.gc["PNP_URL"])
                     act_host["_device_pk"] = host.pk
                     if global_config["USE_ONLY_ALIAS_FOR_ALIAS"]:
                         act_host["alias"] = host.alias or host.name
                     else:
-                        act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
+                        act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["{}.{}".format(host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
                     if host.mon_resolve_name:
                         act_host["address"] = host.valid_ip.ip
                     else:
                         v_ip = host.valid_ip
                         if v_ip.alias and v_ip.alias_excl:
-                            act_host["address"] = "%s.%s" % (v_ip.alias, v_ip.domain_tree_node.full_name)
+                            act_host["address"] = "{}.{}".format(v_ip.alias, v_ip.domain_tree_node.full_name)
                         else:
                             act_host["address"] = host.full_name
                     if traces and len(traces[0][2]) > 1:
@@ -704,8 +751,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.not_period_id]["name"]
                     # removed because this line screws active / passive checks
                     # act_host["checks_enabled"] = 1
-                    act_host["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
-                    act_host["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
+                    act_host["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
+                    act_host["{}_checks_enabled".format("passive" if checks_are_active else "active")] = 0
                     act_host["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and act_def_dev.flap_detection_enabled) else 0
                     if host.flap_detection_enabled and act_def_dev.flap_detection_enabled:
                         # add flap fields
@@ -713,7 +760,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         act_host["high_flap_threshold"] = act_def_dev.high_flap_threshold
                         n_field = []
                         for short, f_name in [("o", "up"), ("d", "down"), ("u", "unreachable")]:
-                            if getattr(act_def_dev, "flap_detect_%s" % (f_name)):
+                            if getattr(act_def_dev, "flap_detect_{}".format(f_name)):
                                 n_field.append(short)
                         if not n_field:
                             n_field.append("o")
@@ -731,11 +778,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         c_list.extend([cur_u.login for cur_u in host.device_group.user_set.filter(Q(mon_contact__pk__gt=0))])
                     if c_list:
                         act_host["contacts"] = ",".join(c_list)
-                    self.mach_log("contact groups for host: %s" % (
+                    self.mach_log("contact groups for host: {}".format(
                         ", ".join(sorted(host_groups)) or "none"))
                     if host.monitor_checks or single_build:
                         if host.valid_ip.ip == "0.0.0.0":
-                            self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(host.valid_ip)))
+                            self.mach_log("IP address is '{}', host is assumed to be always up".format(unicode(host.valid_ip)))
                             act_host["check_command"] = "check-host-ok"
                         else:
                             if act_def_dev.host_check_command:
@@ -748,8 +795,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # check for nagvis map
                         if host.automap_root_nagvis and cur_gc.master:
                             # with or without .cfg ? full path ?
-                            act_host["_nagvis_map"] = "%s" % (host.full_name.encode("ascii", errors="ignore"))
-                            map_file = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.full_name.encode("ascii", errors="ignore")))
+                            act_host["_nagvis_map"] = "{}".format(host.full_name.encode("ascii", errors="ignore"))
+                            map_file = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps", "{}.cfg".format(host.full_name.encode("ascii", errors="ignore")))
                             map_dict = {
                                 "sources"      : "automap",
                                 "alias"        : host.comment or host.full_name,
@@ -791,7 +838,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         value = "1" if value else "0"
                                     elif type(value) in [int, long]:
                                         value = "%d" % (value)
-                                    map_h.write(u"    %s=%s\n" % (key, value))
+                                    map_h.write(u"    {}={}\n".format(key, value))
                                 map_h.write("}\n")
                                 map_h.close()
                         # check for notification options
@@ -814,10 +861,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 host_config_list.append(act_hostext_info)
                                 # hostext_nc[host.full_name] = act_hostext_info
                             else:
-                                self.log("don't know how to handle hostextinfo for %s_version %d" % (
-                                    self.gc["MD_TYPE"],
-                                    self.gc["MD_VERSION"]),
-                                         logging_tools.LOG_LEVEL_ERROR)
+                                self.log(
+                                    "don't know how to handle hostextinfo for {}_version {:d}".format(
+                                        self.gc["MD_TYPE"],
+                                        self.gc["MD_VERSION"]
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
                         # clear host from servicegroups
                         cur_gc["servicegroup"].clear_host(host.full_name)
                         # get check_commands and templates
@@ -837,7 +887,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         for conf_name in conf_names:
                             s_check = conf_dict[conf_name]
                             if s_check.name in used_checks:
-                                self.mach_log("%s (%s) already used, ignoring .... (CHECK CONFIG !)" % (
+                                self.mach_log("{} ({}) already used, ignoring .... (CHECK CONFIG !)".format(
                                     s_check.get_description(),
                                     s_check["command_name"]), logging_tools.LOG_LEVEL_WARN)
                                 num_warning += 1
@@ -890,7 +940,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # add cluster checks
                         mhc_checks = host.main_mon_host_cluster.all().prefetch_related("devices")
                         if len(mhc_checks):
-                            self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
+                            self.mach_log("adding {}".format(logging_tools.get_plural("host_cluster check", len(mhc_checks))))
                             for mhc_check in mhc_checks:
                                 dev_names = [cur_dev.full_name for cur_dev in mhc_check.devices.all().select_related("domain_tree_node")]
                                 if len(dev_names):
@@ -903,7 +953,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         s_check,
                                         [special_commands.arg_template(
                                             s_check,
-                                            "%s %s" % (s_check.get_description(), mhc_check.description),
+                                            self._get_cc_name("{} {}".format(s_check.get_description(), mhc_check.description)),
                                             arg1=mhc_check.description,
                                             # arg2="@{:d}:".format(mhc_check.warn_value),
                                             # arg3="@{:d}:".format(mhc_check.error_value),
@@ -925,11 +975,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # add service checks
                         msc_checks = host.main_mon_service_cluster.all().prefetch_related("devices")
                         if len(msc_checks):
-                            self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(msc_checks))))
+                            self.mach_log("adding {}".format(logging_tools.get_plural("service_cluster check", len(msc_checks))))
                             for msc_check in msc_checks:
                                 if msc_check.mon_check_command.name in cur_gc["command"]:
                                     c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                    # dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")])
                                     dev_names = [(cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")]
                                     if len(dev_names):
                                         s_check = cur_gc["command"]["check_service_cluster"]
@@ -942,7 +991,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                             [
                                                 special_commands.arg_template(
                                                     s_check,
-                                                    "%s / %s" % (s_check.get_description(), c_com.get_description()),
+                                                    self._get_cc_name("{} / {}".format(s_check.get_description(), c_com.get_description())),
                                                     arg1=msc_check.description,
                                                     # arg2="@{:d}:".format(msc_check.warn_value),
                                                     # arg3="@{:d}:".format(msc_check.error_value),
@@ -964,7 +1013,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
                                 else:
                                     self.mach_log(
-                                        "check command '%s' not present in list of commands %s" % (
+                                        "check command '{}' not present in list of commands {}".format(
                                             msc_check.mon_check_command.name,
                                             ", ".join(sorted(cur_gc["command"].keys()))
                                         ),
@@ -999,7 +1048,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         act_service_dep["dependent_service_description"] = my_co.mcc_lut[s_dep.dependent_mon_check_command_id][1]
                                         sc_check = cur_gc["command"]["check_service_cluster"]
                                         # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
-                                        act_service_dep["service_description"] = "%s / %s" % (sc_check.get_description(), my_co.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
+                                        act_service_dep["service_description"] = "{} / {}".format(sc_check.get_description(), my_co.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
                                         act_service_dep["host_name"] = all_hosts_dict[s_dep.mon_service_cluster.main_device_id].full_name
                                         act_service_dep["dependent_host_name"] = ",".join([all_hosts_dict[cur_dev.pk].full_name for cur_dev in s_dep.dependent_devices.all().select_related("domain_tree_node")])
                                         s_dep.feed_config(act_service_dep)
@@ -1023,7 +1072,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
                         host_nc.add_device(host_config_list, host) # [act_host["name"]] = act_host
                     else:
-                        self.mach_log("Host %s is disabled" % (host.full_name))
+                        self.mach_log("Host {} is disabled".format(host.full_name))
             else:
                 self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
         info_str = "{:3d} ok, {:3d} w, {:3d} e in {}".format(
@@ -1031,10 +1080,15 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             num_warning,
             num_error,
             logging_tools.get_diff_time_str(time.time() - start_time))
-        glob_log_str = "%s, %s" % (glob_log_str, info_str)
+        glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
         self.close_mach_log()
+    def _get_cc_name(self, in_str):
+        if self.__safe_cc_name:
+            return build_safe_name(in_str)
+        else:
+            return in_str
     def _check_for_config(self, c_type, all_configs, mcc_lut, mcc_lut_2, device, moncc_id):
         # configure mon check commands
         # import pprint
@@ -1045,7 +1099,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if nccom[0] in ccoms:
             return True
         else:
-            self.mach_log("Checkcommand '%s' config (%s) not found in configs (%s) for %s '%s'" % (
+            self.mach_log("Checkcommand '{}' config ({}) not found in configs ({}) for {} '{}'".format(
                 nccom[0],
                 nccom[2],
                 ", ".join(sorted(ccoms)) or "none defined",
@@ -1073,7 +1127,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         start_time = time.time()
         # get contacts with access to all devices
         all_access = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.device.all_devices")])
-        self.log("users with access to all devices: %s" % (", ".join(sorted(all_access))))
+        self.log("users with access to all devices: {}".format(", ".join(sorted(all_access))))
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
         my_net_idxs = set(netdevice.objects.filter(Q(device__in=server_idxs)).filter(Q(enabled=True)).values_list("pk", flat=True))
@@ -1148,11 +1202,14 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if cur_gc["contactgroup"].has_key(ct_group.pk):
                 cg_name = cur_gc["contactgroup"][ct_group.pk]["name"]
             else:
-                self.log("contagroup_idx %s for device %s not found, using first from contactgroups (%s)" % (
-                    unicode(ct_group),
-                    ct_group.name,
-                    first_contactgroup_name),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "contagroup_idx {} for device {} not found, using first from contactgroups ({})".format(
+                        unicode(ct_group),
+                        ct_group.name,
+                        first_contactgroup_name,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 cg_name = first_contactgroup_name
             for g_devg in ct_group.device_groups.all().prefetch_related("device_group", "device_group__domain_tree_node"):
                 for g_dev in g_devg.device_group.all():
@@ -1250,7 +1307,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     host["parents"] = ",".join(parent_list)
                     for cur_parent in parent_list:
                         p_dict.setdefault(cur_parent, []).append(host_name)
-                    self.log("Setting parent of '%s' to %s" % (host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
+                    self.log("Setting parent of '{}' to {}".format(host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
                 else:
                     self.log("No parents found for '{}' (albeit possible_parents was set)".format(host_name), logging_tools.LOG_LEVEL_WARN)
                     p_parents = host["possible_parents"]
@@ -1298,27 +1355,28 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     else:
                         full_name = os.path.join(nagvis_map_dir, entry)
                         if full_name not in nagvis_maps:
-                            self.log("removing old nagvis mapfile %s" % (full_name))
+                            self.log("removing old nagvis mapfile {}".format(full_name))
                             try:
                                 os.unlink(full_name)
                             except:
                                 self.log(
-                                    "error removing %s: %s" % (
+                                    "error removing {}: {}".format(
                                         full_name,
                                         process_tools.get_except_info()),
-                                    logging_tools.LOG_LEVEL_ERROR)
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
                 if skipped_customs:
-                    self.log("skipped removing of %s" % (logging_tools.get_plural("custom map", skipped_customs)))
+                    self.log("skipped removing of {}".format(logging_tools.get_plural("custom map", skipped_customs)))
                 # create group maps
                 dev_groups = device_group.objects.filter(
                     Q(enabled=True) &
                     Q(device_group__name__in=[os.path.basename(entry).split(".")[0] for entry in nagvis_maps])).distinct()
-                self.log("creating maps for %s" % (logging_tools.get_plural("device group", len(dev_groups))))
+                self.log("creating maps for {}".format(logging_tools.get_plural("device group", len(dev_groups))))
                 for dev_group in dev_groups:
-                    map_name = os.path.join(nagvis_map_dir, "%s.cfg" % (dev_group.name.replace(" ", "_")))
+                    map_name = os.path.join(nagvis_map_dir, "{}.cfg".format(dev_group.name.replace(" ", "_")))
                     file(map_name, "w").write("\n".join([
                         "define global {",
-                        "    alias=Group %s" % (dev_group.name),
+                        "    alias=Group {}".format(dev_group.name),
                         "}",
                     ]))
             cache_dir = os.path.join(self.gc["NAGVIS_DIR"], "var")
@@ -1328,7 +1386,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     try:
                         full_name = os.path.join(cache_dir, entry)
                     except:
-                        self.log("error building full_name from entry '%s'" % (entry), logging_tools.LOG_LEVEL_CRITICAL)
+                        self.log("error building full_name from entry '{}'".format(entry), logging_tools.LOG_LEVEL_CRITICAL)
                         rem_failed += 1
                     else:
                         if os.path.isfile(full_name):
@@ -1338,14 +1396,21 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 rem_failed += 1
                             else:
                                 rem_ok += 1
-                self.log("cleaned cache_dir %s (%d ok, %d failed)" % (
-                    cache_dir,
-                    rem_ok,
-                    rem_failed), logging_tools.LOG_LEVEL_ERROR if rem_failed else logging_tools.LOG_LEVEL_OK)
+                self.log(
+                    "cleaned cache_dir {} ({:d} ok, {:d} failed)".format(
+                        cache_dir,
+                        rem_ok,
+                        rem_failed,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR if rem_failed else logging_tools.LOG_LEVEL_OK
+                )
         end_time = time.time()
-        self.log("created configs for %s hosts in %s" % (
-            host_info_str,
-            logging_tools.get_diff_time_str(end_time - start_time)))
+        self.log(
+            "created configs for {} hosts in {}".format(
+                host_info_str,
+                logging_tools.get_diff_time_str(end_time - start_time),
+            )
+        )
     def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc):
         ev_defined = True if s_check.event_handler else False
         self.mach_log("  adding check %-30s (%2d p), template %s, %s, %s" % (
