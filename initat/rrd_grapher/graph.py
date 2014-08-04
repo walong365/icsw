@@ -28,6 +28,7 @@ from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import dateutil.parser
 import logging_tools
+import uuid
 import os
 import pprint
 import process_tools
@@ -303,9 +304,10 @@ class RRDGraph(object):
                     graph_key_list.append((g_key, [(dev_id, dev_pk)], v_list))
         self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
         graph_list = E.graph_list()
+
         for tlk, dev_list, graph_keys in sorted(graph_key_list):
             dev_id_str = ",".join([dev_id for dev_id, dev_pk in dev_list])
-            graph_name = "gfx_{}_{}_{:d}.png".format(tlk, dev_id_str, int(time.time()))
+            graph_name = "gfx_{}_{}_{:d}.png".format(tlk, uuid.uuid4(), int(time.time()))
             abs_file_loc, rel_file_loc = (
                 os.path.join(self.para_dict["graph_root"], graph_name),
                 os.path.join("/{}/static/graphs/{}".format(settings.REL_SITE_ROOT, graph_name)),
