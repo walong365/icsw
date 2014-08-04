@@ -561,11 +561,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.log("Inserted %s, deleted %s" % (
             logging_tools.get_plural("new ext_host_entry", len(new_images)),
             logging_tools.get_plural("ext_host_entry", len(del_images))))
-    def _get_int_str(self, i_val, size=3):
-        if i_val:
-            return ("%%%dd" % (size)) % (i_val)
-        else:
-            return ("%%%ds" % (size)) % ("-")
     def _create_single_host_config(
                                    self,
                                    my_co,
@@ -610,11 +605,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         self.__cached_mach_name = host.full_name
         self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
-        glob_log_str = "Starting build of config for device %32s%s (%10s), distance level is %3d" % (
-            host.full_name[:32],
-            "*" if len(host.name) > 32 else " ",
-            "active" if checks_are_active else "passive",
-            d_map.get(host.pk, -1),
+        glob_log_str = "device {:<48s}{} ({}), d={:>3s}".format(
+            host.full_name[:48],
+            "*" if len(host.name) > 48 else " ",
+            "a" if checks_are_active else "p",
+            "{:3d}".format(d_map[host.pk]) if d_map.get(host.pk) >= 0 else "---",
         )
         self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.full_name)
         num_ok, num_warning, num_error = (0, 0, 0)
@@ -1031,10 +1026,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         self.mach_log("Host %s is disabled" % (host.full_name))
             else:
                 self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
-        info_str = "finished with %s warnings and %s errors (%3d ok) in %s" % (
-            self._get_int_str(num_warning),
-            self._get_int_str(num_error),
+        info_str = "{:3d} ok, {:3d} w, {:3d} e in {}".format(
             num_ok,
+            num_warning,
+            num_error,
             logging_tools.get_diff_time_str(time.time() - start_time))
         glob_log_str = "%s, %s" % (glob_log_str, info_str)
         self.log(glob_log_str)
@@ -1257,21 +1252,26 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         p_dict.setdefault(cur_parent, []).append(host_name)
                     self.log("Setting parent of '%s' to %s" % (host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
                 else:
-                    self.log("No parents found for '%s' (albeit possible_parents was set)" % (host_name), logging_tools.LOG_LEVEL_WARN)
+                    self.log("No parents found for '{}' (albeit possible_parents was set)".format(host_name), logging_tools.LOG_LEVEL_WARN)
                     p_parents = host["possible_parents"]
                     for t_num, (_p_val, _nd_val, p_list) in enumerate(p_parents):
                         host_pk = p_list[0]
-                        self.log("  trace %d, %s, host_distance is %d" % (
-                            t_num + 1,
-                            logging_tools.get_plural("entry", len(p_list) - 1),
-                            d_map[host_pk]))
+                        self.log(
+                            "  trace {:d}, {}, host_distance is {:d}".format(
+                                t_num + 1,
+                                logging_tools.get_plural("entry", len(p_list) - 1),
+                                d_map[host_pk],
+                            )
+                        )
                         for parent_idx in p_list[1:]:
                             parent = all_hosts_dict[parent_idx].full_name
-                            self.log("    %s (distance is %d, %s)" % (
-                                unicode(parent),
-                                d_map[parent_idx],
-                                parent in host_names,
-                                ))
+                            self.log(
+                                "    {} (distance is {:d}, {})".format(
+                                    unicode(parent),
+                                    d_map[parent_idx],
+                                    parent in host_names,
+                                )
+                            )
                 del host["possible_parents"]
         self.log("end parenting run")
         if cur_gc.master and not single_build:
@@ -1434,7 +1434,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 traces.append((penalty, cur_path[-1], dev_path))
         traces = sorted(traces)
         if not traces:
-            self.mach_log("Cannot reach host %s (check peer_information)" % (host.name),
+            self.mach_log("Cannot reach device {} (check peer_information)".format(host.name),
                           logging_tools.LOG_LEVEL_ERROR)
             valid_ips = []
         else:
