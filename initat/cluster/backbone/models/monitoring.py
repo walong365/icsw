@@ -1,13 +1,12 @@
-#!/usr/bin/python-init
-
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from rest_framework import serializers
-from django.conf import settings
 import datetime
+import json
 import logging_tools
 import re
 
@@ -42,11 +41,27 @@ class mon_trace(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     # fingerprint of device netdevices
-    dev_netdevice_fp = models.CharField(max_length=128, default="")
+    dev_netdevice_fp = models.CharField(max_length=128, default="", db_index=True)
     # fingerprint of server netdevices
-    srv_netdevice_fp = models.CharField(max_length=128, default="")
+    srv_netdevice_fp = models.CharField(max_length=128, default="", db_index=True)
     traces = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
+    @staticmethod
+    def get_fp(net_idxs):
+        return ":".join(["{:d}".format(_idx) for _idx in net_idxs])
+    @staticmethod
+    def create_trace(dev, dev_fp, srv_fp, traces):
+        new_tr = mon_trace.objects.create(
+            device=dev,
+            dev_netdevice_fp=dev_fp,
+            srv_netdevice_fp=srv_fp,
+            traces=traces,
+        )
+        return new_tr
+    def set_trace(self, traces):
+        self.traces = json.dumps(traces)
+    def get_trace(self):
+        return json.loads(self.traces)
     class Meta:
         app_label = "backbone"
 
