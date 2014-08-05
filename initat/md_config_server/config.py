@@ -24,7 +24,8 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
-     mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special
+     mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special, \
+     mon_host_cluster, mon_service_cluster
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
@@ -50,44 +51,49 @@ import time
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
-class generic_cache(object):
-    # stores various cached objects
-    def __init__(self):
-        # global luts
-        # lookup table for host_check_commands
-        self.mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
-        # lookup table for config -> mon_check_commands
-        self.mcc_lut_2 = {}
-        for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
-            self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
-
 # a similiar structure is used in the server process of rrd-grapher
 class var_cache(dict):
-    def __init__(self, cdg):
+    def __init__(self, cdg, prefill=False):
         super(var_cache, self).__init__(self)
         self.__cdg = cdg
+        self.__prefill = prefill
+        if prefill:
+            self._prefill()
+    def _prefill(self):
+        for _var in device_variable.objects.all().select_related("device__device_type"):
+            if _var.device.device_type.identifier == "MD":
+                if _var.device.device_group_id == self.__cdg.pk:
+                    _key = "GLOBAL"
+                else:
+                    _key = "dg__{:d}".format(_var.device.device_group_id)
+            else:
+                _key = "dev__{:d}".format(_var.device_id)
+            self.setdefault(_key, {})[_var.name] = _var.value
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
             "GLOBAL",
-            "dg__%d" % (cur_dev.device_group_id),
-            "dev__%d" % (cur_dev.pk))
+            "dg__{:d}".format(cur_dev.device_group_id),
+            "dev__{:d}".format(cur_dev.pk))
         if global_key not in self:
             def_dict = {
                 "SNMP_VERSION"         : 2,
                 "SNMP_READ_COMMUNITY"  : "public",
-                "SNMP_WRITE_COMMUNITY" : "private"}
+                "SNMP_WRITE_COMMUNITY" : "private",
+            }
             # read global configs
             self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
             # update with def_dict
             for key, value in def_dict.iteritems():
                 if key not in self[global_key]:
                     self[global_key][key] = value
-        if dg_key not in self:
-            # read device_group configs
-            self[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))])
-        if dev_key not in self:
-            # read device configs
-            self[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev))])
+        if not self.__prefill:
+            # do not query the devices
+            if dg_key not in self:
+                # read device_group configs
+                self[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))])
+            if dev_key not in self:
+                # read device configs
+                self[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev))])
         ret_dict, info_dict = ({}, {})
         # for s_key in ret_dict.iterkeys():
         for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
@@ -1427,29 +1433,112 @@ class base_config(object):
                 c_lines.append("%s=%s" % (key, act_v))
         self.act_content = self.headers + c_lines
 
-class nag_config(dict):
+class mon_config(dict):
     def __init__(self, obj_type, name, **kwargs):
+        # dict-like object, uses {key, list} as storage
         self.obj_type = obj_type
-        self._name = name
-        super(nag_config, self).__init__()
-        self.update(kwargs)
+        self.name = name
+        super(mon_config, self).__init__()
+        for _key, _value in kwargs.iteritems():
+            self[_key] = _value
     def __setitem__(self, key, value):
-        if key in self:
-            val_p = super(nag_config, self).__getitem__(key).split(",")
-            if "-" in val_p:
-                val_p.remove("-")
-            if value not in val_p:
-                val_p.append(value)
-            super(nag_config, self).__setitem__(key, ",".join(val_p))
+        if type(value) == list:
+            if key in self:
+                super(mon_config, self).__getitem__(key).extend(value)
+            else:
+                super(mon_config, self).__setitem__(key, value)
         else:
-            super(nag_config, self).__setitem__(key, value)
+            if key in self:
+                super(mon_config, self).__getitem__(key).append(value)
+            else:
+                super(mon_config, self).__setitem__(key, [value])
     def __getitem__(self, key):
         if key == "name":
-            return self._name
+            return self.name
         else:
-            return super(nag_config, self).__getitem__(key)
+            return super(mon_config, self).__getitem__(key)
 
-class host_type_config(object):
+class content_emitter(object):
+    def _emit_content(self, dest_type, in_dict):
+        _content = ["define {} {{".format(dest_type)] + \
+            [
+                "  {} {}".format(
+                    act_key,
+                    self._build_value_string(act_key, in_dict[act_key]),
+                ) for act_key in sorted(in_dict.iterkeys())
+            ] + \
+            ["}", ""]
+        return _content
+    def _build_value_string(self, _key, in_list):
+        if in_list:
+            # check for unique types
+            if len(set([type(_val) for _val in in_list])) != 1:
+                raise ValueError, "values in list {} for key {} have different types".format(str(in_list), _key)
+            else:
+                _first_val = in_list[0]
+                if type(_first_val) in [int, long]:
+                    return ",".join(["{:d}".format(_val) for _val in in_list])
+                else:
+                    if "" in in_list:
+                        raise ValueError, "empty string found in list {} for key {}".format(str(in_list), _key)
+                    return u",".join([unicode(_val) for _val in in_list])
+        else:
+            return "-"
+
+class build_cache(object):
+    def __init__(self, cdg, full_build):
+        # build cache to speed up config generation
+        # stores various cached objects
+        # global luts
+        # lookup table for host_check_commands
+        self.mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
+        # lookup table for config -> mon_check_commands
+        self.mcc_lut_2 = {}
+        for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
+            self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
+        # host list, set from caller
+        self.host_list = []
+        self.dev_templates = None
+        self.serv_templates = None
+        self.var_stack = var_cache(cdg, prefill=full_build)
+        # device_group user access
+        self.dg_user_access = {}
+        mon_user_pks = list(user.objects.filter(Q(mon_contact__pk__gt=0)).values_list("pk", flat=True))
+        for _dg in device_group.objects.all().prefetch_related("user_set"):
+            self.dg_user_access[_dg.pk] = list([_user for _user in _dg.user_set.all() if _user.pk in mon_user_pks])
+        # all hosts dict
+        self.all_hosts_dict = {cur_dev.pk : cur_dev for cur_dev in device.objects.filter(Q(device_group__enabled=True) & Q(enabled=True)).select_related("device_type", "domain_tree_node", "device_group")}
+        # host / service clusters
+        clusters = {}
+        for _obj, _name in [(mon_host_cluster, "hc"), (mon_service_cluster, "sc")]:
+            _lut = {}
+            _query = _obj.objects.all()
+            if _name == "sc":
+                _query = _query.select_related("mon_check_command")
+            for _co in _query:
+                _lut[_co.pk] = _co.main_device_id
+                _co.devices_list = []
+                clusters.setdefault(_name, {}).setdefault(_co.main_device_id, []).append(_co)
+            for _entry in _obj.devices.through.objects.all():
+                if _name == "hc":
+                    _pk = _entry.mon_host_cluster_id
+                else:
+                    _pk = _entry.mon_service_cluster_id
+                _tco = [_co for _co in clusters[_name][_lut[_pk]] if _co.pk == _pk][0]
+                _tco.devices_list.append(_entry.device_id)
+                # clusters[_name][_entry.]
+        self.__clusters = clusters
+    def get_device_group_users(self, dg_pk):
+        return [_user.login for _user in self.dg_user_access[dg_pk]]
+    def get_host(self, pk):
+        return self.all_hosts_dict[pk]
+    def get_cluster(self, c_type, main_device_id):
+        if main_device_id in self.__clusters.get(c_type, {}):
+            return self.__clusters[c_type][main_device_id]
+        else:
+            return []
+
+class host_type_config(content_emitter):
     def __init__(self, build_process):
         self.__build_proc = build_process
         self.act_content, self.prev_content = ([], [])
@@ -1471,19 +1560,15 @@ class host_type_config(object):
         content = []
         if act_list:
             for act_le in act_list:
-                content.extend(
-                    ["define %s {" % (dest_type)] + \
-                    ["  %s %s" % (act_key, unicode(act_le[act_key])) for act_key in sorted(act_le.iterkeys())] + \
-                    ["}", ""]
-                )
-            self.log("created %s for %s" % (
+                content.extend(self._emit_content(dest_type, act_le))
+            self.log("created {} for {}".format(
                 logging_tools.get_plural("entry", len(act_list)),
                 dest_type))
         return content
     def get_xml(self):
-        res_xml = getattr(E, "%s_list" % (self.get_name()))()
+        res_xml = getattr(E, "{}_list" % (self.get_name()))()
         for act_le in self.get_object_list():
-            res_xml.append(getattr(E, self.get_name())(**dict([(key, unicode(act_le[key])) for key in sorted(act_le.iterkeys())])))
+            res_xml.append(getattr(E, self.get_name())(**dict([(key, self._build_value_string(act_le[key])) for key in sorted(act_le.iterkeys())])))
         return [res_xml]
 
 class all_host_dependencies(host_type_config):
@@ -1506,10 +1591,10 @@ class time_periods(host_type_config):
         return "timeperiod"
     def _add_time_periods_from_db(self):
         for cur_per in mon_period.objects.all():
-            nag_conf = nag_config("timeperiod",
+            nag_conf = mon_config("timeperiod",
                                   cur_per.name,
                                   timeperiod_name=cur_per.name,
-                                  alias=cur_per.alias or "-")
+                                  alias=cur_per.alias or [])
             for short_s, long_s in [
                 ("mon", "monday"), ("tue", "tuesday"), ("wed", "wednesday"), ("thu", "thursday"),
                 ("fri", "friday"), ("sat", "saturday"), ("sun", "sunday")]:
@@ -1536,7 +1621,7 @@ class all_service_groups(host_type_config):
     def _add_servicegroups_from_db(self):
         for cat_pk in self.cat_tree.get_sorted_pks():
             cur_cat = self.cat_tree[cat_pk]
-            nag_conf = nag_config(
+            nag_conf = mon_config(
                 "servicegroup",
                 cur_cat.full_name,
                 servicegroup_name=cur_cat.full_name,
@@ -1549,10 +1634,10 @@ class all_service_groups(host_type_config):
             if host_name in value:
                 value.remove(host_name)
     def add_host(self, host_name, srv_groups):
-        for srv_group in srv_groups.split(","):
+        for srv_group in srv_groups:
             self.__host_srv_lut[srv_group].add(host_name)
     def get_object_list(self):
-        return [obj for obj in self.__obj_list if self.__host_srv_lut[obj["name"]]]
+        return [obj for obj in self.__obj_list if self.__host_srv_lut[obj.name]]
     def values(self):
         return self.__dict.values()
 
@@ -1618,7 +1703,7 @@ class all_commands(host_type_config):
         }
 
         self.__obj_list.append(
-            nag_config(
+            mon_config(
                 "command",
                 "dummy-notify",
                 command_name="dummy-notify",
@@ -1638,7 +1723,7 @@ class all_commands(host_type_config):
                     send_sms_prog,
                     self._expand_str(cur_not.content),
                 )
-            nag_conf = nag_config(
+            nag_conf = mon_config(
                 "command",
                 cur_not.name,
                 command_name=cur_not.name,
@@ -1651,14 +1736,14 @@ class all_commands(host_type_config):
         # set of all names
         command_names = unique_list()
         for hc_com in host_check_command.objects.all():
-            cur_nc = nag_config(
+            cur_nc = mon_config(
                 "command",
                 hc_com.name,
                 command_name=hc_com.name,
                 command_line=hc_com.command_line,
             )
             self.__obj_list.append(cur_nc)
-            # simple nag_config, we do not add this to the command dict
+            # simple mon_config, we do not add this to the command dict
             # self.__dict[cur_nc["command_name"]] = cur_nc
             command_names.add(hc_com.name)
         check_coms = list(
@@ -1769,7 +1854,7 @@ class all_commands(host_type_config):
                 db_entry=ngc,
                 volatile=ngc.volatile,
             )
-            nag_conf = cc_s.get_nag_config()
+            nag_conf = cc_s.get_mon_config()
             self.__obj_list.append(nag_conf)
             self.__dict[ngc_name] = cc_s # ag_conf["command_name"]] = cc_s
     def get_object_list(self):
@@ -1809,20 +1894,20 @@ class all_contacts(host_type_config):
                 alias = contact.user.comment
             else:
                 alias = full_name
-            nag_conf = nag_config(
+            nag_conf = mon_config(
                 "contact",
                 full_name,
                 contact_name=contact.user.login,
-                host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id]["name"],
-                service_notification_period=gen_conf["timeperiod"][contact.snperiod_id]["name"],
+                host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id].name,
+                service_notification_period=gen_conf["timeperiod"][contact.snperiod_id].name,
                 alias=alias,
             )
             if not_h_list:
-                nag_conf["host_notification_commands"] = ",".join([entry.name for entry in not_h_list])
+                nag_conf["host_notification_commands"] = [entry.name for entry in not_h_list]
             else:
                 nag_conf["host_notification_commands"] = "dummy-notify"
             if not_s_list:
-                nag_conf["service_notification_commands"] = ",".join([entry.name for entry in not_s_list])
+                nag_conf["service_notification_commands"] = [entry.name for entry in not_s_list]
             else:
                 nag_conf["service_notification_commands"] = "dummy-notify"
             for targ_opt, pairs in [
@@ -1834,7 +1919,7 @@ class all_contacts(host_type_config):
                         act_a.append(short_s)
                 if not act_a:
                     act_a = ["n"]
-                nag_conf[targ_opt] = ",".join(act_a)
+                nag_conf[targ_opt] = act_a
             u_mail = contact.user.email or "root@localhost"
             nag_conf["email"] = u_mail
             nag_conf["pager"] = contact.user.pager or "----"
@@ -1846,7 +1931,7 @@ class all_contacts(host_type_config):
 # #                devg_ok = len(std_user.allowed_device_groups.all()) > 0 or User.objects.get(Q(username=std_user.login)).has_perm("backbone.all_devices")
 # #                if devg_ok:
 # #                    full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
-# #                    nag_conf = nag_config(
+# #                    nag_conf = mon_config(
 # #                        full_name,
 # #                        contact_name=std_user.login,
 # #                        alias=std_user.comment or full_name,
@@ -1875,13 +1960,13 @@ class all_contact_groups(host_type_config):
         return "contactgroup"
     def _add_contact_groups_from_db(self, gen_conf):
         # none group
-        self.__dict[0] = nag_config(
+        self.__dict[0] = mon_config(
             "contactgroup",
             global_config["NONE_CONTACT_GROUP"],
             contactgroup_name=global_config["NONE_CONTACT_GROUP"],
             alias="None group")
         for cg_group in mon_contactgroup.objects.all().prefetch_related("members"):
-            nag_conf = nag_config(
+            nag_conf = mon_config(
                 "contactgroup",
                 cg_group.name,
                 contactgroup_name=cg_group.name,
@@ -1923,25 +2008,25 @@ class all_host_groups(host_type_config):
                 # hostgroups by devicegroups
                 # distinct is important here
                 for h_group in device_group.objects.filter(hostg_filter).prefetch_related("device_group").distinct():
-                    nag_conf = nag_config(
+                    nag_conf = mon_config(
                         "hostgroup",
                         h_group.name,
                         hostgroup_name=h_group.name,
                         alias=h_group.description or h_group.name,
-                        members="-")
+                        members=[])
                     self.__dict[h_group.pk] = nag_conf
                     self.__obj_list.append(nag_conf)
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks)).select_related("domain_tree_node")])
+                    nag_conf["members"] = [cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks)).select_related("domain_tree_node")]
                 # hostgroups by categories
                 for cat_pk in self.cat_tree.get_sorted_pks():
                     cur_cat = self.cat_tree[cat_pk]
-                    nag_conf = nag_config(
+                    nag_conf = mon_config(
                         "hostgroup",
                         cur_cat.full_name,
                         hostgroup_name=cur_cat.full_name,
                         alias=cur_cat.comment or cur_cat.full_name,
-                        members="-")
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter).select_related("domain_tree_node")])
+                        members=[])
+                    nag_conf["members"] = [cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter).select_related("domain_tree_node")]
                     if nag_conf["members"]:
                         self.__obj_list.append(nag_conf)
             else:
@@ -1957,7 +2042,7 @@ class all_host_groups(host_type_config):
     def values(self):
         return self.__dict.values()
 
-class config_dir(object):
+class config_dir(content_emitter):
     def __init__(self, name, gen_conf, build_proc):
         self.name = "%s.d" % (name)
         self.__build_proc = build_proc
@@ -1976,7 +2061,7 @@ class config_dir(object):
     def add_device(self, c_list, host):
         host_conf = c_list[0]
         self.host_pks.add(host.pk)
-        self[host_conf["name"]] = c_list
+        self[host_conf.name] = c_list
     def values(self):
         return self.__dict.values()
     def __contains__(self, key):
@@ -2033,10 +2118,7 @@ class config_dir(object):
     def _create_sub_content(self, key):
         content = []
         for entry in self[key]:
-            content.extend(
-                ["define %s {" % (entry.obj_type)] + \
-                ["  %s %s" % (act_key, unicode(entry[act_key])) for act_key in sorted(entry.iterkeys())] + \
-                ["}", ""])
+            content.extend(self._emit_content(entry.obj_type, entry))
         return content
     def get_xml(self):
         res_dict = {}
@@ -2213,12 +2295,12 @@ class check_command(object):
                     # only default_value
                     value = self.__default_values[arg_name]
             if type(value) in [int, long]:
-                out_list.append("%d" % (value))
+                out_list.append("{:d}".format(value))
             else:
                 out_list.append(value)
         return out_list
-    def get_nag_config(self):
-        return nag_config(
+    def get_mon_config(self):
+        return mon_config(
             "command",
             self.__nag_name,
             command_name=self.__nag_name,
@@ -2290,11 +2372,14 @@ class device_templates(dict):
     def __getitem__(self, key):
         act_key = key or self.__default.pk
         if not self.has_key(act_key):
-            self.log("key %s not known, using default %s (%d)" % (
-                str(act_key),
-                unicode(self.__default),
-                self.__default.pk),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "key {} not known, using default {} ({:d})".format(
+                    str(act_key),
+                    unicode(self.__default),
+                    self.__default.pk,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             act_key = self.__default.pk
         return super(device_templates, self).__getitem__(act_key)
 
@@ -2330,11 +2415,13 @@ class service_templates(dict):
     def __getitem__(self, key):
         act_key = key or self.__default.pk
         if not self.has_key(act_key):
-            self.log("key %d not known, using default %s (%d)" % (
-                str(act_key),
-                unicode(self.__default),
-                self.__default.pk),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "key {} not known, using default {} ({:d})".format(
+                    str(act_key),
+                    unicode(self.__default),
+                    self.__default.pk,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             act_key = self.__default.pk
         return super(service_templates, self).__getitem__(act_key)
-

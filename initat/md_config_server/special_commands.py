@@ -81,8 +81,9 @@ class special_base(object):
         self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
         # set datasource to cache
         for _entry in self.__cache:
-            _entry.datasource = "c"
-            _entry.save(update_fields=["datasource"])
+            if _entry.datasource != "c":
+                _entry.datasource = "c"
+                _entry.save(update_fields=["datasource"])
         self.log(
             "loaded hints ({}) from db".format(
                 logging_tools.get_plural("entry", len(self.__cache))
