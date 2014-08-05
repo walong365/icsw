@@ -376,6 +376,9 @@ add_tree_directive = (mod) ->
                 replace : true
                 compile: (tElement, tAttr) ->
                     return (scope, iElement, iAttr) ->
+                        #console.log scope, iAttr["treeconfig"], tAttr, iAttr
+                        #scope.treeconfig = scope.$eval(tAttr["treeconfig"])
+                        #console.log scope.treeconfig
                         iElement.append($compile(_tree_root_node)(scope))
                 } 
     ]).directive("subtree", ["$compile",

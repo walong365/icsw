@@ -14,7 +14,7 @@ running_table = """
         <tr>
             <td colspan="20" paginator entries="run_list" pag_settings="pagRun" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
         </tr>
-        <tr headers struct="running_struct"></tr>
+        <tr headers struct="running_struct" class="info"></tr>
     </thead>
     <tbody>
         <tr rmsrunline ng-repeat-start="data in run_list | paginator2:this.pagRun" >
@@ -35,7 +35,7 @@ waiting_table = """
         <tr>
             <td colspan="20" paginator entries="wait_list" pag_settings="pagWait" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
         </tr>
-        <tr headers struct="waiting_struct"></tr>
+        <tr headers struct="waiting_struct" class="info"></tr>
     </thead>
     <tbody>
         <tr rmsline ng-repeat="data in wait_list | paginator2:this.pagWait"></tr>
@@ -52,7 +52,7 @@ node_table = """
         <tr>
             <td colspan="20" paginator entries="node_list" pag_settings="pagNode" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
         </tr>
-        <tr headers struct="node_struct"></tr>
+        <tr headers struct="node_struct" class="info"></tr>
     </thead>
     <tbody>
         <tr rmsnodeline ng-repeat="data in node_list | paginator2:this.pagNode" ng-class="get_class(data)"></tr>
