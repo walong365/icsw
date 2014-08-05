@@ -1280,7 +1280,7 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
         )
-        fk_ignore_list = ["netdevice", ]
+        fk_ignore_list = ["netdevice", "mon_trace"]
     class Meta:
         db_table = u'device'
         ordering = ("name",)

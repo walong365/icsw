@@ -35,7 +35,20 @@ __all__ = [
     "mon_dist_slave", # "mon_dist_slave_serializer",
     "monitoring_hint", "monitoring_hint_serializer",
     "mon_check_command_special", "mon_check_command_special_serializer",
+    "mon_trace", # monitoring trace for speedup
     ]
+
+class mon_trace(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("backbone.device")
+    # fingerprint of device netdevices
+    dev_netdevice_fp = models.CharField(max_length=128, default="")
+    # fingerprint of server netdevices
+    srv_netdevice_fp = models.CharField(max_length=128, default="")
+    traces = models.TextField(default="")
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        app_label = "backbone"
 
 # distribution models, one per run
 class mon_dist_slave(models.Model):
