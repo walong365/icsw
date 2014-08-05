@@ -20,8 +20,9 @@
 
 """ rms-server, process definitions """
 
-from initat.rms.config import global_config
+from django.core.cache import cache
 from initat.cluster.backbone.routing import get_server_uuid
+from initat.rms.config import global_config
 from lxml.builder import E # @UnresolvedImports
 import cluster_location
 import commands
@@ -33,6 +34,7 @@ import server_command
 import sge_tools
 import threading_tools
 import time
+import uuid
 import zmq
 
 def call_command(command, log_com=None):
@@ -160,7 +162,7 @@ class rms_mon_process(threading_tools.process_obj):
             )
         self.send_pool_message("command_result", src_id, unicode(srv_com))
     def _file_watch_content(self, *args , **kwargs):
-        src_id, srv_src = args
+        _src_id, srv_src = args
         srv_com = server_command.srv_command(source=srv_src)
         job_id = srv_com["send_id"].text.split(":")[0]
         file_name = srv_com["name"].text
@@ -175,21 +177,27 @@ class rms_mon_process(threading_tools.process_obj):
         if len(job_id) and job_id[0].isdigit():
             # job_id is ok
             try:
-                self.__job_content_dict.setdefault(job_id, {})[file_name] = E.file_content(
-                    content,
-                    name=file_name,
-                    last_update="%d" % (last_update),
-                    size="%d" % (len(content)),
+                if not file_name in self.__job_content_dict.get(job_id, {}):
+                    self.__job_content_dict.setdefault(job_id, {})[file_name] = E.file_content(
+                        name=file_name,
+                        last_update="{:d}".format(int(last_update)),
+                        cache_uuid="rms_fc_{}".format(uuid.uuid4()),
+                        size="{:d}".format(len(content)),
                     )
+                    # already present, replace file
+                _cur_struct = self.__job_content_dict[job_id][file_name]
+                cache.set(_cur_struct.attrib["cache_uuid"], content, 3600)
             except:
-                self.log("error settings content of file {}: {}".format(
-                    file_name,
-                    process_tools.get_except_info()
+                self.log(
+                    "error settings content of file {}: {}".format(
+                        file_name,
+                        process_tools.get_except_info()
                     ),
-                    logging_tools.LOG_LEVEL_ERROR)
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
-                tot_length = sum([sum([len(cur_el.text) for _name, cur_el in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
+                tot_length = sum([sum([int(cur_el.attrib["size"]) for _name, cur_el in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
                 self.log("cached: {:d} files, {} ({:d} bytes)".format(tot_files, logging_tools.get_size_str(tot_length), tot_length))
         else:
             self.log("job_id {} is suspicious, ignoring".format(job_id), logging_tools.LOG_LEVEL_WARN)
