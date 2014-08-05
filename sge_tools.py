@@ -33,6 +33,7 @@ import server_command
 import stat
 import time
 import zmq
+import uuid
 try:
     import memcache
 except:
