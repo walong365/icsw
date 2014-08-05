@@ -759,7 +759,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # trace changes
                         act_host["obsess_over_host"] = 1
                     host_groups = set(contact_group_dict.get(host.full_name, []))
-                    act_host["contact_groups"] = host_groups if host_groups else self.gc["NONE_CONTACT_GROUP"]
+                    act_host["contact_groups"] = list(host_groups) if host_groups else self.gc["NONE_CONTACT_GROUP"]
                     c_list = [entry for entry in all_access] + _bc.get_device_group_users(host.device_group_id)
                     if c_list:
                         act_host["contacts"] = c_list

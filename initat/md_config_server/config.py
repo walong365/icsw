@@ -1446,7 +1446,8 @@ class mon_config(dict):
             if key in self:
                 super(mon_config, self).__getitem__(key).extend(value)
             else:
-                super(mon_config, self).__setitem__(key, value)
+                # important: create a new list
+                super(mon_config, self).__setitem__(key, [_val for _val in value])
         else:
             if key in self:
                 super(mon_config, self).__getitem__(key).append(value)
@@ -1594,7 +1595,7 @@ class time_periods(host_type_config):
             nag_conf = mon_config("timeperiod",
                                   cur_per.name,
                                   timeperiod_name=cur_per.name,
-                                  alias=cur_per.alias or [])
+                                  alias=cur_per.alias.strip() if cur_per.alias.strip() else [])
             for short_s, long_s in [
                 ("mon", "monday"), ("tue", "tuesday"), ("wed", "wednesday"), ("thu", "thursday"),
                 ("fri", "friday"), ("sat", "saturday"), ("sun", "sunday")]:
@@ -1625,7 +1626,7 @@ class all_service_groups(host_type_config):
                 "servicegroup",
                 cur_cat.full_name,
                 servicegroup_name=cur_cat.full_name,
-                alias="%s group" % (cur_cat.full_name))
+                alias="{} group".format(cur_cat.full_name))
             self.__host_srv_lut[cur_cat.full_name] = set()
             self.__dict[cur_cat.pk] = nag_conf
             self.__obj_list.append(nag_conf)
@@ -1878,7 +1879,7 @@ class all_contacts(host_type_config):
     def _add_contacts_from_db(self, gen_conf):
         all_nots = mon_notification.objects.all()
         for contact in mon_contact.objects.all().select_related("user"):
-            full_name = ("%s %s" % (contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
+            full_name = ("{} {}".format(contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
             not_h_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled]
@@ -1900,7 +1901,7 @@ class all_contacts(host_type_config):
                 contact_name=contact.user.login,
                 host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id].name,
                 service_notification_period=gen_conf["timeperiod"][contact.snperiod_id].name,
-                alias=alias,
+                alias=alias.strip() if alias.strip() else [],
             )
             if not_h_list:
                 nag_conf["host_notification_commands"] = [entry.name for entry in not_h_list]
@@ -1970,7 +1971,7 @@ class all_contact_groups(host_type_config):
                 "contactgroup",
                 cg_group.name,
                 contactgroup_name=cg_group.name,
-                alias=cg_group.alias)
+                alias=cg_group.alias.strip() if cg_group.alias.strip() else [])
             self.__dict[cg_group.pk] = nag_conf
             for member in cg_group.members.all():
                 try:
@@ -2402,7 +2403,7 @@ class service_templates(dict):
             srv_templ.notification_options = not_options
             self[srv_templ.pk] = srv_templ
             self[srv_templ.name] = srv_templ
-            srv_templ.contact_groups = set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True))
+            srv_templ.contact_groups = list(set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True)))
         if self.keys():
             self.__default = self.keys()[0]
         self.log("Found %s (%s)" % (
