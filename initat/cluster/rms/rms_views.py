@@ -244,7 +244,7 @@ class get_file_content(View):
             for file_id in json.loads(_post["file_ids"]):
                 file_parts = file_id.split(".")
                 std_type = file_parts[2]
-                job_id = "%s.%s" % (file_parts[0], file_parts[1]) if file_parts[1] else file_parts[0]
+                job_id = "{}.{}".format(file_parts[0], file_parts[1]) if file_parts[1] else file_parts[0]
                 file_id_list.append((file_id, job_id, std_type))
         elif _post["file_id"].count(":"):
             file_parts = _post["file_id"].split(":")
@@ -254,7 +254,7 @@ class get_file_content(View):
         else:
             file_parts = _post["file_id"].split(".")
             std_type = file_parts[2]
-            job_id = "%s.%s" % (file_parts[0], file_parts[1])
+            job_id = "{}.{}".format(file_parts[0], file_parts[1])
             file_id_list = [(_post["file_id"], job_id, std_type)]
         # already refreshed ?
         _refreshed = False
@@ -268,9 +268,9 @@ class get_file_content(View):
                 my_sge_info.update()
                 job_info = my_sge_info.get_job(job_id)
             if job_info is not None:
-                io_element = job_info.find(".//%s" % (std_type))
+                io_element = job_info.find(".//{}".format(std_type))
                 if io_element is None or io_element.get("error", "0") == "1":
-                    request.xml_response.error("%s not defined for job %s" % (std_type, job_id), logger)
+                    request.xml_response.error("{} not defined for job {}".format(std_type, job_id), logger)
                 else:
                     fetch_lut[io_element.text] = src_id
         # print "*", job_id, job_info
@@ -282,7 +282,7 @@ class get_file_content(View):
                 "file_list",
                 *[srv_com.builder("file", name=_file_name) for _file_name in fetch_lut.iterkeys()]
                 )
-            result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
+            result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
             if result is not None:
                 for cur_file in result.xpath(".//ns:file", smart_strings=False):
                     # print etree.tostring(cur_file)
