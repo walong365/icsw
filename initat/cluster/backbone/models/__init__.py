@@ -593,10 +593,13 @@ class device_variable(models.Model):
         self.__cur += num
         self._update_gauge()
     def _update_gauge(self):
-        self.val_int = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
+        new_val = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
         if self.pk:
-            device_variable.objects.filter(Q(pk=self.pk)).update(val_int=self.val_int)
+            if self.val_int != new_val:
+                self.val_int = new_val
+                device_variable.objects.filter(Q(pk=self.pk)).update(val_int=new_val)
         else:
+            self.val_int = new_val
             self.save()
     class Meta:
         db_table = u'device_variable'
