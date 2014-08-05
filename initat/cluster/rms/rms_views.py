@@ -23,14 +23,15 @@
 """ RMS views """
 
 from django.conf import settings
-from django.db.models import Q
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
+from django.db.models import Q
 from django.http import HttpResponse
-from initat.cluster.backbone.models import user_variable
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.render import render_me
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import user_variable
+from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
     update_session_object
 from initat.cluster.rms.rms_addons import *
@@ -177,7 +178,7 @@ class get_rms_json(View):
                 cur_fcd = []
                 for cur_fc in file_contents:
                     file_name = cur_fc.attrib["name"]
-                    lines = cur_fc.text.replace(r"\r\n", r"\n").split("\n")
+                    lines = cache.get(cur_fc.attrib["cache_uuid"]).replace(r"\r\n", r"\n").split("\n")
                     content = "\n".join(reversed(lines))
                     cur_fcd.append(
                         (

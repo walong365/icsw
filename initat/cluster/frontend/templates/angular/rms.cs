@@ -131,9 +131,17 @@ rmsnodeline = """
 <td ng-show="node_struct.toggle['load']">
     <span ng-switch on="valid_load(data.load)">
         <span ng-switch-when="1">
-            <div class="pull-left"><b>{{ data.load }}</b>&nbsp;</div>
-            <div class="pull-right" style="width:140px; height:10px;">
-                <progressbar value="get_load(data.load)" animate="false"></progressbar>
+            <div class="row">
+                <div class="col-sm-3"><b>{{ data.load }}</b>&nbsp;</div>
+                <div class="col-sm-9" style="width:140px; height:20px;">
+                    <progressbar value="get_load(data.load)" animate="false"></progressbar>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-3"></div>
+                <div class="col-sm-9" style="width:140px; height:20px;">
+                    <progressbar value="get_load(data.load)" animate="false"></progressbar>
+                </div>
             </div>
         </span>
         <span ng-switch-when="0">
@@ -142,7 +150,11 @@ rmsnodeline = """
     </span>
 </td>
 <td ng-show="node_struct.toggle['slots_used']">
-    {{ data.slots_used }}
+    <div ng-repeat="entry in data.load_vector" class="row">
+         <div class="col-sm-12" style="width:140px; height:20px;">
+             <progressbar max="entry[0]" value="entry[1]" animate="false">{{ entry[1] }}</progressbar>
+         </div>
+    </div>
 </td>
 <td ng-show="node_struct.toggle['slots_reserved']">
     {{ data.slots_reserved }}
@@ -504,9 +516,23 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             if valid_loads.length
                                 $scope.max_load = _.max(valid_loads)
                                 # round to next multiple of 4
-                                $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999) / 4)
+                                $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999  ) / 4)
                             else
                                 $scope.max_load = 4
+                            if $scope.max_load == 0
+                                $scope.max_load = 4
+                            for entry in $scope.node_list
+                                _total = (parseInt(_val) for _val in entry.slots_total.split("/"))
+                                _used = (parseInt(_val) for _val in entry.slots_used.split("/"))
+                                _reserved = (parseInt(_val) for _val in entry.slots_reserved.split("/"))
+                                _size = _.max([_total.length, _used.length, _reserved.length])
+                                if _total.length < _size
+                                    _total = (_total[0] for _idx in _.range(_size))
+                                if _used.length < _size
+                                    _used = (_used[0] for _idx in _.range(_size))
+                                if _reserved.length < _size
+                                    _reserved = (_reserved[0] for _idx in _.range(_size))
+                                entry.load_vector = _.zip(_total, _used, _reserved)
                         )
                         if not $scope.device_dict_set
                             node_names = (entry[0] for entry in json.node_table)
@@ -711,6 +737,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         template : $templateCache.get("rmsnodeline.html")
         link : (scope, el, attrs) ->
             scope.valid_load = (load) ->
+                # return 1 or 0, not true or false
                 return if load.match(LOAD_RE) then 1 else 0
             scope.get_load = (load) ->
                 cur_m = load.match(LOAD_RE)
