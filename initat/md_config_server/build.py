@@ -22,9 +22,9 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
-    mon_check_command, mon_contactgroup, netdevice, network_type, user, config, \
+    mon_contactgroup, netdevice, network_type, user, config, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    mon_check_command_special
+    mon_check_command_special, mon_trace
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
@@ -369,7 +369,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 if cur_gc.master and not single_build:
                     # recreate access files
                     cur_gc._create_access_entries()
-                _bc = build_cache(cdg, full_build=not single_build)
+
+                _bc = build_cache(self.log, cdg, full_build=not single_build)
+                _bc.cache_mode = cache_mode
                 _bc.build_dv = build_dv
                 _bc.host_list = h_list
                 _bc.dev_templates = dev_templates
@@ -663,7 +665,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if host.name == self.gc["SERVER_SHORT_NAME"]:
                 valid_ips, traces = ([(net_ip(ip="127.0.0.1"), "localdomain")], [(1, 0, [host.pk])])
             else:
-                valid_ips, traces = self._get_target_ip_info(my_net_idxs, net_devices, _bc.get_host(host.pk), check_hosts)
+                valid_ips, traces = self._get_target_ip_info(_bc, my_net_idxs, net_devices, _bc.get_host(host.pk), check_hosts)
                 if not valid_ips:
                     num_error += 1
             act_def_dev = _bc.dev_templates[host.mon_device_templ_id or 0]
@@ -922,7 +924,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                     sc_array = [special_commands.arg_template(s_check, s_check.get_description())]
                                     # contact_group is only written if contact_group is responsible for the host and the service_template
                                 serv_temp = _bc.serv_templates[s_check.get_template(act_def_serv.name)]
-                                serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
                                 sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc)
                                 host_config_list.extend(sc_list)
                                 num_ok += len(sc_list)
@@ -935,7 +937,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 if len(dev_names):
                                     s_check = cur_gc["command"]["check_host_cluster"]
                                     serv_temp = _bc.serv_templates[mhc_check.mon_service_templ_id]
-                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                    serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
                                     sub_list = self.get_service(
                                         host,
                                         act_host,
@@ -972,7 +974,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                     if len(dev_names):
                                         s_check = cur_gc["command"]["check_service_cluster"]
                                         serv_temp = _bc.serv_templates[msc_check.mon_service_templ_id]
-                                        serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                        serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
                                         sub_list = self.get_service(
                                             host,
                                             act_host,
@@ -1155,7 +1157,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
             ps_dict[ps_config.name] = ps_config.parent_config.name
-        check_hosts = {cur_dev.pk : cur_dev for cur_dev in device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).select_related("domain_tree_node")}
+        check_hosts = {cur_dev.pk : cur_dev for cur_dev in device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).select_related("domain_tree_node", "device_group")}
         for cur_dev in check_hosts.itervalues():
             # set default values
             cur_dev.valid_ips = {}
@@ -1225,6 +1227,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if host.full_name in host_nc:
                 # now very simple
                 del host_nc[host.full_name]
+
         # mccs dict
         mccs_dict = {mccs.pk : mccs for mccs in mon_check_command_special.objects.all()}
         # caching object
@@ -1472,18 +1475,25 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # else:
             ret_field.append(act_serv)
         return ret_field
-    def _get_target_ip_info(self, my_net_idxs, net_devices, host, check_hosts):
-        traces = []
-        pathes = self.router_obj.get_ndl_ndl_pathes(my_net_idxs, net_devices.keys(), add_penalty=True)
-        for penalty, cur_path in sorted(pathes):
-            if net_devices.has_key(cur_path[-1]):
-                dev_path = self.router_obj.map_path_to_device(cur_path)
-                dev_path.reverse()
-                traces.append((penalty, cur_path[-1], dev_path))
-        traces = sorted(traces)
+    def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host, check_hosts):
+        pathes = self.router_obj.get_ndl_ndl_pathes(srv_net_idxs, net_devices.keys(), add_penalty=True)
+        traces = _bc.get_mon_trace(host, net_devices, srv_net_idxs)
         if not traces:
-            self.mach_log("Cannot reach device {} (check peer_information)".format(host.name),
-                          logging_tools.LOG_LEVEL_ERROR)
+            traces = []
+            for penalty, cur_path in sorted(pathes):
+                if net_devices.has_key(cur_path[-1]):
+                    dev_path = self.router_obj.map_path_to_device(cur_path)
+                    dev_path.reverse()
+                    traces.append((penalty, cur_path[-1], dev_path))
+            traces = sorted(traces)
+            _bc.set_mon_trace(host, net_devices, srv_net_idxs, traces)
+        if not traces:
+            self.mach_log(
+                "Cannot reach device {} (check peer_information)".format(
+                    host.full_name
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             valid_ips = []
         else:
             valid_ips = sum([net_devices[nd_pk] for _val, nd_pk, _loc_trace in traces], [])

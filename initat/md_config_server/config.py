@@ -25,20 +25,21 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
      mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special, \
-     mon_host_cluster, mon_service_cluster
+     mon_host_cluster, mon_service_cluster, mon_trace
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
 import bz2
 import base64
 import binascii
-import datetime
 import cluster_location
 import codecs
-import marshal
 import config_tools
 import configfile
+import datetime
+import json
 import logging_tools
+import marshal
 import os
 import process_tools
 import re
@@ -1487,11 +1488,13 @@ class content_emitter(object):
             return "-"
 
 class build_cache(object):
-    def __init__(self, cdg, full_build):
+    def __init__(self, log_com, cdg, full_build):
+        self.log_com = log_com
         # build cache to speed up config generation
         # stores various cached objects
         # global luts
         # lookup table for host_check_commands
+        s_time = time.time()
         self.mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
         # lookup table for config -> mon_check_commands
         self.mcc_lut_2 = {}
@@ -1501,6 +1504,7 @@ class build_cache(object):
         self.host_list = []
         self.dev_templates = None
         self.serv_templates = None
+        self.cache_mode = "???"
         self.var_stack = var_cache(cdg, prefill=full_build)
         # device_group user access
         self.dg_user_access = {}
@@ -1508,7 +1512,15 @@ class build_cache(object):
         for _dg in device_group.objects.all().prefetch_related("user_set"):
             self.dg_user_access[_dg.pk] = list([_user for _user in _dg.user_set.all() if _user.pk in mon_user_pks])
         # all hosts dict
-        self.all_hosts_dict = {cur_dev.pk : cur_dev for cur_dev in device.objects.filter(Q(device_group__enabled=True) & Q(enabled=True)).select_related("device_type", "domain_tree_node", "device_group")}
+        self.all_hosts_dict = {
+            cur_dev.pk : cur_dev for cur_dev in device.objects.filter(
+                Q(device_group__enabled=True) &
+                Q(enabled=True)) \
+                .select_related("device_type", "domain_tree_node", "device_group") \
+                .prefetch_related("mon_trace_set")
+            }
+        # traces
+        self.__host_traces = {host.pk : list(host.mon_trace_set.all()) for host in self.all_hosts_dict.itervalues()}
         # host / service clusters
         clusters = {}
         for _obj, _name in [(mon_host_cluster, "hc"), (mon_service_cluster, "sc")]:
@@ -1529,6 +1541,10 @@ class build_cache(object):
                 _tco.devices_list.append(_entry.device_id)
                 # clusters[_name][_entry.]
         self.__clusters = clusters
+        e_time = time.time()
+        self.log("init build_cache in {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_com("[bc] {}".format(what), log_level)
     def get_device_group_users(self, dg_pk):
         return [_user.login for _user in self.dg_user_access[dg_pk]]
     def get_host(self, pk):
@@ -1538,6 +1554,35 @@ class build_cache(object):
             return self.__clusters[c_type][main_device_id]
         else:
             return []
+    def get_mon_trace(self, host, dev_net_idxs, srv_net_idxs):
+        _traces = self.__host_traces.get(host.pk, [])
+        if _traces:
+            _dev_fp, _srv_fp = (
+                mon_trace.get_fp(dev_net_idxs),
+                mon_trace.get_fp(srv_net_idxs),
+            )
+            _traces = [_tr for _tr in _traces if _tr.dev_netdevice_fp == _dev_fp and _tr.srv_netdevice_fp == _srv_fp]
+            if _traces:
+                _val = _traces[0].traces
+                return json.loads(_val)
+            else:
+                return []
+        else:
+            return []
+    def set_mon_trace(self, host, dev_net_idxs, srv_net_idxs, traces):
+        _dev_fp, _srv_fp = (
+            mon_trace.get_fp(dev_net_idxs),
+            mon_trace.get_fp(srv_net_idxs),
+        )
+        # check for update
+        _match_traces = [_tr for _tr in self.__host_traces.get(host.pk, []) if _tr.dev_netdevice_fp == _dev_fp and _tr.srv_netdevice_fp == _srv_fp]
+        if _match_traces:
+            _match_trace = _match_traces[0]
+            if json.loads(_match_trace.traces) != traces:
+                _match_trace.traces = json.dumps(traces)
+                _match_trace.save()
+        else:
+            mon_trace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
 
 class host_type_config(content_emitter):
     def __init__(self, build_process):
@@ -1567,9 +1612,9 @@ class host_type_config(content_emitter):
                 dest_type))
         return content
     def get_xml(self):
-        res_xml = getattr(E, "{}_list" % (self.get_name()))()
+        res_xml = getattr(E, "{}_list".format(self.get_name()))()
         for act_le in self.get_object_list():
-            res_xml.append(getattr(E, self.get_name())(**dict([(key, self._build_value_string(act_le[key])) for key in sorted(act_le.iterkeys())])))
+            res_xml.append(getattr(E, self.get_name())(**dict([(key, self._build_value_string(key, act_le[key])) for key in sorted(act_le.iterkeys())])))
         return [res_xml]
 
 class all_host_dependencies(host_type_config):
