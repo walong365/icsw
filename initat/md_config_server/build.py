@@ -1477,7 +1477,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         return ret_field
     def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host, check_hosts):
         pathes = self.router_obj.get_ndl_ndl_pathes(srv_net_idxs, net_devices.keys(), add_penalty=True)
-        traces = _bc.get_mon_trace(host, net_devices, srv_net_idxs)
+        if _bc.cache_mode in ["ALWAYS", "DYNAMIC"]:
+            # use stored traces in mode ALWAYS and DYNAMIC
+            traces = _bc.get_mon_trace(host, net_devices, srv_net_idxs)
+        else:
+            traces = []
         if not traces:
             traces = []
             for penalty, cur_path in sorted(pathes):

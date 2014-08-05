@@ -1563,8 +1563,7 @@ class build_cache(object):
             )
             _traces = [_tr for _tr in _traces if _tr.dev_netdevice_fp == _dev_fp and _tr.srv_netdevice_fp == _srv_fp]
             if _traces:
-                _val = _traces[0].traces
-                return json.loads(_val)
+                return _traces[0].get_trace()
             else:
                 return []
         else:
@@ -1579,10 +1578,11 @@ class build_cache(object):
         if _match_traces:
             _match_trace = _match_traces[0]
             if json.loads(_match_trace.traces) != traces:
-                _match_trace.traces = json.dumps(traces)
+                _match_trace.set_trace(traces)
                 _match_trace.save()
         else:
-            mon_trace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
+            _new_trace = mon_trace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
+            self.__host_traces.setdefault(host.pk, []).append(_new_trace)
 
 class host_type_config(content_emitter):
     def __init__(self, build_process):
