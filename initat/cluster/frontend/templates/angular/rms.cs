@@ -114,8 +114,7 @@ filesinfo = """
 
 rmsnodeline = """
 <td ng-show="node_struct.toggle['host']">
-    {{ data.host }}
-    <button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
+    {{ data.host }}&nbsp;<button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
         <span class="glyphicon glyphicon-pencil"></span>
     </button>
 </td>
@@ -133,12 +132,6 @@ rmsnodeline = """
         <span ng-switch-when="1">
             <div class="row">
                 <div class="col-sm-3"><b>{{ data.load }}</b>&nbsp;</div>
-                <div class="col-sm-9" style="width:140px; height:20px;">
-                    <progressbar value="get_load(data.load)" animate="false"></progressbar>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-sm-3"></div>
                 <div class="col-sm-9" style="width:140px; height:20px;">
                     <progressbar value="get_load(data.load)" animate="false"></progressbar>
                 </div>
@@ -270,8 +263,7 @@ rmsline = """
 
 rmsrunline = """
 <td ng-show="running_struct.toggle['job_id']">
-    {{ data.job_id }}
-    <button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.nodelist)" ng-click="show_job_rrd($event, data)">
+    {{ data.job_id }}&nbsp;<button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.nodelist)" ng-click="show_job_rrd($event, data)">
         <span class="glyphicon glyphicon-pencil"></span>
     </button>
 </td>
