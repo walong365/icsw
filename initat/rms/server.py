@@ -152,7 +152,7 @@ class rms_mon_process(threading_tools.process_obj):
             for log_line in log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_OK if not cur_stat else logging_tools.LOG_LEVEL_ERROR)
             srv_com.set_result(
-                "%s gave: %s" % (queue_action, cur_out),
+                "{} gave: {}".format(queue_action, cur_out),
                 server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
             )
         else:
@@ -240,11 +240,11 @@ class server_process(threading_tools.process_pool):
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
+            self.log(" - clf: [{:d}] {}".format(log_level, line))
         conf_info = global_config.get_config_info()
-        self.log("Found %d valid global config-lines:" % (len(conf_info)))
+        self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -289,14 +289,18 @@ class server_process(threading_tools.process_pool):
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
         client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         try:
-            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
+            client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
         except zmq.ZMQError:
-            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
-                                                  process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "error binding to {:d}: {}".format(
+                    global_config["COM_PORT"],
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
             raise
         else:
-            self.log("connected to tcp://*:%d (via ID %s)" % (global_config["COM_PORT"], self.bind_id))
+            self.log("connected to tcp://*:{:d} (via ID {})".format(global_config["COM_PORT"], self.bind_id))
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
     def _recv_command(self, zmq_sock):
@@ -312,7 +316,7 @@ class server_process(threading_tools.process_pool):
             srv_com = server_command.srv_command(source=xml_input)
             in_com_text = srv_com["command"].text
             if in_com_text not in ["get_config"]:
-                self.log("got command '%s' from %s" % (srv_com["command"].text, src_id))
+                self.log("got command '{}' from {}".format(srv_com["command"].text, src_id))
             srv_com.update_source()
             # set dummy result
             srv_com["result"] = None
@@ -325,9 +329,7 @@ class server_process(threading_tools.process_pool):
                 self.send_to_process("rms_mon", "queue_control", src_id, unicode(srv_com))
             elif cur_com == "get_0mq_id":
                 srv_com["zmq_id"] = self.bind_id
-                srv_com["result"].attrib.update({
-                    "reply" : "0MQ_ID is %s" % (self.bind_id),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                srv_com.set_result("0MQ_ID is {}".format(self.bind_id))
                 self._send_result(src_id, srv_com)
             elif cur_com == "status":
                 srv_com.set_result(
@@ -337,16 +339,16 @@ class server_process(threading_tools.process_pool):
             elif cur_com == "file_watch_content":
                 self.send_to_process("rms_mon", "file_watch_content", src_id, unicode(srv_com))
             else:
-                srv_com["result"].attrib.update(
-                    {
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                        "reply" : "unknown command %s" % (cur_com)
-                    }
+                srv_com.set_result(
+                    "unknown command {}".format(cur_com),
+                    server_command.SRV_REPLY_STATE_ERROR,
                 )
                 self._send_result(src_id, srv_com)
         else:
-            self.log("received wrong data (len() = %d != 2)" % (len(data)),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "received wrong data (len() = {:d} != 2)".format(len(data)),
+                logging_tools.LOG_LEVEL_ERROR,
+            )
     def _send_result(self, src_id, srv_com):
         self.com_socket.send_unicode(src_id, zmq.SNDMORE)
         self.com_socket.send_unicode(unicode(srv_com))
