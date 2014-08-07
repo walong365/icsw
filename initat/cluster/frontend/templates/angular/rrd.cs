@@ -17,7 +17,7 @@ rrd_graph_template = """
         <span class="label label-primary" title="entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
         <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
     </h3>
-    <div class="input-group" ng-show="show_options">
+    <div class="input-group form-inline" ng-show="show_options">
         <div class="input-group-btn">
             <div class="btn-group">
                 <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
@@ -220,12 +220,19 @@ DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
 class pd_timerange
     constructor: (@name, @from, @to) ->
-    get_from: () =>
-        if @to
-            return @from
+    get_from: (cur_from, cur_to) =>
+        if @from
+            if @to
+                # from and to set, return from
+                return @from
+            else
+                # special format, no to set, from == moment() - @from hours
+                return moment().subtract("hours", @from)
         else
-            return moment().subtract("days", 1)
-    get_to: () =>
+            # from not set, shift timeframe
+            _timeframe = moment.duration(cur_to.unix() - cur_from.unix(), "seconds")
+            return moment().subtract(_timeframe)
+    get_to: (cur_from, cur_to) =>
         if @to
             return @to
         else
@@ -240,7 +247,8 @@ add_rrd_directive = (mod) ->
             # possible dimensions
             $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
             $scope.all_timeranges = [
-                new pd_timerange("last 24 hours", "24:00", undefined)
+                new pd_timerange("move timeframe to now", undefined, undefined)
+                new pd_timerange("last 24 hours", 24, undefined)
                 new pd_timerange("last day", moment().subtract("days", 1).startOf("day"), moment().subtract("days", 1).endOf("day"))
                 new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
                 new pd_timerange("last month", moment().subtract("month", 1).startOf("month"), moment().subtract("month", 1).endOf("month"))
@@ -299,8 +307,10 @@ add_rrd_directive = (mod) ->
                     else if diff < 60000
                         $scope.dt_valid = false
             $scope.set_active_tr = (new_tr) ->
-                $scope.from_date_mom = new_tr.get_from()
-                $scope.to_date_mom   = new_tr.get_to()
+                new_from = new_tr.get_from($scope.from_date_mom, $scope.to_date_mom)
+                new_to   = new_tr.get_to($scope.from_date_mom, $scope.to_date_mom)
+                $scope.from_date_mom = new_from
+                $scope.to_date_mom   = new_to
                 $scope.update_dt()
             $scope.set_active_ts = (new_ts) ->
                 if new_ts.seconds
