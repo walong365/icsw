@@ -386,7 +386,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             pass
         else:
             pass
-        out_line = "[{:d}] {};{}\n".format(
+        out_line = "[{:d}] {};{}".format(
             int(time.time()),
             target_com,
             ";".join(targ_list))
