@@ -35,6 +35,7 @@ __all__ = [
     "monitoring_hint", "monitoring_hint_serializer",
     "mon_check_command_special", "mon_check_command_special_serializer",
     "mon_trace", # monitoring trace for speedup
+    "mon_build_unreachable", # track unreachable devices
     ]
 
 class mon_trace(models.Model):
