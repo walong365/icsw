@@ -1199,7 +1199,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             num_warning,
             num_error,
             self.get_num_mach_logs(),
-            "lc" if num_error == 0 else "lw",
+            "l " if num_error == 0 else "lw",
             logging_tools.get_diff_time_str(time.time() - start_time))
         glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
