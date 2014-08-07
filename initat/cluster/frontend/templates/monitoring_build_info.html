@@ -21,6 +21,7 @@
                 <th>start</th>
                 <th>conf</th>
                 <th>run / sync</th>
+                <th>devices</th>
                 <th title="monitoring daemon version">MDVer</th>
                 <th title="monitoring config daemon version">MCDVer</th>
                 <th title="relayer version">RelVer</th>
@@ -35,6 +36,7 @@
                 <td>{{ get_time(build.build_start) }} ({{ get_diff_time(build.build_start) }})</td>
                 <td class="text-right">{{ get_conf_time(build) }}</td>
                 <td class="text-right">{{ get_run_time(build) }}</td>
+                <td ng-class="{'danger' : build.unreachable_devices > 0}">{{ build.num_devices }}<span ng-show="build.unreachable_devices"> ({{ build.unreachable_devices }})</span></td>
                 <td>{{ build.mon_version }}</td>
                 <td class="text-center">{{ build.md_version }}</td>
                 <td class="text-center">{{ build.relayer_version }}</td>
@@ -47,6 +49,7 @@
                 <td class="text-right">
                     {{ get_sync_time(slave) }} <span ng-show="slave.num_runs > 1">({{ slave.num_runs}} )</span>
                 </td>
+                <td>{{ build.num_devices }}</td>
                 <td class="text-center">{{ slave.mon_version || '---' }}</td>
                 <td></td>
                 <td class="text-center">{{ slave.relayer_version || '---' }}</td>
