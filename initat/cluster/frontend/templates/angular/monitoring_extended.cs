@@ -54,7 +54,7 @@ angular_add_simple_list_controller(
         rest_url            : "{% url 'rest:mon_service_cluster_list' %}"
         edit_template       : "mon_service_cluster.html"
         rest_map            : [
-            {"short" : "device"            , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_meta_devices" : true}}
+            {"short" : "device"            , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_meta_devices" : true, "ignore_selection" : true}}
             {"short" : "mon_service_templ" , "url" : "{% url 'rest:mon_service_templ_list' %}"}
             {"short" : "mon_check_command" , "url" : "{% url 'rest:mon_check_command_list' %}"}
         ]
@@ -247,7 +247,7 @@ angular_add_simple_list_controller(
         rest_url            : "{% url 'rest:mon_host_dependency_list' %}"
         edit_template       : "mon_host_dependency.html"
         rest_map            : [
-            {"short" : "device"            , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_meta_devices" : true}}
+            {"short" : "device"            , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_meta_devices" : true, "ignore_selection" : true}}
             {"short" : "mon_host_dependency_templ", "url" : "{% url 'rest:mon_host_dependency_templ_list' %}"}
             {"short" : "mon_host_cluster", "url" : "{% url 'rest:mon_host_cluster_list' %}"}
         ]
@@ -278,7 +278,7 @@ angular_add_simple_list_controller(
         rest_url            : "{% url 'rest:mon_service_dependency_list' %}"
         edit_template       : "mon_service_dependency.html"
         rest_map            : [
-            {"short" : "device"            , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_meta_devices" : true}}
+            {"short" : "device"            , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_meta_devices" : true, "ignore_selection" : true}}
             {"short" : "mon_service_dependency_templ", "url" : "{% url 'rest:mon_service_dependency_templ_list' %}"}
             {"short" : "mon_check_command"  , "url" : "{% url 'rest:mon_check_command_list' %}"}
             {"short" : "mon_service_cluster", "url" : "{% url 'rest:mon_service_cluster_list' %}"}
