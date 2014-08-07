@@ -273,7 +273,7 @@ def get_logger(name, destination, **kwargs):
             else:
                 cur_context = kwargs["context"]
             pub = cur_context.socket(zmq.PUSH)
-            pub.setsockopt(zmq.LINGER, 0)
+            pub.setsockopt(zmq.LINGER, -1)
             pub.connect(rewrite_log_destination(act_dest))
             act_logger.addHandler(zmq_handler(pub, act_logger))
     if log_adapter:
@@ -303,27 +303,22 @@ class log_adapter(logging.LoggerAdapter):
     def set_prefix(self, pfix=""):
         self.__prefix = pfix
     def log_command(self, what):
-        self.log("<LCH>{}</LCH>".format(what))
-    def log(self, level, what=LOG_LEVEL_OK, *args, **kwargs):
+        self.log(LOG_LEVEL_OK, "<LCH>{}</LCH>".format(what))
+    def log(self, level=LOG_LEVEL_OK, what=LOG_LEVEL_OK, *args, **kwargs):
         self.__lock.acquire()
         if type(level) in [str, unicode]:
-            if self.__prefix:
-                level = "{}{}".format(self.__prefix, level)
-            try:
-                logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
-            except:
-                my_syslog(what)
-                print(what, self)
-                raise
-        else:
-            if self.__prefix:
-                what = "{}{}".format(self.__prefix, what)
-            try:
-                logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
-            except:
-                my_syslog(what)
-                print(what, self)
-                raise
+            # exchange level and what
+            _lev = what
+            what = level
+            level = _lev
+        if self.__prefix:
+            what = "{}{}".format(self.__prefix, what)
+        try:
+            logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+        except:
+            my_syslog(what)
+            print(what, self)
+            raise
         self.__lock.release()
     def close(self):
         self.log_command("close")
@@ -361,7 +356,7 @@ class zmq_handler(logging.Handler):
         if self._open:
             self._open = False
             # set linger to zero to speed up close process
-            self.__target.setsockopt(zmq.LINGER, 0)
+            self.__target.setsockopt(zmq.LINGER, -1)
             self.__target.close()
             del self.__target
             if self.__logger:

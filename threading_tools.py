@@ -351,10 +351,10 @@ class poller_obj(object):
                                 self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
                             except:
                                 exc_info = process_tools.exception_info()
-                                try:
-                                    open("/tmp/exc", "a").write("\n".join(exc_info.log_lines + ["", ""]))
-                                except:
-                                    pass
+                                # try:
+                                #    open("/tmp/exc", "a").write("\n".join(exc_info.log_lines + ["", ""]))
+                                # except:
+                                #    pass
                                 self.log(
                                     "error calling handler in poller_obj: {}".format(
                                         process_tools.get_except_info()
