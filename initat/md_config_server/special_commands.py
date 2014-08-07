@@ -464,8 +464,13 @@ class special_disc(special_base):
         part_dev = self.host.partdev
         first_disc = None
         part_list = []
-        for part_p in partition.objects.filter(Q(partition_disc__partition_table=self.host.act_partition_table)).select_related(
-            "partition_fs").order_by(
+        for part_p in partition.objects.filter(
+            Q(partition_disc__partition_table=self.host.act_partition_table)
+            ).select_related(
+                "partition_fs"
+            ).prefetch_related(
+                "partition_disc"
+            ).order_by(
                 "partition_disc__disc",
                 "pnum"):
             act_disc, act_pnum = (part_p.partition_disc.disc, part_p.pnum)

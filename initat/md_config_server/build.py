@@ -114,29 +114,49 @@ class build_process(threading_tools.process_obj, version_check_mixin):
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
+        if "single_build" in kwargs:
+            self.__write_logs = kwargs["single_build"]
         if mach_name is None:
             mach_name = self.__cached_mach_name
         else:
             self.__cached_mach_name = mach_name
         if mach_name not in self.__mach_loggers:
-            self.__mach_loggers[mach_name] = logging_tools.get_logger(
-                "{}.{}".format(
-                    global_config["LOG_NAME"],
-                    mach_name.replace(".", r"\."),
-                ),
-                global_config["LOG_DESTINATION"],
-                zmq=True,
-                context=self.zmq_context,
-                init_logger=True)
-        self.__mach_loggers[mach_name].log(lev, what)
+            if self.__write_logs:
+                self.__mach_loggers[mach_name] = self._get_mach_logger(mach_name)
+            else:
+                self.__mach_loggers[mach_name] = []
+        if self.__write_logs:
+            self.__mach_loggers[mach_name].log(lev, what)
+        else:
+            self.__mach_loggers[mach_name].append((lev, what))
         if kwargs.get("global_flag", False):
             self.log(what, lev)
-    def close_mach_log(self, mach_name=None):
+    def _get_mach_logger(self, mach_name):
+        return logging_tools.get_logger(
+            "{}.{}".format(
+                global_config["LOG_NAME"],
+                mach_name.replace(".", r"\."),
+            ),
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True,
+        )
+    def close_mach_log(self, mach_name=None, **kwargs):
         if mach_name is not None:
             self.__cached_mach_name = mach_name
         if self.__cached_mach_name:
             mach_name = self.__cached_mach_name
-            self.__mach_loggers[mach_name].close()
+            if self.__write_logs:
+                self.__mach_loggers[mach_name].close()
+            else:
+                if kwargs.get("write_logs", False):
+                    # write logs because of flag (errors ?)
+                    _logger = self._get_mach_logger(mach_name)
+                    for _lev, _what in self.__mach_loggers[mach_name]:
+                        _logger.log(_lev, _what)
+                    _logger.close()
+                    del _logger
             del self.__mach_loggers[mach_name]
     def _check_md_config(self):
         c_stat, out = commands.getstatusoutput("{}/bin/{} -v {}/etc/{}.cfg".format(
@@ -371,6 +391,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if build_dv:
                 self.log("init gauge with max={:d}".format(total_hosts))
                 build_dv.init_as_gauge(total_hosts)
+            self.send_pool_message("build_info", "unreachable_devices", len(unreachable_pks), target="syncer")
+            if unreachable_pks:
+                for _urd in device.objects.filter(Q(pk__in=unreachable_pks)).select_related("domain_tree_node"):
+                    self.send_pool_message("build_info", "unreachable_device", _urd.pk, unicode(_urd), unicode(_urd.device_group), target="syncer")
             # todo, move to separate processes
             gc_list = [self.__gen_config]
             if not single_build:
@@ -387,8 +411,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 _bc.host_list = h_list
                 _bc.dev_templates = dev_templates
                 _bc.serv_templates = serv_templates
+                _bc.single_build = single_build
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                self._create_host_config_files(_bc, cur_gc, cur_dmap, single_build, hdep_from_topo)
+                self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if not single_build:
                     # refresh implies _write_entries
@@ -620,7 +645,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                    ng_ext_hosts,
                                    all_configs,
                                    nagvis_maps,
-                                   single_build,
                                    mccs_dict,
                                    ):
         # optimize
@@ -638,7 +662,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 checks_are_active = False
         # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         self.__cached_mach_name = host.full_name
-        self.mach_log("-------- {} ---------".format("master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)))
+        self.mach_log("-------- {} ---------".format("master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)), single_build=_bc.single_build)
         glob_log_str = "device {:<48s}{} ({}), d={:>3s}".format(
             host.full_name[:48],
             "*" if len(host.name) > 48 else " ",
@@ -680,7 +704,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 if not valid_ips:
                     num_error += 1
             act_def_dev = _bc.dev_templates[host.mon_device_templ_id or 0]
-            if single_build:
+            if _bc.single_build:
                 if not valid_ips:
                     valid_ips = [(net_ip(ip="0.0.0.0"), host.full_name)]
                     self.mach_log("no ips found using {} as dummy IP".format(str(valid_ips)))
@@ -789,7 +813,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         act_host["contacts"] = c_list
                     self.mach_log("contact groups for host: {}".format(
                         ", ".join(sorted(host_groups)) or "none"))
-                    if host.monitor_checks or single_build:
+                    if host.monitor_checks or _bc.single_build:
                         if host.valid_ip.ip == "0.0.0.0":
                             self.mach_log("IP address is '{}', host is assumed to be always up".format(unicode(host.valid_ip)))
                             act_host["check_command"] = "check-host-ok"
@@ -1171,7 +1195,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
-        self.close_mach_log()
+        self.close_mach_log(write_logs=num_error > 0)
     def _get_cc_name(self, in_str):
         if self.__safe_cc_name:
             return build_safe_name(in_str)
@@ -1208,7 +1232,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         return device.objects.exclude(Q(device_type__identifier="MD")).filter(h_filter).count()
-    def _create_host_config_files(self, _bc, cur_gc, d_map, single_build, hdep_from_topo):
+    def _create_host_config_files(self, _bc, cur_gc, d_map, hdep_from_topo):
         """
         d_map : distance map
         """
@@ -1247,7 +1271,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
             ac_filter &= Q(monitor_server=cur_gc.monitor_server)
-        if not single_build:
+        if not _bc.single_build:
             h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
             ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         # dictionary with all parent / slave relations
@@ -1332,6 +1356,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         mccs_dict = {mccs.pk : mccs for mccs in mon_check_command_special.objects.all()}
         # caching object
         # build lookup-table
+        self.send_pool_message("build_info", "device_count", cur_gc.monitor_server.full_name, len(host_names), target="syncer")
         nagvis_maps = set()
         for host_name, host in sorted(host_names):
             if _bc.build_dv:
@@ -1350,7 +1375,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 ng_ext_hosts,
                 all_configs,
                 nagvis_maps,
-                single_build,
                 mccs_dict,
             )
         host_names = host_nc.keys()
@@ -1416,7 +1440,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             )
                 del host["possible_parents"]
         self.log("end parenting run")
-        if cur_gc.master and not single_build:
+        if cur_gc.master and not _bc.single_build:
             if hdep_from_topo:
                 # import pprint
                 # pprint.pprint(p_dict)

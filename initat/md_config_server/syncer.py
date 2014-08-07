@@ -148,6 +148,10 @@ class syncer_process(threading_tools.process_obj):
             # trigger reload when sync is done
             for _slave in self.__slave_configs.itervalues():
                 _slave.reload_after_sync()
+        elif _bi_type == "unreachable_devices":
+            self.__master_config.unreachable_devices(_vals[0])
+        elif _bi_type == "unreachable_device":
+            self.__master_config.unreachable_device(_vals[0], _vals[1], _vals[2])
         elif _bi_type in ["start_config_build", "end_config_build"]:
             _srv_name = _vals.pop(0)
             if _srv_name in self.__slave_lut:
@@ -156,6 +160,14 @@ class syncer_process(threading_tools.process_obj):
             else:
                 # master
                 self.__master_config.config_ts(_bi_type.split("_")[0])
+        elif _bi_type == "device_count":
+            _srv_name = _vals.pop(0)
+            if _srv_name in self.__slave_lut:
+                # slave
+                self.__slave_configs[self.__slave_lut[_srv_name]].device_count(_vals[0])
+            else:
+                # master
+                self.__master_config.device_count(_vals[0])
         elif _bi_type == "sync_slave":
             slave_name = _vals.pop(0)
             if slave_name in self.__slave_lut:

@@ -25,7 +25,8 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
      mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special, \
-     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
+     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency, \
+     mon_build_unreachable
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
@@ -253,6 +254,24 @@ class sync_config(object):
             # set config timestamp
             setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
             self.__md_struct.save()
+    def device_count(self, _num):
+        if self.__md_struct:
+            self.__md_struct.num_devices = _num
+            self.__md_struct.save(update_fields=["num_devices"])
+    def unreachable_devices(self, num):
+        # set number of unreachable devices
+        if self.__md_struct:
+            self.__md_struct.unreachable_devices = num
+            self.__md_struct.save(update_fields=["unreachable_devices"])
+    def unreachable_device(self, dev_pk, dev_name, devg_name):
+        # add unreachable device
+        if self.__md_struct:
+            mon_build_unreachable.objects.create(
+                mon_dist_master=self.__md_struct,
+                device_pk=dev_pk,
+                device_name=dev_name,
+                devicegroup_name=devg_name,
+            )
     def start_build(self, b_version, master=None):
         # generate datbase entry for build
         self.config_version_build = b_version
@@ -1511,6 +1530,7 @@ class build_cache(object):
         self.dev_templates = None
         self.serv_templates = None
         self.cache_mode = "???"
+        self.single_build = False
         self.__var_cache = var_cache(cdg, prefill=full_build)
         # device_group user access
         self.dg_user_access = {}

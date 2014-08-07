@@ -60,7 +60,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 "out" : (1, "md-config-server.out"),
                 "err" : (0, "/var/lib/logging-server/py_err_zmq")},
                                       zmq_context=self.zmq_context)
-        self.__msi_block = self._init_msi_block()
+        self._init_msi_block()
         connection.close()
         # re-insert config
         self._re_insert_config()
@@ -335,24 +335,20 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=3, process_name=src_process)
-            self.__msi_block.save_block()
+        self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=3, process_name=src_process)
+        self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
-        if not global_config["DEBUG"] or True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("md-config-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6, process_name="manager")
-            msi_block.start_command = "/etc/init.d/md-config-server start"
-            msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("md-config-server")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6, process_name="manager")
+        msi_block.start_command = "/etc/init.d/md-config-server start"
+        msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
+        msi_block.kill_pids = True
+        msi_block.save_block()
+        self.__msi_block = msi_block
     def _register_slave(self, *args, **kwargs):
         src_proc, src_id, slave_ip, slave_uuid = args
         conn_str = "tcp://{}:{:d}".format(
@@ -498,14 +494,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 logging_tools.LOG_LEVEL_ERROR)
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        self.__msi_block.remove_meta_block()
     def loop_post(self):
         self.com_socket.close()
         self.vector_socket.close()
         self.__log_template.close()
     def thread_loop_post(self):
         process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        self.__msi_block.remove_meta_block()
 
