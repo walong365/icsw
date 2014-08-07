@@ -259,12 +259,23 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         srv_com["result"] = self._rebuild_config(*dev_names)
         srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
+    def _cleanup_db(self):
+        # cleanup tasks for the database
+        num_empty_mhd = mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).count()
+        num_empty_msd = mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).count()
+        if num_empty_mhd:
+            self.log("removing {} empty mon_host_dependencies".format(num_empty_mhd))
+            mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
+        if num_empty_msd:
+            self.log("removing {} empty mon_service_dependencies".format(num_empty_msd))
+            mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
     def _rebuild_config(self, *args, **kwargs):
         single_build = True if len(args) > 0 else False
         if not single_build:
             # from mixin
             self._check_md_version()
             self._check_relay_version()
+            self._cleanup_db()
         # copy from global_config (speedup)
         self.gc = configfile.gc_proxy(global_config)
         hdep_from_topo = self.gc["USE_HOST_DEPENDENCIES"] and self.gc["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
@@ -355,10 +366,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
             # build distance map
-            cur_dmap = self._build_distance_map(self.__gen_config.monitor_server, show_unroutable=not single_build)
+            cur_dmap, unreachable_pks = self._build_distance_map(self.__gen_config.monitor_server, show_unroutable=not single_build)
             total_hosts = sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
             if build_dv:
-                self.log("init gauge with max=%d" % (total_hosts))
+                self.log("init gauge with max={:d}".format(total_hosts))
                 build_dv.init_as_gauge(total_hosts)
             # todo, move to separate processes
             gc_list = [self.__gen_config]
@@ -370,7 +381,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     # recreate access files
                     cur_gc._create_access_entries()
 
-                _bc = build_cache(self.log, cdg, full_build=not single_build)
+                _bc = build_cache(self.log, cdg, full_build=not single_build, unreachable_pks=unreachable_pks)
                 _bc.cache_mode = cache_mode
                 _bc.build_dv = build_dv
                 _bc.host_list = h_list
@@ -403,7 +414,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
         if self.gc["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
-            self.log("queries issued: %d" % (tot_query_count))
+            self.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 self.log("{:5d} {}".format(q_idx, act_sql["sql"][:180]))
         del self.gc
@@ -468,11 +479,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     max_level = max(max_level, dst_dev.md_dist_level)
                     run_again = True
                 else:
-                    self.log("dropping link (%d, %d), devices disabled?" % (src_nd, dst_nd), logging_tools.LOG_LEVEL_WARN)
+                    self.log("dropping link ({:d}, {:d}), devices disabled?".format(src_nd, dst_nd), logging_tools.LOG_LEVEL_WARN)
             if not run_again:
                 break
-        self.log("max distance level: %d" % (max_level))
+        self.log("max distance level: {:d}".format(max_level))
         nodes_ur = [unicode(value) for value in dm_dict.itervalues() if value.md_dist_level < 0]
+        ur_pks = [_entry.pk for _entry in dm_dict.itervalues() if _entry.md_dist_level < 0]
         if nodes_ur and show_unroutable:
             self.log(
                 "{}: {}".format(
@@ -487,7 +499,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     len([True for value in dm_dict.itervalues() if value.md_dist_level == level]),
                 )
             )
-        return {key : value.md_dist_level for key, value in dm_dict.iteritems()}
+        return {key : value.md_dist_level for key, value in dm_dict.iteritems()}, ur_pks
     def _create_general_config(self, write_entries=None):
         self.__gen_config_built = True
         config_list = [self.__gen_config] + self.__slave_configs.values()
@@ -601,7 +613,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                    _bc,
                                    cur_gc,
                                    host,
-                                   check_hosts,
                                    d_map,
                                    my_net_idxs,
                                    all_access,
@@ -665,13 +676,24 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if host.name == self.gc["SERVER_SHORT_NAME"]:
                 valid_ips, traces = ([(net_ip(ip="127.0.0.1"), "localdomain")], [(1, 0, [host.pk])])
             else:
-                valid_ips, traces = self._get_target_ip_info(_bc, my_net_idxs, net_devices, _bc.get_host(host.pk), check_hosts)
+                valid_ips, traces = self._get_target_ip_info(_bc, my_net_idxs, net_devices, _bc.get_host(host.pk))
                 if not valid_ips:
                     num_error += 1
             act_def_dev = _bc.dev_templates[host.mon_device_templ_id or 0]
-            if not valid_ips and single_build:
-                valid_ips = [(net_ip(ip="0.0.0.0"), host.full_name)]
-                self.mach_log("no ips found using {} as dummy IP".format(str(valid_ips)))
+            if single_build:
+                if not valid_ips:
+                    valid_ips = [(net_ip(ip="0.0.0.0"), host.full_name)]
+                    self.mach_log("no ips found using {} as dummy IP".format(str(valid_ips)))
+            else:
+                if (len(valid_ips) > 0) != host.reachable:
+                    self.log(
+                        "reachable flag {} for host {} differs from valid_ips {}".format(
+                            str(host.reachable),
+                            unicode(host),
+                            str(valid_ips),
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL,
+                    )
             if valid_ips and act_def_dev:
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
@@ -1012,55 +1034,130 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                     )
                         # add host dependencies
                         if use_host_deps:
-                            for h_dep in mon_host_dependency.objects.filter(Q(dependent_devices=host)).select_related(
-                                "mon_host_dependency_templ",
-                                "mon_host_dependency_templ__mon_period",
-                                ):
-                                act_host_dep = mon_config("hostdependency", "")
-                                act_host_dep["host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in h_dep.devices.all().select_related("domain_tree_node")]
-                                act_host_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in h_dep.dependent_devices.all().select_related("domain_tree_node")]
-                                h_dep.feed_config(act_host_dep)
-                                host_config_list.append(act_host_dep)
+                            # old code
+                            # for h_dep in mon_host_dependency.objects.filter(Q(dependent_devices=host)).select_related(
+                            #    "mon_host_dependency_templ",
+                            #    "mon_host_dependency_templ__mon_period",
+                            #    ):
+                            #    act_host_dep = mon_config("hostdependency", "")
+                            #    act_host_dep["host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in h_dep.devices.all().select_related("domain_tree_node")]
+                            #    act_host_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in h_dep.dependent_devices.all().select_related("domain_tree_node")]
+                            #    h_dep.feed_config(act_host_dep)
+                            #    host_config_list.append(act_host_dep)
+                            # new code
+                            for h_dep in _bc.get_dependencies("hd", host.pk):
+                                # check reachability
+                                _unreachable = [_bc.get_host(_dev_pk) for _dev_pk in h_dep.devices_list + h_dep.master_list if not _bc.get_host(_dev_pk).reachable]
+                                if _unreachable:
+                                    self.mach_log(
+                                        "cannot create host dependency, {} unrechable: {}".format(
+                                            logging_tools.get_plural("device", len(_unreachable)),
+                                            ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
+                                         ),
+                                         logging_tools.LOG_LEVEL_ERROR,
+                                    )
+                                else:
+                                    act_host_dep = mon_config("hostdependency", "")
+                                    act_host_dep["host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
+                                    act_host_dep["dependent_host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
+                                    h_dep.feed_config(act_host_dep)
+                                    host_config_list.append(act_host_dep)
                         # add service dependencies
                         if use_service_deps:
-                            for s_dep in mon_service_dependency.objects.filter(Q(dependent_devices=host)).select_related(
-                                "mon_service_dependency_templ",
-                                "mon_service_dependency_templ__mon_period",
-                                "mon_check_command",
-                                "dependent_mon_check_command",
-                                "mon_service_cluster",
-                                ):
+                            # old code
+#                             for s_dep in mon_service_dependency.objects.filter(Q(dependent_devices=host)).select_related(
+#                                 "mon_service_dependency_templ",
+#                                 "mon_service_dependency_templ__mon_period",
+#                                 "mon_check_command",
+#                                 "dependent_mon_check_command",
+#                                 "mon_service_cluster",
+#                                 ):
+#                                 act_service_dep = mon_config("servicedependency", "")
+#                                 if s_dep.mon_service_cluster_id:
+#                                     all_ok = True
+#                                     for d_host in s_dep.dependent_devices.all():
+#                                         all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
+#                                     if all_ok:
+#                                         act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
+#                                         sc_check = cur_gc["command"]["check_service_cluster"]
+#                                         # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
+#                                         act_service_dep["service_description"] = "{} / {}".format(sc_check.get_description(), _bc.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
+#                                         act_service_dep["host_name"] = _bc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
+#                                         act_service_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.dependent_devices.all().select_related("domain_tree_node")]
+#                                         s_dep.feed_config(act_service_dep)
+#                                         host_config_list.append(act_service_dep)
+#                                     else:
+#                                         self.mach_log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
+#                                 else:
+#                                     all_ok = True
+#                                     for p_host in s_dep.devices.all():
+#                                         all_ok &= self._check_for_config("parent", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, p_host, s_dep.mon_check_command_id)
+#                                     for d_host in s_dep.dependent_devices.all():
+#                                         all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
+#                                     if all_ok:
+#                                         act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
+#                                         act_service_dep["service_description"] = _bc.mcc_lut[s_dep.mon_check_command_id][1]
+#                                         act_service_dep["host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.devices.all().select_related("domain_tree_node")]
+#                                         act_service_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.dependent_devices.all().select_related("domain_tree_node")]
+#                                         s_dep.feed_config(act_service_dep)
+#                                         host_config_list.append(act_service_dep)
+#                                     else:
+#                                         self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
+                            # new code
+                            for s_dep in _bc.get_dependencies("sd", host.pk):
                                 act_service_dep = mon_config("servicedependency", "")
                                 if s_dep.mon_service_cluster_id:
-                                    all_ok = True
-                                    for d_host in s_dep.dependent_devices.all():
-                                        all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
-                                    if all_ok:
-                                        act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
-                                        sc_check = cur_gc["command"]["check_service_cluster"]
-                                        # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
-                                        act_service_dep["service_description"] = "{} / {}".format(sc_check.get_description(), _bc.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
-                                        act_service_dep["host_name"] = _bc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
-                                        act_service_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.dependent_devices.all().select_related("domain_tree_node")]
-                                        s_dep.feed_config(act_service_dep)
-                                        host_config_list.append(act_service_dep)
+                                    # check reachability
+                                    _unreachable = [_bc.get_host(_dev_pk) for _dev_pk in s_dep.master_list if not _bc.get_host(_dev_pk).reachable]
+                                    if _unreachable:
+                                        self.mach_log(
+                                            "cannot create host dependency, {} unrechable: {}".format(
+                                                logging_tools.get_plural("device", len(_unreachable)),
+                                                ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
+                                             ),
+                                             logging_tools.LOG_LEVEL_ERROR,
+                                        )
                                     else:
-                                        self.mach_log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
+                                        all_ok = True
+                                        for d_host in s_dep.master_list:
+                                            all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, _bc.get_host(d_host), s_dep.dependent_mon_check_command_id)
+                                        if all_ok:
+                                            act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
+                                            sc_check = cur_gc["command"]["check_service_cluster"]
+                                            # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
+                                            act_service_dep["service_description"] = "{} / {}".format(sc_check.get_description(), _bc.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
+                                            act_service_dep["host_name"] = _bc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
+                                            act_service_dep["dependent_host_name"] = [_bc.get_host(dev_pk).full_name for cur_dev in s_dep.master_list]
+                                            s_dep.feed_config(act_service_dep)
+                                            host_config_list.append(act_service_dep)
+                                        else:
+                                            self.mach_log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
                                 else:
-                                    all_ok = True
-                                    for p_host in s_dep.devices.all():
-                                        all_ok &= self._check_for_config("parent", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, p_host, s_dep.mon_check_command_id)
-                                    for d_host in s_dep.dependent_devices.all():
-                                        all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
-                                    if all_ok:
-                                        act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
-                                        act_service_dep["service_description"] = _bc.mcc_lut[s_dep.mon_check_command_id][1]
-                                        act_service_dep["host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.devices.all().select_related("domain_tree_node")]
-                                        act_service_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.dependent_devices.all().select_related("domain_tree_node")]
-                                        s_dep.feed_config(act_service_dep)
-                                        host_config_list.append(act_service_dep)
+                                    # check reachability
+                                    _unreachable = [_bc.get_host(_dev_pk) for _dev_pk in s_dep.master_list + s_dep.devices_list if not _bc.get_host(_dev_pk).reachable]
+                                    if _unreachable:
+                                        self.mach_log(
+                                            "cannot create host dependency, {} unrechable: {}".format(
+                                                logging_tools.get_plural("device", len(_unreachable)),
+                                                ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
+                                             ),
+                                             logging_tools.LOG_LEVEL_ERROR,
+                                        )
                                     else:
-                                        self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
+                                        all_ok = True
+                                        for p_host in s_dep.devices_list:
+                                            all_ok &= self._check_for_config("parent", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, _bc.get_host(p_host), s_dep.mon_check_command_id)
+                                        for d_host in s_dep.master_list:
+                                            all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, _bc.get_host(d_host), s_dep.dependent_mon_check_command_id)
+                                        if all_ok:
+                                            act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
+                                            act_service_dep["service_description"] = _bc.mcc_lut[s_dep.mon_check_command_id][1]
+                                            act_service_dep["host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in s_dep.devices_list]
+                                            act_service_dep["dependent_host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in s_dep.master_list]
+                                            s_dep.feed_config(act_service_dep)
+                                            host_config_list.append(act_service_dep)
+                                        else:
+                                            self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
                         host_nc.add_device(host_config_list, host)
                     else:
                         self.mach_log("Host {} is disabled".format(host.full_name))
@@ -1126,7 +1223,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ng_ext_hosts = self._get_mon_ext_hosts()
         # check_hosts
         if _bc.host_list:
-            # not beautiful but ok
+            # not beautiful but working
             pk_list = []
             for full_h_name in _bc.host_list:
                 try:
@@ -1145,8 +1242,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ac_filter = Q()
         # add master/slave related filters
         if cur_gc.master:
+            # need all devices for master
             pass
-            # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
             ac_filter &= Q(monitor_server=cur_gc.monitor_server)
@@ -1157,11 +1254,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
             ps_dict[ps_config.name] = ps_config.parent_config.name
-        check_hosts = {cur_dev.pk : cur_dev for cur_dev in device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).select_related("domain_tree_node", "device_group")}
-        for cur_dev in check_hosts.itervalues():
-            # set default values
-            cur_dev.valid_ips = {}
-            cur_dev.invalid_ips = {}
+        _bc.set_host_list(device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).values_list("pk", flat=True))
+        # check_hosts = {cur_dev.pk : cur_dev for cur_dev in device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).select_related("domain_tree_node", "device_group")}
+        # for cur_dev in check_hosts.itervalues():
+        #    # set default values
+        #    cur_dev.valid_ips = {}
+        #    cur_dev.invalid_ips = {}
         meta_devices = {md.device_group.pk : md for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")}
         all_configs = {}
         for cur_dev in device.objects.filter(ac_filter).select_related("domain_tree_node").prefetch_related("device_config_set", "device_config_set__config"):
@@ -1217,30 +1315,31 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             else:
                 dom_name = ""
             # print n_i, n_t, n_d, d_pk, dom_name
-            if d_pk in check_hosts:
-                cur_host = check_hosts[d_pk]
+            if d_pk in _bc.host_pks:
+                cur_host = _bc.get_host(d_pk)
                 # populate valid_ips and invalid_ips
                 getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
         host_nc = cur_gc["device.d"]
         # delete host if already present in host_table
-        for host_pk, host in check_hosts.iteritems():
+        host_names = []
+        for host_pk in _bc.host_pks:
+            host = _bc.get_host(host_pk) # , host in check_hosts.iteritems():
+            host_names.append((host.full_name, host))
             if host.full_name in host_nc:
                 # now very simple
                 del host_nc[host.full_name]
-
         # mccs dict
         mccs_dict = {mccs.pk : mccs for mccs in mon_check_command_special.objects.all()}
         # caching object
         # build lookup-table
         nagvis_maps = set()
-        for host_name, host in sorted([(cur_dev.full_name, cur_dev) for cur_dev in check_hosts.itervalues()]):
+        for host_name, host in sorted(host_names):
             if _bc.build_dv:
                 _bc.build_dv.count()
             self._create_single_host_config(
                 _bc,
                 cur_gc,
                 host,
-                check_hosts,
                 d_map,
                 my_net_idxs,
                 all_access,
@@ -1426,8 +1525,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             act_serv["is_volatile"] = "1" if serv_temp.volatile else "0"
             act_serv["check_period"] = cur_gc["timeperiod"][serv_temp.nsc_period_id].name
             act_serv["max_check_attempts"] = serv_temp.max_attempts
-            act_serv["normal_check_interval"] = serv_temp.check_interval
-            act_serv["retry_check_interval"] = serv_temp.retry_interval
+            act_serv["check_interval"] = serv_temp.check_interval
+            act_serv["retry_interval"] = serv_temp.retry_interval
             act_serv["notification_interval"] = serv_temp.ninterval
             act_serv["notification_options"] = serv_temp.notification_options
             act_serv["notification_period"] = cur_gc["timeperiod"][serv_temp.nsn_period_id].name
@@ -1475,7 +1574,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # else:
             ret_field.append(act_serv)
         return ret_field
-    def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host, check_hosts):
+    def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host):
         if _bc.cache_mode in ["ALWAYS", "DYNAMIC"]:
             # use stored traces in mode ALWAYS and DYNAMIC
             traces = _bc.get_mon_trace(host, net_devices, srv_net_idxs)

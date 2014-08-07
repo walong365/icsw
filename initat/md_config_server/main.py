@@ -65,6 +65,7 @@ def main():
             VERSION_STRING),
         add_writeback_option=True,
         positional_arguments=False)
+    # enable connection debugging
     settings.DEBUG = global_config["DEBUG"]
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="monitor_server")

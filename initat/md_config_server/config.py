@@ -25,7 +25,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
      mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special, \
-     mon_host_cluster, mon_service_cluster, mon_trace
+     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
@@ -1488,12 +1488,13 @@ class content_emitter(object):
             return "-"
 
 class build_cache(object):
-    def __init__(self, log_com, cdg, full_build):
+    def __init__(self, log_com, cdg, full_build, unreachable_pks=[]):
         self.log_com = log_com
         # build cache to speed up config generation
         # stores various cached objects
         # global luts
         # lookup table for host_check_commands
+        self.unreachable_pks = set(unreachable_pks or [])
         s_time = time.time()
         self.mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
         # lookup table for config -> mon_check_commands
@@ -1519,6 +1520,9 @@ class build_cache(object):
                 .select_related("device_type", "domain_tree_node", "device_group") \
                 .prefetch_related("mon_trace_set")
             }
+        # set reachable flag
+        for key, value in self.all_hosts_dict.iteritems():
+            value.reachable = value.pk not in self.unreachable_pks
         # traces
         self.__host_traces = {host.pk : list(host.mon_trace_set.all()) for host in self.all_hosts_dict.itervalues()}
         # host / service clusters
@@ -1541,6 +1545,50 @@ class build_cache(object):
                 _tco.devices_list.append(_entry.device_id)
                 # clusters[_name][_entry.]
         self.__clusters = clusters
+        # host / service dependencies
+        deps = {}
+        for _obj, _name in [(mon_host_dependency, "hd"), (mon_service_dependency, "sd")]:
+            _lut = {}
+            _query = _obj.objects.all().prefetch_related("devices", "dependent_devices")
+            if _name == "hd":
+                _query = _query.select_related(
+                    "mon_host_dependency_templ",
+                    "mon_host_dependency_templ__dependency_period",
+                )
+            else:
+                _query = _query.select_related(
+                    "mon_service_cluster",
+                    "mon_check_command",
+                    "dependent_mon_check_command",
+                    "mon_service_dependency_templ",
+                    "mon_service_dependency_templ__dependency_period",
+                )
+            for _do in _query:
+                # == slaves
+                _do.devices_list = []
+                # == dependent devices
+                _do.master_list = []
+                _lut[_do.pk] = []
+                for _dd in _do.dependent_devices.all():
+                    _lut[_do.pk].append(_dd.pk)
+                    deps.setdefault(_name, {}).setdefault(_dd.pk, []).append(_do)
+            for _entry in _obj.devices.through.objects.all():
+                if _name == "hd":
+                    _pk = _entry.mon_host_dependency_id
+                else:
+                    _pk = _entry.mon_service_dependency_id
+                for _devpk in _lut[_pk]:
+                    _tdo = [_do for _do in deps[_name][_devpk] if _do.pk == _pk][0]
+                    _tdo.devices_list.append(_entry.device_id)
+            for _entry in _obj.dependent_devices.through.objects.all():
+                if _name == "hd":
+                    _pk = _entry.mon_host_dependency_id
+                else:
+                    _pk = _entry.mon_service_dependency_id
+                for _devpk in _lut[_pk]:
+                    _tdo = [_do for _do in deps[_name][_devpk] if _do.pk == _pk][0]
+                    _tdo.master_list.append(_entry.device_id)
+        self.__dependencies = deps
         e_time = time.time()
         self.log("init build_cache in {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -1552,6 +1600,11 @@ class build_cache(object):
     def get_cluster(self, c_type, main_device_id):
         if main_device_id in self.__clusters.get(c_type, {}):
             return self.__clusters[c_type][main_device_id]
+        else:
+            return []
+    def get_dependencies(self, s_type, main_device_id):
+        if main_device_id in self.__dependencies.get(s_type, {}):
+            return self.__dependencies[s_type][main_device_id]
         else:
             return []
     def get_mon_trace(self, host, dev_net_idxs, srv_net_idxs):
@@ -1583,6 +1636,12 @@ class build_cache(object):
         else:
             _new_trace = mon_trace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
             self.__host_traces.setdefault(host.pk, []).append(_new_trace)
+    def set_host_list(self, host_pks):
+        self.host_pks = set(list(host_pks))
+        for _pk in host_pks:
+            self.all_hosts_dict[_pk].valid_ips = {}
+            self.all_hosts_dict[_pk].invalid_ips = {}
+        # print host_pks
 
 class host_type_config(content_emitter):
     def __init__(self, build_process):
