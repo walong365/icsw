@@ -62,6 +62,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.__nagios_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
         connection.close()
         self.__mach_loggers = {}
+        self.__num_mach_logs = {}
         self.version = int(time.time())
         self.log("initial config_version is %d" % (self.version))
         self.router_obj = config_tools.router_object(self.log)
@@ -121,16 +122,20 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         else:
             self.__cached_mach_name = mach_name
         if mach_name not in self.__mach_loggers:
+            self.__num_mach_logs[mach_name] = 0
             if self.__write_logs:
                 self.__mach_loggers[mach_name] = self._get_mach_logger(mach_name)
             else:
                 self.__mach_loggers[mach_name] = []
+        self.__num_mach_logs[mach_name] += 1
         if self.__write_logs:
             self.__mach_loggers[mach_name].log(lev, what)
         else:
             self.__mach_loggers[mach_name].append((lev, what))
         if kwargs.get("global_flag", False):
             self.log(what, lev)
+    def get_num_mach_logs(self):
+        return self.__num_mach_logs.get(self.__cached_mach_name, 0)
     def _get_mach_logger(self, mach_name):
         return logging_tools.get_logger(
             "{}.{}".format(
@@ -147,6 +152,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.__cached_mach_name = mach_name
         if self.__cached_mach_name:
             mach_name = self.__cached_mach_name
+            del self.__num_mach_logs[mach_name]
             if self.__write_logs:
                 self.__mach_loggers[mach_name].close()
             else:
@@ -412,6 +418,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 _bc.dev_templates = dev_templates
                 _bc.serv_templates = serv_templates
                 _bc.single_build = single_build
+                _bc.debug = self.gc["DEBUG"]
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
@@ -1187,10 +1194,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         self.mach_log("Host {} is disabled".format(host.full_name))
             else:
                 self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
-        info_str = "{:3d} ok, {:3d} w, {:3d} e in {}".format(
+        info_str = "{:3d} ok, {:3d} w, {:3d} e ({:3d} {}) in {}".format(
             num_ok,
             num_warning,
             num_error,
+            self.get_num_mach_logs(),
+            "lc" if num_error == 0 else "lw",
             logging_tools.get_diff_time_str(time.time() - start_time))
         glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
@@ -1381,6 +1390,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.log("start parenting run")
         p_dict = {}
         # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
+        _p_ok, _p_failed = (0, 0)
         for host_name in sorted(host_names):
             host = host_nc[host_name][0]
             if host.has_key("possible_parents"):
@@ -1416,8 +1426,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     host["parents"] = list(parent_list)
                     for cur_parent in parent_list:
                         p_dict.setdefault(cur_parent, []).append(host_name)
-                    self.log("Setting parent of '{}' to {}".format(host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
+                    _p_ok += 1
+                    if _bc.debug:
+                        self.log("Setting parent of '{}' to {}".format(host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
                 else:
+                    _p_failed += 1
                     self.log("No parents found for '{}' (albeit possible_parents was set)".format(host_name), logging_tools.LOG_LEVEL_WARN)
                     p_parents = host["possible_parents"]
                     for t_num, (_p_val, _nd_val, p_list) in enumerate(p_parents):
@@ -1439,7 +1452,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 )
                             )
                 del host["possible_parents"]
-        self.log("end parenting run")
+        self.log("end parenting run, {:d} ok, {:d} failed".format(_p_ok, _p_failed))
         if cur_gc.master and not _bc.single_build:
             if hdep_from_topo:
                 # import pprint

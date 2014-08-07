@@ -1365,13 +1365,21 @@ class main_config(object):
                         pass
         end_time = time.time()
         if cfg_written:
-            self.log(
-                "wrote %s (%s) in %s" % (
-                    logging_tools.get_plural("config_file", len(cfg_written)),
-                    ", ".join(cfg_written),
-                    logging_tools.get_diff_time_str(end_time - start_time)
+            if global_config["DEBUG"]:
+                self.log(
+                    "wrote {} ({}) in {}".format(
+                        logging_tools.get_plural("config_file", len(cfg_written)),
+                        ", ".join(cfg_written),
+                        logging_tools.get_diff_time_str(end_time - start_time)
+                    )
                 )
-            )
+            else:
+                self.log(
+                    "wrote {} in {}".format(
+                        logging_tools.get_plural("config_file", len(cfg_written)),
+                        logging_tools.get_diff_time_str(end_time - start_time)
+                    )
+                )
         else:
             self.log("no config files written")
         return len(cfg_written) + len(empty_cfg_written)
@@ -1531,6 +1539,7 @@ class build_cache(object):
         self.serv_templates = None
         self.cache_mode = "???"
         self.single_build = False
+        self.debug = False
         self.__var_cache = var_cache(cdg, prefill=full_build)
         # device_group user access
         self.dg_user_access = {}
@@ -2233,19 +2242,30 @@ class config_dir(content_emitter):
                 cfg_written.append(key)
         present_entries = set(os.listdir(cfg_dir))
         del_entries = present_entries - new_entries
+        _dbg = global_config["DEBUG"]
         if del_entries:
-            self.log("removing %s from %s" % (logging_tools.get_plural("entry", len(del_entries)),
-                                              cfg_dir), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "removing {} from {}".format(
+                    logging_tools.get_plural("entry", len(del_entries)),
+                    cfg_dir,
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
             for del_entry in del_entries:
                 full_name = os.path.join(cfg_dir, del_entry)
                 try:
                     os.unlink(full_name)
                 except:
-                    self.log("cannot remove %s: %s" % (
-                        full_name,
-                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "cannot remove {}: {}".format(
+                            full_name,
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
-                    self.log("removed %s" % (full_name), logging_tools.LOG_LEVEL_WARN)
+                    if _dbg:
+                        self.log("removed {}".format(full_name), logging_tools.LOG_LEVEL_WARN)
         return cfg_written
     def _create_sub_content(self, key):
         content = []
