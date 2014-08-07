@@ -121,6 +121,7 @@ class mon_build_unreachable(models.Model):
     mon_dist_master = models.ForeignKey("backbone.mon_dist_master")
     device_id = models.IntegerField(default=0)
     device_name = models.CharField(max_length=256, default="")
+    device_group = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
