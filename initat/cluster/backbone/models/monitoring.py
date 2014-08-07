@@ -65,24 +65,35 @@ class mon_trace(models.Model):
     class Meta:
         app_label = "backbone"
 
-# distribution models, one per run
-class mon_dist_slave(models.Model):
-    idx = models.AutoField(primary_key=True)
-    mon_dist_master = models.ForeignKey("backbone.mon_dist_master")
-    device = models.ForeignKey("backbone.device")
+class mon_dist_base(models.Model):
     # start of build
     config_build_start = models.DateTimeField(default=None, null=True)
     # end of build
     config_build_end = models.DateTimeField(default=None, null=True)
+    # version of of relayer / icinga
+    relayer_version = models.CharField(max_length=128, default="")
+    mon_version = models.CharField(max_length=128, default="")
+    # total build start
+    build_start = models.DateTimeField(default=None, null=True)
+    # total build end
+    build_end = models.DateTimeField(default=None, null=True)
+    # number of devices
+    num_devices = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        abstract = True
+
+# distribution models, one per run
+class mon_dist_slave(mon_dist_base):
+    idx = models.AutoField(primary_key=True)
+    mon_dist_master = models.ForeignKey("backbone.mon_dist_master")
+    device = models.ForeignKey("backbone.device")
     # start of first sync
     sync_start = models.DateTimeField(default=None, null=True)
     # end of last sync
     sync_end = models.DateTimeField(default=None, null=True)
     # number of distribute runs (==sync)
     num_runs = models.IntegerField(default=0)
-    # version of of master relayer / md-config-server / icinga
-    relayer_version = models.CharField(max_length=128, default="")
-    mon_version = models.CharField(max_length=128, default="")
     # files transfered / number of transfered commands
     num_files = models.IntegerField(default=0)
     num_transfers = models.IntegerField(default=0)
@@ -90,27 +101,15 @@ class mon_dist_slave(models.Model):
     size_data = models.IntegerField(default=0)
     # with overhead
     size_raw = models.IntegerField(default=0)
-    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
 
-class mon_dist_master(models.Model):
+class mon_dist_master(mon_dist_base):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     version = models.IntegerField(default=0)
-    # start of build
-    config_build_start = models.DateTimeField(default=None, null=True)
-    # end of build
-    config_build_end = models.DateTimeField(default=None, null=True)
-    # total build start
-    build_start = models.DateTimeField(default=None, null=True)
-    # total build end
-    build_end = models.DateTimeField(default=None, null=True)
-    # version of of master relayer / md-config-server / icinga
-    relayer_version = models.CharField(max_length=128, default="")
+    # version of of md-config-server
     md_version = models.CharField(max_length=128, default="")
-    mon_version = models.CharField(max_length=128, default="")
-    date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
         ordering = ("-idx",)
