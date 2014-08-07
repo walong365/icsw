@@ -385,7 +385,7 @@ PIPELINE_JS = {
             "js/libs/jquery.color.js",
             "js/libs/jquery.blockUI.js",
             "js/libs/angular.min.js",
-            "js/libs/moment-with-langs.min.js",
+            "js/libs/moment-with-locales.min.js",
             "js/libs/jquery.Jcrop.min.js",
         },
         "output_filename" : "pipeline/js/base.js"
