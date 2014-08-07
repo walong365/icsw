@@ -721,7 +721,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         )
                     )
                     # get device variables
-                    dev_variables, var_info = _bc.var_stack.get_vars(host)
+                    dev_variables, var_info = _bc.get_vars(host)
                     # store
                     host.dev_variables = dev_variables
                     self.mach_log(

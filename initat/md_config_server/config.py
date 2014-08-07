@@ -60,11 +60,19 @@ class var_cache(dict):
         self.__prefill = prefill
         if prefill:
             self._prefill()
+    def get_global_def_dict(self):
+        return {
+            "SNMP_VERSION"         : 2,
+            "SNMP_READ_COMMUNITY"  : "public",
+            "SNMP_WRITE_COMMUNITY" : "private",
+        }
     def _prefill(self):
         for _var in device_variable.objects.all().select_related("device__device_type"):
             if _var.device.device_type.identifier == "MD":
                 if _var.device.device_group_id == self.__cdg.pk:
                     _key = "GLOBAL"
+                    if _key not in self:
+                        self[_key] = {g_key : g_value for g_key, g_value in self.get_global_def_dict().iteritems()}
                 else:
                     _key = "dg__{:d}".format(_var.device.device_group_id)
             else:
@@ -76,11 +84,7 @@ class var_cache(dict):
             "dg__{:d}".format(cur_dev.device_group_id),
             "dev__{:d}".format(cur_dev.pk))
         if global_key not in self:
-            def_dict = {
-                "SNMP_VERSION"         : 2,
-                "SNMP_READ_COMMUNITY"  : "public",
-                "SNMP_WRITE_COMMUNITY" : "private",
-            }
+            def_dict = self.get_global_def_dict()
             # read global configs
             self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
             # update with def_dict
@@ -103,6 +107,7 @@ class var_cache(dict):
                 if s_key not in ret_dict:
                     ret_dict[s_key] = s_value
                     info_dict[key_n] += 1
+        # print cur_dev, ret_dict, info_dict
         return ret_dict, info_dict
 
 class sync_config(object):
@@ -1506,7 +1511,7 @@ class build_cache(object):
         self.dev_templates = None
         self.serv_templates = None
         self.cache_mode = "???"
-        self.var_stack = var_cache(cdg, prefill=full_build)
+        self.__var_cache = var_cache(cdg, prefill=full_build)
         # device_group user access
         self.dg_user_access = {}
         mon_user_pks = list(user.objects.filter(Q(mon_contact__pk__gt=0)).values_list("pk", flat=True))
@@ -1597,6 +1602,8 @@ class build_cache(object):
         return [_user.login for _user in self.dg_user_access[dg_pk]]
     def get_host(self, pk):
         return self.all_hosts_dict[pk]
+    def get_vars(self, host):
+        return self.__var_cache.get_vars(host)
     def get_cluster(self, c_type, main_device_id):
         if main_device_id in self.__clusters.get(c_type, {}):
             return self.__clusters[c_type][main_device_id]
