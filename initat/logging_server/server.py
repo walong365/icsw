@@ -31,6 +31,7 @@ import os
 import pickle
 import process_tools
 import pwd
+import resource
 import stat
 import threading_tools
 import time
@@ -54,6 +55,7 @@ class main_process(threading_tools.process_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
+        self.change_resource()
         self.renice()
         self._init_msi_block()
         # self.add_process(log_receiver("receiver", priority=50), start=True)
@@ -73,6 +75,18 @@ class main_process(threading_tools.process_pool):
         # error gather dict
         self.__eg_dict = {}
         self.__stat_timer = global_config["STATISTICS_TIMER"]
+    def change_resource(self):
+        cur_files = resource.getrlimit(resource.RLIMIT_OFILE)
+        new_files = (cur_files[1], cur_files[1])
+        self.log(
+            "changed RLIMIT_OFILE from ({:d}, {:d}) to ({:d}, {:d})".format(
+                cur_files[0],
+                cur_files[1],
+                new_files[0],
+                new_files[1],
+            )
+        )
+        resource.setrlimit(resource.RLIMIT_OFILE, new_files)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst="log", **kwargs):
         if not self["exit_requested"]:
             if dst in self.__handles:
@@ -179,16 +193,13 @@ class main_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pids("logserver/logserver", mult=3)
-        if not self.__options.DEBUG:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("logserver")
-            msi_block.add_actual_pid(mult=3, process_name="main")
-            msi_block.start_command = "/etc/init.d/logging-server start"
-            msi_block.stop_command = "/etc/init.d/logging-server force-stop"
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("logserver")
+        msi_block.add_actual_pid(mult=3, process_name="main")
+        msi_block.start_command = "/etc/init.d/logging-server start"
+        msi_block.stop_command = "/etc/init.d/logging-server force-stop"
+        msi_block.kill_pids = True
+        msi_block.save_block()
         self.__msi_block = msi_block
     def loop_end(self):
         self._check_error_dict(force=True)
@@ -508,8 +519,6 @@ class main_process(threading_tools.process_pool):
                 self.__num_forward_ok += 1
             if self.__only_forward:
                 return
-        # print "received from %s: %s" % (str(addr), str(data))
-        # self.transport.write("ok")
         self.decode_in_str(in_str)
     def decode_in_str(self, in_str):
         try:
