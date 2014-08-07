@@ -792,9 +792,14 @@ class relay_code(threading_tools.process_pool):
                         self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
                         self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
                 except:
-                    self._send_result(src_id, "error sending to %s: %s" % (
-                        conn_str,
-                        process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+                    self._send_result(
+                        src_id,
+                        "error sending to {}: {}".format(
+                            conn_str,
+                            process_tools.get_except_info(),
+                        ),
+                        server_command.SRV_REPLY_STATE_CRITICAL
+                    )
                 else:
                     if int(srv_com.get("raw_connect", "0")):
                         self.__raw_nhm_dict[id_discovery.get_mapping(conn_str)] = (time.time(), srv_com)
