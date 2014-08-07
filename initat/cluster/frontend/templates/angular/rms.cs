@@ -145,7 +145,7 @@ rmsnodeline = """
 <td ng-show="node_struct.toggle['slots_used']">
     <div ng-repeat="entry in data.load_vector" class="row">
          <div class="col-sm-12" style="width:140px; height:20px;">
-             <progressbar max="entry[0]" value="entry[1]" animate="false">{{ entry[1] }}</progressbar>
+             <progressbar max="entry[0]" value="entry[1]" animate="false">{{ entry[1] }} / {{ entry[0] }}</progressbar>
          </div>
     </div>
 </td>
@@ -428,9 +428,6 @@ class io_struct
                 @refresh++
         else
             @update = false
-            #@valid = false
-            #@resp_xml = undefined
-            #@text = ""
             @refresh++
           
 rms_module.value('ui.config', {
