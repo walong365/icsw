@@ -145,7 +145,7 @@ rmsnodeline = """
 <td ng-show="node_struct.toggle['slots_used']">
     <div ng-repeat="entry in data.load_vector" class="row">
          <div class="col-sm-12" style="width:140px; height:20px;">
-             <progressbar max="entry[0]" value="entry[1]" animate="false">{{ entry[1] }} / {{ entry[0] }}</progressbar>
+             <progressbar max="entry[0]" value="entry[1]" animate="false" type="info"><span style="color:black;">{{ entry[1] }} / {{ entry[0] }}</span></progressbar>
          </div>
     </div>
 </td>
@@ -443,6 +443,18 @@ class device_info
         @pk = in_list[0]
         @rrd = in_list[1]
 
+class slot_info
+    constructor: () ->
+        @reset()
+    reset: () =>
+        @total = 0
+        @used = 0
+        @reserved = 0
+    feed_vector: (in_vec) =>
+        @total += in_vec[0]
+        @used += in_vec[1]
+        @reserved += in_vec[2]
+        
 rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce) ->
         access_level_service.install($scope)
@@ -465,6 +477,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.node_list = []
         $scope.device_dict = {}
         $scope.device_dict_set = false
+        # slot info
+        $scope.slot_info = new slot_info()
+        $scope.running_slots = 0
+        $scope.waiting_slots = 0
         # set to false to avoid destroying of subscopes (graphs)
         $scope.refresh = true
         # fileinfostruct
@@ -510,6 +526,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                 $scope.max_load = 4
                             if $scope.max_load == 0
                                 $scope.max_load = 4
+                            $scope.slot_info.reset()
                             for entry in $scope.node_list
                                 _total = (parseInt(_val) for _val in entry.slots_total.split("/"))
                                 _used = (parseInt(_val) for _val in entry.slots_used.split("/"))
@@ -522,6 +539,19 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                 if _reserved.length < _size
                                     _reserved = (_reserved[0] for _idx in _.range(_size))
                                 entry.load_vector = _.zip(_total, _used, _reserved)
+                                for _lv in entry.load_vector
+                                    $scope.slot_info.feed_vector(_lv)
+                            # get slot info
+                            for _job in $scope.run_list
+                                if _job.granted_pe == "-"
+                                    $scope.running_slots += 1
+                                else
+                                    $scope.running_slots += parseInt(_job.granted_pe.split("(")[1].split(")")[0])
+                            for _job in $scope.wait_list
+                                if _job.requested_pe == "-"
+                                    $scope.waiting_slots += 1
+                                else
+                                    $scope.waiting_slots += parseInt(_job.requested_pe.split("(")[1].split(")")[0])
                         )
                         if not $scope.device_dict_set
                             node_names = (entry[0] for entry in json.node_table)
@@ -593,6 +623,12 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 success  : (xml) =>
                     parse_xml_response(xml)
         )
+        $scope.get_running_info = () ->
+            return "running (#{$scope.run_list.length} jobs, #{$scope.running_slots} slots)"
+        $scope.get_waiting_info = () ->
+            return "waiting (#{$scope.wait_list.length} jobs, #{$scope.waiting_slots} slots)"
+        $scope.get_node_info = () ->
+            return "node (#{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
         $scope.show_rrd = (event, name_list) ->
             dev_pks = ($scope.device_dict[name].pk for name in name_list).join(",")
             rrd_txt = """
@@ -600,7 +636,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     <div class="panel-body">
         <h2>Device #{name}</h2>
         <div ng-controller='rrd_ctrl'>
-            <rrdgraph devicepk='#{dev_pks}' selectkeys="load.*,net.all.*,mem.used.phys$" draw="1" mergedevices="0" graphsize="240x100">
+            <rrdgraph devicepk='#{dev_pks}' selectkeys="load.*,net.all.*,mem.used.phys$,^swap.*" draw="1" mergedevices="0" graphsize="240x100">
             </rrdgraph>
         </div>
     </div>

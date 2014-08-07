@@ -227,7 +227,7 @@ class pd_timerange
                 return @from
             else
                 # special format, no to set, from == moment() - @from hours
-                return moment().subtract("hours", @from)
+                return moment().subtract(@from, "hours")
         else
             # from not set, shift timeframe
             _timeframe = moment.duration(cur_to.unix() - cur_from.unix(), "seconds")
@@ -249,13 +249,13 @@ add_rrd_directive = (mod) ->
             $scope.all_timeranges = [
                 new pd_timerange("move timeframe to now", undefined, undefined)
                 new pd_timerange("last 24 hours", 24, undefined)
-                new pd_timerange("last day", moment().subtract("days", 1).startOf("day"), moment().subtract("days", 1).endOf("day"))
+                new pd_timerange("last day", moment().subtract(1, "days").startOf("day"), moment().subtract(1, "days").endOf("day"))
                 new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
-                new pd_timerange("last month", moment().subtract("month", 1).startOf("month"), moment().subtract("month", 1).endOf("month"))
+                new pd_timerange("last month", moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month"))
                 new pd_timerange("current week", moment().startOf("week"), moment().endOf("week"))
-                new pd_timerange("last week", moment().subtract("week", 1).startOf("week"), moment().subtract("week", 1).endOf("week"))
+                new pd_timerange("last week", moment().subtract(1, "week").startOf("week"), moment().subtract(1, "week").endOf("week"))
                 new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
-                new pd_timerange("last year", moment().subtract("year", 1).startOf("year"), moment().subtract("year", 1).endOf("year"))
+                new pd_timerange("last year", moment().subtract(1, "year").startOf("year"), moment().subtract(1, "year").endOf("year"))
             ]
             $scope.all_timeshifts = [
                 new pd_timeshift("none", 0)
@@ -269,7 +269,7 @@ add_rrd_directive = (mod) ->
             $scope.dt_valid = true
             $scope.vector_valid = false
             $scope.to_date_mom = moment()
-            $scope.from_date_mom = moment().subtract("days", 1)
+            $scope.from_date_mom = moment().subtract(1, "days")
             $scope.cur_dim = $scope.all_dims[1]
             $scope.error_string = ""
             $scope.searchstr = ""
