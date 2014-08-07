@@ -80,7 +80,7 @@ class mon_dist_base(models.Model):
     # number of devices
     num_devices = models.IntegerField(default=0)
     # unroutable devices, always zero for slaves
-    unroutable_devices = models.IntegerField(default=0)
+    unreachable_devices = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         abstract = True
