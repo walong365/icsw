@@ -198,12 +198,14 @@ class sge_info(object):
         self.__never_direct = kwargs.get("never_direct", False)
         self.__persistent_socket = kwargs.get("persistent_socket", True)
         self.__0mq_context, self.__0mq_socket = (None, None)
+        # update counter
+        self.__counter = 0
         # empty lut
         self.__job_lut = {}
         self._init_cache()
         # key : (relevance, call)
         setup_dict = {
-            "pes"       : (0, self._check_pe_dict),
+            "pe"        : (0, self._check_pe_dict),
             "hostgroup" : (1, self._check_hostgroup_dict),
             "queueconf" : (2, self._check_queueconf_dict),
             "complexes" : (3, self._check_complexes_dict),
@@ -358,6 +360,7 @@ class sge_info(object):
             )
         return new_el
     def update(self, **kwargs):
+        self.__counter += 1
         # self._init_update()
         upd_list = kwargs.get("update_list", self.__valid_dicts)
         if upd_list is None:
@@ -456,6 +459,13 @@ class sge_info(object):
                         ", ".join(server_update),
                         srv_name,
                         logging_tools.get_diff_time_str(e_time - s_time)))
+        if self.__verbose:
+            self.log(
+                "before merge: tree size {:d}, memory usage {}".format(
+                    len(etree.tostring(self.__tree)),
+                    logging_tools.get_size_str(process_tools.get_mem_info()),
+                )
+            )
         # copy direct results to tree
         for dict_name, new_el in _direct_results.iteritems():
             for prev_el in self.__tree.findall(dict_name):
@@ -463,11 +473,15 @@ class sge_info(object):
             self.__tree.append(new_el)
         if self.__verbose:
             self.log(
-                "tree size {:d}, memory usage {}".format(
+                "after merge : tree size {:d}, memory usage {}".format(
                     len(etree.tostring(self.__tree)),
                     logging_tools.get_size_str(process_tools.get_mem_info()),
                 )
             )
+        # debug trees
+        # if self.__counter < 3:
+        #    file("/tmp/rms_tree_{:d}".format(self.__counter), "w").write(etree.tostring(self.__tree, pretty_print=True))
+        # print self.__counter
         # s_time = time.time()
         # hm, fixes the memory issue but not very beautifull ...
         self.__tree = etree.fromstring(etree.tostring(self.__tree))

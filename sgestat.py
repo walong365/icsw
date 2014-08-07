@@ -31,8 +31,9 @@ import urwid
 
 def check_environment():
     # set environment variables SGE_ROOT / SGE_CELL if not already set
-    for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"),
-                          ("SGE_CELL", "/etc/sge_cell")]:
+    for v_name, v_src in [
+        ("SGE_ROOT", "/etc/sge_root"),
+        ("SGE_CELL", "/etc/sge_cell")]:
         if not os.environ.has_key(v_name):
             if os.path.isfile(v_src):
                 os.environ[v_name] = open(v_src, "r").read().strip()
@@ -41,6 +42,7 @@ def check_environment():
                 sys.exit(1)
 
 def sjs(s_info, opt_dict):
+    s_info.update()
     # print etree.tostring(sge_tools.build_running_list(s_info, opt_dict), pretty_print=True)
     ret_list = [time.ctime()]
     s_info.build_luts()
@@ -80,6 +82,7 @@ def sjs(s_info, opt_dict):
         print "\n".join(ret_list)
 
 def sns(s_info, opt_dict):
+    s_info.update()
     ret_list = [time.ctime()]
     s_info.build_luts()
     node_list = sge_tools.build_node_list(s_info, opt_dict)
@@ -254,6 +257,9 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--nc", dest="compress_nodelist", default=True, action="store_false", help="do not compress the nodelist [%(default)s]")
         self.add_argument("-v", dest="verbose", help="set verbose mode [%(default)s]", action="store_true", default=False)
         self.add_argument("--mode", dest="mode", choices=["auto", "sns", "sjs"], default="auto", help="set operation mode [%(default)s]")
+        if os.uname()[1] in ["eddie", "lemmy"]:
+            # add debug falgs
+            self.add_argument("--stress", default=False, action="store_true", help="emulate webfrontend and stress system [%(default)s]")
 
 def log_com(what, level):
     print "{} [{}] {}".format(
@@ -272,6 +278,26 @@ def get_server():
                 break
     return srv_name
 
+def stress_system():
+    import process_tools
+    # stress sge info
+    s_si = sge_tools.sge_info(
+        server="localhost",
+        default_pref=["server"],
+        never_direct=True,
+        run_initial_update=False,
+        log_command=log_com,
+        )
+    _iter = 0
+    while True:
+        if not _iter % 20:
+            print("iteration: {:3d}, memory usage: {}".format(_iter, logging_tools.get_size_str(process_tools.get_mem_info())))
+        s_si.update()
+        _iter += 1
+        if _iter == 1000:
+            break
+    sys.exit(0)
+
 def main():
     c_time = time.time()
     check_environment()
@@ -285,16 +311,22 @@ def main():
     if options.mode != "auto":
         run_mode = options.mode
         options = my_opt_parser(run_mode).parse_args()
-    act_si = sge_tools.sge_info(update_pref={"qhost"     : [],
-                                             "complexes" : ["server"],
-                                             "hostgroup" : ["server"],
-                                             "qstat"     : [],
-                                             "queueconf" : ["server"]},
-                                verbose=options.verbose,
-                                log_command=log_com,
-                                server=get_server(),
-                                always_direct=options.direct,
-                                never_direct=options.never_direct)
+    if getattr(options, "stress", False):
+        stress_system()
+    act_si = sge_tools.sge_info(
+        update_pref={
+            "qhost"     : [],
+            "complexes" : ["server"],
+            "hostgroup" : ["server"],
+            "qstat"     : [],
+            "queueconf" : ["server"],
+        },
+        verbose=options.verbose,
+        log_command=log_com,
+        server=get_server(),
+        always_direct=options.direct,
+        never_direct=options.never_direct,
+    )
     s_time = time.time()
     if run_mode == "sjs":
         if options.interactive:
