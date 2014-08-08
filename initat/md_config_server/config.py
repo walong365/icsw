@@ -506,9 +506,9 @@ class sync_config(object):
             ok_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["ok_list"].text)))
             if ok_list:
                 _ok_dir, _ok_list = self._parse_list(ok_list)
-                self.log("ok list (beneath %s): %s" % (
+                self.log("ok list (beneath {}): {}".format(
                     _ok_dir,
-                    ", ".join(sorted(_ok_list))))
+                    ", ".join(sorted(_ok_list)) if global_config["DEBUG"] else logging_tools.get_plural("entry", len(_ok_list))))
             if failed_list:
                 _failed_dir, _failed_list = self._parse_list(failed_list)
                 self.log("failed list (beneath %s): %s" % (

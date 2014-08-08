@@ -669,6 +669,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 checks_are_active = False
         # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         self.__cached_mach_name = host.full_name
+        # cache logs
+        _write_logs = False
         self.mach_log("-------- {} ---------".format("master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)), single_build=_bc.single_build)
         glob_log_str = "device {:<48s}{} ({}), d={:>3s}".format(
             host.full_name[:48],
@@ -1204,7 +1206,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
-        self.close_mach_log(write_logs=num_error > 0)
+        if num_error > 0:
+            _write_logs = True
+        self.close_mach_log(write_logs=_write_logs)
     def _get_cc_name(self, in_str):
         if self.__safe_cc_name:
             return build_safe_name(in_str)
@@ -1431,26 +1435,27 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         self.log("Setting parent of '{}' to {}".format(host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
                 else:
                     _p_failed += 1
-                    self.log("No parents found for '{}' (albeit possible_parents was set)".format(host_name), logging_tools.LOG_LEVEL_WARN)
-                    p_parents = host["possible_parents"]
-                    for t_num, (_p_val, _nd_val, p_list) in enumerate(p_parents):
-                        host_pk = p_list[0]
-                        self.log(
-                            "  trace {:d}, {}, host_distance is {:d}".format(
-                                t_num + 1,
-                                logging_tools.get_plural("entry", len(p_list) - 1),
-                                d_map[host_pk],
-                            )
-                        )
-                        for parent_idx in p_list[1:]:
-                            parent = _bc.get_host(parent_idx).full_name
+                    self.log("Parenting problem for '{}', {:d} traces found".format(host_name, len(p_parents)), logging_tools.LOG_LEVEL_WARN)
+                    if _bc.debug:
+                        p_parents = host["possible_parents"]
+                        for t_num, (_p_val, _nd_val, p_list) in enumerate(p_parents):
+                            host_pk = p_list[0]
                             self.log(
-                                "    {} (distance is {:d}, {})".format(
-                                    unicode(parent),
-                                    d_map[parent_idx],
-                                    parent in host_names,
+                                "  trace {:3d}, distance is {:3d}, {}".format(
+                                    t_num + 1,
+                                    d_map[host_pk],
+                                    logging_tools.get_plural("entry", len(p_list) - 1),
                                 )
                             )
+                            for parent_idx in p_list[1:]:
+                                parent = _bc.get_host(parent_idx).full_name
+                                self.log(
+                                    "    {:>30s} (distance is {:3d}, in config: {})".format(
+                                        unicode(parent),
+                                        d_map[parent_idx],
+                                        parent in host_names,
+                                    )
+                                )
                 del host["possible_parents"]
         self.log("end parenting run, {:d} ok, {:d} failed".format(_p_ok, _p_failed))
         if cur_gc.master and not _bc.single_build:
