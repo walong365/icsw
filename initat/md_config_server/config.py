@@ -2284,7 +2284,7 @@ class config_dir(content_emitter):
                     else:
                         res_xml = res_dict[entry.obj_type]
                     prev_tag = entry.obj_type
-                res_xml.append(getattr(E, entry.obj_type)(**dict([(key, unicode(entry[key])) for key in sorted(entry.iterkeys())])))
+                res_xml.append(getattr(E, entry.obj_type)(**dict([(key, self._build_value_string(key, entry[key])) for key in sorted(entry.iterkeys())])))
         return list(res_dict.itervalues())
 
 class all_hosts(host_type_config):

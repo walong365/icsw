@@ -391,16 +391,20 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     if key in self.__gen_config:
                         self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
-            # build distance map
-            cur_dmap, unreachable_pks = self._build_distance_map(self.__gen_config.monitor_server, show_unroutable=not single_build)
             total_hosts = sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
             if build_dv:
                 self.log("init gauge with max={:d}".format(total_hosts))
                 build_dv.init_as_gauge(total_hosts)
-            self.send_pool_message("build_info", "unreachable_devices", len(unreachable_pks), target="syncer")
-            if unreachable_pks:
-                for _urd in device.objects.filter(Q(pk__in=unreachable_pks)).select_related("domain_tree_node"):
-                    self.send_pool_message("build_info", "unreachable_device", _urd.pk, unicode(_urd), unicode(_urd.device_group), target="syncer")
+            if not single_build:
+                # build distance map
+                cur_dmap, unreachable_pks = self._build_distance_map(self.__gen_config.monitor_server, show_unroutable=not single_build)
+                self.send_pool_message("build_info", "unreachable_devices", len(unreachable_pks), target="syncer")
+                if unreachable_pks:
+                    for _urd in device.objects.filter(Q(pk__in=unreachable_pks)).select_related("domain_tree_node"):
+                        self.send_pool_message("build_info", "unreachable_device", _urd.pk, unicode(_urd), unicode(_urd.device_group), target="syncer")
+            else:
+                cur_dmap = {}
+                unreachable_pks = []
             # todo, move to separate processes
             gc_list = [self.__gen_config]
             if not single_build:
