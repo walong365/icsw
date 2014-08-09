@@ -370,7 +370,7 @@ class main_process(threading_tools.process_pool):
         mem_info_dict = {}
         act_tc_dict = process_tools.get_process_id_list(True, True)
         act_pid_dict = process_tools.get_proc_list_new(int_pid_list=act_tc_dict.keys())
-        _check_mem = act_time > self.__last_memcheck_time + global_config["MIN_MEMCHECK_TIME"]
+        _check_mem = act_time > self.__last_memcheck_time + global_config["MIN_MEMCHECK_TIME"] and global_config["TRACK_CSW_MEMORY"]
         if _check_mem:
             self.__last_memcheck_time = act_time
         # import pprint
