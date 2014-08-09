@@ -124,7 +124,7 @@ class special_base(object):
     def cleanup(self):
         self.build_process = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.build_process.mach_log("[sc] %s" % (what), log_level)
+        self.build_process.mach_log("[sc] {}".format(what), log_level)
     def collrelay(self, command, *args, **kwargs):
         return self._call_server(
             command,
@@ -159,7 +159,7 @@ class special_base(object):
             # not beautifull but working
             self.log("not allowed to make an external call", logging_tools.LOG_LEVEL_CRITICAL)
             return None
-        self.log("calling server '%s' for %s, command is '%s', %s, %s" % (
+        self.log("calling server '{}' for {}, command is '{}', {}, {}".format(
             server_name,
             self.host.valid_ip.ip,
             command,
@@ -291,7 +291,7 @@ class special_base(object):
                     self._store_cache()
         else:
             self.log(
-                "took %s" % (
+                "took {}".format(
                     logging_tools.get_diff_time_str(e_time - s_time),
                 )
             )
@@ -513,11 +513,11 @@ class special_disc(special_base):
                 warn_level, crit_level = (lvm_part.warn_threshold or 0,
                                           lvm_part.crit_threshold or 0)
                 warn_level_str, crit_level_str = (
-                    "%d" % (warn_level if warn_level else 85),
-                    "%d" % (crit_level if crit_level else 95))
+                    "{:d}".format(warn_level if warn_level else 85),
+                    "{:d}".format(crit_level if crit_level else 95))
                 part_list.append((
-                    "%s (LVM)" % (lvm_part.mountpoint),
-                    "/dev/mapper/%s-%s" % (lvm_part.lvm_vg.name, lvm_part.name),
+                    "{} (LVM)".format(lvm_part.mountpoint),
+                    "/dev/mapper/{}-{}".format(lvm_part.lvm_vg.name, lvm_part.name),
                     warn_level_str,
                     crit_level_str))
         # manual setting-dict for df
