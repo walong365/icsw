@@ -654,7 +654,7 @@ class device_config_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_config
 
-class device_config_hel_serializer(serializers.ModelSerializer):
+class device_config_help_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="home_info")
     homeexport = serializers.SerializerMethodField("get_homeexport")
     createdir = serializers.SerializerMethodField("get_createdir")
@@ -2161,6 +2161,10 @@ class wc_files(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'wc_files'
+
+class wc_files_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = wc_files
 
 class config_str_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
