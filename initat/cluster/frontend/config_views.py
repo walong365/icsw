@@ -1,4 +1,3 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -130,7 +129,6 @@ def _get_device_configs(sel_list, **kwargs):
                 device="{:d}".format(sbm_dev.pk),
                 config="{:d}".format(conf_id),
                 meta="1"))
-    # print etree.tostring(xml_resp, pretty_print=True)
     return xml_resp
 
 class alter_config_cb(View):
@@ -291,18 +289,27 @@ class tree_struct(object):
                 self.get_name())
             ] +
             [u"{}".format(unicode(sub_entry)) for sub_entry in self.childs])
-    def get_xml(self):
-        return E.tree(
-            self.wc_file.get_xml(),
-            *[sub_node.get_xml() for sub_node in self.childs],
-            name=self.get_name(),
-            depth="{:d}".format(self.depth),
-            is_dir="1" if self.node.is_dir else "0",
-            is_link="1" if self.node.is_link else "0",
-            node_id="{:d}_{:d}".format(self.dev_pk, self.node.pk),
+    def get_dict(self):
+        return {
+            "data" : models.wc_files_serializer(self.wc_file).data,
+            "sub_nodes" : [sub_node.get_dict() for sub_node in self.childs],
+            "name" : self.get_name(),
+            "depth" : "{:d}".format(self.depth),
+            "is_dir" : "1" if self.node.is_dir else "0",
+            "is_link" : "1" if self.node.is_link else "0",
+            "node_id" : "{:d}_{:d}".format(self.dev_pk, self.node.pk),
             # needed for linking in frontend angular code
-            parent_id="{}".format("{:d}_{:d}".format(self.dev_pk, self.parent.node.pk) if self.parent else "0")
-        )
+            "parent_id" : "{}".format("{:d}_{:d}".format(self.dev_pk, self.parent.node.pk) if self.parent else "0")
+        }
+
+
+class config_encoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            # FIXME
+            return obj.ctime()
+        else:
+            return super(config_encoder, self).default(obj)
 
 class generate_config(View):
     @method_decorator(login_required)
@@ -325,19 +332,23 @@ class generate_config(View):
             *[srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_list])
         result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
         if result:
-            request.xml_response["result"] = E.devices()
+            _json_result = {"devices" : []}
+            # request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(".//ns:device", smart_strings=False):
-                res_node = E.device(dev_node.text, **dev_node.attrib)
+                res_node = {key : dev_node.get(key) for key in dev_node.attrib.keys()}
+                res_node["text"] = dev_node.text
+                res_node["info_dict"] = []
                 for sub_el in dev_node:
-                    res_node.append(sub_el)
+                    for _entry in sub_el.findall("entry"):
+                        res_node["info_dict"].append({"key" : _entry.get("key"), "text" : _entry.text})
                 if int(dev_node.attrib["state_level"]) < logging_tools.LOG_LEVEL_ERROR:
                     # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                     cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                     # build tree
                     cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("wc_files"))
-                    res_node.append(cur_tree.get_xml())
-                    # print etree.tostring(cur_tree.get_xml(), pretty_print=True)
-                request.xml_response["result"].append(res_node)
+                    res_node["config_tree"] = cur_tree.get_dict()
+                _json_result["devices"].append(res_node)
+            request.xml_response["result"] = config_encoder().encode(_json_result)
             request.xml_response.info("build done", logger)
 
 class download_configs(View):

@@ -70,15 +70,16 @@ class config_tree extends tree_config
             when "eh"
                 return "errors"
             when "e"
-                return "config " + t_entry.obj.attr("key")
+                console.log t_entry.obj
+                return "config " + t_entry.obj.key
             when "c"
                 obj = t_entry.obj
-                content = obj.children("content")
-                node_str = obj.attr("name")
+                content = obj.data
+                node_str = obj.name
                 attr_list = []
                 for attr_name in ["uid", "gid", "mode"]
-                    if content.attr(attr_name)
-                        attr_value = content.attr(attr_name)
+                    if content[attr_name]?
+                        attr_value = content[attr_name]
                         if attr_name == "mode"
                             attr_value = parseInt(attr_value).toString(8)
                         attr_list.push("#{attr_name}=#{attr_value}")
@@ -94,11 +95,11 @@ class config_tree extends tree_config
             when "eh"
                 @dev_conf.active_error = []
             when "e"
-                @dev_conf.active_error = t_entry.obj.text().split("\n")
+                @dev_conf.active_error = t_entry.obj.text.split("\n")
             when "c"
-                content = t_entry.obj.children("content")
-                if content.length and content.text()
-                    @dev_conf.active_content = content.text().split("\n")
+                content = t_entry.obj.data.content
+                if content?
+                    @dev_conf.active_content = content.split("\n")
                 else
                     @dev_conf.active_content = []
 
@@ -112,6 +113,12 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
             )
         $scope.dev_names = () ->
             return resolve_device_keys($scope.devsel_list)
+        $scope._build_list = (ct) ->
+            _r_list = [ct]
+            for _subnode in ct.sub_nodes
+                for _res in $scope._build_list(_subnode)
+                    _r_list.push(_res)
+            return _r_list
         $scope.generate_config = () ->
             $scope.result_trees = []
             $.blockUI()
@@ -124,33 +131,46 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
                     $.unblockUI()
                     cur_list = []
                     if parse_xml_response(xml)
-                        $(xml).find("devices device").each (idx, cur_dev) =>
-                            cur_dev = $(cur_dev)
+                        _json = angular.fromJson($(xml).find("value[name='result']").text())
+                        for cur_dev in _json["devices"]
                             new_tree = new config_tree($scope)
                             new_conf = {
-                                state : parseInt(cur_dev.attr("state_level"))
-                                name : cur_dev.attr("name")
+                                state : parseInt(cur_dev.state_level)
+                                name : cur_dev.name
                                 tree : new_tree
-                                info_str : cur_dev.attr("info_str")
+                                info_str : cur_dev.info_str
                                 active_error : []
                                 active_content : []
                             }
                             new_tree.dev_conf = new_conf
                             if new_conf.state >= 40
-                                top_node = new_tree.new_node({folder:true, _node_type:"eh", expand:true})
+                                top_node = new_tree.new_node(
+                                    {
+                                        folder     :  true
+                                        _node_type : "eh"
+                                        expand     : true
+                                    }
+                                )
                                 new_tree.add_root_node(top_node)
                                 # build error tree
-                                cur_dev.find("info_dict entry").each (idx, entry) =>
-                                    entry = $(entry)
+                                for entry in cur_dev.info_dict
                                     t_entry = new_tree.new_node({folder:true, obj:entry, _node_type : "e", expand:true})
                                     top_node.add_child(t_entry)
                             else
                                 node_lut = {}
-                                cur_dev.find("tree").each (idx, entry) =>
-                                    entry = $(entry)
-                                    t_entry = new_tree.new_node({folder : parseInt(entry.attr("is_dir")), _node_type:"c", expand:parseInt(entry.attr("depth")) < 2, obj:entry})
-                                    node_id = entry.attr("node_id")
-                                    parent_id = entry.attr("parent_id")
+                                # build list of entries
+                                _tree_list = $scope._build_list(cur_dev.config_tree)
+                                for entry in _tree_list
+                                    t_entry = new_tree.new_node(
+                                        {
+                                            folder : parseInt(entry.is_dir)
+                                            _node_type : "c"
+                                            expand : parseInt(entry.depth) < 2
+                                            obj : entry
+                                        }
+                                    )
+                                    node_id = entry.node_id
+                                    parent_id = entry.parent_id
                                     node_lut[node_id] = t_entry
                                     if parent_id != "0"
                                         node_lut[parent_id].add_child(t_entry)

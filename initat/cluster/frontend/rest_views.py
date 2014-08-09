@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import user , group, \
      device_serializer_package_state, domain_name_tree, \
      category_tree, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-     partition_disc_serializer_create, device_config, device_config_hel_serializer, home_export_list, \
+     partition_disc_serializer_create, device_config, device_config_help_serializer, home_export_list, \
      csw_permission, peer_information, netdevice, \
      csw_object_permission, cd_connection, device_serializer_only_boot, network_with_ip_serializer
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
@@ -375,7 +375,7 @@ class rest_home_export_list(mixins.ListModelMixin,
     model = device_config
     @rest_logging
     def get_serializer_class(self):
-        return device_config_hel_serializer
+        return device_config_help_serializer
     @rest_logging
     def get(self, request, *args, **kwargs):
         # print self.list(request, *args, **kwargs)
