@@ -315,6 +315,7 @@ class _general(hm_classes.hm_module):
                     extra_block_devs = [entry.strip() for entry in file(EXTRA_BLOCK_DEVS, "r").read().split("\n") if entry.strip()]
                 else:
                     extra_block_devs = []
+                # problem: Multipath devices are not always recognized
                 # problem: LVM devices are not handled properly
                 dev_list = [ds_key for ds_key in ds_keys_ok_by_name if [True for m_entry in mount_list if m_entry.startswith(ds_key)]] + \
                            [value for key, value in mounted_lvms.iteritems() if key in mount_list] + \
@@ -398,14 +399,15 @@ class _general(hm_classes.hm_module):
                     mvect.unregister_entry("io.%s.time.read" % (old_disk))
                     mvect.unregister_entry("io.%s.time.written" % (old_disk))
                     mvect.unregister_entry("io.%s.time.io" % (old_disk))
-            for act_disk in [dev for dev in unique_dev_list if dev in self.disk_stat]:
-                # print act_disk, disk_stat[act_disk]
-                for idx, what in [(0, "read"), (1, "written")]:
-                    mvect["io.%s.blks.%s" % (act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
-                for idx, what in [(5, "read"), (6, "written")]:
-                    mvect["io.%s.bytes.%s" % (act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
-                for idx, what in [(2, "read"), (3, "written"), (4, "io")]:
-                    mvect["io.%s.time.%s" % (act_disk, what)] = float(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / (1000 * tdiff))
+            if unique_dev_list != ["total"]:
+                for act_disk in [dev for dev in unique_dev_list if dev in self.disk_stat]:
+                    # print act_disk, disk_stat[act_disk]
+                    for idx, what in [(0, "read"), (1, "written")]:
+                        mvect["io.%s.blks.%s" % (act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
+                    for idx, what in [(5, "read"), (6, "written")]:
+                        mvect["io.%s.bytes.%s" % (act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
+                    for idx, what in [(2, "read"), (3, "written"), (4, "io")]:
+                        mvect["io.%s.time.%s" % (act_disk, what)] = float(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / (1000 * tdiff))
             self.vmstat_dict = stat_dict
             self.disk_stat = disk_stat
         else:

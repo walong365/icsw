@@ -141,7 +141,7 @@ class subprocess_struct(object):
             self.srv_com.set_result("default process() call", server_command.SRV_REPLY_STATE_ERROR)
     def terminate(self):
         self.popen.kill()
-        if self.srv_com:
+        if getattr(self, "srv_com"):
             self.srv_com.set_result(
                 "runtime ({}) exceeded".format(logging_tools.get_plural("second", self.Meta.max_runtime)),
                 server_command.SRV_REPLY_STATE_ERROR
