@@ -97,6 +97,7 @@
                             <th>devices</th>
                             <th>netdevices</th>
                             <th>selected</th>
+                            <th>action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -106,6 +107,7 @@
                             <td class="text-right">{{ cluster.devices }}</td>
                             <td class="text-right">{{ cluster.net_devices }}</td>
                             <td class="text-center">{{ is_selected(cluster) }}</td>
+                            <td><input type="button" class="btn btn-xs btn-primary" value="show" ng-click="show_cluster(cluster)"></input></td>
                         </tr>
                     </tbody>
                 </table>

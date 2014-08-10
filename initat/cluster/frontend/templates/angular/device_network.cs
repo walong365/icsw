@@ -144,6 +144,23 @@ peer_row_template = """
 </td>
 """
 
+net_cluster_info_template = """
+<div class="modal-header">
+    <h3 class="modal-title">Devices in cluster ({{ cluster.device_pks.length }})</h3>
+</div>
+<div class="modal-body">
+    <ul>
+        <li ng-repeat="device in devices">
+            {{ device.full_name }} ({{ device.device_group_name }})
+        </li>
+    </ul>
+    Selected: <b>{{ selected.item }}</b>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">close</button>
+</div>
+"""
+
 {% endverbatim %}
 
 device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "icsw.d3"])
@@ -638,6 +655,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
     $templateCache.put("netdevicerow.html", nd_row_template)
     $templateCache.put("netiprow.html", ip_row_template)
     $templateCache.put("peerrow.html", peer_row_template)
+    $templateCache.put("net_cluster_info.html", net_cluster_info_template)
 )
 
 device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
@@ -658,9 +676,30 @@ device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter
         $scope.is_selected = (cluster) ->
             _sel = _.intersection(cluster.device_pks, $scope.devices)
             return if _sel.length then "yes (#{_sel.length})" else "no"
+        $scope.show_cluster = (cluster) ->
+            _modal = $modal.open(
+                {
+                    templateUrl : "net_cluster_info.html"
+                    controller  : cluster_info_ctrl
+                    size : "lg"
+                    resolve : {
+                        "cluster" : () -> return cluster
+                    }
+                }
+            )          
         install_devsel_link($scope.new_devsel, false)
         $scope.reload()
 ])
+
+cluster_info_ctrl = ($scope, $modalInstance, Restangular, cluster) ->
+    $scope.cluster = cluster
+    $scope.devices = []
+    Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
+        (data) ->
+            $scope.devices = data
+    )
+    $scope.ok = () -> 
+        $modalInstance.close()
 
 device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
