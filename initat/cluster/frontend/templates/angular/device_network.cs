@@ -9,9 +9,9 @@ root = exports ? this
 {% verbatim %}
 
 device_networks_template = """
-<h2>
+<h3>
     Network config for {{ devices.length }} devices
-</h2>
+</h3>
 <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
     <thead>
         <tr>
@@ -640,11 +640,38 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
     $templateCache.put("peerrow.html", peer_row_template)
 )
 
+device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+        access_level_service.install($scope)
+        $scope.clusters = []
+        $scope.devices = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.devices = _dev_sel
+        $scope.reload = () ->
+            call_ajax
+                url      : "{% url 'network:get_clusters' %}"
+                dataType : "json"
+                success  : (json) =>
+                    $scope.$apply(
+                        $scope.clusters = json
+                    )
+        $scope.is_selected = (cluster) ->
+            _sel = _.intersection(cluster.device_pks, $scope.devices)
+            return if _sel.length then "yes (#{_sel.length})" else "no"
+        install_devsel_link($scope.new_devsel, false)
+        $scope.reload()
+])
+
 device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
         $scope.graph_mode = "m"
         $scope.graph_sel = "none"
+        $scope.devices = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.devices = _dev_sel
+            $scope.$apply()
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("networkgraph", ["d3_service", (d3_service) ->
     return {
         restrict : "EA"
@@ -746,7 +773,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 scope.cur_scale = d3.event.scale
                 scope.cur_trans = d3.event.translate
                 scope.vis.attr("transform",
-                    "translate(" + scope.cur_trans + ")" + " scale(" + scope.cur_scale + ")"
+                    "translate(#{scope.cur_trans}) scale(#{scope.cur_scale})"
                 )
             scope.draw_graph = () ->
                 scope.force.nodes(scope.json_data.nodes).links(scope.json_data.links)
@@ -779,7 +806,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                     )
                     .on("mouseleave", (d) ->
                         scope.svg.call(d3.behavior.zoom().scale(scope.cur_scale).translate(scope.cur_trans).on("zoom", scope.rescale))
-                        d3.select(this).select("circle").attr("stroke-width", d.num_nds)
+                        d3.select(this).select("circle").attr("stroke-width", if d.num_nds then d.num_nds else 1).attr("stroke", if d.num_nds then "grey" else "red")
                     )
                     .on("mousedown", (d) ->
                         if scope.graph_mode == "c"
@@ -822,8 +849,8 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                     .attr
                         "r"       : (n) -> return 18
                         "fill"    : "white"
-                        "stroke-width" : (n) -> return n.num_nds
-                        "stroke"  : "grey"
+                        "stroke-width" : (n) -> return if n.num_nds then n.num_nds else 1
+                        "stroke"  : (n) -> return if n.num_nds then "grey" else "red"
                         "cursor"  : "crosshair"
                 centers.append("text")
                     .attr

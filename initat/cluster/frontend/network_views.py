@@ -210,3 +210,11 @@ class get_domain_name_tree(permission_required_mixin, View):
             "doc_page"              : "domain_name_tree",
             })()
 
+class get_network_clusters(permission_required_mixin, View):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        logger.log(log_level, "[jsn] %s" % (what))
+    all_required_permissions = []
+    def post(self, request):
+        r_obj = config_tools.router_object(self.log)
+        return HttpResponse(json.dumps(r_obj.get_clusters()), mimetype="application/json")
+

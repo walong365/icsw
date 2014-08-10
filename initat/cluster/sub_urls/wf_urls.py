@@ -98,6 +98,7 @@ network_patterns = patterns(
     url("^copy_network$"      , network_views.copy_network.as_view()          , name="copy_network"),
     url("^json_network$"      , network_views.json_network.as_view()          , name="json_network"),
     url("^cdnt$"              , network_views.get_domain_name_tree.as_view()  , name="domain_name_tree"),
+    url("^get_clusters$"      , network_views.get_network_clusters.as_view()  , name="get_clusters"),
 )
 
 monitoring_patterns = patterns(
