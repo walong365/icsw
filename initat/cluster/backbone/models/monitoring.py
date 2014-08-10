@@ -1,3 +1,24 @@
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+#
+# this file is part of cluster-backbone-sql
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" database definitions for monitoring """
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -34,7 +55,9 @@ __all__ = [
     "mon_dist_slave", # "mon_dist_slave_serializer",
     "monitoring_hint", "monitoring_hint_serializer",
     "mon_check_command_special", "mon_check_command_special_serializer",
+    # trace
     "mon_trace", # monitoring trace for speedup
+    # unreachable info
     "mon_build_unreachable", # track unreachable devices
     ]
 
