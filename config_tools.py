@@ -22,6 +22,11 @@ module to operate with config and ip relationsships in the database. This
 module gets included from configfile
 """
 
+if __name__ == "__main__":
+    # for testing
+    import os
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
 from django.db.models import Q
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
      config_str, config_blob, config_int, config_bool, netdevice, peer_information
@@ -104,13 +109,13 @@ class router_object(object):
             self.add_nodes()
             self.add_edges()
             if self.__cur_gen:
-                self.log("update generation from %d to %d in %s" % (
+                self.log("update generation from {:d} to {:d} in {}".format(
                     self.__cur_gen,
                     latest_gen,
                     logging_tools.get_diff_time_str(time.time() - s_time),
                 ))
             else:
-                self.log("init with generation %d in %s" % (
+                self.log("init with generation {:d} in {}".format(
                     latest_gen,
                     logging_tools.get_diff_time_str(time.time() - s_time),
                 ))
@@ -124,9 +129,9 @@ class router_object(object):
         return (self.get_penalty(in_path), in_path)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self.__log_com, "log"):
-            self.__log_com.log(log_level, "[router] %s" % (what))
+            self.__log_com.log(log_level, "[router] {}".format(what))
         else:
-            self.__log_com("[router] %s" % (what), log_level)
+            self.__log_com("[router] {}".format(what), log_level)
     def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
         """
         returns all pathes between s_list and d_list (:: net_device)
@@ -148,6 +153,37 @@ class router_object(object):
         return all_paths
     def map_path_to_device(self, in_path):
         return [self.nd_lut[value] for value in in_path]
+    def get_clusters(self):
+        clusters = []
+        for _cce in networkx.connected_components(self.nx):
+            _num_nds = len(_cce)
+            _dev_pks = set([self.nd_lut[_val] for _val in _cce])
+            clusters.append(
+                {
+                    "with_netdevices" : True,
+                    "net_devices" : _num_nds,
+                    "devices"     : len(_dev_pks),
+                    "device_pks"  : list(_dev_pks),
+                }
+            )
+        # add devices withoutnetdevices
+        for _wnd in device.objects.exclude(
+            Q(device_type__identifier="MD")
+        ).filter(
+            Q(enabled=True) &
+            Q(device_group__enabled=True) &
+            Q(netdevice=None)
+        ).values_list("pk", flat=True):
+            clusters.append(
+                {
+                    "with_netdevices" : False,
+                    "net_devices" : 0,
+                    "devices"     : 1,
+                    "device_pks"  : [_wnd],
+                }
+            )
+        # biggest clusters first
+        return sorted(clusters, key=lambda _c: _c["devices"], reverse=True)
 
 class topology_object(object):
     def __init__(self, log_com, graph_mode="all", **kwargs):
@@ -207,13 +243,17 @@ class topology_object(object):
         nd_lut = {}
         for net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
             nd_lut.setdefault(nd_pk, []).append(nw_pk)
-        self.log("init topology helper object, %s / %s" % (
-            logging_tools.get_plural("device", len(self.dev_dict)),
-            logging_tools.get_plural("peer information", peer_information.objects.count())))
+        self.log(
+            "init topology helper object, {} / {}".format(
+                logging_tools.get_plural("device", len(self.dev_dict)),
+                logging_tools.get_plural("peer information", peer_information.objects.count())
+            )
+        )
         self.add_num_nds()
         # peer dict
         self.peer_dict, self.simple_peer_dict = ({}, {})
         all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
+        # all devices which are connected to another device
         foreign_devs = set()
         for s_nd_id, d_nd_id, penalty in all_peers:
             if nd_dict[s_nd_id] in self.dev_dict and nd_dict[d_nd_id] in self.dev_dict:
@@ -231,8 +271,9 @@ class topology_object(object):
         if self.nx:
             del self.nx
         self.nx = networkx.Graph()
-        if self.ignore_self and not self.__graph_mode.startswith("sel"):
-            # only ignore self-references when the graph_modes is not selected*
+        if self.ignore_self and not (self.__graph_mode.startswith("sel") or self.__graph_mode in ["all"]):
+            # remove all devices which are not connected to another device
+            # only ignore self-references when the graph_mode is not selected* (?)
             self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key in foreign_devs}
         self.add_nodes()
         self.add_edges()
@@ -240,7 +281,7 @@ class topology_object(object):
         for dev_pk in self.nx.nodes():
             self.nx.node[dev_pk]["num_nds"] = self.dev_dict[dev_pk].num_nds
         e_time = time.time()
-        self.log("creation took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+        self.log("creation took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
     def add_num_nds(self):
         # init counters
         for dev_pk, cur_dev in self.dev_dict.iteritems():
@@ -253,7 +294,7 @@ class topology_object(object):
         for dev_pk in self.nx.nodes():
             self.nx.node[dev_pk]["name"] = unicode(self.dev_dict[dev_pk].full_name)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[topology] %s" % (what), log_level)
+        self.__log_com("[topology] {}".format(what), log_level)
 
 _VAR_LUT = {
     "int" : config_int,
@@ -282,13 +323,13 @@ def get_config_var_list(config_obj, config_dev):
                 var_global = True
                 _local_host_name, var_name = (config_dev.name, db_rec.name)
             if type(db_rec.value) == type(array.array("b")):
-                new_val = configfile.str_c_var(db_rec.value.tostring(), source="%s_table" % (short))
+                new_val = configfile.str_c_var(db_rec.value.tostring(), source="{}_table".format(short))
             elif short == "int":
-                new_val = configfile.int_c_var(int(db_rec.value), source="%s_table" % (short))
+                new_val = configfile.int_c_var(int(db_rec.value), source="{}_table".format(short))
             elif short == "bool":
-                new_val = configfile.bool_c_var(bool(db_rec.value), source="%s_table" % (short))
+                new_val = configfile.bool_c_var(bool(db_rec.value), source="{}_table".format(short))
             else:
-                new_val = configfile.str_c_var(db_rec.value, source="%s_table" % (short))
+                new_val = configfile.str_c_var(db_rec.value, source="{}_table".format(short))
             new_val.is_global = var_global
             r_dict[var_name.upper()] = new_val
     return r_dict
@@ -398,7 +439,7 @@ class server_check(object):
         if self.config:
             # name matches ->
             self._set_srv_info("real" if self.device.pk == self.effective_device.pk else "meta",
-                               "hostname '%s'" % (self.short_host_name))
+                               "hostname '{}'".format(self.short_host_name))
             if self.__fetch_network_info:
                 # fetch ip_info only if needed
                 self._fetch_network_info()
@@ -464,9 +505,11 @@ class server_check(object):
         return self.__config_vars[var_name].value
     def _set_srv_info(self, sdsc, s_info_str):
         self.server_origin = sdsc
-        self.server_info_str = "%s '%s'-server via %s" % (self.server_origin,
-                                                          self.__server_type,
-                                                          s_info_str)
+        self.server_info_str = "{} '{}'-server via {}".format(
+            self.server_origin,
+            self.__server_type,
+            s_info_str
+        )
     # utility funcitions
     @property
     def simple_ip_list(self):
@@ -511,7 +554,7 @@ class server_check(object):
                 self.config = config.objects.get(Q(name=self.__server_type))
                 self.effective_device = cur_dev
                 self.short_host_name = cur_dev.name
-                self._set_srv_info("virtual", "IP address '%s'" % (list(match_ips)[0]))
+                self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
                 break
     def get_route_to_other_device(self, router_obj, other, **kwargs):
         filter_ip = kwargs.get("filter_ip", None)
@@ -671,3 +714,12 @@ class device_with_config(dict):
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)
+
+def _log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
+    print "[{:2d}] {}".format(log_level, what)
+
+if __name__ == "__main__":
+    ro = router_object(_log_com)
+    import pprint
+    # pprint.pprint(ro.get_clusters())
+    print len(ro.get_clusters())
