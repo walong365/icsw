@@ -512,6 +512,9 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     dataType : "json"
                     success  : (json) =>
                         $scope.$apply(() ->
+                            # reset counter
+                            $scope.running_slots = 0
+                            $scope.waiting_slots = 0
                             $scope.files = json.files
                             $scope.run_list = $scope.running_struct.map_headers(json.run_table)
                             $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)

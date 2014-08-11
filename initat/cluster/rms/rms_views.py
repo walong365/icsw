@@ -178,17 +178,19 @@ class get_rms_json(View):
                 cur_fcd = []
                 for cur_fc in file_contents:
                     file_name = cur_fc.attrib["name"]
-                    lines = cache.get(cur_fc.attrib["cache_uuid"]).replace(r"\r\n", r"\n").split("\n")
-                    content = "\n".join(reversed(lines))
-                    cur_fcd.append(
-                        (
-                            file_name,
-                            content,
-                            len(content),
-                            int(cur_fc.attrib.get("last_update", cur_time)),
-                            min(10, len(lines) + 1)
+                    content = cache.get(cur_fc.attrib["cache_uuid"])
+                    if content is not None:
+                        lines = content.replace(r"\r\n", r"\n").split("\n")
+                        content = "\n".join(reversed(lines))
+                        cur_fcd.append(
+                            (
+                                file_name,
+                                content,
+                                len(content),
+                                int(cur_fc.attrib.get("last_update", cur_time)),
+                                min(10, len(lines) + 1)
+                            )
                         )
-                    )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
         json_resp = {
             "run_table"  : _sort_list(run_job_list, _post),
