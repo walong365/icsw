@@ -66,7 +66,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                     else:
                         var_global = True
                         local_host_name, var_name = (host_name, db_rec.name)
-                    source = "%s_table::%s" % (short, db_rec.pk)
+                    source = "{}_table::{}".format(short, db_rec.pk)
                     if type(db_rec.value) == type(array.array("b")):
                         new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
                     elif short == "int":
@@ -81,6 +81,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                         # copy settings from config
                         new_val.database = g_config.database(var_name)
                         new_val.is_global = var_global
+                        new_val._help_string = g_config.help_string(var_name)
                     if local_host_name == host_name:
                         if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
                             # present value is fixed, keep value, only copy global / local status
@@ -174,30 +175,35 @@ class db_device_variable(object):
     def get_value(self):
         return self.__var_value
 
+def strip_description(descr):
+    if descr:
+        descr = " ".join([entry for entry in descr.strip().split() if not entry.count("(default)")])
+    return descr
+
 def write_config(server_type, g_config, **kwargs):
     log_lines = []
     full_host_name = socket.gethostname()
     host_name = full_host_name.split(".")[0]
     srv_info = config_tools.server_check(server_type=server_type, short_host_name=host_name)
     type_dict = {
-        "i" : "int",
-        "s" : "str",
-        "b" : "bool",
-        "B" : "blob"}
+        "i" : config_int,
+        "s" : config_str,
+        "b" : config_bool,
+        "B" : config_blob,
+    }
     if srv_info.device and srv_info.config:
-        for key in g_config.keys():
+        for key in sorted(g_config.keys()):
             # print k,config.get_source(k)
             # print "write", k, config.get_source(k)
             # if config.get_source(k) == "default":
             # only deal with int and str-variables
-            tab_type = type_dict.get(g_config.get_type(key), None)
-            if tab_type and g_config.database(key):
+            var_obj = type_dict.get(g_config.get_type(key), None)
+            if var_obj is not None and g_config.database(key):
                 other_types = set([value for _key, value in type_dict.items() if _key != g_config.get_type(key)])
                 # var global / local
                 var_range_name = g_config.is_global(key) and "global" or "local"
                 # build real var name
                 real_k_name = g_config.is_global(key) and key or "%s:%s" % (host_name, key)
-                var_obj = globals()["config_%s" % (tab_type)]
                 try:
                     cur_var = var_obj.objects.get(
                         Q(name=real_k_name) &
@@ -209,8 +215,7 @@ def write_config(server_type, g_config, **kwargs):
                 except var_obj.DoesNotExist:
                     # check other types
                     other_var = None
-                    for other_type in other_types:
-                        other_var_obj = globals()["config_%s" % (other_type)]
+                    for other_var_obj in other_types:
                         try:
                             other_var = other_var_obj.objects.get(
                                 Q(name=real_k_name) &
@@ -225,17 +230,30 @@ def write_config(server_type, g_config, **kwargs):
                         # other var found, delete
                         other_var.delete()
                         # print(other_var, other_type)
-                    var_obj(name=real_k_name,
-                            description="%s default value from %s on %s" % (
-                                var_range_name,
-                                srv_info.config_name,
-                                full_host_name),
-                            config=srv_info.config,
-                            device=None,
-                            value=g_config[key]).save()
+                    # description
+                    if g_config.help_string(key):
+                        description = strip_description(g_config.help_string(key))
+                    else:
+                        description = "{} default value from {} on {}".format(
+                            var_range_name,
+                            srv_info.config_name,
+                            full_host_name),
+                    var_obj(
+                        name=real_k_name,
+                        description=description,
+                        config=srv_info.config,
+                        device=None,
+                        value=g_config[key],
+                    ).save()
                 else:
+                    # print key, cur_var.value, g_config.help_string(key), g_config.get_type(key)
                     if g_config[key] != cur_var.value:
                         cur_var.value = g_config[key]
+                        cur_var.save()
+                    _cur_descr = cur_var.description or ""
+                    new_descr = strip_description(g_config.help_string(key))
+                    if new_descr and _cur_descr and _cur_descr.count("default value from") and _cur_descr.strip().split()[0] in ["global", "local"]:
+                        cur_var.description = new_descr
                         cur_var.save()
             else:
                 # print "X", key
