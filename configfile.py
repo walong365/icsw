@@ -85,6 +85,8 @@ class config_proxy(BaseProxy):
         return self._callmethod("name")
     def get_argument_stuff(self):
         return self._callmethod("get_argument_stuff")
+    def help_string(self, key):
+        return self._callmethod("help_string", (key,))
     def set_uid_gid(self, uid, gid):
         if type(uid) in [str, unicode]:
             uid = pwd.getpwnam(uid)[2]
@@ -147,8 +149,10 @@ class _conf_var(object):
             opts = ["--{}".format(name.lower())]
             if name.lower().count("_"):
                 opts.append("--{}".format(name.lower().replace("_", "-")))
-        kwargs = {"dest" : name,
-                  "help" : self._help_string}
+        kwargs = {
+            "dest" : name,
+            "help" : self._help_string,
+        }
         if self._choices:
             kwargs["choices"] = self._choices
         if self._nargs:
@@ -357,6 +361,8 @@ class configuration(object):
         os.seteuid(new_uid)
     def single_process_mode(self):
         return self.__spm
+    def help_string(self, key):
+        return self.__c_dict[key]._help_string
     def get_var(self, key):
         return self.__c_dict[key]
     def add_config_entries(self, entries, **kwargs):
@@ -726,7 +732,7 @@ class config_manager(BaseManager):
 
 config_manager.register("config", configuration, config_proxy, exposed=[
     "parse_file", "add_config_entries", "set_uid_gid",
-    "single_process_mode",
+    "single_process_mode", "help_string",
     "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
     "is_global", "database", "is_global", "set_global",
     "__getitem__", "__setitem__", "__contains__", "__delitem__",
