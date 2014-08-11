@@ -29,7 +29,7 @@ from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, mon_config, \
-    all_host_dependencies, build_cache
+    all_host_dependencies, build_cache, build_safe_name
 from initat.md_config_server.mixins import version_check_mixin
 from lxml.builder import E # @UnresolvedImport
 import codecs
@@ -47,13 +47,6 @@ import signal
 import stat
 import threading_tools
 import time
-
-# also used in parse_anovis
-def build_safe_name(in_str):
-    in_str = in_str.replace("/", "_").replace(" ", "_").replace("(", "[").replace(")", "]")
-    while in_str.count("__"):
-        in_str = in_str.replace("__", "_")
-    return in_str
 
 class build_process(threading_tools.process_obj, version_check_mixin):
     def process_init(self):

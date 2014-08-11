@@ -53,6 +53,13 @@ import time
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
+# also used in parse_anovis
+def build_safe_name(in_str):
+    in_str = in_str.replace("/", "_").replace(" ", "_").replace("(", "[").replace(")", "]")
+    while in_str.count("__"):
+        in_str = in_str.replace("__", "_")
+    return in_str
+
 # a similiar structure is used in the server process of rrd-grapher
 class var_cache(dict):
     def __init__(self, cdg, prefill=False):
@@ -1960,6 +1967,7 @@ class all_commands(host_type_config):
                 description="Check Host Cluster"
                 ),
         ]
+        safe_names = global_config["SAFE_NAMES"]
         for ngc in check_coms:
             # pprint.pprint(ngc)
             # build / extract ngc_name
@@ -1981,7 +1989,7 @@ class all_commands(host_type_config):
                 ngc.command_line,
                 ngc.config.name if ngc.config_id else None,
                 ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
-                ngc.description,
+                build_safe_name(ngc.description) if safe_names else ngc.description,
                 exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
                 nagios_name=_nag_name,
                 mccs_id=ngc.mon_check_command_special_id,

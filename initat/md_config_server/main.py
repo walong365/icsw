@@ -126,10 +126,11 @@ def main():
         ("MAX_CONCURRENT_CHECKS"           , configfile.int_c_var(500)),
         ("SERVER_SHORT_NAME"               , configfile.str_c_var(mach_name)),
         ("CHECK_SERVICE_FRESHNESS"         , configfile.bool_c_var(False)),
-        ("CHECK_HOST_FRESHNESS"            , configfile.bool_c_var(False)),
+        ("CHECK_HOST_FRESHNESS"            , configfile.bool_c_var(False, help_string="enable host freshness checking")),
         ("SAFE_CC_NAME"                    , configfile.bool_c_var(False)),
         ("SERVICE_FRESHNESS_CHECK_INTERVAL", configfile.int_c_var(60)),
         ("HOST_FRESHNESS_CHECK_INTERVAL"   , configfile.int_c_var(60)),
+        ("SAFE_NAMES"                      , configfile.bool_c_var(False, help_string="convert all command descriptions to safe names (without spaces), [%(default)s]")),
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
