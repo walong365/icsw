@@ -186,7 +186,8 @@ class rms_mon_process(threading_tools.process_obj):
                     )
                     # already present, replace file
                 _cur_struct = self.__job_content_dict[job_id][file_name]
-                cache.set(_cur_struct.attrib["cache_uuid"], content, 3600)
+                # timeout: 5 hours
+                cache.set(_cur_struct.attrib["cache_uuid"], content, 5 * 3600)
             except:
                 self.log(
                     "error settings content of file {}: {}".format(
