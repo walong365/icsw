@@ -386,21 +386,24 @@ class _general(hm_classes.hm_module):
                     if last_line.count("empty"):
                         # empty mailqueue
                         pass
+                    elif last_line.count("directly"):
+                        # mail system down, accessing directly
+                        pass
                     else:
                         if last_line.startswith("--"):
                             line_parts = last_line.split()
                             if line_parts[-2].isdigit():
                                 self.__mailcount["total"] = int(line_parts[-2])
                             else:
-                                self.log("cannot parse line '%s' (mailq, notdigit)" % (last_line),
+                                self.log("cannot parse line '{}' (mailq, notdigit)".format(last_line),
                                     logging_tools.LOG_LEVEL_WARN
                                 )
                         else:
-                            self.log("cannot parse line '%s' (mailq, '--' missing)" % (last_line),
+                            self.log("cannot parse line '{}' (mailq, '--' missing)".format(last_line),
                                 logging_tools.LOG_LEVEL_WARN
                             )
                 else:
-                    self.log("no lines got from %s" % (self.__mailq_command),
+                    self.log("no lines got from {}".format(self.__mailq_command),
                         logging_tools.LOG_LEVEL_WARN)
         return self.__mailcount
 
