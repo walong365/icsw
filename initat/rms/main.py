@@ -25,7 +25,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from initat.rms.config import global_config, COM_PORT
 from initat.rms.rms_server_version import VERSION_STRING
-from initat.rms.server import server_process, call_command
+from initat.rms.server import server_process
+from initat.rms.rmsmon import call_command
 import cluster_location
 import config_tools
 import configfile
