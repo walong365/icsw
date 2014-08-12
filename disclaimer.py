@@ -31,6 +31,11 @@ class disclaimer_handler(object):
     def log_mail(self, prefix, _mail):
         self.log("email structure {}".format(prefix))
         self.log("is_multipart: {}".format("yes" if _mail.is_multipart() else "no"))
+        _dict = {}
+        self._parse_mail(_dict, _mail)
+    def _parse_mail(self, _dict, _mail):
+        _type = _mail.get_content_type()
+        print _mail, _type
         for _i, _part in enumerate(_mail.walk()):
             if _part.get_main_type() == "multipart":
                 continue
