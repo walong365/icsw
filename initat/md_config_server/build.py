@@ -996,7 +996,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         s_check,
                                         [special_commands.arg_template(
                                             s_check,
-                                            self._get_cc_name("{} {}".format(s_check.get_description(), mhc_check.description)),
+                                            self._get_cc_name("{}{}{}".format(s_check.get_description(), _bc.join_char, mhc_check.description)),
                                             arg1=mhc_check.description,
                                             # arg2="@{:d}:".format(mhc_check.warn_value),
                                             # arg3="@{:d}:".format(mhc_check.error_value),
@@ -1041,7 +1041,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                                     arg2=msc_check.warn_value,
                                                     arg3=msc_check.error_value,
                                                     arg4=",".join(["$SERVICESTATEID:{}:{}$".format(_dev_name, _srv_name) for _dev_name, _srv_name in dev_names]),
-                                                    arg5=",".join(["{} {}".format(_dev_name, _srv_name).replace(",", " ") for _dev_name, _srv_name in dev_names]),
+                                                    arg5=",".join(["{}{}{}".format(_dev_name, _bc.join_char, _srv_name).replace(",", " ") for _dev_name, _srv_name in dev_names]),
                                                 )
                                             ],
                                             act_def_serv,

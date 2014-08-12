@@ -1548,6 +1548,7 @@ class build_cache(object):
         self.single_build = False
         self.debug = False
         self.__var_cache = var_cache(cdg, prefill=full_build)
+        self.join_char = "_" if global_config["SAFE_NAMES"] else " "
         # device_group user access
         self.dg_user_access = {}
         mon_user_pks = list(user.objects.filter(Q(mon_contact__pk__gt=0)).values_list("pk", flat=True))
