@@ -859,7 +859,16 @@ class monitoring_hint(models.Model):
     # key of vector or OID
     key = models.CharField(default="", max_length=255)
     # type of value
-    v_type = models.CharField(default="f", choices=[("f", "float"), ("i", "integer"), ("b", "boolean"), ("s", "string")], max_length=6)
+    v_type = models.CharField(
+        default="f",
+        choices=[
+            ("f", "float"),
+            ("i", "integer"),
+            ("b", "boolean"),
+            ("s", "string"),
+        ],
+        max_length=6
+    )
     # current value
     value_float = models.FloatField(default=0.0)
     value_int = models.IntegerField(default=0)
