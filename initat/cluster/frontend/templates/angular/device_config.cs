@@ -927,6 +927,7 @@ mh_row_template = """
 <td class="text-right" ng-class="get_td_class('lower_warn')">{{ get_limit('lower_warn') }}</td>
 <td class="text-right" ng-class="get_td_class('upper_warn')">{{ get_limit('upper_warn') }}</td>
 <td class="text-right" ng-class="get_td_class('upper_crit')">{{ get_limit('upper_crit') }}</td>
+<td class="text-center"><input ng-show="hint.datasource != 'p'" type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_hint()"></input></td>
 <td class="text-right success">{{ get_value() }}</td>>
 <td>{{ hint.info }}</td>
 """
@@ -945,6 +946,7 @@ mh_table_template = """
             <th>upper warn</th>
             <th>upper crit</th>
             <th>value</th>
+            <th>action</th>
             <th>info</th>
         </tr>
     </thead>
@@ -1016,8 +1018,12 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
                 return "glyphicon glyphicon-chevron-down"
             else
                 return "glyphicon glyphicon-chevron-right"
-        #$scope.init_devices = (pre_sel) ->
-        #    # called after load
+        $scope.remove_hint = (hint) ->
+            _.remove($scope.device_lut[hint.device].monitoring_hint_set, (entry) -> return entry.idx == hint.idx)
+            call_ajax
+                url     : "{% url 'mon:delete_hint' %}"
+                data    :
+                    hint_pk : hint.idx
         install_devsel_link($scope.new_devsel, false)
 ]).directive("mhdevrow", ($templateCache) ->
     return {
@@ -1051,6 +1057,8 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
                     return scope.hint[key]
                 else
                     return "---"
+            scope.delete_hint = () ->
+                scope.remove_hint(scope.hint)
     }
 ).directive("monitoringhint", ($templateCache) ->
     return {

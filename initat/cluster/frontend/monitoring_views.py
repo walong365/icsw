@@ -28,7 +28,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
-    net_ip, peer_information, mon_ext_host, get_related_models
+    net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
@@ -221,6 +221,12 @@ class livestatus(View):
             request, "monitoring_livestatus.html", {
                 }
         )()
+
+class delete_hint(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        monitoring_hint.objects.get(Q(pk=_post["hint_pk"])).delete()
 
 class resolve_name(View):
     @method_decorator(xml_wrapper)
