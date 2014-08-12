@@ -347,7 +347,7 @@ class quota_stuff(bg_stuff):
                         valid_until=valid_until,
                         unit="B").build_xml(builder))
         qc_etime = time.time()
-        self.log("quotacheck took %s" % (logging_tools.get_diff_time_str(qc_etime - cur_time)))
+        self.log("quotacheck took {}".format(logging_tools.get_diff_time_str(qc_etime - cur_time)))
         self.log(sep_str)
         return my_vector
 

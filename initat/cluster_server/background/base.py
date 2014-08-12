@@ -47,8 +47,8 @@ class bg_stuff(object):
             self.__last_call = cur_time
             add_obj = self._call(cur_time, drop_com.builder)
             if add_obj is not None:
-                drop_com["vector_%s" % (self.Meta.name)] = add_obj
-                drop_com["vector_%s" % (self.Meta.name)].attrib["type"] = "vector"
+                drop_com["vector_{}".format(self.Meta.name)] = add_obj
+                drop_com["vector_{}".format(self.Meta.name)].attrib["type"] = "vector"
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
     def send_mail(self, to_addr, subject, msg_body):
