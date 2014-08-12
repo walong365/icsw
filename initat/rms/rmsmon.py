@@ -59,6 +59,16 @@ def call_command(command, log_com=None):
             log_lines.extend([" - {}".format(line) for line in out.split("\n")])
         return stat, out, log_lines
 
+class queue_info(object):
+    def __init__(self):
+        self.used = 0
+        self.total = 0
+        self.reserved = 0
+    def feed(self, _t, _r, _u):
+        self.total += _t
+        self.reserved += _r
+        self.used += _u
+        
 class rms_mon_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -102,9 +112,8 @@ class rms_mon_process(threading_tools.process_obj):
         _host_names = set()
         _num_queues = 0
         act_time = time.time()
-        _su_t = 0
-        _sr_t = 0
-        _st_t = 0
+        # queue dict
+        _queues = {"total" : queue_info()}
         _qs_error = 0
         _qs_disabled = 0
         for _node in _res.findall(".//node"):
@@ -118,9 +127,10 @@ class rms_mon_process(threading_tools.process_obj):
                 int(_node.findtext("slots_reserved")),
                 int(_node.findtext("slots_total")),
             )
-            _su_t += _su
-            _sr_t += _sr
-            _st_t += _st
+            _queues["total"].feed(_st, _sr, _su)
+            if _queue not in _queues:
+                _queues[_queue] = queue_info()
+            _queues[_queue].feed(_st, _sr, _su)
             # count states
             _state = _node.findtext("state")
             if "E" in _state:
@@ -171,23 +181,26 @@ class rms_mon_process(threading_tools.process_obj):
                     base=1000,
                 ).build_xml(_bldr)
             )
-        for _key, _value, _info in [
-            ("total", _st_t, "slots defined"),
-            ("reserved", _sr_t, "slots reserved"),
-            ("used", _su_t, "slots used"),
-            ("free", _st_t - _su_t, "slots free"),
-            ]:
-            _rms_vector.append(
-                hm_classes.mvect_entry(
-                    "rms.slots.{}".format(_key),
-                    info=_info,
-                    default=0,
-                    value=_value,
-                    factor=1,
-                    valid_until=valid_until,
-                    base=1000,
-                ).build_xml(_bldr)
-            )
+        for q_name, q_value in _queues.iteritems():
+            # sanitize queue name
+            q_name = q_name.replace(".", "_")
+            for _key, _value, _info in [
+                ("total", q_value.total, "slots defined"),
+                ("reserved", q_value.reserved, "slots reserved"),
+                ("used", q_value.used, "slots used"),
+                ("free", q_value.total - q_value.used, "slots free"),
+                ]:
+                _rms_vector.append(
+                    hm_classes.mvect_entry(
+                        "rms.slots.{}.{}".format(q_name, _key),
+                        info="{} in queue {}".format(_info, q_name),
+                        default=0,
+                        value=_value,
+                        factor=1,
+                        valid_until=valid_until,
+                        base=1000,
+                    ).build_xml(_bldr)
+                )
         drop_com["vector_rms"] = _rms_vector
         drop_com["vector_rms"].attrib["type"] = "vector"
         # for cap_name in self.__cap_list:
