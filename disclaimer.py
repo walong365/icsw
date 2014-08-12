@@ -6,6 +6,7 @@ import process_tools
 import subprocess
 import os
 import email
+from email.parser import FeedParser
 from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
@@ -29,39 +30,34 @@ class disclaimer_handler(object):
         self.log("src mail has {}".format(logging_tools.get_size_str(len(self.src_mail))))
         self.dst_mail = self.src_mail
     def log_mail(self, prefix, _mail):
-        self.log("email structure {}".format(prefix))
+        self.log("email structure {} processing".format(prefix))
+        self.log("content type is {}".format(_mail.get_content_type()))
         self.log("is_multipart: {}".format("yes" if _mail.is_multipart() else "no"))
         _dict = {}
-        self._parse_mail(_dict, _mail)
-    def _parse_mail(self, _dict, _mail):
-        _type = _mail.get_content_type()
-        print _mail, _type
-        for _i, _part in enumerate(_mail.walk()):
-            if _part.get_main_type() == "multipart":
-                continue
-            self.log("part {:<3d} has content_type {} (len {:d})".format(_i, _part.get_content_type(), len(_part)))
-            #self.log(str(_part))
+        for _idx, _part in enumerate(_mail.walk(), 1):
+            self.log("part {:<3d} has type {}".format(_idx, _part.get_content_type()))
     def process(self):
-        _email = email.message_from_string(
-            self.src_mail,
-            email.mime.multipart.MIMEMultipart,
-        )
+        my_parser = FeedParser()
+        my_parser.feed(self.src_mail)
+        _email = my_parser.close()
         _from = email.utils.parseaddr(_email["From"])
+        _to = [email.utils.parseaddr(_value) for _value in _email["To"].split(",")]
+        self.log("to ({:d}) is {}".format(len(_to), ", ".join(["'{}' / '{}'".format(_val[0], _val[1]) for _val in _to])))
         self.log("from is '{}' / '{}'".format(_from[0], _from[1]))
         # fixme
-        #_to = _email.get_all("To", [])
-        self.log("to is '{}'".format(_email["To"]))
+        # _to = _email.get_all("To", [])
         self.log_mail("before", _email)
+        self.log("{:d} defects: {}".format(len(_email.defects), ", ".join([str(_val) for _val in _email.defects]) or "---"))
         if not _email.is_multipart():
             _payload = _email.get_payload()
-            
-            #_sub_mail = email.message_from_string()
-            #print "pl", _sub_mail.get_payload(), _sub_mail.is_multipart()
-            self.log("*** {}".format(_email.get_payload()))
-            self.log("{}".format(type(_email.get_payload())))
+            # self.log("*** {}".format(_email.get_payload()))
+            # self.log("{}".format(type(_email.get_payload())))
             _text = MIMEText(_email.get_payload())
-            #print _text, type(_text)
+            # print _text, type(_text)
             _email.set_payload([_text])
+            self.log("changing content-type to multipart/mixed")
+            _email.set_type("multipart/mixed")
+            # self.log(str(_email.get_params()))
         for add_file in ["disclaimer.txt", "default.html"]:
             _path = os.path.join("/etc/postfix", add_file)
             if os.path.isfile(_path):
@@ -78,7 +74,13 @@ class disclaimer_handler(object):
                 _email.attach(_attach)
             else:
                 self.log("attachment {} not found".format(add_file), logging_tools.LOG_LEVEL_ERROR)
+        _map_list = [("multipart/alternative", "multipart/mixed"), ]
+        for _src, _dst in _map_list:
+            if _email.get_content_type().lower() == _src:
+                self.log("rewriting content_type from {} to {}".format(_src, _dst))
+                _email.set_type(_dst)
         self.log_mail("after", _email)
+        _email.add_header("X-INIT-FOOTER-ADDED", "yes")
         self.dst_mail = _email.as_string()
         self.log("dst mail has {}".format(logging_tools.get_size_str(len(self.dst_mail))))
     def send_mail(self):
@@ -93,11 +95,14 @@ class disclaimer_handler(object):
         self._log_template.log(log_level, what)
     def close(self):
         self._log_template.close()
-        
+
 def main():
     my_disc = disclaimer_handler()
     my_disc.recv_mail()
-    my_disc.process()
+    try:
+        my_disc.process()
+    except:
+        my_disc.log("error processing: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
     my_disc.send_mail()
     my_disc.close()
     return my_disc._result

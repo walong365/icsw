@@ -226,6 +226,8 @@ class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
         self.echo_seqno = 32L
         self._log_errors = hasattr(self, "log")
         self.socket = None
+        self.__last_key_error = None
+        self.__key_error_num = 0
         self.t_dict = {}
     def init_socket(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
@@ -253,7 +255,7 @@ class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
         chk = socket.htons(_checksum(chkdata))
         # init dgram
         if checksum != chk:
-            err_str = "Checksum mismatch: %d != %d" % (checksum, chk)
+            err_str = "Checksum mismatch: {:d} != {:d}".format(checksum, chk)
             if self._log_errors:
                 self.log(err_str, logging_tools.LOG_LEVEL_CRITICAL)
                 dgram = None
@@ -267,12 +269,17 @@ class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
             try:
                 dgram = type_lut_dict[int(packet_type)](code, checksum, data, unpack=True)
             except KeyError:
-                err_str = "Decoding of type '%d' datagrams not supported" % (packet_type)
-                if self._log_errors:
-                    self.log(err_str, logging_tools.LOG_LEVEL_CRITICAL)
-                    dgram = None
-                else:
-                    raise NotImplementedError(err_str)
+                dgram = None
+                self.__key_error_num += 1
+                act_time = time.time()
+                if self.__last_key_error is None or abs(act_time - self.__last_key_error) > 2:
+                    err_str = "Decoding of type '{:d}' datagrams not supported (counted: {:d})".format(packet_type, self.__key_error_num)
+                    if self._log_errors:
+                        self.log(err_str, logging_tools.LOG_LEVEL_CRITICAL)
+                    else:
+                        raise NotImplementedError(err_str)
+                    self.__last_key_error = act_time
+                    self.__key_error_num = 0
         return dgram
     def send_echo(self, addr, data="icmp_twisted.py data", ident=None):
         self.echo_seqno = (self.echo_seqno + 1) & 0x7fff
