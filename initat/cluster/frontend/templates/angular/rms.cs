@@ -505,7 +505,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             if $scope.update_info_timeout
                 $timeout.cancel($scope.update_info_timeout)
             # refresh every 10 seconds
-            $scope.update_info_timeout = $timeout($scope.reload, 10000)
+            #$scope.update_info_timeout = $timeout($scope.reload, 10000)
             if $scope.refresh
                 call_ajax
                     url      : "{% url 'rms:get_rms_json' %}"
@@ -770,7 +770,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.get_load = (load) ->
                 cur_m = load.match(LOAD_RE)
                 if cur_m
-                    return parseInt(100 * load / scope.max_load)
+                    return String((100 * parseFloat(load)) / scope.max_load)
                 else
                     return 0
             scope.has_rrd = (name) ->
