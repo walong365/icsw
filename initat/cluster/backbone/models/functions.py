@@ -79,6 +79,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         ignore_list = []
     else:
         ignore_list = fk_ignore_list
+    _lock_list = []
     # copy ignore_list to static list because some entries can be referenced more than once
     # (peer_information for instance [in netdevice])
     ignore_list_static = [entry for entry in ignore_list]
@@ -89,11 +90,11 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         if _rel_name not in ignore_list_static:
             ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})) if entry not in ignore_objs]
             if ref_list:
-                print ref_list, ignore_list
-            if detail:
-                used_objs.extend(ref_list)
-            else:
-                used_objs += len(ref_list)
+                _lock_list.append("{} -> {} ({:d})".format(rel_field_name, _rel_name, len(ref_list)))
+                if detail:
+                    used_objs.extend(ref_list)
+                else:
+                    used_objs += len(ref_list)
         else:
             # _rel_name can be missing from ignore list in case the object references the target more than once
             # (again peer_information in netdevice)
@@ -106,11 +107,14 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
                 used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj}))))
             else:
                 used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
+    in_obj._lock_list = _lock_list
     if ignore_list:
-        raise ImproperlyConfigured("ignore_list not empty, typos (model {}, {}) ?".format(
-            in_obj._meta.model_name,
-            ", ".join(ignore_list)
-            ))
+        raise ImproperlyConfigured(
+            "ignore_list not empty, typos (model {}, {}) ?".format(
+                in_obj._meta.model_name,
+                ", ".join(ignore_list)
+            )
+        )
     return used_objs
 
 def get_change_reset_list(s_obj, d_obj, required_changes=None):
