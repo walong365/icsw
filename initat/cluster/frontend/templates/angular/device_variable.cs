@@ -31,7 +31,7 @@ dv_row_template = """
 <td>{{ get_name(obj) }}</td>
 <td>{{ obj.device_group_name }}</td>
 <td>{{ obj.comment }}</td>
-<td><input ng-show="enable_modal" type="button" class="btn btn-primary btn-xs" ng-click="create(obj, $event)" value="create"/></td>
+<td><input ng-show="enable_modal" type="button" class="btn btn-success btn-xs" ng-click="create(obj, $event)" value="create"/></td>
 """
 
 vartable_template = """
@@ -49,7 +49,7 @@ vartable_template = """
     <tbody>
         <tr ng-repeat="obj in device.device_variable_set | filter_name:filtervalue | orderBy:'name'">
             <td>{{ obj.name }}</td>
-            <td>{{ obj.var_type }}</td>
+            <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
             <td>{{ get_value(obj) }}</td>
             <td>{{ obj.is_public|yesno1 }}</td>
             <td>direct</td>
@@ -58,19 +58,23 @@ vartable_template = """
         </tr>
         <tr ng-repeat="obj in get_parent_vars(device, 'g') | filter_name:filtervalue | orderBy:'name'">
             <td>{{ obj.name }}</td>
-            <td>{{ obj.var_type }}</td>
+            <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
             <td>{{ get_value(obj) }}</td>
             <td>{{ obj.is_public|yesno1 }}</td>
             <td>group</td>
-            <td colspan="2"></td>
+            <td colspan="2">
+                <input ng-show="obj.local_copy_ok" type="button" class="btn btn-xs btn-warning" value="local copy" ng-click="local_copy(obj, 'g')"></input>
+            </td>
         </tr>
         <tr ng-repeat="obj in get_parent_vars(device, 'c') | filter_name:filtervalue | orderBy:'name'">
             <td>{{ obj.name }}</td>
-            <td>{{ obj.var_type }}</td>
+            <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
             <td>{{ get_value(obj) }}</td>
             <td>{{ obj.is_public|yesno1 }}</td>
             <td>cluster</td>
-            <td colspan="2"></td>
+            <td colspan="2">
+                <input ng-show="obj.local_copy_ok" type="button" class="btn btn-xs btn-warning" value="local copy" ng-click="local_copy(obj, 'c')"></input>
+            </td>
         </tr>
     </tbody>
 </table>
@@ -79,7 +83,7 @@ vartable_template = """
 device_vars_template = """
 <h2>
     Device variables ({{ entries.length }} devices),
-    <input ng-show="enable_modal" type="button" value="create new" title="create a new variable for all shown devices" class="btn btn-success" ng-click="create_for_all($event)"/>
+    <input ng-show="enable_modal" type="button" value="create new" title="create a new variable for all shown devices" class="btn btn-sm btn-success" ng-click="create_for_all($event)"/>
 </h2>
 <div class="row">
     <div class="col-sm-5 form-inline">
@@ -271,8 +275,11 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 if not obj.is_cluster_device_group
                     if obj.device_type_identifier != "MD"
                         meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        num_meta += (entry for entry in meta_server.device_variable_set when entry.name not in my_names).length
-                    num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names).length
+                        meta_names = (entry.name for entry in meta_server.device_variable_set)
+                        num_meta += (entry for entry in meta_names when entry not in my_names).length
+                    else
+                        meta_names = []
+                    num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names and entry.name not in meta_names).length
                 return num_meta
             scope.num_vars = (obj) ->
                 return scope.num_parent_vars + obj.device_variable_set.length
@@ -284,8 +291,11 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 if not obj.is_cluster_device_group
                     if obj.device_type_identifier != "MD"
                         meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        num_shadow += (entry for entry in meta_server.device_variable_set when entry.name in my_names).length
-                    num_shadow += (entry for entry in scope.cdg.device_variable_set when entry.name in my_names).length
+                        meta_names = (entry.name for entry in meta_server.device_variable_set)
+                        num_shadow += (entry for entry in meta_names when entry in my_names).length
+                    else
+                        meta_names = []
+                    num_shadow += (entry for entry in scope.cdg.device_variable_set when entry.name in my_names and entry.name not in meta_names).length
                 return num_shadow
             scope.any_shadowed_vars = (obj) ->
                 return if scope.num_shadowed_vars(obj) then true else false
@@ -325,17 +335,44 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                     return moment(obj.val_date).format("dd, D. MMM YYYY HH:mm:ss")
                 else
                     return "unknown type #{obj.var_type}"
+            scope.get_var_type = (obj) ->
+                if obj.var_type == "s"
+                    return "string"
+                else if obj.var_type == "i"
+                    return "integer"
+                else if obj.var_type == "b"
+                    return "blob"
+                else if obj.var_type == "t"
+                    return "time"
+                else if obj.var_type == "d"
+                    return "datetime"
+                else
+                    return obj.var_type
             scope.get_parent_vars = (obj, src) ->
                 my_names = (entry.name for entry in obj.device_variable_set)
                 parents = []                    
                 if not obj.is_cluster_device_group
-                    if obj.device_type_identifier != "MD" and src == "g" 
-                        meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        parents = meta_server.device_variable_set
+                    if obj.device_type_identifier != "MD" and src == "g"
+                        # device, inherited from group
+                        meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
+                        parents = meta_group.device_variable_set
                     else if src == "c"
-                        parents = scope.cdg.device_variable_set
+                        if obj.device_type_identifier == "MD"
+                            # group, inherited from cluster
+                            parents = scope.cdg.device_variable_set
+                        else
+                            # device, inherited from cluster
+                            meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
+                            meta_names = (_entry.name for _entry in meta_group.device_variable_set)
+                            parents = (entry for entry in scope.cdg.device_variable_set when entry.name not in meta_names) 
                     parents = (entry for entry in parents when entry.name not in my_names)
                 return parents
+            scope.local_copy = (d_var, src) ->
+                new_var = angular.copy(d_var)
+                new_var.device = scope.obj.idx
+                Restangular.all("{% url 'rest:device_variable_list' %}".slice(1)).post(new_var).then((data) ->
+                    scope.obj.device_variable_set.push(data)
+                )
     }
 ).directive("devicevars", ($templateCache) ->
     return {
