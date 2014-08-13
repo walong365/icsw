@@ -379,8 +379,7 @@ def create_db(opts):
             print("creating superuser {} (email {}, password is {})".format(opts.superuser, opts.email, su_pw))
             call_manage(["createsuperuser", "--login={}".format(opts.superuser), "--email={}".format(opts.email), "--noinput"])
             del os.environ["DJANGO_SUPERUSER_PASSWORD"]
-        call_update_funcs()
-        call_manage(["create_cdg --name {}".format(opts.system_group_name)])
+        call_update_funcs(opts)
 
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
@@ -403,13 +402,14 @@ def migrate_db(opts):
         check_local_settings()
         call_manage(["schemamigration", "backbone", "--auto"])
         call_manage(["migrate", "--no-initial-data", "backbone", "--noinput"])
-        call_update_funcs()
+        call_update_funcs(opts)
     else:
         print("cluster migration dir {} not present, please create database".format(CMIG_DIR))
         sys.exit(5)
 
-def call_update_funcs():
+def call_update_funcs(opts):
     create_fixtures()
+    call_manage(["create_cdg --name {}".format(opts.system_group_name)])
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
 
