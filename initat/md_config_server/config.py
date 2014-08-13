@@ -1829,11 +1829,8 @@ class all_commands(host_type_config):
         except device.DoesNotExist:
             cluster_name = "N/A"
         else:
-            dv = cluster_location.db_device_variable(cdg, "CLUSTER_NAME", description="name of the cluster")
-            if not dv.is_set():
-                dv.set_value("new_cluster")
-                dv.update()
-            cluster_name = dv.get_value()
+            # cluster_name has to be set, otherwise something went seriously wrong while setting up the cluster
+            cluster_name = cluster_location.db_device_variable(cdg, "CLUSTER_NAME", description="name of the cluster").get_value()
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
         if os.path.isfile("/opt/cluster/bin/send_mail.py"):
