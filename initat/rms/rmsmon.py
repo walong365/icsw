@@ -64,11 +64,21 @@ class queue_info(object):
         self.used = 0
         self.total = 0
         self.reserved = 0
-    def feed(self, _t, _r, _u):
+        self.alarm = 0
+        self.unknown = 0
+        self.error = 0
+        self.disabled = 0
+        self.count = 0
+    def feed(self, _t, _r, _u, _state):
         self.total += _t
         self.reserved += _r
         self.used += _u
-        
+        self.count += 1
+        # count states
+        for _short, _attr in  [("E", "error"), ("d", "disabled"), ("u", "unknown"), ("a", "alarm")]:
+            if _short in _state:
+                setattr(self, _attr, getattr(self, _attr) + 1)
+
 class rms_mon_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -110,14 +120,10 @@ class rms_mon_process(threading_tools.process_obj):
     def _generate_slotinfo(self, _res):
         _queue_names = set()
         _host_names = set()
-        _num_queues = 0
         act_time = time.time()
         # queue dict
         _queues = {"total" : queue_info()}
-        _qs_error = 0
-        _qs_disabled = 0
         for _node in _res.findall(".//node"):
-            _num_queues += 1
             _host = _node.findtext("host")
             _queue = _node.findtext("queue")
             _queue_names.add(_queue)
@@ -127,16 +133,11 @@ class rms_mon_process(threading_tools.process_obj):
                 int(_node.findtext("slots_reserved")),
                 int(_node.findtext("slots_total")),
             )
-            _queues["total"].feed(_st, _sr, _su)
+            _state = _node.findtext("state")
+            _queues["total"].feed(_st, _sr, _su, _state)
             if _queue not in _queues:
                 _queues[_queue] = queue_info()
-            _queues[_queue].feed(_st, _sr, _su)
-            # count states
-            _state = _node.findtext("state")
-            if "E" in _state:
-                _qs_error += 1
-            if "d" in _state:
-                _qs_disabled += 1
+            _queues[_queue].feed(_st, _sr, _su, _state)
         # print _res
         drop_com = server_command.srv_command(command="set_vector")
         _bldr = drop_com.builder()
@@ -165,22 +166,6 @@ class rms_mon_process(threading_tools.process_obj):
                 base=1000,
             ).build_xml(_bldr)
         )
-        for _key, _value, _info in [
-            ("total", _num_queues, "queues defined"),
-            ("error", _qs_error, "queues in error state"),
-            ("disabled", _qs_disabled, "queues disabled"),
-            ]:
-            _rms_vector.append(
-                hm_classes.mvect_entry(
-                    "rms.queues.{}".format(_key),
-                    info=_info,
-                    default=0,
-                    value=_value,
-                    factor=1,
-                    valid_until=valid_until,
-                    base=1000,
-                ).build_xml(_bldr)
-            )
         for q_name, q_value in _queues.iteritems():
             # sanitize queue name
             q_name = q_name.replace(".", "_")
@@ -189,10 +174,15 @@ class rms_mon_process(threading_tools.process_obj):
                 ("reserved", q_value.reserved, "slots reserved"),
                 ("used", q_value.used, "slots used"),
                 ("free", q_value.total - q_value.used, "slots free"),
+                ("error", q_value.error, "instances in error state"),
+                ("disabled", q_value.disabled, "instances in disabled state"),
+                ("alarm", q_value.alarm, "instances in alarm state"),
+                ("unknown", q_value.unknown, "instances in error state"),
+                ("count", q_value.count, "instances"),
                 ]:
                 _rms_vector.append(
                     hm_classes.mvect_entry(
-                        "rms.slots.{}.{}".format(q_name, _key),
+                        "rms.queues.{}.{}".format(q_name, _key),
                         info="{} in queue {}".format(_info, q_name),
                         default=0,
                         value=_value,
