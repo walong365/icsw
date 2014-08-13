@@ -28,7 +28,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
-    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, mon_config, \
+    all_services, config_dir, device_templates, service_templates, mon_config, \
     all_host_dependencies, build_cache, build_safe_name
 from initat.md_config_server.mixins import version_check_mixin
 from lxml.builder import E # @UnresolvedImport
@@ -563,8 +563,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             cur_gc.add_config(all_host_groups(cur_gc, self))
             # hosts
             cur_gc.add_config(all_hosts(cur_gc, self))
-            # hosts_extinfo
-            cur_gc.add_config(all_hosts_extinfo(cur_gc, self))
             # services
             cur_gc.add_config(all_services(cur_gc, self))
             # device dir
@@ -892,12 +890,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
                             if (self.gc["MD_TYPE"] == "nagios" and self.gc["MD_VERSION"] > 1) or (self.gc["MD_TYPE"] == "icinga"):
                                 # handle for nagios 2, icinga
-                                act_hostext_info = mon_config("hostextinfo", host.full_name)
-                                act_hostext_info["host_name"] = host.full_name
+                                # act_hostext_info = mon_config("hostextinfo", host.full_name)
+                                # act_hostext_info["host_name"] = host.full_name
                                 for key in ["icon_image", "statusmap_image"]:
-                                    act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
+                                    act_host[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
                                 # FIXME, not working for nagios2
-                                host_config_list.append(act_hostext_info)
+                                # host_config_list.append(act_hostext_info)
                                 # hostext_nc[host.full_name] = act_hostext_info
                             else:
                                 self.log(
@@ -1088,52 +1086,17 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                     )
                                 else:
                                     act_host_dep = mon_config("hostdependency", "")
-                                    act_host_dep["host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
-                                    act_host_dep["dependent_host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
-                                    h_dep.feed_config(act_host_dep)
-                                    host_config_list.append(act_host_dep)
+                                    _list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
+                                    _dep_list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
+                                    if _list and _dep_list:
+                                        act_host_dep["host_name"] = _list
+                                        act_host_dep["dependent_host_name"] = _dep_list
+                                        h_dep.feed_config(act_host_dep)
+                                        host_config_list.append(act_host_dep)
+                                    else:
+                                        self.mach_log("empty list or dependency_list for hostdependency.(host_name|dependency_name)", logging_tools.LOG_LEVEL_ERROR)
                         # add service dependencies
                         if use_service_deps:
-                            # old code
-#                             for s_dep in mon_service_dependency.objects.filter(Q(dependent_devices=host)).select_related(
-#                                 "mon_service_dependency_templ",
-#                                 "mon_service_dependency_templ__mon_period",
-#                                 "mon_check_command",
-#                                 "dependent_mon_check_command",
-#                                 "mon_service_cluster",
-#                                 ):
-#                                 act_service_dep = mon_config("servicedependency", "")
-#                                 if s_dep.mon_service_cluster_id:
-#                                     all_ok = True
-#                                     for d_host in s_dep.dependent_devices.all():
-#                                         all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
-#                                     if all_ok:
-#                                         act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
-#                                         sc_check = cur_gc["command"]["check_service_cluster"]
-#                                         # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
-#                                         act_service_dep["service_description"] = "{} / {}".format(sc_check.get_description(), _bc.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
-#                                         act_service_dep["host_name"] = _bc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
-#                                         act_service_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.dependent_devices.all().select_related("domain_tree_node")]
-#                                         s_dep.feed_config(act_service_dep)
-#                                         host_config_list.append(act_service_dep)
-#                                     else:
-#                                         self.mach_log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
-#                                 else:
-#                                     all_ok = True
-#                                     for p_host in s_dep.devices.all():
-#                                         all_ok &= self._check_for_config("parent", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, p_host, s_dep.mon_check_command_id)
-#                                     for d_host in s_dep.dependent_devices.all():
-#                                         all_ok &= self._check_for_config("child", all_configs, _bc.mcc_lut, _bc.mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
-#                                     if all_ok:
-#                                         act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
-#                                         act_service_dep["service_description"] = _bc.mcc_lut[s_dep.mon_check_command_id][1]
-#                                         act_service_dep["host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.devices.all().select_related("domain_tree_node")]
-#                                         act_service_dep["dependent_host_name"] = [_bc.get_host(cur_dev.pk).full_name for cur_dev in s_dep.dependent_devices.all().select_related("domain_tree_node")]
-#                                         s_dep.feed_config(act_service_dep)
-#                                         host_config_list.append(act_service_dep)
-#                                     else:
-#                                         self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
-                            # new code
                             for s_dep in _bc.get_dependencies("sd", host.pk):
                                 act_service_dep = mon_config("servicedependency", "")
                                 if s_dep.mon_service_cluster_id:
@@ -1394,7 +1357,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         _p_ok, _p_failed = (0, 0)
         for host_name in sorted(host_names):
             host = host_nc[host_name][0]
-            if host.has_key("possible_parents"):
+            if host.has_key("possible_parents") and not _bc.single_build:
                 # parent list
                 parent_list = set()
                 # check for nagvis_maps
@@ -1404,23 +1367,29 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     # skip first host (is self)
                     host_pk = p_list[0]
                     for parent_idx in p_list[1:]:
-                        if d_map[host_pk] > d_map[parent_idx]:
-                            parent = _bc.get_host(parent_idx).full_name
-                            if parent in host_names and parent != host.name:
-                                parent_list.add(parent)
-                                # exit inner loop
-                                break
-                        else:
-                            # exit inner loop
-                            break
-                    if "_nagvis_map" not in host:
-                        # loop again to scan for nagvis_map
-                        for parent_idx in p_list[1:]:
+                        if parent_idx in d_map:
                             if d_map[host_pk] > d_map[parent_idx]:
                                 parent = _bc.get_host(parent_idx).full_name
                                 if parent in host_names and parent != host.name:
-                                    if "_nagvis_map" in host_nc[parent][0]:
-                                        local_nagvis_maps.append(host_nc[parent][0]["_nagvis_map"])
+                                    parent_list.add(parent)
+                                    # exit inner loop
+                                    break
+                            else:
+                                # exit inner loop
+                                break
+                        else:
+                            self.log("parent_idx {:d} not in distance map, routing cache too old?".format(parent_idx), logging_tools.LOG_LEVEL_ERROR)
+                    if "_nagvis_map" not in host:
+                        # loop again to scan for nagvis_map
+                        for parent_idx in p_list[1:]:
+                            if parent_idx in d_map:
+                                if d_map[host_pk] > d_map[parent_idx]:
+                                    parent = _bc.get_host(parent_idx).full_name
+                                    if parent in host_names and parent != host.name:
+                                        if "_nagvis_map" in host_nc[parent][0]:
+                                            local_nagvis_maps.append(host_nc[parent][0]["_nagvis_map"])
+                            else:
+                                self.log("parent_idx {:d} not in distance map, routing cache too old?".format(parent_idx), logging_tools.LOG_LEVEL_ERROR)
                 if "_nagvis_map" not in host and local_nagvis_maps:
                     host["_nagvis_map"] = local_nagvis_maps[0]
                 if parent_list:
@@ -1614,8 +1583,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             ret_field.append(act_serv)
         return ret_field
     def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host):
-        if _bc.cache_mode in ["ALWAYS", "DYNAMIC"]:
-            # use stored traces in mode ALWAYS and DYNAMIC
+        if _bc.cache_mode in ["ALWAYS"]:
+            # use stored traces in mode ALWAYS
             traces = _bc.get_mon_trace(host, net_devices, srv_net_idxs)
         else:
             traces = []

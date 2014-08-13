@@ -2307,17 +2307,6 @@ class all_hosts(host_type_config):
     def get_object_list(self):
         return []
 
-class all_hosts_extinfo(host_type_config):
-    """ only a dummy, now via device.d """
-    def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
-    def refresh(self, gen_conf):
-        pass
-    def get_name(self):
-        return "hostextinfo"
-    def get_object_list(self):
-        return []
-
 class all_services(host_type_config):
     """ only a dummy, now via device.d """
     def __init__(self, gen_conf, build_proc):

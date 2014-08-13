@@ -34,6 +34,7 @@ from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TI
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS
 from initat.md_config_server.server import server_process
 from initat.md_config_server.version import VERSION_STRING
+from initat.md_config_server.special_commands import CACHE_MODES
 import cluster_location
 import config_tools
 import configfile
@@ -57,6 +58,7 @@ def main():
         ("COM_PORT"            , configfile.int_c_var(SERVER_COM_PORT)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("INITIAL_CONFIG_RUN"  , configfile.bool_c_var(False, help_string="make an config build run on startup [%(default)s]", only_commandline=True)),
+        ("INITIAL_CONFIG_CACHE_MODE", configfile.str_c_var("DYNAMIC", help_string="cache mode for initial config run [%(default)s]", only_commandline=True, choices=CACHE_MODES)),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
