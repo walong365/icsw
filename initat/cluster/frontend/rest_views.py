@@ -235,7 +235,10 @@ class detail_view(mixins.RetrieveModelMixin,
         ignore_objs = {"device_group" : list(device.objects.filter(Q(device_group=kwargs["pk"]) & Q(device_type__identifier="MD")))}.get(self.model._meta.object_name, [])
         num_refs = get_related_models(cur_obj, ignore_objs=ignore_objs)
         if num_refs:
-            raise ValueError("cannot delete %s: referenced %s" % (
+            logger.error("lock_list for {} contains {}:".format(unicode(cur_obj), logging_tools.get_plural("entry", len(cur_obj._lock_list))))
+            for _num, _entry in enumerate(cur_obj._lock_list, 1):
+                logger.error(" - {:2d}: {}".format(_num, _entry))
+            raise ValueError("cannot delete {}: referenced {}".format(
                 self.model._meta.object_name,
                 logging_tools.get_plural("time", num_refs)))
         else:
