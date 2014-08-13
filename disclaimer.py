@@ -79,8 +79,8 @@ class disclaimer_handler(object):
             if _email.get_content_type().lower() == _src:
                 self.log("rewriting content_type from {} to {}".format(_src, _dst))
                 _email.set_type(_dst)
+        # _email.add_header("X-INIT-FOOTER-ADDED", "yes")
         self.log_mail("after", _email)
-        _email.add_header("X-INIT-FOOTER-ADDED", "yes")
         self.dst_mail = _email.as_string()
         self.log("dst mail has {}".format(logging_tools.get_size_str(len(self.dst_mail))))
     def send_mail(self):
