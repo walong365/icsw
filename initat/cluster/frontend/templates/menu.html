@@ -1,6 +1,6 @@
 {% load i18n coffeescript staticfiles %}
 
-<nav class="navbar navbar-default navbar-static-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base" ng-cloack>
+<nav class="navbar navbar-default navbar-static-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base" ng-cloak>
     <ul class="nav navbar-nav">
         {% if not index_view %}
         <li>
@@ -64,7 +64,7 @@
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-left">
                         <ul class="list-group">
                             <li class="list-group-item">
-                                <input type="button" class="btn btn-success btn-xs" value="rebuild config (cached)" ng-click="rebuild_config('ALWAYS')"/>
+                                <input type="button" class="btn btn-success btn-xs" value="rebuild config (cached, RC)" title="fully cached (with routing cache)" ng-click="rebuild_config('ALWAYS')"/>
                             </li>
                             <li class="list-group-item">
                                 <input type="button" class="btn btn-warning btn-xs" value="rebuild config (dynamic)" ng-click="rebuild_config('DYNAMIC')"/>

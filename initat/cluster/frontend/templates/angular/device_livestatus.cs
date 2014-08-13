@@ -114,34 +114,34 @@ livestatus_templ = """
 """
 
 monconfig_templ = """
-<div class="panel panel-default">
-    <input type="button" class="btn btn-success" value="reload" ng-show="!reload_pending" ng-click="load_data()"></input>
-    <tabset ng-show="!reload_pending">
-        <tab ng-repeat="(key, value) in mc_tables" heading="{{ value.short_name }} ({{ value.entries.length }})">
-            <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
-            <table class="table table-condensed table-hover table-bordered" style="width:auto;">
-                <thead>
-                    <tr>
-                        <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-                    </tr>
-                    <tr>
-                        <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-click="value.toggle_order(attr)">
-                            <span ng-class="value.get_order_glyph(attr)"></span>
-                            {{ get_short_attr_name(attr) }}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
-                        <td ng-repeat="attr in value.attr_list">
-                            {{ entry[attr] }}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </tab>
-    </tabset>
-</div>
+<h4 ng-show="!reload_pending">
+    {{ mc_tables.length }} tables shown, <input type="button" class="btn btn-sm btn-success" value="reload" ng-show="!reload_pending" ng-click="load_data()"></input>
+</h4>
+<tabset ng-show="!reload_pending">
+    <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
+        <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
+        <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+            <thead>
+                <tr>
+                    <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+                </tr>
+                <tr>
+                    <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-click="value.toggle_order(attr)">
+                        <span ng-class="value.get_order_glyph(attr)"></span>
+                        {{ get_short_attr_name(attr) }}
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
+                    <td ng-repeat="attr in value.attr_list">
+                        {{ entry[attr] }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </tab>
+</tabset>
 """
 
 serviceinfo_templ = """
@@ -1096,7 +1096,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = () ->
-            $scope.cur_timeout = $timeout($scope.load_data, 20000)
+            #$scope.cur_timeout = $timeout($scope.load_data, 20000)
             $scope.reload_pending = true
             $scope.cur_xhr = call_ajax
                 url  : "{% url 'mon:get_node_config' %}"
@@ -1105,17 +1105,17 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                 },
                 success : (xml) =>
                     if parse_xml_response(xml)
-                        mc_tables = {}
+                        mc_tables = []
                         $(xml).find("config > *").each (idx, node) => 
                             new_table = new mc_table($(node), paginatorSettings)
-                            mc_tables[new_table.name] = new_table
+                            mc_tables.push(new_table)
                         $scope.$apply(
                             $scope.mc_tables = mc_tables
                             $scope.reload_pending = false
                         )
         $scope.$on("$destroy", () ->
-            if $scope.cur_timeout?
-                $timeout.cancel($scope.cur_timeout)
+            #if $scope.cur_timeout?
+            #    $timeout.cancel($scope.cur_timeout)
             if $scope.cur_xhr?
                 $scope.cur_xhr.abort()
         )
