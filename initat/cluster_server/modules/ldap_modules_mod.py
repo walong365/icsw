@@ -120,6 +120,7 @@ class ldap_mixin(object):
         else:
             success, err_str = (True, "")
         return success, err_str
+
     def _delete_entry(self, ld, dn):
         try:
             ld.delete_s(dn)
@@ -128,13 +129,14 @@ class ldap_mixin(object):
         else:
             success, err_str = (True, "")
         return success, err_str
+
     def _modify_entry(self, ld, dn, change_list):
         if self.dryrun:
             return True, ""
         new_list = []
         for val_0, val_1, val_list in change_list:
             if type(val_list) == list:
-                val_list = [str(sub_val) for sub_val in val_list]
+                val_list = [sub_val.encode("utf-8") for sub_val in val_list]
             new_list.append((val_0, val_1, val_list))
         try:
             ld.modify_s(dn, new_list)
@@ -143,6 +145,7 @@ class ldap_mixin(object):
         else:
             success, err_str = (True, "")
         return success, err_str
+
     def _expand(self, in_str, lut):
         for key, value in lut.iteritems():
             if value:
