@@ -10,11 +10,13 @@ from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from django.utils.functional import memoize
-from initat.cluster.backbone.middleware import thread_local_middleware, _thread_local
-from initat.cluster.backbone.models.functions import _check_empty_string, _check_float, \
-    _check_integer, _check_non_empty_string, to_system_tz, get_change_reset_list, get_related_models
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from initat.cluster.backbone.middleware import thread_local_middleware, \
+    _thread_local
+from initat.cluster.backbone.models.functions import _check_empty_string, \
+    _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
+    get_change_reset_list, get_related_models
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 from rest_framework import serializers
 import crypt
 import datetime
@@ -32,14 +34,15 @@ import server_command
 import time
 import uuid
 
-from initat.cluster.backbone.models.domain import * # @UnusedWildImport
-from initat.cluster.backbone.models.monitoring import * # @UnusedWildImport
-from initat.cluster.backbone.models.network import * # @UnusedWildImport
-from initat.cluster.backbone.models.package import * # @UnusedWildImport
-from initat.cluster.backbone.models.user import * # @UnusedWildImport
-from initat.cluster.backbone.models.background import * # @UnusedWildImport
-from initat.cluster.backbone.models.hints import * # @UnusedWildImport
-from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
+from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
+from initat.cluster.backbone.models.monitoring import *  # @UnusedWildImport
+from initat.cluster.backbone.models.network import *  # @UnusedWildImport
+from initat.cluster.backbone.models.package import *  # @UnusedWildImport
+from initat.cluster.backbone.models.user import *  # @UnusedWildImport
+from initat.cluster.backbone.models.background import *  # @UnusedWildImport
+from initat.cluster.backbone.models.hints import *  # @UnusedWildImport
+from initat.cluster.backbone.signals import user_changed, group_changed, \
+    bootsettings_changed
 
 
 # do not use, problems with import
@@ -48,14 +51,15 @@ from initat.cluster.backbone.signals import user_changed, group_changed, bootset
 # attention: this list is used in create_fixtures.py
 LICENSE_CAPS = [
     ("monitor", "Monitoring services", ["md-config"]),
-    ("monext" , "Extended monitoring services", ["md-config"]),
-    ("boot"   , "boot/config facility for nodes", ["mother"]),
+    ("monext", "Extended monitoring services", ["md-config"]),
+    ("boot", "boot/config facility for nodes", ["mother"]),
     ("package", "Package installation", ["package"]),
-    ("rms"    , "Resource Management system", ["rms"]),
-    ("docu"   , "show documentation", []),
+    ("rms", "Resource Management system", ["rms"]),
+    ("docu", "show documentation", []),
 ]
 
 ALL_LICENSES = [name for name, _descr, _srv in LICENSE_CAPS]
+
 
 def get_license_descr(name):
     return [_descr for _name, _descr, _srv in LICENSE_CAPS if name == _name][0]
@@ -67,6 +71,7 @@ logger = logging.getLogger(__name__)
 class cs_timer(object):
     def __init__(self):
         self.start_time = time.time()
+
     def __call__(self, what):
         cur_time = time.time()
         log_str = "{} in {}".format(
@@ -82,10 +87,12 @@ system_timezone = pytz.timezone(time.tzname[0])
 # cluster_log_source
 cluster_log_source = None
 
+
 @receiver(request_started)
 def bg_req_started(*args, **kwargs):
     # init number of background jobs created
     _thread_local.num_bg_jobs = 0
+
 
 @receiver(request_finished)
 def bg_req_finished(*args, **kwargs):
@@ -94,9 +101,11 @@ def bg_req_finished(*args, **kwargs):
         _thread_local.num_bg_jobs = 0
         _signal_localhost()
 
+
 @receiver(user_changed)
 def user_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["user"])
+
 
 @receiver(group_changed)
 def group_changed(*args, **kwargs):
