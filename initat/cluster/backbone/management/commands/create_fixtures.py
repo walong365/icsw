@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Otu
-#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel
@@ -25,11 +23,11 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
+from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, log_source, \
     get_related_models
-from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+# from lxml.builder import E # @UnresolvedImport
 import os
 import sys
 
@@ -41,7 +39,7 @@ class Command(BaseCommand):
     option_list = BaseCommand.option_list
     help = ("Creates the cluster fixtures.")
     def handle(self, **options):
-        print "creating fixtures..."
+        print("creating fixtures...")
         # global settings
 
         # default values
@@ -77,7 +75,7 @@ class Command(BaseCommand):
             if not get_related_models(_cc):
                 _cc.delete()
         # log source
-        factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
+        factories.LogSource(identifier="user", name="Cluster user", description="ClusterUser")
         # device type
         factories.DeviceType(identifier="H", description="Host", priority=0)
         factories.DeviceType(identifier="AM", description="APC Masterswitch", priority=10)

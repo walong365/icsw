@@ -6,7 +6,7 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
-    config_hint, config_var_hint, config_script_hint
+    config_hint, config_var_hint, config_script_hint, device_variable
 
 class Device(factory.django.DjangoModelFactory):
     class Meta:
@@ -287,3 +287,8 @@ class ConfigScriptHint(factory.django.DjangoModelFactory):
         if self.ac_value != extracted:
             self.ac_value = extracted
             self.save()
+
+class DeviceVariable(factory.django.DjangoModelFactory):
+    class Meta:
+        model = device_variable
+        django_get_or_create = ("name", "device")

@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Otu
-#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel
@@ -23,6 +21,7 @@
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_group
 from optparse import make_option
 
@@ -38,11 +37,11 @@ class Command(BaseCommand):
 
     def handle(self, **options):
         try:
-            _cdg_present = device_group.objects.get(Q(cluster_device_group=True))
+            cur_cdg = device_group.objects.get(Q(cluster_device_group=True))
         except device_group.DoesNotExist:
-            new_cdg = device_group(name=options["name"], description=options["description"], cluster_device_group=True)
-            new_cdg.save()
-            print "Created cluster device group '{}'".format(unicode(new_cdg))
+            cur_cdg = device_group(name=options["name"], description=options["description"], cluster_device_group=True)
+            cur_cdg.save()
+            print "Created cluster device group '{}'".format(unicode(cur_cdg))
         else:
-            print "Cluster device group '{}' already exists".format(unicode(_cdg_present))
-
+            print "Cluster device group '{}' already exists".format(unicode(cur_cdg))
+        factories.DeviceVariable(name="CLUSTER_NAME", device=cur_cdg.device_group.all()[0], local_copy_ok=False, value="new cluster")

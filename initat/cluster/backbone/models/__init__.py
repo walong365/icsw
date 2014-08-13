@@ -548,6 +548,8 @@ class device_variable(models.Model):
     is_public = models.BooleanField(default=True)
     name = models.CharField(max_length=765)
     description = models.CharField(max_length=765, default="", blank=True)
+    # can be copied to a group or device ? There is no sense in making the cluster_name a local instance
+    local_copy_ok = models.BooleanField(default=True)
     var_type = models.CharField(max_length=3, choices=[
         ("i", "integer"),
         ("s", "string"),
