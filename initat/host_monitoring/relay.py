@@ -443,14 +443,22 @@ class relay_code(threading_tools.process_pool):
         try:
             client.bind(conn_str)
         except zmq.ZMQError:
-            self.log("error binding to *:%d: %s" % (
-                global_config["COM_PORT"],
-                process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "error binding to *:{:d}: {}".format(
+                    global_config["COM_PORT"],
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
             client.close()
             self.network_socket = None
         else:
-            self.log("bound to %s (ID %s)" % (conn_str, uuid))
+            self.log(
+                "bound to {} (ID {})".format(
+                    conn_str,
+                    uuid
+                )
+            )
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.network_socket = client
     def _resolve_address_noresolve(self, target):

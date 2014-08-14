@@ -382,6 +382,7 @@ class _general(hm_classes.hm_module):
                                         self.__mailcount["active"] += 1
                                     else:
                                         self.__mailcount["queued"] += 1
+                                    self.__mailcount["total"] += 1
                     last_line = mail_lines[-1]
                     if last_line.count("empty"):
                         # empty mailqueue
@@ -407,11 +408,19 @@ class _general(hm_classes.hm_module):
                         logging_tools.LOG_LEVEL_WARN)
         return self.__mailcount
 
+
 class mailq_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name)
-        self.parser.add_argument("-w", dest="warn", type=int)
-        self.parser.add_argument("-c", dest="crit", type=int)
+        self.parser.add_argument("-w", dest="warntotal", type=int, help="warning value for total number of mails in queue [%(default)s]", default=5)
+        self.parser.add_argument("-c", dest="crittotal", type=int, help="critical value for total number of mails in queue [%(default)s]", default=10)
+        self.parser.add_argument("-wq", dest="warnqueued", type=int, help="warning value for number of queued mails in queue [%(default)s]", default=5)
+        self.parser.add_argument("-cq", dest="critqueued", type=int, help="critical value for number of queued mails in queue [%(default)s]", default=10)
+        self.parser.add_argument("-wh", dest="warnhold", type=int, help="warning value for number of hold mails in queue [%(default)s]", default=5)
+        self.parser.add_argument("-ch", dest="crithold", type=int, help="critical value for number of hold mails in queue [%(default)s]", default=10)
+        self.parser.add_argument("-wa", dest="warnactive", type=int, help="warning value for number of active mails in queue [%(default)s]", default=5)
+        self.parser.add_argument("-ca", dest="critactive", type=int, help="critical value for number of active mails in queue [%(default)s]", default=10)
+
     def __call__(self, srv_com, cur_ns):
         if self.module.mailq_command_valid():
             mc_dict = self.module.get_mailcount()
@@ -420,32 +429,62 @@ class mailq_command(hm_classes.hm_command):
                 *[builder.count("%d" % (value), info=key) for key, value in mc_dict.iteritems()])
         else:
             srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_STATE_ERROR)
+
     def interpret(self, srv_com, cur_ns):
         if "mail_dict" in srv_com:
             mail_dict = srv_com["mail_dict"][0]
-            mail_dict = {entry.attrib["info"] : int(entry.text) for entry in mail_dict}
-            ret_state = limits.check_ceiling(mail_dict["queued"], cur_ns.warn, cur_ns.crit)
+            mail_dict = {entry.attrib["info"]: int(entry.text) for entry in mail_dict}
+            ret_state = limits.check_ceiling(
+                mail_dict.get("total", 0),
+                cur_ns.warntotal,
+                cur_ns.crittotal
+            )
             ret_f = []
             if mail_dict.get("queued", 0):
                 ret_f = ["%s queued" % (logging_tools.get_plural("mail", mail_dict["queued"]))]
-            if mail_dict.get("queued", 0) != mail_dict.get("total", 0) and mail_dict.get("total", 0):
-                ret_f.append("%d total" % (mail_dict["total"]))
+                ret_state = max(
+                    ret_state,
+                    limits.check_ceiling(
+                        mail_dict.get("queued", 0),
+                        cur_ns.warnqueued,
+                        cur_ns.critqueued
+                    )
+                )
             if mail_dict.get("active", 0):
                 ret_f.append("%d active" % (mail_dict["active"]))
+                ret_state = max(
+                    ret_state,
+                    limits.check_ceiling(
+                        mail_dict.get("active", 0),
+                        cur_ns.warnactive,
+                        cur_ns.critactive
+                    )
+                )
             if mail_dict.get("hold", 0):
                 ret_f.append("%d on hold" % (mail_dict["hold"]))
-                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                ret_state = max(
+                    ret_state,
+                    limits.check_ceiling(
+                        mail_dict.get("hold", 0),
+                        cur_ns.warnhold,
+                        cur_ns.crithold
+                    )
+                )
+            if mail_dict.get("total", 0):
+                ret_f.append("%d total" % (mail_dict["total"]))
             if not ret_f:
                 ret_f = ["mailqueue is empty"]
             return ret_state, ", ".join(ret_f)
         else:
             num_mails = int(srv_com["num_mails"].text)
             return self._interpret(num_mails, cur_ns)
+
     def interpret_old(self, result, cur_ns):
         num_mails = hm_classes.net_to_sys(result[3:])["mails"]
-        return self._interpret(num_mails, cur_ns)
+        return self.interpret(num_mails, cur_ns)
+
     def _interpret(self, num_mails, cur_ns):
-        ret_state = limits.check_ceiling(num_mails, cur_ns.warn, cur_ns.crit)
+        ret_state = limits.check_ceiling(num_mails, cur_ns.warntotal, cur_ns.crittotal)
         result = "%s in queue" % (logging_tools.get_plural("mail", num_mails))
         return ret_state, result
 
