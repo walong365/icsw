@@ -253,7 +253,6 @@ class get_mon_vars(View):
                             _mc.config.name,
                         )
                     )
-        print res_list
         return HttpResponse(json.dumps(
             [
                 {"idx" : 0, "name": "please choose..."}

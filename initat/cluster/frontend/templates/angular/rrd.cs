@@ -1,4 +1,4 @@
-{% load coffeescript %}
+{% load coffeescript %} 
 
 <script type="text/javascript">
 
@@ -14,13 +14,14 @@ rrd_graph_template = """
     <h3 ng-show="vector_valid">
         Vector info:
         <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
-        <span class="label label-primary" title="entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
+        <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
         <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
     </h3>
     <div class="input-group form-inline" ng-show="show_options">
         <div class="input-group-btn">
             <div class="btn-group">
-                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
+                <span class="glyphicon glyphicon-zoom-in"></span>
                     {{ cur_dim }} <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
@@ -30,30 +31,44 @@ rrd_graph_template = """
         </div>&nbsp;
         <div class="input-group-btn">
             <div class="btn-group">
-                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                    <span class="glyphicon glyphicon-time"></span>
                     timerange <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
                     <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
                 </ul>
             </div>
-        </div>
-        <div class="input-group-btn">
-            <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
-        </div>
-        <div class="input-group-btn">
-            <input type="button" ng-class="merge_devices && 'btn btn-sm btn-success' || 'btn btn-sm'" value="merge devices" ng-click="merge_devices=!merge_devices"></input>
-        </div>
+        </div>&nbsp;
         <div class="input-group-btn">
             <div class="btn-group">
-                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                    <span class="glyphicon glyphicon-dashboard"></span>
                     timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
                     <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
                 </ul>
             </div>
-        </div>
+        </div>&nbsp;
+        <div class="input-group-btn">
+            <button type="button" ng-class="hide_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_zero=!hide_zero">
+                <span class="glyphicon glyphicon-ban-circle"></span>
+                hide zero
+            </button>
+        </div>&nbsp;
+        <div class="input-group-btn">
+            <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y">
+                <span class="glyphicon glyphicon-sort"></span>
+                scale y
+            </button>
+        </div>&nbsp;
+        <div class="input-group-btn">
+            <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices">
+                <span class="glyphicon glyphicon-th"></span>
+                merge devices
+            </button>
+        </div>&nbsp;
         <div class="input-group">
             <span class="input-group-addon">
                  from
@@ -282,6 +297,7 @@ add_rrd_directive = (mod) ->
             $scope.graph_list = {}
             $scope.graph_list = []
             $scope.hide_zero = false
+            $scope.scale_y = false
             $scope.merge_devices = true
             $scope.show_options = false
             $scope.g_tree = new rrd_tree($scope)
@@ -443,6 +459,7 @@ add_rrd_directive = (mod) ->
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                         "size"       : $scope.cur_dim
                         "hide_zero"     : $scope.hide_zero
+                        "scale_y"       : $scope.scale_y
                         "merge_devices" : $scope.merge_devices
                         "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
                     }
