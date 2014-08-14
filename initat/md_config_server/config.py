@@ -26,7 +26,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
      mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special, \
      mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency, \
-     mon_build_unreachable
+     mon_build_unreachable, parse_commandline
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
@@ -2352,79 +2352,16 @@ class check_command(object):
     def get_default_value(self, arg_name, def_value):
         return self.__default_values.get(arg_name, def_value)
     def _generate_md_com_line(self):
-        """
-        parses command line, also builds argument lut
-        lut format: commandline switch -> ARG#
-        list format : ARG#, ARG#, ...
-        """
-        self.__num_args, self.__default_values = (0, {})
-        arg_lut, arg_list = ({}, [])
-        """
-        handle the various input formats:
-
-        ${ARG#:var_name:default}
-        ${ARG#:var_name:default}$
-        ${ARG#:default}
-        ${ARG#:default}$
-        $ARG#$
-
-        """
-        com_re = re.compile("^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(?P<var_name>[^:^}]+?)(\:(?P<default>[^}]+))*}\$*)|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$")
-        cur_line = self.command_line
-        # where to start the match to avoid infinite loop
-        s_idx = 0
-        while True:
-            cur_m = com_re.match(cur_line[s_idx:])
-            if cur_m:
-                m_dict = cur_m.groupdict()
-                # check for -X or --Y switch
-                prev_part = m_dict["pre_text"].strip().split()
-                if prev_part and prev_part[-1].startswith("-"):
-                    prev_part = prev_part[-1]
-                else:
-                    prev_part = None
-                if m_dict["arg_num_2"] is not None:
-                    # short form
-                    arg_name = "ARG%s" % (m_dict["arg_num_2"])
-                else:
-                    arg_name = "ARG%s" % (m_dict["arg_num_1"])
-                    var_name, default_value = (m_dict["var_name"], m_dict["default"])
-                    if var_name:
-                        self.__default_values[arg_name] = (var_name, default_value)
-                    elif default_value is not None:
-                        self.__default_values[arg_name] = default_value
-                pre_text, post_text = (m_dict["pre_text"] or "",
-                                       m_dict["post_text"] or "")
-                cur_line = "%s%s$%s$%s" % (
-                    cur_line[:s_idx],
-                    pre_text,
-                    arg_name,
-                    post_text)
-                s_idx += len(pre_text) + len(arg_name) + 2
-                if prev_part:
-                    arg_lut[prev_part] = arg_name
-                else:
-                    arg_list.append(arg_name)
-                self.__num_args += 1
-            else:
-                break
-        self.__md_com_line = cur_line
-        if self.command_line == self.md_command_line:
-            self.log("command_line in/out is '{}'".format(self.command_line))
-        else:
-            self.log("command_line in     is '{}'".format(self.command_line))
-            self.log("command_line out    is '{}'".format(self.md_command_line))
-        if arg_lut:
-            self.log("lut : %s; %s" % (
-                logging_tools.get_plural("key", len(arg_lut)),
-                ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.iteritems()])
-            ))
-        if arg_list:
-            self.log("list: %s; %s" % (
-                logging_tools.get_plural("item", len(arg_list)),
-                ", ".join(arg_list)
-            ))
-        self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
+        arg_info, log_lines = parse_commandline(self.command_line)
+        # print arg_info, log_lines
+        self.__arg_lut = arg_info["arg_lut"]
+        self.__arg_list = arg_info["arg_list"]
+        self.__num_args = arg_info["num_args"]
+        self.__default_values = arg_info["default_values"]
+        self.__md_com_line = arg_info["parsed_com_line"]
+        if global_config["DEBUG"]:
+            for _line in log_lines:
+                self.log(_line)
     def correct_argument_list(self, arg_temp, dev_variables):
         out_list = []
         for arg_name in arg_temp.argument_names:
