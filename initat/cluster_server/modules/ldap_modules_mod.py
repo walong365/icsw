@@ -461,7 +461,7 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
                                 )
                     if "sambadomain" in par_dict:
                         samba_dn = u"sambaDomainName={},{}".format(par_dict["sambadomain"], base_dn)
-                        for dn, attrs in ld_read.search_s(base_dn, ldap.SCOPE_SUBTREE, "objectclass=sambaDomain"):
+                        for dn, _attrs in ld_read.search_s(base_dn, ldap.SCOPE_SUBTREE, "objectclass=sambaDomain"):
                             ok, err_str = self._delete_entry(ld_write,
                                                              dn)
                             self.log("uremoved previous sambaDomain '{}'".format(dn))
