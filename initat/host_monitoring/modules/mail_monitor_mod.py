@@ -431,62 +431,60 @@ class mailq_command(hm_classes.hm_command):
             srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_STATE_ERROR)
 
     def interpret(self, srv_com, cur_ns):
-        if "mail_dict" in srv_com:
+        if type(srv_com) in [int, long]:
+            mail_dict = {"total": srv_com, "queued": srv_com}
+        elif "mail_dict" in srv_com:
             mail_dict = srv_com["mail_dict"][0]
             mail_dict = {entry.attrib["info"]: int(entry.text) for entry in mail_dict}
-            ret_state = limits.check_ceiling(
-                mail_dict.get("total", 0),
-                cur_ns.warntotal,
-                cur_ns.crittotal
-            )
-            ret_f = []
-            if mail_dict.get("queued", 0):
-                ret_f = ["%s queued" % (logging_tools.get_plural("mail", mail_dict["queued"]))]
-                ret_state = max(
-                    ret_state,
-                    limits.check_ceiling(
-                        mail_dict.get("queued", 0),
-                        cur_ns.warnqueued,
-                        cur_ns.critqueued
-                    )
-                )
-            if mail_dict.get("active", 0):
-                ret_f.append("%d active" % (mail_dict["active"]))
-                ret_state = max(
-                    ret_state,
-                    limits.check_ceiling(
-                        mail_dict.get("active", 0),
-                        cur_ns.warnactive,
-                        cur_ns.critactive
-                    )
-                )
-            if mail_dict.get("hold", 0):
-                ret_f.append("%d on hold" % (mail_dict["hold"]))
-                ret_state = max(
-                    ret_state,
-                    limits.check_ceiling(
-                        mail_dict.get("hold", 0),
-                        cur_ns.warnhold,
-                        cur_ns.crithold
-                    )
-                )
-            if mail_dict.get("total", 0):
-                ret_f.append("%d total" % (mail_dict["total"]))
-            if not ret_f:
-                ret_f = ["mailqueue is empty"]
-            return ret_state, ", ".join(ret_f)
         else:
-            num_mails = int(srv_com["num_mails"].text)
-            return self._interpret(num_mails, cur_ns)
+            mail_dict = {"total": int(srv_com["num_mails"].text)}
+            mail_dict["queued"] = mail_dict["total"]
+        ret_state = limits.check_ceiling(
+            mail_dict.get("total", 0),
+            cur_ns.warntotal,
+            cur_ns.crittotal
+        )
+        ret_f = []
+        if mail_dict.get("queued", 0):
+            ret_f = ["%s queued" % (logging_tools.get_plural("mail", mail_dict["queued"]))]
+            ret_state = max(
+                ret_state,
+                limits.check_ceiling(
+                    mail_dict.get("queued", 0),
+                    cur_ns.warnqueued,
+                    cur_ns.critqueued
+                )
+            )
+        if mail_dict.get("active", 0):
+            ret_f.append("%d active" % (mail_dict["active"]))
+            ret_state = max(
+                ret_state,
+                limits.check_ceiling(
+                    mail_dict.get("active", 0),
+                    cur_ns.warnactive,
+                    cur_ns.critactive
+                )
+            )
+        if mail_dict.get("hold", 0):
+            ret_f.append("%d on hold" % (mail_dict["hold"]))
+            ret_state = max(
+                ret_state,
+                limits.check_ceiling(
+                    mail_dict.get("hold", 0),
+                    cur_ns.warnhold,
+                    cur_ns.crithold
+                )
+            )
+        if mail_dict.get("total", 0):
+            ret_f.append("%d total" % (mail_dict["total"]))
+        if not ret_f:
+            ret_f = ["mailqueue is empty"]
+        return ret_state, ", ".join(ret_f)
 
     def interpret_old(self, result, cur_ns):
         num_mails = hm_classes.net_to_sys(result[3:])["mails"]
         return self.interpret(num_mails, cur_ns)
 
-    def _interpret(self, num_mails, cur_ns):
-        ret_state = limits.check_ceiling(num_mails, cur_ns.warntotal, cur_ns.crittotal)
-        result = "%s in queue" % (logging_tools.get_plural("mail", num_mails))
-        return ret_state, result
 
 class ext_mailq_commandX(object): # hm_classes.hmb_command):
     def __init__(self, **args):
