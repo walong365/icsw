@@ -348,7 +348,6 @@ PIPELINE_CSS = {
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
-            "css/ng-table.css",
             "js/libs/select2/select2.css",
             "js/libs/select2/select2-bootstrap.css",
             # hm, not working
@@ -402,7 +401,6 @@ PIPELINE_JS = {
             "js/libs/angular-cookies.min.js",
             "js/libs/angular-sanitize.min.js",
             "js/libs/angular-animate.min.js",
-            "js/libs/ng-table.js",
             "js/libs/angular-chosen-1.0.6/chosen.js",
             "js/libs/angular-file-upload.js",
             "js/libs/restangular.min.js",
