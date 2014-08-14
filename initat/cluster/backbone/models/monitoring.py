@@ -59,6 +59,7 @@ __all__ = [
     "mon_trace", # monitoring trace for speedup
     # unreachable info
     "mon_build_unreachable", # track unreachable devices
+    "parse_commandline", # commandline parsing
     ]
 
 class mon_trace(models.Model):
@@ -246,6 +247,89 @@ class mon_check_command_special_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_check_command_special
 
+def parse_commandline(com_line):
+    """
+    parses command line, also builds argument lut
+    lut format: commandline switch -> ARG#
+    list format : ARG#, ARG#, ...
+    """
+    _num_args, _default_values = (0, {})
+    arg_lut, arg_list = ({}, [])
+    """
+    handle the various input formats:
+
+    ${ARG#:var_name:default}
+    ${ARG#:var_name:default}$
+    ${ARG#:default}
+    ${ARG#:default}$
+    $ARG#$
+
+    """
+    com_re = re.compile("^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(?P<var_name>[^:^}]+?)(\:(?P<default>[^}]+))*}\$*)|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$")
+    cur_line = com_line
+    # where to start the match to avoid infinite loop
+    s_idx = 0
+    while True:
+        cur_m = com_re.match(cur_line[s_idx:])
+        if cur_m:
+            m_dict = cur_m.groupdict()
+            # check for -X or --Y switch
+            prev_part = m_dict["pre_text"].strip().split()
+            if prev_part and prev_part[-1].startswith("-"):
+                prev_part = prev_part[-1]
+            else:
+                prev_part = None
+            if m_dict["arg_num_2"] is not None:
+                # short form
+                arg_name = "ARG%s" % (m_dict["arg_num_2"])
+            else:
+                arg_name = "ARG%s" % (m_dict["arg_num_1"])
+                var_name, default_value = (m_dict["var_name"], m_dict["default"])
+                if var_name:
+                    _default_values[arg_name] = (var_name, default_value)
+                elif default_value is not None:
+                    _default_values[arg_name] = default_value
+            pre_text, post_text = (m_dict["pre_text"] or "",
+                                   m_dict["post_text"] or "")
+            cur_line = "%s%s$%s$%s" % (
+                cur_line[:s_idx],
+                pre_text,
+                arg_name,
+                post_text)
+            s_idx += len(pre_text) + len(arg_name) + 2
+            if prev_part:
+                arg_lut[prev_part] = arg_name
+            else:
+                arg_list.append(arg_name)
+            _num_args += 1
+        else:
+            break
+    _parsed_com_line = cur_line
+    log_lines = []
+    if com_line == _parsed_com_line:
+        log_lines.append("command_line in/out is '{}'".format(com_line))
+    else:
+        log_lines.append("command_line in     is '{}'".format(com_line))
+        log_lines.append("command_line out    is '{}'".format(_parsed_com_line))
+    if arg_lut:
+        log_lines.append("lut : %s; %s" % (
+            logging_tools.get_plural("key", len(arg_lut)),
+            ", ".join(["'%s' => '%s'" % (key, value) for key, value in arg_lut.iteritems()])
+        ))
+    if arg_list:
+        log_lines.append("list: %s; %s" % (
+            logging_tools.get_plural("item", len(arg_list)),
+            ", ".join(arg_list)
+        ))
+    return {
+        "arg_lut": arg_lut,
+        "arg_list": arg_list,
+        "parsed_com_line" : _parsed_com_line,
+        "num_args" : _num_args,
+        "default_values" : _default_values,
+    }, log_lines
+    #self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
+    
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")

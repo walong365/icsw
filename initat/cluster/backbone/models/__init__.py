@@ -584,6 +584,7 @@ class device_variable(models.Model):
         else:
             self.var_type = "s"
             self.val_str = value
+        self._clear()
     def get_value(self):
         if self.var_type == "i":
             return self.val_int
@@ -591,6 +592,16 @@ class device_variable(models.Model):
             return self.val_str
         else:
             return "get_value for {}".format(self.var_type)
+    def _clear(self):
+        # clear all values which are not used
+        for _short, _long in [
+            ("i", "int"),
+            ("s", "str"),
+            ("b", "blob"),
+            ("d", "date"),
+            ("t", "time")]:
+            if self.var_type != _short:
+                setattr(self, "val_{}".format(_long), None)
     value = property(get_value, set_value)
     def __unicode__(self):
         return "{}[{}] = {}".format(
@@ -650,6 +661,7 @@ def device_variable_pre_save(sender, **kwargs):
                         unicode(cur_inst.device)
                     )
                 )
+            cur_inst._clear()
 
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)

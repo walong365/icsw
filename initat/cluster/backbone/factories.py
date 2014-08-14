@@ -292,3 +292,9 @@ class DeviceVariable(factory.django.DjangoModelFactory):
     class Meta:
         model = device_variable
         django_get_or_create = ("name", "device")
+    @factory.post_generation
+    def local_copy_ok(self, create, extracted, **kwargs):
+        extracted = extracted or True
+        if self.local_copy_ok != extracted:
+            self.local_copy_ok = extracted
+            self.save()
