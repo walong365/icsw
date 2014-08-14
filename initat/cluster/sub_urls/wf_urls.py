@@ -119,6 +119,7 @@ monitoring_patterns = patterns(
     url("^create_device$" , monitoring_views.create_device.as_view()    , name="create_device"),
     url("^resolve_name$"  , monitoring_views.resolve_name.as_view()     , name="resolve_name"),
     url("^delete_hint$"   , monitoring_views.delete_hint.as_view()      , name="delete_hint"),
+    url("^get_mon_vars$", monitoring_views.get_mon_vars.as_view(), name="get_mon_vars"),
 )
 
 user_patterns = patterns(

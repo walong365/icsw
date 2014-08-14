@@ -2134,15 +2134,34 @@ class device_variable_new_form(ModelForm):
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
-    helper.field_class = 'col-sm-7'
+    helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
+    #var_type = ChoiceField(choices=[("i", "integer"), ("s", "string")])
+    var_type = ChoiceField()
     helper.layout = Layout(
-        HTML("<h2>New device variable</h2>"),
+        HTML("<h2>New device variable {% verbatim %}'{{ _edit_obj.name }}'{% endverbatim %}</h2>"),
+            Fieldset(
+                "Monitoring variables",
+                HTML("""
+<div class='form-group'>
+    <label class='control-label col-sm-3'>Copy</label>
+    <div class='controls col-sm-8'>
+        <select chosen="1" ng-model="_edit_obj._mon_copy" ng-options="entry.idx as entry.info for entry in mon_vars" ng-change="take_mon_var()"></select>
+    </div>
+</div>
+"""),
+                ng_show="_edit_obj.device && mon_vars.length",
+            ),
             Fieldset(
                 "Basic settings",
                 Field("name", wrapper_class="ng-class:form_error('name')"),
-                Field("val_str"),
+                Field("var_type", chosen=True, ng_options="value.short as value.long for value in valid_var_types"),
+                Field("val_str", wrapper_ng_show="_edit_obj.var_type == 's'"),
+                Field("val_int", wrapper_ng_show="_edit_obj.var_type == 'i'"),
+                Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),
+                Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
+                Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),

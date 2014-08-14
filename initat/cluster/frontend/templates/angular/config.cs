@@ -442,7 +442,6 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.mon_edit.use_promise = true
         $scope.mon_edit.new_object_at_tail = false
         $scope.mon_edit.min_width = "820px"
-        #$scope.config_edit.change_signal = "icsw.new_config"
         $scope.reload = () ->
             wait_list = [
                 restDataSource.reload(["{% url 'rest:config_list' %}", {}]),

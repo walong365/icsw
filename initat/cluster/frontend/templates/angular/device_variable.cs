@@ -125,17 +125,42 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device_variable_new_form.html"
         $scope.base_edit.create_rest_url = Restangular.all("{% url 'rest:device_variable_list' %}".slice(1))
-        $scope.base_edit.new_object = (scope) -> return {"device" : scope._obj.idx, "var_type" : "?"}
+        $scope.base_edit.new_object = (scope) -> 
+            return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0}
         $scope.base_edit.change_signal = "icsw.dv.changed"
         $scope.create = (obj, event) ->
             # copy for new_object callback
             $scope._obj = obj
             $scope.base_edit.create_list = obj.device_variable_set
+            call_ajax
+                url : "{% url 'mon:get_mon_vars' %}"
+                data : {
+                	device_pk : obj.idx
+                }
+                dataType : "json"
+                success : (json) ->
+                    $scope.$apply(
+                    	$scope.mon_vars = json
+                    )
+            $scope.mon_vars = [{"idx" : 0, "info" : "please wait, fetching data from server ..."}]
             $scope.base_edit.create(event)
+        $scope.take_mon_var = () ->
+            if $scope._edit_obj._mon_copy
+                _mon_var = (entry for entry in $scope.mon_vars when entry.idx == $scope._edit_obj._mon_copy)[0]
+                $scope._edit_obj.var_type = _mon_var.type
+                $scope._edit_obj.name = _mon_var.name
+                if _mon_var.type == "i"
+                    $scope._edit_obj.val_int = parseInt(_mon_var.value)
+                else
+                    $scope._edit_obj.val_str = _mon_var.value
         $scope.var_filter = ""
         $scope.entries = []
         $scope.pagSettings = paginatorSettings.get_paginator("dv_base", $scope)
         $scope.pagSettings.conf.filter_mode = "func"
+        $scope.valid_var_types = [
+            {"short" : "i", "long" : "integer"},
+            {"short" : "s", "long" : "string"},
+        ]
         $scope.pagSettings.conf.filter_settings = {
             "hide_empty" : false
         }
@@ -214,7 +239,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             else
                 return "has-error"
         $scope.create_for_all = (event) ->
-            new_obj = {"var_type" : "?", "name" : "var_name"}
+            new_obj = {"var_type" : "i", "name" : "var_name"}
             $scope._edit_obj = new_obj
             $scope.action_string = "create for all"
             $scope.edit_div = $compile($templateCache.get("device_variable_new_form.html"))($scope)

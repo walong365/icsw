@@ -24,11 +24,12 @@
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
-    net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint
+    net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
+    parse_commandline
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
@@ -227,6 +228,51 @@ class delete_hint(View):
     def post(self, request):
         _post = request.POST
         monitoring_hint.objects.get(Q(pk=_post["hint_pk"])).delete()
+
+
+class get_mon_vars(View):
+    def post(self, request):
+        _post = request.POST
+        _dev_pks = [int(_post["device_pk"])]
+        _dev = device.objects.select_related("device_type", "device_group").get(Q(pk=_dev_pks[0]))
+        if _dev.device_type.identifier == "H":
+            # add meta device
+            _dev_pks.append(_dev.device_group.device_group.filter(Q(device_type__identifier="MD"))[0].pk)
+        mon_check_commands = mon_check_command.objects.filter(Q(config__device_config__device__in=_dev_pks)).select_related("config")
+        res_list = []
+        for _mc in mon_check_commands:
+            _mon_info, _log_lines = parse_commandline(_mc.command_line)
+            for _key, _value in _mon_info["default_values"].iteritems():
+                if type(_value) == tuple:
+                    res_list.append(
+                        (
+                            _mc.name,
+                            _value[0],
+                            _value[1],
+                            "i" if _value[1].isdigit() else "s",
+                            _mc.config.name,
+                        )
+                    )
+        print res_list
+        return HttpResponse(json.dumps(
+            [
+                {"idx" : 0, "name": "please choose..."}
+            ] + 
+            [
+                {
+                    "idx": _idx,
+                    "info": "{} (default {}) from check_command {} (config {})".format(
+                        _value[1],
+                        _value[2],
+                        _value[0],
+                        _value[4],
+                    ),
+                    "type": _value[3],
+                    "name": _value[1],
+                    "value": _value[2],
+                } for _idx, _value in enumerate(res_list, 1)
+            ]), mimetype="application/json")
+
 
 class resolve_name(View):
     @method_decorator(xml_wrapper)
