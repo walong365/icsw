@@ -154,9 +154,9 @@ class auth_cache(object):
             # obj_perms = {key: self.__perms[key] for key in obj_perms.iterkeys()}
             if obj:
                 # local permissions
-                local_perms = {key : max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms and obj.pk in obj_list}
+                local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms and obj.pk in obj_list}
             else:
-                local_perms = {key : max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms}
+                local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms}
             # merge to result permissions
             result_perms = {key : max(global_perms.get(key, 0), local_perms.get(key, 0)) for key in set(global_perms.keys()) | set(local_perms.keys())}
             return result_perms
