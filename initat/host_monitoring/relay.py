@@ -945,7 +945,7 @@ class relay_code(threading_tools.process_pool):
         t_dir = srv_com["directory"].text
         self._clear_dir(t_dir)
     def _clear_directories(self, srv_com):
-        print srv_com.pretty_print()
+        #print srv_com.pretty_print()
         for dir_name in srv_com.xpath(".//ns:directories/ns:directory/text()"):
             self._clear_dir(dir_name)
     def _clear_dir(self, t_dir):
