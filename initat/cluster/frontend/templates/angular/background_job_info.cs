@@ -34,43 +34,16 @@ my_pag_code = """
 
 root = exports ? this
 
-background_job_info_module = angular.module("icsw.background_job_info", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ngTable"])
+background_job_info_module = angular.module("icsw.background_job_info", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
 
 angular_module_setup([background_job_info_module])
 
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "ngTableParams",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, ngTableParams) ->
+background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
         access_level_service.install($scope)
         $scope.pagSettings = paginatorSettings.get_paginator("jobs", $scope)
-        $scope.table = new ngTableParams(
-            {
-                page : 1,
-                count : 10,
-                sorting : {
-                   "idx" : "desc",
-                }
-            },
-            {
-                counts : [10, 25, 50],
-                total : 0
-                getData : ($defer, params) ->
-                    restDataSource.reset()
-                    wait_list = restDataSource.add_sources([
-                        ["{% url 'rest:background_job_list' %}", {}]
-                    ])
-                    $q.all(wait_list).then((data) ->
-                        _data = data[0]
-                        params.total(_data.length)
-                        _data = if params.sorting() then $filter("orderBy")(_data, params.orderBy()) else _data
-                        _data = _data.slice((params.page() - 1) * params.count(), params.page() * params.count())
-                        $defer.resolve(_data)
-                    )
-            }
-        )
-        # not working right now
-        #$timeout($scope.table.reload, 1000)
         $scope.jobs = []
         $scope.reload = () ->
             # force reload
@@ -81,6 +54,7 @@ background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filt
             $q.all(wait_list).then((data) ->
                 $scope.jobs = data[0]
             )
+        $timeout($scope.reload, 5000)
         $scope.get_diff_time = (dt) ->
             if dt
                 return moment(dt).fromNow()

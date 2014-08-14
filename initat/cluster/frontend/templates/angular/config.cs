@@ -913,7 +913,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 for entry in default_list
                     info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
                 for entry in complex_list
-                    info_field.push("argument $ARG#{entry[0]}$ from DevVar '#{entry[1]}' (default value #{entry[2]})")
+                    info_field.push("argument $ARG#{entry[0]}$ from DeviceVar '#{entry[1]}' (default value #{entry[2]})")
                 return info_field
             else
                 return ["no args parsed"]

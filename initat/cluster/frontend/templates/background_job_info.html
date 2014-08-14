@@ -43,28 +43,6 @@
             </tr>
         </tbody>
     </table>
-    <div ng-show="0">
-        <table ng-table="table" class="table table-condensed table-striped table-hover" style="width:auto;">
-            <tr ng-repeat="job in $data">
-                <td data-title="'command'" sortable="'command'">
-                    <strong>{{ job.command }}</strong>
-                </td>
-                <td data-title="'XML'" title="{{ job.command_xml }}">
-                    {{ job.command_xml | limit_text:10 }}
-                </td>
-                <td data-title="'created'">
-                    {{ get_time(job.date) }} ({{ get_diff_time(job.date) }})
-                </td>
-                <td data-title="'user'" sortable="'user_name'"">{{ job.user_name }}</td>
-                <td data-title="'state'" >{{ job.state }}</td>
-                <td data-title="'cause'" >{{ job.cause }}</td>
-                <td data-title="'initiator'" sortable="'initiator'">{{ job.initiator_name }}</td>
-                <td data-title="'commands'" >{{ job.num_servers || '-' }}</td>
-                <td data-title="'valid until'" >{{ get_time(job.valid_until) }}</td>
-            </tr>
-        </table>
-    </div>
-
 </div>
 
 {% endverbatim %}
