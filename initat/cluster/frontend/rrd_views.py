@@ -88,7 +88,9 @@ class graph_rrds(View):
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
             E.size(_post.get("size", "400x200")),
-            E.hide_zero(self._parse_post_boolean(_post, "hide_zero", "0")),
+            E.hide_empty(self._parse_post_boolean(_post, "hide_empty", "0")),
+            E.include_zero(self._parse_post_boolean(_post, "include_zero", "0")),
+            E.scale_y(self._parse_post_boolean(_post, "scale_y", "0")),
             E.merge_devices(self._parse_post_boolean(_post, "merge_devices", "1")),
             E.timeshift(_post.get("timeshift", "0")),
         )

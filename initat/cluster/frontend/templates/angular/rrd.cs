@@ -15,12 +15,15 @@ rrd_graph_template = """
         Vector info:
         <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
         <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
-        <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
+        <button type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" ng-click="show_options=!show_options">
+            <span class="glyphicon glyphicon-wrench"></span>
+            options
+        </button>
     </h3>
     <div class="input-group form-inline" ng-show="show_options">
         <div class="input-group-btn">
             <div class="btn-group">
-                <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
                 <span class="glyphicon glyphicon-zoom-in"></span>
                     {{ cur_dim }} <span class="caret"></span>
                 </button>
@@ -52,9 +55,15 @@ rrd_graph_template = """
             </div>
         </div>&nbsp;
         <div class="input-group-btn">
-            <button type="button" ng-class="hide_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_zero=!hide_zero">
+            <button type="button" ng-class="hide_empty && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty">
                 <span class="glyphicon glyphicon-ban-circle"></span>
-                hide zero
+                hide empty
+            </button>
+        </div>&nbsp;
+            <div class="input-group-btn">
+            <button type="button" ng-class="include_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="include_zero=!include_zero">
+                <span class="glyphicon glyphicon-download"></span>
+                zero
             </button>
         </div>&nbsp;
         <div class="input-group-btn">
@@ -296,7 +305,8 @@ add_rrd_directive = (mod) ->
             $scope.draw_on_init = false
             $scope.graph_list = {}
             $scope.graph_list = []
-            $scope.hide_zero = false
+            $scope.hide_empty = false
+            $scope.include_zero = false
             $scope.scale_y = false
             $scope.merge_devices = true
             $scope.show_options = false
@@ -458,7 +468,8 @@ add_rrd_directive = (mod) ->
                         "start_time" : moment($scope.from_date_mom).format(DT_FORM)
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                         "size"       : $scope.cur_dim
-                        "hide_zero"     : $scope.hide_zero
+                        "hide_empty"    : $scope.hide_empty
+                        "include_zero"  : $scope.include_zero
                         "scale_y"       : $scope.scale_y
                         "merge_devices" : $scope.merge_devices
                         "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
