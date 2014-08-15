@@ -24,8 +24,8 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.rrd_grapher.config import global_config
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import dateutil.parser
 import logging_tools
 import uuid
@@ -33,7 +33,7 @@ import os
 import pprint
 import process_tools
 import re
-import rrdtool # @UnresolvedImport
+import rrdtool  # @UnresolvedImport
 import server_command
 import threading_tools
 import time
@@ -100,6 +100,7 @@ class colorizer(object):
                     s_dict[modify_xml.attrib["attribute"]] = modify_xml.attrib["value"]
         return t_name, s_dict
 
+
 class graph_var(object):
     def __init__(self, rrd_graph, entry, key, dev_name=""):
         # XML entry
@@ -111,12 +112,16 @@ class graph_var(object):
         self.rrd_graph = rrd_graph
         self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
         self.name = "v{:d}".format(self.rrd_graph.get_def_idx())
+
     def __getitem__(self, key):
         return self.entry.attrib[key]
+
     def __contains__(self, key):
         return key in self.entry.attrib
+
     def get(self, key, default):
         return self.entry.attrib.get(key, default)
+
     def info(self, timeshift):
         info = self["info"]
         parts = self["name"].split(".")
@@ -131,8 +136,10 @@ class graph_var(object):
             info,
             " ({})".format(", ".join(info_parts)) if info_parts else "",
         ).replace(":", "\:")
+
     def get_color_and_style(self):
         self.color, self.style_dict = self.rrd_graph.colorizer.get_color_and_style(self.entry)
+
     def graph_def(self, unique_id, **kwargs):
         # unique_id = device pk
         timeshift = kwargs.get("timeshift", 0)
@@ -212,14 +219,19 @@ class graph_var(object):
             )
         # legend list
         l_list = self.get_legend_list()
-        for rep_name, cf in l_list:
+        for _num, (rep_name, cf) in enumerate(l_list):
+            _last = _num == len(l_list) - 1
+            _unit = self.entry.get("unit", "").replace("%", "%%")
+            # simply some units
+            _unit = {"1": "", "1/s": "/s"}.get(_unit, _unit)
             c_lines.extend(
                 [
                     "VDEF:{}{}={},{}".format(self.name, rep_name, self.name, cf),
-                    "GPRINT:{}{}:<tt>%6.1lf%s</tt>{}".format(
+                    "GPRINT:{}{}:<tt>%6.1lf%s{}</tt>{}".format(
                         self.name,
                         rep_name,
-                        r"\l" if rep_name == l_list[-1][0] else r""
+                        _unit if _last else "",
+                        r"\l" if _last else r""
                     ),
                     # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
                     "PRINT:{}{}:{:d}.{}.{}=%.4lf".format(
@@ -227,7 +239,7 @@ class graph_var(object):
                         rep_name,
                         unique_id,
                         self.key.replace(":", r"\:"),
-                        cf
+                        cf,
                     ),
                 ]
             )
@@ -254,7 +266,9 @@ class RRDGraph(object):
         self.para_dict = {
             "size"          : "400x200",
             "graph_root"    : global_config["GRAPH_ROOT"],
-            "hide_zero"     : False,
+            "hide_empty":  False,
+            "include_zero": False,
+            "scale_y"       : False,
             "merge_devices" : True,
         }
         self.para_dict.update(para_dict)
@@ -321,28 +335,23 @@ class RRDGraph(object):
             self.abs_end_time = int((self.para_dict["end_time"] - dt_1970).total_seconds())
             rrd_pre_args = [
                     abs_file_loc,
-                    "-E",
-                    "-Rlight",
-                    "-G",
-                    "normal",
-                    "-P",
+                    "-E",  # slope mode
+                    "-Rlight",  # font render mode, slight hint
+                    "-Gnormal",  # render mode
+                    "-P",  # use pango markup
                     # "-nDEFAULT:8:",
                     "-w {:d}".format(graph_width),
                     "-h {:d}".format(graph_height),
-                    "-a"
-                    "PNG",
-                    "--daemon",
-                    "unix:/var/run/rrdcached.sock",
-                    "-W CORVUS by init.at",
-                    "--slope-mode",
+                    "-aPNG",  # image forma
+                    "--daemon", "unix:/var/run/rrdcached.sock",  # rrd caching daemon address
+                    "-W CORVUS by init.at",  # title
+                    "--slope-mode",  # slope mode
                     "-cBACK#ffffff",
-                    "--end",
-                    # offset to fix UTC, FIXME
-                    "{:d}".format(self.abs_end_time),
-                    "--start",
-                    "{:d}".format(self.abs_start_time),
+                    "--end", "{:d}".format(self.abs_end_time),  # end
+                    "--start", "{:d}".format(self.abs_start_time),  # start
                     graph_var(self, None, "").header_line,
             ]
+            rrd_post_args = {}
             _unique = 0
             draw_keys = []
             for graph_key in sorted(graph_keys):
@@ -363,6 +372,11 @@ class RRDGraph(object):
                 removed_keys = set()
                 while draw_it:
                     rrd_args = rrd_pre_args + sum([self.defs[_key] for _key in draw_keys], [])
+                    rrd_args.extend(
+                        [
+                             "{} {}".format(_key, _value) for _key, _value in rrd_post_args.iteritems()
+                        ]
+                    )
                     rrd_args.extend([
                         "--title",
                         "{} on {} (tf: {})".format(
@@ -371,6 +385,7 @@ class RRDGraph(object):
                             # logging_tools.get_plural("result", len(self.defs)),
                             logging_tools.get_diff_time_str(timeframe)),
                     ])
+                    # self.log("calling graphv ({})".format(" ".join(rrd_args)))
                     try:
                         draw_result = rrdtool.graphv(*rrd_args)
                     except:
@@ -380,6 +395,8 @@ class RRDGraph(object):
                         draw_result = None
                         draw_it = False
                     else:
+                        # compare draw results, add -l / -u when scale_y is true
+                        # pprint.pprint(draw_result)
                         res_dict = {value.split("=", 1)[0] : value.split("=", 1)[1] for key, value in draw_result.iteritems() if key.startswith("print[")}
                         # reorganize
                         val_dict = {}
@@ -397,8 +414,19 @@ class RRDGraph(object):
                             _key = ".".join(_split)
                             if value is not None:
                                 val_dict.setdefault((_unique_id, _key), {})[cf] = value
+                        # check if the graphs shall always include y=0
+                        draw_it = False
+                        if self.para_dict["include_zero"]:
+                            if "value_min" in draw_result and "value_max" in draw_result:
+                                if draw_result["value_min"] > 0.0:
+                                    rrd_post_args["-l"] = "0"
+                                    draw_it = True
+                                if draw_result["value_max"] < 0.0:
+                                    rrd_post_args["-u"] = "0"
+                                    draw_it = True
+                        # check for empty graphs
                         empty_keys = set(draw_keys) - set(val_dict.keys())
-                        if empty_keys and self.para_dict["hide_zero"]:
+                        if empty_keys and self.para_dict["hide_empty"]:
                             self.log(
                                 u"{}: {}".format(
                                     logging_tools.get_plural("empty key", len(empty_keys)),
@@ -410,9 +438,8 @@ class RRDGraph(object):
                             # self.defs = {key : value for key, value in self.defs.iteritems() if key not in empty_keys}
                             if not draw_keys:
                                 draw_result = None
-                                draw_it = False
-                        else:
-                            draw_it = False
+                            else:
+                                draw_it = True
                 rem_key_el = E.removed_keys(
                     *[E.removed_key(_key, device="{:d}".format(_pk)) for _pk, _key in removed_keys]
                 )
@@ -464,7 +491,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         pass
     def _xml_info(self, *args, **kwargs):
         dev_id, xml_str = (args[0], etree.fromstring(args[1]))
-        self.vector_dict[dev_id] = xml_str # self._struct_vector(xml_str)
+        self.vector_dict[dev_id] = xml_str  # self._struct_vector(xml_str)
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks = [entry for entry in map(lambda x: int(x), srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) if entry in self.vector_dict]
@@ -477,7 +504,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
-        for key, _default in [("hide_zero", "0"), ("merge_devices", "1")]:
+        for key, _default in [("hide_empty", "0"), ("merge_devices", "1"), ("scale_y", "0"), ("include_zero", "0")]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
         graph_list = RRDGraph(self.log, self.colorizer, para_dict).graph(self.vector_dict, dev_pks, graph_keys)
         srv_com["graphs"] = graph_list
