@@ -53,7 +53,10 @@ _subnode = """
         <span ng-class="treeconfig.get_name_class(entry)" title="{{ treeconfig.get_title(entry) }}">{{ treeconfig.get_name(entry) }}</span>
         <span ng-if="treeconfig.show_childs && !treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
         <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">
-            <span ng-class="entry.get_label_class()">{{ entry._num_descendants }}<span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span></span>
+            <span ng-class="entry.get_label_class()">
+                <span ng-show="treeconfig.show_total_descendants">{{ entry._num_descendants }}</span>
+                <span ng-show="!treeconfig.show_total_descendants">{{ entry._num_nd_descendants }}</span>
+                <span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span></span>
         </span>
     </a>
 </span>
@@ -70,7 +73,7 @@ class tree_node
         # is expanded
         @expand = false
         # is folder
-        @folder   = false
+        @folder = false
         # list of children
         @children = []
         # list of nodes with the same content
@@ -87,6 +90,8 @@ class tree_node
         @_idx = 0
         # number of all nodes below this
         @_num_descendants = 0
+        # number of all non-directory descendants
+        @_num_nd_descendants = 0
         # number of all direct children
         @_num_childs = 0
         # number of selected childs
@@ -133,19 +138,28 @@ class tree_node
         cur_p = @
         while cur_p
             cur_p._num_descendants += 1 + child._num_descendants
+            cur_p._num_nd_descendants += child._num_nd_descendants
+            if not child.folder
+               cur_p._num_nd_descendants += 1
             cur_p = cur_p.parent
     remove_child: (child) ->
         @children = (entry for entry in @children when entry != child)
         cur_p = @
         while cur_p
             cur_p._num_descendants -= 1 + child._num_descendants
+            cur_p._num_nd_descendants -= child._num_nd_descendants
+            if not child.folder
+               cur_p._num_nd_descendants -= 1
             cur_p = cur_p.parent
     recalc_num_descendants: () => 
         @_num_childs = (_entry for _entry in @children when !_entry.pruned).length
         @_num_descendants = @_num_childs
+        @_num_nd_descendants = @_num_childs
         for child in @children
-            @_num_descendants += child.recalc_num_descendants()
-        return @_num_descendants
+            _desc = child.recalc_num_descendants()
+            @_num_descendants += _desc[0]
+            @_num_nd_descendants += _desc[1]
+        return [@_num_descendants, @_num_nd_descendants]
     recalc_sel_descendants: () => 
         @_sel_descendants = (true for entry in @children when entry.selected).length
         for child in @children
@@ -170,6 +184,8 @@ class tree_config
         @show_icons = true
         @show_select = true
         @change_select = true
+        # show total descendants and not file-only entries
+        @show_total_descendants = true
         # only one element can be selected
         @single_select = false
         for key, value of args

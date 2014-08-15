@@ -55,23 +55,29 @@ rrd_graph_template = """
             </div>
         </div>&nbsp;
         <div class="input-group-btn">
+            <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()">
+                <span class="glyphicon glyphicon-step-forward"></span>
+            </button>
+        </div>&nbsp;
+        <div class="input-group-btn">
             <button type="button" ng-class="hide_empty && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty">
                 <span class="glyphicon glyphicon-ban-circle"></span>
                 hide empty
             </button>
         </div>&nbsp;
-            <div class="input-group-btn">
+        <div class="input-group-btn">
             <button type="button" ng-class="include_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="include_zero=!include_zero">
                 <span class="glyphicon glyphicon-download"></span>
                 zero
             </button>
         </div>&nbsp;
-        <div class="input-group-btn">
+        <div class="input-group-btn" ng-show="devsel_list.length > 1">
             <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y">
                 <span class="glyphicon glyphicon-sort"></span>
                 scale y
             </button>
-        </div>&nbsp;
+        </div>
+        <span ng-show="devsel_list.length > 1">&nbsp;</span>
         <div class="input-group-btn">
             <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices">
                 <span class="glyphicon glyphicon-th"></span>
@@ -212,6 +218,7 @@ class rrd_tree extends tree_config
         @show_icons = false
         @show_select = true
         @show_descendants = true
+        @show_total_descendants = false
         @show_childs = false
     get_name : (t_entry) ->
         if t_entry._node_type == "h"
@@ -245,22 +252,14 @@ DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 class pd_timerange
     constructor: (@name, @from, @to) ->
     get_from: (cur_from, cur_to) =>
-        if @from
-            if @to
-                # from and to set, return from
-                return @from
-            else
-                # special format, no to set, from == moment() - @from hours
-                return moment().subtract(@from, "hours")
-        else
-            # from not set, shift timeframe
-            _timeframe = moment.duration(cur_to.unix() - cur_from.unix(), "seconds")
-            return moment().subtract(_timeframe)
-    get_to: (cur_from, cur_to) =>
         if @to
-            return @to
+            # from and to set, return from
+            return @from
         else
-            return moment()
+            # special format, no to set, from == moment() - @from hours
+            return moment().subtract(@from, "hours")
+    get_to: (cur_from, cur_to) =>
+        return @to
 
 class pd_timeshift
     constructor: (@name, @seconds) ->
@@ -271,7 +270,6 @@ add_rrd_directive = (mod) ->
             # possible dimensions
             $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
             $scope.all_timeranges = [
-                new pd_timerange("move timeframe to now", undefined, undefined)
                 new pd_timerange("last 24 hours", 24, undefined)
                 new pd_timerange("last day", moment().subtract(1, "days").startOf("day"), moment().subtract(1, "days").endOf("day"))
                 new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
@@ -332,6 +330,11 @@ add_rrd_directive = (mod) ->
                         $scope.from_date_mom = to_date
                     else if diff < 60000
                         $scope.dt_valid = false
+            $scope.move_to_now = () ->
+                # from not set, shift timeframe
+                _timeframe = moment.duration($scope.to_date_mom.unix() - $scope.from_date_mom.unix(), "seconds")
+                $scope.from_date_mom = moment().subtract(_timeframe)
+                $scope.to_date_mom = moment()
             $scope.set_active_tr = (new_tr) ->
                 new_from = new_tr.get_from($scope.from_date_mom, $scope.to_date_mom)
                 new_to   = new_tr.get_to($scope.from_date_mom, $scope.to_date_mom)
