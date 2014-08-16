@@ -40,6 +40,7 @@ MIN_UPDATE_TIME = 10
 AFFINITY_FILE = "/etc/sysconfig/host-monitoring.d/affinity_list"
 HZ = 100
 
+
 class affinity_struct(object):
     def __init__(self, log_com, af_re):
         self.log_com = log_com
@@ -157,7 +158,7 @@ class _general(hm_classes.hm_module):
         for key, value in process_tools.PROC_INFO_DICT.iteritems():
             mv.register_entry("proc.{}".format(key), 0, value)
     def update_machine_vector(self, mv):
-        pdict = process_tools.get_proc_list_new() # (add_stat_info=self.check_affinity, add_cmdline=False, add_exe=False)
+        pdict = process_tools.get_proc_list_new()  # (add_stat_info=self.check_affinity, add_cmdline=False, add_exe=False)
         if self.check_affinity:
             self.af_struct.feed(pdict)
         pids = pdict.keys()

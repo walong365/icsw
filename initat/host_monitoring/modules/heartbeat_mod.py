@@ -21,6 +21,7 @@ import commands
 import logging_tools
 import process_tools
 
+
 class _general(hm_classes.hm_module):
     def _exec_command(self, com, **kwargs):
         c_stat, c_out = commands.getstatusoutput(com)
@@ -32,22 +33,26 @@ class _general(hm_classes.hm_module):
                 c_out = ""
             return c_out.split("\n")
 
+
 class corosync_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         # not beautifull, FIXME ...
         c_out, c_stat = self.module._exec_command("/usr/sbin/corosync-cfgtool -s", full_output=True)
         srv_com["corosync_status"] = c_out
         srv_com["corosync_status"].attrib["status"] = "{:d}".format(c_stat)
+
     def interpret(self, srv_com, cur_ns):
         coro_node = srv_com["corosync_status"]
         coro_stat = int(coro_node.attrib.get("status", "0"))
         lines = (coro_node.text or "").split("\n")
         return self._interpret(lines, cur_ns, status=coro_stat)
+
     def interpret_old(self, result, cur_ns):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
+
     def _parse_lines(self, lines):
-        r_dict = {"node_id" : "???",
-                  "rings"   : {}}
+        r_dict = {"node_id": "???",
+                  "rings": {}}
         for line in lines:
             line = line.rstrip()
             if line:
@@ -55,8 +60,9 @@ class corosync_status_command(hm_classes.hm_command):
                     r_dict["node_id"] = line.split()[-1]
                 elif line.lower().startswith("ring id"):
                     ring_id = int(line.lower().split()[-1])
-                    r_dict["rings"][ring_id] = {"id"     : "...",
-                                                "status" : "unknown"}
+                    r_dict["rings"][ring_id] = {
+                        "id": "...",
+                        "status": "unknown"}
                     cur_ring_id = ring_id
                 elif ord(line[0]) == 9:
                     key, value = line.split("=", 1)
@@ -64,6 +70,7 @@ class corosync_status_command(hm_classes.hm_command):
                     if key in r_dict["rings"][cur_ring_id]:
                         r_dict["rings"][cur_ring_id][key] = value.strip()
         return r_dict
+
     def _interpret(self, r_lines, parsed_coms, **kwargs):
         coro_stat = kwargs.get("status", 0)
         if coro_stat:
@@ -78,7 +85,7 @@ class corosync_status_command(hm_classes.hm_command):
                     ring_stat = ring_dict["status"]
                     match_str = "ring {:d}".format(ring_key)
                     if ring_stat.lower().startswith(match_str):
-                        ring_stat = ring_stat[len(match_str) : ].strip()
+                        ring_stat = ring_stat[len(match_str):].strip()
                     out_f.append("ring {:d}: id {}, {}".format(
                         ring_key,
                         ring_dict["id"],
@@ -90,18 +97,23 @@ class corosync_status_command(hm_classes.hm_command):
                 ret_state = max(ret_state, limits.nag_STATE_WARNING)
         return ret_state, ", ".join(out_f)
 
+
 class heartbeat_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        srv_com["heartbeat_info"] = {"host"   : process_tools.get_machine_name(),
-                                     "output" : self.module._exec_command("/usr/sbin/crm_mon -1")}
+        srv_com["heartbeat_info"] = {
+            "host": process_tools.get_machine_name(),
+            "output" : self.module._exec_command("/usr/sbin/crm_mon -1")}
+
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["heartbeat_info"], cur_ns)
+
     def interpret_old(self, result, parsed_coms):
         return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
+
     def _interpret(self, r_dict, parsed_coms):
-        if type(r_dict) == type([]):
-            r_dict = {"output" : r_dict,
-                      "host"   : ""}
+        if isinstance(r_dict, []):
+            r_dict = {"output": r_dict,
+                      "host": ""}
         hb_dict = self._parse_lines(r_dict)
         ret_state, out_f = (limits.nag_STATE_OK, [])
         out_f.append("stack is {} ({}), DC is {}".format(
@@ -126,6 +138,7 @@ class heartbeat_status_command(hm_classes.hm_command):
             else:
                 out_f.append(res_name)
         return ret_state, ", ".join(out_f)
+
     def _parse_lines(self, in_dict, **kwargs):
         only_local_resources = kwargs.get("only_local_resources", True)
         local_node = in_dict["host"]
@@ -176,4 +189,3 @@ class heartbeat_status_command(hm_classes.hm_command):
                                         "node"   : res_node,
                                     }
         return r_dict
-
