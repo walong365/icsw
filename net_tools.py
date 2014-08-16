@@ -27,6 +27,7 @@ import sys
 import time
 import zmq
 
+
 # copy from process_tools
 def get_except_info(exc_info=None):
     if not exc_info:
@@ -34,6 +35,7 @@ def get_except_info(exc_info=None):
     return "{} ({})".format(
         str(exc_info[0]),
         str(exc_info[1]))
+
 
 class zmq_connection(object):
     def __init__(self, identity_str, **kwargs):
@@ -65,6 +67,7 @@ class zmq_connection(object):
             zmq_socket = self.__socket_dict[zmq_socket]
         del self.poller_handler[zmq_socket]
         self.poller.unregister(zmq_socket)
+
     def add_connection(self, conn_str, command, **kwargs):
         new_sock = self.context.socket(zmq.DEALER)
         new_sock.setsockopt(zmq.LINGER, self.__linger_time)
@@ -99,6 +102,7 @@ class zmq_connection(object):
             new_sock.send_unicode(unicode(command))
             if not kwargs.get("multi", False):
                 return self.loop()[0]
+
     def loop(self):
         start_time = time.time()
         while self.__pending:
@@ -121,23 +125,27 @@ class zmq_connection(object):
                 break
         # self.context.term()
         return [self._interpret_result(com_type, self.__results[cur_fd]) for cur_fd, com_type in self.__add_list]
+
     def __show(self, sock_fd):
         print sock_fd
+
     def _close_socket(self, sock_fd):
         self.unregister_poller(sock_fd)
         self.__socket_dict[sock_fd].close()
         del self.__socket_dict[sock_fd]
         self.__pending.remove(sock_fd)
+
     def _interpret_result(self, in_type, in_bytes):
         if in_bytes is not None:
             if in_type == "sc":
                 in_bytes = server_command.srv_command(source=in_bytes)
         return in_bytes
+
     def __receive(self, sock):
         sock_fd = sock.getsockopt(zmq.FD)
         self.__results[sock_fd] = sock.recv()
         self._close_socket(sock_fd)
+
     def close(self):
         for sock_fd in list(self.__pending):
             self._close_socket(sock_fd)
-

@@ -20,8 +20,8 @@
 """ module for handling config files """
 
 from collections import OrderedDict
-from lxml import etree # @UnresolvedImport @UnusedImport
-from lxml.builder import E # @UnresolvedImport @UnusedImport
+from lxml import etree  # @UnresolvedImport @UnusedImport
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from multiprocessing import current_process, util, forking, managers
 from multiprocessing.managers import BaseManager, BaseProxy, Server
 import argparse
@@ -35,9 +35,11 @@ import re
 import sys
 import threading
 
+
 class config_proxy(BaseProxy):
     def add_config_entries(self, ce_list, **kwargs):
         return self._callmethod("add_config_entries", (ce_list,), kwargs)
+
     def handle_commandline(self, **kwargs):
         kwargs["proxy_call"] = True
         ret_value, exit_code = self._callmethod("handle_commandline", [], kwargs)
