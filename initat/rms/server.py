@@ -163,7 +163,12 @@ class server_process(threading_tools.process_pool):
                 self._send_result(src_id, srv_com)
             elif cur_com == "file_watch_content":
                 self.send_to_process("rms_mon", "file_watch_content", src_id, unicode(srv_com))
+            elif cur_com in ["pe_start", "pe_end", "job_start", "job_end"]:
+                self.send_to_process("rms_mon", cur_com, src_id, unicode(srv_com))
+                srv_com.set_result("got it")
+                self._send_result(src_id, srv_com)
             else:
+                # print srv_com.pretty_print()
                 srv_com.set_result(
                     "unknown command {}".format(cur_com),
                     server_command.SRV_REPLY_STATE_ERROR,

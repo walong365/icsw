@@ -76,8 +76,8 @@ PATH=/bin:/usr/bin:/sbin:/usr/sbin
 #
 FixServices() {
     # clear old ones
-    cat /etc/services | grep -a -v sge_execd | grep -a -v sge_qmaster > /tmp/bla
-    mv /tmp/bla /etc/services
+    cat /etc/services | grep -a -v sge_execd | grep -a -v sge_qmaster > /tmp/.sge_srvc_$$
+    mv /tmp/.sge_srvc_$$ /etc/services
     cat /etc/services | grep -a sge_execd > /dev/null || {
         logger "modifying /etc/services for sgeexecd"
         if [ -f /etc/sysconfig/sge/qmaster_port ] ; then
