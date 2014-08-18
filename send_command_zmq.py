@@ -27,6 +27,7 @@ import sys
 import time
 import zmq
 
+
 def _get_parser():
     parser = argparse.ArgumentParser("send command to servers of the init.at Clustersoftware")
     parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command")
@@ -49,17 +50,20 @@ def _get_parser():
     parser.add_argument("--only-send", help="only send command, [%(default)s]", default=False, action="store_true")
     return parser
 
+
 class send_com(object):
     def __init__(self):
         self.ret_state = 0
         self.parser = _get_parser()
         self.zmq_context = zmq.Context(1)
+
     def parse(self):
         self.args, self.other_args = self.parser.parse_known_args()
         if self.args.quiet:
             self.args.verbose = False
         self.command = self.args.arguments.pop(0)
         self.other_args = self.args.arguments + self.other_args
+
     def init_connection(self):
         if self.args.identity_string:
             self.identity_str = self.args.identity_string
@@ -96,6 +100,7 @@ class send_com(object):
         )
         if self.args.split:
             self.verbose("receive connection string is '{}'".format(recv_conn_str))
+
     def connect(self):
         try:
             self.send_sock.connect(self.conn_str)
@@ -113,9 +118,11 @@ class send_com(object):
                 self.recv_sock.connect(self.recv_conn_str)
             success = True
         return success
+
     def verbose(self, what):
         if self.args.verbose:
             print(what)
+
     def close(self):
         if self.send_sock:
             self.send_sock.close()
@@ -124,6 +131,7 @@ class send_com(object):
             self.recv_sock.close()
             self.recv_sock = None
         self.zmq_context.term()
+
     def send_and_receive(self):
         for cur_iter in xrange(self.args.iterations):
             self.verbose("iteration {:d}".format(cur_iter))
@@ -135,6 +143,7 @@ class send_com(object):
                     self._handle_return(_recv_id, _recv_str)
             else:
                 break
+
     def _build_com(self):
         if self.args.raw:
             srv_com = self.command
@@ -143,6 +152,7 @@ class send_com(object):
             srv_com["identity"] = self.identity_str
             self._add_args(srv_com)
         return srv_com
+
     def _add_args(self, srv_com):
         if self.args.kv:
             for kv_pair in self.args.kv:
@@ -174,6 +184,7 @@ class send_com(object):
             self.verbose(srv_com)
         else:
             self.verbose(srv_com.pretty_print())
+
     def receive(self):
         r_client = self.send_sock if not self.recv_sock else self.recv_sock
         if r_client.poll(self.args.timeout * 1000):
@@ -203,6 +214,7 @@ class send_com(object):
                 )
             )
         return timeout, recv_id, recv_str
+
     def _handle_return(self, recv_id, recv_str):
         try:
             srv_reply = server_command.srv_command(source=recv_str)
@@ -222,6 +234,7 @@ class send_com(object):
             else:
                 print("no result tag found in reply")
                 self.ret_state = 2
+
 
 def main():
     my_com = send_com()
