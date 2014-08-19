@@ -615,7 +615,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                     _reserved = (_reserved[0] for _idx in _.range(_size))
                                 entry.load_vector = _.zip(_total, _used, _reserved)
                                 for _lv in entry.load_vector
-                                    $scope.slot_info.feed_vector(_lv)
+                                    if _lv.length and not isNaN(_lv[0])
+                                        $scope.slot_info.feed_vector(_lv)
                             # get slot info
                             for _job in $scope.run_list
                                 if _job.granted_pe.value == "-"
