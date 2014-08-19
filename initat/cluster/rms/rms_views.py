@@ -222,7 +222,7 @@ class get_rms_json(View):
             "rms_job",
             "rms_project",
             "rms_pe",
-        ).order_by("-pk")[0:100]
+        ).order_by("-rms_job__jobid", "rms_job__taskid", "-pk")[0:100]
         _done_ser = rms_job_run_serializer(done_jobs).data
         # pprint.pprint(_done_ser)
         json_resp = {
