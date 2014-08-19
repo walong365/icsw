@@ -19,8 +19,8 @@
 #
 """ tools for the SGE """
 
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import argparse
 import commands
 import copy
@@ -31,13 +31,14 @@ import process_tools
 import re
 import server_command
 import stat
+import json
 import time
 import zmq
-import uuid
 try:
     import memcache
 except:
     memcache = None
+
 
 def get_empty_job_options(**kwargs):
     options = argparse.Namespace()
@@ -56,6 +57,7 @@ def get_empty_job_options(**kwargs):
         else:
             setattr(options, key, value)
     return options
+
 
 def get_empty_node_options(**kwargs):
     options = argparse.Namespace()
@@ -80,6 +82,7 @@ def get_empty_node_options(**kwargs):
         else:
             setattr(options, key, value)
     return options
+
 
 def compress_list(ql, queues=None, postfix=""):
     # node prefix, postfix, start_string, end_string
@@ -134,6 +137,7 @@ def compress_list(ql, queues=None, postfix=""):
                 nc_a.append(add_p(pef, pof, s_num, l_num))
     return ",".join(nc_a)
 
+
 def str_to_sec(in_str):
     if in_str == "---":
         sec = in_str
@@ -147,6 +151,7 @@ def str_to_sec(in_str):
             else:
                 mult = 60
     return sec
+
 
 def sec_to_str(in_sec):
     if in_sec == "---":
@@ -168,6 +173,7 @@ def sec_to_str(in_sec):
         else:
             out_f = "????"
     return out_f
+
 
 class sge_info(object):
     def __init__(self, **kwargs):
@@ -205,25 +211,41 @@ class sge_info(object):
         self._init_cache()
         # key : (relevance, call)
         setup_dict = {
-            "pe"        : (0, self._check_pe_dict),
-            "hostgroup" : (1, self._check_hostgroup_dict),
-            "queueconf" : (2, self._check_queueconf_dict),
-            "complexes" : (3, self._check_complexes_dict),
-            "qhost"     : (4, self._check_qhost_dict),
-            "qstat"     : (5, self._check_qstat_dict)}
-        self.__valid_dicts = [v_key for _bla, v_key in sorted([(rel, key) for key, (rel, _s_call) in setup_dict.iteritems()]) if v_key not in kwargs.get("ignore_dicts", [])]
-        self.__update_call_dict = dict([(key, s_call) for key, (rel, s_call) in setup_dict.iteritems()])
-        self.__update_pref_dict = dict([(key, kwargs.get("update_pref", {}).get(key, kwargs.get("default_pref", ["direct", "server"]))) for key in self.__valid_dicts])
+            "pe": (0, self._check_pe_dict),
+            "hostgroup": (1, self._check_hostgroup_dict),
+            "queueconf": (2, self._check_queueconf_dict),
+            "complexes": (3, self._check_complexes_dict),
+            "qhost": (4, self._check_qhost_dict),
+            "qstat": (5, self._check_qstat_dict)
+        }
+        self.__valid_dicts = [
+            v_key for _bla, v_key in sorted(
+                [
+                    (rel, key) for key, (rel, _s_call) in setup_dict.iteritems()
+                ]
+            ) if v_key not in kwargs.get("ignore_dicts", [])
+        ]
+        self.__update_call_dict = dict(
+            [
+                (key, s_call) for key, (rel, s_call) in setup_dict.iteritems()
+            ]
+        )
+        self.__update_pref_dict = dict(
+            [
+                (key, kwargs.get("update_pref", {}).get(key, kwargs.get("default_pref", ["direct", "server"]))) for key in self.__valid_dicts
+            ]
+        )
         self.__timeout_dicts = dict([(key, {
-            "hostgroup" : 300,
-            "qstat"     : 2,
-            "qhost"     : 2}.get(key, 120)) for key in self.__valid_dicts])
+            "hostgroup": 300,
+            "qstat": 2,
+            "qhost": 2}.get(key, 120)) for key in self.__valid_dicts])
         if self.__is_active:
             self._sanitize_sge_dict()
         self.__job_dict = {}
         self._init_update()
         if kwargs.get("run_initial_update", True) and self.__is_active:
             self.update()
+
     def __del__(self):
         if self.__0mq_socket:
             self.__0mq_socket.close()
@@ -232,24 +254,29 @@ class sge_info(object):
         if self._cache_socket:
             # print "close cache socket"
             self._cache_socket.close()
+
     def _init_cache(self):
         if memcache:
             self._cache_socket = memcache.Client(["127.0.0.1:11211"], debug=0)
         else:
             self._cache_socket = None
+
     def get_cache(self, key):
         if self._cache_socket:
             return self._cache_socket.get(key)
         else:
             return None
+
     def set_cache(self, key, value):
         if self._cache_socket:
             self._cache_socket.set(key, value)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com("[si] {}".format(what), log_level)
         else:
             logging_tools.my_syslog("[si] {}".format(what), log_level)
+
     def get_tree(self, **kwargs):
         # return etree.fromstring(etree.tostring(self.__tree))
         r_tree = copy.deepcopy(self.__tree)
@@ -265,9 +292,11 @@ class sge_info(object):
                         for _f_name, f_el in file_dict.iteritems():
                             file_info.append(f_el)
         return r_tree
+
     def get(self, key, def_value):
         return self.__act_dicts.get(key, def_value)
     # extended job id
+
     def add_job_info(self, job_id, qstat_com):
         # print "add", job_id
         job_key = "sgeinfo:job:{}".format(job_id)
@@ -315,16 +344,20 @@ class sge_info(object):
         else:
             ext_xml = etree.fromstring(_cache)
         self.__job_dict[job_id] = ext_xml
+
     def get_job_info(self, job_id):
         return self.__job_dict.get(job_id, None)
+
     def del_job_info(self, job_id):
         del self.__job_dict[job_id]
+
     def get_run_time(self, cur_time):
         # returns time running
         run_time = abs(datetime.datetime.now() - cur_time)
         days = run_time.days
         secs = run_time.seconds
         return sec_to_str(24 * 3600 * days + secs)
+
     def get_left_time(self, start_time, h_rt):
         if h_rt:
             run_time = abs(datetime.datetime.now() - start_time)
@@ -332,19 +365,23 @@ class sge_info(object):
             return sec_to_str(left_time.days * 24 * 3600 + left_time.seconds)
         else:
             return "???"
+
     def get_h_rt_time(self, h_rt):
         if h_rt:
             h_rt = datetime.timedelta(0, int(h_rt))
             return sec_to_str(h_rt.days * 24 * 3600 + h_rt.seconds)
         else:
             return "???"
+
     @property
     def tree(self):
         return self.__tree
+
     def _init_update(self):
         self.__tree = E.rms_info()
         for key in self.__valid_dicts:
             self.__tree.append(getattr(E, key)())
+
     def _direct_call(self, dict_name):
         s_time = time.time()
         new_el = self.__update_call_dict[dict_name]()
@@ -359,6 +396,7 @@ class sge_info(object):
                 )
             )
         return new_el
+
     def update(self, **kwargs):
         self.__counter += 1
         # self._init_update()
@@ -487,13 +525,14 @@ class sge_info(object):
         self.__tree = etree.fromstring(etree.tostring(self.__tree))
         # e_time = time.time()
         # print e_time - s_time
+
     def _sanitize_sge_dict(self):
         for key_name, file_name, default_value in [
             ("SGE_ROOT", "/etc/sge_root", "NO_SGE_ROOT_SET"),
             ("SGE_CELL", "/etc/sge_cell", "NO_SGE_CELL_SET"),
-            ]:
-            if not key_name in self.__sge_dict:
-                if os.environ.has_key(key_name):
+        ]:
+            if key_name not in self.__sge_dict:
+                if key_name in os.environ:
                     # use SGE_ROOT/CELL from environment
                     self.__sge_dict[key_name] = os.environ[key_name]
                 else:
@@ -508,13 +547,15 @@ class sge_info(object):
                             logging_tools.LOG_LEVEL_ERROR
                         )
                         self.__sge_dict[key_name] = default_value
-        if not self.__sge_dict.has_key("SGE_ARCH"):
+
+        if "SGE_ARCH" not in self.__sge_dict:
             arch_path = os.path.join(self.__sge_dict["SGE_ROOT"], "util", "arch")
             if os.path.exists(arch_path):
                 c_stat, c_out = self._execute_command(arch_path)
                 self.__sge_dict["SGE_ARCH"] = "NO_SGE_ARCH_SET" if c_stat else c_out
             else:
                 self.__sge_dict["SGE_ARCH"] = "NO_SGE_ARCH_SET"
+
     def _check_for_update(self, d_name, force=False):
         cur_el = self.__tree.find(d_name)
         upd_cause = "unknown"
@@ -543,6 +584,7 @@ class sge_info(object):
                 d_name,
                 "necessary ({})".format(upd_cause) if do_upd else "not necessary"))
         return do_upd
+
     def _get_com_name(self, c_name):
         return os.path.join(
             self.__sge_dict["SGE_ROOT"],
@@ -550,6 +592,7 @@ class sge_info(object):
             self.__sge_dict["SGE_ARCH"],
             c_name,
         )
+
     def _execute_command(self, command, **kwargs):
         # fancy, fancy
         os.environ["SGE_ROOT"] = self.__sge_dict["SGE_ROOT"]
@@ -576,6 +619,7 @@ class sge_info(object):
             c_stat, c_out = (1, "{} does not exist".format(base_com))
             self.log(c_out, logging_tools.LOG_LEVEL_ERROR)
         return c_stat, c_out
+
     def _check_queueconf_dict(self):
         all_queues = E.queueconf()
         qconf_com = self._get_com_name("qconf")
@@ -596,6 +640,7 @@ class sge_info(object):
                     cur_q.append(getattr(E, key)(value))
             all_queues.append(cur_q)
         return all_queues
+
     def _check_pe_dict(self):
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("{} -spl".format(qconf_com))
@@ -612,11 +657,16 @@ class sge_info(object):
                 if not c_stat:
                     new_pe = E.pe(name=pe_name)
                     for key, value in c_out:
-                        value = {"TRUE" : "true", "FALSE" : "false", "NONE" : "none"}.get(value, value)
+                        value = {
+                            "TRUE": "true",
+                            "FALSE": "false",
+                            "NONE": "none"
+                        }.get(value, value)
                         new_pe.append(E.value(name=key, value=value))
                     cur_pes.append(new_pe)
         # print etree.tostring(cur_pes, pretty_print=True)
         return cur_pes
+
     def _check_hostgroup_dict(self):
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("{} -shgrpl".format(qconf_com))
@@ -636,6 +686,7 @@ class sge_info(object):
                         new_hg.append(E.host(host))
                     cur_hgroups.append(new_hg)
         return cur_hgroups
+
     def _check_complexes_dict(self):
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("{} -sc".format(qconf_com))
@@ -644,6 +695,7 @@ class sge_info(object):
             for line_parts in [s_line.strip().split() for s_line in c_out.split("\n") if not s_line.strip().startswith("#")]:
                 all_complexes.append(E.complex(line_parts[0], short=line_parts[1]))
         return all_complexes
+
     def _check_qhost_dict(self):
         qhost_com = self._get_com_name("qhost")
         _c_stat, c_out = self._execute_command("{} -F -q -xml -j".format(qhost_com))
@@ -651,7 +703,7 @@ class sge_info(object):
             all_qhosts = E.call_error(c_out, stat="{:d}".format(_c_stat))
         else:
             all_qhosts = etree.fromstring(c_out)
-        for cur_host in all_qhosts.xpath(".//host", smart_strings=False): # [not(@name='global')]"):
+        for cur_host in all_qhosts.xpath(".//host", smart_strings=False):  # [not(@name='global')]"):
             cur_host.attrib["short_name"] = cur_host.attrib["name"].split(".")[0]
         for cur_job in all_qhosts.xpath(".//job", smart_strings=False):
             task_node = cur_job.find("jobvalue[@name='taskid']")
@@ -662,27 +714,34 @@ class sge_info(object):
         for state_el in all_qhosts.xpath(".//queue/queuevalue[@name='state_string']", smart_strings=False):
             state_el.addnext(E.queuevalue(",".join(["({}){}".format(
                 cur_state,
-                {"-" : "-",
-                 "u" : "unknown",
-                 "a" : "alarm",
-                 "A" : "alarm",
-                 "C" : "calendar suspended",
-                 "s" : "suspended",
-                 "S" : "subordinate",
-                 "d" : "disabled",
-                 "D" : "disabled",
-                 "E" : "error"}.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"]),
-                                          name="long_state_string"))
+                {
+                    "-": "-",
+                    "u": "unknown",
+                    "a": "alarm",
+                    "A": "alarm",
+                    "C": "calendar suspended",
+                    "s": "suspended",
+                    "S": "subordinate",
+                    "d": "disabled",
+                    "D": "disabled",
+                    "E": "error"
+                }.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"]),
+                name="long_state_string")
+            )
         for qtype_el in all_qhosts.xpath(".//queue/queuevalue[@name='qtype_string']", smart_strings=False):
             qtype_el.addnext(E.queuevalue(",".join(["({}){}".format(
                 cur_qtype,
-                {"B" : "Batch",
-                 "I" : "Interactive",
-                 "C" : "Checkpointing",
-                 "P" : "Parallel",
-                 "T" : "Transfer"}[cur_qtype][1:]) for cur_qtype in qtype_el.text or "-"]),
-                                          name="long_qtype_string"))
+                {
+                    "B": "Batch",
+                    "I": "Interactive",
+                    "C": "Checkpointing",
+                    "P": "Parallel",
+                    "T": "Transfer"
+                }[cur_qtype][1:]) for cur_qtype in qtype_el.text or "-"]),
+                name="long_qtype_string")
+            )
         return all_qhosts
+
     def _check_qstat_dict(self):
         qstat_com = self._get_com_name("qstat")
         # -u * is important to get all jobs
@@ -715,23 +774,26 @@ class sge_info(object):
         for state_el in all_jobs.xpath(".//job_list/state", smart_strings=False):
             state_el.addnext(E.state_long(",".join(["({}){}".format(
                 cur_state,
-                {"q" : "queued",
-                 "d" : "deleted",
-                 "h" : "hold",
-                 "r" : "running",
-                 "R" : "Restarted",
-                 "s" : "suspended",
-                 "S" : "Subordinated",
-                 "t" : "transfering",
-                 "T" : "Threshold",
-                 "w" : "waiting",
-                 "o" : "orphaned",
-                 "E" : "Error"}.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"])))
+                {
+                    "q": "queued",
+                    "d": "deleted",
+                    "h": "hold",
+                    "r": "running",
+                    "R": "Restarted",
+                    "s": "suspended",
+                    "S": "Subordinated",
+                    "t": "transfering",
+                    "T": "Threshold",
+                    "w": "waiting",
+                    "o": "orphaned",
+                    "E": "Error"
+                }.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"])))
         for node_name, attr_name in [("JAT_start_time", "start_time"),
                                      ("JB_submission_time", "submit_time")]:
             for time_el in all_jobs.findall(".//{}".format(node_name)):
                 time_el.getparent().attrib[attr_name] = datetime.datetime.strptime(time_el.text, "%Y-%m-%dT%H:%M:%S").strftime("%s")
         return all_jobs
+
     def _add_stdout_stderr_info(self, all_jobs):
         for entry in all_jobs.xpath(".//stdout|.//stderr", smart_strings=False):
             try:
@@ -744,6 +806,7 @@ class sge_info(object):
                 entry.attrib["found"] = "1"
                 entry.attrib["error"] = "0"
                 entry.attrib["size"] = "{:d}".format(cur_stat[stat.ST_SIZE])
+
     def _parse_sge_values(self, q_el, key_name, has_values):
         cur_el = q_el.find(key_name)
         if cur_el.text is None:
@@ -770,16 +833,22 @@ class sge_info(object):
                     cur_el.extend([E.conf_var(host=s_node, name=s_part) for s_part in local_part.split(",")])
         # remove text
         cur_el.text = None
+
     def get_queue(self, q_id, default=None):
         return self.__queue_lut.get(q_id, default)
+
     def get_host(self, h_id, default=None):
         return self.__host_lut.get(h_id, default)
+
     def get_all_hosts(self):
         return self.__host_lut.itervalues()
+
     def get_all_queues(self):
         return self.__queue_lut.itervalues()
+
     def get_job(self, j_id, default=None):
         return self.__job_lut.get(j_id, default)
+
     def build_luts(self):
         # build look up tables for fast processing
         self.__job_lut, self.running_jobs, self.waiting_jobs = ({}, [], [])
@@ -796,12 +865,13 @@ class sge_info(object):
             self.__queue_lut[queue.get("name")] = queue
             for exp_name, with_values in [
                 ("complex_values", True),
-                ("pe_list"       , False),
-                ("user_lists"    , False),
-                ("xuser_lists"   , False),
-                ("projects"      , False),
-                ("xprojects"     , False),
-                ("seq_no"        , False)]:
+                ("pe_list", False),
+                ("user_lists", False),
+                ("xuser_lists", False),
+                ("projects", False),
+                ("xprojects", False),
+                ("seq_no", False)
+            ]:
                 self._parse_sge_values(queue, exp_name, with_values)
         self.__host_lut = {}
         for cur_host in self.__tree.findall("qhost/host"):
@@ -819,6 +889,7 @@ class sge_info(object):
                                 hosts_el.extend([E.host(str(name)) for name in hg_lut[hg_name].xpath(".//host/text()", smart_strings=False)])
                         else:
                             hosts_el.append(E.host(hg_name))
+
 
 def get_running_headers(options):
     cur_job = E.job(
@@ -855,12 +926,14 @@ def get_running_headers(options):
     cur_job.append(E.action())
     return cur_job
 
+
 def _load_to_float(in_value):
     try:
         cur_load = float(in_value)
     except:
         cur_load = 0.0
     return cur_load
+
 
 def create_action_field(act_job, user):
     ret_el = E.action()
@@ -873,6 +946,7 @@ def create_action_field(act_job, user):
         else:
             ret_el.text = "---"
     return ret_el
+
 
 def create_stdout_stderr(act_job, info):
     # add stdout  / stderr info
@@ -887,21 +961,28 @@ def create_stdout_stderr(act_job, info):
         ret_el.text = "---"
     return ret_el
 
+
 def create_file_content(act_job):
     return E.files("{:d}".format(len(act_job.xpath(".//file_info/file_content", smart_strings=False))))
+
 
 def build_running_list(s_info, options, **kwargs):
     user = kwargs.get("user", None)
     # build various local luts
     # print s_info, etree.tostring(s_info.tree, pretty_print=True)
-    r_jobs = sorted(s_info.running_jobs, key=lambda x : x.get("full_id"))
+    r_jobs = sorted(s_info.running_jobs, key=lambda x: x.get("full_id"))
     job_host_lut, job_host_pe_lut = ({}, {})
     for cur_host in s_info.get_all_hosts():
         # print etree.tostring(cur_host, pretty_print=True)
         for cur_job in cur_host.xpath("job", smart_strings=False):
             job_host_lut.setdefault(cur_job.attrib["full_id"], []).append(cur_host.attrib["short_name"])
-            job_host_pe_lut.setdefault(cur_job.attrib["full_id"], {}).setdefault(cur_job.findtext("jobvalue[@name='pe_master']"), []).append(cur_host.attrib["short_name"])
-    host_loads = dict([(cur_host.attrib["short_name"], _load_to_float(cur_host.findtext("hostvalue[@name='load_avg']"))) for cur_host in s_info.get_all_hosts() if cur_host.attrib["short_name"] != "global"])
+            job_host_pe_lut.setdefault(cur_job.attrib["full_id"], {}).setdefault(
+                cur_job.findtext("jobvalue[@name='pe_master']"), []
+            ).append(cur_host.attrib["short_name"])
+    host_loads = {
+        cur_host.attrib["short_name"]: _load_to_float(
+            cur_host.findtext("hostvalue[@name='load_avg']")) for cur_host in s_info.get_all_hosts() if cur_host.attrib["short_name"] != "global"
+    }
     job_list = E.job_list(total="{:d}".format(len(r_jobs)))
     for act_job in r_jobs:
         if options.users:
@@ -934,7 +1015,7 @@ def build_running_list(s_info, options, **kwargs):
         if not options.suppress_times:
             start_time = datetime.datetime.fromtimestamp(int(act_job.attrib["start_time"]))
             cur_job.extend([
-                E.start_time(logging_tools.get_relative_dt(start_time)),
+                E.start_time(logging_tools.get_relative_dt(start_time), raw=json.dumps(int(time.mktime(start_time.timetuple())))),
                 E.run_time(s_info.get_run_time(start_time)),
                 E.left_time(s_info.get_left_time(start_time, act_job.findtext("hard_request[@name='h_rt']")))
             ])
@@ -961,15 +1042,49 @@ def build_running_list(s_info, options, **kwargs):
         if not options.suppress_nodelist:
             if act_job.get("full_id") in job_host_pe_lut:
                 jh_pe_lut = job_host_pe_lut[act_job.get("full_id")]
+                _raw_dict = {
+                    # name of master device
+                    "m": jh_pe_lut["MASTER"][0],
+                    # number of master devices
+                    "mc": len(jh_pe_lut["MASTER"]),
+                    # set of all devices
+                    "devs": list(set(sum(jh_pe_lut.values(), []))),
+                }
                 if options.compress_nodelist:
-                    cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+                    cur_job.append(
+                        E.nodelist(
+                            ",".join(
+                                [
+                                    compress_list(
+                                        sorted(jh_pe_lut[key]),
+                                        postfix="(M)" if key == "MASTER" else ""
+                                    ) for key in ["MASTER", "SLAVE"] if key in jh_pe_lut
+                                ]
+                            ),
+                            raw=json.dumps(_raw_dict),
+                        )
+                    )
                 else:
-                    cur_job.append(E.nodelist(",".join([",".join([u"{}{}".format(_entry, "(M)" if key == "MASTER" else "") for _entry in sorted(jh_pe_lut[key])]) for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+                    cur_job.append(
+                        E.nodelist(
+                            ",".join(
+                                [
+                                    ",".join(
+                                        [
+                                            u"{}{}".format(_entry, "(M)" if key == "MASTER" else "") for _entry in sorted(jh_pe_lut[key])
+                                        ]
+                                    ) for key in ["MASTER", "SLAVE"] if key in jh_pe_lut
+                                ]
+                            ),
+                            raw=json.dumps(_raw_dict),
+                        )
+                    )
             else:
                 cur_job.append(E.nodelist("not found"))
         cur_job.append(create_action_field(act_job, user))
         job_list.append(cur_job)
     return job_list
+
 
 def get_waiting_headers(options):
     cur_job = E.job(
@@ -995,9 +1110,10 @@ def get_waiting_headers(options):
     cur_job.append(E.action())
     return cur_job
 
+
 def build_waiting_list(s_info, options, **kwargs):
     user = kwargs.get("user", None)
-    w_jobs = sorted(s_info.waiting_jobs, key=lambda x : x.get("full_id"))
+    w_jobs = sorted(s_info.waiting_jobs, key=lambda x: x.get("full_id"))
     show_ids = []
     for act_job in w_jobs:
         show_job = True
@@ -1048,6 +1164,7 @@ def build_waiting_list(s_info, options, **kwargs):
         job_list.append(cur_job)
     return job_list
 
+
 def get_node_headers(options):
     cur_node = E.node()
     if options.merge_node_queue:
@@ -1077,7 +1194,7 @@ def get_node_headers(options):
         ])
     cur_node.extend([
         E.load(),
-        E.slots_used(),
+        E.slots_used(span="2"),
         E.slots_reserved(),
         E.slots_total()
     ])
@@ -1089,6 +1206,7 @@ def get_node_headers(options):
     cur_node.append(E.jobs())
     return cur_node
 
+
 def shorten_list(in_list, **kwargs):
     if "empty_str" in kwargs:
         in_list = [value if value else kwargs["empty_str"] for value in in_list]
@@ -1096,6 +1214,7 @@ def shorten_list(in_list, **kwargs):
         if len(set(in_list)) == 1:
             return in_list[0]
     return kwargs.get("sep", "/").join(in_list)
+
 
 def build_node_list(s_info, options):
     job_host_lut, job_host_pe_lut = ({}, {})
@@ -1107,7 +1226,17 @@ def build_node_list(s_info, options):
                     cur_job.findtext("jobvalue[@name='qinstance_name']").split("@")[0], {}).setdefault(
                         cur_job.get("full_id"), []).append(cur_job.findtext("jobvalue[@name='pe_master']"))
     if options.merge_node_queue:
-        d_list = sorted([(act_h.attrib["name"], sorted([cur_q.attrib["name"] for cur_q in act_h.findall("queue")])) for act_h in s_info.get_all_hosts() if act_h.attrib["short_name"] != "global"])
+        d_list = sorted(
+            [
+                (
+                    act_h.attrib["name"], sorted(
+                        [
+                            cur_q.attrib["name"] for cur_q in act_h.findall("queue")
+                        ]
+                    )
+                ) for act_h in s_info.get_all_hosts() if act_h.attrib["short_name"] != "global"
+            ]
+        )
     else:
         d_list = []
         for act_q in s_info.get_all_queues():
@@ -1128,12 +1257,28 @@ def build_node_list(s_info, options):
                         continue
             # check for user filters
             if options.users:
-                h_users = set(act_h.xpath("job[jobvalue[@name='qinstance_name' and text() = '{}@{}']]/jobvalue[@name='job_owner']/text()".format(q_name, h_name), smart_strings=False))
+                h_users = set(
+                    act_h.xpath("job[jobvalue[@name='qinstance_name' and text() = '{}@{}']]/jobvalue[@name='job_owner']/text()".format(
+                        q_name,
+                        h_name
+                    ), smart_strings=False))
                 if not set(options.users) & h_users:
                     continue
             # check for complex filters
             if options.complexes:
-                q_job_complexes = set(sum([act_q.xpath("complex_values/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False) for act_q in act_q_list], []))
+                q_job_complexes = set(
+                    sum(
+                        [
+                            act_q.xpath(
+                                "complex_values/conf_var[not(@host) or @host='{}']/@name".format(
+                                    act_h.get("short_name")
+                                ),
+                                smart_strings=False
+                            ) for act_q in act_q_list
+                        ],
+                        []
+                    )
+                )
                 if not q_job_complexes & set(options.complexes):
                     continue
             cur_node = E.node(
@@ -1141,25 +1286,100 @@ def build_node_list(s_info, options):
                 E.queues(shorten_list(q_list))
             )
             if options.show_seq:
-                seq_list = [str(act_q.xpath("seq_no/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False)[-1]) for act_q in act_q_list]
+                seq_list = [
+                    str(
+                        act_q.xpath(
+                            "seq_no/conf_var[not(@host) or @host='{}']/@name".format(
+                                act_h.get("short_name")
+                            ),
+                            smart_strings=False
+                        )[-1]
+                    ) for act_q in act_q_list
+                ]
                 cur_node.append(E.seqno(shorten_list(seq_list)))
             if not options.suppress_status:
-                cur_node.append(E.state(shorten_list([m_queue.findtext("queuevalue[@name='{}state_string']".format(
-                    "long_" if options.long_status else "")) or "-" for m_queue in m_queue_list])))
+                _list = [
+                    m_queue.findtext(
+                        "queuevalue[@name='{}state_string']".format(
+                            "long_" if options.long_status else ""
+                        )
+                    ) for m_queue in m_queue_list
+                ]
+                cur_node.append(
+                    E.state(
+                        shorten_list(
+                            [_val or "-" for _val in _list]
+                        ),
+                        raw=json.dumps(_list)
+                    )
+                )
             if options.show_type or options.show_long_type:
-                cur_node.append(E.type(shorten_list([m_queue.findtext("queuevalue[@name='{}qtype_string']".format(
-                    "long_" if options.show_long_type else "")) for m_queue in m_queue_list])))
+                _list = [
+                    m_queue.findtext(
+                        "queuevalue[@name='{}qtype_string']".format(
+                            "long_" if options.show_long_type else ""
+                        )
+                    ) for m_queue in m_queue_list
+                ]
+                cur_node.append(
+                    E.type(
+                        shorten_list(
+                            _list
+                        ),
+                        raw=json.dumps(_list)
+                    )
+                )
             if options.show_complexes:
-                cur_node.append(E.complex(shorten_list([",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False)))) for act_q in act_q_list], empty_str="-")))
+                cur_node.append(
+                    E.complex(
+                        shorten_list(
+                            [
+                                ",".join(
+                                    sorted(
+                                        set(
+                                            act_q.xpath(
+                                                "complex_values/conf_var[not(@host) or @host='{}']/@name".format(
+                                                    act_h.get("short_name")
+                                                ),
+                                                smart_strings=False
+                                            )
+                                        )
+                                    )
+                                ) for act_q in act_q_list
+                            ],
+                            empty_str="-"
+                        )
+                    )
+                )
             if options.show_pe:
-                cur_node.append(E.pe_list(shorten_list([",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False)))) for act_q in act_q_list], empty_str="-")))
+                cur_node.append(
+                    E.pe_list(
+                        shorten_list(
+                            [
+                                ",".join(
+                                    sorted(
+                                        set(
+                                            act_q.xpath(
+                                                "pe_list/conf_var[not(@host) or @host='{}']/@name".format(
+                                                    act_h.get("short_name")
+                                                ),
+                                                smart_strings=False
+                                            )
+                                        )
+                                    )
+                                ) for act_q in act_q_list
+                            ],
+                            empty_str="-"
+                        )
+                    )
+                )
             if options.show_memory:
                 cur_node.extend([
                     E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
                     E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
                 ])
             cur_node.extend([
-                E.load("{:2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))), **{"type" : "float", "format" : "{:.2f}"}),
+                E.load("{:2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))), **{"type": "float", "format": "{:.2f}"}),
                 E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
                 E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
                 E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
@@ -1168,7 +1388,7 @@ def build_node_list(s_info, options):
                 acl_str_dict = {}
                 for act_q in act_q_list:
                     for ref_name, header_name in [("user_list", "userlists"),
-                                                  ("project"  , "projects")]:
+                                                  ("project", "projects")]:
                         pos_list = " or ".join(act_q.xpath(".//{}s/conf_var[not(@host) or @host='{}']/@name".format(
                             ref_name,
                             act_h.get("short_name")), smart_strings=False))
@@ -1201,7 +1421,7 @@ def build_node_list(s_info, options):
                             s_key) for
                         s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
                     "]" if "s" in cur_dict[key].findtext("state").lower() else "",
-                ) for key in sorted(type_dict.keys()) if cur_dict.get(key, None) != None])
+                ) for key in sorted(type_dict.keys()) if cur_dict.get(key, None) is not None])
                 if qstat_info.strip():
                     job_list.append("{}::{}".format(q_name, qstat_info))
             cur_node.append(E.jobs("/".join(job_list)))
@@ -1223,19 +1443,45 @@ def build_node_list(s_info, options):
                         continue
             # check for user filters
             if options.users:
-                h_users = set(act_h.xpath("job[jobvalue[@name='qinstance_name' and text() = '{}@{}']]/jobvalue[@name='job_owner']/text()".format(q_name, h_name), smart_strings=False))
+                h_users = set(
+                    act_h.xpath(
+                        "job[jobvalue[@name='qinstance_name' and text() = '{}@{}']]/jobvalue[@name='job_owner']/text()".format(
+                            q_name,
+                            h_name
+                        ),
+                        smart_strings=False
+                    )
+                )
                 if not set(options.users) & h_users:
                     continue
             # check for complex filters
             if options.complexes:
-                q_job_complexes = set(act_q.xpath("complex_values/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False))
+                q_job_complexes = set(
+                    act_q.xpath(
+                        "complex_values/conf_var[not(@host) or @host='{}']/@name".format(
+                            act_h.get("short_name")
+                        ),
+                        smart_strings=False
+                    )
+                )
                 if not q_job_complexes & set(options.complexes):
                     continue
             cur_node = E.node(
                 E.queue(q_name),
                 E.host(s_name))
             if options.show_seq:
-                cur_node.append(E.seqno(str(act_q.xpath("seq_no/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False)[-1])))
+                cur_node.append(
+                    E.seqno(
+                        str(
+                            act_q.xpath(
+                                "seq_no/conf_var[not(@host) or @host='{}']/@name".format(
+                                    act_h.get("short_name")
+                                ),
+                                smart_strings=False
+                            )[-1]
+                        )
+                    )
+                )
             if not options.suppress_status:
                 cur_node.append(E.state(m_queue.findtext("queuevalue[@name='{}state_string']".format(
                     "long_" if options.long_status else "")) or "-"))
@@ -1243,9 +1489,21 @@ def build_node_list(s_info, options):
                 cur_node.append(E.type(m_queue.findtext("queuevalue[@name='{}qtype_string']".format(
                     "long_" if options.show_long_type else ""))))
             if options.show_complexes:
-                cur_node.append(E.complex(",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False))))))
+                cur_node.append(
+                    E.complex(
+                        ",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@host) or @host='{}']/@name".format(
+                            act_h.get("short_name")
+                        ), smart_strings=False))))
+                    )
+                )
             if options.show_pe:
-                cur_node.append(E.pe_list(",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@host) or @host='{}']/@name".format(act_h.get("short_name")), smart_strings=False))))))
+                cur_node.append(
+                    E.pe_list(
+                        ",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@host) or @host='{}']/@name".format(
+                            act_h.get("short_name")
+                        ), smart_strings=False))))
+                    )
+                )
             if options.show_memory:
                 cur_node.extend([
                     E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
@@ -1260,7 +1518,7 @@ def build_node_list(s_info, options):
             ])
             if options.show_acl:
                 for ref_name, header_name in [("user_list", "userlists"),
-                                              ("project"  , "projects")]:
+                                              ("project", "projects")]:
                     pos_list = " or ".join(act_q.xpath(".//{}s/conf_var[not(@host) or @host='{}']/@name".format(
                         ref_name,
                         act_h.get("short_name")), smart_strings=False))
@@ -1294,14 +1552,15 @@ def build_node_list(s_info, options):
             node_list.append(cur_node)
     return node_list
 
+
 def _stress_test():
     a = sge_info(always_direct=True, verbose=True)
     _iters = 100
-    for x in xrange(_iters):
+    for _x in xrange(_iters):
         a.update(force_update=True)
     print("{:d} iterations done".format(_iters))
     time.sleep(3600)
 
+
 if __name__ == "__main__":
     _stress_test()
-
