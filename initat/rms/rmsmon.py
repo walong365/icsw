@@ -479,8 +479,8 @@ class rms_mon_process(threading_tools.process_obj):
         if _cur_job_run is not None:
             if _cur_job_run.qacct_called:
                 if _cur_job_run.start_time and _cur_job_run.end_time:
-                    if cluster_timezone.normalize(_cur_job_run.start_time) == in_dict["start_time"] and \
-                            cluster_timezone.normalize(_cur_job_run.end_time) == in_dict["end_time"]:
+                    if _cur_job_run.start_time == in_dict["start_time"] and \
+                            _cur_job_run.end_time == in_dict["end_time"]:
                         # pure duplicate
                         self.log("duplicate with identical start/end time found for job {}".format(_job_id), logging_tools.LOG_LEVEL_WARN)
                     else:
@@ -501,7 +501,6 @@ class rms_mon_process(threading_tools.process_obj):
         self.__jobs_added += 1
         if not self.__jobs_added % 100:
             self.log("added {:d} jobs".format(self.__jobs_added))
-        self.log("job {} not found in database, creating...".format(_job_id), logging_tools.LOG_LEVEL_WARN)
         _job = self._get_job(
             in_dict["jobnumber"],
             in_dict["taskid"],
@@ -544,13 +543,12 @@ class rms_mon_process(threading_tools.process_obj):
         try:
             cur_job = rms_job.objects.get(Q(jobid=job_id) & Q(taskid=task_id))
         except rms_job.DoesNotExist:
-            if not self.__use_cache:
-                self.log(
-                    "creating new job with id {} ({})".format(
-                        job_id,
-                        "task id {}".format(str(task_id)) if task_id else "no task id",
-                    )
+            self.log(
+                "creating new job with id {} ({})".format(
+                    job_id,
+                    "task id {}".format(str(task_id)) if task_id else "no task id",
                 )
+            )
             cur_job = rms_job.objects.create(
                 jobid=job_id,
                 taskid=task_id,
