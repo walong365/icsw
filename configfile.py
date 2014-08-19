@@ -488,7 +488,7 @@ class configuration(object):
 
     def __setitem__(self, key, value):
         if key in self.__c_dict:
-            if type(value) == dict:
+            if type(value) == tuple:
                 value, source = value
             else:
                 source = None
