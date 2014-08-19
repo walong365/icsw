@@ -237,13 +237,16 @@ class rms_job_run(models.Model):
         self.account = in_dict["account"]
         self._set_is_value("failed", in_dict["failed"])
         self._set_is_value("exit_status", in_dict["exit_status"])
-        self.start_time = cluster_timezone.localize(in_dict["start_time"])
-        self.end_time = cluster_timezone.localize(in_dict["end_time"])
+        if in_dict["start_time"]:
+            self.start_time = cluster_timezone.localize(in_dict["start_time"])
+        if in_dict["end_time"]:
+            self.end_time = cluster_timezone.localize(in_dict["end_time"])
         self.qacct_called = True
         self.save()
         # save queue_time
-        self.rms_job.queue_time = cluster_timezone.localize(in_dict["qsub_time"])
-        self.rms_job.save(update_fields=["queue_time"])
+        if in_dict["queue_time"]:
+            self.rms_job.queue_time = cluster_timezone.localize(in_dict["qsub_time"])
+            self.rms_job.save(update_fields=["queue_time"])
 
     class Meta:
         app_label = "backbone"
