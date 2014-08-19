@@ -450,6 +450,9 @@ class rms_mon_process(threading_tools.process_obj):
             self._feed_qacct(_dict)
 
     def _feed_qacct(self, in_dict):
+        if not in_dict["start_time"] or not in_dict["end_time"]:
+            # start or end time not set, forget it (crippled entry)
+            return
         _job_id = "{:d}{}".format(
             in_dict["jobnumber"],
             ".{:d}".format(in_dict["taskid"]) if in_dict["taskid"] else "",
@@ -460,17 +463,13 @@ class rms_mon_process(threading_tools.process_obj):
             _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
         except rms_job_run.MultipleObjectsReturned:
             _job_runs = rms_job_run.objects.filter(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
-            if in_dict["start_time"] and in_dict["end_time"]:
-                # find matching objects
-                if any([_cur_job_run.start_time == in_dict["start_time"] and _cur_job_run.end_time == in_dict["end_time"] for _cur_job_run in _job_runs]):
-                    # entry found with same start / end time, no need to update
-                    _cur_job_run = None
-                else:
-                    # create new run
-                    _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
-            else:
-                # start or end time not set, forget it
+            # find matching objects
+            if any([_cur_job_run.start_time == in_dict["start_time"] and _cur_job_run.end_time == in_dict["end_time"] for _cur_job_run in _job_runs]):
+                # entry found with same start / end time, no need to update
                 _cur_job_run = None
+            else:
+                # create new run
+                _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
         else:
             self.__jobs_scanned += 1
             if not self.__jobs_scanned % 100:
