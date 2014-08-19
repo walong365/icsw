@@ -379,7 +379,7 @@ class rms_mon_process(threading_tools.process_obj):
 
     def _check_accounting(self, *args, **kwargs):
         self.__jobs_added = 0
-        self.__jobs_scanned = 0
+        self.__entries_scanned, self.__highest_id = (0, 0)
         if args:
             _data = args[0]
             self._call_qacct("-j", "{:d}".format(_data["job_id"]))
@@ -470,10 +470,10 @@ class rms_mon_process(threading_tools.process_obj):
             else:
                 # create new run
                 _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
-        else:
-            self.__jobs_scanned += 1
-            if not self.__jobs_scanned % 100:
-                self.log("scanned {:d} jobs".format(self.__jobs_scanned))
+        self.__entries_scanned += 1
+        self.__highest_id = max(self.__highest_id, in_dict["jobnumber"])
+        if not self.__entries_scanned % 100:
+            self.log("scanned {:d} jobs (up to jobnumber {:d})".format(self.__entries_scanned, self.__highest_id))
 
         if _cur_job_run is not None:
             if _cur_job_run.qacct_called:
