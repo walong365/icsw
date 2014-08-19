@@ -514,6 +514,10 @@ add_rrd_directive = (mod) ->
                 if attrs["graphsize"]?
                     scope.all_dims.push(attrs["graphsize"])
                     scope.cur_dim = attrs["graphsize"]
+                if attrs["fromdt"]? and parseInt(attrs["fromdt"])
+                    scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
+                if attrs["todt"]? and parseInt(attrs["todt"])
+                    scope.to_date_mom = moment.unix(parseInt(attrs["todt"]))
                 scope.draw_on_init = attrs["draw"] ? false
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
         }

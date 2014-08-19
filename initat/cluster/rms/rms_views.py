@@ -29,14 +29,13 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models import user_variable
+from initat.cluster.backbone.models import device, user_variable, rms_job_run_serializer, rms_job_run
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
     update_session_object
-from initat.cluster.rms.rms_addons import *
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import json
 import logging
 import logging_tools
@@ -52,7 +51,7 @@ except ImportError:
     sge_tools = None
 
 RMS_ADDON_KEYS = [key for key in sys.modules.keys() if key.startswith("initat.cluster.rms.rms_addons.") and sys.modules[key]]
-RMS_ADDONS = [sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS]
+RMS_ADDONS = [sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS if key.split(".")[-1] not in ["base"]]
 
 logger = logging.getLogger("cluster.rms")
 
@@ -69,8 +68,10 @@ if sge_tools:
                 run_initial_update=False,
                 verbose=settings.DEBUG
             )
+
         def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-            logger.log(log_level, "[sge] %s" % (what))
+            logger.log(log_level, "[sge] {}".format(what))
+
         def update(self):
             self.lock.acquire()
             try:
@@ -85,11 +86,14 @@ else:
 
 my_sge_info = tl_sge_info()
 
+
 def get_job_options(request):
     return sge_tools.get_empty_job_options(compress_nodelist=False)
 
+
 def get_node_options(request):
     return sge_tools.get_empty_node_options(merge_node_queue=True)
+
 
 class overview(View):
     @method_decorator(login_required)
@@ -101,11 +105,13 @@ class overview(View):
         header_dict = {}
         for _entry in res:
             _sub_list = header_dict.setdefault(_entry.tag, [])
-            for _header in _entry[0]:
-                _sub_list.append(_header.tag)
+            if len(_entry):
+                for _header in _entry[0]:
+                    _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
         return render_me(request, "rms_overview.html", {
-            "RMS_HEADERS" : json.dumps(header_dict)
+            "RMS_HEADERS": json.dumps(header_dict)
         })()
+
 
 def _rms_headers(request):
     if sge_tools:
@@ -118,11 +124,28 @@ def _rms_headers(request):
             ),
             E.node_headers(
                 sge_tools.get_node_headers(get_node_options(request)),
-            )
+            ),
+            E.done_headers(
+                E.job(
+                    E.job_id(),
+                    E.task_id(),
+                    E.name(),
+                    E.granted_pe(),
+                    E.owner(),
+                    E.queue_time(span="1"),
+                    E.start_time(),
+                    E.end_time(),
+                    E.queue(),
+                    E.exit_status(),
+                    E.failed(),
+                    E.nodelist(),
+                )
+            ),
         )
     else:
         res = E.headers()
     return res
+
 
 class get_header_xml(View):
     @method_decorator(login_required)
@@ -134,25 +157,22 @@ class get_header_xml(View):
                 change_obj.modify_headers(res)
         request.xml_response["headers"] = res
 
-def _node_to_value(in_node):
-    if in_node.get("type", "string") == "float":
-        return float(in_node.text)
-    else:
-        return in_node.text
 
-def _value_to_str(in_value):
-    if type(in_value) == float:
-        return "%.2f" % (in_value)
+def _node_to_value(in_node):
+    _attrs = {key: value for key, value in in_node.attrib.iteritems()}
+    if "raw" in _attrs:
+        _attrs["raw"] = json.loads(_attrs["raw"])
+    if in_node.get("type", "string") == "float":
+        _attrs["value"] = _attrs["format"].format(float(in_node.text))
     else:
-        return in_value
+        _attrs["value"] = in_node.text
+    return _attrs
+
 
 def _sort_list(in_list, _post):
-    # interpret nodes according to optional type attribute, TODO: use format from attrib to reformat later
-    in_list = [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
-    # reformat
-    show_list = [[_value_to_str(value) for value in line] for line in in_list]
-    # print show_list
-    return show_list
+    # interpret nodes according to optional type attribute, reformat if needed, preserve attributes
+    return [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
+
 
 class get_rms_json(View):
     @method_decorator(login_required)
@@ -192,22 +212,38 @@ class get_rms_json(View):
                             )
                         )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
+        done_jobs = rms_job_run.objects.all().exclude(
+            Q(end_time=None)
+        ).prefetch_related(
+            "rms_pe_info_set"
+        ).select_related(
+            "rms_queue",
+            "rms_department",
+            "rms_job",
+            "rms_project",
+            "rms_pe",
+        ).order_by("-pk")[0:100]
+        _done_ser = rms_job_run_serializer(done_jobs).data
+        # pprint.pprint(_done_ser)
         json_resp = {
-            "run_table"  : _sort_list(run_job_list, _post),
-            "wait_table" : _sort_list(wait_job_list, _post),
-            "node_table" : _sort_list(node_list, _post),
-            "files"      : fc_dict,
+            "run_table": _sort_list(run_job_list, _post),
+            "wait_table": _sort_list(wait_job_list, _post),
+            "node_table": _sort_list(node_list, _post),
+            "done_table": _done_ser,
+            "files": fc_dict,
         }
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+
 
 class get_node_info(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
         _dev_names = json.loads(_post["devnames"])
-        dev_list = device.objects.filter(Q(name__in=_dev_names))
-        json_resp = {_entry.name : (_entry.idx, _entry.has_active_rrds) for _entry in dev_list}
+        dev_list = device.objects.filter(Q(name__in=_dev_names)).select_related("domain_tree_node")
+        json_resp = {_entry.name: (_entry.idx, _entry.has_active_rrds, _entry.full_name) for _entry in dev_list}
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+
 
 class control_job(View):
     @method_decorator(login_required)
@@ -222,6 +258,7 @@ class control_job(View):
             srv_com.builder("job", job_id=job_id))
         contact_server(request, "rms", srv_com, timeout=10)
 
+
 class control_queue(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -235,6 +272,7 @@ class control_queue(View):
             srv_com.builder("queue", queue_spec=queue_spec)
         )
         contact_server(request, "rms", srv_com, timeout=10)
+
 
 class get_file_content(View):
     @method_decorator(login_required)
@@ -306,7 +344,13 @@ class get_file_content(View):
             if len(_resp_list):
                 request.xml_response["response"] = _resp_list
         else:
-            request.xml_response.error("nothing found for %s" % (logging_tools.get_plural("job", len(file_id_list))), logger) # %s not found for job %s" % (std_type, job_id), logger)
+            request.xml_response.error(
+                "nothing found for {}".format(
+                    logging_tools.get_plural("job", len(file_id_list))
+                ),
+                logger
+            )  # %s not found for job %s" % (std_type, job_id), logger)
+
 
 class set_user_setting(View):
     @method_decorator(login_required)
@@ -346,6 +390,7 @@ class set_user_setting(View):
         json_resp = {}
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
+
 class get_user_setting(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -358,4 +403,3 @@ class get_user_setting(View):
             else:
                 json_resp[t_name] = []
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
-
