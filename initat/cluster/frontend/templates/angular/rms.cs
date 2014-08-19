@@ -17,8 +17,7 @@ running_table = """
         <tr headers struct="running_struct" class="info"></tr>
     </thead>
     <tbody>
-        <tr rmsrunline ng-repeat-start="data in run_list | paginator2:this.pagRun" >
-        </tr>
+        <tr rmsrunline ng-repeat-start="data in run_list | paginator2:this.pagRun" ></tr>
         <tr ng-repeat-end ng-show="data.files.value != '0' && running_struct.toggle['files']">
             <td colspan="99"><fileinfo job="data" files="files" fis="fis"></fileinfo></td>
         </tr>
@@ -47,7 +46,7 @@ waiting_table = """
 """
 
 done_table ="""
-<table class="table table-condensed table-hover table-striped" style="width:auto;">
+<table class="table table-condensed table-hover" style="width:auto;">
     <thead>
         <tr>
             <td colspan="20" paginator entries="done_list" pag_settings="pagDone" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
@@ -266,11 +265,17 @@ rmsdoneline = """
 <td ng-show="done_struct.toggle['queue']">
     {{ data.rms_queue.name }}
 </td>
-<td ng-show="done_struct.toggle['exit_status']">
+<td ng-show="done_struct.toggle['exit_status']" ng-class="exit_status_wrapper_class(data)">
     {{ data.exit_status }} {{ data.exit_status_str }}
+    <div class="pull-right" ng-show="special_exit_status(data)">
+        <span ng-class="exit_status_class(data)"></span>
+    </div>
 </td>
-<td ng-show="done_struct.toggle['failed']">
-    {{ data.failed }} {{ data.failed_str }}
+<td ng-show="done_struct.toggle['failed']" title="{{ get_failed_title(class) }}">
+    <span class="label" ng-class="get_failed_class(data)"><span ng-class="get_failed_glyphicon(data)"></span></span>&nbsp;{{ get_failed_str(data) }} {{ data.failed_str }}
+</td>
+<td ng-show="done_struct.toggle['failed']" class="text-center">
+    {{ data.failed }}
 </td>
 <td ng-show="done_struct.toggle['nodelist']">
     {{ show_pe_info(data) }}
@@ -554,6 +559,44 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.refresh = true
         # fileinfostruct
         $scope.fis = {}
+        $scope.failed_lut = {
+            0 : [true, "no failure", "ran and exited normally"]
+            1 : [false, "assumedly before job", "failed early in execd"]
+            3 : [false, "before writing config", "failed before execd set up local spool"]
+            4 : [false, "before writing PID", "shepherd failed to record its pid"]
+            6 : [false, "setting processor set", "failed setting up processor set"]
+            7 : [false, "before prolog", "failed before prolog"]
+            8 : [false, "in prolog", "failed in prolog"]
+            9 : [false, "before pestart", "failed before starting PE"]
+            10 : [false, "in pestart", "failed in PE starter"]
+            11 : [false, "before job", "failed in shepherd before starting job"]
+            12 : [true, "before pestop", "ran, but failed before calling PE stop proecdure"]
+            13 : [true, "in pestop", "ran, but PE stop procedure failed"]
+            14 : [true, "before epilog", "ran, but failed before calling epilog script"]
+            15 : [true, "in epilog", "ran, but failed in epilog script"]
+            16 : [true, "releasing processor set", "ran, but processor set could not be released"]
+            17 : [true, "through signal", "job killed by signal (possibly qdel)"]
+            18 : [false, "shepherd returned error", "shepherd died"]
+            19 : [false, "before writing exit_status", "shepherd didn't write reports correctly"]
+            20 : [false, "found unexpected error file", "shepherd encountered a problem"]
+            21 : [false, "in recognizing job", "qmaster asked about an unknown job (not in accounting?)"]
+            24 : [true, "migrating (checkpointing jobs)", "ran, will be migrated"]
+            25 : [true, "rescheduling", "ran, will be rescheduled"]
+            26 : [false, "opening output file", "failed opening stderr/stdout file"]
+            27 : [false, "searching requested shell", "failed finding specified shell"]
+            28 : [false, "changing to working directory", "failed changing to start directory"]
+            29 : [false, "AFS setup", "failed setting up AFS security"]
+            30 : [true, "application error returned", "ran and exited 100 - maybe re-scheduled"]
+            31 : [false, "accessing sgepasswd file", "failed because sgepasswd not readable (MS Windows)"]
+            32 : [false, "entry is missing in password file", "failed because user not in sgepasswd (MS Windows)"]
+            33 : [false, "wrong password", "failed because of wrong password against sgepasswd (MS Windows)"]
+            34 : [false, "communicating with GE Helper Service", "failed because of failure of helper service (MS Windows)"]
+            35 : [false, "before job in GE Helper Service", "failed because of failure running helper service (MS Windows)"]
+            36 : [false, "checking configured daemons", "failed because of configured remote startup daemon"]
+            37 : [true, "qmaster enforced h_rt, h_cpu or h_vmem limit", "ran, but killed due to exceeding run time limit"]
+            38 : [false, "adding supplementary group", "failed adding supplementary gid to job "]
+            100 : [true, "assumedly after job", "ran, but killed by a signal (perhaps due to exceeding resources), task died, shepherd died (e.g. node crash),"]
+        }
         $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [])
         $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [])
         $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [])
@@ -860,7 +903,45 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     nodelist = [data.device]
                 rrd_nodes = scope.get_rrd_nodes(nodelist)
                 scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time)
-                
+            scope.special_exit_status = (data) ->
+                if data.exit_status in [99, 137]
+                    return true
+                else
+                    return false    
+            scope.exit_status_wrapper_class = (data) ->
+                if data.exit_status in [99]
+                    return "warn"
+                else if data.exit_status in [137]
+                    return "danger"
+                else
+                    return "ok"
+            scope.exit_status_class = (data) ->
+                if data.exit_status == 99
+                    return "glyphicon glyphicon-repeat"
+                else if data.exit_status == 137
+                    return "glyphicon glyphicon-remove-circle"
+                else
+                    return ""
+            scope.get_failed_str = (data) ->
+                if data.failed of scope.failed_lut
+                    return scope.failed_lut[data.failed][1]
+                else
+                    return data.failed
+            scope.get_failed_class = (data) ->
+                if data.failed of scope.failed_lut
+                    return if scope.failed_lut[data.failed][0] then "label-success" else "label-danger"
+                else
+                    return "label-warning"
+            scope.get_failed_glyphicon = (data) ->
+                if data.failed of scope.failed_lut
+                    return if scope.failed_lut[data.failed][0] then "glyphicon glyphicon-ok" else "glyphicon glyphicon-remove"
+                else
+                    return "glyphicon glyphicon-minus"
+            scope.get_failed_title = (data) ->
+                if data.failed of scope.failed_lut
+                    return scope.failed_lut[data.failed][2]
+                else
+                    return ""
     }
 ).directive("rmswaitline", ($templateCache, $sce) ->
     return {
@@ -998,7 +1079,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             fis   : "="
         template : $templateCache.get("files_info.html")
         link : (scope, el, attrs) ->
-            full_id = if scope.job.task_id then "#{scope.job.job_id}.#{scope.job.task_id}" else scope.job.job_id
+            full_id = if scope.job.task_id.value then "#{scope.job.job_id.value}.#{scope.job.task_id.value}" else scope.job.job_id.value
             scope.full_id = full_id
             if full_id of scope.files
                 scope.jfiles = scope.files[full_id]

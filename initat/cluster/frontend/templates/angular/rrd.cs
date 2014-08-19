@@ -55,8 +55,13 @@ rrd_graph_template = """
             </div>
         </div>&nbsp;
         <div class="input-group-btn">
-            <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()">
+            <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
                 <span class="glyphicon glyphicon-step-forward"></span>
+            </button>
+        </div>&nbsp;
+        <div class="input-group-btn">
+            <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
+                <span class="glyphicon glyphicon-fast-forward"></span>
             </button>
         </div>&nbsp;
         <div class="input-group-btn">
@@ -78,12 +83,13 @@ rrd_graph_template = """
             </button>
         </div>
         <span ng-show="devsel_list.length > 1">&nbsp;</span>
-        <div class="input-group-btn">
+        <div class="input-group-btn" ng-show="devsel_list.length > 1">
             <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices">
                 <span class="glyphicon glyphicon-th"></span>
                 merge devices
             </button>
-        </div>&nbsp;
+        </div>
+        <span ng-show="devsel_list.length > 1">&nbsp;</span>
         <div class="input-group">
             <span class="input-group-addon">
                  from
@@ -331,9 +337,12 @@ add_rrd_directive = (mod) ->
                     else if diff < 60000
                         $scope.dt_valid = false
             $scope.move_to_now = () ->
-                # from not set, shift timeframe
+                # shift timeframe
                 _timeframe = moment.duration($scope.to_date_mom.unix() - $scope.from_date_mom.unix(), "seconds")
                 $scope.from_date_mom = moment().subtract(_timeframe)
+                $scope.to_date_mom = moment()
+            $scope.set_to_now = () ->
+                # set to_date to now
                 $scope.to_date_mom = moment()
             $scope.set_active_tr = (new_tr) ->
                 new_from = new_tr.get_from($scope.from_date_mom, $scope.to_date_mom)

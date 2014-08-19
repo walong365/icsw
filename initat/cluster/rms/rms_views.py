@@ -137,7 +137,7 @@ def _rms_headers(request):
                     E.end_time(),
                     E.queue(),
                     E.exit_status(),
-                    E.failed(),
+                    E.failed(span="2"),
                     E.nodelist(),
                 )
             ),
