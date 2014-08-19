@@ -369,9 +369,13 @@ class rms_mon_process(threading_tools.process_obj):
             # get jobs without valid accounting info
             _jobs = rms_job_run.objects.all().count()
             _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("rms_job__jobid", flat=True)
-            if not _jobs or global_config["FORCE_SCAN"] and not self.__full_scan_done:
+            if not _jobs:
                 self.__full_scan_done = True
                 self.log("no jobs in database, checking accounting info", logging_tools.LOG_LEVEL_WARN)
+                self._call_qacct("-j")
+            elif global_config["FORCE_SCAN"] and not self.__full_scan_done:
+                self.__full_scan_done = True
+                self.log("full scan forced, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._call_qacct("-j")
             elif len(_missing_ids) > 10:
                 self.log("accounting info for {:d} jobs missing, doing a full call".format(len(_missing_ids)), logging_tools.LOG_LEVEL_WARN)
