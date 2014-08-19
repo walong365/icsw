@@ -32,6 +32,7 @@ import socket
 import stat
 import sys
 
+
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
     global_config.add_config_entries([

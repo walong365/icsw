@@ -40,6 +40,7 @@ import zmq
 
 SEP_STR = "-" * 50
 
+
 class main_process(threading_tools.process_pool):
     def __init__(self, options):
         self.__options = options
@@ -75,6 +76,7 @@ class main_process(threading_tools.process_pool):
         # error gather dict
         self.__eg_dict = {}
         self.__stat_timer = global_config["STATISTICS_TIMER"]
+
     def change_resource(self):
         cur_files = resource.getrlimit(resource.RLIMIT_OFILE)
         new_files = (cur_files[1], cur_files[1])
@@ -87,6 +89,7 @@ class main_process(threading_tools.process_pool):
             )
         )
         resource.setrlimit(resource.RLIMIT_OFILE, new_files)
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst="log", **kwargs):
         if not self["exit_requested"]:
             if dst in self.__handles:
@@ -104,28 +107,32 @@ class main_process(threading_tools.process_pool):
                 if "src_thread" in kwargs or "src_process" in kwargs:
                     # build record to log src_thread
                     cur_record = logging.makeLogRecord({
-                        "threadName" : kwargs.get("src_thread", kwargs.get("src_process", "???")),
-                        "process"    : kwargs.get("src_pid", 0),
-                        "msg"        : what,
-                        "levelno"    : level,
-                        "levelname"  : logging_tools.get_log_level_str(level)})
+                        "threadName": kwargs.get("src_thread", kwargs.get("src_process", "???")),
+                        "process": kwargs.get("src_pid", 0),
+                        "msg": what,
+                        "levelno": level,
+                        "levelname": logging_tools.get_log_level_str(level)
+                    })
                     cur_dst.handle(cur_record)
                 else:
-                    cur_dst.log(level, what) # , extra={"threadName" : kwargs.get("src_thread", "bla")})
+                    cur_dst.log(level, what)  # , extra={"threadName" : kwargs.get("src_thread", "bla")})
             else:
                 self.__log_cache.append((dst, what, level))
         else:
             logging_tools.my_syslog(what, level)
+
     def _startup_error(self, src_name, src_pid, num_errors):
         self.log("{} during startup, exiting".format(logging_tools.get_plural("bind error", num_errors)),
                  logging_tools.LOG_LEVEL_ERROR)
         self._int_error("bind problem")
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("exit requested", logging_tools.LOG_LEVEL_WARN)
             self["exit_requested"] = True
+
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -134,6 +141,7 @@ class main_process(threading_tools.process_pool):
         self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def _remove_handles(self):
         any_removed = False
         for act_hname in self.__open_handles:
@@ -143,6 +151,7 @@ class main_process(threading_tools.process_pool):
                 any_removed = True
         if any_removed:
             time.sleep(0.5)
+
     def _init_network_sockets(self):
         self.__open_handles = [io_stream_helper.zmq_socket_name(global_config[h_name]) for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]] + \
             [global_config[h_name] for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]]
@@ -186,11 +195,13 @@ class main_process(threading_tools.process_pool):
         self.register_poller(client, zmq.POLLIN, self._recv_data)
         self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)
         self.std_client = client
+
     def process_start(self, src_process, src_pid):
         process_tools.append_pids("logserver/logserver", src_pid, mult=3)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process)
             self.__msi_block.save_block()
+
     def _init_msi_block(self):
         process_tools.save_pids("logserver/logserver", mult=3)
         self.log("Initialising meta-server-info block")
@@ -201,6 +212,7 @@ class main_process(threading_tools.process_pool):
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
+
     def loop_end(self):
         self._check_error_dict(force=True)
         self.__num_write += 3
@@ -210,6 +222,7 @@ class main_process(threading_tools.process_pool):
         key_list = list(self.__handles.keys())
         for close_key in key_list:
             self.remove_handle(close_key)
+
     def loop_post(self):
         self._remove_handles()
         process_tools.delete_pid("logserver/logserver")
@@ -219,10 +232,12 @@ class main_process(threading_tools.process_pool):
         if self.net_forwarder:
             self.net_forwarder.close()
         self.std_client.close()
+
     def _flush_log_cache(self):
         for dst, what, level in self.__log_cache:
             self.log(what, level, dst=dst)
         self.__log_cache = []
+
     def _feed_error(self, in_dict):
         try:
             # error_str is set in io_stream_helper.io_stream
@@ -243,12 +258,12 @@ class main_process(threading_tools.process_pool):
                             ))
                 error_str = "\n".join(error_f)
             cur_dict = self.__eg_dict.setdefault(in_dict["pid"], {
-                "last_update" : time.time(),
+                "last_update": time.time(),
                 # error as unicode
-                "error_str"    : u"",
+                "error_str": u"",
                 # how many lines we have already logged
-                "lines_logged" : 0,
-                "proc_dict"    : in_dict})
+                "lines_logged": 0,
+                "proc_dict": in_dict})
             # append line to errors
             cur_dict["error_str"] = "{}{}".format(cur_dict["error_str"], error_str)
             # log to err_py
@@ -287,6 +302,7 @@ class main_process(threading_tools.process_pool):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+
     def _get_process_info(self, es_dict):
         p_dict = es_dict.get("proc_dict", {})
         return "name {}, ppid {:d}, uid {:d}, gid {:d}".format(
@@ -294,6 +310,7 @@ class main_process(threading_tools.process_pool):
             p_dict.get("ppid", 0),
             p_dict.get("uid", -1),
             p_dict.get("gid", -1))
+
     def _check_error_dict(self, force=False):
         c_name = process_tools.get_cluster_name()
         mails_sent = 0
@@ -322,6 +339,7 @@ class main_process(threading_tools.process_pool):
                 "Sent {} in {:.2f} seconds".format(
                     logging_tools.get_plural("mail", mails_sent),
                     e_time - s_time))
+
     def _send_mail(self, subject, msg_body):
         new_mail = mail_tools.mail(
             subject,
@@ -338,6 +356,7 @@ class main_process(threading_tools.process_pool):
         except:
             self.log("error sending mail: {}".format(process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_CRITICAL)
+
     def any_message_received(self):
         act_time = time.time()
         self.__num_write += 1
@@ -359,6 +378,7 @@ class main_process(threading_tools.process_pool):
                 ))
             self.__num_open, self.__num_close, self.__num_write = (0, 0, 0)
             self.__num_forward_ok, self.__num_forward_error = (0, 0)
+
     def remove_handle(self, h_name):
         self.log("closing handle {}".format(h_name))
         self.__num_close += 1
@@ -376,6 +396,7 @@ class main_process(threading_tools.process_pool):
         if h_name in self.__handle_usage:
             del self.__handle_usage[h_name]
             del self.__handle_usecount[h_name]
+
     def _update(self, **kwargs):
         c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
         if c_handles:
@@ -387,13 +408,15 @@ class main_process(threading_tools.process_pool):
             self.remove_handle(c_handle)
         self._check_error_dict()
         self._check_excess_log()
+
     def _check_excess_log(self):
         cur_time = time.time()
         diff_time = max(1, abs(cur_time - self.__usecount_ts))
-        s_dict = {key : float(value) / diff_time for key, value in self.__handle_usecount.iteritems()}
-        self.__handle_usecount = {key : 0 for key in self.__handle_usecount}
-        s_dict = {key : value for key, value in s_dict.iteritems() if value > global_config["EXCESS_LIMIT"]}
+        s_dict = {key: float(value) / diff_time for key, value in self.__handle_usecount.iteritems()}
+        self.__handle_usecount = {key: 0 for key in self.__handle_usecount}
+        s_dict = {key: value for key, value in s_dict.iteritems() if value > global_config["EXCESS_LIMIT"]}
         # pprint.pprint(s_dict)
+
     def get_python_handle(self, record):
         if type(record) in [str, unicode]:
             # special type for direct handles (log, log_py, err_py)
@@ -438,7 +461,7 @@ class main_process(threading_tools.process_pool):
                     set([self.__handles[h_name].process_id,
                          self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
                 self.remove_handle(h_name)
-        if not h_name in self.__handles:
+        if h_name not in self.__handles:
             self.log(
                 "logger '{}' (logger_type {}) requested".format(
                     logger_name,
@@ -505,6 +528,7 @@ class main_process(threading_tools.process_pool):
                 base_dir,
                 logging_tools.get_plural("handle", len(self.__handles.keys()))))
         return self.__handles[h_name]
+
     def _recv_data(self, zmq_socket):
         # zmq_socket.recv()
         in_str = zmq_socket.recv()
@@ -520,6 +544,7 @@ class main_process(threading_tools.process_pool):
             if self.__only_forward:
                 return
         self.decode_in_str(in_str)
+
     def decode_in_str(self, in_str):
         try:
             in_dict = pickle.loads(in_str)
@@ -543,6 +568,7 @@ class main_process(threading_tools.process_pool):
                         process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_ERROR
                 )
+
     def _handle_log_com(self, log_com):
         handle = self.get_python_handle(log_com)
         log_msg = log_com.msg
@@ -573,6 +599,7 @@ class main_process(threading_tools.process_pool):
                     logging_tools.LOG_LEVEL_ERROR
                 )
         del log_com
+
     def _handle_command(self, handle, src_key, log_com, log_msg):
         h_name = handle.handle_name
         log_msg = log_msg[5:-6]
@@ -611,4 +638,3 @@ class main_process(threading_tools.process_pool):
             self.log("unknown command '{}'".format(log_msg),
                      logging_tools.LOG_LEVEL_ERROR)
         return log_it
-
