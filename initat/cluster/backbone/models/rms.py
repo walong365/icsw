@@ -244,7 +244,7 @@ class rms_job_run(models.Model):
         self.qacct_called = True
         self.save()
         # save queue_time
-        if in_dict["queue_time"]:
+        if in_dict["qsub_time"]:
             self.rms_job.queue_time = cluster_timezone.localize(in_dict["qsub_time"])
             self.rms_job.save(update_fields=["queue_time"])
 
