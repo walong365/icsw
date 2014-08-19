@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_non_empty_string, \
     _check_float, get_related_models
 from rest_framework import serializers
-from lxml.builder import E # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import re
 import process_tools
 
@@ -36,6 +36,7 @@ TOP_LOCATIONS = set([
 valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
 valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")
 
+
 class domain_name_tree(object):
     # helper structure
     def __init__(self):
@@ -54,6 +55,7 @@ class domain_name_tree(object):
                     cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
                     cur_node.save()
                 self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
+
     def check_intermediate(self):
         device = get_model("backbone", "device")
         net_ip = get_model("backbone", "net_ip")
@@ -63,6 +65,7 @@ class domain_name_tree(object):
             if cur_tn.intermediate != is_im:
                 cur_tn.intermediate = is_im
                 cur_tn.save()
+
     def add_device_references(self):
         device = get_model("backbone", "device")
         used_dtn_pks = list(device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("domain_tree_node_id", flat=True))
@@ -71,8 +74,10 @@ class domain_name_tree(object):
             value.local_refcount = used_dict.get(value.pk, 0)
         for value in self.__node_dict.itervalues():
             value.total_refcount = self._get_sub_refcounts(value)
+
     def _get_sub_refcounts(self, s_node):
         return self.__node_dict[s_node.pk].local_refcount + sum([self._get_sub_refcounts(sub_node) for sub_node in sum(s_node._sub_tree.itervalues(), [])])
+
     def add_domain(self, new_domain_name):
         dom_parts = list(reversed(new_domain_name.split(".")))
         cur_node = self._root_node
@@ -93,21 +98,28 @@ class domain_name_tree(object):
             # add to the first entry in sub_tree
             cur_node = cur_node._sub_tree[dom_part][0]
         return cur_node
+
     def get_domain_tree_node(self, dom_name):
         return self.__domain_lut[dom_name]
+
     def get_sorted_pks(self):
         return self._root_node.get_sorted_pks()
+
     def __getitem__(self, key):
         if type(key) in [int, long]:
             return self.__node_dict[key]
+
     def keys(self):
         return self.__node_dict.keys()
+
     def __iter__(self):
         return self.all()
+
     def all(self):
         # emulate queryset
         for pk in self.get_sorted_pks():
             yield self[pk]
+
 
 # domain name models
 class domain_tree_node(models.Model):
@@ -134,8 +146,27 @@ class domain_tree_node(models.Model):
     write_nameserver_config = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
+
     def get_sorted_pks(self):
-        return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
+        return [self.pk] + sum(
+            [
+                pk_list for _sub_name, pk_list in sorted(
+                    [
+                        (
+                            key,
+                            sum(
+                                [
+                                    sub_value.get_sorted_pks() for sub_value in value
+                                ],
+                                []
+                            )
+                        ) for key, value in self._sub_tree.iteritems()
+                    ]
+                )
+            ],
+            []
+        )
+
     def __unicode__(self):
         if self.depth:
             return self.full_name
@@ -145,13 +176,17 @@ class domain_tree_node(models.Model):
             #    return u"%s%s (%s)" % (r"+-" * (self.depth), self.name, self.full_name)
         else:
             return u"[TLN]"
+
     class Meta:
         app_label = "backbone"
 
+
 class domain_tree_node_serializer(serializers.ModelSerializer):
     tree_info = serializers.Field(source="__unicode__")
+
     class Meta:
         model = domain_tree_node
+
 
 @receiver(signals.pre_save, sender=domain_tree_node)
 def domain_tree_node_pre_save(sender, **kwargs):
@@ -186,7 +221,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
         if cur_inst.parent_id:
             if cur_inst.pk:
                 # check for valid parent
-                all_parents = {_v[0] : _v[1] for _v in domain_tree_node.objects.all().values_list("idx", "parent")}
+                all_parents = {_v[0]: _v[1] for _v in domain_tree_node.objects.all().values_list("idx", "parent")}
                 cur_p_id = cur_inst.parent_id
                 while cur_p_id:
                     if cur_p_id == cur_inst.pk:
@@ -213,12 +248,17 @@ def domain_tree_node_pre_save(sender, **kwargs):
             if new_full_name != cur_inst.full_name:
                 cur_inst.full_name = new_full_name
                 cur_inst.full_name_changed = True
-            used_names = domain_tree_node.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)).values_list("name", flat=True)
+            used_names = domain_tree_node.objects.exclude(
+                Q(pk=cur_inst.pk)
+            ).filter(
+                Q(depth=cur_inst.depth) & Q(parent=cur_inst.parent)
+            ).values_list("name", flat=True)
             if cur_inst.name in used_names:
                 raise ValidationError("name '{}' already used here".format(cur_inst.name))
         else:
             _check_non_empty_string(cur_inst, "name")
             _check_non_empty_string(cur_inst, "node_postfix")
+
 
 @receiver(signals.post_save, sender=domain_tree_node)
 def domain_tree_node_post_save(sender, **kwargs):
@@ -227,6 +267,7 @@ def domain_tree_node_post_save(sender, **kwargs):
         if getattr(cur_inst, "full_name_changed", False):
             for sub_node in domain_tree_node.objects.filter(Q(parent=cur_inst)):
                 sub_node.save()
+
 
 def _migrate_mon_type(cat_tree):
     # read all monitoring_config_types
@@ -244,6 +285,7 @@ def _migrate_mon_type(cat_tree):
                 cur_mon_cc.mon_check_command_type = None
                 cur_mon_cc.save()
 
+
 def _migrate_location_type(cat_tree):
     device_location = get_model("backbone", "device_location")
     device = get_model("backbone", "device")
@@ -259,6 +301,7 @@ def _migrate_location_type(cat_tree):
                 cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
                 cur_dev.device_location = None
                 cur_dev.save()
+
 
 class category_tree(object):
     # helper structure
@@ -308,13 +351,14 @@ class category_tree(object):
         if not TOP_LOCATION_CATEGORY in self.__category_lut:
             _migrate_location_type(self)
         for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY, TOP_MONITORING_CATEGORY, TOP_LOCATION_CATEGORY]:
-            if not check_name in self.__category_lut:
+            if check_name not in self.__category_lut:
                 self.add_category(check_name)
         for cur_node in self.__node_dict.itervalues():
             is_immutable = cur_node.full_name in ["", TOP_CONFIG_CATEGORY, TOP_MONITORING_CATEGORY, TOP_DEVICE_CATEGORY, TOP_LOCATION_CATEGORY]
             if cur_node.immutable != is_immutable:
                 cur_node.immutable = is_immutable
                 cur_node.save()
+
     def add_category(self, new_category_name):
         while new_category_name.startswith("/"):
             new_category_name = new_category_name[1:]
@@ -339,20 +383,26 @@ class category_tree(object):
             # add to the first entry in sub_tree
             cur_node = cur_node._sub_tree[cat_part][0]
         return cur_node
+
     def get_category(self, cat_name):
         return self.__category_lut[cat_name]
+
     def get_sorted_pks(self):
         return self._root_node.get_sorted_pks()
+
     def __contains__(self, key):
         if type(key) in [int, long]:
             return key in self.__node_dict
         else:
             return key in self.__category_lut
+
     def __getitem__(self, key):
         if type(key) in [int, long]:
             return self.__node_dict[key]
+
     def keys(self):
         return self.__node_dict.keys()
+
     def prune(self):
         # removes all unreferenced nodes
         removed = True
@@ -369,12 +419,15 @@ class category_tree(object):
                 del self.__node_dict[del_node.pk]
                 del_node.delete()
             removed = len(del_nodes) > 0
+
     def __iter__(self):
         return self.all()
+
     def all(self):
         # emulate queryset
         for pk in self.get_sorted_pks():
             yield self[pk]
+
 
 # category
 class category(models.Model):
@@ -396,12 +449,33 @@ class category(models.Model):
     longitude = models.FloatField(default=16.3)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
+
     def get_sorted_pks(self):
-        return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
+        return [self.pk] + sum(
+            [
+                pk_list for _sub_name, pk_list in sorted(
+                    [
+                        (
+                            key,
+                            sum(
+                                [
+                                    sub_value.get_sorted_pks() for sub_value in value
+                                ],
+                                []
+                            )
+                        ) for key, value in self._sub_tree.iteritems()
+                    ]
+                )
+            ],
+            []
+        )
+
     def __unicode__(self):
         return u"{}".format(self.full_name if self.depth else "[TLN]")
+
     def single_select(self):
         return True if self.full_name.startswith("/location/") else False
+
     def get_references(self):
         # print "*", self, dir(self._meta)
         num_refs = 0
@@ -411,14 +485,18 @@ class category(models.Model):
             #    print entry
             num_refs += getattr(self, rel.get_accessor_name()).count()
         return num_refs
+
     class Meta:
         app_label = "backbone"
+
 
 class category_serializer(serializers.ModelSerializer):
     allow_add_remove = True
     num_refs = serializers.Field(source="get_references")
+
     class Meta:
         model = category
+
 
 @receiver(signals.pre_save, sender=category)
 def category_pre_save(sender, **kwargs):
@@ -449,7 +527,7 @@ def category_pre_save(sender, **kwargs):
         if cur_inst.parent_id:
             if cur_inst.pk:
                 # check for valid parent
-                all_parents = {_v[0] : _v[1] for _v in category.objects.all().values_list("idx", "parent")}
+                all_parents = {_v[0]: _v[1] for _v in category.objects.all().values_list("idx", "parent")}
                 cur_p_id = cur_inst.parent_id
                 while cur_p_id:
                     if cur_p_id == cur_inst.pk:
@@ -476,6 +554,7 @@ def category_pre_save(sender, **kwargs):
         else:
             _check_non_empty_string(cur_inst, "name")
 
+
 @receiver(signals.post_save, sender=category)
 def category_post_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -483,4 +562,3 @@ def category_post_save(sender, **kwargs):
         if getattr(cur_inst, "full_name_changed", False):
             for sub_node in category.objects.filter(Q(parent=cur_inst)):
                 sub_node.save()
-

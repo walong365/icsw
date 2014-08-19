@@ -1,3 +1,21 @@
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 # -*- coding: utf-8 -*-
 #
@@ -14,7 +32,7 @@ from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
-    get_change_reset_list, get_related_models
+    get_change_reset_list, get_related_models, cluster_timezone
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 from rest_framework import serializers
@@ -41,6 +59,7 @@ from initat.cluster.backbone.models.package import *  # @UnusedWildImport
 from initat.cluster.backbone.models.user import *  # @UnusedWildImport
 from initat.cluster.backbone.models.background import *  # @UnusedWildImport
 from initat.cluster.backbone.models.hints import *  # @UnusedWildImport
+from initat.cluster.backbone.models.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed
 
@@ -68,6 +87,7 @@ ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
 logger = logging.getLogger(__name__)
 
+
 class cs_timer(object):
     def __init__(self):
         self.start_time = time.time()
@@ -80,9 +100,6 @@ class cs_timer(object):
         )
         self.start_time = cur_time
         return log_str
-
-cluster_timezone = pytz.timezone(settings.TIME_ZONE)
-system_timezone = pytz.timezone(time.tzname[0])
 
 # cluster_log_source
 cluster_log_source = None
@@ -111,11 +128,13 @@ def user_changed(*args, **kwargs):
 def group_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["group"])
 
+
 @receiver(bootsettings_changed)
 def rcv_bootsettings_changed(*args, **kwargs):
     # not signal when bootserver is not set
     if kwargs["device"].bootserver_id:
         _insert_bg_job("change_bootsetting", kwargs["cause"], kwargs["device"])
+
 
 def _insert_bg_job(cmd, cause, obj):
     if getattr(obj, "_no_bg_job", False):
@@ -155,7 +174,7 @@ def _insert_bg_job(cmd, cause, obj):
             user=thread_local_middleware().user,
             command_xml=unicode(srv_com),
             # valid for 4 hours
-            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)), # 3600 * 4)),
+            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)),  # 3600 * 4)),
         )
         # init if not already done
         if not hasattr(_thread_local, "num_bg_jobs"):
@@ -166,14 +185,17 @@ def _insert_bg_job(cmd, cause, obj):
         if not _local_pk:
             logger.error("cannot identify local device")
 
+
 def _signal_localhost():
     # signal clusterserver running on localhost
     _sender = net_tools.zmq_connection("wf_server_notify")
     _sender.add_connection("tcp://localhost:8004", server_command.srv_command(command="wf_notify"), multi=True)
     _sender.close()
 
+
 def boot_uuid(cur_uuid):
     return "{}-boot".format(cur_uuid[:-5])
+
 
 class home_export_list(object):
     """ build home_export_list (dict) from DB, used in forms.py and ldap_modules.py """
@@ -190,14 +212,15 @@ class home_export_list(object):
                 entry.pk
             )
             home_exp_dict[act_pk] = {
-                    "key"          : act_pk,
-                    "entry"        : entry,
-                    "name"         : dev_name,
-                    "full_name"    : dev_name_full,
-                    "homeexport"   : "",
-                    "node_postfix" : "",
-                    "createdir"    : "",
-                    "options"      : "-soft"}
+                "key": act_pk,
+                "entry": entry,
+                "name": dev_name,
+                "full_name": dev_name_full,
+                "homeexport": "",
+                "node_postfix": "",
+                "createdir": "",
+                "options": "-soft",
+            }
             for c_str in entry.config.config_str_set.all():
                 if c_str.name in home_exp_dict[act_pk]:
                     home_exp_dict[act_pk][c_str.name] = c_str.value
@@ -210,25 +233,32 @@ class home_export_list(object):
             value["entry"].info_str = value["info"]
             value["entry"].info_dict = value
         self.exp_dict = home_exp_dict
+
     def get(self, *args, **kwargs):
         # hacky
-        return self.exp_dict[int(kwargs["pk"])][ "entry"]
+        return self.exp_dict[int(kwargs["pk"])]["entry"]
+
     def all(self):
         for pk in [s_pk for _s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.iteritems()])]:
             yield self.exp_dict[pk]["entry"]
+
 
 class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
     architecture = models.CharField(default="", unique=True, max_length=128)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'architecture'
+
     def __unicode__(self):
         return self.architecture
+
 
 class architecture_serializer(serializers.ModelSerializer):
     class Meta:
         model = architecture
+
 
 class config_catalog(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -241,6 +271,7 @@ class config_catalog(models.Model):
     # extraction time
     extraction_time = models.DateTimeField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     @staticmethod
     def create_local_catalog():
         def_cc = config_catalog.objects.create(
@@ -249,12 +280,15 @@ class config_catalog(models.Model):
             author="Andreas Lang-Nevyjel",
         )
         return def_cc
+
     def __unicode__(self):
         return self.name
+
 
 class config_catalog_serializer(serializers.ModelSerializer):
     class Meta:
         model = config_catalog
+
 
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
@@ -273,10 +307,13 @@ class config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
     categories = models.ManyToManyField("backbone.category")
+
     def get_use_count(self):
         return self.device_config_set.all().count()
+
     def __unicode__(self):
         return self.name
+
     def show_variables(self, log_com, detail=False):
         log_com(" - config {} (pri {:d})".format(
             self.name,
@@ -285,17 +322,21 @@ class config(models.Model):
             for var_type in ["str", "int", "bool"]:
                 for cur_var in getattr(self, "config_{}_set".format(var_type)).all():
                     log_com("    {:<20s} : {}".format(cur_var.name, unicode(cur_var)))
+
     def natural_key(self):
         return self.name
+
     class Meta:
         db_table = u'new_config'
         ordering = ["name", "config_catalog__name"]
         unique_together = (("name", "config_catalog"),)
+
     class CSW_Meta:
         permissions = (
             ("modify_config", "modify global configurations", False),
         )
         fk_ignore_list = ["config_str", "config_int", "config_script", "config_bool", "config_blob", "mon_check_command"]
+
 
 @receiver(signals.pre_save, sender=config)
 def config_pre_save(sender, **kwargs):
@@ -306,7 +347,8 @@ def config_pre_save(sender, **kwargs):
         if cur_inst.server_config:
             cur_inst.parent_config = None
         # priority
-        _check_integer(cur_inst, "priority", min_val= -9999, max_val=9999)
+        _check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
+
 
 @receiver(signals.post_save, sender=config)
 def config_post_save(sender, **kwargs):
@@ -349,31 +391,11 @@ def config_post_save(sender, **kwargs):
                 for ac_script in ac_scripts:
                     script_add_list.append(
                         config_script(
-                                name=ac_script.script_name,
-                                description=ac_script.ac_description,
-                                value=ac_script.ac_value,
-                            )
+                            name=ac_script.script_name,
+                            description=ac_script.ac_description,
+                            value=ac_script.ac_value,
                         )
-            if False:
-                if cur_inst.name == "name_server":
-                    _add_list = [
-                        config_str(
-                            name="FORWARDER_1",
-                            description="first forward",
-                            value="192.168.1.1"),
-                        config_str(
-                            name="USER",
-                            description="named user",
-                            value="named"),
-                        config_str(
-                            name="GROUP",
-                            description="named group",
-                            value="named"),
-                        config_str(
-                            name="SECRET",
-                            description="ndc secret",
-                            value="h8DM8opPS3ThdswucAoUqQ=="),
-                    ]
+                    )
             for _cvs in var_add_list + script_add_list:
                 _cvs.config = cur_inst
                 _cvs.save()
@@ -392,6 +414,7 @@ def config_post_save(sender, **kwargs):
                 config_catalog.create_local_catalog()
             cur_inst.config_catalog = config_catalog.objects.all()[0]
 
+
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -401,13 +424,17 @@ class config_str(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def get_object_type(self):
         return "str"
+
     def __unicode__(self):
         return self.value or u""
+
     class Meta:
         db_table = u'config_str'
         ordering = ("name",)
+
 
 @receiver(signals.pre_save, sender=config_str)
 def config_str_pre_save(sender, **kwargs):
@@ -422,6 +449,7 @@ def config_str_pre_save(sender, **kwargs):
             raise ValidationError("name '{}' already used".format(cur_inst.name))
         cur_inst.value = cur_inst.value or ""
 
+
 class config_blob(models.Model):
     idx = models.AutoField(db_column="config_blob_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -432,10 +460,13 @@ class config_blob(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def get_object_type(self):
         return "blob"
+
     class Meta:
         db_table = u'config_blob'
+
 
 @receiver(signals.pre_save, sender=config_blob)
 def config_blob_pre_save(sender, **kwargs):
@@ -449,6 +480,7 @@ def config_blob_pre_save(sender, **kwargs):
         if cur_inst.name in all_var_names:
             raise ValidationError("name '{}' already used".format(cur_inst.name))
 
+
 class config_bool(models.Model):
     idx = models.AutoField(db_column="config_bool_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -459,12 +491,16 @@ class config_bool(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def get_object_type(self):
         return "bool"
+
     def __unicode__(self):
         return "True" if self.value else "False"
+
     class Meta:
         db_table = u'config_bool'
+
 
 @receiver(signals.pre_save, sender=config_bool)
 def config_bool_pre_save(sender, **kwargs):
@@ -488,6 +524,7 @@ def config_bool_pre_save(sender, **kwargs):
         except ValueError:
             raise ValidationError("value cannot be interpret as bool")
 
+
 class config_int(models.Model):
     idx = models.AutoField(db_column="config_int_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -498,14 +535,18 @@ class config_int(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def get_object_type(self):
         return "int"
+
     def __unicode__(self):
         if type(self.value) in [str, unicode]:
             self.value = int(self.value)
         return "{:d}".format(self.value or 0)
+
     class Meta:
         db_table = u'config_int'
+
 
 @receiver(signals.pre_save, sender=config_int)
 def config_int_pre_save(sender, **kwargs):
@@ -520,6 +561,7 @@ def config_int_pre_save(sender, **kwargs):
             raise ValidationError("name '{}' already used".format(cur_inst.name))
         _check_integer(cur_inst, "value")
 
+
 class config_script(models.Model):
     idx = models.AutoField(db_column="config_script_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -532,11 +574,14 @@ class config_script(models.Model):
     error_text = models.TextField(blank=True, default="")
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def get_object_type(self):
         return "script"
+
     class Meta:
         db_table = u'config_script'
         ordering = ("priority", "name",)
+
 
 @receiver(signals.pre_save, sender=config_script)
 def config_script_pre_save(sender, **kwargs):
@@ -550,6 +595,7 @@ def config_script_pre_save(sender, **kwargs):
             raise ValidationError("name '{}' already used".format(cur_inst.name))
         _check_integer(cur_inst, "priority")
         cur_inst.error_text = cur_inst.error_text or ""
+
 
 class device_variable(models.Model):
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
@@ -572,8 +618,9 @@ class device_variable(models.Model):
     # base64 encoded
     val_blob = models.TextField(blank=True, null=True, default="")
     val_date = models.DateTimeField(null=True, blank=True)
-    val_time = models.TextField(blank=True, null=True) # This field type is a guess.
+    val_time = models.TextField(blank=True, null=True)  # This field type is a guess.
     date = models.DateTimeField(auto_now_add=True)
+
     def set_value(self, value):
         if type(value) == datetime.datetime:
             self.var_type = "d"
@@ -585,6 +632,7 @@ class device_variable(models.Model):
             self.var_type = "s"
             self.val_str = value
         self._clear()
+
     def get_value(self):
         if self.var_type == "i":
             return self.val_int
@@ -592,6 +640,7 @@ class device_variable(models.Model):
             return self.val_str
         else:
             return "get_value for {}".format(self.var_type)
+
     def _clear(self):
         # clear all values which are not used
         for _short, _long in [
@@ -599,21 +648,26 @@ class device_variable(models.Model):
             ("s", "str"),
             ("b", "blob"),
             ("d", "date"),
-            ("t", "time")]:
+            ("t", "time")
+        ]:
             if self.var_type != _short:
                 setattr(self, "val_{}".format(_long), None)
     value = property(get_value, set_value)
+
     def __unicode__(self):
         return "{}[{}] = {}".format(
             self.name,
             self.var_type,
             str(self.get_value()))
+
     def init_as_gauge(self, max_value, start=0):
         self.__max, self.__cur = (max_value, start)
         self._update_gauge()
+
     def count(self, num=1):
         self.__cur += num
         self._update_gauge()
+
     def _update_gauge(self):
         new_val = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
         if self.pk:
@@ -623,14 +677,17 @@ class device_variable(models.Model):
         else:
             self.val_int = new_val
             self.save()
+
     class Meta:
         db_table = u'device_variable'
         unique_together = ("name", "device",)
         ordering = ("name",)
 
+
 class device_variable_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_variable
+
 
 @receiver(signals.pre_save, sender=device_variable)
 def device_variable_pre_save(sender, **kwargs):
@@ -663,19 +720,24 @@ def device_variable_pre_save(sender, **kwargs):
                 )
             cur_inst._clear()
 
+
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
     device = models.ForeignKey("device")
     config = models.ForeignKey("backbone.config", db_column="new_config_id")
     date = models.DateTimeField(auto_now_add=True)
+
     def home_info(self):
         return self.info_str
+
     class Meta:
         db_table = u'device_config'
+
 
 class device_config_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_config
+
 
 class device_config_help_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="home_info")
@@ -683,17 +745,23 @@ class device_config_help_serializer(serializers.ModelSerializer):
     createdir = serializers.SerializerMethodField("get_createdir")
     name = serializers.SerializerMethodField("get_name")
     full_name = serializers.SerializerMethodField("get_full_name")
+
     def get_name(self, obj):
         return obj.info_dict["name"]
+
     def get_full_name(self, obj):
         return obj.info_dict["full_name"]
+
     def get_createdir(self, obj):
         return obj.info_dict["createdir"]
+
     def get_homeexport(self, obj):
         return obj.info_dict["homeexport"]
+
     class Meta:
         model = device_config
         fields = ("idx", "info_string", "homeexport", "createdir", "name", "full_name")
+
 
 class partition_fs(models.Model):
     # mix of partition and fs info, not perfect ...
@@ -706,13 +774,17 @@ class partition_fs(models.Model):
     kernel_module = models.CharField(max_length=128, default="")
     # flags
     date = models.DateTimeField(auto_now_add=True)
+
     def need_mountpoint(self):
         return True if self.hexid in ["83"] else False
+
     def __unicode__(self):
         return self.descr
+
     class Meta:
         db_table = u'partition_fs'
         ordering = ("name",)
+
 
 class sys_partition(models.Model):
     idx = models.AutoField(db_column="sys_partition_idx", primary_key=True)
@@ -721,8 +793,10 @@ class sys_partition(models.Model):
     mountpoint = models.CharField(max_length=192, default="/")
     mount_options = models.CharField(max_length=255, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'sys_partition'
+
 
 class lvm_lv(models.Model):
     idx = models.AutoField(db_column="lvm_lv_idx", primary_key=True)
@@ -738,9 +812,11 @@ class lvm_lv(models.Model):
     warn_threshold = models.IntegerField(null=True, blank=True, default=85)
     crit_threshold = models.IntegerField(null=True, blank=True, default=95)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'lvm_lv'
         ordering = ("name",)
+
 
 @receiver(signals.pre_save, sender=lvm_lv)
 def lvm_lv_pre_save(sender, **kwargs):
@@ -753,14 +829,17 @@ def lvm_lv_pre_save(sender, **kwargs):
         # fs_passno
         _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
 
+
 class lvm_vg(models.Model):
     idx = models.AutoField(db_column="lvm_vg_idx", primary_key=True)
     partition_table = models.ForeignKey("backbone.partition_table")
     name = models.CharField(max_length=192)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'lvm_vg'
         ordering = ("name",)
+
 
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
@@ -780,6 +859,7 @@ class partition(models.Model):
     warn_threshold = models.IntegerField(null=True, blank=True, default=85)
     crit_threshold = models.IntegerField(null=True, blank=True, default=95)
     date = models.DateTimeField(auto_now_add=True)
+
     def _validate(self, p_disc):
         p_list = []
         p_name = "{}{:d}".format(p_disc, self.pnum)
@@ -794,9 +874,11 @@ class partition(models.Model):
                 if not self.mount_options.strip():
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for {}".format(p_name), False))
         return p_list
+
     class Meta:
         db_table = u'partition'
         ordering = ("pnum",)
+
 
 @receiver(signals.pre_save, sender=partition)
 def partition_pre_save(sender, **kwargs):
@@ -838,6 +920,7 @@ def partition_pre_save(sender, **kwargs):
                 cur_inst.mountpoint = ""
             cur_inst.partition_hex = cur_inst.partition_fs.hexid
 
+
 class partition_disc(models.Model):
     idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
     partition_table = models.ForeignKey("backbone.partition_table")
@@ -845,6 +928,7 @@ class partition_disc(models.Model):
     label_type = models.CharField(max_length=128, default="gpt", choices=[("gpt", "GPT"), ("msdos", "MSDOS")])
     priority = models.IntegerField(null=True, default=0)
     date = models.DateTimeField(auto_now_add=True)
+
     def _validate(self):
         my_parts = self.partition_set.all()
         p_list = sum([[(cur_lev, "*{:d} : {}".format(part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
@@ -873,11 +957,14 @@ class partition_disc(models.Model):
                 if len(ext_parts):
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no extended partitions allowed for GPT label", False))
         return p_list
+
     class Meta:
         db_table = u'partition_disc'
         ordering = ("priority", "disc",)
+
     def __unicode__(self):
         return self.disc
+
 
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
@@ -894,6 +981,7 @@ def partition_disc_pre_save(sender, **kwargs):
             raise ValidationError("disc name '{}' already used".format(d_name))
         cur_inst.disc = d_name
 
+
 class partition_table(models.Model):
     idx = models.AutoField(db_column="partition_table_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -905,11 +993,13 @@ class partition_table(models.Model):
     # non users-created partition tables can be deleted automatically
     user_created = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def _msg_merge(self, parent, msg):
         if msg.startswith("*"):
             return "{}{}".format(parent, msg[1:])
         else:
             return "{}: {}".format(parent, msg)
+
     def validate(self):
         # problem list, format is level, problem, global (always True for partition_table)
         prob_list = []
@@ -922,7 +1012,16 @@ class partition_table(models.Model):
                 ] for p_disc in self.partition_disc_set.all()
             ], [])
         )
-        all_mps = sum([[cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and (cur_p.partition_fs_id and cur_p.partition_fs.need_mountpoint())] for p_disc in self.partition_disc_set.all()], [])
+        all_mps = sum(
+            [
+                [
+                    cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and (
+                        cur_p.partition_fs_id and cur_p.partition_fs.need_mountpoint()
+                    )
+                ] for p_disc in self.partition_disc_set.all()
+            ],
+            []
+        )
         all_mps.extend([sys_p.mountpoint for sys_p in self.sys_partition_set.all()])
         unique_mps = set(all_mps)
         for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
@@ -944,12 +1043,16 @@ class partition_table(models.Model):
             self.valid = new_valid
             self.save()
         return prob_list
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         db_table = u'partition_table'
+
     class CSW_Meta:
         fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]
+
 
 @receiver(signals.pre_save, sender=partition_table)
 def partition_table_pre_save(sender, **kwargs):
@@ -958,31 +1061,39 @@ def partition_table_pre_save(sender, **kwargs):
         if not cur_inst.name.strip():
             raise ValidationError("name must not be zero")
 
+
 class partition_serializer(serializers.ModelSerializer):
     class Meta:
         model = partition
 
+
 class partition_fs_serializer(serializers.ModelSerializer):
     need_mountpoint = serializers.Field(source="need_mountpoint")
+
     class Meta:
         model = partition_fs
+
 
 class sys_partition_serializer(serializers.ModelSerializer):
     class Meta:
         model = sys_partition
 
+
 class lvm_lv_serializer(serializers.ModelSerializer):
     class Meta:
         model = lvm_lv
+
 
 class lvm_vg_serializer(serializers.ModelSerializer):
     class Meta:
         model = lvm_vg
 
+
 class partition_disc_serializer_save(serializers.ModelSerializer):
     class Meta:
         model = partition_disc
         fields = ("disc", "label_type",)
+
 
 class partition_disc_serializer_create(serializers.ModelSerializer):
     # partition_set = partition_serializer(many=True)
@@ -990,22 +1101,29 @@ class partition_disc_serializer_create(serializers.ModelSerializer):
         model = partition_disc
         # fields = ("disc", "partition_table")
 
+
 class partition_disc_serializer(serializers.ModelSerializer):
     partition_set = partition_serializer(many=True)
+
     class Meta:
         model = partition_disc
+
 
 class partition_table_serializer(serializers.ModelSerializer):
     partition_disc_set = partition_disc_serializer(many=True)
     sys_partition_set = sys_partition_serializer(many=True)
     lvm_lv_set = lvm_lv_serializer(many=True)
     lvm_vg_set = lvm_vg_serializer(many=True)
+
     class Meta:
         model = partition_table
-        fields = ("partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
-            "enabled", "nodeboot", "act_partition_table", "new_partition_table", "sys_partition_set")
+        fields = (
+            "partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
+            "enabled", "nodeboot", "act_partition_table", "new_partition_table", "sys_partition_set",
+        )
         # otherwise the REST framework would try to store lvm_lv and lvm_vg
         # read_only_fields = ("lvm_lv_set", "lvm_vg_set",) # "partition_disc_set",)
+
 
 class partition_table_serializer_save(serializers.ModelSerializer):
     class Meta:
@@ -1014,6 +1132,7 @@ class partition_table_serializer_save(serializers.ModelSerializer):
             "name", "idx", "description", "valid",
             "enabled", "nodeboot",
         )
+
 
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
@@ -1083,7 +1202,7 @@ class device(models.Model):
     # not so clever here, better in extra table, FIXME
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
-    uuid = models.TextField(default="", max_length=64) # , unique=True)
+    uuid = models.TextField(default="", max_length=64)  # , unique=True)
     # cluster url
     curl = models.CharField(default="ssh://", max_length=512, verbose_name="cURL")
     # , choices=[
@@ -1118,6 +1237,7 @@ class device(models.Model):
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
+
     @property
     def full_name(self):
         if not self.domain_tree_node_id:
@@ -1127,6 +1247,7 @@ class device(models.Model):
             return ".".join([self.name, self.domain_tree_node.full_name])
         else:
             return self.name
+
     def crypt(self, in_pwd):
         if in_pwd:
             salt = "".join([chr(random.randint(65, 90)) for _idx in xrange(4)])
@@ -1136,28 +1257,39 @@ class device(models.Model):
         else:
             _crypted = ""
         return _crypted
+
     def root_passwd_set(self):
         return True if self.root_passwd else False
+
     def is_meta_device(self):
         return self.device_type.identifier == "MD"
+
     def device_type_identifier(self):
         return self.device_type.identifier
+
     def device_group_name(self):
         return self.device_group.name
+
     def is_cluster_device_group(self):
         return self.device_group.cluster_device_group
+
     def get_monitor_type(self):
-        sel_configs = set(self.device_config_set.filter(Q(config__name__in=["monitor_server", "monitor_master", "monitor_slave"])).values_list("config__name", flat=True))
+        sel_configs = set(self.device_config_set.filter(
+            Q(config__name__in=["monitor_server", "monitor_master", "monitor_slave"])).values_list("config__name", flat=True)
+        )
         if set(["monitor_master", "monitor_server"]) & sel_configs:
             return "master"
         elif sel_configs:
             return "slave"
         else:
             return "---"
+
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
+
     def add_log(self, log_src, log_stat, text, **kwargs):
         return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
+
     def get_simple_xml(self):
         return E.device(
             unicode(self),
@@ -1165,9 +1297,11 @@ class device(models.Model):
             key="dev__%d" % (self.pk),
             name=self.name
         )
+
     def all_ips(self):
         # return all IPs
         return list(set(self.netdevice_set.all().values_list("net_ip__ip", flat=True)))
+
     def all_dns(self):
         # return all names, including short ones
         _list = [self.name, self.full_name]
@@ -1180,10 +1314,13 @@ class device(models.Model):
                 _add_names = [self.name]
             _list.extend(["{}.{}".format(_name, _domain) for _name in _add_names])
         return list(set(_list))
+
     def get_master_cons(self):
         return [entry for entry in self.cd_cons if entry.parent_id == self.pk]
+
     def get_slave_cons(self):
         return [entry for entry in self.cd_cons if entry.child_id == self.pk]
+
     def valid_state(self):
         _rs = ""
         if self.mother_xml is not None:
@@ -1208,6 +1345,7 @@ class device(models.Model):
                     # req_state is newer
                     _rs = "req"
         return _rs
+
     def net_state(self):
         _rs = "down"
         if self.mother_xml is not None:
@@ -1231,12 +1369,14 @@ class device(models.Model):
                 else:
                     _rs = "up"
         return _rs
+
     def network(self):
         _rs = "unknown"
         if self.mother_xml is not None:
             if int(self.mother_xml.get("ok", "0")):
                 _rs = self.mother_xml.attrib["network"]
         return _rs
+
     def get_uptime(self):
         _rs = 0
         if self.mother_xml is not None:
@@ -1255,6 +1395,7 @@ class device(models.Model):
                 else:
                     _rs = self.uptime
         return _rs
+
     def uptime_valid(self):
         _rs = False
         if self.mother_xml is not None:
@@ -1273,22 +1414,26 @@ class device(models.Model):
                 else:
                     _rs = True
         return _rs
+
     def latest_contact(self):
         lc_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_server_last_contact"]
         if lc_obj:
             return int(time.mktime(to_system_tz(lc_obj[0].val_date).timetuple()))
         else:
             return 0
+
     def client_version(self):
         vers_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_client_version"]
         if vers_obj:
             return vers_obj[0].val_str
         else:
             return "?.?"
+
     def __unicode__(self):
         return u"{}{}".format(
             self.name,
             u" ({})".format(self.comment) if self.comment else "")
+
     class CSW_Meta:
         permissions = (
             ("all_devices", "access all devices", False),
@@ -1304,22 +1449,27 @@ class device(models.Model):
             ("change_category", "Change device category", True),
         )
         fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config"]
+
     class Meta:
         db_table = u'device'
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
 
+
 class device_selection(object):
     def __init__(self, sel_str):
         parts = sel_str.split("__")
         self.idx = int(parts[1])
-        self.sel_type = {"dev" : "d", "devg" : "g"}[parts[0]]
+        self.sel_type = {"dev": "d", "devg": "g"}[parts[0]]
+
 
 class device_selection_serializer(serializers.Serializer):
     idx = serializers.IntegerField()
     sel_type = serializers.CharField(max_length=2)
+
     class Meta:
         model = device_selection
+
 
 @receiver(signals.post_save, sender=device)
 def device_post_save(sender, **kwargs):
@@ -1332,6 +1482,15 @@ def device_post_save(sender, **kwargs):
             if _stripped != _cur_inst.device_group.name:
                 _cur_inst.device_group.name = _stripped
                 _cur_inst.device_group.save()
+
+
+def _get_top_level_dtn():
+    try:
+        top_level_dn = domain_tree_node.objects.get(Q(depth=0))
+    except domain_tree_node.DoesNotExist:
+        top_level_dn = None
+    return top_level_dn
+
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -1353,17 +1512,18 @@ def device_pre_save(sender, **kwargs):
                 cur_inst.domain_tree_node = cur_dnt
                 cur_inst.name = short_name
         else:
-            top_level_dn = domain_tree_node.objects.get(Q(depth=0))
             if not cur_inst.domain_tree_node_id:
-                cur_inst.domain_tree_node = top_level_dn
+                cur_inst.domain_tree_node = _get_top_level_dtn()
             if not cur_inst.pk:
-                if cur_inst.domain_tree_node_id == top_level_dn.pk:
-                    if cur_inst.device_group.device_id:
-                        # set domain_node to domain_node of meta_device
-                        cur_inst.domain_tree_node = cur_inst.device_group.device.domain_tree_node
-                    else:
-                        # no meta device (i am the new meta device, ignore)
-                        pass
+                top_level_dn = _get_top_level_dtn()
+                if top_level_dn is not None:
+                    if cur_inst.domain_tree_node_id == top_level_dn.pk:
+                        if cur_inst.device_group.device_id:
+                            # set domain_node to domain_node of meta_device
+                            cur_inst.domain_tree_node = cur_inst.device_group.device.domain_tree_node
+                        else:
+                            # no meta device (i am the new meta device, ignore)
+                            pass
             # raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
             # check if we can simple fix it
@@ -1403,6 +1563,7 @@ def device_pre_save(sender, **kwargs):
                 logger.warning("Device limit {:d} reached".format(dev_count))
                 raise ValidationError("Device limit reached!")
 
+
 class cd_connection(models.Model):
     # controlling_device connection
     idx = models.AutoField(primary_key=True)
@@ -1415,13 +1576,16 @@ class cd_connection(models.Model):
     parameter_i3 = models.IntegerField(default=0)
     parameter_i4 = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return "{} (via {}) {}".format(
             unicode(self.parent),
             self.connection_info,
             unicode(self.child))
+
     class Meta:
         ordering = ("parent__name", "child__name",)
+
 
 @receiver(signals.pre_save, sender=cd_connection)
 def cd_connection_pre_save(sender, **kwargs):
@@ -1439,6 +1603,7 @@ def cd_connection_pre_save(sender, **kwargs):
             if cur_inst.pk is None:
                 raise ValidationError("connection already exists")
 
+
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
@@ -1454,6 +1619,7 @@ class device_group(models.Model):
     # domain tree node, see enabled flag
     domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
+
     def _add_meta_device(self):
         new_md = device(name=self.get_metadevice_name(),
                         device_group=self,
@@ -1465,11 +1631,14 @@ class device_group(models.Model):
         self.device = new_md
         self.save()
         return new_md
+
     def get_metadevice_name(self, name=None):
         return "METADEV_{}".format(name if name else self.name)
+
     class Meta:
         db_table = u'device_group'
         ordering = ("-cluster_device_group", "name",)
+
     def __unicode__(self):
         return u"{}{}{}".format(
             self.name,
@@ -1477,19 +1646,23 @@ class device_group(models.Model):
             "[*]" if self.cluster_device_group else ""
         )
 
+
 def strip_metadevice_name(name):
     if name.startswith("METADEV_"):
         return name[8:]
     else:
         return name
 
+
 class device_group_serializer(serializers.ModelSerializer):
     def validate(self, in_dict):
         if "description" not in in_dict:
             in_dict["description"] = ""
         return in_dict
+
     class Meta:
         model = device_group
+
 
 @receiver(signals.pre_save, sender=device_group)
 def device_group_pre_save(sender, **kwargs):
@@ -1499,6 +1672,7 @@ def device_group_pre_save(sender, **kwargs):
             raise ValidationError("name can not be zero")
         if not valid_domain_re.match(cur_inst.name):
             raise ValidationError("invalid characters in '{}'".format(cur_inst.name))
+
 
 @receiver(signals.post_save, sender=device_group)
 def device_group_post_save(sender, **kwargs):
@@ -1528,6 +1702,7 @@ def device_group_post_save(sender, **kwargs):
             cur_inst.enabled = True
             cur_inst.save()
 
+
 class cluster_setting(models.Model):
     idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
     name = models.CharField(max_length=64, default="GLOBAL", unique=True)
@@ -1538,12 +1713,14 @@ class cluster_setting(models.Model):
     # also present in /etc/sysconfig/cluster/local_settings.py
     secret_key = models.CharField(max_length=64, default="")
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return "cs {}, login_screen_type is {}, secret_key is '{}'".format(
             self.name,
             self.login_screen_type,
             self.secret_key,
         )
+
 
 # license related
 class cluster_license(models.Model):
@@ -1553,36 +1730,45 @@ class cluster_license(models.Model):
     enabled = models.BooleanField(default=False)
     description = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return "clic {} (is {})".format(
             self.name,
             "enabled" if self.enabled else "disabled",
         )
+
     class Meta:
         ordering = ("name",)
+
 
 @receiver(signals.post_save, sender=cluster_license)
 def cluster_license_post_save(sender, **kwargs):
     cluster_license_cache(force=True)
 
+
 class cluster_license_serializer(serializers.ModelSerializer):
     class Meta:
         model = cluster_license
 
+
 class cluster_setting_serializer(serializers.ModelSerializer):
     cluster_license_set = cluster_license_serializer(many=True)
+
     class Meta:
         model = cluster_setting
+
 
 class cluster_license_cache(object):
     def __init__(self, force=False):
         self.__CLC_NAME = "__ICSW_CLCV2"
         _cur_c = cache.get(self.__CLC_NAME)
         _lic_dict = {
-            _name : {
-                "enabled"     : False,
-                "services"    : _srvs,
-                "description" : _descr} for _name, _descr, _srvs in LICENSE_CAPS}
+            _name: {
+                "enabled": False,
+                "services": _srvs,
+                "description": _descr,
+            } for _name, _descr, _srvs in LICENSE_CAPS
+        }
         if not _cur_c or force:
             for cur_lic in cluster_license.objects.filter(Q(cluster_setting__name="GLOBAL")):
                 _lic_dict[cur_lic.name]["enabled"] = cur_lic.enabled
@@ -1590,9 +1776,11 @@ class cluster_license_cache(object):
         else:
             _lic_dict.update(marshal.loads(_cur_c))
         self._lic_dict = _lic_dict
+
     @property
     def licenses(self):
         return self._lic_dict
+
 
 class device_rsync_config(models.Model):
     idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
@@ -1601,8 +1789,10 @@ class device_rsync_config(models.Model):
     last_rsync_time = models.DateTimeField(null=True, blank=True)
     status = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'device_rsync_config'
+
 
 class device_type(models.Model):
     idx = models.AutoField(db_column="device_type_idx", primary_key=True)
@@ -1611,14 +1801,18 @@ class device_type(models.Model):
     priority = models.IntegerField(default=0)
     description = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.description
+
     class Meta:
         db_table = u'device_type'
+
 
 class device_type_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_type
+
 
 class devicelog(models.Model):
     idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
@@ -1628,6 +1822,7 @@ class devicelog(models.Model):
     log_status = models.ForeignKey("log_status", null=True)
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     @staticmethod
     def new_log(cur_dev, log_src, log_stat, text, **kwargs):
         if log_src and type(log_src) in [int, long]:
@@ -1642,15 +1837,18 @@ class devicelog(models.Model):
             text=text,
         )
         return cur_log
+
     def __unicode__(self):
         return u"{} ({}, {}:{:d})".format(
             self.text,
             self.log_source.name,
             self.log_status.identifier,
             self.log_status.log_level)
+
     class Meta:
         db_table = u'devicelog'
         ordering = ("date",)
+
 
 class image(models.Model):
     idx = models.AutoField(db_column="image_idx", primary_key=True)
@@ -1675,13 +1873,16 @@ class image(models.Model):
     full_build = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     enabled = models.BooleanField(default=True)
+
     def __unicode__(self):
         return "{} (arch {})".format(
             self.name,
             unicode(self.architecture))
+
     class Meta:
         db_table = u'image'
         ordering = ("name",)
+
 
 @receiver(signals.pre_save, sender=image)
 def image_pre_save(sender, **kwargs):
@@ -1689,13 +1890,16 @@ def image_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         cur_inst.size_string = logging_tools.get_size_str(cur_inst.size)
 
+
 class image_serializer(serializers.ModelSerializer):
     class Meta:
         model = image
-        fields = ("idx", "name", "enabled", "version", "release",
+        fields = (
+            "idx", "name", "enabled", "version", "release",
             "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
             "new_image", "act_image",
-            )
+        )
+
 
 class kernel(models.Model):
     idx = models.AutoField(db_column="kernel_idx", primary_key=True)
@@ -1736,24 +1940,31 @@ class kernel(models.Model):
     stage1_cramfs_present = models.BooleanField(default=False)
     stage2_present = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+
     def get_usecount(self):
         return 5
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         db_table = u'kernel'
+
     class CSW_Meta:
         fk_ignore_list = ["initrd_build", "kernel_build"]
+
 
 class kernel_serializer(serializers.ModelSerializer):
     class Meta:
         # why not all fields ? FIXME, check
         model = kernel
-        fields = ("idx", "name", "enabled", "kernel_version", "version",
+        fields = (
+            "idx", "name", "enabled", "kernel_version", "version",
             "release", "bitcount", "initrd_build_set", "kernel_build_set", "initrd_built",
             "new_kernel", "act_kernel", "comment", "target_module_list", "module_list",
             "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
-            )
+        )
+
 
 class initrd_build(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1764,6 +1975,7 @@ class initrd_build(models.Model):
     success = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
+
 class kernel_build(models.Model):
     idx = models.AutoField(db_column="kernel_build_idx", primary_key=True)
     kernel = models.ForeignKey("kernel")
@@ -1772,8 +1984,10 @@ class kernel_build(models.Model):
     version = models.IntegerField(null=True, blank=True)
     release = models.IntegerField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'kernel_build'
+
 
 class kernel_local_info(models.Model):
     idx = models.AutoField(db_column="kernel_local_info_idx", primary_key=True)
@@ -1782,8 +1996,10 @@ class kernel_local_info(models.Model):
     syncer_role = models.CharField(max_length=192, blank=True)
     info_blob = models.TextField(blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'kernel_local_info'
+
 
 class kernel_log(models.Model):
     idx = models.AutoField(db_column="kernel_log_idx", primary_key=True)
@@ -1793,8 +2009,10 @@ class kernel_log(models.Model):
     log_level = models.IntegerField(null=True, blank=True)
     log_str = models.TextField(blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'kernel_log'
+
 
 class log_source(models.Model):
     idx = models.AutoField(db_column="log_source_idx", primary_key=True)
@@ -1807,6 +2025,7 @@ class log_source(models.Model):
     # long description
     description = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     @staticmethod
     def create_log_source_entry(identifier, name, **kwargs):
         ls_dev = kwargs.get("device", None)
@@ -1834,19 +2053,24 @@ class log_source(models.Model):
         else:
             cur_source = sources[0]
         return cur_source
+
     def __unicode__(self):
         return "ls {} ({}), {}".format(
             self.name,
             self.identifier,
             self.description)
+
     class Meta:
         db_table = u'log_source'
+
 
 def log_source_lookup(identifier, log_dev):
     return log_source.objects.get(Q(identifier=identifier) & Q(device=log_dev))
 
+
 def short_log_source_lookup(idx):
     return log_source.objects.get(Q(pk=idx))
+
 
 class log_source_serializer(serializers.ModelSerializer):
     class Meta:
@@ -1855,42 +2079,50 @@ class log_source_serializer(serializers.ModelSerializer):
 cached_log_source = memoize(log_source_lookup, {}, 2)
 cached_short_log_source = memoize(short_log_source_lookup, {}, 2)
 
+
 class log_status(models.Model):
     idx = models.AutoField(db_column="log_status_idx", primary_key=True)
     identifier = models.CharField(max_length=12, blank=True)
     log_level = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'log_status'
+
 
 class log_status_serializer(serializers.ModelSerializer):
     class Meta:
         model = log_status
+
 
 def log_status_lookup(key):
     if type(key) in [str, unicode]:
         return log_status.objects.get(Q(identifier=key))
     else:
         return log_status.objects.get(Q(log_level={
-            logging_tools.LOG_LEVEL_OK       : 0,
-            logging_tools.LOG_LEVEL_WARN     : 50,
-            logging_tools.LOG_LEVEL_ERROR    : 100,
-            logging_tools.LOG_LEVEL_CRITICAL : 200}[key]))
+            logging_tools.LOG_LEVEL_OK: 0,
+            logging_tools.LOG_LEVEL_WARN: 50,
+            logging_tools.LOG_LEVEL_ERROR: 100,
+            logging_tools.LOG_LEVEL_CRITICAL: 200}[key]))
 
 cached_log_status = memoize(log_status_lookup, {}, 1)
+
 
 class mac_ignore(models.Model):
     idx = models.AutoField(db_column="mac_ignore_idx", primary_key=True)
     macaddr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
     user = models.ForeignKey("backbone.user", null=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'mac_ignore'
+
 
 class mac_ignore_serializer(serializers.ModelSerializer):
     class Meta:
         model = mac_ignore
+
 
 class macbootlog(models.Model):
     idx = models.AutoField(db_column="macbootlog_idx", primary_key=True)
@@ -1900,19 +2132,24 @@ class macbootlog(models.Model):
     macaddr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
     log_source = models.ForeignKey("log_source", null=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def get_created(self):
         return time.mktime(cluster_timezone.normalize(self.date).timetuple())
+
     def get_device_name(self):
         if self.device_id:
             return self.device.full_name
         else:
             return ""
+
     class Meta:
         db_table = u'macbootlog'
+
 
 class macbootlog_serializer(serializers.ModelSerializer):
     created = serializers.Field(source="get_created")
     device_name = serializers.Field(source="get_device_name")
+
     class Meta:
         model = macbootlog
 
@@ -1951,148 +2188,6 @@ class macbootlog_serializer(serializers.ModelSerializer):
 #    class Meta:
 #        db_table = u'session_data'
 
-class sge_complex(models.Model):
-    idx = models.AutoField(db_column="sge_complex_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
-    total_time = models.CharField(max_length=192, blank=True)
-    slot_time = models.CharField(max_length=192, blank=True)
-    pe_slots_min = models.IntegerField(null=True, blank=True)
-    pe_slots_max = models.IntegerField(null=True, blank=True)
-    default_queue = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_complex'
-
-class sge_host(models.Model):
-    idx = models.AutoField(db_column="sge_host_idx", primary_key=True)
-    host_name = models.CharField(max_length=255)
-    device = models.ForeignKey("device")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_host'
-
-class sge_job(models.Model):
-    idx = models.AutoField(db_column="sge_job_idx", primary_key=True)
-    job_uid = models.CharField(unique=True, max_length=255)
-    jobname = models.CharField(max_length=255)
-    jobnum = models.IntegerField()
-    taskid = models.IntegerField(null=True, blank=True)
-    jobowner = models.CharField(max_length=255)
-    jobgroup = models.CharField(max_length=255)
-    log_path = models.TextField()
-    sge_user = models.ForeignKey("sge_user")
-    queue_time = models.DateTimeField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_job'
-
-class sge_job_run(models.Model):
-    idx = models.AutoField(db_column="sge_job_run_idx", primary_key=True)
-    sge_job = models.ForeignKey("sge_job")
-    account = models.CharField(max_length=384)
-    sge_userlist = models.ForeignKey("sge_userlist")
-    sge_project = models.ForeignKey("sge_project")
-    priority = models.IntegerField(null=True, blank=True)
-    granted_pe = models.CharField(max_length=192)
-    slots = models.IntegerField(null=True, blank=True)
-    failed = models.IntegerField(null=True, blank=True)
-    failed_str = models.CharField(max_length=765, blank=True)
-    exit_status = models.IntegerField(null=True, blank=True)
-    masterq = models.CharField(max_length=255)
-    start_time = models.DateTimeField(null=True, blank=True)
-    start_time_sge = models.DateTimeField(null=True, blank=True)
-    end_time = models.DateTimeField(null=True, blank=True)
-    end_time_sge = models.DateTimeField(null=True, blank=True)
-    sge_ru_wallclock = models.IntegerField(null=True, blank=True)
-    sge_cpu = models.IntegerField(null=True, blank=True)
-    sge_mem = models.FloatField(null=True, blank=True)
-    sge_io = models.IntegerField(null=True, blank=True)
-    sge_iow = models.IntegerField(null=True, blank=True)
-    sge_maxvmem = models.IntegerField(null=True, blank=True)
-    sge_parsed = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_job_run'
-
-class sge_log(models.Model):
-    idx = models.AutoField(db_column="sge_log_idx", primary_key=True)
-    sge_job = models.ForeignKey("sge_job")
-    sge_queue = models.ForeignKey("sge_queue")
-    sge_host = models.ForeignKey("sge_host")
-    log_level = models.IntegerField(null=True, blank=True)
-    log_str = models.CharField(max_length=765)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_log'
-
-class sge_pe_host(models.Model):
-    idx = models.AutoField(db_column="sge_pe_host_idx", primary_key=True)
-    sge_job_run = models.ForeignKey("sge_job_run")
-    device = models.ForeignKey("device")
-    hostname = models.CharField(max_length=255)
-    num_slots = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_pe_host'
-
-class sge_project(models.Model):
-    idx = models.AutoField(db_column="sge_project_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
-    oticket = models.FloatField(null=True, blank=True)
-    fshare = models.FloatField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_project'
-
-class sge_queue(models.Model):
-    idx = models.AutoField(db_column="sge_queue_idx", primary_key=True)
-    queue_name = models.CharField(max_length=255)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_queue'
-
-class sge_ul_ult(models.Model):
-    idx = models.AutoField(db_column="sge_ul_ult_idx", primary_key=True)
-    sge_userlist = models.ForeignKey("sge_userlist")
-    sge_userlist_type = models.ForeignKey("sge_userlist_type")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_ul_ult'
-
-class sge_user(models.Model):
-    idx = models.AutoField(db_column="sge_user_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
-    oticket = models.FloatField(null=True, blank=True)
-    fshare = models.FloatField(null=True, blank=True)
-    default_project = models.ForeignKey("sge_project", null=True)
-    cluster_user = models.ForeignKey("user")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_user'
-
-class sge_user_con(models.Model):
-    idx = models.AutoField(db_column="sge_user_con_idx", primary_key=True)
-    user = models.ForeignKey("user")
-    sge_config = models.IntegerField()
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_user_con'
-
-class sge_userlist(models.Model):
-    idx = models.AutoField(db_column="sge_userlist_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=255)
-    oticket = models.FloatField(null=True, blank=True)
-    fshare = models.FloatField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_userlist'
-
-class sge_userlist_type(models.Model):
-    idx = models.AutoField(db_column="sge_userlist_type_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sge_userlist_type'
 
 class status(models.Model):
     idx = models.AutoField(db_column="status_idx", primary_key=True)
@@ -2106,27 +2201,33 @@ class status(models.Model):
     # allow mother to set bools according to status
     allow_boolean_modify = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def info_string(self):
         return unicode(self)
+
     def __unicode__(self):
         # print ".", self.status
         return u"{} ({}){}".format(
             self.status,
             ",".join([short for short, attr_name in [
-                ("link"  , "prod_link"),
-                ("mem"   , "memory_test"),
-                ("loc"   , "boot_local"),
-                ("ins"   , "do_install"),
-                ("iso"   , "boot_iso"),
+                ("link", "prod_link"),
+                ("mem", "memory_test"),
+                ("loc", "boot_local"),
+                ("ins", "do_install"),
+                ("iso", "boot_iso"),
                 ("retain", "is_clean")] if getattr(self, attr_name)]),
             "(*)" if self.allow_boolean_modify else "")
+
     class Meta:
         db_table = u'status'
 
+
 class status_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
+
     class Meta:
         model = status
+
 
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -2137,6 +2238,7 @@ class tree_node(models.Model):
     # is an intermediate node is has not to be created
     intermediate = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)
+
     def __cmp__(self, other):
         if self.is_dir == other.is_dir:
             if self.wc_files.dest < other.wc_files.dest:
@@ -2149,10 +2251,13 @@ class tree_node(models.Model):
             return -1
         else:
             return +1
+
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
+
     def __unicode__(self):
         return "tree_node, {}".format(self.get_type_str())
+
 
 class wc_files(models.Model):
     idx = models.AutoField(db_column="wc_files_idx", primary_key=True)
@@ -2182,37 +2287,50 @@ class wc_files(models.Model):
     content = models.TextField(blank=True, default="")
     binary = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'wc_files'
+
 
 class wc_files_serializer(serializers.ModelSerializer):
     class Meta:
         model = wc_files
 
+
 class config_str_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
+
     class Meta:
         model = config_str
 
+
 class config_int_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
+
     class Meta:
         model = config_int
 
+
 class config_blob_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
+
     class Meta:
         model = config_blob
 
+
 class config_bool_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
+
     class Meta:
         model = config_bool
 
+
 class config_script_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
+
     class Meta:
         model = config_script
+
 
 class config_serializer(serializers.ModelSerializer):
     config_str_set = config_str_serializer(many=True, read_only=True)
@@ -2223,33 +2341,45 @@ class config_serializer(serializers.ModelSerializer):
     mon_check_command_set = mon_check_command_serializer(many=True, read_only=True)
     usecount = serializers.Field(source="get_use_count")
     # categories only as flat list, no nesting
+
     class Meta:
         model = config
 
+
 class config_str_nat_serializer(serializers.ModelSerializer):
     config = serializers.SlugRelatedField(slug_field="name")
+
     class Meta:
         model = config_str
 
+
 class config_int_nat_serializer(serializers.ModelSerializer):
     config = serializers.SlugRelatedField(slug_field="name")
+
     class Meta:
         model = config_int
 
+
 class config_bool_nat_serializer(serializers.ModelSerializer):
     config = serializers.SlugRelatedField(slug_field="name")
+
     class Meta:
         model = config_bool
 
+
 class config_blob_nat_serializer(serializers.ModelSerializer):
     config = serializers.SlugRelatedField(slug_field="name")
+
     class Meta:
         model = config_blob
 
+
 class config_script_nat_serializer(serializers.ModelSerializer):
     config = serializers.SlugRelatedField(slug_field="name")
+
     class Meta:
         model = config_script
+
 
 class config_dump_serializer(serializers.ModelSerializer):
     config_str_set = config_str_nat_serializer(many=True)
@@ -2259,35 +2389,46 @@ class config_dump_serializer(serializers.ModelSerializer):
     config_script_set = config_script_nat_serializer(many=True)
     mon_check_command_set = mon_check_command_nat_serializer(many=True)
     # categories only as flat list, no nesting
+
     class Meta:
         model = config
-        fields = ("idx", "name", "description", "priority", "enabled", "categories",
+        fields = (
+            "idx", "name", "description", "priority", "enabled", "categories",
             "config_str_set", "config_int_set", "config_blob_set", "config_bool_set",
             "config_script_set", "mon_check_command_set",
-            )
+        )
+
 
 class package_device_connection_serializer(serializers.ModelSerializer):
     class Meta:
         model = package_device_connection
 
+
 class package_serializer(serializers.ModelSerializer):
     target_repo_name = serializers.Field(source="target_repo_name")
+
     class Meta:
         model = package
 
+
 class package_device_connection_wp_serializer(serializers.ModelSerializer):
     package = package_serializer()
+
     class Meta:
         model = package_device_connection
+
 
 class mon_dist_slave_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_dist_slave
 
+
 class mon_dist_master_serializer(serializers.ModelSerializer):
     mon_dist_slave_set = mon_dist_slave_serializer(many=True)
+
     class Meta:
         model = mon_dist_master
+
 
 class device_serializer(serializers.ModelSerializer):
     full_name = serializers.Field(source="full_name")
@@ -2308,24 +2449,33 @@ class device_serializer(serializers.ModelSerializer):
     latest_contact = serializers.Field(source="latest_contact")
     client_version = serializers.Field(source="client_version")
     monitor_type = serializers.Field(source="get_monitor_type")
+
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
         serializers.ModelSerializer.__init__(self, *args, **kwargs)
-        _optional_fields = set(["act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
-            "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set"])
-        for _to_remove in  _optional_fields - set(fields):
+        _optional_fields = set(
+            [
+                "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
+                "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set"
+            ]
+        )
+        for _to_remove in _optional_fields - set(fields):
             # in case we have been subclassed
             if _to_remove in self.fields:
                 self.fields.pop(_to_remove)
+
     def get_access_level(self, obj):
         if "olp" in self.context:
             return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
         return -1
+
     def get_access_levels(self, obj):
         return ",".join(["{}={:d}".format(key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
+
     class Meta:
         model = device
-        fields = ("idx", "name", "device_group", "device_type",
+        fields = (
+            "idx", "name", "device_group", "device_type",
             "comment", "full_name", "domain_tree_node", "enabled",
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "enable_perfdata", "flap_detection_enabled",
@@ -2351,26 +2501,31 @@ class device_serializer(serializers.ModelSerializer):
             # monitoring hint
             "monitoring_hint_set",
             "uuid",
-            )
+        )
         read_only_fields = ("uuid",)
+
 
 class cd_connection_serializer(serializers.ModelSerializer):
     class Meta:
         model = cd_connection
 
+
 class device_serializer_package_state(device_serializer):
     class Meta:
         model = device
-        fields = ("idx", "name", "device_group", "device_type",
+        fields = (
+            "idx", "name", "device_group", "device_type",
             "comment", "full_name", "domain_tree_node", "enabled",
             "package_device_connection_set", "latest_contact", "is_meta_device",
             "access_level", "access_levels", "client_version",
-            )
+        )
+
 
 class device_serializer_only_boot(serializers.ModelSerializer):
     class Meta:
         model = device
         fields = ("idx", "dhcp_mac", "dhcp_write",)
+
 
 class device_serializer_monitoring(device_serializer):
     # only used for updating (no read)
@@ -2381,14 +2536,17 @@ class device_serializer_monitoring(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
-            )
+        )
         read_only_fields = ("act_partition_table",)
+
 
 class cd_connection_serializer_boot(serializers.ModelSerializer):
     parent = device_serializer()
     child = device_serializer()
+
     class Meta:
         model = cd_connection
+
 
 class device_serializer_boot(device_serializer):
     partition_table = serializers.SerializerMethodField("get_partition_table")
@@ -2402,13 +2560,17 @@ class device_serializer_boot(device_serializer):
     net_state = serializers.Field(source="net_state")
     master_connections = cd_connection_serializer_boot(source="get_master_cons", many=True)
     slave_connections = cd_connection_serializer_boot(source="get_slave_cons", many=True)
+
     def get_partition_table(self, obj):
         return obj.partition_table_id or None
+
     def get_act_partition_table(self, obj):
         return obj.act_partition_table_id or None
+
     class Meta:
         model = device
-        fields = ("idx" , "name", "full_name", "device_group_name", "access_level", "access_levels",
+        fields = (
+            "idx", "name", "full_name", "device_group_name", "access_level", "access_levels",
             # meta-fields
             "valid_state", "network", "net_state", "uptime", "uptime_valid",
             "recvstate", "reqstate",
@@ -2425,4 +2587,3 @@ class device_serializer_boot(device_serializer):
             # connections
             "master_connections", "slave_connections",
         )
-

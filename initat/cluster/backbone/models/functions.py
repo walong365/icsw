@@ -1,4 +1,25 @@
-#!/usr/bin/python-init -Otu
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# -*- coding: utf-8 -*-
+#
+""" helper functions for cluster-backbone-sql models """
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -8,6 +29,7 @@ import time
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])
+
 
 # helper functions
 def _check_integer(inst, attr_name, **kwargs):
@@ -44,6 +66,7 @@ def _check_integer(inst, attr_name, **kwargs):
         setattr(inst, attr_name, cur_val)
         return cur_val
 
+
 def _check_float(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     try:
@@ -51,6 +74,7 @@ def _check_float(inst, attr_name):
     except:
         raise ValidationError("{} is not a float".format(attr_name))
     setattr(inst, attr_name, cur_val)
+
 
 def _check_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
@@ -60,13 +84,16 @@ def _check_empty_string(inst, attr_name):
     if not cur_val.strip():
         raise ValidationError("{} can not be empty".format(attr_name))
 
+
 def _check_non_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     if cur_val.strip():
         raise ValidationError("{} must be empty".format(attr_name))
 
+
 def to_system_tz(in_dt):
     return in_dt.astimezone(system_timezone)
+
 
 def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_objs=[]):
     used_objs = [] if detail else 0
@@ -88,7 +115,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         _rel_name = rel_obj.model._meta.object_name
         # print rel_obj.model._meta.object_name, rel_obj.model._meta.object_name in ignore_list, ignore_list
         if _rel_name not in ignore_list_static:
-            ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})) if entry not in ignore_objs]
+            ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
             if ref_list:
                 _lock_list.append("{} -> {} ({:d})".format(rel_field_name, _rel_name, len(ref_list)))
                 if detail:
@@ -104,9 +131,9 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
             m2m_field_name = m2m_obj.field.name
             if detail:
-                used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj}))))
+                used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name: in_obj}))))
             else:
-                used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
+                used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name: in_obj})).count()
     in_obj._lock_list = _lock_list
     if ignore_list:
         raise ImproperlyConfigured(
@@ -116,6 +143,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
             )
         )
     return used_objs
+
 
 def get_change_reset_list(s_obj, d_obj, required_changes=None):
     # changes required from client
@@ -148,4 +176,3 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
         else:
             print "FieldType() in get_change_reset_list: {}".format(cur_t)
     return c_list, r_list
-

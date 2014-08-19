@@ -55,12 +55,14 @@ __all__ = [
     "AC_MASK_DICT",
 ]
 
+
 def _csw_key(perm):
     return "{}.{}.{}".format(
         perm.content_type.app_label,
         perm.content_type.name,
         perm.codename,
     )
+
 
 # auth_cache structure
 class auth_cache(object):
@@ -81,8 +83,9 @@ class auth_cache(object):
         # init device <-> device group luts
         # maps from device to the respective meta-device
         self.__dg_lut = {}
+
     def _from_db(self):
-        self.__perm_dict = {_csw_key(cur_perm) : cur_perm for cur_perm in csw_permission.objects.all().select_related("content_type")}
+        self.__perm_dict = {_csw_key(cur_perm): cur_perm for cur_perm in csw_permission.objects.all().select_related("content_type")}
         # pprint.pprint(self.__perm_dict)
         # print self.__perm_dict.keys()
         if self.has_all_perms:
@@ -92,18 +95,26 @@ class auth_cache(object):
         else:
             for perm in getattr(self.auth_obj, "{}_permission_set".format(self.model_name)).select_related("csw_permission__content_type"):
                 self.__perms[_csw_key(perm.csw_permission)] = perm.level
-        for perm in getattr(self.auth_obj, "{}_object_permission_set".format(self.model_name)).select_related("csw_object_permission__csw_permission__content_type"):
+        for perm in getattr(
+            self.auth_obj,
+            "{}_object_permission_set".format(
+                self.model_name
+            )
+        ).select_related("csw_object_permission__csw_permission__content_type"):
             self.__obj_perms.setdefault(_csw_key(perm.csw_object_permission.csw_permission), {})[perm.csw_object_permission.object_pk] = perm.level
         # pprint.pprint(self.__perms)
         # pprint.pprint(self.__obj_perms)
+
     def _get_code_key(self, app_label, content_name, code_name):
         code_key = "{}.{}.{}".format(app_label, content_name, code_name)
         if code_key not in self.__perm_dict:
             raise ImproperlyConfigured("wrong permission name {}".format(code_key))
         return code_key
+
     def has_permission(self, app_label, content_name, code_name):
         code_key = self._get_code_key(app_label, content_name, code_name)
         return code_key in self.__perms
+
     def get_object_permission_level(self, app_label, content_name, code_name, obj=None):
         code_key = self._get_code_key(app_label, content_name, code_name)
         _level = self.__perms.get(code_key, -1)
@@ -111,6 +122,7 @@ class auth_cache(object):
             if code_key in self.__obj_perms:
                 _level = self.__obj_perms[code_key].get(obj.pk, _level)
         return _level
+
     def has_object_permission(self, app_label, content_name, code_name, obj=None):
         code_key = self._get_code_key(app_label, content_name, code_name)
         if self.has_permission(app_label, content_name, code_name):
@@ -127,6 +139,7 @@ class auth_cache(object):
                 return True
         else:
             return False
+
     def get_allowed_object_list(self, app_label, content_name, code_name):
         code_key = self._get_code_key(app_label, content_name, code_name)
         if self.has_permission(app_label, content_name, code_name) or getattr(self.auth_obj, "is_superuser", False):
@@ -137,6 +150,7 @@ class auth_cache(object):
             return set(self.__obj_perms[code_key].keys())
         else:
             return set()
+
     def get_all_object_perms(self, obj):
         if obj:
             obj_ct = ContentType.objects.get_for_model(obj)
@@ -158,32 +172,36 @@ class auth_cache(object):
             else:
                 local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms}
             # merge to result permissions
-            result_perms = {key : max(global_perms.get(key, 0), local_perms.get(key, 0)) for key in set(global_perms.keys()) | set(local_perms.keys())}
+            result_perms = {key: max(global_perms.get(key, 0), local_perms.get(key, 0)) for key in set(global_perms.keys()) | set(local_perms.keys())}
             return result_perms
+
     def get_object_access_levels(self, obj, is_superuser):
         obj_type = obj._meta.model_name
         # returns a dict with all access levels for the given object
         obj_perms = [key for key, value in self.__perm_dict.iteritems() if value.content_type.name == obj_type]
         if is_superuser:
-            ac_dict = {key : AC_FULL for key in obj_perms}
+            ac_dict = {key: AC_FULL for key in obj_perms}
         else:
-            ac_dict = {key : self.__obj_perms.get(key, {}).get(obj.pk, self.__perms.get(key, -1)) for key in obj_perms}
+            ac_dict = {key: self.__obj_perms.get(key, {}).get(obj.pk, self.__perms.get(key, -1)) for key in obj_perms}
             # filter values
-            ac_dict = {key : value for key, value in ac_dict.iteritems() if value >= 0}
+            ac_dict = {key: value for key, value in ac_dict.iteritems() if value >= 0}
             if obj_type == "device":
                 self._fill_dg_lut(obj)
                 # get permissions dict for meta device
-                meta_dict = {key : self.__obj_perms.get(key, {}).get(self.__dg_lut[obj.pk], self.__perms.get(key, -1)) for key in obj_perms}
+                meta_dict = {key: self.__obj_perms.get(key, {}).get(self.__dg_lut[obj.pk], self.__perms.get(key, -1)) for key in obj_perms}
                 # copy to device permdict
                 for key, value in meta_dict.iteritems():
                     ac_dict[key] = max(ac_dict.get(key, 0), value)
         return ac_dict
+
     def _fill_dg_lut(self, dev):
         if dev.pk not in self.__dg_lut:
             for dev_pk, md_pk in dev._default_manager.filter(Q(device_group=dev.device_group_id)).values_list("pk", "device_group__device"):
                 self.__dg_lut[dev_pk] = md_pk
+
     def get_global_permissions(self):
         return self.__perms
+
 
 class csw_permission(models.Model):
     """
@@ -196,10 +214,12 @@ class csw_permission(models.Model):
     content_type = models.ForeignKey(ContentType)
     # true if this right can be used for object-level permissions
     valid_for_object_level = models.BooleanField(default=True)
+
     class Meta:
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
         app_label = "backbone"
+
     @staticmethod
     def get_permission(in_object, code_name):
         ct = ContentType.objects.get_for_model(in_object)
@@ -208,6 +228,7 @@ class csw_permission(models.Model):
             csw_permission=csw_permission.objects.get(Q(content_type=ct) & Q(codename=code_name)),
             object_pk=cur_pk
             )
+
     def __unicode__(self):
         return u"{} | {} | {} | {}".format(
             self.content_type.app_label,
@@ -216,14 +237,18 @@ class csw_permission(models.Model):
             "G/O" if self.valid_for_object_level else "G",
             )
 
+
 class content_type_serializer(serializers.ModelSerializer):
     class Meta:
         model = ContentType
 
+
 class csw_permission_serializer(serializers.ModelSerializer):
     content_type = content_type_serializer()
+
     class Meta:
         model = csw_permission
+
 
 class csw_object_permission(models.Model):
     """
@@ -234,14 +259,18 @@ class csw_object_permission(models.Model):
     idx = models.AutoField(primary_key=True)
     csw_permission = models.ForeignKey(csw_permission)
     object_pk = models.IntegerField(default=0)
+
     def __unicode__(self):
         return "{} | {:d}".format(unicode(self.csw_permission), self.object_pk)
+
     class Meta:
         app_label = "backbone"
+
 
 class csw_object_permission_serializer(serializers.ModelSerializer):
     class Meta:
         model = csw_object_permission
+
 
 # permission intermediate models
 class group_permission(models.Model):
@@ -250,8 +279,10 @@ class group_permission(models.Model):
     csw_permission = models.ForeignKey(csw_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         app_label = "backbone"
+
 
 @receiver(signals.post_save, sender=group_permission)
 def group_permission_save(sender, **kwargs):
@@ -259,11 +290,13 @@ def group_permission_save(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_create")
 
+
 @receiver(signals.post_delete, sender=group_permission)
 def group_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_delete")
+
 
 class group_object_permission(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -271,8 +304,10 @@ class group_object_permission(models.Model):
     csw_object_permission = models.ForeignKey(csw_object_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         app_label = "backbone"
+
 
 @receiver(signals.post_save, sender=group_object_permission)
 def group_object_permission_save(sender, **kwargs):
@@ -280,11 +315,13 @@ def group_object_permission_save(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_create")
 
+
 @receiver(signals.post_delete, sender=group_object_permission)
 def group_object_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_delete")
+
 
 class user_permission(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -292,14 +329,17 @@ class user_permission(models.Model):
     csw_permission = models.ForeignKey(csw_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         app_label = "backbone"
+
 
 @receiver(signals.post_save, sender=user_permission)
 def user_permission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_create")
+
 
 @receiver(signals.post_delete, sender=user_permission)
 def user_permission_delete(sender, **kwargs):
@@ -313,10 +353,10 @@ AC_MASK_CREATE = 2
 AC_MASK_DELETE = 4
 
 AC_MASK_DICT = {
-    "AC_MASK_READ" : AC_MASK_READ,
-    "AC_MASK_MODIFY" : AC_MASK_MODIFY,
-    "AC_MASK_CREATE" : AC_MASK_CREATE,
-    "AC_MASK_DELETE" : AC_MASK_DELETE,
+    "AC_MASK_READ": AC_MASK_READ,
+    "AC_MASK_MODIFY": AC_MASK_MODIFY,
+    "AC_MASK_CREATE": AC_MASK_CREATE,
+    "AC_MASK_DELETE": AC_MASK_DELETE,
 }
 
 AC_READONLY = AC_MASK_READ
@@ -324,14 +364,17 @@ AC_MODIFY = AC_MASK_READ | AC_MASK_MODIFY
 AC_CREATE = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE
 AC_FULL = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE | AC_MASK_DELETE
 
+
 class user_object_permission(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
     csw_object_permission = models.ForeignKey(csw_object_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         app_label = "backbone"
+
 
 @receiver(signals.post_save, sender=user_object_permission)
 def user_object_permission_save(sender, **kwargs):
@@ -339,31 +382,39 @@ def user_object_permission_save(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_create")
 
+
 @receiver(signals.post_delete, sender=user_object_permission)
 def user_object_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
 
+
 class group_permission_serializer(serializers.ModelSerializer):
     class Meta:
         model = group_permission
 
+
 class group_object_permission_serializer(serializers.ModelSerializer):
     # needed to resolve csw_permission
     csw_object_permission = csw_object_permission_serializer()
+
     class Meta:
         model = group_object_permission
+
 
 class user_permission_serializer(serializers.ModelSerializer):
     class Meta:
         model = user_permission
 
+
 class user_object_permission_serializer(serializers.ModelSerializer):
     # needed to resolve csw_permission
     csw_object_permission = csw_object_permission_serializer()
+
     class Meta:
         model = user_object_permission
+
 
 def get_label_codename(perm):
     app_label, codename = (None, None)
@@ -382,6 +433,7 @@ def get_label_codename(perm):
         raise ImproperlyConfigured("Unknown perm '{}'".format(unicode(perm)))
     return (app_label, content_name, codename)
 
+
 def check_app_permission(auth_obj, app_label):
     if auth_obj.perms.filter(Q(content_type__app_label=app_label)).count():
         return True
@@ -389,6 +441,7 @@ def check_app_permission(auth_obj, app_label):
         return True
     else:
         return False
+
 
 def check_content_permission(auth_obj, app_label, content_name):
     print "ccp", app_label, content_name
@@ -403,6 +456,7 @@ def check_content_permission(auth_obj, app_label, content_name):
         else:
             raise ImproperlyConfigured("unknown app_label / content_name combination '{}.{}".format(app_label, content_name))
 
+
 def check_permission(auth_obj, perm):
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
@@ -412,6 +466,7 @@ def check_permission(auth_obj, perm):
         return auth_obj._auth_cache.has_permission(app_label, content_name, codename)
     else:
         return False
+
 
 def check_object_permission(auth_obj, perm, obj):
     if not hasattr(auth_obj, "_auth_cache"):
@@ -431,6 +486,7 @@ def check_object_permission(auth_obj, perm, obj):
     else:
         return False
 
+
 def get_object_permission_level(auth_obj, perm, obj):
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
@@ -449,16 +505,19 @@ def get_object_permission_level(auth_obj, perm, obj):
     else:
         return -1
 
+
 def get_object_access_levels(auth_obj, obj, is_superuser=False):
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
     return auth_obj._auth_cache.get_object_access_levels(obj, is_superuser)
+
 
 def get_all_object_perms(auth_obj, obj):
     # return all allowed permissions for a given object
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
     return auth_obj._auth_cache.get_all_object_perms(obj)
+
 
 def get_allowed_object_list(auth_obj, perm):
     # return all allowed objects for a given permissions
@@ -467,15 +526,18 @@ def get_allowed_object_list(auth_obj, perm):
     app_label, content_name, code_name = get_label_codename(perm)
     return auth_obj._auth_cache.get_allowed_object_list(app_label, content_name, code_name)
 
+
 def get_global_permissions(auth_obj):
     # return all global permissions with levels (as dict)
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
     return auth_obj._auth_cache.get_global_permissions()
 
+
 class user_manager(models.Manager):
     def get_by_natural_key(self, login):
         return super(user_manager, self).get(Q(login=login))
+
     def get_do_not_use(self, *args, **kwargs):
         # could be used to avoid loading from database, not used right now because of problems
         # with serialization (cost is too high)
@@ -495,6 +557,7 @@ class user_manager(models.Manager):
         # store in memcached
         cache.set(_user.mc_key(), django.core.serializers.serialize("json", [_user]))
         return _user
+
     def create_superuser(self, login, email, password):
         if not password:
             if "DJANGO_SUPERUSER_PASSWORD" in os.environ:
@@ -516,6 +579,7 @@ class user_manager(models.Manager):
             password=password,
             is_superuser=True)
         return new_admin
+
 
 class user(models.Model):
     objects = user_manager()
@@ -563,27 +627,34 @@ class user(models.Model):
     create_rms_user = models.BooleanField(default=False)
     # rms user created ?
     rms_user_created = models.BooleanField(default=False)
+
     @property
     def is_anonymous(self):
         return False
+
     def mc_key(self):
         if self.pk:
             return "icsw_user_pk_{:d}".format(self.pk)
         else:
             return "icsw_user_pk_none"
+
     def __setattr__(self, key, value):
         # catch clearing of export entry via empty ("" or '') key
         if key == "export" and type(value) in [str, unicode]:
             value = None
         super(user, self).__setattr__(key, value)
+
     def is_authenticated(self):
         return True
+
     def has_perms(self, perms):
         # check if user has all of the perms
         return all([self.has_perm(perm) for perm in perms])
+
     def has_any_perms(self, perms):
         # check if user has any of the perms
         return any([self.has_perm(perm) for perm in perms])
+
     def has_perm(self, perm, ask_parent=True):
         # only check global permissions
         if not (self.active and self.group.active):
@@ -594,12 +665,15 @@ class user(models.Model):
         if not res and ask_parent:
             res = check_permission(self.group, perm)
         return res
+
     @property
     def is_staff(self):
         return self.is_superuser
+
     @property
     def id(self):
         return self.pk
+
     def has_object_perm(self, perm, obj=None, ask_parent=True):
         if not (self.active and self.group.active):
             return False
@@ -609,6 +683,7 @@ class user(models.Model):
         if not res and ask_parent:
             res = check_object_permission(self.group, perm, obj)
         return res
+
     def get_object_perm_level(self, perm, obj=None, ask_parent=True):
         # returns -1 if no level is given
         if not (self.active and self.group.active):
@@ -619,6 +694,7 @@ class user(models.Model):
         if res == -1 and ask_parent:
             res = get_object_permission_level(self.group, perm, obj)
         return res
+
     def get_object_access_levels(self, obj):
         # always as parent
         if not (self.active and self.group.active):
@@ -629,6 +705,7 @@ class user(models.Model):
             acc_dict = get_object_access_levels(self.group, obj)
             acc_dict.update(get_object_access_levels(self, obj))
             return acc_dict
+
     def get_all_object_perms(self, obj, ask_parent=True):
         # return all permissions we have for a given object
         if not (self.active and self.group.active):
@@ -639,24 +716,29 @@ class user(models.Model):
                 for key, value in get_all_object_perms(self.group, obj).iteritems():
                     r_val[key] = max(value, r_val.get(key, 0))
         return r_val
+
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for
         if ask_parent:
             return get_allowed_object_list(self, perm) | get_allowed_object_list(self.group, perm)
         else:
             return get_allowed_object_list(self, perm)
+
     def has_object_perms(self, perms, obj=None, ask_parent=True):
         # check if user has all of the object perms
         return all([self.has_object_perm(perm, obj, ask_parent=ask_parent) for perm in perms])
+
     def has_any_object_perms(self, perms, obj=None, ask_parent=True):
         # check if user has any of the object perms
         return any([self.has_object_perm(perm, obj, ask_parent=ask_parent) for perm in perms])
+
     def get_global_permissions(self):
         if not (self.active and self.group.active):
             return {}
         group_perms = get_global_permissions(self.group)
         group_perms.update(get_global_permissions(self))
         return group_perms
+
     def has_content_perms(self, module_name, content_name, ask_parent=True):
         if not (self.active and self.group.active):
             return False
@@ -666,6 +748,7 @@ class user(models.Model):
         if not res and ask_parent:
             res = self.group.has_content_perms(module_name, content_name)
         return res
+
     def has_module_perms(self, module_name, ask_parent=True):
         if not (self.active and self.group.active):
             return False
@@ -675,12 +758,15 @@ class user(models.Model):
         if not res and ask_parent:
             res = self.group.has_module_perms(module_name)
         return res
+
     def get_is_active(self):
         return self.active
+
     is_active = property(get_is_active)
+
     class CSW_Meta:
         permissions = (
-            ("admin"      , "Administrator", True),
+            ("admin", "Administrator", True),
             ("server_control", "start and stop server processes", True),
             ("modify_tree", "modify device tree", False),
             ("modify_domain_name_tree", "modify domain name tree", False),
@@ -689,10 +775,12 @@ class user(models.Model):
         )
         # foreign keys to ignore
         fk_ignore_list = ["user_variable", "user_permission", "user_object_permission"]
+
     class Meta:
         db_table = u'user'
         ordering = ("login", "group__groupname")
         app_label = "backbone"
+
     def __unicode__(self):
         return u"{} ({}, {} [{}])".format(
             self.login,
@@ -701,26 +789,32 @@ class user(models.Model):
             "{:d}".format(self.pk) if type(self.pk) in [int, long] else "???",
         )
 
+
 class user_serializer(serializers.ModelSerializer):
     # object_perms = csw_object_permission_serializer(many=True, read_only=True)
     user_permission_set = user_permission_serializer(many=True, read_only=True)
     user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
+
     class Meta:
         model = user
-        fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
+        fields = (
+            "idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created",
-            )
+        )
+
 
 class user_flat_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
-        fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
+        fields = (
+            "idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
-            )
+        )
+
 
 @receiver(signals.m2m_changed, sender=user.perms.through)
 def user_perms_changed(sender, *args, **kwargs):
@@ -740,6 +834,7 @@ def user_perms_changed(sender, *args, **kwargs):
                 # only admins can grant admin or group_admin rights
                 if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"] and not is_admin:
                     raise ValidationError("not enough rights")
+
 
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
@@ -778,17 +873,20 @@ def user_pre_save(sender, **kwargs):
                 # print base64.b64encode(new_sh.digest() +  salt)
                 cur_inst.password_ssha = "{}:{}".format("SSHA", base64.b64encode(new_sh.digest() + salt))
 
+
 @receiver(signals.post_save, sender=user)
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         user_changed.send(sender=_cur_inst, user=_cur_inst, cause="save")
 
+
 @receiver(signals.post_delete, sender=user)
 def user_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         user_changed.send(sender=_cur_inst, user=_cur_inst, cause="delete")
+
 
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
@@ -815,62 +913,79 @@ class group(models.Model):
     # new model
     perms = models.ManyToManyField(csw_permission, related_name="db_group_perms", blank=True, through=group_permission)
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_group_perms", blank=True, through=group_object_permission)
+
     def has_perms(self, perms):
         # check if group has all of the perms
         return all([self.has_perm(perm) for perm in perms])
+
     def has_any_perms(self, perms):
         # check if group has any of the perms
         return any([self.has_perm(perm) for perm in perms])
+
     def has_perm(self, perm):
         if not self.active:
             return False
         return check_permission(self, perm)
+
     def has_object_perm(self, perm, obj=None, ask_parent=True):
         if not self.active:
             return False
         return check_object_permission(self, perm, obj)
+
     def has_object_perms(self, perms, obj=None, ask_parent=True):
         # check if group has all of the object perms
         return all([self.has_object_perm(perm, obj) for perm in perms])
+
     def has_any_object_perms(self, perms, obj=None, ask_parent=True):
         # check if group has any of the object perms
         return any([self.has_object_perm(perm, obj) for perm in perms])
+
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for
         return get_allowed_object_list(self, perm)
+
     def has_content_perms(self, module_name, content_name):
         if not (self.active):
             return False
         return check_content_permission(self, module_name, content_name)
+
     def has_module_perms(self, module_name):
         if not (self.active):
             return False
         return check_app_permission(self, module_name)
+
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
+
     class CSW_Meta:
         permissions = (
             ("group_admin", "Group administrator", True),
         )
+
     class Meta:
         db_table = u'ggroup'
         ordering = ("groupname",)
         app_label = "backbone"
+
     def __unicode__(self):
         return "{} (gid={:d})".format(
             self.groupname,
             self.gid)
 
+
 class group_serializer(serializers.ModelSerializer):
     group_permission_set = group_permission_serializer(many=True, read_only=True)
     group_object_permission_set = group_object_permission_serializer(many=True, read_only=True)
+
     class Meta:
         model = group
-        fields = ("groupname", "active", "gid", "idx", "parent_group",
+        fields = (
+            "groupname", "active", "gid", "idx", "parent_group",
             "homestart", "tel", "title", "email", "pager", "comment",
             "allowed_device_groups", "group_permission_set", "group_object_permission_set",
-            )
+        )
+
 
 @receiver(signals.pre_save, sender=group)
 def group_pre_save(sender, **kwargs):
@@ -892,17 +1007,20 @@ def group_pre_save(sender, **kwargs):
                     raise ValidationError("ring dependency detected in groups")
                 cur_parent = cur_parent.parent_group
 
+
 @receiver(signals.post_save, sender=group)
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         group_changed.send(sender=_cur_inst, group=_cur_inst, cause="save")
 
+
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         group_changed.send(sender=_cur_inst, group=_cur_inst, cause="delete")
+
 
 @receiver(signals.m2m_changed, sender=group.perms.through)
 def group_perms_changed(sender, *args, **kwargs):
@@ -912,14 +1030,17 @@ def group_perms_changed(sender, *args, **kwargs):
             if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"]:
                 raise ValidationError("right not allowed for group")
 
+
 class user_device_login(models.Model):
     idx = models.AutoField(db_column="user_device_login_idx", primary_key=True)
     user = models.ForeignKey("backbone.user")
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'user_device_login'
         app_label = "backbone"
+
 
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -932,6 +1053,7 @@ class user_variable(models.Model):
     name = models.CharField(max_length=189)
     value = models.CharField(max_length=512, default="")
     date = models.DateTimeField(auto_now_add=True)
+
     def to_db_format(self):
         cur_val = self.value
         if type(cur_val) in [str, unicode]:
@@ -945,6 +1067,7 @@ class user_variable(models.Model):
         elif cur_val is None:
             self.var_type = "n"
             self.value = "None"
+
     def from_db_format(self):
         if self.var_type == "b":
             if self.value.lower() in ["true", "t"]:
@@ -957,9 +1080,11 @@ class user_variable(models.Model):
             self.value = int(self.value)
         elif self.var_type == "n":
             self.value = None
+
     class Meta:
         unique_together = [("name", "user"), ]
         app_label = "backbone"
+
 
 @receiver(signals.pre_save, sender=user_variable)
 def user_variable_pre_save(sender, **kwargs):
@@ -968,11 +1093,13 @@ def user_variable_pre_save(sender, **kwargs):
         _check_empty_string(cur_inst, "name")
         cur_inst.to_db_format()
 
+
 @receiver(signals.post_init, sender=user_variable)
 def user_variable_post_init(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.from_db_format()
+
 
 @receiver(signals.post_save, sender=user_variable)
 def user_variable_post_save(sender, **kwargs):
