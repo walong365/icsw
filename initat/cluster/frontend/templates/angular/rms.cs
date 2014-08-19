@@ -271,7 +271,7 @@ rmsdoneline = """
         <span ng-class="exit_status_class(data)"></span>
     </div>
 </td>
-<td ng-show="done_struct.toggle['failed']" title="{{ get_failed_title(class) }}">
+<td ng-show="done_struct.toggle['failed']" title="{{ get_failed_title(data) }}">
     <span class="label" ng-class="get_failed_class(data)"><span ng-class="get_failed_glyphicon(data)"></span></span>&nbsp;{{ get_failed_str(data) }} {{ data.failed_str }}
 </td>
 <td ng-show="done_struct.toggle['failed']" class="text-center">
@@ -752,14 +752,16 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             return "done (#{$scope.done_list.length} jobs)"
         $scope.get_node_info = () ->
             return "node (#{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
-        $scope.show_rrd = (event, name_list, start_time, end_time) ->
+        $scope.show_rrd = (event, name_list, start_time, end_time, title) ->
             dev_pks = ($scope.device_dict[name].pk for name in name_list).join(",")
+            #dev_names = ($scope.device_dict[name].name for name in name_list).join(",")
+            
             start_time = if start_time then start_time else 0
             end_time = if end_time then end_time else 0
             rrd_txt = """
 <div class="panel panel-default">
     <div class="panel-body">
-        <h2>Device #{name}</h2>
+        <h2>#{title}</h2>
         <div ng-controller='rrd_ctrl'>
             <rrdgraph
                 devicepk='#{dev_pks}'
@@ -902,7 +904,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else
                     nodelist = [data.device]
                 rrd_nodes = scope.get_rrd_nodes(nodelist)
-                scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time)
+                job_id = data.rms_job.jobid
+                if data.rms_job.taskid
+                    job_id = "#{job_id}.#{data.rms_job.taskid}"
+                if rrd_nodes.length > 1
+                    rrd_title = "finished job #{job_id} on nodes " + rrd_nodes.join(",")
+                else
+                    rrd_title = "finished job #{job_id} on node " + rrd_nodes[0]
+                scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title)
             scope.special_exit_status = (data) ->
                 if data.exit_status in [99, 137]
                     return true
@@ -981,7 +990,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 return if rrd_nodes.length then true else false
             scope.show_job_rrd = (event, job) ->
                 rrd_nodes = scope.get_rrd_nodes(job.nodelist.raw)
-                scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined)
+                job_id = job.job_id.value
+                if job.task_id.value
+                    job_id = "#{job_id}.#{job.task_id.value}"
+                if rrd_nodes.length > 1
+                    rrd_title = "running job #{job_id} on nodes " + rrd_nodes.join(",")
+                else
+                    rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
+                scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title)
     }
 ).directive("rmsnodeline", ($templateCache, $sce, $compile) ->
     return {
@@ -1003,7 +1019,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else
                     return false
             scope.show_node_rrd = (event, node) ->
-                scope.show_rrd(event, [node.host.value], undefined, undefined)
+                scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}")
     }
 ).directive("headertoggle", ($templateCache) ->
     return {
