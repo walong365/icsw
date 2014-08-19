@@ -902,14 +902,16 @@ class job_object(object):
 
     def _send_to_rms_server(self, srv_com, **kwargs):
         _added, _content = (0, 0)
+        _job_dict = {}
         for _key in global_config.keys():
-            if any([_key.lower().startswith(_pf) for _pf in ["job", "pe", "sge"]]):
+            if any([_key.lower().startswith(_pf) for _pf in ["job", "pe", "sge", "task"]]):
                 _added += 1
                 _value = global_config[_key]
-                srv_com["config:{}".format(_key.lower())] = _value
-                if _value.startswith("/") and os.path.isfile(_value):
+                _job_dict[_key.lower()] = _value
+                if type(_value) in [unicode, str] and _value.startswith("/") and os.path.isfile(_value):
                     _content += 1
-                    srv_com["config:{}_content".format(_key.lower())] = file(_value, "r").read()
+                    _job_dict["{}_content".format(_key.lower())] = file(_value, "r").read()
+        srv_com["config"] = _job_dict
         self.log("added {:d} config keys to srv_com ({:d} content)".format(_added, _content))
         # add all keys from global_config
         _conn = net_tools.zmq_connection(
@@ -931,7 +933,7 @@ class job_object(object):
         all_nfs_ips = [node_stuff["ip"] for node_stuff in self.__node_dict.itervalues()]
         reach_dict = dict([(cur_ip, {"sent": len(all_nfs_ips), "ok_from": [], "error_from": []}) for cur_ip in all_ips])
         # build connection dict
-        self.log(" - %s %s: %s to check" % (
+        self.log(" - {} {}: {} to check".format(
             logging_tools.get_plural("node", len(self.__node_list)),
             logging_tools.compress_list(self.__node_list),
             logging_tools.get_plural("IP", len(all_ips))))

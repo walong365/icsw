@@ -31,6 +31,7 @@ import server_command
 import threading_tools
 import zmq
 
+
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
@@ -55,6 +56,7 @@ class server_process(threading_tools.process_pool):
         # self.register_timer(self._update, 30, instant=True)
         # self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
         # self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -62,6 +64,7 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -70,23 +73,28 @@ class server_process(threading_tools.process_pool):
         self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.send_to_process("rms_mon", "full_reload")
+
     def _re_insert_config(self):
         self.log("re-insert config")
         cluster_location.write_config("rms_server", global_config)
+
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
+
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
@@ -102,6 +110,7 @@ class server_process(threading_tools.process_pool):
         else:
             msi_block = None
         return msi_block
+
     def _init_network_sockets(self):
         my_0mq_id = get_server_uuid("rms")
         self.bind_id = my_0mq_id
@@ -128,6 +137,7 @@ class server_process(threading_tools.process_pool):
             self.log("connected to tcp://*:{:d} (via ID {})".format(global_config["COM_PORT"], self.bind_id))
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
+
     def _recv_command(self, zmq_sock):
         data = []
         while True:
@@ -164,7 +174,7 @@ class server_process(threading_tools.process_pool):
             elif cur_com == "file_watch_content":
                 self.send_to_process("rms_mon", "file_watch_content", src_id, unicode(srv_com))
             elif cur_com in ["pe_start", "pe_end", "job_start", "job_end"]:
-                self.send_to_process("rms_mon", cur_com, src_id, unicode(srv_com))
+                self.send_to_process("rms_mon", "job_ss_info", cur_com, src_id, unicode(srv_com))
                 srv_com.set_result("got it")
                 self._send_result(src_id, srv_com)
             else:
@@ -179,11 +189,14 @@ class server_process(threading_tools.process_pool):
                 "received wrong data (len() = {:d} != 2)".format(len(data)),
                 logging_tools.LOG_LEVEL_ERROR,
             )
+
     def _send_result(self, src_id, srv_com):
         self.com_socket.send_unicode(src_id, zmq.SNDMORE)
         self.com_socket.send_unicode(unicode(srv_com))
+
     def _com_result(self, src_proc, proc_id, src_id, srv_com):
         self._send_result(src_id, srv_com)
+
     def loop_post(self):
         if self.com_socket:
             self.log("closing socket")
@@ -192,4 +205,3 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
         self.__log_template.close()
-
