@@ -117,6 +117,8 @@ class rms_mon_process(threading_tools.process_obj):
         self.register_func("job_ss_info", self._job_ss_info)
         self.register_timer(self._update, 30)
         self.register_timer(self._check_accounting, 3600)
+        # full scan done ?
+        self.__full_scan_done = False
         self._check_accounting()
         # self.register_func("get_job_xml", self._get_job_xml)
 
@@ -365,8 +367,13 @@ class rms_mon_process(threading_tools.process_obj):
             self._call_qacct("-j", "{:d}".format(_data["job_id"]))
         else:
             # get jobs without valid accounting info
+            _jobs = rms_job_run.objects.all().count()
             _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("rms_job__jobid", flat=True)
-            if len(_missing_ids) > 10:
+            if not _jobs or global_config["FORCE_SCAN"] and not self.__full_scan_done:
+                self.__full_scan_done = True
+                self.log("no jobs in database, checking accounting info", logging_tools.LOG_LEVEL_WARN)
+                self._call_qacct("-j")
+            elif len(_missing_ids) > 10:
                 self.log("accounting info for {:d} jobs missing, doing a full call".format(len(_missing_ids)), logging_tools.LOG_LEVEL_WARN)
                 self._call_qacct("-j")
             else:
@@ -406,7 +413,7 @@ class rms_mon_process(threading_tools.process_obj):
                         _key, _value = _parts
                         if _value.isdigit():
                             _value = int(_value)
-                        elif _value in ["NONE", "undefined"]:
+                        elif _value in ["NONE", "undefined", "-/-"]:
                             _value = None
                         elif _key.endswith("time") and len(_value.split()) > 4:
                             _value = datetime.datetime.strptime(_value, "%a %b %d %H:%M:%S %Y")

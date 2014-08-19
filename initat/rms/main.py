@@ -32,6 +32,7 @@ import config_tools
 import configfile
 import process_tools
 
+
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
@@ -48,6 +49,7 @@ def main():
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("FORCE_SCAN"          , configfile.bool_c_var(False, help_string="force initial scan of accounting file [%(default)s]", action="store_true", only_commandline=True)),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
@@ -78,7 +80,6 @@ def main():
     if not global_config["DUMMY_RUN"]:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_s_info.effective_device.pk, database=False))])
         # FIXME
-        # global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "sge_server", "RMS Server")))])
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     sge_dict = {}
@@ -108,9 +109,9 @@ def main():
             ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
             ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
             ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])), # , fixed=True)),
-            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])), # , fixed=True)),
-            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])), # , fixed=True)),
+            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),  # , fixed=True)),
+            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),  # , fixed=True)),
+            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),  # , fixed=True)),
             ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
             ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
             ("STRICT_MODE"                    , configfile.bool_c_var(False)),
@@ -126,8 +127,12 @@ def main():
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
-        process_tools.set_handles({"out" : (1, "sge-server.out"),
-                                   "err" : (0, "/var/lib/logging-server/py_err")})
+        process_tools.set_handles(
+            {
+                "out": (1, "sge-server.out"),
+                "err": (0, "/var/lib/logging-server/py_err")
+            }
+        )
     else:
         print "Debugging RMS-server"
     ret_state = server_process().loop()
