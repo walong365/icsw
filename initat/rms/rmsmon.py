@@ -518,7 +518,7 @@ class rms_mon_process(threading_tools.process_obj):
         _cur_job_run.slots = in_dict["slots"]
         _cur_job_run.save()
         if not self.__use_cache:
-            self.log("added new job_run {}".format(unicode(_cur_job_run)))
+            self.log("added new {}".format(unicode(_cur_job_run)))
         return _cur_job_run
 
     def _get_object(self, obj_name, name):
@@ -627,7 +627,7 @@ class rms_mon_process(threading_tools.process_obj):
                 # set slots to the default value
                 _new_run.slots = 1
                 _new_run.save()
-                self.log("added new job_run {}".format(unicode(_new_run)))
+                self.log("added new {}".format(unicode(_new_run)))
             else:
                 self.register_timer(self._check_accounting, 10, oneshot=True, data={"job_id": _job.jobid, "task_id": _job.taskid})
                 _latest_run = _job.close_job_run()
