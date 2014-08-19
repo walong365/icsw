@@ -55,6 +55,7 @@ class zmq_connection(object):
         self.__socket_dict = {}
         self.__registered = set()
         self.__dummy_fd = -1
+
     def register_poller(self, zmq_socket, sock_fd, poll_type, callback):
         self.poller_handler.setdefault(zmq_socket, {})[poll_type] = callback
         if sock_fd in self.__registered:
@@ -62,8 +63,9 @@ class zmq_connection(object):
         else:
             self.poller.register(zmq_socket, poll_type)
             self.__registered.add(sock_fd)
+
     def unregister_poller(self, zmq_socket):
-        if type(zmq_socket) == type(0):
+        if isinstance(zmq_socket, int):
             zmq_socket = self.__socket_dict[zmq_socket]
         del self.poller_handler[zmq_socket]
         self.poller.unregister(zmq_socket)

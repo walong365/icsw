@@ -47,48 +47,70 @@ class config_proxy(BaseProxy):
         if exit_code is not None:
             sys.exit(exit_code)
         return ret_value
+
     def get_log(self, **kwargs):
         return self._callmethod("get_log", [], kwargs)
+
     def fixed(self, key):
         return self._callmethod("fixed", (key,))
+
     def get_type(self, key):
         return self._callmethod("get_type", (key,))
+
     def is_global(self, key):
         return self._callmethod("is_global", (key,))
+
     def set_global(self, key, value):
         return self._callmethod("set_global", (key, value))
+
     def database(self, key):
         return self._callmethod("database", (key,))
+
     def keys(self):
         return self._callmethod("keys")
+
     def __getitem__(self, key):
         return self._callmethod("__getitem__", (key,))
+
     def __delitem__(self, key):
         return self._callmethod("__delitem__", (key,))
+
     def get_source(self, key):
         return self._callmethod("get_source", (key,))
+
     def get(self, key, default):
         return self._callmethod("get", (key, default))
+
     def __setitem__(self, key, value):
         return self._callmethod("__setitem__", (key, value))
+
     def __contains__(self, key):
         return self._callmethod("__contains__", (key,))
+
     def parse_file(self, *args, **kwargs):
         return self._callmethod("parse_file", (args), kwargs)
+
     def write_file(self, *args):
         return self._callmethod("write_file", (args))
+
     def show_autoconfig(self, *args):
         return self._callmethod("show_autoconfig", (args))
+
     def get_config_info(self):
         return self._callmethod("get_config_info")
+
     def single_process_mode(self):
         return self._callmethod("single_process_mode")
+
     def name(self):
         return self._callmethod("name")
+
     def get_argument_stuff(self):
         return self._callmethod("get_argument_stuff")
+
     def help_string(self, key):
         return self._callmethod("help_string", (key,))
+
     def set_uid_gid(self, uid, gid):
         if type(uid) in [str, unicode]:
             uid = pwd.getpwnam(uid)[2]
@@ -100,8 +122,10 @@ class config_proxy(BaseProxy):
         os.chown(cur_address, uid, gid)
         return self._callmethod("set_uid_gid", (uid, gid))
 
+
 class _conf_var(object):
     argparse_type = None
+
     def __init__(self, def_val, **kwargs):
         self.__default_val = def_val
         self.__info = kwargs.get("info", "")
@@ -134,13 +158,16 @@ class _conf_var(object):
                 str(self.value),
                 ", ".join(sorted(kw_keys)),
             )
+
     def is_commandline_option(self):
         return True if self._help_string else False
+
     def get_commandline_info(self):
         if self._help_string:
             return "is commandline option, help_string is '{}'".format(self._help_string)
         else:
             return "no commandline option"
+
     def add_argument(self, name, arg_parser):
         if self._short_opts:
             if len(self._short_opts) > 1:
@@ -152,14 +179,14 @@ class _conf_var(object):
             if name.lower().count("_"):
                 opts.append("--{}".format(name.lower().replace("_", "-")))
         kwargs = {
-            "dest" : name,
-            "help" : self._help_string,
+            "dest": name,
+            "help": self._help_string,
         }
         if self._choices:
             kwargs["choices"] = self._choices
         if self._nargs:
             kwargs["nargs"] = self._nargs
-        if self.argparse_type == None:
+        if self.argparse_type is None:
             if self.short_type == "b":
                 # bool
                 if self._only_commandline and not self._writeback:
@@ -170,42 +197,55 @@ class _conf_var(object):
                 print("*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type)
         else:
             arg_parser.add_argument(*opts, type=self.argparse_type, default=self.value, **kwargs)
+
     @property
     def database(self):
         return self._database
+
     @database.setter
     def database(self, database):
         self._database = database
+
     @property
     def is_global(self):
         return self.__is_global
+
     @is_global.setter
     def is_global(self, is_global):
         self.__is_global = is_global
+
     @property
     def fixed(self):
         return self.__fixed
+
     @fixed.setter
     def fixed(self, fixed):
         self.__fixed = fixed
+
     @property
     def source(self):
         return self.__source
+
     @source.setter
     def source(self, source):
         self.__source = source
+
     def pretty_print(self):
         # default: return value
         return self.act_val
+
     def str_to_val(self, val):
         # default: return value
         return val
+
     @property
     def value(self):
         return self.act_val
+
     @value.setter
     def value(self, value):
         self.act_val = value
+
     def set_value(self, val, source="default"):
         try:
             r_val = self.str_to_val(val)
@@ -217,119 +257,156 @@ class _conf_var(object):
             self.value = r_val
             if source and (source != "default" or self.source == "default"):
                 self.source = source
+
     def __str__(self):
         return "{} (source {}, {}) : {}".format(
             self.descr,
             self.source,
             "global" if self.__is_global else "local",
             self.pretty_print())
+
     def get_info(self):
         return self.__info
+
 
 class int_c_var(_conf_var):
     descr = "Integer"
     short_type = "i"
     long_type = "int"
     argparse_type = int
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def str_to_val(self, val):
         return int(val)
+
     def check_type(self, val):
         return type(val) in [int, long]
+
 
 class float_c_var(_conf_var):
     descr = "Float"
     short_type = "f"
     long_type = "float"
     argparse_type = float
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def str_to_val(self, val):
         return float(val)
+
     def check_type(self, val):
         return type(val) == float
+
 
 class str_c_var(_conf_var):
     descr = "String"
     short_type = "s"
     long_type = "str"
     argparse_type = str
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def str_to_val(self, val):
         return str(val)
+
     def check_type(self, val):
         return type(val) in [str, unicode]
+
 
 class blob_c_var(_conf_var):
     descr = "Blob"
     short_type = "B"
     long_type = "blob"
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def str_to_val(self, val):
         return str(val)
+
     def check_type(self, val):
         return type(val) == str
+
     def pretty_print(self):
         return "blob with len {:d}".format(len(self.act_val))
+
 
 class bool_c_var(_conf_var):
     descr = "Bool"
     short_type = "b"
     long_type = "bool"
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def str_to_val(self, val):
-        if type(val) == type(""):
+        if type(val) in [str, unicode]:
             if val.lower().startswith("t"):
                 return True
             else:
                 return False
         else:
             return bool(val)
+
     def check_type(self, val):
         return type(val) == bool
+
     def pretty_print(self):
         return "True" if self.act_val else "False"
+
 
 class array_c_var(_conf_var):
     descr = "Array"
     short_type = "a"
     long_type = "array"
     argparse_type = str
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def check_type(self, val):
         return type(val) == list
+
 
 class dict_c_var(_conf_var):
     descr = "Dict"
     short_type = "d"
     long_type = "dict"
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def check_type(self, val):
         return type(val) == dict
+
 
 class datetime_c_var(_conf_var):
     descr = "Datetime"
     short_type = "ddt"
     long_type = "datetime"
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def check_type(self, val):
         return type(val) == type(datetime.datetime.now())
+
 
 class timedelta_c_var(_conf_var):
     descr = "Timedelta"
     short_type = "dtd"
     long_time = "timedelta"
+
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
+
     def check_type(self, val):
         return type(val) == type(datetime.timedelta(1))
+
 
 class configuration(object):
     def __init__(self, name, *args, **kwargs):
@@ -341,34 +418,43 @@ class configuration(object):
         self.__writeback_changes = False
         if args:
             self.add_config_entries(*args)
+
     def get_log(self, **kwargs):
         ret_val = [entry for entry in self.__log_array]
         if kwargs.get("clear", True):
             self.clear_log()
         return ret_val
+
     def name(self):
         return self.__name
+
     def clear_log(self):
         self.__log_array = []
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_array.append((what, log_level))
     # def copy_flags(self, var_dict):
     #    # copy flags (right now only global / local) for given var_names
     #    for var_name, var_value in var_dict.iteritems():
     #        self.__c_dict[var_name].is_global = var_value.is_global()
+
     def set_uid_gid(self, new_uid, new_gid):
         os.setgid(new_gid)
         os.setegid(new_gid)
         os.setuid(new_uid)
         os.seteuid(new_uid)
+
     def single_process_mode(self):
         return self.__spm
+
     def help_string(self, key):
         return self.__c_dict[key]._help_string
+
     def get_var(self, key):
         return self.__c_dict[key]
+
     def add_config_entries(self, entries, **kwargs):
-        if type(entries) == type({}):
+        if type(entries) == dict:
             entries = [(key, value) for key, value in entries.iteritems()]
         for key, value in entries:
             # check for override of database flag
@@ -381,30 +467,35 @@ class configuration(object):
             self.__c_dict[key] = value
             if self.__verbose:
                 self.log("Setting config for key {} to {}".format(key, value))
+
     def pretty_print(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].pretty_print()
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def __getitem__(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].value
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def __delitem__(self, key):
         if key in self.__c_dict:
             del self.__c_dict[key]
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def __setitem__(self, key, value):
         if key in self.__c_dict:
-            if type(value) == type(()):
+            if type(value) == dict:
                 value, source = value
             else:
                 source = None
             self.__c_dict[key].set_value(value, source)
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def get_config_info(self):
         gk = sorted(self.keys())
         if gk:
@@ -444,49 +535,61 @@ class configuration(object):
         else:
             ret_str = []
         return ret_str
+
     def keys(self):
         return self.__c_dict.keys()
+
     def has_key(self, key):
         return key in self.__c_dict
+
     def __contains__(self, key):
         return key in self.__c_dict
+
     def get(self, key, def_v):
         if key in self.__c_dict:
             return self.__c_dict[key].value
         else:
             return def_v
+
     def get_cvar(self, key):
         return self.__c_dict[key]
+
     def get_source(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].source
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def fixed(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].fixed
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def is_global(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].is_global
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def set_global(self, key, value):
         if key in self.__c_dict:
             self.__c_dict[key].is_global = value
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def database(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].database
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def get_type(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].short_type
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
+
     def parse_file(self, *args, **kwargs):
         if len(args):
             file_name = args[0]
@@ -552,6 +655,7 @@ class configuration(object):
         else:
             self.log("Cannot find file {}".format(file_name),
                      logging_tools.LOG_LEVEL_ERROR)
+
     def write_file(self, *args):
         if len(args):
             file_name = args[0]
@@ -560,19 +664,32 @@ class configuration(object):
         if (not os.path.isfile(file_name)) or (os.path.isfile(file_name) and self.__writeback_changes):
             all_keys = self.__c_dict.keys()
             try:
-                open(file_name, "w").write("\n".join(sum([[
-                    "# {}".format(self.__c_dict[key]),
-                    "# {}".format(self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
-                    "# {}".format(self.__c_dict[key].get_commandline_info()),
-                    "{}={}".format(
-                        key,
-                        "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
-                    ""] for key in all_keys if (self.get_cvar(key)._only_commandline == False and self.get_cvar(key)._writeback)],
-                                                         [""])))
+                open(file_name, "w").write(
+                    "\n".join(
+                        sum(
+                            [
+                                [
+                                    "# {}".format(self.__c_dict[key]),
+                                    "# {}".format(self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
+                                    "# {}".format(self.__c_dict[key].get_commandline_info()),
+                                    "{}={}".format(
+                                        key,
+                                        "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value
+                                    ),
+                                    ""
+                                ] for key in all_keys if (
+                                    not self.get_cvar(key)._only_commandline and self.get_cvar(key)._writeback
+                                )
+                            ],
+                            [""]
+                        )
+                    )
+                )
             except:
                 self.log("Error while writing file {}: {}".format(file_name, process_tools.get_except_info()))
             else:
                 pass
+
     def show_autoconfig(self, *args):
         # returns True if the main process should exit
         if self.__show_autoconfig:
@@ -597,18 +714,24 @@ class configuration(object):
                     )
             print etree.tostring(ac, pretty_print=True)
         return self.__show_autoconfig
+
     def _argparse_exit(self, status=0, message=None):
         if message:
             print(message)
         self.exit_code = status
+
     def _argparse_error(self, message):
         if message:
             print("_argparse_error:", message)
         self.exit_code = 2
+
     def get_argument_stuff(self):
-        return {"positional_arguments" : self.positional_arguments,
-                "other_arguments"      : self.other_arguments,
-                "arg_list"             : self.positional_arguments + self.other_arguments}
+        return {
+            "positional_arguments": self.positional_arguments,
+            "other_arguments": self.other_arguments,
+            "arg_list": self.positional_arguments + self.other_arguments
+        }
+
     def handle_commandline(self, **kwargs):
         proxy_call = kwargs.pop("proxy_call", False)
         add_writeback_option = kwargs.pop("add_writeback_option", True)
@@ -631,13 +754,35 @@ class configuration(object):
                 c_var.add_argument(key, my_parser)
         if argparse_entries:
             if add_writeback_option:
-                my_parser.add_argument("--writeback", dest="writeback", default=False, action="store_true", help="write back changes to configfile [%(default)s]")
+                my_parser.add_argument(
+                    "--writeback",
+                    dest="writeback",
+                    default=False,
+                    action="store_true",
+                    help="write back changes to configfile [%(default)s]"
+                )
                 if add_exit_after_writeback_option:
-                    my_parser.add_argument("--exit-after-writeback", dest="exit_after_writeback", default=False, action="store_true", help="exit after config file is written [%(default)s]")
+                    my_parser.add_argument(
+                        "--exit-after-writeback",
+                        dest="exit_after_writeback",
+                        default=False,
+                        action="store_true",
+                        help="exit after config file is written [%(default)s]"
+                    )
             if add_auto_config_option:
-                my_parser.add_argument("--show-autoconfig", dest="show_autoconfig", default=False, action="store_true", help="show autoconfig options [%(default)s]")
+                my_parser.add_argument(
+                    "--show-autoconfig",
+                    dest="show_autoconfig",
+                    default=False,
+                    action="store_true",
+                    help="show autoconfig options [%(default)s]"
+                )
             if pos_arguments:
-                my_parser.add_argument("arguments", nargs="*" if pos_arguments_optional else "+", help="additional arguments")
+                my_parser.add_argument(
+                    "arguments",
+                    nargs="*" if pos_arguments_optional else "+",
+                    help="additional arguments"
+                )
             try:
                 if partial:
                     options, rest_args = my_parser.parse_known_args()
@@ -666,6 +811,7 @@ class configuration(object):
             return options, self.exit_code
         else:
             return options
+
 
 class my_server(Server):
     def serve_forever(self):
@@ -698,9 +844,11 @@ class my_server(Server):
             self.stop = 999
             self.listener.close()
 
+
 class config_manager(BaseManager):
     # monkey-patch Server
     _Server = my_server
+
     @staticmethod
     def _finalize_manager(process, address, authkey, state, _Client):
         '''
@@ -745,6 +893,7 @@ cur_manager = config_manager()
 
 CONFIG_MANAGER_INIT = False
 
+
 def get_global_config(c_name, single_process=False, ignore_lock=False, parent_object=None):
     # lock against double-init, for instance md-config-server includes process_monitor_mod which
     # in turn tries to start the global_config manager (but from a different module)
@@ -762,30 +911,32 @@ def get_global_config(c_name, single_process=False, ignore_lock=False, parent_ob
     else:
         return globals()["CONFIG_MANAGER"]
 
+
 # not needed ?
 def terminate_manager():
-#    pass
-#    return
-#    # os.kill(cur_manager._process.pid, 9)
     cur_manager.shutdown()
-#    cur_manager.join()
+
 
 class gc_proxy(object):
     def __init__(self, g_config):
         self.global_config = g_config
         self.__dict = {}
+
     def __getitem__(self, key):
         if key not in self.__dict:
             self.__dict[key] = self.global_config[key]
         return self.__dict[key]
+
 
 def enable_config_access(user_name, group_name):
     address = cur_manager.address
     process_tools.change_user_group_path(address, user_name, group_name)
     process_tools.change_user_group_path(os.path.dirname(address), user_name, group_name)
 
+
 def get_manager_pid():
     return cur_manager._process.pid
+
 
 # type:
 # 0 ... only read the file,  strip empty- and comment lines
@@ -800,7 +951,7 @@ def readconfig(name, c_type=0, in_array=[]):
         if c_type == 0:
             ret_code, ret_array = (True, rcf)
         elif c_type == 1:
-            cd = {_key : [] for _key in in_array}
+            cd = {_key: [] for _key in in_array}
             for line in rcf:
                 lm = re.match("^\s*(?P<key>[^=]+)\s*=\s*(?P<value>\S+)\s*$", line)
                 if lm:
@@ -815,6 +966,7 @@ def readconfig(name, c_type=0, in_array=[]):
             print("Unknown type {:d} for readconfig".format(c_type))
     return (ret_code, ret_array)
 
+
 def check_str_config(in_dict, name, default):
     if not in_dict:
         in_dict = {}
@@ -824,6 +976,7 @@ def check_str_config(in_dict, name, default):
         av = default
     in_dict[name] = av
     return in_dict
+
 
 def check_flag_config(in_dict, name, default):
     if not in_dict:
@@ -839,6 +992,7 @@ def check_flag_config(in_dict, name, default):
         av = default
     in_dict[name] = av
     return in_dict
+
 
 def check_int_config(in_dict, name, default, minv=None, maxv=None):
     if not in_dict:
