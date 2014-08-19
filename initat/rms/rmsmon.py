@@ -21,21 +21,21 @@
 """ rms-server, monitoring process """
 
 from django.core.cache import cache
-from initat.host_monitoring import hm_classes
-from initat.rms.config import global_config
+from django.db.models import Q
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
     rms_project, rms_department, rms_pe, rms_queue, user, device
-from django.db.models import Q
+from initat.host_monitoring import hm_classes
+from initat.rms.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
 import commands
 import datetime
 import logging_tools
 import os
+import pprint
 import process_tools
 import server_command
 import sge_tools
-import pprint
 import threading_tools
 import time
 import uuid
@@ -119,6 +119,8 @@ class rms_mon_process(threading_tools.process_obj):
         self.register_timer(self._check_accounting, 3600)
         # full scan done ?
         self.__full_scan_done = False
+        # caching
+        self._disable_cache()
         self._check_accounting()
         # self.register_func("get_job_xml", self._get_job_xml)
 
@@ -361,7 +363,22 @@ class rms_mon_process(threading_tools.process_obj):
         self.vector_socket.close()
         self.__log_template.close()
 
+    def _disable_cache(self):
+        self.log("disabling cache")
+        self.__use_cache, self.__cache = (False, {})
+
+    def _enable_cache(self):
+        self.log("enabling cache")
+        self.__use_cache, self.__cache = (
+            True,
+            {
+                "device": {},
+            }
+        )
+        self.__cache.update({key: {} for key in _OBJ_DICT.iterkeys()})
+
     def _check_accounting(self, *args, **kwargs):
+        self.__jobs_added = 0
         if args:
             _data = args[0]
             self._call_qacct("-j", "{:d}".format(_data["job_id"]))
@@ -372,11 +389,15 @@ class rms_mon_process(threading_tools.process_obj):
             if not _jobs:
                 self.__full_scan_done = True
                 self.log("no jobs in database, checking accounting info", logging_tools.LOG_LEVEL_WARN)
+                self._enable_cache()
                 self._call_qacct("-j")
+                self._disable_cache()
             elif global_config["FORCE_SCAN"] and not self.__full_scan_done:
                 self.__full_scan_done = True
                 self.log("full scan forced, checking accounting info", logging_tools.LOG_LEVEL_WARN)
+                self._enable_cache()
                 self._call_qacct("-j")
+                self._disable_cache()
             elif len(_missing_ids) > 10:
                 self.log("accounting info for {:d} jobs missing, doing a full call".format(len(_missing_ids)), logging_tools.LOG_LEVEL_WARN)
                 self._call_qacct("-j")
@@ -390,6 +411,8 @@ class rms_mon_process(threading_tools.process_obj):
                 )
                 for _id in _missing_ids:
                     self._call_qacct("-j", "{:d}".format(_id))
+        if self.__jobs_added:
+            self.log("added {}".format(logging_tools.get_plural("job", self.__jobs_added)))
 
     def _call_qacct(self, *args):
         cur_stat, cur_out = call_command(
@@ -433,7 +456,11 @@ class rms_mon_process(threading_tools.process_obj):
         try:
             _cur_job_run = rms_job_run.objects.get(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
         except rms_job_run.DoesNotExist:
-            self.log("job {} not found in database, creating...".format(_job_id), logging_tools.LOG_LEVEL_WARN)
+            self.__jobs_added += 1
+            if not self.__jobs_added % 100:
+                self.log("added {:d} jobs".format(self.__jobs_added))
+            if not self.__use_cache:
+                self.log("job {} not found in database, creating...".format(_job_id), logging_tools.LOG_LEVEL_WARN)
             _job = self._get_job(
                 in_dict["jobnumber"],
                 in_dict["taskid"],
@@ -450,7 +477,8 @@ class rms_mon_process(threading_tools.process_obj):
             # set slots to the default value
             _cur_job_run.slots = in_dict["slots"]
             _cur_job_run.save()
-            self.log("added new job_run {}".format(unicode(_cur_job_run)))
+            if not self.__use_cache:
+                self.log("added new job_run {}".format(unicode(_cur_job_run)))
 
         if _cur_job_run.qacct_called:
             pass
@@ -466,15 +494,20 @@ class rms_mon_process(threading_tools.process_obj):
             _cur_job_run.feed_qacct_data(in_dict)
 
     def _get_object(self, obj_name, name):
-        _obj = _OBJ_DICT[obj_name]
-        # FIXME, add caching
-        try:
-            cur_obj = _obj.objects.get(Q(name=name))
-        except _obj.DoesNotExist:
-            self.log("creating new {} with name {}".format(obj_name, name))
-            cur_obj = _obj.objects.create(
-                name=name
-            )
+        if self.__use_cache and name in self.__cache[obj_name]:
+            cur_obj = self.__cache[obj_name][name]
+        else:
+            _obj = _OBJ_DICT[obj_name]
+            # FIXME, add caching
+            try:
+                cur_obj = _obj.objects.get(Q(name=name))
+            except _obj.DoesNotExist:
+                self.log("creating new {} with name {}".format(obj_name, name))
+                cur_obj = _obj.objects.create(
+                    name=name
+                )
+            if self.__use_cache:
+                self.__cache[obj_name][name] = cur_obj
         return cur_obj
 
     def _get_job(self, job_id, task_id, **kwargs):
@@ -482,12 +515,13 @@ class rms_mon_process(threading_tools.process_obj):
         try:
             cur_job = rms_job.objects.get(Q(jobid=job_id) & Q(taskid=task_id))
         except rms_job.DoesNotExist:
-            self.log(
-                "creating new job with id {} ({})".format(
-                    job_id,
-                    "task id {}".format(str(task_id)) if task_id else "no task id",
+            if not self.__use_cache:
+                self.log(
+                    "creating new job with id {} ({})".format(
+                        job_id,
+                        "task id {}".format(str(task_id)) if task_id else "no task id",
+                    )
                 )
-            )
             cur_job = rms_job.objects.create(
                 jobid=job_id,
                 taskid=task_id,
@@ -503,26 +537,32 @@ class rms_mon_process(threading_tools.process_obj):
                     logging_tools.LOG_LEVEL_ERROR,
                 )
             else:
-                self.log("set user of job {} to {}".format(unicode(cur_job), unicode(_user)))
+                if not self.__use_cache:
+                    self.log("set user of job {} to {}".format(unicode(cur_job), unicode(_user)))
                 cur_job.user = _user
                 cur_job.save()
         return cur_job
 
     def _get_device(self, dev_str):
-        if not dev_str.count("."):
-            # short name
-            try:
-                _dev = device.objects.get(Q(name=dev_str))
-            except device.DoesNotExist:
-                self.log("no device with short name '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
-                _dev = None
+        if self.__use_cache and dev_str in self.__cache["device"]:
+            _dev = self.__cache["device"][dev_str]
         else:
-            _short, _domain = dev_str.split(".", 1)
-            try:
-                _dev = device.objects.get(Q(name=_short) & Q(domain_tree_node__full_name=_domain))
-            except device.DoesNotExist:
-                self.log("no device with FQDN '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
-                _dev = None
+            if not dev_str.count("."):
+                # short name
+                try:
+                    _dev = device.objects.get(Q(name=dev_str))
+                except device.DoesNotExist:
+                    self.log("no device with short name '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
+                    _dev = None
+            else:
+                _short, _domain = dev_str.split(".", 1)
+                try:
+                    _dev = device.objects.get(Q(name=_short) & Q(domain_tree_node__full_name=_domain))
+                except device.DoesNotExist:
+                    self.log("no device with FQDN '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
+                    _dev = None
+            if self.__use_cache:
+                self.__cache["device"][dev_str] = _dev
         return _dev
 
     def _job_ss_info(self, *args, **kwargs):
