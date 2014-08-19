@@ -23,7 +23,7 @@
 from django.core.cache import cache
 from django.db.models import Q
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
-    rms_project, rms_department, rms_pe, rms_queue, user, device
+    rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
@@ -379,6 +379,7 @@ class rms_mon_process(threading_tools.process_obj):
 
     def _check_accounting(self, *args, **kwargs):
         self.__jobs_added = 0
+        self.__jobs_scanned = 0
         if args:
             _data = args[0]
             self._call_qacct("-j", "{:d}".format(_data["job_id"]))
@@ -443,7 +444,7 @@ class rms_mon_process(threading_tools.process_obj):
                         elif _value in ["NONE", "undefined", "-/-"]:
                             _value = None
                         elif _key.endswith("time") and len(_value.split()) > 4:
-                            _value = datetime.datetime.strptime(_value, "%a %b %d %H:%M:%S %Y")
+                            _value = cluster_timezone.localize(datetime.datetime.strptime(_value, "%a %b %d %H:%M:%S %Y"))
                         _dict[_key] = _value
         if "jobnumber" in _dict:
             self._feed_qacct(_dict)
@@ -456,42 +457,70 @@ class rms_mon_process(threading_tools.process_obj):
         try:
             _cur_job_run = rms_job_run.objects.get(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
         except rms_job_run.DoesNotExist:
-            self.__jobs_added += 1
-            if not self.__jobs_added % 100:
-                self.log("added {:d} jobs".format(self.__jobs_added))
-            if not self.__use_cache:
-                self.log("job {} not found in database, creating...".format(_job_id), logging_tools.LOG_LEVEL_WARN)
-            _job = self._get_job(
-                in_dict["jobnumber"],
-                in_dict["taskid"],
-                owner=in_dict["owner"],
-                name=in_dict["jobname"],
-            )
-            _source_host = in_dict["hostname"]
-            _source_dev = self._get_device(_source_host)
-            _cur_job_run = _job.add_job_run(_source_host, _source_dev)
-            _cur_job_run.rms_queue = self._get_object("rms_queue", in_dict["qname"])
-            if in_dict["granted_pe"]:
-                _cur_job_run.granted_pe = in_dict["granted_pe"]
-                _cur_job_run.rms_pe = self._get_object("rms_pe", in_dict["granted_pe"])
-            # set slots to the default value
-            _cur_job_run.slots = in_dict["slots"]
-            _cur_job_run.save()
-            if not self.__use_cache:
-                self.log("added new job_run {}".format(unicode(_cur_job_run)))
-
-        if _cur_job_run.qacct_called:
-            pass
+            _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
+        except rms_job_run.MultipleObjectsReturned:
+            _job_runs = rms_job_run.objects.filter(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
+            if in_dict["start_time"] and in_dict["end_time"]:
+                # find matching objects
+                if any([_cur_job_run.start_time == in_dict["start_time"] and _cur_job_run.end_time == in_dict["end_time"] for _cur_job_run in _job_runs]):
+                    # entry found with same start / end time, no need to update
+                    _cur_job_run = None
+                else:
+                    # create new run
+                    _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
+            else:
+                # start or end time not set, forget it
+                _cur_job_run = None
         else:
-            # resolve dict
-            for key, obj_name in [
-                ("department", "rms_department"),
-                ("project", "rms_project"),
-                ("qname", "rms_queue"),
-            ]:
-                if in_dict[key]:
-                    in_dict[key] = self._get_object(obj_name, in_dict[key])
-            _cur_job_run.feed_qacct_data(in_dict)
+            self.__jobs_scanned += 1
+            if not self.__jobs_scanned % 100:
+                self.log("scanned {:d} jobs".format(self.__jobs_scanned))
+
+        if _cur_job_run is not None:
+            if _cur_job_run.qacct_called:
+                if _cur_job_run.start_time and _cur_job_run.end_time:
+                    if cluster_timezone.normalize(_cur_job_run.start_time) == in_dict["start_time"] and \
+                            cluster_timezone.normalize(_cur_job_run.end_time) == in_dict["end_time"]:
+                        # pure duplicate
+                        self.log("duplicate with identical start/end time found for job {}".format(_job_id), logging_tools.LOG_LEVEL_WARN)
+                    else:
+                        self.log("duplicate with different start/end time found for job {}, creating new run".format(_job_id), logging_tools.LOG_LEVEL_WARN)
+                        _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
+            else:
+                # resolve dict
+                for key, obj_name in [
+                    ("department", "rms_department"),
+                    ("project", "rms_project"),
+                    ("qname", "rms_queue"),
+                ]:
+                    if in_dict[key]:
+                        in_dict[key] = self._get_object(obj_name, in_dict[key])
+                _cur_job_run.feed_qacct_data(in_dict)
+
+    def _add_job_from_qacct(self, _job_id, in_dict):
+        self.__jobs_added += 1
+        if not self.__jobs_added % 100:
+            self.log("added {:d} jobs".format(self.__jobs_added))
+        self.log("job {} not found in database, creating...".format(_job_id), logging_tools.LOG_LEVEL_WARN)
+        _job = self._get_job(
+            in_dict["jobnumber"],
+            in_dict["taskid"],
+            owner=in_dict["owner"],
+            name=in_dict["jobname"],
+        )
+        _source_host = in_dict["hostname"]
+        _source_dev = self._get_device(_source_host)
+        _cur_job_run = _job.add_job_run(_source_host, _source_dev)
+        _cur_job_run.rms_queue = self._get_object("rms_queue", in_dict["qname"])
+        if in_dict["granted_pe"]:
+            _cur_job_run.granted_pe = in_dict["granted_pe"]
+            _cur_job_run.rms_pe = self._get_object("rms_pe", in_dict["granted_pe"])
+        # set slots to the default value
+        _cur_job_run.slots = in_dict["slots"]
+        _cur_job_run.save()
+        if not self.__use_cache:
+            self.log("added new job_run {}".format(unicode(_cur_job_run)))
+        return _cur_job_run
 
     def _get_object(self, obj_name, name):
         if self.__use_cache and name in self.__cache[obj_name]:
