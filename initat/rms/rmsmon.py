@@ -482,11 +482,11 @@ class rms_mon_process(threading_tools.process_obj):
                     if _cur_job_run.start_time == in_dict["start_time"] and \
                             _cur_job_run.end_time == in_dict["end_time"]:
                         # pure duplicate
-                        self.log("duplicate with identical start/end time found for job {}".format(_job_id), logging_tools.LOG_LEVEL_WARN)
+                        _cur_job_run = None
                     else:
                         self.log("duplicate with different start/end time found for job {}, creating new run".format(_job_id), logging_tools.LOG_LEVEL_WARN)
                         _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
-            else:
+            if _cur_job_run is not None:
                 # resolve dict
                 for key, obj_name in [
                     ("department", "rms_department"),
@@ -544,9 +544,9 @@ class rms_mon_process(threading_tools.process_obj):
             cur_job = rms_job.objects.get(Q(jobid=job_id) & Q(taskid=task_id))
         except rms_job.DoesNotExist:
             self.log(
-                "creating new job with id {} ({})".format(
+                "creating new job with id {}{}".format(
                     job_id,
-                    "task id {}".format(str(task_id)) if task_id else "no task id",
+                    " (task id {})".format(str(task_id)) if task_id else "",
                 )
             )
             cur_job = rms_job.objects.create(
