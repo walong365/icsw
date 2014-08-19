@@ -513,9 +513,12 @@ class slot_info
         @used = 0
         @reserved = 0
     feed_vector: (in_vec) =>
-        @total += in_vec[0]
-        @used += in_vec[1]
-        @reserved += in_vec[2]
+        if in_vec[0]?
+            @total += in_vec[0]
+        if in_vec[1]?
+            @used += in_vec[1]
+        if in_vec[2]?
+            @reserved += in_vec[2]
         
 DT_FORM = "D. MMM YYYY, HH:mm:ss"
 
