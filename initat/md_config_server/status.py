@@ -33,26 +33,31 @@ import socket
 import threading_tools
 import time
 
+
 class live_query(object):
     def __init__(self, conn, resource):
         self._conn = conn
         self._resource = resource
         self._columns = []
         self._filters = []
+
     def call(self):
         if self._columns:
             return self._conn.call(str(self), self._columns)
         else:
             return self._conn.call(str(self))
+
     def __str__(self):
         r_field = ["GET {}".format(self._resource)]
         if self._columns:
             r_field.append("Columns: {}".format(" ".join(self._columns)))
         r_field.extend(self._filters)
         return "\n".join(r_field + ["", ""])
+
     def columns(self, *args):
         self._columns = args
         return self
+
     def filter(self, key, op, value):
         if type(value) == list:
             for entry in value:
@@ -63,11 +68,14 @@ class live_query(object):
             self._filters.append("Filter: {} {} {}".format(key, op, value))
         return self
 
+
 class live_socket(object):
     def __init__(self, peer_name):
         self.peer = peer_name
+
     def __getattr__(self, name):
         return live_query(self, name)
+
     def call(self, request, columns=None):
         try:
             if len(self.peer) == 2:
@@ -82,21 +90,32 @@ class live_socket(object):
         finally:
             s.close()
 
+
 class status_process(threading_tools.process_obj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True,
+        )
         connection.close()
         self.register_func("get_node_status", self._get_node_status)
         self.__socket = None
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         self._close()
         self.__log_template.close()
+
     def _close(self):
         if self.__socket:
             del self.__socket
             self.__socket = None
+
     def _open(self):
         if self.__socket is None:
             sock_name = "/opt/{}/var/live".format(global_config["MD_TYPE"])
@@ -105,6 +124,7 @@ class status_process(threading_tools.process_obj):
             else:
                 self.log("socket '{}' does not exist".format(sock_name), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
+
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         pk_list = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
@@ -168,4 +188,3 @@ class status_process(threading_tools.process_obj):
                 logging_tools.get_diff_time_str(time.time() - s_time),
                 u", ".join(sorted(dev_names))))
         self.send_pool_message("send_command", src_id, unicode(srv_com))
-

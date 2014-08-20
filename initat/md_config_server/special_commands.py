@@ -24,7 +24,7 @@ from initat.cluster.backbone.models import partition, netdevice, lvm_lv, monitor
     cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
-from lxml.builder import E # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import datetime
 import logging_tools
 import process_tools
@@ -41,6 +41,7 @@ REFRESH  : always try to contact device
 
 CACHE_MODES = ["ALWAYS", "DYNAMIC", "REFRESH"]
 DEFAULT_CACHE_MODE = "ALWAYS"
+
 
 class special_base(object):
     class Meta:
@@ -60,6 +61,7 @@ class special_base(object):
         command = ""
         # description
         description = "no description available"
+
     def __init__(self, build_proc=None, s_check=None, host=None, global_config=None, **kwargs):
         for key in dir(special_base.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
@@ -71,11 +73,13 @@ class special_base(object):
         self.build_process = build_proc
         self.s_check = s_check
         self.host = host
+
     def _store_cache(self):
         self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__cache))))
         monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
         for ch in self.__hint_list:
             ch.save()
+
     def _load_cache(self):
         self.__cache_created, self.__cache_age, self.__cache_valid = (0, 0, False)
         self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
@@ -93,6 +97,7 @@ class special_base(object):
             _now = cluster_timezone.localize(datetime.datetime.now())
             self.__cache_age = max([abs(_now - _entry.changed).total_seconds() for _entry in self.__cache])
             self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
+
     def _show_cache_info(self):
         if self.__cache:
             self.log(
@@ -105,8 +110,9 @@ class special_base(object):
             )
         else:
             self.log("no cache set")
+
     def add_persistent_entries(self, hint_list):
-        pers_dict = {_hint.key : _hint for _hint in self.__cache if _hint.persistent}
+        pers_dict = {_hint.key: _hint for _hint in self.__cache if _hint.persistent}
         cache_keys = set([_hint.key for _hint in hint_list])
         missing_keys = set(pers_dict.keys()) - cache_keys
         if missing_keys:
@@ -121,10 +127,13 @@ class special_base(object):
                 _hint.datasource = "p"
                 _hint.save(update_fields=["datasource"])
                 hint_list.append(_hint)
+
     def cleanup(self):
         self.build_process = None
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.build_process.mach_log("[sc] {}".format(what), log_level)
+
     def collrelay(self, command, *args, **kwargs):
         return self._call_server(
             command,
@@ -132,6 +141,7 @@ class special_base(object):
             *args,
             **kwargs
         )
+
     def snmprelay(self, command, *args, **kwargs):
         return self._call_server(
             command,
@@ -141,19 +151,23 @@ class special_base(object):
             snmp_version=self.host.dev_variables["SNMP_VERSION"],
             **kwargs
         )
+
     def to_hint(self, srv_reply):
         # transforms server reply to monitoring hints
         return []
+
     def _salt_hints(self, in_list):
         for hint in in_list:
             hint.datasource = "s"
             hint.device = self.host
             hint.m_type = self.ds_name
         return in_list
+
     @property
     def call_idx(self):
         # gives current server call number
         return self.__call_idx
+
     def _call_server(self, command, server_name, *args, **kwargs):
         if not self.Meta.server_contact:
             # not beautifull but working
@@ -252,6 +266,7 @@ class special_base(object):
             #    srv_reply = None
         self.__call_idx += 1
         return hint_list
+
     def __call__(self):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log("starting {} for {}, cache_mode is {}".format(s_name, self.host.name, self.cache_mode))
@@ -296,8 +311,10 @@ class special_base(object):
                 )
             )
         return cur_ret
+
     def get_arg_template(self, *args, **kwargs):
         return arg_template(self.s_check, *args, is_active=self.Meta.is_active, **kwargs)
+
 
 class arg_template(dict):
     def __init__(self, s_base, *args, **kwargs):
@@ -318,19 +335,23 @@ class arg_template(dict):
             dict.__setitem__(self, arg_name, "")
         for key, value in kwargs.iteritems():
             self[key] = value
+
     @property
     def addon_dict(self):
         return self._addon_dict
+
     def __setitem__(self, key, value):
         l_key = key.lower()
         if l_key.startswith("arg"):
             if l_key.startswith("arg_"):
                 key = "arg{:d}".format(len(self.argument_names) + 1 - int(l_key[4:]))
             if key.upper() not in self.argument_names:
-                raise KeyError, "key '{}' not defined in arg_list ({}, {})".format(
-                    key,
-                    self.info,
-                    ", ".join(self.argument_names)
+                raise KeyError(
+                    "key '{}' not defined in arg_list ({}, {})".format(
+                        key,
+                        self.info,
+                        ", ".join(self.argument_names)
+                    )
                 )
             else:
                 dict.__setitem__(self, key.upper(), value)
@@ -344,15 +365,20 @@ class arg_template(dict):
             elif "--{}".format(key) in self.__arg_lut:
                 dict.__setitem__(self, self.__arg_lut["--{}".format(key)].upper(), value)
             else:
-                raise KeyError, "key '{}' not defined in arg_list ({})".format(
-                    key,
-                    self.info)
+                raise KeyError(
+                    "key '{}' not defined in arg_list ({})".format(
+                        key,
+                        self.info
+                    )
+                )
+
 
 class special_openvpn(special_base):
     class Meta:
         server_contact = True
         command = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
         description = "checks for running OpenVPN instances"
+
     def to_hint(self, srv_reply):
         _hints = []
         if "openvpn_instances" in srv_reply:
@@ -370,6 +396,7 @@ class special_openvpn(special_base):
                                 )
                             )
         return _hints
+
     def _call(self):
         sc_array = []
         # no expected_dict found, try to get the actual config from the server
@@ -399,11 +426,13 @@ class special_openvpn(special_base):
             sc_array.append(self.get_arg_template("OpenVPN", arg1="ALL", arg2="ALL"))
         return sc_array
 
+
 class special_supermicro(special_base):
     class Meta:
         server_contact = True
         command = "$USER2$ -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
         description = "queries IPMI Bladecenters via the collserver on the localhost"
+
     def to_hint(self, srv_reply):
         r_dict = supermicro_mod.generate_dict(srv_reply.xpath(".//ns:output/text()", smart_strings=False)[0].split("\n"))
         _hints = []
@@ -419,23 +448,27 @@ class special_supermicro(special_base):
                     )
                 )
         return _hints
+
     def _call(self):
         user_name = self.host.dev_variables.get("SMC_USER", "ADMIN")
         cur_pwd = self.host.dev_variables.get("SMC_PASSWD", "ADMIN")
-        hint_list = self.collrelay("smcipmi",
+        hint_list = self.collrelay(
+            "smcipmi",
             "--ip={}".format(self.host.valid_ip.ip),
             "--user={}".format(user_name),
             "--passwd={}".format(cur_pwd),
-            "counter", connect_to_localhost=True)
+            "counter",
+            connect_to_localhost=True
+        )
         sc_array = []
         sc_array.append(
             self.get_arg_template(
-                    "Overview",
-                    arg1=user_name,
-                    arg2=cur_pwd,
-                    arg3="counter",
-                )
+                "Overview",
+                arg1=user_name,
+                arg2=cur_pwd,
+                arg3="counter",
             )
+        )
         for hint in hint_list:
             inst_name, inst_id = hint.key.split(".")
             sc_array.append(
@@ -448,18 +481,22 @@ class special_supermicro(special_base):
             )
         return sc_array
 
+
 class special_disc_all(special_base):
     class Meta:
         command = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the collserver on the target system for the partition with the lowest space"
+
     def _call(self):
         sc_array = [self.get_arg_template("All partitions", arg3="ALL")]
         return sc_array
+
 
 class special_disc(special_base):
     class Meta:
         command = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the partition on the target system via collserver"
+
     def _call(self):
         part_dev = self.host.partdev
         first_disc = None
@@ -531,10 +568,12 @@ class special_disc(special_base):
             sc_array.append(self.get_arg_template(info_name, arg3=p_name, w=w_lev, c=c_lev))
         return sc_array
 
+
 class special_net(special_base):
     class Meta:
         command = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
         description = "queries all configured network devices"
+
     def _call(self):
         sc_array = []
         virt_check = re.compile("^.*:\S+$")
@@ -567,11 +606,13 @@ class special_net(special_base):
                 # sc_array.append((name_with_descr, eth_opts))
         return sc_array
 
+
 class special_libvirt(special_base):
     class Meta:
         server_contact = True
         command = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
         description = "checks running virtual machines on the target host via libvirt"
+
     def to_hint(self, srv_reply):
         _hints = []
         if srv_reply is not None:
@@ -579,7 +620,7 @@ class special_libvirt(special_base):
                 domain_info = srv_reply["domain_overview"]
                 if "running" in domain_info and "defined" in domain_info:
                     domain_info = domain_info["running"]
-                for d_idx, d_dict in domain_info.iteritems():
+                for _d_idx, d_dict in domain_info.iteritems():
                     new_hint = monitoring_hint(
                         key=d_dict["name"],
                         v_type="s",
@@ -588,6 +629,7 @@ class special_libvirt(special_base):
                     )
                     _hints.append(new_hint)
         return _hints
+
     def _call(self):
         sc_array = []
         for hint in self.collrelay("domain_overview"):
@@ -599,17 +641,20 @@ class special_libvirt(special_base):
             )
         return sc_array
 
+
 class special_ipmi(special_base):
     class Meta:
         server_contact = True
-        command = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} --lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
+        command = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} " \
+            "--lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
         description = "queries the IPMI sensors of the underlying IPMI interface of the target device"
+
     def to_hint(self, srv_reply):
         _hints = []
         if srv_reply is not None:
             if "list:sensor_list" in srv_reply:
                 for sensor in srv_reply["list:sensor_list"]:
-                    lim_dict = {l_key : sensor.attrib[key] for l_key, key in [
+                    lim_dict = {l_key: sensor.attrib[key] for l_key, key in [
                         ("lower_warn", "limit_lw"),
                         ("lower_crit", "limit_lc"),
                         ("upper_warn", "limit_uw"),
@@ -622,6 +667,7 @@ class special_ipmi(special_base):
                     new_hint.update_limits(0.0, lim_dict)
                     _hints.append(new_hint)
         return _hints
+
     def _call(self):
         sc_array = []
         for hint in self.collrelay("ipmi_sensor"):
@@ -639,16 +685,18 @@ class special_ipmi(special_base):
             )
         return sc_array
 
+
 class special_ipmi_ext(special_base):
     class Meta:
         command = ""
         is_active = False
         description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
+
     def _call(self):
         sc_array = []
         for ipmi_ext in monitoring_hint.objects.filter(
-            Q(device=self.host) & \
-            Q(m_type="ipmi")):
+            Q(device=self.host) & Q(m_type="ipmi")
+        ):
             new_at = self.get_arg_template(
                 ipmi_ext.info,
                 _monitoring_hint=ipmi_ext.pk,
@@ -659,12 +707,14 @@ class special_ipmi_ext(special_base):
                 ipmi_ext.save(update_fields=["check_created"])
         return sc_array
 
+
 class special_eonstor(special_base):
     class Meta:
         retries = 2
         server_contact = True
         command = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
         description = "checks the eonstore disc chassis via SNMP"
+
     def to_hint(self, srv_reply):
         _hints = []
         if srv_reply is not None:
@@ -706,6 +756,7 @@ class special_eonstor(special_base):
                     else:
                         _hints.append(self._get_env_check(self.info_dict["ent_dict"][env_dict_name][idx], "eonstor_{}_info".format(env_dict_name), idx))
         return _hints
+
     def _get_env_check(self, info, key, idx):
         return monitoring_hint(
             key=key,
@@ -713,6 +764,7 @@ class special_eonstor(special_base):
             value_int=idx,
             info=info,
         )
+
     def _call(self):
         self.info_dict = {}
         hints = self.snmprelay(

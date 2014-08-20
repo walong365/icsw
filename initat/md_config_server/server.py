@@ -47,6 +47,7 @@ import threading_tools
 import time
 import zmq
 
+
 class server_process(threading_tools.process_pool, version_check_mixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
@@ -56,10 +57,13 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         if not global_config["DEBUG"]:
-            process_tools.set_handles({
-                "out" : (1, "md-config-server.out"),
-                "err" : (0, "/var/lib/logging-server/py_err_zmq")},
-                                      zmq_context=self.zmq_context)
+            process_tools.set_handles(
+                {
+                    "out": (1, "md-config-server.out"),
+                    "err": (0, "/var/lib/logging-server/py_err_zmq")
+                },
+                zmq_context=self.zmq_context
+            )
         self._init_msi_block()
         connection.close()
         # re-insert config
@@ -89,8 +93,10 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.register_timer(self._update, 30, instant=True)
         else:
             self._int_error("no MD found")
+
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
+
     def _update(self):
         res_dict = {}
         if self.__enable_livestatus:
@@ -106,8 +112,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     q_list = [int(value["state"]) for value in result]
                     res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
                         ("unknown", constants.NAG_HOST_UNKNOWN),
-                        ("up"     , constants.NAG_HOST_UP),
-                        ("down"   , constants.NAG_HOST_DOWN)]])
+                        ("up", constants.NAG_HOST_UP),
+                        ("down", constants.NAG_HOST_DOWN)]])
                     res_dict["tot"] = sum(res_dict.values())
                 # cur_s.peer.close()
                 del cur_s
@@ -121,9 +127,9 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             cursor = connections["monitor"].cursor()
             _nag_suc = cursor.execute(sql_str)
             nag_dict = dict([(db_rec[1], db_rec[0]) for db_rec in cursor.fetchall()])
-            res_dict = {"tot"  : len(nag_dict.keys()),
-                        "up"   : nag_dict.values().count(constants.NAG_HOST_UP),
-                        "down" : nag_dict.values().count(constants.NAG_HOST_DOWN)}
+            res_dict = {"tot": len(nag_dict.keys()),
+                        "up": nag_dict.values().count(constants.NAG_HOST_UP),
+                        "down": nag_dict.values().count(constants.NAG_HOST_DOWN)}
             res_dict["unknown"] = res_dict["tot"] - (res_dict["up"] + res_dict["down"])
             cursor.close()
         if res_dict:
@@ -153,6 +159,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.vector_socket.send_unicode(send_str)
         else:
             self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
+
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -161,8 +168,10 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def _re_insert_config(self):
         cluster_location.write_config("monitor_server", global_config)
+
     def _check_special_commands(self):
         from initat.md_config_server import special_commands
         pks_found = set()
@@ -198,6 +207,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 to_rewrite.save()
             else:
                 self.log("key {} not found in dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
+
     def _check_notification(self):
         cur_not = mon_notification.objects.all().count()
         if cur_not:
@@ -206,19 +216,19 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             if "NOTIFY_BY_EMAIL_LINE01" in global_config:
                 self.log("rewriting notifications from global_config")
                 str_dict = {
-                    "sms" : {
-                        "host"    : ("", [global_config["HOST_NOTIFY_BY_SMS_LINE01"]]),
-                        "service" : ("", [global_config["NOTIFY_BY_SMS_LINE01"]]),
+                    "sms": {
+                        "host": ("", [global_config["HOST_NOTIFY_BY_SMS_LINE01"]]),
+                        "service": ("", [global_config["NOTIFY_BY_SMS_LINE01"]]),
                         },
-                    "mail" : {
-                        "host"    : (
+                    "mail": {
+                        "host": (
                             global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"],
                             [global_config["HOST_NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
                             ),
-                        "service" : (
+                        "service": (
                             global_config["NOTIFY_BY_EMAIL_SUBJECT"],
                             [global_config["NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
-                            ),
+                        ),
                     }
                 }
                 for key in global_config.keys():
@@ -226,8 +236,10 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                         src = global_config.get_source(key)
                         if src.count("::"):
                             t_type, pk = src.split("::")
-                            var_obj = {"str_table" : config_str,
-                                       "int_table" : config_int}.get(t_type, None)
+                            var_obj = {
+                                "str_table": config_str,
+                                "int_table": config_int
+                            }.get(t_type, None)
                             if var_obj:
                                 try:
                                     var_obj.objects.get(Q(pk=pk)).delete()
@@ -308,6 +320,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                         subject=subject,
                         content="\n".join(content)
                     )
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -315,14 +328,17 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
+
     def process_start(self, src_process, src_pid):
         if src_process == "syncer":
             self.send_to_process("syncer", "check_for_slaves")
@@ -337,6 +353,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=3, process_name=src_process)
         self.__msi_block.save_block()
+
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
@@ -349,8 +366,9 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
+
     def _register_slave(self, *args, **kwargs):
-        src_proc, src_id, slave_ip, slave_uuid = args
+        _src_proc, _src_id, slave_ip, slave_uuid = args
         conn_str = "tcp://{}:{:d}".format(
             slave_ip,
             2004)
@@ -358,26 +376,29 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.log("connecting to slave on {} ({})".format(conn_str, slave_uuid))
             self.com_socket.connect(conn_str)
             self.__slaves[conn_str] = slave_uuid
+
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
         self._write_external_cmd_file(lines)
+
     def _handle_ocp_event(self, in_com):
         com_type = in_com["command"].text
         targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments", smart_strings=False)[0]]
         target_com = {
-            "ocsp-event" : "PROCESS_SERVICE_CHECK_RESULT",
-            "ochp-event" : "PROCESS_HOST_CHECK_RESULT",
+            "ocsp-event": "PROCESS_SERVICE_CHECK_RESULT",
+            "ochp-event": "PROCESS_HOST_CHECK_RESULT",
         }[com_type]
         # rewrite state information
         state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
         targ_list[state_idx] = "{:d}".format({
-            "ok"          : 0,
-            "up"          : 0,
-            "warning"     : 1,
-            "down"        : 1,
-            "unreachable" : 2,
-            "critical"    : 2,
-            "unknown"     : 3}.get(targ_list[state_idx].lower(), error_state))
+            "ok": 0,
+            "up": 0,
+            "warning": 1,
+            "down": 1,
+            "unreachable": 2,
+            "critical": 2,
+            "unknown": 3,
+        }.get(targ_list[state_idx].lower(), error_state))
         if com_type == "ocsp-event":
             pass
         else:
@@ -387,6 +408,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             target_com,
             ";".join(targ_list))
         self._write_external_cmd_file(out_line)
+
     def _write_external_cmd_file(self, lines):
         if type(lines) != list:
             lines = [lines]
@@ -400,15 +422,18 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 raise
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
+
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
+
     def _set_external_cmd_file(self, *args, **kwargs):
         _src_proc, _src_id, ext_name = args
         self.log("setting external cmd_file to '{}'".format(ext_name))
         self.__external_cmd_file = ext_name
+
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
         client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))
@@ -435,6 +460,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         vector_socket.setsockopt(zmq.LINGER, 0)
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
+
     def _recv_command(self, zmq_sock):
         in_data = []
         while True:
@@ -492,14 +518,16 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     len(in_data),
                     in_data[0]),
                 logging_tools.LOG_LEVEL_ERROR)
+
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
         self.__msi_block.remove_meta_block()
+
     def loop_post(self):
         self.com_socket.close()
         self.vector_socket.close()
         self.__log_template.close()
+
     def thread_loop_post(self):
         process_tools.delete_pid(self.__pid_name)
         self.__msi_block.remove_meta_block()
-

@@ -40,6 +40,7 @@ import config_tools
 import configfile
 import process_tools
 
+
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
@@ -84,7 +85,11 @@ def main():
             ignore_names=["nagios", "icinga"],
             exclude=configfile.get_manager_pid())
 
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.device).pk))])
+    global_config.add_config_entries(
+        [
+            ("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.device).pk))
+        ]
+    )
 
     cluster_location.read_config_from_db(global_config, "monitor_server", [
         ("COM_PORT"                     , configfile.int_c_var(SERVER_COM_PORT)),
@@ -139,10 +144,14 @@ def main():
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     if global_config["ENABLE_NAGVIS"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [
-            {"name"     : os.path.join(global_config["NAGVIS_DIR"], "etc"),
-             "walk_dir" : False},
-            {"name"     : os.path.join(global_config["NAGVIS_DIR"], "etc", "maps"),
-             "walk_dir" : False}
+            {
+                "name": os.path.join(global_config["NAGVIS_DIR"], "etc"),
+                "walk_dir": False
+            },
+            {
+                "name": os.path.join(global_config["NAGVIS_DIR"], "etc", "maps"),
+                "walk_dir": False
+            }
         ])
         process_tools.fix_files(global_config["USER"], global_config["GROUP"], [
             os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db"),

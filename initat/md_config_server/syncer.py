@@ -36,9 +36,16 @@ import logging_tools
 import server_command
 import threading_tools
 
+
 class syncer_process(threading_tools.process_obj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True
+        )
         connection.close()
         self.router_obj = config_tools.router_object(self.log)
         self.__register_timer = False
@@ -49,10 +56,13 @@ class syncer_process(threading_tools.process_obj):
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
         self.__build_in_progress, self.__build_version = (False, 0)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         self.__log_template.close()
+
     def _check_for_slaves(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave")).select_related("domain_tree_node")
@@ -88,6 +98,7 @@ class syncer_process(threading_tools.process_obj):
             self.__register_timer = True
             self.register_func("relayer_info", self._relayer_info)
             self.register_timer(self._send_register_msg, 600, instant=global_config["DEBUG"])
+
     def _send_register_msg(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         for _slave_struct in [None] + self.__slave_configs.values():
@@ -105,11 +116,14 @@ class syncer_process(threading_tools.process_obj):
                 master_port="{:d}".format(constants.SERVER_COM_PORT))
             self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_srv), master_ip, _srv.uuid))
             self.send_command(_srv.uuid, unicode(srv_com))
+
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
+
     def _check_for_redistribute(self, *args, **kwargs):
         for slave_config in self.__slave_configs.itervalues():
             slave_config.check_for_resend()
+
     def _file_content_result(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         slave_name = srv_com["slave_name"].text
@@ -117,6 +131,7 @@ class syncer_process(threading_tools.process_obj):
             self.__slave_configs[self.__slave_lut[slave_name]].file_content_info(srv_com)
         else:
             self.log("unknown slave_name '{}'".format(slave_name), logging_tools.LOG_LEVEL_ERROR)
+
     def _relayer_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         if "uuid" in srv_com:
@@ -130,6 +145,7 @@ class syncer_process(threading_tools.process_obj):
                 self.log("uuid {} not found in slave_lut".format(uuid), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
+
     def _build_info(self, *args, **kwargs):
         # build info send from relayer
         _vals = list(args)

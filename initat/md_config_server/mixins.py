@@ -28,6 +28,7 @@ import os
 import re
 import time
 
+
 class version_check_mixin(object):
     def _check_md_version(self):
         start_time = time.time()
@@ -62,27 +63,45 @@ class version_check_mixin(object):
         # save to local config
         if md_version[0].isdigit():
             global_config.add_config_entries([
-                ("MD_TYPE"          , configfile.str_c_var(md_type)),
-                ("MD_VERSION"       , configfile.int_c_var(int(md_version.split(".")[0]))),
-                ("MD_RELEASE"       , configfile.int_c_var(int(md_version.split(".")[1]))),
+                ("MD_TYPE", configfile.str_c_var(md_type)),
+                ("MD_VERSION", configfile.int_c_var(int(md_version.split(".")[0]))),
+                ("MD_RELEASE", configfile.int_c_var(int(md_version.split(".")[1]))),
                 ("MD_VERSION_STRING", configfile.str_c_var(md_version)),
-                ("MD_BASEDIR"       , configfile.str_c_var(os.path.join("/opt", md_type))),
-                ("MAIN_CONFIG_NAME" , configfile.str_c_var(md_type)),
-                ("MD_LOCK_FILE"     , configfile.str_c_var("{}.lock".format(md_type))),
+                ("MD_BASEDIR", configfile.str_c_var(os.path.join("/opt", md_type))),
+                ("MAIN_CONFIG_NAME", configfile.str_c_var(md_type)),
+                ("MD_LOCK_FILE", configfile.str_c_var("{}.lock".format(md_type))),
             ])
         # device_variable local to the server
-        _dv = cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon package", value=md_version)
+        _dv = cluster_location.db_device_variable(
+            global_config["SERVER_IDX"],
+            "md_version",
+            description="Version of the Monitor-daemon package",
+            value=md_version
+        )
 # #        if dv.is_set():
 # #            dv.set_value(md_version)
 # #            dv.update(dc)
-        cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version, force_update=True)
-        cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_type", description="Type of the Monitor-daemon RPM", value=md_type, force_update=True)
+        cluster_location.db_device_variable(
+            global_config["SERVER_IDX"],
+            "md_version",
+            description="Version of the Monitor-daemon RPM",
+            value=md_version,
+            force_update=True
+        )
+        cluster_location.db_device_variable(
+            global_config["SERVER_IDX"],
+            "md_type",
+            description="Type of the Monitor-daemon RPM",
+            value=md_type,
+            force_update=True
+        )
         if md_version == "unknown":
             self.log("No installed monitor-daemon found (version set to {})".format(md_version), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("Discovered installed monitor-daemon {}, version {}".format(md_type, md_version))
         end_time = time.time()
         self.log("monitor-daemon version discovery took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
+
     def _check_relay_version(self):
         start_time = time.time()
         relay_version = "unknown"

@@ -30,23 +30,31 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, monitoring_hint
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config
-from lxml import etree # @UnresolvedImport @UnusedImport
+from lxml import etree  # @UnresolvedImport @UnusedImport
 import logging_tools
-import pprint # @UnusedImport
+import pprint  # @UnusedImport
 import server_command
 import threading_tools
 
+
 class dynconfig_process(threading_tools.process_obj):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True
+        )
         connection.close()
         self.register_func("monitoring_info", self._monitoring_info)
-        # feed as test
-        # self._monitoring_info('<ns0:ics_batch xmlns:ns0="http://www.initat.org/lxml/ns" srvc_version="1"><ns0:source host="eddie" pid="19855"/><ns0:command>monitoring_info</ns0:command><ns0:identity>not set</ns0:identity><ns0:mon_info><monitor_info uuid="ee567638-581b-4154-9734-0e437db12ba0" name="kvm01-ipmi" time="1402922591"><value info="rotation of fan Fan 4B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4140.000000" base="1000" unit="RPM" name="ipmi.fan.fan_4b_tach"/><value info="Power usage of Avg Power" v_type="f" name="ipmi.watts.avg_power" m_type="ipmi" value="190.000000" base="1" unit="W"/><value info="Voltage of Planar VBAT" v_type="f" lc="2.095" m_type="ipmi" value="3.226000" lw="2.248" base="1" unit="V" name="ipmi.volts.planar_vbat"/><value info="Temperature of Ambient Temp" v_type="f" name="ipmi.temp.ambient_temp" m_type="ipmi" uw="38.000" value="20.000000" un="45.000" uc="41.000" base="1" unit="C"/><value info="rotation of fan Fan 1B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_1b_tach"/><value info="rotation of fan Fan 1A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_1a_tach"/><value info="Voltage of Planar 3.3V" v_type="f" lc="3.039" m_type="ipmi" value="3.351000" base="1" uc="3.564" unit="V" name="ipmi.volts.planar_3,3v"/><value info="Voltage of Planar 5V" v_type="f" lc="4.475" m_type="ipmi" value="5.108000" base="1" uc="5.582" unit="V" name="ipmi.volts.planar_5v"/><value info="rotation of fan Fan 2A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_2a_tach"/><value info="rotation of fan Fan 3A Tach" v_type="f" lc="492.000" m_type="ipmi" value="3977.000000" base="1000" unit="RPM" name="ipmi.fan.fan_3a_tach"/><value info="rotation of fan Fan 4A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_4a_tach"/><value info="rotation of fan Fan 3B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_3b_tach"/><value info="Voltage of Planar 12V" v_type="f" lc="10.692" m_type="ipmi" value="12.204000" base="1" uc="13.446" unit="V" name="ipmi.volts.planar_12v"/><value info="rotation of fan Fan 2B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_2b_tach"/></monitor_info></ns0:mon_info></ns0:ics_batch>')
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         self.__log_template.close()
+
     def _monitoring_info(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])
         mon_info = in_com.xpath(".//monitor_info")
@@ -60,10 +68,12 @@ class dynconfig_process(threading_tools.process_obj):
                 self._create_hints(cur_dev, mon_info)
         else:
             self.log("no monitor_info found", logging_tools.LOG_LEVEL_ERROR)
+
     def _create_hints(self, cur_dev, mon_info):
         self._create_hints_ipmi(cur_dev, mon_info)
+
     def _create_hints_ipmi(self, cur_dev, mon_info):
-        cur_hints = {(cur_h.m_type, cur_h.key) : cur_h for cur_h in monitoring_hint.objects.filter(Q(device=cur_dev))}
+        cur_hints = {(cur_h.m_type, cur_h.key): cur_h for cur_h in monitoring_hint.objects.filter(Q(device=cur_dev))}
         ocsp_lines = []
         # pprint.pprint(cur_hints)
         n_updated, n_created = (0, 0)
@@ -87,7 +97,15 @@ class dynconfig_process(threading_tools.process_obj):
                     info=_val.get("info"),
                 )
                 created = True
-            limit_dict = {"{}_{}".format({"l" : "lower", "u" : "upper"}[_key[0]], {"w" : "warn", "c" : "crit"}[_key[1]]) : float(_val.attrib[_key]) for _key in ["lc", "uc", "lw", "uw"] if _key in _val.attrib}
+            limit_dict = {"{}_{}".format(
+                {
+                    "l": "lower",
+                    "u": "upper"
+                }[_key[0]], {
+                    "w": "warn",
+                    "c": "crit"
+                }[_key[1]]): float(_val.attrib[_key]) for _key in ["lc", "uc", "lw", "uw"] if _key in _val.attrib
+            }
             _value = _val.get("value")
             if _val.get("v_type") == "f":
                 _value = float(_val.get("value"))
@@ -116,6 +134,7 @@ class dynconfig_process(threading_tools.process_obj):
         self.send_pool_message("ocsp_results", ocsp_lines)
         if updated or created:
             self.log("for {}: created {:d}, updated {:d}".format(unicode(cur_dev), n_created, n_updated))
+
     def _check_status_ipmi(self, _val, cur_hint):
         _ret = limits.nag_STATE_OK
         if type(_val) in [int, long]:
@@ -136,4 +155,3 @@ class dynconfig_process(threading_tools.process_obj):
                 _val_str = "{}{}{} {}".format("<" * _sn, form_str.format(c_val), ">" * _sn, _val_str)
         # print _val_str
         return _ret, _val_str
-
