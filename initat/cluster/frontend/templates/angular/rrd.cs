@@ -55,6 +55,11 @@ rrd_graph_template = """
             </div>
         </div>&nbsp;
         <div class="input-group-btn">
+            <button type="button" ng-class="show_jobs && 'btn btn-success btn-xs' || 'btn btn-xs'" ng-click="show_jobs=!show_jobs" title="show job data">
+                <span class="glyphicon glyphicon-tasks"></span>
+            </button>
+        </div>&nbsp;
+        <div class="input-group-btn">
             <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
                 <span class="glyphicon glyphicon-step-forward"></span>
             </button>
@@ -65,28 +70,24 @@ rrd_graph_template = """
             </button>
         </div>&nbsp;
         <div class="input-group-btn">
-            <button type="button" ng-class="hide_empty && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty">
+            <button type="button" ng-class="hide_empty && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
                 <span class="glyphicon glyphicon-ban-circle"></span>
-                hide empty
             </button>
         </div>&nbsp;
         <div class="input-group-btn">
-            <button type="button" ng-class="include_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="include_zero=!include_zero">
+            <button type="button" ng-class="include_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
                 <span class="glyphicon glyphicon-download"></span>
-                zero
             </button>
         </div>&nbsp;
         <div class="input-group-btn" ng-show="devsel_list.length > 1">
-            <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y">
+            <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y" title="scale ordinate to be able to compare graphs">
                 <span class="glyphicon glyphicon-sort"></span>
-                scale y
             </button>
         </div>
         <span ng-show="devsel_list.length > 1">&nbsp;</span>
         <div class="input-group-btn" ng-show="devsel_list.length > 1">
-            <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices">
+            <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
                 <span class="glyphicon glyphicon-th"></span>
-                merge devices
             </button>
         </div>
         <span ng-show="devsel_list.length > 1">&nbsp;</span>
@@ -140,12 +141,13 @@ rrd_graph_template = """
             <h4>{{ graph_list.length }} graphs, {{ graph_list[0].get_tv(graph_list[0].ts_start_mom) }} to {{ graph_list[0].get_tv(graph_list[0].ts_end_mom) }}</h4>
             <table class="table-condensed">
                 <tr ng-repeat="gkey in get_graph_keys()">
-                    <td ng-repeat="(dkey, graph) in graph_mat[gkey]">
-                        <h4  ng-show="!graph.error">
+                    <td ng-repeat="(dkey, graph) in graph_mat[gkey]" style="vertical-align:top;">
+                        <h4 ng-show="!graph.error">
                             <span class="label label-default" ng-click="graph.toggle_expand()">
                                 <span ng-class="graph.get_expand_class()"></span>
-                                {{ graph.num }}
-                            </span>
+                                graph \#{{ graph.num }}
+                            </span>&nbsp;
+                            <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
                         </h4>
                         <h4 ng-show="graph.removed_keys.length">
                             {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
@@ -173,7 +175,7 @@ class d_graph
         @active = true
         @error = false
         @src = @xml.attr("href")
-        #console.log @xml[0]
+        @num_devices = @xml.find("devices device").length
         @value_min = parseFloat(@xml.attr("value_min"))
         @value_max = parseFloat(@xml.attr("value_max"))
         # complete graphic
@@ -193,6 +195,9 @@ class d_graph
         @removed_keys = []
         for entry in @xml.find("removed_keys removed_key")
             @removed_keys.push($(entry).text())
+    get_devices: () ->
+        dev_names = ($(entry).text() for entry in @xml.find("devices device"))
+        return dev_names.join(", ")
     get_tv: (val) ->
         if val
             return val.format(DT_FORM)
@@ -265,7 +270,10 @@ class pd_timerange
             # special format, no to set, from == moment() - @from hours
             return moment().subtract(@from, "hours")
     get_to: (cur_from, cur_to) =>
-        return @to
+        if @to
+            return @to
+        else
+            return moment()    
 
 class pd_timeshift
     constructor: (@name, @seconds) ->
@@ -310,6 +318,7 @@ add_rrd_directive = (mod) ->
             $scope.graph_list = {}
             $scope.graph_list = []
             $scope.hide_empty = false
+            $scope.show_jobs = false
             $scope.include_zero = false
             $scope.scale_y = false
             $scope.merge_devices = true
@@ -481,6 +490,7 @@ add_rrd_directive = (mod) ->
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                         "size"       : $scope.cur_dim
                         "hide_empty"    : $scope.hide_empty
+                        "show_jobs"     : $scope.show_jobs
                         "include_zero"  : $scope.include_zero
                         "scale_y"       : $scope.scale_y
                         "merge_devices" : $scope.merge_devices
@@ -527,6 +537,8 @@ add_rrd_directive = (mod) ->
                     scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
                 if attrs["todt"]? and parseInt(attrs["todt"])
                     scope.to_date_mom = moment.unix(parseInt(attrs["todt"]))
+                if attrs["showjobs"]?
+                    scope.show_jobs = true
                 scope.draw_on_init = attrs["draw"] ? false
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
         }

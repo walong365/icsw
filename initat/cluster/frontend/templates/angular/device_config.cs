@@ -911,7 +911,7 @@ mh_devrow_template = """
         <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
     </button>
 </td>
-<td>{{ get_name(obj) }}</td>
+<td>{{ obj.full_name }}</td>
 <td>{{ obj.device_group_name }}</td>
 <td>{{ obj.comment }}</td>
 <td>hints : {{ obj.monitoring_hint_set.length }}</td>

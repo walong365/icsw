@@ -26,7 +26,7 @@
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from lxml.builder import E # @UnresolvedImports
+from lxml.builder import E  # @UnresolvedImports
 import datetime
 import dateutil.parser
 import dateutil.tz
@@ -36,12 +36,8 @@ import server_command
 
 logger = logging.getLogger("cluster.rrd")
 
+
 class device_rrds(View):
-    # @method_decorator(login_required)
-    # def get(self, request):
-    #    return render_me(
-    #        request, "rrd_class_overview.html",
-    #    )()
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="get_node_rrd")
@@ -64,9 +60,11 @@ class device_rrds(View):
             else:
                 request.xml_response.error("no node_results", logger=logger)
 
+
 class graph_rrds(View):
     def _parse_post_boolean(self, _post, name, default):
         return "1" if _post.get(name, default).lower() in ["1", "true"] else "0"
+
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
@@ -91,6 +89,7 @@ class graph_rrds(View):
             E.hide_empty(self._parse_post_boolean(_post, "hide_empty", "0")),
             E.include_zero(self._parse_post_boolean(_post, "include_zero", "0")),
             E.scale_y(self._parse_post_boolean(_post, "scale_y", "0")),
+            E.show_jobs(self._parse_post_boolean(_post, "show_jobs", "0")),
             E.merge_devices(self._parse_post_boolean(_post, "merge_devices", "1")),
             E.timeshift(_post.get("timeshift", "0")),
         )
