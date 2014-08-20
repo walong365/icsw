@@ -404,13 +404,21 @@ class RRDGraph(object):
                     }]
                 _dev_dict = {}
                 for _entry in _pe_info:
+                    _start_time = _run.start_time or _run.start_time_py
+                    _end_time = _run.end_time or _run.end_time_py
+                    # set start and / or end time to None if outside of graph
+                    if _start_time and (_start_time <= self.para_dict["start_time"] or _start_time >= self.para_dict["end_time"]):
+                        _start_time = None
+                    if _end_time and (_end_time <= self.para_dict["start_time"] or _end_time >= self.para_dict["end_time"]):
+                        _end_time = None
                     _job_add_dict.setdefault(_entry["device"], []).append(
                         {
                             "slots": _entry["slots"] or 1,
-                            "start_time": _run.start_time or _run.start_time_py,
-                            "end_time": _run.end_time or _run.end_time_py,
+                            "start_time": _start_time,
+                            "end_time": _end_time,
                             "job": _run.rms_job.full_id,
-                            "user": unicode(_run.rms_job.user),
+                            "user": unicode(_run.rms_job.user.login),
+                            "hostname": _entry["hostname"],
                         }
                     )
             # pprint.pprint(_job_add_dict)
@@ -496,6 +504,17 @@ class RRDGraph(object):
                     # )
                     for _stuff, _pk in dev_list:
                         for _job_info in _job_add_dict.get(_pk, []):
+                            if len(dev_list) == 1:
+                                _us_info = "{}, {}".format(
+                                    _job_info["user"],
+                                    logging_tools.get_plural("slot", _job_info["slots"]),
+                                )
+                            else:
+                                _us_info = "{}, {} on {}".format(
+                                    _job_info["user"],
+                                    logging_tools.get_plural("slot", _job_info["slots"]),
+                                    _job_info["hostname"],
+                                )
                             if _job_info["start_time"] and _job_info["end_time"]:
                                 rrd_args.append(
                                     "VRULE:{}#4444ee:{}".format(
@@ -511,11 +530,10 @@ class RRDGraph(object):
                                     "VRULE:{}#ee4444:{}\l".format(
                                         int((_job_info["end_time"] - dt_1970).total_seconds()),
                                         rrd_escape(
-                                            "end, {} - {}, {}, {}".format(
+                                            "end, {} - {}, {}".format(
                                                 strftime(_job_info["start_time"]),
                                                 strftime(_job_info["end_time"], _job_info["start_time"]),
-                                                _job_info["user"],
-                                                logging_tools.get_plural("slot", _job_info["slots"]),
+                                                _us_info,
                                             )
                                         )
                                     )
@@ -525,11 +543,10 @@ class RRDGraph(object):
                                     "VRULE:{}#4444ee:{}\l".format(
                                         int((_job_info["start_time"] - dt_1970).total_seconds()),
                                         rrd_escape(
-                                            "{} start, {}, {}, {}".format(
+                                            "{} start, {}, {}".format(
                                                 _job_info["job"],
                                                 strftime(_job_info["start_time"]),
-                                                _job_info["user"],
-                                                logging_tools.get_plural("slot", _job_info["slots"]),
+                                                _us_info,
                                             )
                                         )
                                     )
@@ -539,11 +556,10 @@ class RRDGraph(object):
                                     "VRULE:{}#ee4444:{}\l".format(
                                         int((_job_info["end_time"] - dt_1970).total_seconds()),
                                         rrd_escape(
-                                            "{} end  , {}, {}, {}".format(
+                                            "{} end  , {}, {}".format(
                                                 _job_info["job"],
                                                 strftime(_job_info["end_time"]),
-                                                _job_info["user"],
-                                                logging_tools.get_plural("slot", _job_info["slots"]),
+                                                _us_info,
                                             )
                                         )
                                     )
