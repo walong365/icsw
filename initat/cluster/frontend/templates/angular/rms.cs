@@ -830,7 +830,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         template : $templateCache.get("waiting_table.html")
         link : (scope, el, attrs) ->
             if "filter" of attrs
-                scope.pagRun.conf.filter = attrs["filter"]
+                scope.pagWait.conf.filter = attrs["filter"]
     }
 ).directive("done", ($templateCache) ->
     return {
@@ -838,7 +838,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         template : $templateCache.get("done_table.html")
         link : (scope, el, attrs) ->
             if "filter" of attrs
-                scope.pagRun.conf.filter = attrs["filter"]
+                scope.pagDone.conf.filter = attrs["filter"]
     }
 ).directive("node", ($templateCache) ->
     return {
