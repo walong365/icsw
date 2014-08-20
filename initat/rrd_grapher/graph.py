@@ -314,7 +314,8 @@ class RRDGraph(object):
             "include_zero": False,
             "scale_y": False,
             "merge_devices": True,
-            "show_jobs": False,
+            "job_mode": "none",
+            "selected_job": 0,
         }
         self.para_dict.update(para_dict)
         self.colorizer = colorzer
@@ -369,7 +370,7 @@ class RRDGraph(object):
         graph_list = E.graph_list()
         # job addon dict
         _job_add_dict = {}
-        if self.para_dict["show_jobs"]:
+        if self.para_dict["job_mode"] in ["selected", "all"]:
             _jobs = rms_job_run.objects.filter(
                 (
                     Q(device__in=dev_dict.keys()) | Q(rms_pe_info__device__in=dev_dict.keys())
@@ -398,6 +399,12 @@ class RRDGraph(object):
                 "rms_job__jobid",
                 "rms_job__taskid"
             )
+            if self.para_dict["job_mode"] == "selected":
+                _sj_id = self.para_dict["selected_job"]
+                if _sj_id.count("."):
+                    _jobs = _jobs.filter(Q(rms_job__jobid=_sj_id.split(".")[0]) & Q(rms_job__taskid=_sj_id.split(".")[1]))
+                else:
+                    _jobs = _jobs.filter(Q(rms_job__jobid=_sj_id))
             self.log(
                 "jobs to add: {:d}, {}".format(
                     _jobs.count(),
@@ -715,7 +722,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
-        for key, _default in [("hide_empty", "0"), ("merge_devices", "1"), ("scale_y", "0"), ("include_zero", "0"), ("show_jobs", "0")]:
+        for key, _default in [("hide_empty", "0"), ("merge_devices", "1"), ("scale_y", "0"), ("include_zero", "0")]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
         graph_list = RRDGraph(self.log, self.colorizer, para_dict).graph(self.vector_dict, dev_pks, graph_keys)
         srv_com["graphs"] = graph_list
