@@ -124,8 +124,6 @@ class rms_job(models.Model):
     taskid = models.IntegerField(null=True)
     owner = models.CharField(max_length=255, default="")
     user = models.ForeignKey("backbone.user", null=True)
-    # to be filled by qacct run
-    queue_time = models.DateTimeField(null=True)
     date = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -134,9 +132,6 @@ class rms_job(models.Model):
             self.jobid,
             ".{:d}".format(self.taskid) if self.taskid else "",
         )
-
-    def get_queue_time(self):
-        return time.mktime(cluster_timezone.normalize(self.queue_time).timetuple()) if self.queue_time else ""
 
     def add_job_run(self, _dev_name, _dev):
         new_run = rms_job_run(
@@ -187,6 +182,7 @@ class rms_job_run(models.Model):
     failed_str = models.CharField(max_length=255, default="")
     exit_status = models.IntegerField(default=0)
     exit_status_str = models.CharField(max_length=255, default="")
+    queue_time = models.DateTimeField(null=True)
     # via qname
     rms_queue = models.ForeignKey("backbone.rms_queue")
     start_time = models.DateTimeField(null=True)
@@ -207,6 +203,9 @@ class rms_job_run(models.Model):
                 "slots": _pe_info.slots,
             } for _pe_info in self.rms_pe_info_set.all()
         ]
+
+    def get_queue_time(self):
+        return time.mktime(cluster_timezone.normalize(self.queue_time).timetuple()) if self.queue_time else ""
 
     def get_start_time(self):
         return time.mktime(cluster_timezone.normalize(self.start_time).timetuple()) if self.start_time else ""
@@ -246,12 +245,10 @@ class rms_job_run(models.Model):
             self.start_time = in_dict["start_time"]
         if in_dict["end_time"]:
             self.end_time = in_dict["end_time"]
+        if in_dict["qsub_time"]:
+            self.queue_time = in_dict["qsub_time"]
         self.qacct_called = True
         self.save()
-        # save queue_time
-        if in_dict["qsub_time"]:
-            self.rms_job.queue_time = in_dict["qsub_time"]
-            self.rms_job.save(update_fields=["queue_time"])
 
     class Meta:
         app_label = "backbone"
@@ -270,13 +267,11 @@ class rms_pe_info(models.Model):
 
 
 class rms_job_serializer(serializers.ModelSerializer):
-    queue_time = serializers.Field(source="get_queue_time")
 
     class Meta:
         model = rms_job
         fields = (
             "name", "jobid", "taskid", "owner", "user",
-            "queue_time",
         )
 
 
@@ -296,6 +291,7 @@ class rms_job_run_serializer(serializers.ModelSerializer):
     rms_pe_info = serializers.Field(source="rms_pe_info")
     start_time = serializers.Field(source="get_start_time")
     end_time = serializers.Field(source="get_end_time")
+    queue_time = serializers.Field(source="get_queue_time")
     start_time_py = serializers.Field(source="get_start_time_py")
     end_time_py = serializers.Field(source="get_end_time_py")
 
@@ -305,4 +301,5 @@ class rms_job_run_serializer(serializers.ModelSerializer):
             "rms_job", "rms_queue", "rms_project", "rms_department", "rms_pe", "rms_pe_info",
             "start_time", "end_time", "start_time_py", "end_time_py", "device", "hostname",
             "granted_pe", "slots", "priority", "account", "failed", "exit_status", "rms_queue",
+            "queue_time",
         )
