@@ -400,7 +400,7 @@ class rms_mon_process(threading_tools.process_obj):
                 self._call_qacct("-j")
                 self._disable_cache()
             elif len(_missing_ids) > 10:
-                self.log("accounting info for {:d} jobs missing, doing a full call".format(len(_missing_ids)), logging_tools.LOG_LEVEL_WARN)
+                self.log("accounting info for {:d} jobs missing, doing a full scan".format(len(_missing_ids)), logging_tools.LOG_LEVEL_WARN)
                 self._call_qacct("-j")
             else:
                 self.log(
