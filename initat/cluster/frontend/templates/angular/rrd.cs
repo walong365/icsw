@@ -55,9 +55,15 @@ rrd_graph_template = """
             </div>
         </div>&nbsp;
         <div class="input-group-btn">
-            <button type="button" ng-class="show_jobs && 'btn btn-success btn-xs' || 'btn btn-xs'" ng-click="show_jobs=!show_jobs" title="show job data">
-                <span class="glyphicon glyphicon-tasks"></span>
-            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
+                    <span class="glyphicon glyphicon-tasks"></span>
+                    {{ get_job_mode(job_mode) }}<span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
+                </ul>
+            </div>
         </div>&nbsp;
         <div class="input-group-btn">
             <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
@@ -318,7 +324,10 @@ add_rrd_directive = (mod) ->
             $scope.graph_list = {}
             $scope.graph_list = []
             $scope.hide_empty = false
-            $scope.show_jobs = false
+            # none, all or selected
+            $scope.job_modes = ["none", "all", "selected"]
+            $scope.job_mode = $scope.job_modes[0]
+            $scope.selected_job = 0
             $scope.include_zero = false
             $scope.scale_y = false
             $scope.merge_devices = true
@@ -330,6 +339,18 @@ add_rrd_directive = (mod) ->
             $scope.$watch("to_date_mom", (new_val) ->
                 $scope.update_dt() 
             )
+            $scope.set_job_mode = (new_jm) -> 
+                $scope.job_mode = new_jm
+            $scope.get_job_mode = (_jm) ->
+                if _jm == "selected"
+                    return "#{_jm} (#{$scope.selected_job})"
+                else
+                    return _jm    
+            $scope.job_mode_allowed = (cur_jm) ->
+                if cur_jm == "selected" and not $scope.selected_job
+                    return false
+                else
+                    return true     
             $scope.update_dt = () ->
                 # force moment
                 from_date = moment($scope.from_date_mom)
@@ -490,7 +511,8 @@ add_rrd_directive = (mod) ->
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                         "size"       : $scope.cur_dim
                         "hide_empty"    : $scope.hide_empty
-                        "show_jobs"     : $scope.show_jobs
+                        "job_mode"      : $scope.job_mode
+                        "selected_job"  : $scope.selected_job 
                         "include_zero"  : $scope.include_zero
                         "scale_y"       : $scope.scale_y
                         "merge_devices" : $scope.merge_devices
@@ -537,8 +559,10 @@ add_rrd_directive = (mod) ->
                     scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
                 if attrs["todt"]? and parseInt(attrs["todt"])
                     scope.to_date_mom = moment.unix(parseInt(attrs["todt"]))
-                if attrs["showjobs"]?
-                    scope.show_jobs = true
+                if attrs["jobmode"]?
+                    scope.job_mode = attrs["jobmode"]
+                if attrs["selectedjob"]?
+                    scope.selected_job = attrs["selectedjob"]
                 scope.draw_on_init = attrs["draw"] ? false
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
         }

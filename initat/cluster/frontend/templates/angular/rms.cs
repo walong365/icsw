@@ -762,12 +762,12 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             return "done (#{$scope.done_list.length} jobs)"
         $scope.get_node_info = () ->
             return "node (#{$scope.node_list.length} nodes, #{$scope.slot_info.used} of #{$scope.slot_info.total} slots used)"
-        $scope.show_rrd = (event, name_list, start_time, end_time, title) ->
+        $scope.show_rrd = (event, name_list, start_time, end_time, title, job_mode, selected_job) ->
             dev_pks = ($scope.device_dict[name].pk for name in name_list).join(",")
-            #dev_names = ($scope.device_dict[name].name for name in name_list).join(",")
-            
             start_time = if start_time then start_time else 0
             end_time = if end_time then end_time else 0
+            job_mode = if job_mode then job_mode else "none"
+            selected_job = if selected_job then selected_job else "0"
             rrd_txt = """
 <div class="panel panel-default">
     <div class="panel-body">
@@ -781,6 +781,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 graphsize="240x100"
                 fromdt="#{start_time}"
                 todt="#{end_time}"
+                jobmode="#{job_mode}"
+                selectedjob="#{selected_job}"
             >
             </rrdgraph>
         </div>
@@ -937,7 +939,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     rrd_title = "finished job #{job_id} on nodes " + rrd_nodes.join(",")
                 else
                     rrd_title = "finished job #{job_id} on node " + rrd_nodes[0]
-                scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title)
+                scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title, "selected", job_id)
             scope.special_exit_status = (data) ->
                 if data.exit_status in [99, 137]
                     return true
@@ -1023,7 +1025,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     rrd_title = "running job #{job_id} on nodes " + rrd_nodes.join(",")
                 else
                     rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
-                scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title)
+                scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
     }
 ).directive("rmsnodeline", ($templateCache, $sce, $compile) ->
     return {
@@ -1045,7 +1047,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else
                     return false
             scope.show_node_rrd = (event, node) ->
-                scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}")
+                scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}", "none", 0)
     }
 ).directive("headertoggle", ($templateCache) ->
     return {
