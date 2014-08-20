@@ -693,7 +693,8 @@ class sge_info(object):
         all_complexes = E.complexes()
         if not c_stat:
             for line_parts in [s_line.strip().split() for s_line in c_out.split("\n") if not s_line.strip().startswith("#")]:
-                all_complexes.append(E.complex(line_parts[0], short=line_parts[1]))
+                if len(line_parts) > 1:
+                    all_complexes.append(E.complex(line_parts[0], short=line_parts[1]))
         return all_complexes
 
     def _check_qhost_dict(self):
@@ -1109,6 +1110,25 @@ def get_waiting_headers(options):
     ])
     cur_job.append(E.action())
     return cur_job
+
+
+def get_done_headers():
+    return E.job(
+        E.job_id(),
+        E.task_id(),
+        E.name(),
+        E.granted_pe(),
+        E.owner(),
+        E.queue_time(span="1"),
+        E.start_time(),
+        E.end_time(),
+        E.wait_time(),
+        E.run_time(),
+        E.queue(),
+        E.exit_status(),
+        E.failed(span="2"),
+        E.nodelist(),
+    )
 
 
 def build_waiting_list(s_info, options, **kwargs):
