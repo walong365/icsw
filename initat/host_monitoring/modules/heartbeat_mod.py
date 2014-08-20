@@ -102,7 +102,7 @@ class heartbeat_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["heartbeat_info"] = {
             "host": process_tools.get_machine_name(),
-            "output" : self.module._exec_command("/usr/sbin/crm_mon -1")}
+            "output": self.module._exec_command("/usr/sbin/crm_mon -1")}
 
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["heartbeat_info"], cur_ns)
@@ -111,7 +111,7 @@ class heartbeat_status_command(hm_classes.hm_command):
         return self._interpret(hm_classes.net_to_sys(result[3:]), parsed_coms)
 
     def _interpret(self, r_dict, parsed_coms):
-        if isinstance(r_dict, []):
+        if isinstance(r_dict, list):
             r_dict = {"output": r_dict,
                       "host": ""}
         hb_dict = self._parse_lines(r_dict)
@@ -142,19 +142,23 @@ class heartbeat_status_command(hm_classes.hm_command):
     def _parse_lines(self, in_dict, **kwargs):
         only_local_resources = kwargs.get("only_local_resources", True)
         local_node = in_dict["host"]
-        r_dict = {"stack"      : "unknown",
-                  "current_dc" : "unknown",
-                  "version"    : "unknown",
-                  "nodes"      : {},
-                  "resources"  : {}}
+        r_dict = {
+            "stack": "unknown",
+            "current_dc": "unknown",
+            "version": "unknown",
+            "nodes": {},
+            "resources": {}
+        }
         act_mode = "???"
         for line in in_dict["output"]:
             line = line.strip()
             if line:
                 first_word = line.split()[0].lower()
                 if line.startswith("====="):
-                    act_mode = {"???"  : "head",
-                                "head" : "main"}[act_mode]
+                    act_mode = {
+                        "???": "head",
+                        "head": "main"
+                    }[act_mode]
                 else:
                     if act_mode == "head":
                         if line.count(":"):
@@ -171,7 +175,7 @@ class heartbeat_status_command(hm_classes.hm_command):
                             node_list = line.split("[")[1].split("]")[0].strip().split()
                             online = first_word.startswith("online")
                             for node in node_list:
-                                r_dict["nodes"][node] = {"online" : online}
+                                r_dict["nodes"][node] = {"online": online}
                         else:
                             line_split = line.lower().split()
                             if len(line_split) == 4:
@@ -179,13 +183,13 @@ class heartbeat_status_command(hm_classes.hm_command):
                                 res_node = res_node.split(".")[0]
                                 if (res_node == local_node and only_local_resources):
                                     r_dict["resources"][res_name] = {
-                                        "type"   : res_type,
-                                        "status" : res_status,
+                                        "type": res_type,
+                                        "status": res_status,
                                     }
                                 elif (not only_local_resources) or (not local_node):
                                     r_dict["resources"][res_name] = {
-                                        "type"   : res_type,
-                                        "status" : res_status,
-                                        "node"   : res_node,
+                                        "type": res_type,
+                                        "status": res_status,
+                                        "node": res_node,
                                     }
         return r_dict
