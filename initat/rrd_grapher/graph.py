@@ -22,7 +22,7 @@
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, rms_job_run
+from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
@@ -48,17 +48,17 @@ def strftime(in_dt, comp_dt=None):
     if comp_dt is None:
         now = datetime.datetime.now()
         if now.year == in_dt.year:
-            return in_dt.strftime("%d. %b, %H:%m:%S")
+            return cluster_timezone.normalize(in_dt).strftime("%d. %b, %H:%M:%S")
         else:
-            return in_dt.strftime("%d. %b %Y, %H:%m:%S")
+            return cluster_timezone.normalize(in_dt).strftime("%d. %b %Y, %H:%M:%S")
     else:
         if comp_dt.year == in_dt.year:
             if comp_dt.month == in_dt.month and comp_dt.day == in_dt.day:
-                return in_dt.strftime("%H:%m:%S")
+                return cluster_timezone.normalize(in_dt).strftime("%H:%m:%S")
             else:
-                return in_dt.strftime("%d. %b, %H:%m:%S")
+                return cluster_timezone.normalize(in_dt).strftime("%d. %b, %H:%M:%S")
         else:
-            return in_dt.strftime("%d. %b %Y, %H:%m:%S")
+            return cluster_timezone.normalize(in_dt).strftime("%d. %b %Y, %H:%M:%S")
 
 
 class colorizer(object):
@@ -380,6 +380,12 @@ class RRDGraph(object):
                     ) | (
                         Q(end_time_py__lte=self.para_dict["end_time"]) &
                         Q(end_time_py__gte=self.para_dict["start_time"])
+                    ) | (
+                        Q(start_time__lte=self.para_dict["end_time"]) &
+                        Q(start_time__gte=self.para_dict["start_time"])
+                    ) | (
+                        Q(end_time__lte=self.para_dict["end_time"]) &
+                        Q(end_time__gte=self.para_dict["start_time"])
                     )
                 )
             ).prefetch_related(
@@ -392,7 +398,12 @@ class RRDGraph(object):
                 "rms_job__jobid",
                 "rms_job__taskid"
             )
-            self.log("jobs to add: {:d}".format(_jobs.count()))
+            self.log(
+                "jobs to add: {:d}, {}".format(
+                    _jobs.count(),
+                    ", ".join(sorted([_run.rms_job.full_id for _run in _jobs]))
+                )
+            )
             for _run in _jobs:
                 _pe_info = _run.rms_pe_info()
                 if not _pe_info:
@@ -516,27 +527,27 @@ class RRDGraph(object):
                                     _job_info["hostname"],
                                 )
                             if _job_info["start_time"] and _job_info["end_time"]:
-                                rrd_args.append(
-                                    "VRULE:{}#4444ee:{}".format(
-                                        int((_job_info["start_time"] - dt_1970).total_seconds()),
-                                        rrd_escape(
-                                            "{} start".format(
-                                                _job_info["job"],
+                                rrd_args.extend(
+                                    [
+                                        "VRULE:{}#4444ee:{}".format(
+                                            int((_job_info["start_time"] - dt_1970).total_seconds()),
+                                            rrd_escape(
+                                                "{} start".format(
+                                                    _job_info["job"],
+                                                )
                                             )
-                                        )
-                                    )
-                                )
-                                rrd_args.append(
-                                    "VRULE:{}#ee4444:{}\l".format(
-                                        int((_job_info["end_time"] - dt_1970).total_seconds()),
-                                        rrd_escape(
-                                            "end, {} - {}, {}".format(
-                                                strftime(_job_info["start_time"]),
-                                                strftime(_job_info["end_time"], _job_info["start_time"]),
-                                                _us_info,
+                                        ),
+                                        "VRULE:{}#ee4444:{}\l".format(
+                                            int((_job_info["end_time"] - dt_1970).total_seconds()),
+                                            rrd_escape(
+                                                "end, {} - {}, {}".format(
+                                                    strftime(_job_info["start_time"]),
+                                                    strftime(_job_info["end_time"], _job_info["start_time"]),
+                                                    _us_info,
+                                                )
                                             )
-                                        )
-                                    )
+                                        ),
+                                    ]
                                 )
                             elif _job_info["start_time"]:
                                 rrd_args.append(
