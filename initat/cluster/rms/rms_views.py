@@ -126,20 +126,7 @@ def _rms_headers(request):
                 sge_tools.get_node_headers(get_node_options(request)),
             ),
             E.done_headers(
-                E.job(
-                    E.job_id(),
-                    E.task_id(),
-                    E.name(),
-                    E.granted_pe(),
-                    E.owner(),
-                    E.queue_time(span="1"),
-                    E.start_time(),
-                    E.end_time(),
-                    E.queue(),
-                    E.exit_status(),
-                    E.failed(span="2"),
-                    E.nodelist(),
-                )
+                sge_tools.get_done_headers()
             ),
         )
     else:

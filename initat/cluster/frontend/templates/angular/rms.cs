@@ -94,7 +94,7 @@ iostruct = """
 """
 
 headers = """
-<th ng-repeat="entry in struct.display_headers()" colspan="{{ struct.get_span(entry) }}">{{ entry }}</th>
+<th ng-repeat="entry in struct.display_headers()" colspan="{{ struct.get_span(entry) }}">{{ struct.get_header(entry) }}</th>
 """
 
 header_toggle = """
@@ -262,6 +262,12 @@ rmsdoneline = """
 <td ng-show="done_struct.toggle['end_time']">
     {{ get_datetime(data.end_time) }}
 </td>
+<td ng-show="done_struct.toggle['wait_time']">
+    {{ get_waittime(data) }}
+</td>
+<td ng-show="done_struct.toggle['run_time']">
+    {{ get_runtime(data) }}
+</td>
 <td ng-show="done_struct.toggle['queue']">
     {{ data.rms_queue.name }}
 </td>
@@ -399,11 +405,11 @@ angular_module_setup([rms_module])
 LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
-    constructor: (@table, header_struct, @hidden_headers) ->
+    constructor: (@table, h_struct, @hidden_headers) ->
         _dict = {}
         @headers = []
         @attributes = {}
-        for entry in header_struct
+        for entry in h_struct
             @headers.push(entry[0])
             @attributes[entry[0]] = entry[1]
             _dict[entry[0]] = true
@@ -452,6 +458,10 @@ class header_struct
             return @attributes[entry].span
         else
             return 1
+    get_header: (h_str) ->
+        # CamelCase
+        h_str = (_entry.substr(0, 1).toUpperCase() + _entry.substr(1) for _entry in h_str.split("_")).join("")
+        return h_str
         
 class io_struct
     constructor : (@job_id, @task_id, @type) ->
@@ -869,6 +879,22 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     return moment.unix(dt).format(DT_FORM)
                 else
                     return "---"
+            scope.get_runtime = (data) ->
+                if data.start_time and data.end_time
+                    _et = moment.unix(data.end_time)
+                    _st = moment.unix(data.start_time)
+                    _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
+                    return _diff.humanize()
+                else
+                    return "---"     
+            scope.get_waittime = (data) ->
+                if data.rms_job.queue_time and data.start_time
+                    _et = moment.unix(data.start_time)
+                    _st = moment.unix(data.rms_job.queue_time)
+                    _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
+                    return _diff.humanize()
+                else
+                    return "---"     
             scope.get_display_data = (data) ->
                 return scope[scope.struct_name].display_data(data)
             scope.show_pe_info = (data) ->
