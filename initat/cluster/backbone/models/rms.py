@@ -128,6 +128,13 @@ class rms_job(models.Model):
     queue_time = models.DateTimeField(null=True)
     date = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def full_id(self):
+        return "{:d}{}".format(
+            self.jobid,
+            ".{:d}".format(self.taskid) if self.taskid else "",
+        )
+
     def get_queue_time(self):
         return time.mktime(cluster_timezone.normalize(self.queue_time).timetuple()) if self.queue_time else ""
 
@@ -156,10 +163,7 @@ class rms_job(models.Model):
         return _latest_run
 
     def __unicode__(self):
-        return "job {:d}{}".format(
-            self.jobid,
-            ".{:d}".format(self.taskid) if self.taskid else "",
-        )
+        return "job {}".format(self.full_id)
 
     class Meta:
         app_label = "backbone"
@@ -195,6 +199,7 @@ class rms_job_run(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def rms_pe_info(self):
+        # used by serializer and rrd-grapher.initat.graph"
         return [
             {
                 "device": _pe_info.device_id,
@@ -216,7 +221,7 @@ class rms_job_run(models.Model):
         return time.mktime(cluster_timezone.normalize(self.end_time_py).timetuple()) if self.end_time_py else ""
 
     def __unicode__(self):
-        return "run for job {} in queue {}".format(
+        return "run for {} in {}".format(
             unicode(self.rms_job),
             unicode(self.rms_queue),
         )
