@@ -254,7 +254,7 @@ rmsdoneline = """
     {{ data.rms_job.owner }}
 </td>
 <td ng-show="done_struct.toggle['queue_time']">
-    {{ get_datetime(data.rms_job.queue_time) }}
+    {{ get_datetime(data.queue_time) }}
 </td>
 <td ng-show="done_struct.toggle['start_time']">
     {{ get_datetime(data.start_time) }}
@@ -888,9 +888,9 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else
                     return "---"     
             scope.get_waittime = (data) ->
-                if data.rms_job.queue_time and data.start_time
+                if data.queue_time and data.start_time
                     _et = moment.unix(data.start_time)
-                    _st = moment.unix(data.rms_job.queue_time)
+                    _st = moment.unix(data.queue_time)
                     _diff = moment.duration(_et.diff(_st, "seconds"), "seconds")
                     return _diff.humanize()
                 else
