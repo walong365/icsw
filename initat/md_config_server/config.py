@@ -2286,6 +2286,9 @@ class all_contact_groups(host_type_config):
     def __getitem__(self, key):
         return self.__dict[key]
 
+    def __contains__(self, key):
+        return key in self.__dict__
+
     def get_object_list(self):
         return self.__obj_list
 
