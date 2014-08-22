@@ -76,6 +76,7 @@ if "initat.cluster.liebherr" in init_apps:
 #        # 'network_type' : reverse('rest:network_type_list_h', request=request),
 #    })
 
+
 def csw_exception_handler(exc):
     response = exception_handler(exc)
     if response is None:
@@ -90,7 +91,7 @@ def csw_exception_handler(exc):
         detail_info = list(set([_entry for _entry in [_part.strip() for _part in detail_info if _part.strip()] if _entry not in ["()"]]))
         response = Response(
             {
-                "detail" : "%s%s" % (
+                "detail": "%s%s" % (
                     detail_str,
                     " (%s)" % (", ".join(detail_info)) if detail_info else ""
                 ),
@@ -99,19 +100,23 @@ def csw_exception_handler(exc):
         )
     return response
 
+
 class rest_logging(object):
     def __init__(self, func):
         self._func = func
         self.__name__ = self._func.__name__
         self.__obj_name = None
+
     def __get__(self, obj, owner_class=None):
         # magic ...
         return types.MethodType(self, obj)
+
     def log(self, what="", log_level=logging_tools.LOG_LEVEL_OK):
         logger.log(log_level, "[%s%s] %s" % (
             self.__name__,
             " %s" % (self.__obj_name) if self.__obj_name else "",
             what))
+
     def __call__(self, *args, **kwargs):
         s_time = time.time()
         if hasattr(args[0], "model"):
@@ -121,9 +126,12 @@ class rest_logging(object):
         try:
             result = self._func(*args, **kwargs)
         except:
-            self.log("exception: %s" % (
-                process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "exception: %s" % (
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
                 self.log("  %s" % (line))
@@ -133,55 +141,77 @@ class rest_logging(object):
             logging_tools.get_diff_time_str(e_time - s_time)))
         return result
 
+
 class db_prefetch_mixin(object):
     def _kernel_prefetch(self):
         return ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]
+
     def _image_prefetch(self):
         return ["new_image", "act_image"]
+
     def _partition_table_prefetch(self):
         return [
             "new_partition_table", "act_partition_table", "sys_partition_set",
-            "lvm_lv_set__partition_fs" , "lvm_vg_set", "partition_disc_set__partition_set__partition_fs"]
+            "lvm_lv_set__partition_fs", "lvm_vg_set", "partition_disc_set__partition_set__partition_fs"
+        ]
+
     def _mon_period_prefetch(self):
         return ["service_check_period"]
+
     def _device_related(self):
         return ["domain_tree_node", "device_type", "device_group", "mon_ext_host"]
+
     def _mon_check_command_prefetch(self):
         return ["exclude_devices", "categories"]
+
     def _mon_host_cluster_prefetch(self):
         return ["devices"]
+
     def _mon_host_dependency_prefetch(self):
         return ["devices", "dependent_devices"]
+
     def _network_prefetch(self):
         return ["network_device_type", "net_ip_set"]
+
     def _netdevice_prefetch(self):
         return ["net_ip_set"]
+
     def _user_related(self):
         return ["group"]
+
     def _background_job_related(self):
         return ["initiator__domain_tree_node", "user"]
+
     def _user_prefetch(self):
         return ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]
+
     def _group_related(self):
         return ["parent_group"]
+
     def _group_prefetch(self):
         return ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]
+
     def _config_prefetch(self):
         return [
             "categories", "config_str_set", "config_int_set", "config_blob_set",
             "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
             "device_config_set"]
+
     def _cransys_dataset_prefetch(self):
         return ["cransys_job_set", "cransys_job_set__cransys_run_set"]
+
     def _config_hint_prefetch(self):
         return [
             "config_var_hint_set",
             "config_script_hint_set",
         ]
+
     def _mon_dist_master_prefetch(self):
         return ["mon_dist_slave_set"]
+
     def _macbootlog_related(self):
         return ["device__domain_tree_node"]
+
 
 class detail_view(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
@@ -191,6 +221,7 @@ class detail_view(mixins.RetrieveModelMixin,
     @rest_logging
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
+
     @rest_logging
     def get_serializer_class(self):
         if self.model._meta.object_name == "partition_table":
@@ -199,6 +230,7 @@ class detail_view(mixins.RetrieveModelMixin,
             return partition_disc_serializer_save
         else:
             return self.serializer_class
+
     @rest_logging
     def get_queryset(self):
         model_name = self.model._meta.model_name
@@ -208,6 +240,7 @@ class detail_view(mixins.RetrieveModelMixin,
         )
         res = self.model.objects
         return res.select_related(*related_fields).prefetch_related(*prefetch_fields)
+
     @rest_logging
     def put(self, request, *args, **kwargs):
         req_changes = request.DATA
@@ -228,11 +261,14 @@ class detail_view(mixins.RetrieveModelMixin,
         resp.data["_change_list"] = c_list
         resp.data["_reset_list"] = r_list
         return resp
+
     @rest_logging
     def delete(self, request, *args, **kwargs):
         # just be careful
         cur_obj = self.model.objects.get(Q(pk=kwargs["pk"]))
-        ignore_objs = {"device_group" : list(device.objects.filter(Q(device_group=kwargs["pk"]) & Q(device_type__identifier="MD")))}.get(self.model._meta.object_name, [])
+        ignore_objs = {
+            "device_group": list(device.objects.filter(Q(device_group=kwargs["pk"]) & Q(device_type__identifier="MD")))
+        }.get(self.model._meta.object_name, [])
         num_refs = get_related_models(cur_obj, ignore_objs=ignore_objs)
         if num_refs:
             logger.error("lock_list for {} contains {}:".format(unicode(cur_obj), logging_tools.get_plural("entry", len(cur_obj._lock_list))))
@@ -252,6 +288,7 @@ class detail_view(mixins.RetrieveModelMixin,
             # resp.data["_messages"] = [u"deleted '%s'" % (unicode(cur_obj))]
             # return resp
 
+
 class list_view(mixins.ListModelMixin,
                 mixins.CreateModelMixin,
                 generics.MultipleObjectAPIView,
@@ -260,12 +297,14 @@ class list_view(mixins.ListModelMixin,
     @rest_logging
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
+
     @rest_logging
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
         return resp
+
     @rest_logging
     def get_serializer_class(self):
         if self.request.method == "POST":
@@ -276,6 +315,7 @@ class list_view(mixins.ListModelMixin,
                 if "_with_ip_info" in self.request.QUERY_PARAMS:
                     return network_with_ip_serializer
         return self.serializer_class
+
     @rest_logging
     def get_queryset(self):
         model_name = self.model._meta.model_name
@@ -294,7 +334,7 @@ class list_view(mixins.ListModelMixin,
             if key.startswith("_"):
                 special_dict[key[1:]] = value
             else:
-                filter_list.append(Q(**{key : value}))
+                filter_list.append(Q(**{key: value}))
         if filter_list:
             res = res.filter(reduce(operator.iand, filter_list))
         res = res.select_related(*related_fields).prefetch_related(*prefetch_fields)
@@ -304,12 +344,15 @@ class list_view(mixins.ListModelMixin,
             res = res[0:special_dict["num_entries"]]
         return res
 
+
 class form_serializer(serializers.Serializer):
     name = serializers.CharField()
     form = serializers.CharField()
 
+
 class fetch_forms(viewsets.ViewSet):
     display_name = "fetch_forms"
+
     @rest_logging
     def list(self, request):
         form_list = json.loads(request.QUERY_PARAMS["forms"])
@@ -318,12 +361,12 @@ class fetch_forms(viewsets.ViewSet):
             if cur_form in dir(forms):
                 ext_list.append(
                     {
-                        "name" : "%s.html" % (cur_form),
-                        "form" : render_string(
+                        "name": "%s.html" % (cur_form),
+                        "form": render_string(
                             request,
                             "crispy_form.html",
                             {
-                                "form" : getattr(forms, cur_form)()
+                                "form": getattr(forms, cur_form)()
                             }
                         )
                     }
@@ -331,12 +374,13 @@ class fetch_forms(viewsets.ViewSet):
             else:
                 ext_list.append(
                     {
-                        "name" : "%s.html" % (cur_form),
-                        "form" : "<strong>form '%s' not found</strong>" % (cur_form)
+                        "name": "%s.html" % (cur_form),
+                        "form": "<strong>form '%s' not found</strong>" % (cur_form)
                     }
                 )
         _ser = form_serializer(ext_list, many=True)
         return Response(_ser.data)
+
 
 class ext_peer_object(dict):
     def __init__(self, *args, **kwargs):
@@ -345,6 +389,7 @@ class ext_peer_object(dict):
             self["device__name"],
             ".{}".format(self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
             )
+
 
 class ext_peer_serializer(serializers.Serializer):
     idx = serializers.IntegerField(source="pk")
@@ -355,37 +400,53 @@ class ext_peer_serializer(serializers.Serializer):
     routing = serializers.BooleanField()
     fqdn = serializers.CharField()
 
+
 class netdevice_peer_list(viewsets.ViewSet):
     display_name = "netdevice_peer_list"
+
     @rest_logging
     def list(self, request):
-        ext_list = [ext_peer_object(**_obj) for _obj in netdevice.objects \
-            .filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)) \
-            .filter(Q(enabled=True)) \
-            .filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
-            .distinct() \
-            .order_by("device__device_group__name", "device__name", "devname") \
-            .select_related("device", "device__device_group", "device__domain_tree_node").values("pk", "devname", "penalty", "device__name", "device__device_group__name", "routing", "device__domain_tree_node__full_name")
+        ext_list = [
+            ext_peer_object(**_obj) for _obj in netdevice.objects.filter(
+                Q(device__enabled=True) & Q(device__device_group__enabled=True)
+            ).filter(
+                Q(enabled=True)
+            ).filter(
+                Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)
+            ).distinct().order_by(
+                "device__device_group__name",
+                "device__name",
+                "devname"
+            ).select_related(
+                "device",
+                "device__device_group",
+                "device__domain_tree_node"
+            ).values("pk", "devname", "penalty", "device__name", "device__device_group__name", "routing", "device__domain_tree_node__full_name")
         ]
         # .filter(Q(net_ip__network__network_type__identifier="x") | Q(net_ip__network__network_type__identifier__in=["p", "o", "s", "b"])) \
         _ser = ext_peer_serializer(ext_list, many=True)
         return Response(_ser.data)
+
 
 class rest_home_export_list(mixins.ListModelMixin,
                             generics.MultipleObjectAPIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device_config
+
     @rest_logging
     def get_serializer_class(self):
         return device_config_help_serializer
+
     @rest_logging
     def get(self, request, *args, **kwargs):
         # print self.list(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
+
     @rest_logging
     def get_queryset(self):
         return home_export_list().all()
+
 
 class csw_object_serializer(serializers.Serializer):
     idx = serializers.IntegerField()
@@ -393,16 +454,19 @@ class csw_object_serializer(serializers.Serializer):
     group = serializers.CharField()
     tr_class = serializers.CharField()
 
+
 class csw_object_group_serializer(serializers.Serializer):
     content_label = serializers.CharField()
     content_type = serializers.IntegerField()
     object_list = csw_object_serializer(many=True)
+
 
 class csw_object_group(object):
     def __init__(self, ct_label, ct_idx, obj_list):
         self.content_label = ct_label
         self.content_type = ct_idx
         self.object_list = obj_list
+
 
 class csw_object(object):
     def __init__(self, idx, name, group, tr_class):
@@ -411,8 +475,10 @@ class csw_object(object):
         self.group = group
         self.tr_class = tr_class
 
+
 class csw_object_list(viewsets.ViewSet):
     display_name = "csw_object_groups"
+
     @rest_logging
     def list(self, request):
         all_db_perms = csw_permission.objects.filter(Q(valid_for_object_level=True)).select_related("content_type")
@@ -427,6 +493,7 @@ class csw_object_list(viewsets.ViewSet):
             group_list.append(cur_group)
         _ser = csw_object_group_serializer(group_list, many=True)
         return Response(_ser.data)
+
     def _get_objects(self, cur_ct, perm_list):
         cur_model = get_model(cur_ct.app_label, cur_ct.name)
         _q = cur_model.objects
@@ -438,11 +505,13 @@ class csw_object_list(viewsets.ViewSet):
         if _key == "backbone.user":
             _q = _q.select_related("group")
         return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
+
     def _get_name(self, _key, cur_obj):
         if _key == "backbone.device":
             if cur_obj.device_type.identifier == "MD":
                 return unicode(cur_obj)[8:] + (" [CDG]" if cur_obj.device_group.cluster_device_group else " [MD]")
         return unicode(cur_obj)
+
     def _get_group(self, _key, cur_obj):
         if _key == "backbone.device":
             return unicode(cur_obj.device_group)
@@ -450,12 +519,14 @@ class csw_object_list(viewsets.ViewSet):
             return unicode(cur_obj.group)
         else:
             return "top"
+
     def _tr_class(self, _key, cur_obj):
         _lt = ""
         if _key == "backbone.device":
             if cur_obj.device_type.identifier == "MD":
                 _lt = "warning"
         return _lt
+
 
 class device_tree_mixin(object):
     def _get_post_boolean(self, name, default):
@@ -467,9 +538,10 @@ class device_tree_mixin(object):
                 return False
         else:
             return default
+
     @rest_logging
     def _get_serializer_context(self):
-        ctx = {"request" : self.request}
+        ctx = {"request": self.request}
         if self.request.QUERY_PARAMS.get("olp", ""):
             ctx["olp"] = self.request.QUERY_PARAMS["olp"]
         _fields = []
@@ -493,11 +565,14 @@ class device_tree_mixin(object):
             ctx["fields"] = _fields
         return ctx
 
+
 class device_tree_detail(detail_view, device_tree_mixin):
     model = device
+
     @rest_logging
     def get_serializer_context(self):
         return self._get_serializer_context()
+
     @rest_logging
     def get_serializer_class(self):
         if self._get_post_boolean("tree_mode", False):
@@ -507,6 +582,7 @@ class device_tree_detail(detail_view, device_tree_mixin):
         else:
             return device_serializer
 
+
 class device_tree_list(mixins.ListModelMixin,
                        mixins.CreateModelMixin,
                        generics.MultipleObjectAPIView,
@@ -515,22 +591,27 @@ class device_tree_list(mixins.ListModelMixin,
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device
+
     @rest_logging
     def get_serializer_context(self):
         return self._get_serializer_context()
+
     @rest_logging
     def get_serializer_class(self):
         return device_serializer
+
     @rest_logging
     def get(self, request, *args, **kwargs):
         # print self.list(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
+
     @rest_logging
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
         return resp
+
     @rest_logging
     def get_queryset(self):
         # with_variables = self._get_post_boolean("with_variables", False)
@@ -541,7 +622,11 @@ class device_tree_list(mixins.ListModelMixin,
             if self.request.QUERY_PARAMS.get("olp", ""):
                 # object permissions needed for devices, get a list of all valid pks
                 allowed_pks = self.request.user.get_allowed_object_list(self.request.QUERY_PARAMS["olp"])
-                dg_list = list(device.objects.filter(Q(pk__in=allowed_pks)).values_list("pk", "device_group", "device_group__device", "device_type__identifier"))
+                dg_list = list(
+                    device.objects.filter(
+                        Q(pk__in=allowed_pks)
+                    ).values_list("pk", "device_group", "device_group__device", "device_type__identifier")
+                )
                 # meta_list, device group selected
                 meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt == "MD"])
                 # device list, direct selected
@@ -631,9 +716,11 @@ class device_tree_list(mixins.ListModelMixin,
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])
         return _q
 
+
 class device_selection_list(APIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
+
     def get(self, request):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
         return Response(ser.data)
@@ -646,8 +733,11 @@ for src_mod, obj_name in REST_LIST:
         globals()[class_name] = type(
             class_name,
             (detail_view,) if mode == "detail" else (list_view,),
-            {"authentication_classes" : (SessionAuthentication,),
-             "permission_classes"     : (IsAuthenticated,),
-             "model"                  : ser_class.Meta.model,
-             "serializer_class"       : ser_class})
+            {
+                "authentication_classes": (SessionAuthentication,),
+                "permission_classes": (IsAuthenticated,),
+                "model": ser_class.Meta.model,
+                "serializer_class": ser_class
+            }
+        )
 

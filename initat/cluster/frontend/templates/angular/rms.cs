@@ -137,6 +137,9 @@ rmsnodeline = """
 <td ng-show="node_struct.toggle['queues']">
     <queuestate operator="rms_operator" host="data"></queuestate>
 </td>
+<td ng-show="node_struct.toggle['type']">
+    {{ data.type.value }}
+</td>
 <td ng-show="node_struct.toggle['complex']">
     {{ data.complex.value }}
 </td>
@@ -272,8 +275,8 @@ rmsdoneline = """
     {{ data.rms_queue.name }}
 </td>
 <td ng-show="done_struct.toggle['exit_status']" ng-class="exit_status_wrapper_class(data)">
-    {{ data.exit_status }} {{ data.exit_status_str }}
-    <div class="pull-right" ng-show="special_exit_status(data)">
+    {{ get_exit_status_str(data) }} {{ data.exit_status_str }}
+    <div class="pull-right" ng-show="exit_status_class(data)">
         <span ng-class="exit_status_class(data)"></span>
     </div>
 </td>
@@ -607,6 +610,11 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             38 : [false, "adding supplementary group", "failed adding supplementary gid to job "]
             100 : [true, "assumedly after job", "ran, but killed by a signal (perhaps due to exceeding resources), task died, shepherd died (e.g. node crash),"]
         }
+        $scope.exit_status_lut = {
+            0 : [1, "ok", ""]
+            137 : [-1, "killed", "glyphicon-remove-circle"]
+            99 : [0, "rescheduled", "glyphicon-repeat"]
+        }
         $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [])
         $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [])
         $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [])
@@ -635,6 +643,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     url      : "{% url 'rms:get_rms_json' %}"
                     dataType : "json"
                     success  : (json) =>
+                        #console.log json
                         $scope.$apply(() ->
                             # reset counter
                             $scope.running_slots = 0
@@ -940,25 +949,36 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else
                     rrd_title = "finished job #{job_id} on node " + rrd_nodes[0]
                 scope.show_rrd(event, rrd_nodes, data.start_time, data.end_time, rrd_title, "selected", job_id)
-            scope.special_exit_status = (data) ->
-                if data.exit_status in [99, 137]
-                    return true
-                else
-                    return false    
             scope.exit_status_wrapper_class = (data) ->
-                if data.exit_status in [99]
-                    return "warn"
-                else if data.exit_status in [137]
-                    return "danger"
+                if data.exit_status of scope.exit_status_lut
+                    _td_type = scope.exit_status_lut[data.exit_status][0]
+                    if _td_type == 0
+                        return "warn"
+                    else if _td_type == 1
+                        return "ok"
+                    else
+                        return "danger"     
                 else
-                    return "ok"
+                    if data.exit_status > 128
+                        return "danger"
+                    else if data.exit_status
+                        return "warn"
+                    else
+                        return "ok"
             scope.exit_status_class = (data) ->
-                if data.exit_status == 99
-                    return "glyphicon glyphicon-repeat"
-                else if data.exit_status == 137
-                    return "glyphicon glyphicon-remove-circle"
+                if data.exit_status of scope.exit_status_lut
+                    _glyph = scope.exit_status_lut[data.exit_status][2]
+                    if _glyph
+                        return "glyphicon #{_glyph}"
+                    else
+                        return ""
                 else
-                    return ""
+                    return ""        
+            scope.get_exit_status_str = (data) ->
+                if data.exit_status of scope.exit_status_lut
+                    return scope.exit_status_lut[data.exit_status][1]
+                else
+                    return data.exit_status
             scope.get_failed_str = (data) ->
                 if data.failed of scope.failed_lut
                     return scope.failed_lut[data.failed][1]
@@ -1038,6 +1058,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.get_load = (load) ->
                 cur_m = load.value.match(LOAD_RE)
                 if cur_m
+                    # console.log parseFloat(load.value), (100 * parseFloat(load.value)), (100 * parseFloat(load.value)) / scope.max_load, String((100 * parseFloat(load.value)) / scope.max_load)
                     return String((100 * parseFloat(load.value)) / scope.max_load)
                 else
                     return 0

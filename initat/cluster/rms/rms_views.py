@@ -63,10 +63,10 @@ if sge_tools:
             sge_tools.sge_info.__init__(
                 self,
                 server="127.0.0.1",
-                default_pref=["server"],
-                never_direct=True,
+                source="server",
                 run_initial_update=False,
-                verbose=settings.DEBUG
+                verbose=settings.DEBUG,
+                persistent_socket=True,
             )
 
         def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -75,7 +75,7 @@ if sge_tools:
         def update(self):
             self.lock.acquire()
             try:
-                sge_tools.sge_info.update(self)
+                sge_tools.sge_info.update(self)  # , force_update=True)
                 sge_tools.sge_info.build_luts(self)
             finally:
                 self.lock.release()
@@ -92,28 +92,31 @@ def get_job_options(request):
 
 
 def get_node_options(request):
-    return sge_tools.get_empty_node_options(merge_node_queue=True)
+    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True)
 
+
+def rms_overview(request, template):
+    res = rms_headers(request)
+    if sge_tools is not None:
+        for change_obj in RMS_ADDONS:
+            change_obj.modify_headers(res)
+    header_dict = {}
+    for _entry in res:
+        _sub_list = header_dict.setdefault(_entry.tag, [])
+        if len(_entry):
+            for _header in _entry[0]:
+                _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
+    return render_me(request, template, {
+        "RMS_HEADERS": json.dumps(header_dict)
+    })()
 
 class overview(View):
     @method_decorator(login_required)
     def get(self, request):
-        res = _rms_headers(request)
-        if sge_tools is not None:
-            for change_obj in RMS_ADDONS:
-                change_obj.modify_headers(res)
-        header_dict = {}
-        for _entry in res:
-            _sub_list = header_dict.setdefault(_entry.tag, [])
-            if len(_entry):
-                for _header in _entry[0]:
-                    _sub_list.append((_header.tag, {key: value for key, value in _header.attrib.iteritems()}))
-        return render_me(request, "rms_overview.html", {
-            "RMS_HEADERS": json.dumps(header_dict)
-        })()
+        return rms_overview(request, "rms_overview.html")
 
 
-def _rms_headers(request):
+def rms_headers(request):
     if sge_tools:
         res = E.headers(
             E.running_headers(
@@ -138,7 +141,7 @@ class get_header_xml(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        res = _rms_headers(request)
+        res = rms_headers(request)
         if sge_tools is not None:
             for change_obj in RMS_ADDONS:
                 change_obj.modify_headers(res)
@@ -173,7 +176,7 @@ class get_rms_json(View):
         node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
         if RMS_ADDONS:
             for change_obj in RMS_ADDONS:
-                change_obj.set_headers(_rms_headers(request))
+                change_obj.set_headers(rms_headers(request))
                 change_obj.modify_running_jobs(my_sge_info, run_job_list)
                 change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
                 change_obj.modify_nodes(my_sge_info, node_list)
