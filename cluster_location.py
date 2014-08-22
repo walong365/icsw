@@ -20,8 +20,8 @@
 """ module for checking current server status and extracting routes to other server """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device_variable, config, device, config_blob, config_bool, \
-     config_int, config_str, net_ip
+from initat.cluster.backbone.models import device_variable, config, device, config_blob, \
+    config_bool, config_int, config_str, net_ip
 import array
 import config_tools
 import configfile
@@ -31,11 +31,12 @@ import process_tools
 import socket
 
 _VAR_LUT = {
-    "int" : config_int,
-    "str" : config_str,
-    "blob" : config_blob,
-    "bool" : config_bool,
+    "int": config_int,
+    "str": config_str,
+    "blob": config_blob,
+    "bool": config_bool,
 }
+
 
 def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwargs):
     if not host_name:
@@ -59,7 +60,8 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                 for db_rec in src_sql_obj.filter(
                     (Q(device=0) | Q(device=None) | Q(device=serv_idx)) &
                     (Q(config__name=real_config_name)) &
-                    (Q(config__device_config__device=serv_idx))):
+                    (Q(config__device_config__device=serv_idx))
+                ):
                     if db_rec.name.count(":"):
                         var_global = False
                         local_host_name, var_name = db_rec.name.split(":", 1)
@@ -95,6 +97,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                 if not wo_var_name in g_config or g_config.get_source(wo_var_name) == "default":
                     g_config.add_config_entries([(wo_var_name, wo_var)])
 
+
 def read_global_config(dc, server_type, init_dict=None, host_name=""):
     if init_dict is None:
         init_dict = {}
@@ -102,6 +105,7 @@ def read_global_config(dc, server_type, init_dict=None, host_name=""):
     # FIXME
     # reload_global_config(dc, gcd, server_type, host_name)
     return gcd
+
 
 class db_device_variable(object):
     def __init__(self, cur_dev, var_name, **kwargs):
@@ -130,6 +134,7 @@ class db_device_variable(object):
         if (not self.__act_dv and "value" in kwargs) or kwargs.get("force_update", False):
             # update if device_variable not found and kwargs[value] is set
             self.update()
+
     def update(self):
         if self.__act_dv:
             self.__act_dv.description = self.__description
@@ -143,24 +148,28 @@ class db_device_variable(object):
                 device=self.__device)
             setattr(self.__act_dv, "val_%s" % (self.__var_type_name), self.__var_value)
         self.__act_dv.save()
+
     def is_set(self):
         return True if self.__act_dv else False
+
     def set_stuff(self, **kwargs):
         if "value" in kwargs:
             self.set_value(kwargs["value"])
         if "var_type" in kwargs:
             self.__var_type = kwargs["var_type"]
             self.__var_type_name = {
-                "s" : "str",
-                "i" : "int" ,
-                "b" : "blob",
-                "t" : "time",
-                "d" : "date"}[self.__var_type]
+                "s": "str",
+                "i": "int",
+                "b": "blob",
+                "t": "time",
+                "d": "date"
+            }[self.__var_type]
         if "description" in kwargs:
             self.__description = kwargs["description"]
+
     def set_value(self, value, type_ok=False):
         if not type_ok:
-            if type(value) == type(""):
+            if type(value) in [str, unicode]:
                 v_type = "s"
             elif type(value) in [type(0), type(0L)]:
                 v_type = "i"
@@ -172,13 +181,16 @@ class db_device_variable(object):
                 v_type = "b"
             self.set_stuff(var_type=v_type)
         self.__var_value = value
+
     def get_value(self):
         return self.__var_value
+
 
 def strip_description(descr):
     if descr:
         descr = " ".join([entry for entry in descr.strip().split() if not entry.count("(default)")])
     return descr
+
 
 def write_config(server_type, g_config, **kwargs):
     log_lines = []
@@ -186,10 +198,10 @@ def write_config(server_type, g_config, **kwargs):
     host_name = full_host_name.split(".")[0]
     srv_info = config_tools.server_check(server_type=server_type, short_host_name=host_name)
     type_dict = {
-        "i" : config_int,
-        "s" : config_str,
-        "b" : config_bool,
-        "B" : config_blob,
+        "i": config_int,
+        "s": config_str,
+        "b": config_bool,
+        "B": config_blob,
     }
     if srv_info.device and srv_info.config:
         for key in sorted(g_config.keys()):
@@ -260,6 +272,7 @@ def write_config(server_type, g_config, **kwargs):
                 pass
     return log_lines
 
+
 class device_recognition(object):
     def __init__(self, **kwargs):
         self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
@@ -281,6 +294,7 @@ class device_recognition(object):
         if self_ips:
             self.device_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(netdevice__net_ip__ip__in=self_ips))])
 
+
 def is_server(server_type, long_mode=False, report_real_idx=False, short_host_name="", **kwargs):
     # we dont check meta-settings (settings via group)
     server_idx, s_type, s_str, config_idx, real_server_name = (0, "unknown", "not configured", 0, server_type)
@@ -299,10 +313,10 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
         dev_pk = 0
     my_confs = config.objects.filter(
         Q(device_config__device__name=short_host_name) &
-        Q(**{dmatch_str : server_type})
-        ).distinct().values_list(
-            "device_config__device", "pk", "name"
-        )
+        Q(**{dmatch_str: server_type})
+    ).distinct().values_list(
+        "device_config__device", "pk", "name"
+    )
     num_servers = len(my_confs)
     # print "*", num_servers
     if num_servers == 1:
@@ -322,14 +336,15 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
         _local_ips = net_ip.objects.filter(Q(netdevice__device__name=short_host_name)).values_list("ip", flat=True)
         # get all ips for the given config
         my_confs = config.objects.filter(
-            Q(**{dmatch_str : server_type})
-            ).values_list(
-                "device_config__device",
-                "pk",
-                "name",
-                "device_config__device__device_group__device_group",
-                "device_config__device__device_group__device_group__name",
-                "device_config__device__device_group__device_group__netdevice__net_ip__ip")
+            Q(**{dmatch_str: server_type})
+        ).values_list(
+            "device_config__device",
+            "pk",
+            "name",
+            "device_config__device__device_group__device_group",
+            "device_config__device__device_group__device_group__name",
+            "device_config__device__device_group__device_group__netdevice__net_ip__ip"
+        )
         my_confs = [entry for entry in my_confs if entry[-1] and entry[-1] not in ["127.0.0.1"]]
         # pprint.pprint(my_confs)
         # check for virtual-device

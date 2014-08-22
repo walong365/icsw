@@ -26,6 +26,7 @@ import logging_tools
 import os
 import re
 
+
 class dependency_handler(object):
     def __init__(self, kernel_dir, **kwargs):
         self.log_com = kwargs.get("log_com", None)
@@ -34,13 +35,16 @@ class dependency_handler(object):
         # linux_natvie = False (default) for ICSW /tftpboot/kernels/<kernel>/lib/modules/<kernel> structure
         self.linux_native = kwargs.get("linux_native", False)
         self.log("kernel_dir is {}".format(self.kernel_dir))
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.log_com:
             self.log_com("[dh] {}".format(what), log_level)
         else:
             print "[dh {:2d} {}] {}".format(log_level, logging_tools.get_log_level_str(log_level), what)
+
     def _shorten_module_name(self, mod_name):
         return mod_name.endswith(".ko") and mod_name[:-3] or (mod_name.endswith(".o") and mod_name[:-2] or mod_name)
+
     def get_dep_file_name(self, ftype="dep"):
         if self.linux_native:
             dep_file_dir = self.kernel_dir
@@ -59,9 +63,10 @@ class dependency_handler(object):
             self.log("dep_dir {} not found".format(dep_file_dir), logging_tools.LOG_LEVEL_ERROR)
             dep_file = None
         return dep_file
+
     def find_module_by_modalias(self, alias_list, **kwargs):
         dep_file = self.get_dep_file_name(ftype="alias")
-        resolv_dict = {key : [] for key in alias_list}
+        resolv_dict = {key: [] for key in alias_list}
         for line in file(dep_file, "r").readlines():
             _parts = line.strip().split()
             if len(_parts) > 2 and _parts[0] == "alias" and _parts[1].startswith("pci:"):
@@ -74,9 +79,10 @@ class dependency_handler(object):
                     for cur_alias in alias_list:
                         if _mc.match(cur_alias):
                             _mod = _parts[2]
-                            if not _mod in resolv_dict[cur_alias]:
+                            if _mod not in resolv_dict[cur_alias]:
                                 resolv_dict[cur_alias].append(_mod)
         return resolv_dict
+
     def resolve(self, mod_list, **kwargs):
         verbose = kwargs.get("verbose", 0)
         # pure module names
@@ -167,4 +173,3 @@ class dependency_handler(object):
         self.module_dict = mod_dict
         self.module_list = [file_dict[entry] for entry in matches_found]
         self.error_list = not_found_mods
-
