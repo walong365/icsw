@@ -116,7 +116,7 @@ class rms_mon_process(threading_tools.process_obj):
         # job stop/start info
         self.register_func("job_ss_info", self._job_ss_info)
         self.register_timer(self._update, 30)
-        self.register_timer(self._check_accounting, 3600)
+        self.register_timer(self._check_accounting, 600)
         # full scan done ?
         self.__full_scan_done = False
         # caching
@@ -131,7 +131,7 @@ class rms_mon_process(threading_tools.process_obj):
             run_initial_update=False,
             verbose=True if global_config["DEBUG"] else False,
             is_active=True,
-            always_direct=True,
+            source="local",
             sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]]))
         self._update()
         # set environment
