@@ -263,7 +263,7 @@ class my_opt_parser(argparse.ArgumentParser):
     def __init__(self, run_mode):
         argparse.ArgumentParser.__init__(self)
         if run_mode in ["sjs", "sns"]:
-            self.add_argument("--direct", dest="direct", default=False, action="store_true", help="do not connect sge-server [%(default)s]")
+            self.add_argument("--source", dest="source", default="local", choices=["local", "server"], help="specify data source [%(default)s]")
             self.add_argument("-m", dest="show_memory", help="show memory information [%(default)s]", action="store_true", default=False)
             self.add_argument("-s", dest="suppress_status", help="suppress status [%(default)s]", action="store_true", default=False)
             self.add_argument("-S", dest="long_status", help="show long status [%(default)s]", action="store_true", default=False)
@@ -274,7 +274,6 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("-c", dest="complexes", type=str, help="show only jobs with the given complexes [%(default)s]", action="append", default=[])
             self.add_argument("-e", dest="show_nonstd", help="show nonstandard queues, specify twice to suppress alarm queues [%(default)s]", action="count", default=0)
             self.add_argument("-i", dest="interactive", help="show info interactive", action="store_true", default=False)
-            self.add_argument("--never-direct", dest="never_direct", default=False, action="store_true", help="always connect sge-server [%(default)s]")
         if run_mode == "sns":
             self.add_argument("-t", dest="show_type", help="show queue type [%(default)s]", action="store_true", default=False)
             self.add_argument("-C", dest="show_complexes", help="show complexes [%(default)s]", action="store_true", default=False)
@@ -352,18 +351,11 @@ def main():
     if getattr(options, "stress", False):
         stress_system()
     act_si = sge_tools.sge_info(
-        update_pref={
-            "qhost": [],
-            "complexes": ["server"],
-            "hostgroup": ["server"],
-            "qstat": [],
-            "queueconf": ["server"],
-        },
         verbose=options.verbose,
         log_command=log_com,
         server=get_server(),
-        always_direct=options.direct,
-        never_direct=options.never_direct,
+        source=options.source,
+        run_initial_update=False,
     )
     s_time = time.time()
     if run_mode == "sjs":

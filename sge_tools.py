@@ -33,7 +33,8 @@ import server_command
 import stat
 import json
 import time
-import zmq
+import zmq  # @UnresolvedImport
+import uuid
 try:
     import memcache
 except:
@@ -179,31 +180,36 @@ class sge_info(object):
     def __init__(self, **kwargs):
         """ arguments :
         verbose            : enables verbose messages
-        sge_dict           : env_dict for accessing the SGE direct
+        sge_dict           : env_dict for accessing the SGE direct via calling commands
         log_command        : how to handle log events (defaults to syslog)
         is_active          : flag, if set to false no direct calls to the SGE will be made
         run_initial_update : flag, if set to false no initial update_call will be made
         init_dicts         : default values for the various dicts (for webfrontend)
-        update_pref        : dict where the update preferences are stored (direct, server)
         ignore_dicts       : dicts to ignore
         server             : name of server to connect, defaults to localhost
         server_port        : port of server to connect, defaults to 8009
-        default_pref       : list of default update preference, defaults to ["direct", "server"]
-        always_direct      : never contact server, defaults to False
-        never_direct       : never make a direct call, always call server, defaults to False
+        source             : source mode, can be
+         - local (always call sge-commands)
+         - server (always call server)
         persistent_socket  : use a persistent 0MQ socket
         """
-        self.__verbose = kwargs.get("verbose", 0)
-        self.__sge_dict = kwargs.get("sge_dict", {})
-        self.__log_com = kwargs.get("log_command", kwargs.get("log_com", None))
+        self.__verbose = kwargs.pop("verbose", 0)
+        self.__sge_dict = kwargs.pop("sge_dict", {})
+        self.__log_com = kwargs.pop("log_command", kwargs.get("log_com", None))
         # active: has sge_dict and can make calls to the system
-        self.__is_active = kwargs.get("is_active", True)
-        self.__server = kwargs.get("server", "localhost")
-        self.__server_port = kwargs.get("server_port", 8009)
-        self.__always_direct = kwargs.get("always_direct", False)
-        self.__never_direct = kwargs.get("never_direct", False)
-        self.__persistent_socket = kwargs.get("persistent_socket", True)
+        self.__is_active = kwargs.pop("is_active", True)
+        self.__server = kwargs.pop("server", "localhost")
+        self.__server_port = kwargs.pop("server_port", 8009)
+        self.__source = kwargs.pop("source", "local")
+        self.__persistent_socket = kwargs.pop("persistent_socket", True)
+        _riu = kwargs.pop("run_initial_update", True)
+        if kwargs:
+            print("*** not all kwargs parsed for sge_info.__init__(): {}".format(", ".join(kwargs.keys())))
+        if self.__source not in ["server", "local"]:
+            print("*** wrong source set {}, using local".format(self.__source))
+            self.__source = "local"
         self.__0mq_context, self.__0mq_socket = (None, None)
+        self.__uuid = uuid.uuid4()
         # update counter
         self.__counter = 0
         # empty lut
@@ -225,25 +231,21 @@ class sge_info(object):
                 ]
             ) if v_key not in kwargs.get("ignore_dicts", [])
         ]
-        self.__update_call_dict = dict(
-            [
-                (key, s_call) for key, (rel, s_call) in setup_dict.iteritems()
-            ]
-        )
-        self.__update_pref_dict = dict(
-            [
-                (key, kwargs.get("update_pref", {}).get(key, kwargs.get("default_pref", ["direct", "server"]))) for key in self.__valid_dicts
-            ]
-        )
-        self.__timeout_dicts = dict([(key, {
-            "hostgroup": 300,
-            "qstat": 2,
-            "qhost": 2}.get(key, 120)) for key in self.__valid_dicts])
+        self.__update_call_dict = {
+            key: s_call for key, (rel, s_call) in setup_dict.iteritems()
+        }
+        self.__timeout_dicts = {
+            key: {
+                "hostgroup": 300,
+                "qstat": 2,
+                "qhost": 2,
+            }.get(key, 120) for key in self.__valid_dicts
+        }
         if self.__is_active:
             self._sanitize_sge_dict()
         self.__job_dict = {}
         self._init_update()
-        if kwargs.get("run_initial_update", True) and self.__is_active:
+        if _riu and self.__is_active:
             self.update()
 
     def __del__(self):
@@ -412,8 +414,8 @@ class sge_info(object):
         if self.__verbose:
             self.log("dicts to update after check: {}".format(", ".join(dicts_to_update) or "none"))
         # print "to update: ", dicts_to_update
-        if not self.__always_direct:
-            server_update = set([dict_name for dict_name in dicts_to_update if (self.__update_pref_dict[dict_name] + ["not set"])[0] == "server"])
+        if self.__source in ["server"]:
+            server_update = set(dicts_to_update)
         else:
             server_update = set()
         if self.__verbose:
@@ -422,7 +424,7 @@ class sge_info(object):
         _direct_results = {}
         # server contacted ?
         _sc = False
-        if server_update and not self.__always_direct:
+        if server_update:
             # get everything from server
             srv_name = self.__server
             s_time = time.time()
@@ -459,7 +461,7 @@ class sge_info(object):
             else:
                 _sc = False
         # server contacted, make direct calls
-        if not self.__never_direct:
+        if self.__source in ["local"]:
             if self.__verbose:
                 self.log("dicts to update manually (s1): {}".format(", ".join(dicts_to_update - server_update)))
             for dict_name in dicts_to_update - server_update:
@@ -572,7 +574,7 @@ class sge_info(object):
                 if do_upd:
                     # remove previous xml subtree
                     cur_el.getparent().remove(cur_el)
-                    upd_cause = "timeout [{:d} < {:d}]".format(
+                    upd_cause = "timeout [valid until {:d} < cur_time {:d}]".format(
                         int(cur_el.get("valid_until", "0")),
                         int(cur_time)
                     )
@@ -580,9 +582,12 @@ class sge_info(object):
             do_upd = True
             upd_cause = "missing"
         if self.__verbose:
-            self.log("update for {} is {}".format(
-                d_name,
-                "necessary ({})".format(upd_cause) if do_upd else "not necessary"))
+            self.log(
+                "update for {} is {}".format(
+                    d_name,
+                    "necessary ({})".format(upd_cause) if do_upd else "not necessary",
+                )
+            )
         return do_upd
 
     def _get_com_name(self, c_name):
@@ -878,7 +883,7 @@ class sge_info(object):
         for cur_host in self.__tree.findall("qhost/host"):
             self.__host_lut[cur_host.get("name")] = cur_host
         # expand host_list of queue q_name if not already expanded
-        hg_lut = dict([(cur_hg.get("name"), cur_hg) for cur_hg in self.__tree.findall("hostgroup/hostgroup")])
+        hg_lut = {cur_hg.get("name"): cur_hg for cur_hg in self.__tree.findall("hostgroup/hostgroup")}
         for queue in self.__queue_lut.itervalues():
             if not queue.findall("hosts"):
                 hosts_el = E.hosts()
@@ -1429,7 +1434,7 @@ def build_node_list(s_info, options):
             job_list = []
             for q_name in q_list:
                 type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
-                cur_dict = dict([(job_id, s_info.get_job(job_id)) for job_id in sorted(type_dict.keys())])
+                cur_dict = {job_id: s_info.get_job(job_id) for job_id in sorted(type_dict.keys())}
                 qstat_info = ", ".join(["{}{} {} ({:d}) {}{}".format(
                     "[" if "s" in cur_dict[key].findtext("state").lower() else "",
                     key,
@@ -1555,7 +1560,7 @@ def build_node_list(s_info, options):
                         acl_str = "{} and not ({})".format(pos_list, neg_list)
                     cur_node.append(getattr(E, header_name)(acl_str))
             type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
-            cur_dict = dict([(job_id, s_info.get_job(job_id)) for job_id in sorted(type_dict.keys())])
+            cur_dict = {job_id: s_info.get_job(job_id) for job_id in sorted(type_dict.keys())}
             qstat_info = ", ".join(["{}{} {} ({:d}) {}{}".format(
                 "[" if "s" in cur_dict[key].findtext("state").lower() else "",
                 key,
@@ -1574,7 +1579,7 @@ def build_node_list(s_info, options):
 
 
 def _stress_test():
-    a = sge_info(always_direct=True, verbose=True)
+    a = sge_info(mode="local", verbose=True)
     _iters = 100
     for _x in xrange(_iters):
         a.update(force_update=True)
