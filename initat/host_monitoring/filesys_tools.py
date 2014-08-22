@@ -19,7 +19,7 @@
 #
 """ filesystem tools, also used by cluster-server """
 
-from lxml.builder import E # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import codecs
 import base64
 import logging_tools
@@ -32,6 +32,7 @@ import stat
 # max file size to read, can be overridden
 MAX_FILE_SIZE = 5 * 1024 * 1024
 
+
 def _set_attributes(xml_el, log_com):
     try:
         if "user" in xml_el.attrib or "group" in xml_el.attrib:
@@ -43,6 +44,7 @@ def _set_attributes(xml_el, log_com):
     except:
         xml_el.attrib["error"] = "1"
         xml_el.attrib["error_str"] = process_tools.get_except_info()
+
 
 def create_dir(srv_com, log_com):
     created, failed = (0, 0)
@@ -69,6 +71,7 @@ def create_dir(srv_com, log_com):
         server_command.SRV_REPLY_STATE_ERROR if failed else server_command.SRV_REPLY_STATE_OK
         )
 
+
 def set_file_content(srv_com, log_com):
     for file_entry in srv_com.xpath(".//ns:file", smart_strings=False):
         try:
@@ -86,6 +89,7 @@ def set_file_content(srv_com, log_com):
     srv_com.set_result(
         "stored file contents",
         )
+
 
 def get_dir_tree(srv_com, log_com):
     for top_el in srv_com.xpath(".//ns:start_dir", smart_strings=False):
@@ -110,7 +114,8 @@ def get_dir_tree(srv_com, log_com):
     srv_com.set_result(
         "read directory tree"
         )
-    
+
+
 def remove_dir(srv_com, log_com):
     created, failed = (0, 0)
     for dir_entry in srv_com.xpath(".//ns:dir", smart_strings=False):
@@ -133,9 +138,10 @@ def remove_dir(srv_com, log_com):
         "removed {}{}".format(
             logging_tools.get_plural("directory", created),
             " ({:d} failed)".format(failed) if failed else "",
-            ),
-            server_command.SRV_REPLY_STATE_ERROR if failed else server_command.SRV_REPLY_STATE_OK
-        )
+        ),
+        server_command.SRV_REPLY_STATE_ERROR if failed else server_command.SRV_REPLY_STATE_OK
+    )
+
 
 def get_file_content(srv_com, log_com, **kwargs):
     max_size = kwargs.get("max_file_size", MAX_FILE_SIZE)

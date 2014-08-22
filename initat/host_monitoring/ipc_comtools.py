@@ -22,6 +22,7 @@ import server_command
 import time
 import zmq
 
+
 def send_and_receive_zmq(target_host, command, *args, **kwargs):
     identity_str = process_tools.zmq_identity_str(kwargs.pop("identity_string", "ipc_com"))
     zmq_context = kwargs.pop("zmq_context")

@@ -30,7 +30,8 @@ import subprocess
 import time
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
-IPMI_LONG_LIMITS = ["{}{}".format({"l" : "lower", "u" : "upper"}[key[0]], key[1:]) for key in IPMI_LIMITS]
+IPMI_LONG_LIMITS = ["{}{}".format({"l": "lower", "u": "upper"}[key[0]], key[1:]) for key in IPMI_LIMITS]
+
 
 def parse_ipmi_type(name, sensor_type):
     key, info, unit, base = ("", "", "", 1)
@@ -59,6 +60,7 @@ def parse_ipmi_type(name, sensor_type):
         unit = "W"
     return key, info, unit, base
 
+
 def parse_ipmi(in_lines):
     result = {}
     for line in in_lines:
@@ -69,9 +71,10 @@ def parse_ipmi(in_lines):
                 key, info, unit, base = parse_ipmi_type(parts[0], s_type)
                 if key:
                     # limit dict,
-                    limits = {key : l_val for key, l_val in zip(IPMI_LIMITS, [{"na" : ""}.get(value, value) for value in parts[4:10]])}
+                    limits = {key: l_val for key, l_val in zip(IPMI_LIMITS, [{"na": ""}.get(value, value) for value in parts[4:10]])}
                     result[key] = (float(parts[1]), info, unit, base, limits)
     return result
+
 
 class _general(hm_classes.hm_module):
     def init_module(self):
@@ -82,6 +85,7 @@ class _general(hm_classes.hm_module):
             self.check_ipmi_settings()
             self.popen = None
             self.process_pool.register_timer(self._update_ipmi, 20, instant=True)
+
     def _update_ipmi(self):
         if self.it_command:
             if self.popen:
@@ -92,6 +96,7 @@ class _general(hm_classes.hm_module):
                     self.popen = None
             if not self.popen:
                 self.popen = subprocess.Popen("{} sensor".format(self.it_command), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+
     def check_ipmi_settings(self):
         cmd_name = "ipmitool"
         self.it_command = process_tools.find_file(cmd_name)
@@ -121,8 +126,10 @@ class _general(hm_classes.hm_module):
             self.log(
                 "cmd {} not found".format(cmd_name),
                 logging_tools.LOG_LEVEL_WARN)
+
     def init_machine_vector(self, mv):
         self.ipmi_result = False
+
     def update_machine_vector(self, mv):
         if self.ipmi_result:
             new_keys = set(self.ipmi_result) - self.registered_mvs
@@ -138,10 +145,12 @@ class _general(hm_classes.hm_module):
                 mv[upd_key] = self.ipmi_result[upd_key][0]
             # pprint.pprint(self.ipmi_result)
 
+
 class ipmi_bg(hm_classes.subprocess_struct):
     class Meta:
         verbose = False
         id_str = "ipmi"
+
     def __init__(self, log_com, srv_com, ipmi_com, it_command):
         self.__log_com = log_com
         self.__ipmi_com = ipmi_com
@@ -149,25 +158,32 @@ class ipmi_bg(hm_classes.subprocess_struct):
             it_command,
             ipmi_com.Meta.command,
             )])
+
     def process(self):
         self.__ipmi_com.process(self)
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[ipmi] {}".format(what), level)
+
 
 class _ipmi_sensor(object):
     class Meta:
         command = "sensor list"
+
     def process(self, bgp):
         for line in bgp.read().split("\n"):
             print line
             pass
 
+
 class ipmi_sensor_command(hm_classes.hm_command):
     info_string = "get all IPMI sensors"
+
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         for limit in IPMI_LONG_LIMITS:
             self.parser.add_argument("--{}".format(limit), dest=limit, type=str, default="na")
+
     def __call__(self, srv_com, cur_ns):
         if self.module.ipmi_result:
             key_list = sorted(self.module.ipmi_result.keys())
@@ -194,6 +210,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                 srv_com["list"] = _b
         else:
             srv_com.set_result("no IPMI sensors found", server_command.SRV_REPLY_STATE_ERROR)
+
     def interpret(self, srv_com, cur_ns):
         l_dict = {}
         for key in IPMI_LONG_LIMITS:
@@ -215,7 +232,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                     ("upperw", True, limits.nag_STATE_WARNING),
                     ("upperc", True, limits.nag_STATE_CRITICAL),
                     ("uppern", True, limits.nag_STATE_CRITICAL),
-                    ]:
+                ]:
                     if l_dict[t_name] is not None:
                         if (log and cur_value >= l_dict[t_name]) or (not log and cur_value <= l_dict[t_name]):
                             ret_state = max(ret_state, t_state)
@@ -248,4 +265,3 @@ class ipmi_sensor_command(hm_classes.hm_command):
                     )
         else:
             return limits.nag_STATE_WARNING, "no IPMI sensors found"
-

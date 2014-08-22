@@ -33,6 +33,7 @@ import threading_tools
 import time
 import zmq
 
+
 class hm_icmp_protocol(icmp_class.icmp_protocol):
     def __init__(self, process, log_template):
         self.__log_template = log_template
@@ -50,17 +51,22 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         self.__process.register_socket(self.socket, select.POLLIN, self.received)
         self.__process.register_timer(self._check_timeout, 30)
         # self.raw_socket.bind("0.0.0.0")
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, "[icmp] {}".format(what))
+
     def __setitem__(self, key, value):
         self.__work_dict[key] = value
+
     def __getitem__(self, key):
         return self.__work_dict[key]
+
     def __delitem__(self, key):
         for seq_key in self.__work_dict[key]["sent_list"].keys():
             if seq_key in self.__seqno_dict:
                 del self.__seqno_dict[seq_key]
         del self.__work_dict[key]
+
     def _check_timeout(self):
         cur_time = time.time()
         _to_del = [key for key, value in self.__work_dict.iteritems() if abs(value["start"] - cur_time) > 60]
@@ -76,8 +82,10 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                 else:
                     self.__handled.remove(_del)
                 del self[_del]
+
     def __contains__(self, key):
         return key in self.__work_dict
+
     def ping(self, seq_str, target_list, num_pings, timeout):
         if self.__debug:
             self.log("ping to {} ({}; {:d}, {:.2f}) [{}]".format(
@@ -96,20 +104,20 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
             seq_list = [seq_str]
         for cur_seq_str, target in zip(seq_list, target_list):
             self[cur_seq_str] = {
-                "host"       : target,
-                "num"        : num_pings,
-                "timeout"    : timeout,
-                "start"      : cur_time,
-                "end"        : cur_time + timeout,
-                "next_send"  : cur_time,
+                "host": target,
+                "num": num_pings,
+                "timeout": timeout,
+                "start": cur_time,
+                "end": cur_time + timeout,
+                "next_send": cur_time,
                 # time between pings
-                "slide_time" : 0.1,
-                "sent"       : 0,
-                "recv_ok"    : 0,
-                "recv_fail"  : 0,
-                "error_list" : [],
-                "sent_list"  : {},
-                "recv_list"  : {}}
+                "slide_time": 0.1,
+                "sent": 0,
+                "recv_ok": 0,
+                "recv_fail": 0,
+                "error_list": [],
+                "sent_list": {},
+                "recv_list": {}}
             self.__pings_in_flight += 1
         if self.__debug:
             _wft = [key for key, value in self.__work_dict.iteritems() if key in self.__handled]
@@ -123,6 +131,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
             )
         for key in seq_list:
             self._update(key)
+
     def _update(self, key, from_reply=False):
         cur_time = time.time()
         # print cur_time
@@ -131,7 +140,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
             value = self[key]
             if value["sent"] < value["num"]:
                 # send if last send was at least slide_time ago
-                if value["next_send"] <= cur_time: # or value["recv_ok"] == value["sent"]:
+                if value["next_send"] <= cur_time:  # or value["recv_ok"] == value["sent"]:
                     # print key, value["recv_ok"], value["sent"], value["next_send"] <= cur_time
                     value["sent"] += 1
                     try:
@@ -174,13 +183,14 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                     del self.__group_dict[key]
                 else:
                     self.__process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
-                self.__handled.add(key) # del self[key]
+                self.__handled.add(key)  # del self[key]
                 self.__pings_in_flight -= 1
         else:
             if from_reply:
                 # should only happen for delayed pings or pings with error
                 self.log("got delayed ping reply ({})".format(key), logging_tools.LOG_LEVEL_WARN)
         # pprint.pprint(self.__work_dict)
+
     def received(self, sock):
         recv_time = time.time()
         dgram = self.parse_datagram(sock.recv(1024))
@@ -213,8 +223,10 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                         value["recv_ok"] += 1
                     self._update(self.__seqno_dict[seqno], from_reply=True)
 
+
 class tcp_con(object):
     pending = []
+
     def __init__(self, proc, src_id, srv_com):
         self.__process = proc
         self.src_id = src_id
@@ -222,7 +234,7 @@ class tcp_con(object):
         self.s_time = time.time()
         tcp_con.pending.append(self)
         self._host, self._port = (socket.gethostbyname(srv_com["host"].text), int(srv_com["port"].text))
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # , socket.IPPROTO_TCP)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # , socket.IPPROTO_TCP)
         self.socket.setblocking(0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
@@ -239,8 +251,10 @@ class tcp_con(object):
             # print errno
             # time.sleep(0.1)
         # self._send()
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[{}:{:d}] {}".format(self._host, self._port, what), log_level)
+
     def _send(self, sock):
         try:
             self.socket.send(self._send_str(self.srv_com))
@@ -250,11 +264,13 @@ class tcp_con(object):
         else:
             self.__process.unregister_socket(self.socket)
             self.__process.register_socket(self.socket, select.POLLIN, self._recv)
+
     def _send_str(self, srv_com):
         com = srv_com["command"].text
         if srv_com["arg_list"].text:
             com = "{} {}".format(com, srv_com["arg_list"].text)
         return "{:08d}{}".format(len(com), com)
+
     def _recv(self, sock):
         try:
             _data = sock.recv(2048)
@@ -272,6 +288,7 @@ class tcp_con(object):
             else:
                 self.log("wrong header: {}" .format(_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
         self.close()
+
     def close(self):
         tcp_con.pending = [_entry for _entry in tcp_con.pending if _entry != self]
         if self.__registered:
@@ -279,6 +296,7 @@ class tcp_con(object):
             self.__process.unregister_socket(self.socket)
         self.socket.close()
         del self.srv_com
+
 
 class socket_process(threading_tools.process_obj):
     def process_init(self):
@@ -296,6 +314,7 @@ class socket_process(threading_tools.process_obj):
         else:
             self.icmp_protocol = None
         self.register_timer(self._check_timeout, 5)
+
     def _check_timeout(self):
         cur_time = time.time()
         to_list = [entry for entry in tcp_con.pending if abs(entry.s_time - cur_time) > 20]
@@ -304,17 +323,23 @@ class socket_process(threading_tools.process_obj):
             for _entry in to_list:
                 _entry.log("timeout", logging_tools.LOG_LEVEL_WARN)
                 _entry.close()
+
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
         tcp_con(self, src_id, srv_com)
+
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def send_result(self, src_id, srv_com, data):
         self.send_pool_message("socket_result", src_id, srv_com, data, target="main")
+
     def send_ping_result(self, *args):
-        self.send_pool_message("socket_ping_result", *args, target="main") # src_id, srv_com, data, target="main")
+        self.send_pool_message("socket_ping_result", *args, target="main")  # src_id, srv_com, data, target="main")
+
     def loop_post(self):
         # self.twisted_observer.close()
         if self.icmp_protocol:

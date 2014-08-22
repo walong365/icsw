@@ -24,6 +24,7 @@ try:
 except ImportError:
     drbd_tools = None
 
+
 class _general(hm_classes.hm_module):
     def init_module(self):
         self.__last_drbd_check = (-1, -1)
@@ -31,6 +32,7 @@ class _general(hm_classes.hm_module):
             self.drbd_config = drbd_tools.drbd_config()
         else:
             self.drbd_config = None
+
 
 class drbd_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -42,17 +44,20 @@ class drbd_status_command(hm_classes.hm_command):
                 "no drbd_tools found",
                 server_command.SRV_REPLY_STATE_ERROR
             )
+
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["drbd_status"], cur_ns)
+
     def interpret_old(self, result, cur_ns):
         drbd_conf = hm_classes.net_to_sys(result[3:])
         return self._interpret(drbd_conf, cur_ns)
+
     def _interpret(self, drbd_conf, cur_ns):
         if drbd_conf:
             if drbd_conf["status_present"] and drbd_conf["config_present"]:
                 res_dict = drbd_conf["resources"]
                 res_keys = sorted(res_dict.keys())
-                state_dict = {"total" : res_keys}
+                state_dict = {"total": res_keys}
                 dev_states, ret_strs = ([], [])
                 for key in res_keys:
                     loc_dict = res_dict[key]["localhost"]
@@ -79,7 +84,7 @@ class drbd_status_command(hm_classes.hm_command):
                             key,
                             loc_dict["device"],
                             loc_dict.get("protocol", "???"),
-                            ", {}%".format(loc_dict["resync_percentage"]) if loc_dict.has_key("resync_percentage") else "",
+                            ", {}%".format(loc_dict["resync_percentage"]) if "resync_percentage" in loc_dict else "",
                             c_state,
                             "/".join(loc_dict.get("state", ["???"])),
                             "/".join(loc_dict.get("data_state", ["???"]))))
@@ -101,4 +106,3 @@ class drbd_status_command(hm_classes.hm_command):
                 return ret_state, ", ".join(ret_strs)
         else:
             return limits.nag_STATE_WARNING, "empty dbrd_config"
-

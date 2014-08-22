@@ -30,41 +30,54 @@ import server_command
 import time
 import zmq
 
+
 class sr_probe(object):
     __slots__ = ["host_con", "__val", "__time"]
+
     def __init__(self, host_con):
         self.host_con = host_con
-        self.__val = {"send" : 0,
-                      "recv" : 0}
+        self.__val = {
+            "send": 0,
+            "recv": 0,
+        }
         self.__time = time.time()
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.host_con.log("[probe for %s] %s" % (self.host_con.conn_str, what), log_level)
+
     @property
     def send(self):
         return self.__val["send"]
+
     @send.setter
     def send(self, val):
         cur_time = time.time()
         diff_time = abs(cur_time - self.__time)
-        if  diff_time > 30 * 60:
+        if diff_time > 30 * 60:
             self.log("sent / received in %s: %s / %s" % (
                 logging_tools.get_diff_time_str(diff_time),
                 logging_tools.get_size_str(self.__val["send"]),
                 logging_tools.get_size_str(self.__val["recv"]),
             ))
             self.__time = cur_time
-            self.__val = {"send" : 0,
-                          "recv" : 0}
+            self.__val = {
+                "send": 0,
+                "recv": 0
+            }
         self.__val["send"] += val
+
     @property
     def recv(self):
         return self.__val["recv"]
+
     @recv.setter
     def recv(self, val):
         self.__val["recv"] += val
 
+
 class host_connection(object):
     __slots__ = ["zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages"]
+
     def __init__(self, conn_str, **kwargs):
         self.zmq_id = kwargs.get("zmq_id", "ms")
         self.tcp_con = kwargs.get("dummy_connection", False)
@@ -72,13 +85,17 @@ class host_connection(object):
         self.sr_probe = sr_probe(self)
         self.__open = False
         self.__conn_str = conn_str
+
     @property
     def conn_str(self):
         return self.__conn_str
+
     def close(self):
         pass
+
     def __del__(self):
         pass
+
     @staticmethod
     def init(r_process, backlog_size, timeout, verbose):
         host_connection.relayer_process = r_process
@@ -109,6 +126,7 @@ class host_connection(object):
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
         # host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
+
     @staticmethod
     def get_hc_0mq(conn_str, target_id="ms", **kwargs):
         if (True, conn_str) not in host_connection.hc_dict:
@@ -118,6 +136,7 @@ class host_connection(object):
         else:
             cur_hc = host_connection.hc_dict[(True, conn_str)]
         return cur_hc
+
     @staticmethod
     def get_hc_tcp(conn_str, **kwargs):
         if (False, conn_str) not in host_connection.hc_dict:
@@ -127,20 +146,25 @@ class host_connection(object):
         else:
             cur_hc = host_connection.hc_dict[(False, conn_str)]
         return cur_hc
+
     @staticmethod
     def check_timeout_global(id_discovery):
         # global check_timeout function
         cur_time = time.time()
         id_discovery.check_timeout(cur_time)
         [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
+
     @staticmethod
     def global_close():
         host_connection.zmq_socket.close()
+
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         host_connection.relayer_process.log("[hc] %s" % (what), log_level)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         host_connection.relayer_process.log("[hc %s] %s" % (self.__conn_str, what), log_level)
+
     def check_timeout(self, cur_time):
         # check all messages for current host
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
@@ -157,6 +181,7 @@ class host_connection(object):
                         to_mes.timeout,
                     )
                 )
+
     def _open(self):
         if not self.__open:
             try:
@@ -169,14 +194,17 @@ class host_connection(object):
                 # make a short nap to let 0MQ settle things down
                 time.sleep(0.2)
         return self.__open
+
     def _close(self):
         if self.__open:
             host_connection.zmq_socket.close()
             self.__open = False
+
     @staticmethod
     def add_message(new_mes):
         host_connection.messages[new_mes.src_id] = new_mes
         return new_mes
+
     def send(self, host_mes, com_struct):
         try:
             host_mes.set_com_struct(com_struct)
@@ -225,20 +253,24 @@ class host_connection(object):
                     "connection",
                     host_mes.src_id,
                     unicode(host_mes.srv_com))
+
     def send_result(self, host_mes, result=None):
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         del host_connection.messages[host_mes.src_id]
         del host_mes
+
     @staticmethod
     def _send_result(host_mes, result=None):
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         del host_connection.messages[host_mes.src_id]
         del host_mes
+
     def return_error(self, host_mes, error_str):
         host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
         self.send_result(host_mes)
+
     def _error(self, zmq_sock):
         # not needed right now
         # print "**** _error", zmq_sock
@@ -247,11 +279,13 @@ class host_connection(object):
         pass
         # self._close()
         # raise zmq.ZMQError()
+
     @staticmethod
     def get_result(zmq_sock):
         _src_id = zmq_sock.recv()
         cur_reply = server_command.srv_command(source=zmq_sock.recv())
         host_connection._handle_result(cur_reply)
+
     @staticmethod
     def _handle_result(result):
         # print unicode(result)
@@ -300,10 +334,12 @@ class host_connection(object):
         else:
             self.log("unknown id '%s' in _handle_old_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
 
+
 class host_message(object):
     hm_idx = 0
     hm_open = set()
     __slots__ = ["src_id", "xml_input", "timeout", "s_time", "sent", "sr_probe", "ns", "com_name", "srv_com", "com_struct"]
+
     def __init__(self, com_name, src_id, srv_com, xml_input):
         self.com_name = com_name
         # self.hm_idx = host_message.hm_idx
@@ -318,8 +354,10 @@ class host_message(object):
         self.s_time = time.time()
         self.sent = False
         self.sr_probe = None
+
     def set_result(self, state, res_str):
         self.srv_com.set_result(res_str, state)
+
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
         if com_struct:
@@ -344,16 +382,19 @@ class host_message(object):
             # connect to non-host-monitoring service
             self.srv_com["arguments:rest"] = self.srv_com["arg_list"].text
             self.ns = argparse.Namespace()
+
     def check_timeout(self, cur_time, to_value):
         # check for timeout, to_value is a global timeout from the host_connection object
         _timeout = abs(cur_time - self.s_time) > min(to_value, self.timeout - 2)
         return _timeout
+
     def get_runtime(self, cur_time):
         return abs(cur_time - self.s_time)
+
     def get_result(self, result):
         if result is None:
             result = self.srv_com
-        if type(result) == type(()):
+        if type(result) == list:
             # from interpret
             if not self.xml_input:
                 ret_str = u"%d\0%s" % (
@@ -373,6 +414,7 @@ class host_message(object):
             else:
                 ret_str = unicode(result)
         return ret_str
+
     def interpret(self, result):
         if self.sr_probe:
             self.sr_probe.recv = len(result)
@@ -383,6 +425,7 @@ class host_message(object):
                     server_error[0].attrib["reply"])
         else:
             return self.com_struct.interpret(result, self.ns)
+
     def interpret_old(self, result):
         if type(result) not in [str, unicode]:
             server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
@@ -401,8 +444,8 @@ class host_message(object):
                 ret_value = self.com_struct.interpret_old(result, self.ns)
                 del self.com_struct.NOGOOD_srv_com
                 return ret_value
+
     def __del__(self):
         # host_message.hm_open.remove(self.hm_idx)
         del self.srv_com
         pass
-

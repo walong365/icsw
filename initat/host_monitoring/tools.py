@@ -24,16 +24,18 @@
 
 import process_tools
 
+
 class my_cached_file(process_tools.cached_file):
     def __init__(self, name, **kwargs):
         self.hosts = set()
         process_tools.cached_file.__init__(self, name, **kwargs)
+
     def changed(self):
         if self.content:
             self.log("reread file {}".format(self.name))
             self.hosts = set([cur_line.strip() for cur_line in self.content.strip().split("\n") if cur_line.strip() and not cur_line.strip().startswith("#")])
         else:
             self.hosts = set()
+
     def __contains__(self, h_name):
         return h_name in self.hosts
-

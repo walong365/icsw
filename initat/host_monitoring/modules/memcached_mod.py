@@ -26,14 +26,17 @@ try:
 except ImportError:
     memcache = None
 
+
 class _general(hm_classes.hm_module):
     pass
+
 
 class memcached_status_command(hm_classes.hm_command):
     def __init__(self, name):
         super(memcached_status_command, self).__init__(name, positional_arguments=True)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
+
     def __call__(self, srv_com, cur_ns):
         if memcache:
             if cur_ns.arguments:
@@ -52,6 +55,7 @@ class memcached_status_command(hm_classes.hm_command):
                     srv_com.set_result("no stats from %s" % (", ".join(target_servers)), server_command.SRV_REPLY_STATE_ERROR)
         else:
             srv_com.set_result("no memcached module found", server_command.SRV_REPLY_STATE_ERROR)
+
     def interpret(self, srv_com, cur_ns):
         if "memcache_stats" in srv_com:
             mc_stats = srv_com["*memcache_stats"]

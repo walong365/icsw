@@ -35,8 +35,10 @@ import time
 import uuid_tools
 import zmq
 
+
 class file_watcher(object):
     global_id = 1
+
     def __init__(self, process_obj, **kwargs):
         self.__process = process_obj
         self.mode = kwargs.get("mode", "content")
@@ -46,57 +48,57 @@ class file_watcher(object):
         # exit flag
         self.__exit_flag = False
         # check for valid id, target_server and target_port
-        self.fw_id = "fw{}".format(file_watcher.global_id) # args.get("id", "")
+        self.fw_id = "fw{}".format(file_watcher.global_id)  # args.get("id", "")
         self.send_id = kwargs["send_id"]
         file_watcher.global_id += 1
         # files and dirs
         self.__act_files, self.__act_dirs = (set([]), [])
         self.__new_files = []
-        self.__use_inotify = not "poll" in kwargs
+        self.__use_inotify = "poll" not in kwargs
         # if not self.fw_id:
         #    raise ValueError, "ID not given or empty ID"
         if self.mode == "content":
             # watch the content of files
             self.target_server = kwargs.get("target_server", "")
             if not self.target_server:
-                raise ValueError, "target_server not given or empty"
+                raise ValueError("target_server not given or empty")
             try:
                 self.target_port = int(kwargs.get("target_port", ""))
             except:
-                raise ValueError, "target_port not given or not integer"
+                raise ValueError("target_port not given or not integer")
             # name of file to check
             if "name" in kwargs:
                 self.search_mode = "file"
                 self.__new_files = set([kwargs["name"]])
                 if not self.__new_files:
-                    raise ValueError, "name of file to watch not given or empty"
+                    raise ValueError("name of file to watch not given or empty")
                 self.__fixed_name = True
             elif "dir" in kwargs and "match" in kwargs:
                 self.search_mode = "dir"
                 self.dir_name, self.match_name = (os.path.normpath(kwargs["dir"]), kwargs["match"])
                 if not self.dir_name or not self.match_name:
-                    raise ValueError, "dir or match not given or empty"
+                    raise ValueError("dir or match not given or empty")
                 self.__new_files = set([])
                 self.__fixed_name = False
             else:
-                raise ValueError, "neither file_name nor dir/match info given"
+                raise ValueError("neither file_name nor dir/match info given")
         elif self.mode == "timeout":
             # check for timeout on files or dirs
             if "dir" in kwargs:
                 self.dir_name = os.path.normpath(kwargs["dir"])
             else:
-                raise ValueError, "no directory name given for timeout check"
+                raise ValueError("no directory name given for timeout check")
             self.search_mode = "dir"
             if "timeout" in kwargs:
                 self.__timeout = int(kwargs["timeout"])
             else:
-                raise ValueError, "no timeout given for timeout check"
+                raise ValueError("no timeout given for timeout check")
             if "action" in kwargs:
                 self.__action = kwargs["action"]
             else:
-                raise ValueError, "no action given for timeout check"
+                raise ValueError("no action given for timeout check")
         else:
-            raise ValueError, "unknown mode {}".format(self.mode)
+            raise ValueError("unknown mode {}".format(self.mode))
         self.log("created filewatcher object (mode is {})".format(self.mode))
         for args_key in sorted(kwargs.keys()):
             self.log(" - {:<20s}: {}".format(args_key, kwargs[args_key]))
@@ -109,24 +111,30 @@ class file_watcher(object):
             self._init_timeout_mode()
         # process of shutting down ?
         self.__shutdown = False
+
     def do_exit(self):
         return self.__exit_flag
+
     def _init_content_mode(self):
         self.hello = self._hello_blind
         # directories to search
         self.content, self.__content_update = ({}, time.time())
         self.num_fail = 0
         self._search_dir(False)
+
     def _init_timeout_mode(self):
         self.hello = self._hello_timeout
         self.__last_update = time.time()
         self._search_dir(True)
+
     def inotify(self):
         return self.__inotify_link
+
     def close(self):
         self.__shutdown = True
         self._remove_inotify_link()
         self.log("exiting")
+
     def _remove_inotify_link(self):
         # check for inotify-support
         if self.__inotify_link:
@@ -140,8 +148,10 @@ class file_watcher(object):
                 for act_dir in self.__act_dirs:
                     self.__process.inotify_watcher.remove_watcher(self.fw_id, act_dir)
             self.__inotify_link = False
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[fw {}, {}] {}".format(self.fw_id, self.mode, what), lev)
+
     def _search_dir(self, any_change):
         if any_change:
             reg_mask = inotify_tools.IN_MODIFY | inotify_tools.IN_CLOSE_WRITE | inotify_tools.IN_DELETE | inotify_tools.IN_CREATE | inotify_tools.IN_DELETE_SELF
@@ -161,7 +171,11 @@ class file_watcher(object):
                         if dir_path not in act_dirs:
                             act_dirs.append(dir_path)
                         if self.mode == "content":
-                            match_files = [f_name for f_name in [os.path.join(dir_path, p_name) for p_name in fnmatch.filter(file_names, self.match_name)] if f_name not in self.__act_files]
+                            match_files = [
+                                f_name for f_name in [
+                                    os.path.join(dir_path, p_name) for p_name in fnmatch.filter(file_names, self.match_name)
+                                ] if f_name not in self.__act_files
+                            ]
                             if match_files:
                                 for m_file in match_files:
                                     self._register_file(m_file)
@@ -200,6 +214,7 @@ class file_watcher(object):
                     if self.mode == "content":
                         for m_file in [os.path.join(dir_path, p_name) for p_name in fnmatch.filter(file_names, self.match_name)]:
                             self._register_file(m_file)
+
     def _process_event(self, event):
         if self.__verbose:
             self.log("Got inotify_event for path '{}', name '{}' (mask 0x{:x} [{}], dir is {})".format(
@@ -209,6 +224,7 @@ class file_watcher(object):
                 inotify_tools.mask_to_str(event.mask),
                 event.dir))
         self.update(event)
+
     def _hello_timeout(self):
         act_time = time.time()
         act_to = abs(act_time - self.__last_update)
@@ -225,15 +241,20 @@ class file_watcher(object):
                         self.log(line)
                 else:
                     self.log(
-                        "cannot submit '{}' (command not found)".format(self.__action.split()[0]),
-                         logging_tools.LOG_LEVEL_WARN)
+                        "cannot submit '{}' (command not found)".format(
+                            self.__action.split()[0]
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
                 self.__last_update = act_time
             else:
                 self.log("watch_directory {} no longer present, exiting".format(self.dir_name),
                          logging_tools.LOG_LEVEL_WARN)
                 self.__exit_flag = True
+
     def _hello_blind(self):
         pass
+
     def _register_file(self, new_file):
         if self.__use_inotify:
             if new_file not in self.__act_files:
@@ -254,6 +275,7 @@ class file_watcher(object):
             if new_file not in self.__act_files:
                 self.__act_files.add(new_file)
             self._check_content(new_file)
+
     def update(self, event=None):
         if self.mode == "timeout":
             self.__last_update = time.time()
@@ -307,6 +329,7 @@ class file_watcher(object):
         else:
             # path for non-inotify based operation
             self._search_dir(False)
+
     def _check_content(self, f_name):
         try:
             new_content = file(f_name, "r").read()
@@ -314,8 +337,10 @@ class file_watcher(object):
             self.log(
                 "error reading file {}: {}".format(
                     f_name,
-                    process_tools.get_except_info()),
-                 logging_tools.LOG_LEVEL_ERROR)
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             if self.__verbose:
                 self.log("checking content of {}".format(f_name))
@@ -362,6 +387,7 @@ class file_watcher(object):
                             self.target_port,
                             send_com)
 
+
 class inotify_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
@@ -378,12 +404,16 @@ class inotify_process(threading_tools.process_obj):
         self.register_func("fw_handle", self._fw_handle)
         self.cb_func = self._check
         self.log("idle_timeout is {:d}".format(self.__idle_timeout))
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def _sigint(self, err_cause):
         self.log(" got sigint '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
+
     def _trigger(self, event):
         print event, "*", dir(event)
+
     def _check(self):
         try:
             self.__watcher.check(self.__idle_timeout * 1000)
@@ -410,10 +440,12 @@ class inotify_process(threading_tools.process_obj):
             dummy_com = server_command.srv_command(command="dummy")
             dummy_com["result"] = None
             for rem_id in remove_ids:
-                self._unregister_file_watch(dummy_com, {"id" : rem_id})
+                self._unregister_file_watch(dummy_com, {"id": rem_id})
+
     @property
     def inotify_watcher(self):
         return self.__watcher
+
     def _fw_handle(self, *args, **kwargs):
         src_id, data = args
         srv_com = server_command.srv_command(source=data)
@@ -436,8 +468,8 @@ class inotify_process(threading_tools.process_obj):
         args = {key.replace("-", "_") : value for key, value in args.iteritems()}
         found_keys = set(args.keys())
         needed_keys = {
-            "register_file_watch" : set(["send_id", "mode", "target_server", "target_port", "dir", "match"]),
-            "unregister_file_watch" : set(["id"]),
+            "register_file_watch": set(["send_id", "mode", "target_server", "target_port", "dir", "match"]),
+            "unregister_file_watch": set(["id"]),
         }.get(in_com, set())
         if needed_keys & found_keys == needed_keys:
             # set default return value
@@ -462,12 +494,14 @@ class inotify_process(threading_tools.process_obj):
                 server_command.SRV_REPLY_STATE_ERROR
             )
         self.send_pool_message("callback_result", src_id, unicode(srv_com))
+
     def _register_file_watch(self, cur_com, kwargs):
         new_fw = file_watcher(self, **kwargs)
         self.__file_watcher_dict[new_fw.fw_id] = new_fw
         cur_com.set_result(
             "{}".format(new_fw.fw_id)
         )
+
     def _unregister_file_watch(self, cur_com, kwargs):
         fw_id = kwargs["id"]
         if fw_id:
@@ -490,6 +524,7 @@ class inotify_process(threading_tools.process_obj):
                 "ID {} not found".format(fw_id),
                 server_command.SRV_REPLY_STATE_ERROR
             )
+
     def send_to_server(self, target_server, target_port, srv_com):
         targ_str = "tcp://{}:{:d}".format(target_server, target_port)
         if targ_str not in self.__target_dict:
@@ -506,6 +541,7 @@ class inotify_process(threading_tools.process_obj):
             self.log("init connection to {}".format(targ_str))
             self.__target_dict[targ_str] = send_socket
         self.__target_dict[targ_str].send_unicode(unicode(srv_com))
+
     def loop_post(self):
         for targ_str, targ_sock in self.__target_dict.iteritems():
             self.log("closing socket to {}".format(targ_str))

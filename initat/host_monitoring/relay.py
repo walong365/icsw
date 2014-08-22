@@ -30,8 +30,8 @@ from initat.host_monitoring.struct import host_connection, host_message
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.tools import my_cached_file
 from initat.host_monitoring.version import VERSION_STRING
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import StringIO
 import base64
 import bz2
@@ -49,6 +49,7 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
+
 
 class relay_code(threading_tools.process_pool):
     def __init__(self):
@@ -96,7 +97,7 @@ class relay_code(threading_tools.process_pool):
         self._change_rlimits()
         self._init_network_sockets()
         self._init_ipc_sockets()
-        self.register_exception("int_error" , self._sigint)
+        self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_exception("hup_error", self._hup_error)
         self.__delayed = []
@@ -109,6 +110,7 @@ class relay_code(threading_tools.process_pool):
             self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
             self._sigint("error init")
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -116,11 +118,13 @@ class relay_code(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def _sigint(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
         cur_stdout = sys.stdout
@@ -133,6 +137,7 @@ class relay_code(threading_tools.process_pool):
             for line in lines:
                 self.log(u" - %s" % (line))
         sys.stdout = cur_stdout
+
     def _get_mon_version(self):
         _icinga_bin = "/opt/icinga/bin/icinga"
         self.__mon_version = "N/A"
@@ -146,6 +151,7 @@ class relay_code(threading_tools.process_pool):
             if lines:
                 self.__mon_version = lines.pop(0).strip().split()[-1]
         self.log("mon_version is '%s'" % (self.__mon_version))
+
     def _hup_error(self, err_cause):
         self.log("got SIGHUP ({})".format(err_cause), logging_tools.LOG_LEVEL_WARN)
         self.log(" - setting all clients with connmode TCP to unknown", logging_tools.LOG_LEVEL_WARN)
@@ -157,6 +163,7 @@ class relay_code(threading_tools.process_pool):
                 num_c += 1
         self.log("cleared {}".format(logging_tools.get_plural("state", num_c)))
         id_discovery.reload_mapping()
+
     def _change_rlimits(self):
         for limit_name in ["OFILE"]:
             res = getattr(resource, "RLIMIT_%s" % (limit_name))
@@ -170,11 +177,15 @@ class relay_code(threading_tools.process_pool):
                 try:
                     resource.setrlimit(res, (hard, hard))
                 except:
-                    self.log("cannot alter ulimit: %s" % (process_tools.get_except_info()),
+                    self.log(
+                        "cannot alter ulimit: {}".format(
+                            process_tools.get_except_info()
+                        ),
                         logging_tools.LOG_LEVEL_CRITICAL,
-                        )
+                    )
         # try:
         #    resource.setrlimit(resource.RLIMIT_OFILE, 4069)
+
     def _init_master(self):
         self.__master_sync_id = None
         # register_to_master_timer set ?
@@ -187,6 +198,7 @@ class relay_code(threading_tools.process_pool):
             self.master_ip = None
             self.master_port = None
             self.master_uuid = None
+
     def _handle_relayer_info_result(self, srv_com):
         sync_id = int(srv_com["*sync_id"])
         ok = sync_id == self.__master_sync_id
@@ -199,6 +211,7 @@ class relay_code(threading_tools.process_pool):
         )
         if ok:
             self.__master_sync_id = None
+
     def _contact_master(self):
         if self.master_ip:
             # updated monitoring version
@@ -224,6 +237,7 @@ class relay_code(threading_tools.process_pool):
                 )
             )
             self._send_to_nhm_service(None, srv_com, None, register=False)
+
     def _register_master(self, master_ip, master_uuid, master_port, write=True):
         self.master_ip = master_ip
         self.master_uuid = master_uuid
@@ -233,9 +247,10 @@ class relay_code(threading_tools.process_pool):
                 E.master_data(
                     ip=self.master_ip,
                     uuid=self.master_uuid,
-                    port="%d" % (self.master_port)
-                )
-                , pretty_print=True))
+                    port="{:d}".format(self.master_port)
+                ),
+                pretty_print=True
+            ))
         conn_str = u"tcp://{}:{:d}".format(self.master_ip, self.master_port)
         self.log(u"registered master at {} ({})".format(conn_str, self.master_uuid))
         id_discovery.set_mapping(conn_str, self.master_uuid)
@@ -247,6 +262,7 @@ class relay_code(threading_tools.process_pool):
             self.register_timer(self._contact_master, 5, instant=False, oneshot=True)
             # report to master every 10 minutes
             self.register_timer(self._contact_master, 600, instant=False)
+
     def _init_filecache(self):
         self.__client_dict = {}
         self.__last_tried = {}
@@ -258,10 +274,13 @@ class relay_code(threading_tools.process_pool):
             if os.path.isfile(MAPPING_FILE_TYPES):
                 self.__client_dict.update(dict([(key, "0") for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()]))
         self.__default_0mq = False
+
     def _new_client(self, c_ip, c_port):
         self._set_client_state(c_ip, c_port, "0")
+
     def _old_client(self, c_ip, c_port):
         self._set_client_state(c_ip, c_port, "T")
+
     def _set_client_state(self, c_ip, c_port, c_type):
         write_file = False
         if self.__autosense:
@@ -278,6 +297,7 @@ class relay_code(threading_tools.process_pool):
                     write_file = True
         if write_file:
             file(MAPPING_FILE_TYPES, "w").write("\n".join([key for key, value in self.__client_dict.iteritems() if value == "0"]))
+
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
@@ -296,6 +316,7 @@ class relay_code(threading_tools.process_pool):
         else:
             msi_block = None
         self.__msi_block = msi_block
+
     def process_start(self, src_process, src_pid):
         # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
         if src_process == "socket":
@@ -310,6 +331,7 @@ class relay_code(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
+
     def _check_timeout(self):
         host_connection.check_timeout_global(id_discovery)
         cur_time = time.time()
@@ -361,15 +383,18 @@ class relay_code(threading_tools.process_pool):
                     if not cur_del.terminated:
                         new_list.append(cur_del)
             self.__delayed = new_list
+
     def _socket_result(self, src_proc, proc_id, src_id, srv_com, data_str):
         if src_id in self.__old_send_lut:
             self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str)
         else:
             self.log("result for non-existing id '%s' received, discarding" % (src_id),
                      logging_tools.LOG_LEVEL_ERROR)
+
     def send_result(self, src_id, ret_str):
         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
         self.sender_socket.send_unicode(ret_str)
+
     def _init_ipc_sockets(self):
         # init IP lookup table
         if self.__force_resolve:
@@ -382,9 +407,9 @@ class relay_code(threading_tools.process_pool):
         self.__raw_nhm_dict = {}
         self.__nhm_connections = set()
         sock_list = [("ipc", "receiver", zmq.PULL, 2),
-                     ("ipc", "sender"  , zmq.PUB , 1024)]
-        [setattr(self, "%s_socket" % (short_sock_name), None) for sock_proto, short_sock_name, a0, b0 in sock_list]
-        for sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
+                     ("ipc", "sender", zmq.PUB , 1024)]
+        [setattr(self, "{}_socket".format(short_sock_name), None) for _sock_proto, short_sock_name, _a0, _b0 in sock_list]
+        for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
             self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
@@ -405,14 +430,17 @@ class relay_code(threading_tools.process_pool):
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
                 # client.bind("tcp://*:8888")
             except zmq.ZMQError:
-                self.log("error binding %s: %s" % (
-                    short_sock_name,
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "error binding %s: %s" % (
+                        short_sock_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
                 raise
             else:
                 setattr(self, "%s_socket" % (short_sock_name), cur_socket)
-                backlog_size = global_config["BACKLOG_SIZE"]
+                _backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
@@ -427,6 +455,7 @@ class relay_code(threading_tools.process_pool):
         self.client_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
         self.client_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
+
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
         uuid = "%s:relayer" % (uuid_tools.get_uuid().get_urn())
@@ -461,8 +490,10 @@ class relay_code(threading_tools.process_pool):
             )
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.network_socket = client
+
     def _resolve_address_noresolve(self, target):
         return target
+
     def _resolve_address_resolve(self, target):
         # to avoid loops in the 0MQ connection scheme (will result to nasty asserts)
         if target in self.__forward_lut:
@@ -496,17 +527,23 @@ class relay_code(threading_tools.process_pool):
                 try:
                     new_ip_addr = socket.gethostbyname(full_name)
                 except:
-                    self.log("cannot resolve full_name '{}': {}".format(
-                        full_name,
-                        process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log(
+                        "cannot resolve full_name '{}': {}".format(
+                            full_name,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
                     raise
                 else:
-                    self.log("full_name {} resolves back to {} (was: {})".format(
-                        full_name,
-                        new_ip_addr,
-                        ip_addr),
-                             logging_tools.LOG_LEVEL_OK if new_ip_addr == ip_addr else logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "full_name {} resolves back to {} (was: {})".format(
+                            full_name,
+                            new_ip_addr,
+                            ip_addr
+                        ),
+                        logging_tools.LOG_LEVEL_OK if new_ip_addr == ip_addr else logging_tools.LOG_LEVEL_ERROR
+                    )
                     # should we use the new ip_addr ? dangerous, FIXME
                     # ip_addr = new_ip_addr
             if ip_addr not in self.__ip_lut:
@@ -518,6 +555,7 @@ class relay_code(threading_tools.process_pool):
                 self.__forward_lut[orig_target] = ip_addr
                 self.log("ip resolving: {} -> {}".format(orig_target, ip_addr))
         return ip_addr
+
     def _recv_command(self, zmq_sock):
         data = zmq_sock.recv()
         if zmq_sock.getsockopt(zmq.RCVMORE):
@@ -632,8 +670,9 @@ class relay_code(threading_tools.process_pool):
                                 if t_host not in self.__last_tried:
                                     self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
                                 self.__last_tried[t_host] = {
-                                    "T" : "0",
-                                    "0" : "T"}[self.__last_tried[t_host]]
+                                    "T": "0",
+                                    "0": "T",
+                                }[self.__last_tried[t_host]]
                                 c_state = self.__last_tried[t_host]
                             con_mode = c_state
                             # con_mode = "0"
@@ -683,6 +722,7 @@ class relay_code(threading_tools.process_pool):
                 ", ".join(["{:d}={:s}".format(cur_pid, logging_tools.get_size_str(process_tools.get_mem_info(cur_pid))) for cur_pid in pid_list]),
                 logging_tools.get_plural("message", self.__num_messages))
             )
+
     def _check_version(self, key, new_vers):
         if new_vers == self.version_dict.get(key):
             renew, log_str = (False, "no newer version ({:d})".format(new_vers))
@@ -694,9 +734,11 @@ class relay_code(threading_tools.process_pool):
                 log_str = "new version ({:d})".format(new_vers)
             self.version_dict[key] = new_vers
         return renew, log_str
+
     def _clear_version(self, key):
         if key in self.version_dict:
             del self.version_dict[key]
+
     def _handle_direct_command(self, src_id, srv_com):
         # only DIRECT command from ccollclientzmq
         # print "*", src_id
@@ -731,6 +773,7 @@ class relay_code(threading_tools.process_pool):
         else:
             # add to cache ?
             self._send_to_master(srv_com)
+
     def _send_to_master(self, srv_com):
         if self.master_ip:
             srv_com["host"] = self.master_ip
@@ -738,10 +781,12 @@ class relay_code(threading_tools.process_pool):
             self._send_to_nhm_service(None, srv_com, None, register=False)
         else:
             self.log("no master-ip set, discarding message", logging_tools.LOG_LEVEL_WARN)
+
     def _ext_com_result(self, sub_s):
         self.log("external command gave:")
         for line_num, line in enumerate(sub_s.read().split("\n")):
             self.log(" %2d %s" % (line_num + 1, line))
+
     def _send_to_client(self, src_id, srv_com, xml_input):
         # generate new xml from srv_com
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
@@ -764,6 +809,7 @@ class relay_code(threading_tools.process_pool):
             cur_hc.return_error(cur_mes, "0mq discovery in progress")
         else:
             id_discovery(srv_com, src_id, xml_input)
+
     def _disconnect(self, conn_str):
         if conn_str in self.__nhm_connections:
             self.__nhm_connections.remove(conn_str)
@@ -775,6 +821,7 @@ class relay_code(threading_tools.process_pool):
                 self.log("disconnected {}".format(conn_str))
         else:
             self.log(u"connection {} not present in __nhm_connections, ignoring disconnect".format(conn_str), logging_tools.LOG_LEVEL_WARN)
+
     def _send_to_nhm_service(self, src_id, srv_com, xml_input, **kwargs):
         conn_str = "tcp://%s:%d" % (
             srv_com["host"].text,
@@ -817,12 +864,14 @@ class relay_code(threading_tools.process_pool):
             self._send_result(src_id, "0mq discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
         else:
             id_discovery(srv_com, src_id, xml_input)
+
     def _send_result(self, identity, reply_str, reply_state):
         self.sender_socket.send_unicode(identity, zmq.SNDMORE)
         self.sender_socket.send_unicode(
             "%d\0%s" % (
                 reply_state,
                 reply_str))
+
     def _recv_nhm_result(self, zmq_sock):
         data = []
         while True:
@@ -849,11 +898,16 @@ class relay_code(threading_tools.process_pool):
                             srv_result["result"].attrib["reply"],
                             int(srv_result["result"].attrib["state"]))
                     else:
-                        self.log("received nhm-result for unknown id '%s', ignoring" % (cur_id),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "received nhm-result for unknown id '%s', ignoring" % (cur_id),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 else:
-                    self.log("no identity-tag found in result",
-                        logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "no identity-tag found in result",
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+
     def _send_to_old_client(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
@@ -866,6 +920,7 @@ class relay_code(threading_tools.process_pool):
             self.__old_send_lut[cur_mes.src_id] = cur_hc
         else:
             cur_hc.return_error(cur_mes, "command '%s' not defined on relayer" % (com_name))
+
     def _send_to_old_nhm_service(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
@@ -874,6 +929,7 @@ class relay_code(threading_tools.process_pool):
         cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
         cur_hc.send(cur_mes, None)
         self.__old_send_lut[cur_mes.src_id] = cur_hc
+
     def _handle_module_command(self, srv_com):
         try:
             self.commands[srv_com["command"].text](srv_com)
@@ -884,6 +940,7 @@ class relay_code(threading_tools.process_pool):
                     "caught server exception '{}'".format(process_tools.get_except_info()),
                     server_command.SRV_REPLY_STATE_CRITICAL,
                     )
+
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -895,6 +952,7 @@ class relay_code(threading_tools.process_pool):
         self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
+
     def _close_ipc_sockets(self):
         if self.receiver_socket is not None:
             self.unregister_poller(self.receiver_socket, zmq.POLLIN)
@@ -905,9 +963,11 @@ class relay_code(threading_tools.process_pool):
             self.unregister_poller(self.client_socket, zmq.POLLIN)
             self.client_socket.close()
         host_connection.global_close()
+
     def _close_io_sockets(self):
         if self.network_socket:
             self.network_socket.close()
+
     def loop_end(self):
         self._close_ipc_sockets()
         self._close_io_sockets()
@@ -918,8 +978,10 @@ class relay_code(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+
     def loop_post(self):
         self.__log_template.close()
+
     def _init_commands(self):
         self.log("init commands")
         self.module_list = self.modules.module_list
@@ -928,8 +990,10 @@ class relay_code(threading_tools.process_pool):
         for mod_name, com_name, error_str in self.modules.IMPORT_ERRORS:
             self.log("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
         _init_ok = True
-        for call_name, add_self in [("register_server", True),
-                                    ("init_module"    , False)]:
+        for call_name, add_self in [
+            ("register_server", True),
+            ("init_module", False)
+        ]:
             for cur_mod in self.modules.module_list:
                 if self.__verbose:
                     self.log("calling %s for module '%s'" % (call_name,
@@ -949,13 +1013,16 @@ class relay_code(threading_tools.process_pool):
                 break
         return _init_ok
     # file handling commands
+
     def _clear_directory(self, srv_com):
         t_dir = srv_com["directory"].text
         self._clear_dir(t_dir)
+
     def _clear_directories(self, srv_com):
-        #print srv_com.pretty_print()
+        # print srv_com.pretty_print()
         for dir_name in srv_com.xpath(".//ns:directories/ns:directory/text()"):
             self._clear_dir(dir_name)
+
     def _clear_dir(self, t_dir):
         if not t_dir.startswith(ICINGA_TOP_DIR):
             self.log("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
@@ -981,6 +1048,7 @@ class relay_code(threading_tools.process_pool):
             else:
                 self.log("directory '%s' does not exist" % (t_dir), logging_tools.LOG_LEVEL_ERROR)
             self.log("removed %s in %s" % (logging_tools.get_plural("file", num_rem), t_dir))
+
     def _file_content(self, srv_com):
         t_file = srv_com["file_name"].text
         new_vers = int(srv_com["version"].text)
@@ -1001,6 +1069,7 @@ class relay_code(threading_tools.process_pool):
             ret_com.set_result("stored content")
         else:
             ret_com.set_result("cannot create file (please check logs on relayer)", server_command.SRV_REPLY_STATE_ERROR)
+
     def _file_content_bulk(self, srv_com):
         new_vers = int(srv_com["version"].text)
         _file_list = srv_com["file_list"][0]
@@ -1044,6 +1113,7 @@ class relay_code(threading_tools.process_pool):
         ret_com.set_result(log_str, log_state)
         self.log(log_str, server_command.srv_reply_to_log_level(log_state))
         return ret_com
+
     def _store_file(self, t_file, new_vers, uid, gid, content):
         success = False
         if not t_file.startswith(ICINGA_TOP_DIR):

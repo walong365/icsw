@@ -21,13 +21,16 @@ import logging_tools
 
 HPASM_BIN = "/sbin/hpasmcli"
 
+
 class _general(hm_classes.hm_module):
     def init_module(self):
         pass
 
+
 class _dimm(object):
     class Meta:
         command = "show dimm"
+
     def process(self, hph):
         dimm_list = []
         cur_dimm = None
@@ -46,6 +49,7 @@ class _dimm(object):
         if cur_dimm:
             dimm_list.append(cur_dimm)
         hph.srv_com["result"] = dimm_list
+
     def interpret(self, srv_com, cur_ns):
         dimm_list = srv_com["*result"]
         if dimm_list:
@@ -65,9 +69,11 @@ class _dimm(object):
         else:
             return limits.nag_STATE_CRITICAL, "nothing returned"
 
+
 class _psu(object):
     class Meta:
         command = "show powersupply"
+
     def process(self, hph):
         psu_list = []
         cur_ps = None
@@ -75,7 +81,7 @@ class _psu(object):
             if line.lower().startswith("power supply"):
                 if cur_ps:
                     psu_list.append(cur_ps)
-                cur_ps = {"num" : line.strip().split("#")[1]}
+                cur_ps = {"num": line.strip().split("#")[1]}
             if line.count(":"):
                 key, value = line.split(":", 1)
                 key = key.strip().lower()
@@ -83,6 +89,7 @@ class _psu(object):
         if cur_ps:
             psu_list.append(cur_ps)
         hph.srv_com["result"] = psu_list
+
     def interpret(self, srv_com, cur_ns):
         psu_list = srv_com["*result"]
         if psu_list:
@@ -109,10 +116,12 @@ class _psu(object):
         else:
             return limits.nag_STATE_CRITICAL, "nothing returned"
 
+
 class hp_health_bg(hm_classes.subprocess_struct):
     class Meta:
         verbose = False
         id_str = "hp_health"
+
     def __init__(self, log_com, srv_com, hp_com):
         self.__log_com = log_com
         self.__hp_com = hp_com
@@ -120,22 +129,29 @@ class hp_health_bg(hm_classes.subprocess_struct):
             HPASM_BIN,
             hp_com.Meta.command,
             )])
+
     def process(self):
         self.__hp_com.process(self)
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[hph] %s" % (what), level)
 
+
 class hp_dimm_command(hm_classes.hm_command):
     info_string = "check DIMM state via hpasmcli"
+
     def __call__(self, srv_com, cur_ns):
         return hp_health_bg(self.log, srv_com, _dimm())
+
     def interpret(self, srv_com, cur_ns):
         return _dimm().interpret(srv_com, cur_ns)
 
+
 class hp_powersupply_command(hm_classes.hm_command):
     info_string = "check PSU state via hpasmcli"
+
     def __call__(self, srv_com, cur_ns):
         return hp_health_bg(self.log, srv_com, _psu())
+
     def interpret(self, srv_com, cur_ns):
         return _psu().interpret(srv_com, cur_ns)
-

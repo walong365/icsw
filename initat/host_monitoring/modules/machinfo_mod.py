@@ -20,8 +20,8 @@
 """ machine information """
 
 from initat.host_monitoring import hm_classes, limits
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import commands
 import cpu_database
 import logging_tools
@@ -48,9 +48,11 @@ nw_classes = ["ethernet", "network", "infiniband"]
 
 EXTRA_BLOCK_DEVS = "/etc/sysconfig/host-monitoring.d/extra_block_devs"
 
+
 class _general(hm_classes.hm_module):
     def base_init(self):
         self.dmi_bin = process_tools.find_file("dmidecode")
+
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
         self.local_mp_info = partition_tools.multipath_struct("bin")
@@ -62,9 +64,11 @@ class _general(hm_classes.hm_module):
         self.last_vmstat_time = None
         self.last_nfsstat_time = None
         self.nfsstat_used = False
+
     def _proc_stat_info(self, first_line=None):
         self.stat_list = psutil.cpu_times(percpu=False)._fields
         return self.stat_list
+
     def _rescan_valid_disk_stuff(self):
         self.log("checking valid block_device names and major numbers")
         valid_block_devs, valid_major_nums = ({}, {})
@@ -103,27 +107,29 @@ class _general(hm_classes.hm_module):
                                                         valid_major_nums)
         # pprint.pprint(psutil.disk_io_counters(perdisk=True))
         # print "*", self.valid_block_devs, self.valid_major_nums
+
     def set_machine_vector_flags(self, mv):
         mv.vector_flags["detailed_cpu_statistics"] = False
+
     def init_machine_vector(self, mv):
-        mv.register_entry("load.1"           , 0., "load average of the last $2 minute")
-        mv.register_entry("load.5"           , 0., "load average of the last $2 minutes")
-        mv.register_entry("load.15"          , 0., "load average of the last $2 minutes")
-        mv.register_entry("mem.avail.phys"   , 0, "available physical memory"       , "Byte", 1024, 1024)
-        mv.register_entry("mem.avail.swap"   , 0, "available swap memory"           , "Byte", 1024, 1024)
-        mv.register_entry("mem.avail.total"  , 0, "available total memory"          , "Byte", 1024, 1024)
-        mv.register_entry("mem.free.phys"    , 0, "free physical memory"            , "Byte", 1024, 1024)
-        mv.register_entry("mem.free.phys.bc" , 0, "free physical memory without b+c", "Byte", 1024, 1024)
-        mv.register_entry("mem.free.swap"    , 0, "free swap memory"                , "Byte", 1024, 1024)
-        mv.register_entry("mem.free.total"   , 0, "free total memory"               , "Byte", 1024, 1024)
-        mv.register_entry("mem.free.total.bc", 0, "free total memory without b+c"   , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.phys"    , 0, "used physical memory"            , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.phys.bc" , 0, "used physical memory with b+c"   , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.swap"    , 0, "used swap memory"                , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.total"   , 0, "used total memory"               , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.total.bc", 0, "used total memory with b+c"      , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.buffers" , 0, "memory used for buffers"         , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.cached"  , 0, "memory used for caches"          , "Byte", 1024, 1024)
+        mv.register_entry("load.1", 0., "load average of the last $2 minute")
+        mv.register_entry("load.5", 0., "load average of the last $2 minutes")
+        mv.register_entry("load.15", 0., "load average of the last $2 minutes")
+        mv.register_entry("mem.avail.phys", 0, "available physical memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.avail.swap", 0, "available swap memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.avail.total", 0, "available total memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.free.phys", 0, "free physical memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.free.phys.bc", 0, "free physical memory without b+c", "Byte", 1024, 1024)
+        mv.register_entry("mem.free.swap", 0, "free swap memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.free.total", 0, "free total memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.free.total.bc", 0, "free total memory without b+c", "Byte", 1024, 1024)
+        mv.register_entry("mem.used.phys", 0, "used physical memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.used.phys.bc", 0, "used physical memory with b+c", "Byte", 1024, 1024)
+        mv.register_entry("mem.used.swap", 0, "used swap memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.used.total", 0, "used total memory", "Byte", 1024, 1024)
+        mv.register_entry("mem.used.total.bc", 0, "used total memory with b+c", "Byte", 1024, 1024)
+        mv.register_entry("mem.used.buffers", 0, "memory used for buffers", "Byte", 1024, 1024)
+        mv.register_entry("mem.used.cached", 0, "memory used for caches", "Byte", 1024, 1024)
         # mv.register_entry("mem.used.shared"  , 0, "shared memory"                   , "Byte", 1024, 1024)
         # check for /proc/stat
         stat_list = self._proc_stat_info()
@@ -137,21 +143,25 @@ class _general(hm_classes.hm_module):
                 for cpu_idx in self.cpu_list:
                     for what in stat_list:
                         mv.register_entry("vms.{}.p{}".format(what, cpu_idx), 0., "percentage of time spent for $2 on cpu {}".format(cpu_idx), "%")
-        mv.register_entry("num.interrupts", 0, "number of interrupts per second"      , "1/s")
-        mv.register_entry("num.context"   , 0, "number of context switches per second", "1/s")
+        mv.register_entry("num.interrupts", 0, "number of interrupts per second", "1/s")
+        mv.register_entry("num.context", 0, "number of context switches per second", "1/s")
         # mv.register_entry("blks.in"       , 0, "number of blocks read per second"     , "1/s")
         # mv.register_entry("blks.out"      , 0, "number of blocks written per second"  , "1/s")
-        mv.register_entry("swap.in"       , 0, "number of swap pages brought in"      , "1/s")
-        mv.register_entry("swap.out"      , 0, "number of swap pages brought out"     , "1/s")
-        mv.register_entry("pages.in"      , 0, "number of pages brought in"      , "1/s")
-        mv.register_entry("pages.out"     , 0, "number of pages brought out"     , "1/s")
+        mv.register_entry("swap.in", 0, "number of swap pages brought in", "1/s")
+        mv.register_entry("swap.out", 0, "number of swap pages brought out", "1/s")
+        mv.register_entry("pages.in", 0, "number of pages brought in", "1/s")
+        mv.register_entry("pages.out", 0, "number of pages brought out", "1/s")
         self._rescan_valid_disk_stuff()
+
     def _cpuinfo_int(self, srv_com):
         return cpu_database.global_cpu_info().get_send_dict(srv_com)
+
     def _load_int(self):
         return [float(value) for value in open("/proc/loadavg", "r").read().strip().split()[0:3]]
+
     def _mem_int(self):
         return psutil.virtual_memory(), psutil.swap_memory()
+
     def _df_int(self, mvect=None):
         act_time, update_dict = (time.time(), False)
         if mvect or abs(self.disk_dict_last_update - act_time) > 90:
@@ -165,14 +175,17 @@ class _general(hm_classes.hm_module):
                 if line[2] not in ["none"] and line[0].startswith("/") and not ram_match.match(line[0]) and line[0].startswith("/dev/"):
                     mount_list.append(line)
                     if os.path.islink(line[0]):
-                        link_set.add((
-                            os.path.normpath(
-                                os.path.join(
-                                    os.path.dirname(line[0]),
-                                    os.readlink(line[0]))
+                        link_set.add(
+                            (
+                                os.path.normpath(
+                                    os.path.join(
+                                        os.path.dirname(line[0]),
+                                        os.readlink(line[0])
+                                    )
                                 ),
                                 line[0]
-                            ))
+                            )
+                        )
             # print self.disk_dict
             n_dict = {}
             for mnt in mount_list:
@@ -191,21 +204,21 @@ class _general(hm_classes.hm_module):
                         if blocks:
                             sizetot = blocks * fact
                             sizeused = (blocks - bfree) * fact
-                            sizeavail = bavail * fact
+                            _sizeavail = bavail * fact
                             sizefree = sizetot - sizeused
                             proc = int((100. * float(blocks - bfree)) / float(blocks - bfree + bavail))
                             # print mnt, proc
                             n_dict[mnt[0]] = {
-                                "mountpoint"  : mnt[1],
-                                "fs"          : mnt[2],
-                                "b_free_perc" : proc,
-                                "b_size"      : int(sizetot),
-                                "b_used"      : int(sizeused),
-                                "b_free"      : int(sizefree),
-                                "i_size"      : int(inodes),
+                                "mountpoint": mnt[1],
+                                "fs": mnt[2],
+                                "b_free_perc": proc,
+                                "b_size": int(sizetot),
+                                "b_used": int(sizeused),
+                                "b_free": int(sizefree),
+                                "i_size": int(inodes),
                                 # "i_used"      : int(inodes) - int(ifree),
-                                "i_avail"     : int(iavail),
-                                "i_free"      : int(ifree),
+                                "i_avail": int(iavail),
+                                "i_free": int(ifree),
                             }
                             # [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree), mnt[2]]
             for link_dst, link_src in link_set:
@@ -243,6 +256,7 @@ class _general(hm_classes.hm_module):
                 mvect["df.%s.t" % (key)] = self.disk_dict[key]["b_size"]
         else:
             return n_dict
+
     def _vmstat_int(self, mvect):
         act_time = time.time()
         # disk_stat format: device -> (sectors read/written, milliseconds spent read/written)
@@ -274,7 +288,7 @@ class _general(hm_classes.hm_module):
             stat_dict["pages"] = [_vm_dict.get("pgpgin", 0), _vm_dict.get("pgpgout", 0)]
         if os.path.isfile("/proc/diskstats"):
             try:
-                ds_dict = dict([(parts[2].strip(), [int(parts[0]), int(parts[1])] + [long(cur_val) for cur_val in parts[3:]]) for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14]) # and y[2].strip() in self.valid_block_devs.keys()])
+                ds_dict = dict([(parts[2].strip(), [int(parts[0]), int(parts[1])] + [long(cur_val) for cur_val in parts[3:]]) for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14])  # and y[2].strip() in self.valid_block_devs.keys()])
             except:
                 pass
             else:
@@ -286,7 +300,14 @@ class _general(hm_classes.hm_module):
                     mount_list = ds_dict.keys()
                 else:
                     # check for by-* devices
-                    mount_list = [os.path.normpath(os.path.join(os.path.dirname(os.path.join("/dev", _value)), os.readlink(os.path.join("/dev", _value)))).split("/", 2)[2] if _value.count("/by-") else _value for _value in mount_list]
+                    mount_list = [
+                        os.path.normpath(
+                            os.path.join(
+                                os.path.dirname(os.path.join("/dev", _value)),
+                                os.readlink(os.path.join("/dev", _value))
+                            )
+                        ).split("/", 2)[2] if _value.count("/by-") else _value for _value in mount_list
+                    ]
                 # get unique devices
                 ds_keys_ok_by_name = sorted([key for key in ds_dict.iterkeys() if key in self.valid_block_devs])
                 # sort out partition stuff
@@ -317,9 +338,11 @@ class _general(hm_classes.hm_module):
                     extra_block_devs = []
                 # problem: Multipath devices are not always recognized
                 # problem: LVM devices are not handled properly
-                dev_list = [ds_key for ds_key in ds_keys_ok_by_name if [True for m_entry in mount_list if m_entry.startswith(ds_key)]] + \
-                           [value for key, value in mounted_lvms.iteritems() if key in mount_list] + \
-                           extra_block_devs
+                dev_list = [
+                    ds_key for ds_key in ds_keys_ok_by_name if [True for m_entry in mount_list if m_entry.startswith(ds_key)]
+                ] + [
+                    value for key, value in mounted_lvms.iteritems() if key in mount_list
+                ] + extra_block_devs
                 for dl in set(dev_list):
                     try:
                         bname = os.path.basename(dl)
@@ -381,17 +404,17 @@ class _general(hm_classes.hm_module):
             # print unique_dev_list
             if unique_dev_list != ["total"]:
                 for act_disk in unique_dev_list:
-                    if not act_disk in self.disk_stat:
+                    if act_disk not in self.disk_stat:
                         info_str = act_disk == "total" and "total" or "on /dev/$2"
-                        mvect.register_entry("io.%s.blks.read" % (act_disk)    , 0 , "number of blocks read per second %s" % (info_str)   , "1/s")
-                        mvect.register_entry("io.%s.blks.written" % (act_disk) , 0 , "number of blocks written per second %s" % (info_str), "1/s")
-                        mvect.register_entry("io.%s.bytes.read" % (act_disk)   , 0 , "bytes read per second %s" % (info_str)   , "B/s", 1024)
-                        mvect.register_entry("io.%s.bytes.written" % (act_disk), 0 , "bytes written per second %s" % (info_str), "B/s", 1024)
-                        mvect.register_entry("io.%s.time.read" % (act_disk)    , 0., "milliseconds spent reading %s" % (info_str)         , "s")
-                        mvect.register_entry("io.%s.time.written" % (act_disk) , 0., "milliseconds spent writing %s" % (info_str)         , "s")
-                        mvect.register_entry("io.%s.time.io" % (act_disk)      , 0., "milliseconds spent doing I/O %s" % (info_str)       , "s")
+                        mvect.register_entry("io.%s.blks.read" % (act_disk), 0, "number of blocks read per second %s" % (info_str), "1/s")
+                        mvect.register_entry("io.%s.blks.written" % (act_disk), 0, "number of blocks written per second %s" % (info_str), "1/s")
+                        mvect.register_entry("io.%s.bytes.read" % (act_disk), 0, "bytes read per second %s" % (info_str), "B/s", 1024)
+                        mvect.register_entry("io.%s.bytes.written" % (act_disk), 0, "bytes written per second %s" % (info_str), "B/s", 1024)
+                        mvect.register_entry("io.%s.time.read" % (act_disk), 0., "milliseconds spent reading %s" % (info_str), "s")
+                        mvect.register_entry("io.%s.time.written" % (act_disk), 0., "milliseconds spent writing %s" % (info_str), "s")
+                        mvect.register_entry("io.%s.time.io" % (act_disk), 0., "milliseconds spent doing I/O %s" % (info_str), "s")
             for old_disk in self.disk_stat.keys():
-                if not old_disk in disk_stat:
+                if old_disk not in disk_stat:
                     mvect.unregister_entry("io.%s.blks.read" % (old_disk))
                     mvect.unregister_entry("io.%s.blks.written" % (old_disk))
                     mvect.unregister_entry("io.%s.bytes.read" % (old_disk))
@@ -413,11 +436,13 @@ class _general(hm_classes.hm_module):
         else:
             tdiff = None
         self.last_vmstat_time = act_time
+
     def _interpret_nfsstat_line(self, header, *parts):
         if header in ["th"]:
             return [int(parts[0]), int(parts[1])] + [float(val) for val in parts[2:]]
         else:
             return [int(val) for val in parts]
+
     def _nfsstat_int(self, mvect):
         act_time = time.time()
         nfs_file = "/proc/net/rpc/nfsd"
@@ -425,21 +450,23 @@ class _general(hm_classes.hm_module):
             if not self.nfsstat_used:
                 self.nfsstat_used = True
                 # register
-                mvect.register_entry("nfs.rc.hits"   , 0., "NFS read cache hits"   , "1/s")
-                mvect.register_entry("nfs.rc.misses" , 0., "NFS read cache misses" , "1/s")
+                mvect.register_entry("nfs.rc.hits", 0., "NFS read cache hits", "1/s")
+                mvect.register_entry("nfs.rc.misses", 0., "NFS read cache misses", "1/s")
                 mvect.register_entry("nfs.rc.nocache", 0., "NFS cache not required", "1/s")
-                mvect.register_entry("nfs.io.read"   , 0., "bytes read from disk", "B/s" , 1024)
-                mvect.register_entry("nfs.io.write"  , 0., "bytes written to disk", "B/s", 1024)
-                mvect.register_entry("nfs.net.count"   , 0., "total reads"    , "1/s")
-                mvect.register_entry("nfs.net.udpcount", 0., "UDP packets"    , "1/s")
-                mvect.register_entry("nfs.net.tcpcount", 0., "TCP packets"    , "1/s")
-                mvect.register_entry("nfs.net.tcpcons" , 0., "TCP connections", "1/s")
-                mvect.register_entry("nfs.rpc.count"   , 0., "total RPC operations", "1/s")
-                mvect.register_entry("nfs.rpc.badtotal", 0., "bad RPC errors"      , "1/s")
-                mvect.register_entry("nfs.rpc.badfmt"  , 0., "RPC bad format"      , "1/s")
-                mvect.register_entry("nfs.rpc.badauth" , 0., "RPC bad auth"        , "1/s")
-                mvect.register_entry("nfs.rpc.badclnt" , 0., "RPC bad clnt"        , "1/s")
-            nfs_dict = dict([(parts[0], self._interpret_nfsstat_line(*parts)) for parts in [line.split() for line in file(nfs_file, "r").read().split("\n")] if len(parts)])
+                mvect.register_entry("nfs.io.read", 0., "bytes read from disk", "B/s", 1024)
+                mvect.register_entry("nfs.io.write", 0., "bytes written to disk", "B/s", 1024)
+                mvect.register_entry("nfs.net.count", 0., "total reads", "1/s")
+                mvect.register_entry("nfs.net.udpcount", 0., "UDP packets", "1/s")
+                mvect.register_entry("nfs.net.tcpcount", 0., "TCP packets", "1/s")
+                mvect.register_entry("nfs.net.tcpcons", 0., "TCP connections", "1/s")
+                mvect.register_entry("nfs.rpc.count", 0., "total RPC operations", "1/s")
+                mvect.register_entry("nfs.rpc.badtotal", 0., "bad RPC errors", "1/s")
+                mvect.register_entry("nfs.rpc.badfmt", 0., "RPC bad format", "1/s")
+                mvect.register_entry("nfs.rpc.badauth", 0., "RPC bad auth", "1/s")
+                mvect.register_entry("nfs.rpc.badclnt", 0., "RPC bad clnt", "1/s")
+            nfs_dict = {
+                parts[0]: self._interpret_nfsstat_line(*parts) for parts in [line.split() for line in file(nfs_file, "r").read().split("\n")] if len(parts)
+            }
             if self.last_nfsstat_time:
                 tdiff = act_time - self.last_nfsstat_time
                 # read cache
@@ -464,6 +491,7 @@ class _general(hm_classes.hm_module):
                 self.last_nfsstat_time = None
                 self.nfsstat_dict = {}
                 mvect.unregister_tree("nfs.")
+
     def update_machine_vector(self, mv):
         try:
             load_list = self._load_int()
@@ -519,6 +547,7 @@ class _general(hm_classes.hm_module):
                         call_name,
                         process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_CRITICAL)
+
     def _partinfo_int(self):
         # lookup tables for /dev/disk-by
         my_disk_lut = partition_tools.disk_lut()
@@ -580,7 +609,11 @@ class _general(hm_classes.hm_module):
             # still no real_root_dev_name: try /etc/mtab
             if not real_root_dev_name:
                 if os.path.isfile("/etc/mtab"):
-                    root_list = [parts[0] for parts in [line.split() for line in open("/etc/mtab", "r").read().split("\n") if line.strip()] if len(parts) > 2 and parts[1] == "/"]
+                    root_list = [
+                        parts[0] for parts in [
+                            line.split() for line in open("/etc/mtab", "r").read().split("\n") if line.strip()
+                        ] if len(parts) > 2 and parts[1] == "/"
+                    ]
                     if root_list:
                         real_root_dev_name = root_list[0]
                         if real_root_dev_name.startswith("/dev/"):
@@ -621,8 +654,10 @@ class _general(hm_classes.hm_module):
                         lline = line.lower()
                         if lline.startswith("model"):
                             parts = line.strip().split()
-                            cur_disc = {"model" : " ".join(parts[1:-1]),
-                                        "type"  : parts[-1][1:-1]}
+                            cur_disc = {
+                                "model": " ".join(parts[1:-1]),
+                                "type": parts[-1][1:-1]
+                            }
                         elif lline.startswith("disk"):
                             d_name = lline.split()[1][:-1]
                             parted_dict[d_name] = cur_disc
@@ -660,18 +695,18 @@ class _general(hm_classes.hm_module):
                                 hextype = "0x%02x" % (int(parts.pop(-1).split("=", 1)[1], 16))
                             else:
                                 # no hextype
-                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs", "xfs"]]):
+                                if any([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs", "xfs"]]):
                                     hextype = "0x83"
-                                elif any ([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
+                                elif any([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
                                     hextype = "0x82"
-                                elif any ([fs_name in (" ".join(parts)).lower() for fs_name in ["lvmpv"]]):
+                                elif any([fs_name in (" ".join(parts)).lower() for fs_name in ["lvmpv"]]):
                                     hextype = "0x8e"
                                 else:
                                     hextype = None
                             dev_dict[d_name][part_num] = {
-                                "size"    : size,
-                                "hextype" : hextype,
-                                "info"    : " ".join(parts),
+                                "size": size,
+                                "hextype": hextype,
+                                "info": " ".join(parts),
                             }
                             part_lut["%s%s" % (d_name, part_num)] = (d_name, part_num)
                 else:
@@ -696,9 +731,9 @@ class _general(hm_classes.hm_module):
                             hextype = "0x%02x" % (int(hextype, 16))
                             part_num = part[len(dev):]
                             dev_dict[dev][part_num] = {
-                                "size"      : size,
-                                "hextype"   : hextype,
-                                "info"      : info,
+                                "size": size,
+                                "hextype": hextype,
+                                "info": info,
                             }
                             part_lut[part] = (dev, part_num)
                 # kick empty devices
@@ -714,12 +749,13 @@ class _general(hm_classes.hm_module):
                                     dev_name = dev_name[:-1]
                                 part_num = int(part_name[len(dev_name):])
                                 dev_name = "/dev/%s" % (dev_name)
-                                if not dev_name in dev_dict:
+                                if dev_name not in dev_dict:
                                     dev_dict[dev_name] = {}
                                 dev_dict[dev_name]["%d" % (part_num)] = {
-                                    "size"    : part_size / 1024,
-                                    "hextype" : "0x00",
-                                    "info"    : ""}
+                                    "size": part_size / 1024,
+                                    "hextype": "0x00",
+                                    "info": ""
+                                }
                                 part_lut["/dev/%s" % (part_name)] = (dev_name, "%d" % (part_num))
                     # automount mointpoints
                     auto_mps = []
@@ -778,7 +814,7 @@ class _general(hm_classes.hm_module):
                                 dev_dict[part][""] = dev_dict[part]["1"]
                                 del dev_dict[part]["1"]
                                 del part_lut[_part1]
-                            if not part in part_lut:
+                            if part not in part_lut:
                                 # check for LVM-partition
                                 part = self.local_lvm_info.dm_dict["dmtolv"].get(part, part)
                                 try:
@@ -807,24 +843,25 @@ class _general(hm_classes.hm_module):
                                                 "/dev/mapper",
                                                 os.readlink("/dev/mapper/%s%s" % (vg_name, "-%s" % (lv_name) if lv_name is not None else ""))))
                                         dev_dict.setdefault("/dev/mapper/%s" % (vg_name), {})[lv_name] = {
-                                            "    mountpoint" : mp,
-                                            "fstype"     : fstype,
-                                            "options"    : opts,
-                                            "dump"       : dump,
-                                            "fsck"       : fsck,
-                                            "multipath"  : dm_struct,
-                                            "dm_name"    : dm_name,
-                                            "lut"        : my_disk_lut[dm_name],
+                                            "mountpoint": mp,
+                                            "fstype": fstype,
+                                            "options": opts,
+                                            "dump": dump,
+                                            "fsck": fsck,
+                                            "multipath": dm_struct,
+                                            "dm_name": dm_name,
+                                            "lut": my_disk_lut[dm_name],
                                         }
                                     else:
                                         if "lv" in self.local_lvm_info.lv_dict:
                                             act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
                                             act_lv["mount_options"] = {
-                                                "mountpoint" : mp,
-                                                "fstype"     : fstype,
-                                                "options"    : opts,
-                                                "dump"       : dump,
-                                                "fsck"       : fsck}
+                                                "mountpoint": mp,
+                                                "fstype": fstype,
+                                                "options": opts,
+                                                "dump": dump,
+                                                "fsck": fsck
+                                            }
                             else:
                                 dev, part_num = part_lut[part]
                                 dev_dict[dev][part_num]["mountpoint"] = mp
@@ -844,14 +881,16 @@ class _general(hm_classes.hm_module):
                         else:
                             if part == mp:
                                 part = "none"
-                            if not sys_dict.has_key(part) or not any([entry["mountpoint"] == mp for entry in sys_dict[part]]):
+                            if part not in sys_dict or not any([entry["mountpoint"] == mp for entry in sys_dict[part]]):
                                 sys_dict.setdefault(part, []).append({
-                                    "mountpoint" : mp,
-                                    "fstype"     : fstype,
-                                    "options"    : opts})
+                                    "mountpoint": mp,
+                                    "fstype": fstype,
+                                    "options": opts
+                                })
                                 sys_mounts.append((part, mp, fstype, opts))
                     ret_str = ""
         return ret_str, dev_dict, sys_dict
+
 
 class df_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -859,11 +898,13 @@ class df_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
         self.__disk_lut = partition_tools.disk_lut()
+
     def __call__(self, srv_com, cur_ns):
-        if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({
-                "reply" : "missing argument",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        if "arguments:arg0" not in srv_com:
+            srv_com.set_result(
+                "missing argument",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
             disk = srv_com["arguments:arg0"].text.strip()
             orig_disk = disk
@@ -882,29 +923,34 @@ class df_command(hm_classes.hm_command):
             try:
                 n_dict = self.module._df_int()
             except:
-                srv_com["result"].attrib.update({
-                    "reply" : "error reading mtab: %s" % (process_tools.get_except_info()),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com.set_result(
+                    "error reading mtab: %s" % (process_tools.get_except_info()),
+                    server_command.SRV_REPLY_STATE_ERROR,
+                )
             else:
                 if disk == "ALL":
-                    srv_com["df_result"] = dict([(disk, {
-                        "mountpoint" : n_dict[disk]["mountpoint"],
-                        "perc"       : n_dict[disk]["b_free_perc"],
-                        "used"       : n_dict[disk]["b_used"],
-                        "total"      : n_dict[disk]["b_size"]}) for disk in n_dict.keys()])
+                    srv_com["df_result"] = {
+                        disk: {
+                            "mountpoint": n_dict[disk]["mountpoint"],
+                            "perc": n_dict[disk]["b_free_perc"],
+                            "used": n_dict[disk]["b_used"],
+                            "total": n_dict[disk]["b_size"]} for disk in n_dict.keys()
+                        }
                 else:
                     store_info = True
-                    if not mapped_disk in n_dict:
+                    if mapped_disk not in n_dict:
                         # id is just a guess, FIXME
                         try:
                             all_maps = self.__disk_lut["id"][mapped_disk]
                         except KeyError:
                             store_info = False
-                            srv_com["result"].attrib.update({
-                                "reply" : "invalid partition %s (key is %s)" % (
+                            srv_com.set_result(
+                                "invalid partition %s (key is %s)" % (
                                     disk,
-                                    mapped_disk),
-                                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                                    mapped_disk
+                                ),
+                                server_command.SRV_REPLY_STATE_ERROR
+                            )
                         else:
                             disk_found = False
                             for mapped_disk in ["/dev/disk/by-id/%s" % (cur_map) for cur_map in all_maps]:
@@ -913,24 +959,25 @@ class df_command(hm_classes.hm_command):
                                     break
                             if not disk_found:
                                 store_info = False
-                                srv_com["result"].attrib.update({
-                                    "reply" : "invalid partition %s" % (disk),
-                                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                                srv_com.set_result(
+                                    "invalid partition %s" % (disk),
+                                    server_command.SRV_REPLY_STATE_ERROR,
+                                )
                     if store_info:
                         mapped_info = n_dict[mapped_disk]
                         cur_fs = mapped_info["fs"]
                         res_dict = {
-                            "part"        : disk,
-                            "mapped_disk" : mapped_disk,
-                            "orig_disk"   : orig_disk,
-                            "mountpoint"  : mapped_info["mountpoint"],
-                            "perc"        : mapped_info["b_free_perc"],
-                            "used"        : mapped_info["b_used"],
-                            "total"       : mapped_info["b_size"],
-                            "i_size"      : mapped_info["i_size"],
-                            "i_free"      : mapped_info["i_free"],
-                            "i_avail"     : mapped_info["i_avail"],
-                            "fs"          : cur_fs,
+                            "part": disk,
+                            "mapped_disk": mapped_disk,
+                            "orig_disk": orig_disk,
+                            "mountpoint": mapped_info["mountpoint"],
+                            "perc": mapped_info["b_free_perc"],
+                            "used": mapped_info["b_used"],
+                            "total": mapped_info["b_size"],
+                            "i_size": mapped_info["i_size"],
+                            "i_free": mapped_info["i_free"],
+                            "i_avail": mapped_info["i_avail"],
+                            "fs": cur_fs,
                         }
                         if cur_fs == "btrfs" and self.module.btrfs_path:
                             cur_stat, cur_out = commands.getstatusoutput("%s fi df %s" % (self.module.btrfs_path, mapped_info["mountpoint"]))
@@ -945,10 +992,11 @@ class df_command(hm_classes.hm_command):
                                     btrfs_info[":".join(l_type)] = l_data
                                 res_dict["btrfs_info"] = btrfs_info
                         srv_com["df_result"] = res_dict
+
     def interpret(self, srv_com, cur_ns):
         result = srv_com["df_result"]
         # print result
-        if result.has_key("perc"):
+        if "perc" in result:
             # single-partition result
             ret_state = limits.check_ceiling(result["perc"], cur_ns.warn, cur_ns.crit)
             if result.get("i_size", 0):
@@ -1015,7 +1063,7 @@ class df_command(hm_classes.hm_command):
         else:
             if result:
                 # all-partition result
-                max_stuff = {"perc" :-1}
+                max_stuff = {"perc":-1}
                 all_parts = sorted(result.keys())
                 for part_name in all_parts:
                     d_stuff = result[part_name]
@@ -1030,12 +1078,13 @@ class df_command(hm_classes.hm_command):
                     logging_tools.get_plural("partition", len(all_parts)))
             else:
                 return limits.nag_STATE_CRITICAL, "no partitions found"
+
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
-        if result.has_key("perc"):
+        if "perc" in result:
             # single-partition result
             ret_state = limits.check_ceiling(result["perc"], parsed_coms.warn, parsed_coms.crit)
-            if result.has_key("mapped_disk"):
+            if "mapped_disk" in result:
                 part_str = "%s (is %s)" % (result["mapped_disk"], result["part"])
             else:
                 part_str = result["part"]
@@ -1043,11 +1092,12 @@ class df_command(hm_classes.hm_command):
                 result["perc"],
                 logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
                 logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
-                ", mp %s" % (result["mountpoint"]) if result.has_key("mountpoint") else "",
+                ", mp %s" % (result["mountpoint"]) if "mountpoint" in result else "",
                 part_str)
         else:
             # all-partition result
-            max_stuff = {"perc" :-1}
+            max_stuff = {}
+            max_stuff["perc"] = -1
             all_parts = sorted(result.keys())
             for part_name in all_parts:
                 d_stuff = result[part_name]
@@ -1061,17 +1111,21 @@ class df_command(hm_classes.hm_command):
                 max_stuff["mountpoint"],
                 logging_tools.get_plural("partition", len(all_parts)))
 
+
 class version_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["version"] = VERSION_STRING
+
     def interpret(self, srv_com, cur_ns):
         try:
             return limits.nag_STATE_OK, "version is %s" % (srv_com["version"].text)
         except:
             return limits.nag_STATE_CRITICAL, "version not found"
+
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
         return act_state, "version is %s" % (result)
+
 
 class get_0mq_id_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -1093,49 +1147,63 @@ class get_0mq_id_command(hm_classes.hm_command):
             if id_node is not None:
                 srv_com["zmq_id"] = id_node.text
             else:
-                srv_com["result"].attrib.update({"reply" : "no matching 0MQ id found for ip %s" % (target_ip),
-                                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com.set_result(
+                    "no matching 0MQ id found for ip %s" % (target_ip),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
         else:
-            srv_com["result"].attrib.update({"reply" : "no 0MQ_id file found",
-                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result(
+                "no 0MQ_id file found",
+                server_command.SRV_REPLY_STATE_ERROR
+            )
+
     def interpret(self, srv_com, cur_ns):
         try:
             return limits.nag_STATE_OK, "0MQ id is %s" % (srv_com["zmq_id"].text)
         except:
             return limits.nag_STATE_CRITICAL, "version not found"
 
+
 class status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["status_str"] = "ok running"
+
     def interpret(self, srv_com, cur_ns):
         try:
             return limits.nag_STATE_OK, "status is %s" % (srv_com["status_str"].text)
         except:
             return limits.nag_STATE_CRITICAL, "status unknown"
+
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
         return act_state, "status is %s" % (result)
 
+
 class get_uuid_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
+
     def interpret(self, srv_com, cur_ns):
         try:
             return limits.nag_STATE_OK, "uuid is %s" % (srv_com["uuid"].text)
         except:
             return limits.nag_STATE_CRITICAL, "uuid not found"
+
     def interpret_old(self, result, parsed_coms):
         act_state = limits.nag_STATE_OK
         return act_state, "uuid is %s" % (result.split()[1])
+
 
 class swap_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
+
     def __call__(self, srv_com, cur_ns):
         _virt_info, swap_info = self.module._mem_int()
         srv_com["swap"] = dict(swap_info._asdict())
+
     def interpret(self, srv_com, cur_ns):
         if "swap" in srv_com:
             # new style with psutil
@@ -1151,11 +1219,12 @@ class swap_command(hm_classes.hm_command):
             return limits.nag_STATE_CRITICAL, "no swap space found"
         else:
             swap = 100 * float(swap_total - swap_free) / swap_total
-            ret_state = limits.check_ceiling(swap, cur_ns.warn , cur_ns.crit)
+            ret_state = limits.check_ceiling(swap, cur_ns.warn, cur_ns.crit)
             return ret_state, "swapinfo: %d %% of %s swap" % (
                 swap,
                 logging_tools.get_size_str(swap_total * _fac, strip_spaces=True),
             )
+
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         swaptot, swapfree = (int(result["swaptotal"]),
@@ -1170,15 +1239,18 @@ class swap_command(hm_classes.hm_command):
                 logging_tools.get_size_str(swaptot * 1024, strip_spaces=True),
                 )
 
+
 class mem_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
+
     def __call__(self, srv_com, cur_ns):
         virt_info, swap_info = self.module._mem_int()
         srv_com["mem"] = dict(virt_info._asdict())
         srv_com["swap"] = dict(swap_info._asdict())
+
     def interpret(self, srv_com, cur_ns):
         mem_dict = srv_com["mem"]
         if "swap" in srv_com:
@@ -1226,6 +1298,7 @@ class mem_command(hm_classes.hm_command):
             logging_tools.get_size_str(buffers * _fact, strip_spaces=True),
             logging_tools.get_size_str(cached * _fact, strip_spaces=True),
         )
+
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         memtot = int(result["memtotal"])
@@ -1253,9 +1326,11 @@ class mem_command(hm_classes.hm_command):
             allp,
             logging_tools.get_size_str(alltot * 1024))
 
+
 class sysinfo_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
     def __call__(self, srv_com, cur_ns):
         root_dir = srv_com.get("arguments:arg0", "/")
         log_lines, sys_dict = process_tools.fetch_sysinfo(root_dir)
@@ -1263,8 +1338,13 @@ class sysinfo_command(hm_classes.hm_command):
             self.log(log_line, log_lev)
         imi_file = "/%s/.imageinfo" % (root_dir)
         if os.path.isfile(imi_file):
-            srv_com["imageinfo"] = dict([(key.strip(), value.strip()) for key, value in [line.strip().lower().split("=", 1) for line in open(imi_file, "r").readlines() if line.count("=")]])
+            srv_com["imageinfo"] = {
+                key.strip(): value.strip() for key, value in [
+                    line.strip().lower().split("=", 1) for line in open(imi_file, "r").readlines() if line.count("=")
+                ]
+            }
         srv_com["sysinfo"] = sys_dict
+
     def interpret(self, srv_com, cur_ns):
         need_keys = set(["vendor", "version", "arch"])
         miss_keys = [key for key in need_keys if not "sysinfo:%s" % (key) in srv_com]
@@ -1281,33 +1361,38 @@ class sysinfo_command(hm_classes.hm_command):
                 else:
                     ret_str += ", no image info"
             return limits.nag_STATE_OK, ret_str
+
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         need_keys = ["vendor", "version", "arch"]
-        mis_keys = [k for k in need_keys if not result.has_key(k)]
+        mis_keys = [k for k in need_keys if k not in result]
         if mis_keys:
             return limits.nag_STATE_CRITICAL, "%s missing : %s" % (logging_tools.get_plural("key", len(mis_keys)), ", ".join(mis_keys))
         else:
             ret_str = "Distribution is %s version %s on an %s" % (result["vendor"], result["version"], result["arch"])
             if "imageinfo" in result.keys():
                 ii_dict = result["imageinfo"]
-                if ii_dict.has_key("image_name") and ii_dict.has_key("image_version"):
+                if "image_name" in ii_dict and "image_version" in ii_dict:
                     ret_str += ", image is %s (version %s)" % (ii_dict["image_name"], ii_dict["image_version"])
                 else:
                     ret_str += ", no image info"
             return limits.nag_STATE_OK, ret_str
 
+
 class load_command(hm_classes.hm_command):
     info_string = "load information"
+
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
+
     def __call__(self, srv_com, cur_ns):
         cur_load = self.module._load_int()
         srv_com["load1"] = "%.2f" % (cur_load[0])
         srv_com["load5"] = "%.2f" % (cur_load[1])
         srv_com["load15"] = "%.2f" % (cur_load[2])
+
     def interpret(self, srv_com, cur_ns):
         load_1, load_5, load_15 = (
             float(srv_com["load1"].text),
@@ -1323,6 +1408,7 @@ class load_command(hm_classes.hm_command):
             load_1, load_5, load_15,
             load_1, load_5, load_15
         )
+
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         load1 = float(result["load1"])
@@ -1333,13 +1419,16 @@ class load_command(hm_classes.hm_command):
         ret_str = "load (1/5/15): %.2f %.2f %.2f" % (load1, load5, load15)
         return ret_state, ret_str
 
+
 class uptime_command(hm_classes.hm_command):
     info_string = "update information"
+
     def __call__(self, srv_com, cur_ns):
         upt_data = [int(float(value)) for value in open("/proc/uptime", "r").read().strip().split()]
         srv_com["uptime"] = "%d" % (upt_data[0])
         if len(upt_data) > 1:
             srv_com["idle"] = "%d" % (upt_data[1])
+
     def interpret(self, srv_com, cur_ns):
         uptime_int = int(srv_com["uptime"].text)
         up_m = int(uptime_int) / 60
@@ -1350,14 +1439,18 @@ class uptime_command(hm_classes.hm_command):
             logging_tools.get_plural("day", up_d),
             up_h,
             up_m)
+
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         return limits.nag_STATE_OK, "up for %s days, %s hours and %s mins" % (result["up_days"], result["up_hours"], result["up_minutes"])
 
+
 class date_command(hm_classes.hm_command):
     info_string = "return date"
+
     def __call__(self, srv_com, cur_ns):
         srv_com["local_time"] = int(time.time())
+
     def interpret(self, srv_com, cur_ns):
         warn_diff, err_diff = (10, 5 * 60)
         local_date = time.time()
@@ -1375,11 +1468,12 @@ class date_command(hm_classes.hm_command):
                 warn_diff)
         else:
             return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
+
     def interpret_old(self, result, parsed_coms):
         warn_diff, err_diff = (10, 5 * 60)
         local_date = time.time()
         remote_date = hm_classes.net_to_sys(result[3:])["date"]
-        if type(remote_date) == type(""):
+        if type(remote_date) in [str, unicode]:
             remote_date = time.mktime(time.strptime(remote_date))
         diff_time = int(abs(remote_date - local_date))
         if diff_time > err_diff:
@@ -1394,6 +1488,7 @@ class date_command(hm_classes.hm_command):
                 warn_diff)
         else:
             return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
+
 
 class macinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -1433,6 +1528,7 @@ class macinfo_command(hm_classes.hm_command):
         except:
             pass
         srv_com["macinfo"] = net_dict
+
     def interpret(self, srv_com, cur_ns):
         if "macinfo" in srv_com:
             mac_list = []
@@ -1442,16 +1538,22 @@ class macinfo_command(hm_classes.hm_command):
                                                     ", ".join(sorted(mac_list)))
         else:
             return limits.nag_STATE_CRITICAL, "no macaddresses found"
+
     def interpret_old(self, result, parsed_coms):
         if result.startswith("ok"):
             net_dict = hm_classes.net_to_sys(result[3:])
-            return limits.nag_STATE_OK, "%d ether-devices found: %s" % (len(net_dict.keys()), ", ".join(["%s (%s)" % (k, net_dict[k]) for k in net_dict.keys()]))
+            return limits.nag_STATE_OK, "{:d} ether-devices found: {}".format(
+                len(net_dict.keys()),
+                ", ".join(["%s (%s)" % (k, net_dict[k]) for k in net_dict.keys()])
+            )
         else:
             return limits.nag_STATE_CRITICAL, "error parsing return"
+
 
 class umount_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
     def __call__(self, srv_com, cur_ns):
         ignore_list = (srv_com["arguments:rest"].text or "").strip().split()
         mount_dict = get_nfs_mounts()
@@ -1465,23 +1567,31 @@ class umount_command(hm_classes.hm_command):
                     um_stat, um_out = commands.getstatusoutput("umount %s" % (m_point))
                     cur_umount_node = srv_com.builder("umount_result", m_point, src=src, error="0")
                     if um_stat:
-                        cur_umount_node.attrib.update({"error"  : "1",
-                                                       "status" : "%d" % (um_stat),
-                                                       "log"    : " ".join([cur_line.strip() for cur_line in um_out.split("\n")])})
+                        cur_umount_node.attrib.update(
+                            {
+                                "error": "1",
+                                "status": "%d" % (um_stat),
+                                "log": " ".join([cur_line.strip() for cur_line in um_out.split("\n")])
+                            }
+                        )
                         self.log("umounting %s: %s (%d)" % (m_point, cur_umount_node.attrib["log"], um_stat),
                                  logging_tools.LOG_LEVEL_ERROR)
                     else:
                         self.log("ok umounting %s" % (m_point))
                     srv_com["umount_list"].append(cur_umount_node)
+
     def interpret(self, srv_com, cur_ns):
         ok_list, error_list = (srv_com.xpath(".//ns:umount_result[@error='0']", smart_strings=False),
                                srv_com.xpath(".//ns:umount_result[@error='1']", smart_strings=False))
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, \
-               "".join([
-                   "tried to unmount %s" % (logging_tools.get_plural("entry", len(ok_list) + len(error_list))),
-                   ", ok: %s" % (",".join([ok_node.text for ok_node in ok_list])) if ok_list else "",
-                   ", error: %s" % (",".join([error_node.text for error_node in error_list])) if error_list else "",
-               ])
+            "".join(
+                [
+                    "tried to unmount %s" % (logging_tools.get_plural("entry", len(ok_list) + len(error_list))),
+                    ", ok: %s" % (",".join([ok_node.text for ok_node in ok_list])) if ok_list else "",
+                    ", error: %s" % (",".join([error_node.text for error_node in error_list])) if error_list else "",
+                ]
+            )
+
 
 class ksminfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -1490,6 +1600,7 @@ class ksminfo_command(hm_classes.hm_command):
             srv_com["ksm"] = dict([(entry, file(os.path.join(ksm_dir, entry), "r").read().strip()) for entry in os.listdir(ksm_dir)])
         else:
             srv_com["ksm"] = "not found"
+
     def interpret(self, srv_com, cur_ns):
         ksm_info = srv_com["ksm"]
         if type(ksm_info) == dict:
@@ -1508,13 +1619,19 @@ class ksminfo_command(hm_classes.hm_command):
         else:
             return limits.nag_STATE_CRITICAL, "ksm problem: %s" % (ksm_info.text)
 
+
 class hugepageinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/hugepages"
         if os.path.isdir(hpage_dir):
-            srv_com["hpages"] = dict([(entry, dict([(sub_entry, file(os.path.join(hpage_dir, entry, sub_entry), "r").read().strip()) for sub_entry in os.listdir(os.path.join(hpage_dir, entry))])) for entry in os.listdir(hpage_dir)])
+            srv_com["hpages"] = {
+                entry: {
+                    sub_entry: file(os.path.join(hpage_dir, entry, sub_entry), "r").read().strip() for sub_entry in os.listdir(os.path.join(hpage_dir, entry))
+                } for entry in os.listdir(hpage_dir)
+            }
         else:
             srv_com["hpages"] = "not found"
+
     def interpret(self, srv_com, cur_ns):
         hpage_info = srv_com["hpages"]
         if type(hpage_info) == dict:
@@ -1542,16 +1659,20 @@ class hugepageinfo_command(hm_classes.hm_command):
         else:
             return limits.nag_STATE_CRITICAL, "hugepage problem: %s" % (hpage_info.text)
 
+
 class thugepageinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         hpage_dir = "/sys/kernel/mm/transparent_hugepage"
         if os.path.isdir(hpage_dir):
             sub_dirs = ["khugepaged"]
-            srv_com["thpagef"] = dict([(entry, file(os.path.join(hpage_dir, entry), "r").read().strip()) for entry in os.listdir(hpage_dir) if entry not in sub_dirs])
-            srv_com["thpaged"] = dict([(entry, file(os.path.join(hpage_dir, sub_dirs[0], entry), "r").read().strip()) for entry in os.listdir(os.path.join(hpage_dir, sub_dirs[0]))])
+            srv_com["thpagef"] = {entry: file(os.path.join(hpage_dir, entry), "r").read().strip() for entry in os.listdir(hpage_dir) if entry not in sub_dirs}
+            srv_com["thpaged"] = {
+                entry: file(os.path.join(hpage_dir, sub_dirs[0], entry), "r").read().strip() for entry in os.listdir(os.path.join(hpage_dir, sub_dirs[0]))
+            }
         else:
             srv_com["thpagef"] = "not found"
             srv_com["thpaged"] = "not found"
+
     def interpret(self, srv_com, cur_ns):
         thpage_f_info = srv_com["thpagef"]
         thpage_d_info = srv_com["thpaged"]
@@ -1576,12 +1697,15 @@ class thugepageinfo_command(hm_classes.hm_command):
             ret_state, ret_str = (limits.nag_STATE_CRITICAL, "problem: %s, %s" % (thpage_d_info.text, thpage_f_info.text))
         return ret_state, "transparent hugepage %s" % (ret_str)
 
+
 class pciinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["pci"] = pci_database.get_actual_pci_struct(*pci_database.get_pci_dicts())
+
     def interpret(self, srv_com, cur_ns):
         def _short(in_tag):
             return in_tag.split("}")[1]
+
         def _short_tag(in_el):
             return int(_short(in_el.tag)[7:])
         cmr_b = []
@@ -1599,40 +1723,44 @@ class pciinfo_command(hm_classes.hm_command):
                         cmr_b.append(out_str)
         return limits.nag_STATE_OK, "\n".join(cmr_b)
 
+
 class cpuflags_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["proclines"] = server_command.compress(file("/proc/cpuinfo", "r").read())
+
     def interpret(self, srv_com, cur_ns):
         # most likely source: http://www.softeng.rl.ac.uk/st/archive/SoftEng/SESP/html/SoftwareTools/vtune/users_guide/mergedProjects/analyzer_ec/mergedProjects/reference_olh/mergedProjects/instructions/instruct32_hh/vc46.htm
-        flag_lut = {"FPU"    : "Floating Point Unit On-Chip. The processor contains an x87 FPU.",
-                    "VME"    : "Virtual 8086 Mode Enhancements. Virtual 8086 mode enhancements, including CR4.VME for controlling the feature, CR4.PVI for protected mode virtual interrupts, software interrupt indirection, expansion of the TSS with the software indirection bitmap, and EFLAGS.VIF and EFLAGS.VIP flags.",
-                    "DE"     : "Debugging Extensions. Support for I/O breakpoints, including CR4.DE for controlling the feature, and optional trapping of accesses to DR4 and DR5.",
-                    "PSE"    : "Page Size Extension. Large pages of size 4Mbyte are supported, including CR4.PSE for controlling the feature, the defined dirty bit in PDE (Page Directory Entries), optional reserved bit trapping in CR3, PDEs, and PTEs.",
-                    "TSC"    : "Time Stamp Counter. The RDTSC instruction is supported, including CR4.TSD for controlling privilege.",
-                    "MSR"    : "Model Specific Registers RDMSR and WRMSR Instructions. The RDMSR and WRMSR instructions are supported. Some of the MSRs are implementation dependent.",
-                    "PAE"    : "Physical Address Extension. Physical addresses greater than 32 bits are supported: extended page table entry formats, an extra level in the page translation tables is defined, 2 Mbyte pages are supported instead of 4 Mbyte pages if PAE bit is 1. The actual number of address bits beyond 32 is not defined, and is implementation specific.",
-                    "MCE"    : "Machine Check Exception. Exception 18 is defined for Machine Checks, including CR4.MCE for controlling the feature. This feature does not define the model-specific implementations of machine-check error logging, reporting, and processor shutdowns. Machine Check exception handlers may have to depend on processor version to do model specific processing of the exception, or test for the presence of the Machine Check feature.",
-                    "CX8"    : "CMPXCHG8B Instruction. The compare-and-exchange 8 bytes (64 bits) instruction is supported (implicitly locked and atomic).",
-                    "APIC"   : "APIC On-Chip. The processor contains an Advanced Programmable Interrupt Controller (APIC), responding to memory mapped commands in the physical address range FFFE0000H to FFFE0FFFH (by default - some processors permit the APIC to be relocated).",
-                    "SEP"    : "SYSENTER and SYSEXIT Instructions. The SYSENTER and SYSEXIT and associated MSRs are supported.",
-                    "MTRR"   : "Memory Type Range Registers. MTRRs are supported. The MTRRcap MSR contains feature bits that describe what memory types are supported, how many variable MTRRs are supported, and whether fixed MTRRs are supported.",
-                    "PGE"    : "PTE Global Bit. The global bit in page directory entries (PDEs) and page table entries (PTEs) is supported, indicating TLB entries that are common to different processes and need not be flushed. The CR4.PGE bit controls this feature.",
-                    "MCA"    : "Machine Check Architecture. The Machine Check Architecture, which provides a compatible mechanism for error reporting in P6 family, Pentium 4, and Intel Xeon processors is supported. The MCG_CAP MSR contains feature bits describing how many banks of error reporting MSRs are supported.",
-                    "CMOV"   : "Conditional Move Instructions. The conditional move instruction CMOV is supported. In addition, if x87 FPU is present as indicated by the CPUID.FPU feature bit, then the FCOMI and FCMOV instructions are supported.",
-                    "PAT"    : "Page Attribute Table. Page Attribute Table is supported. This feature augments the Memory Type Range Registers (MTRRs), allowing an operating system to specify attributes of memory on a 4K granularity through a linear address.",
-                    "PSE-36" : "32-Bit Page Size Extension. Extended 4-MByte pages that are capable of addressing physical memory beyond 4 GBytes are supported. This feature indicates that the upper four bits of the physical address of the 4-MByte page is encoded by bits 13-16 of the page directory entry.",
-                    "PSN"    : "Processor Serial Number. The processor supports the 96-bit processor identification number feature and the feature is enabled.",
-                    "CLFLSH" : "CLFLUSH Instruction. CLFLUSH Instruction is supported.",
-                    "DS"     : "Debug Store. The processor supports the ability to write debug information into a memory resident buffer. This feature is used by the branch trace store (BTS) and precise event-based sampling (PEBS) facilities (see Chapter 15, Debugging and Performance Monitoring, in the IA-32 Intel Architecture Software Developer's Manual, Volume 3).",
-                    "ACPI"   : "Thermal Monitor and Software Controlled Clock Facilities. The processor implements internal MSRs that allow processor temperature to be monitored and processor performance to be modulated in predefined duty cycles under software control.",
-                    "MMX"    : "Intel MMX Technology. The processor supports the Intel MMX technology.",
-                    "FXSR"   : "FXSAVE and FXRSTOR Instructions. The FXSAVE and FXRSTOR instructions are supported for fast save and restore of the floating point context. Presence of this bit also indicates that CR4.OSFXSR is available for an operating system to indicate that it supports the FXSAVE and FXRSTOR instructions.",
-                    "SSE"    : "SSE. The processor supports the SSE extensions.",
-                    "SSE2"   : "SSE2. The processor supports the SSE2 extensions.",
-                    "SS"     : "Self Snoop. The processor supports the management of conflicting memory types by performing a snoop of its own cache structure for transactions issued to the bus.",
-                    "HTT"    : "Hyper-Threading Technology. The processor implements Hyper-Threading technology.",
-                    "TM"     : "Thermal Monitor. The processor implements the thermal monitor automatic thermal control circuitry (TCC).",
-                    "PBE"    : "Pending Break Enable. The processor supports the use of the FERR#/PBE# pin when the processor is in the stop-clock state (STPCLK# is asserted) to signal the processor that an interrupt is pending and that the processor should return to normal operation to handle the interrupt. Bit 10 (PBE enable) in the IA32_MISC_ENABLE MSR enables this capability."}
+        flag_lut = {
+            "FPU": "Floating Point Unit On-Chip. The processor contains an x87 FPU.",
+            "VME": "Virtual 8086 Mode Enhancements. Virtual 8086 mode enhancements, including CR4.VME for controlling the feature, CR4.PVI for protected mode virtual interrupts, software interrupt indirection, expansion of the TSS with the software indirection bitmap, and EFLAGS.VIF and EFLAGS.VIP flags.",
+            "DE": "Debugging Extensions. Support for I/O breakpoints, including CR4.DE for controlling the feature, and optional trapping of accesses to DR4 and DR5.",
+            "PSE": "Page Size Extension. Large pages of size 4Mbyte are supported, including CR4.PSE for controlling the feature, the defined dirty bit in PDE (Page Directory Entries), optional reserved bit trapping in CR3, PDEs, and PTEs.",
+            "TSC": "Time Stamp Counter. The RDTSC instruction is supported, including CR4.TSD for controlling privilege.",
+            "MSR": "Model Specific Registers RDMSR and WRMSR Instructions. The RDMSR and WRMSR instructions are supported. Some of the MSRs are implementation dependent.",
+            "PAE": "Physical Address Extension. Physical addresses greater than 32 bits are supported: extended page table entry formats, an extra level in the page translation tables is defined, 2 Mbyte pages are supported instead of 4 Mbyte pages if PAE bit is 1. The actual number of address bits beyond 32 is not defined, and is implementation specific.",
+            "MCE": "Machine Check Exception. Exception 18 is defined for Machine Checks, including CR4.MCE for controlling the feature. This feature does not define the model-specific implementations of machine-check error logging, reporting, and processor shutdowns. Machine Check exception handlers may have to depend on processor version to do model specific processing of the exception, or test for the presence of the Machine Check feature.",
+            "CX8": "CMPXCHG8B Instruction. The compare-and-exchange 8 bytes (64 bits) instruction is supported (implicitly locked and atomic).",
+            "APIC": "APIC On-Chip. The processor contains an Advanced Programmable Interrupt Controller (APIC), responding to memory mapped commands in the physical address range FFFE0000H to FFFE0FFFH (by default - some processors permit the APIC to be relocated).",
+            "SEP": "SYSENTER and SYSEXIT Instructions. The SYSENTER and SYSEXIT and associated MSRs are supported.",
+            "MTRR": "Memory Type Range Registers. MTRRs are supported. The MTRRcap MSR contains feature bits that describe what memory types are supported, how many variable MTRRs are supported, and whether fixed MTRRs are supported.",
+            "PGE": "PTE Global Bit. The global bit in page directory entries (PDEs) and page table entries (PTEs) is supported, indicating TLB entries that are common to different processes and need not be flushed. The CR4.PGE bit controls this feature.",
+            "MCA": "Machine Check Architecture. The Machine Check Architecture, which provides a compatible mechanism for error reporting in P6 family, Pentium 4, and Intel Xeon processors is supported. The MCG_CAP MSR contains feature bits describing how many banks of error reporting MSRs are supported.",
+            "CMOV": "Conditional Move Instructions. The conditional move instruction CMOV is supported. In addition, if x87 FPU is present as indicated by the CPUID.FPU feature bit, then the FCOMI and FCMOV instructions are supported.",
+            "PAT": "Page Attribute Table. Page Attribute Table is supported. This feature augments the Memory Type Range Registers (MTRRs), allowing an operating system to specify attributes of memory on a 4K granularity through a linear address.",
+            "PSE-36": "32-Bit Page Size Extension. Extended 4-MByte pages that are capable of addressing physical memory beyond 4 GBytes are supported. This feature indicates that the upper four bits of the physical address of the 4-MByte page is encoded by bits 13-16 of the page directory entry.",
+            "PSN": "Processor Serial Number. The processor supports the 96-bit processor identification number feature and the feature is enabled.",
+            "CLFLSH": "CLFLUSH Instruction. CLFLUSH Instruction is supported.",
+            "DS": "Debug Store. The processor supports the ability to write debug information into a memory resident buffer. This feature is used by the branch trace store (BTS) and precise event-based sampling (PEBS) facilities (see Chapter 15, Debugging and Performance Monitoring, in the IA-32 Intel Architecture Software Developer's Manual, Volume 3).",
+            "ACPI": "Thermal Monitor and Software Controlled Clock Facilities. The processor implements internal MSRs that allow processor temperature to be monitored and processor performance to be modulated in predefined duty cycles under software control.",
+            "MMX": "Intel MMX Technology. The processor supports the Intel MMX technology.",
+            "FXSR": "FXSAVE and FXRSTOR Instructions. The FXSAVE and FXRSTOR instructions are supported for fast save and restore of the floating point context. Presence of this bit also indicates that CR4.OSFXSR is available for an operating system to indicate that it supports the FXSAVE and FXRSTOR instructions.",
+            "SSE": "SSE. The processor supports the SSE extensions.",
+            "SSE2": "SSE2. The processor supports the SSE2 extensions.",
+            "SS": "Self Snoop. The processor supports the management of conflicting memory types by performing a snoop of its own cache structure for transactions issued to the bus.",
+            "HTT": "Hyper-Threading Technology. The processor implements Hyper-Threading technology.",
+            "TM": "Thermal Monitor. The processor implements the thermal monitor automatic thermal control circuitry (TCC).",
+            "PBE": "Pending Break Enable. The processor supports the use of the FERR#/PBE# pin when the processor is in the stop-clock state (STPCLK# is asserted) to signal the processor that an interrupt is pending and that the processor should return to normal operation to handle the interrupt. Bit 10 (PBE enable) in the IA32_MISC_ENABLE MSR enables this capability.",
+        }
         flag_dict = {}
         for line in server_command.decompress(srv_com["proclines"].text).split("\n"):
             if line.count(":"):
@@ -1650,9 +1778,11 @@ class cpuflags_command(hm_classes.hm_command):
         ret_state = limits.nag_STATE_OK
         return ret_state, "\n".join(ret_lines)
 
+
 class cpuinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["cpuinfo"] = self.module._cpuinfo_int(srv_com)
+
     def interpret(self, srv_com, cur_ns):
         ret_state, pre_str = (limits.nag_STATE_OK, "OK")
         header_errors = []
@@ -1668,38 +1798,41 @@ class cpuinfo_command(hm_classes.hm_command):
                 if cpu.get("online", True):
                     cpu_speed = cpu["speed"]
                     bnd_str = ""
-                    # if cpu_range.has_boundaries_set():
-                    #    if cpu_range.in_boundaries(cpu_speed):
-                    #        bnd_str = "(in range [%d, %d])" % (cpu_range.get_lower_boundary(), cpu_range.get_upper_boundary())
-                    #    else:
-                    #        ret_state, pre_str = (limits.nag_STATE_CRITICAL, "Error")
-                    #        bnd_str = "(not in range [%d, %d])" % (cpu_range.get_lower_boundary(), cpu_range.get_upper_boundary())
-                    #        header_errors.append("core %d (%d) not in range [%d, %d]" % (cpu["core_num"], cpu_speed, cpu_range.get_lower_boundary(), cpu_range.get_upper_boundary()))
-                    out_list.append([logging_tools.form_entry(cpu["core_num"], header="core"),
-                                     logging_tools.form_entry(cpu_speed, header="speed"),
-                                     logging_tools.form_entry(cpu["socket_num"], header="socket"),
-                                     logging_tools.form_entry(cpu.get_cache_info_str(), header="cache"),
-                                     logging_tools.form_entry(cpu["cpu_id"], header="cpu_id"),
-                                     logging_tools.form_entry(trim_string(cpu.get("model name", "unknown brand")), header="brand"),
-                                     logging_tools.form_entry(bnd_str, header="problems")])
+                    out_list.append(
+                        [
+                            logging_tools.form_entry(cpu["core_num"], header="core"),
+                            logging_tools.form_entry(cpu_speed, header="speed"),
+                            logging_tools.form_entry(cpu["socket_num"], header="socket"),
+                            logging_tools.form_entry(cpu.get_cache_info_str(), header="cache"),
+                            logging_tools.form_entry(cpu["cpu_id"], header="cpu_id"),
+                            logging_tools.form_entry(trim_string(cpu.get("model name", "unknown brand")), header="brand"),
+                            logging_tools.form_entry(bnd_str, header="problems")
+                        ]
+                    )
                 else:
-                    out_list.append([logging_tools.form_entry(cpu["core_num"], header="core"),
-                                     logging_tools.form_entry(0, header="speed"),
-                                     logging_tools.form_entry(0, header="socket"),
-                                     logging_tools.form_entry("---", header="cache"),
-                                     logging_tools.form_entry("---", header="cpu_id"),
-                                     logging_tools.form_entry("---", header="brand"),
-                                     logging_tools.form_entry("offline")])
+                    out_list.append(
+                        [
+                            logging_tools.form_entry(cpu["core_num"], header="core"),
+                            logging_tools.form_entry(0, header="speed"),
+                            logging_tools.form_entry(0, header="socket"),
+                            logging_tools.form_entry("---", header="cache"),
+                            logging_tools.form_entry("---", header="cpu_id"),
+                            logging_tools.form_entry("---", header="brand"),
+                            logging_tools.form_entry("offline")
+                        ]
+                    )
             join_str, head_str = ("\n", "%s: %s, %s%s" % (pre_str,
                                                           logging_tools.get_plural("socket", cpu_info.num_sockets()),
                                                           logging_tools.get_plural("core", cpu_info.num_cores()),
                                                           ", %s" % (", ".join(header_errors)) if header_errors else ""))
-        return ret_state, join_str.join([head_str] + str(out_list).split("\n")) # ret_f)
+        return ret_state, join_str.join([head_str] + str(out_list).split("\n"))  # ret_f)
+
 
 class lvminfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         self.module.local_lvm_info.update()
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
+
     def interpret(self, srv_com, cur_ns):
         lvm_struct = srv_com["lvm_dict"]
         if lvm_struct.get("type", "???") == "str":
@@ -1707,7 +1840,16 @@ class lvminfo_command(hm_classes.hm_command):
         else:
             lvm_struct = lvm_struct[0]
             if lvm_struct.attrib["lvm_present"] == "1":
-                out_f = [", ".join([logging_tools.get_plural("%s element" % (sub_struct.attrib["lvm_type"]), int(sub_struct.attrib["entities"])) for sub_struct in lvm_struct]) or "no LVM-elements found"]
+                out_f = [
+                    ", ".join(
+                        [
+                            logging_tools.get_plural(
+                                "{} element".format(sub_struct.attrib["lvm_type"]),
+                                int(sub_struct.attrib["entities"])
+                            ) for sub_struct in lvm_struct
+                        ]
+                    ) or "no LVM-elements found"
+                ]
                 for sub_struct in lvm_struct:
                     for sub_el in sub_struct:
                         out_f.append("%s %-20s: %s" % (sub_el.tag.split("}")[1],
@@ -1716,20 +1858,7 @@ class lvminfo_command(hm_classes.hm_command):
                 return limits.nag_STATE_OK, "\n".join(out_f)
             else:
                 return limits.nag_STATE_WARNING, "no LVM-binaries found"
-# #            lv_stuff = partition_tools.lvm_struct("dict", source_dict=lvm_dict)
-# #            if lv_stuff.lvm_present:
-# #                lv_elements = ["pv", "vg", "lv"]
-# #                if True:#list_mode:
-# #                    out_f = ["%s:" % (", ".join([logging_tools.get_plural("%s element" % (lv_element), len(lv_stuff.lv_dict.get(lv_element, {}).keys())) for lv_element in lv_elements]))]
-# #                    for lv_element in lv_elements:
-# #                        act_el_dict = lv_stuff.lv_dict.get(lv_element, {})
-# #                        for el_name, act_el in act_el_dict.iteritems():
-# #                            out_f.append("%s %-20s: %s" % (lv_element, el_name, act_el["uuid"]))
-# #                    return limits.nag_STATE_OK, "ok %s" % ("\n".join(out_f))
-# #                else:
-# #                    return limits.nag_STATE_OK, "ok %s" % (lv_stuff.get_info())
-# #            else:
-# #                return limits.nag_STATE_OK, "ok no LVM-binaries found"
+
 
 class partinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -1739,6 +1868,7 @@ class partinfo_command(hm_classes.hm_command):
         srv_com["dev_dict"] = dev_dict
         srv_com["sys_dict"] = sys_dict
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
+
     def interpret(self, srv_com, cur_ns):
         dev_dict, sys_dict, lvm_dict = (
             srv_com["dev_dict"],
@@ -1751,8 +1881,8 @@ class partinfo_command(hm_classes.hm_command):
         all_disks = sorted(dev_dict.keys())
         all_sys = sorted(sys_dict.keys())
         ret_f = ["found %s (%s) and %s:" % (
-            logging_tools.get_plural("disc"         , len(all_disks)),
-            logging_tools.get_plural("partition"    , sum([len(value) for value in dev_dict.itervalues()])),
+            logging_tools.get_plural("disc", len(all_disks)),
+            logging_tools.get_plural("partition", sum([len(value) for value in dev_dict.itervalues()])),
             logging_tools.get_plural("special mount", len(all_sys)))]
         to_list = logging_tools.new_form_list()
         # to_list.set_format_string(2, pre_string="(", post_string=")")
@@ -1788,7 +1918,7 @@ class partinfo_command(hm_classes.hm_command):
                             part_stuff["size"] = int(logging_tools.interpret_size_str(part_stuff["multipath"]["size"]) / (1024 * 1024))
                 else:
                     part_name = "%s%s" % (disk, part)
-                if part_stuff.has_key("mountpoint"):
+                if "mountpoint" in part_stuff:
                     mount_info = "fstype %s, opts %s, (%d/%d)" % (
                         part_stuff["fstype"],
                         part_stuff["options"],
@@ -1818,7 +1948,7 @@ class partinfo_command(hm_classes.hm_command):
         to_list = logging_tools.new_form_list()
         for disk in all_sys:
             sys_stuff = sys_dict[disk]
-            if type(sys_stuff) == type({}):
+            if type(sys_stuff) == dict:
                 sys_stuff = [sys_stuff]
             for s_stuff in sys_stuff:
                 to_list.append([logging_tools.form_entry(disk, header="part"),
@@ -1831,9 +1961,11 @@ class partinfo_command(hm_classes.hm_command):
             ret_f.append(lvm_stuff.get_info(short=False))
         return limits.nag_STATE_OK, "\n".join(ret_f)
 
+
 class mdstat_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["mdstat"] = server_command.compress(file("/proc/mdstat", "r").read())
+
     def interpret(self, srv_com, cur_ns):
         lines = server_command.decompress(srv_com["mdstat"].text).split("\n")
         raid_list = []
@@ -1841,8 +1973,10 @@ class mdstat_command(hm_classes.hm_command):
         for _line_num, line in enumerate(lines):
             parts = line.strip().split()
             if line.startswith("md"):
-                cur_raid = {"name"  : parts[0],
-                            "state" : parts[2]}
+                cur_raid = {
+                    "name": parts[0],
+                    "state": parts[2]
+                }
                 parts = parts[3:]
                 if cur_raid["state"] == "active":
                     cur_raid["type"] = parts.pop(0)
@@ -1859,32 +1993,40 @@ class mdstat_command(hm_classes.hm_command):
         if any(["resync" in cur_raid for cur_raid in raid_list]):
             ret_state = limits.nag_STATE_WARNING
         if raid_list:
-            ret_str = ", ".join(["%s (%s%s%s)" % (
+            ret_str = ", ".join(
+                [
+                    "{} ({}{}{})".format(
                         cur_raid["name"],
                         "%s %s" % (cur_raid["state"], cur_raid["type"]) if cur_raid["state"] == "active" else cur_raid["state"],
                         ", %d blocks" % (cur_raid["blocks"]) if "blocks" in cur_raid else "",
                         ", resync %s" % (cur_raid["resync"]) if "resync" in cur_raid else ""
-                        ) for cur_raid in raid_list])
+                    ) for cur_raid in raid_list
+                ]
+            )
         else:
             ret_str = "no md-devices found"
         return ret_state, ret_str
+
 
 class uname_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         for idx, sub_str in enumerate(platform.uname()):
             srv_com["uname:part_%d" % (idx)] = sub_str
+
     def interpret(self, srv_com, cur_ns):
         uname_list = []
         for _idx, sub_el in enumerate(srv_com["uname"]):
             uname_list.append(sub_el.text)
         return limits.nag_STATE_OK, "%s, kernel %s" % (uname_list[0], uname_list[2])
 
+
 class dmiinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         _dmi_stat, _dmi_result = commands.getstatusoutput(self.module.dmi_bin)
-        with tempfile.NamedTemporaryFile()  as tmp_file:
+        with tempfile.NamedTemporaryFile() as tmp_file:
             _dmi_stat, _dmi_result = commands.getstatusoutput("{} --dump-bin {}".format(self.module.dmi_bin, tmp_file.name))
             srv_com["dmi_dump"] = server_command.compress(file(tmp_file.name, "r").read())
+
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:
             file(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
@@ -1898,8 +2040,10 @@ class dmiinfo_command(hm_classes.hm_command):
                     line = line[1:]
                 line = line.strip()
                 dec_lines.append((n_level, line))
-            dmi_struct = {"info"    : [],
-                          "handles" : []}
+            dmi_struct = {
+                "info": [],
+                "handles": []
+            }
             # info
             while True:
                 if dec_lines[0][1].lower().startswith("handle"):
@@ -1918,11 +2062,13 @@ class dmiinfo_command(hm_classes.hm_command):
                     h_info = "%s, %s" % (h_info, dec_lines.pop(0)[1])
                 top_level, info_str = dec_lines.pop(0)
                 h_info_spl = [part.strip().split() for part in h_info.split(",")]
-                handle_dict = {"info"     : info_str,
-                               "handle"   : int(h_info_spl[0][1], 16),
-                               "dmi_type" : int(h_info_spl[1][2]),
-                               "length"   : int(h_info_spl[2][0]),
-                               "content"  : {}}
+                handle_dict = {
+                    "info": info_str,
+                    "handle": int(h_info_spl[0][1], 16),
+                    "dmi_type": int(h_info_spl[1][2]),
+                    "length": int(h_info_spl[2][0]),
+                    "content": {}
+                }
                 while True:
                     n_level, line = dec_lines.pop(0)
                     if n_level == top_level + 1:
@@ -1935,7 +2081,7 @@ class dmiinfo_command(hm_classes.hm_command):
                         else:
                             handle_dict["content"][key.strip()] = value.strip()
                     elif n_level == top_level + 2:
-                        if key and type(handle_dict["content"][key]) != type([]):
+                        if key and type(handle_dict["content"][key]) != list:
                             handle_dict["content"][key] = []
                         handle_dict["content"][key].append(line)
                     else:
@@ -1952,13 +2098,14 @@ class dmiinfo_command(hm_classes.hm_command):
                               handle["info"]])
                 for c_key in sorted(handle["content"].keys()):
                     c_value = handle["content"][c_key]
-                    if type(c_value) == type([]):
+                    if type(c_value) == list:
                         out_f.append("    %s:" % (c_key))
                         for sub_value in c_value:
                             out_f.append("        %s" % (sub_value))
                     else:
                         out_f.append("    %s: %s" % (c_key, c_value))
             return limits.nag_STATE_OK, "ok %s" % ("\n".join(out_f))
+
 
 # helper routines
 def get_nfs_mounts():
@@ -1972,6 +2119,7 @@ def get_nfs_mounts():
         pass
     return m_dict
 
+
 def sub_wrap(val_1, val_0):
     sub = val_1 - val_0
     while sub < 0:
@@ -1980,8 +2128,8 @@ def sub_wrap(val_1, val_0):
         sub = 0
     return sub
 
+
 def trim_string(in_str):
     while in_str.count("  "):
         in_str = in_str.replace("  ", " ")
     return in_str.strip()
-
