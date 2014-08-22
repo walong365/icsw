@@ -257,7 +257,7 @@ class srv_command(object):
         elif type(value) in [float]:
             cur_element.text = "{:f}".format(value)
             cur_element.attrib["type"] = "float"
-        elif isinstance(value, None):
+        elif value is None:
             cur_element.text = None
             cur_element.attrib["type"] = "none"
         elif type(value) == datetime.date:
