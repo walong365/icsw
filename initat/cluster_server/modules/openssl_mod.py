@@ -27,24 +27,27 @@ import logging_tools
 import openssl_tools
 import server_command
 
+
 def _build_obj(cur_inst, **kwargs):
     obj_dict = {
-        "CN" : kwargs.get("cn", ""),
-        "C"  : "AT",
-        "ST" : "Vienna",
-        "O"  : "init.at", # Informationstechnologie GmbH",
-        "emailAddress" : "cluster@init.at",
-        "days"         : str(kwargs.get("days", 3650)),
+        "CN": kwargs.get("cn", ""),
+        "C": "AT",
+        "ST": "Vienna",
+        "O": "init.at",  # Informationstechnologie GmbH",
+        "emailAddress": "cluster@init.at",
+        "days": str(kwargs.get("days", 3650)),
     }
-    for key, value in obj_dict.iteritems():
+    for key, _value in obj_dict.iteritems():
         _key = "server_key:{}".format(key)
-        if  _key in cur_inst.srv_com:
+        if _key in cur_inst.srv_com:
             obj_dict[key] = cur_inst.srv_com[_key].text
     return obj_dict
+
 
 class ca_new(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["ca_name"]
+
     def _call(self, cur_inst):
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _obj_dict = _build_obj(cur_inst, cn="{}_ca".format(global_config["SERVER_FULL_NAME"]))
@@ -65,9 +68,11 @@ class ca_new(cs_base_class.server_com):
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
 
+
 class ca_new_cert(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["ca_name", "cert_file", "ca_mode"]
+
     def _call(self, cur_inst):
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _file_name = cur_inst.srv_com["server_key:cert_file"].text
@@ -98,9 +103,11 @@ class ca_new_cert(cs_base_class.server_com):
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
 
+
 class ca_revoke_cert(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["ca_name", "cert_serial", "revoke_cause"]
+
     def _call(self, cur_inst):
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _cert_serial = cur_inst.srv_com["server_key:cert_serial"].text
@@ -122,9 +129,11 @@ class ca_revoke_cert(cs_base_class.server_com):
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
 
+
 class ca_list_certs(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["ca_name"]
+
     def _call(self, cur_inst):
         _name = cur_inst.srv_com["server_key:ca_name"].text
         cur_ca = openssl_tools.ca(_name, cur_inst.log)
