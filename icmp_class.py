@@ -29,8 +29,10 @@ import socket
 import struct
 import time
 
+
 def _octets_to_hex(octets):
     return ".".join(["%02x" % (ord(byte)) for byte in octets])
+
 
 def _checksum(data):
     """ Calculate the 16-bit ones complement checksum of data """
@@ -41,6 +43,7 @@ def _checksum(data):
     cur_sum = hi + lo
     cur_sum = cur_sum + (cur_sum >> 16)
     return (~cur_sum) & 0xffff
+
 
 class ip_packet(object):
     """ IP Packet representation """
@@ -93,8 +96,9 @@ class ip_packet(object):
             self.dst_addr)
         data += self.payload
         return data
+
     def __repr__(self):
-        return  "<ip_packet: %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s>" % (
+        return "<ip_packet: %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s>" % (
             self.ihlversion,
             self.tos,
             self.tot_len,
@@ -106,6 +110,7 @@ class ip_packet(object):
             self.src_addr,
             self.dst_addr,
             _octets_to_hex(self.payload))
+
 
 def _parse_ip_packet(data):
     """ parse received data as IP packet """
@@ -138,15 +143,18 @@ def _parse_ip_packet(data):
         protocol,
         )
 
+
 class icmp_datagram(object):
     """ base ICMP Datagram packet """
     packet_type = None
+
     def __init__(self, code=0, checksum=0, data="", unpack=False):
         self.code = code
         self.checksum = checksum
         self.data = data
         if unpack:
             self.unpack()
+
     def calc_checksum(self, data=""):
         if not data:
             self.checksum = 0
@@ -154,6 +162,7 @@ class icmp_datagram(object):
             self.checksum = _checksum(data)
         else:
             return _checksum(data)
+
     def packed(self):
         self.calc_checksum()
         return struct.pack("!BBH%ds" % (len(self.data)),
@@ -161,12 +170,15 @@ class icmp_datagram(object):
                            self.code,
                            socket.htons(self.checksum),
                            self.data)
+
     def unpack(self):
         pass
+
 
 class icmp_echo(icmp_datagram):
     """ ICMP echo datagram """
     packet_type = 8
+
     def __init__(self, code=0, checksum=0, data="", ident=0, seqno=0, unpack=False):
         """ An icmp_echo datagram has additional fields to a base datagram:
         @param ident: An identifier used for matching echos
@@ -182,45 +194,53 @@ class icmp_echo(icmp_datagram):
         else:
             payload = struct.pack("!hh%ds" % (len(data)), self.ident, self.seqno, data)
             icmp_datagram.__init__(self, code, checksum, payload, unpack)
+
     def unpack(self):
         ident, seqno = struct.unpack("!hh", self.data[:4])
         self.ident = ident
         self.seqno = seqno
         self.data = self.data[:8]
 
+
 class icmp_echo_reply(icmp_datagram):
     """ ICMP echo eeply datagram """
     packet_type = 0
+
     def unpack(self):
         self.ident, self.seqno = struct.unpack("!hh", self.data[:4])
         self.data = self.data[:8]
+
 
 class icmp_destination_unreachable(icmp_datagram):
     """ remote destination was unreachable """
     packet_type = 3
     code_dict = {
-        0  : "Network unreachable",
-        1  : "Host unreachable",
-        2  : "Protocol unreachable",
-        3  : "Port unreachable",
-        4  : "Datagram too big",
-        5  : "Source route failed",
-        6  : "Destination network unknown",
-        7  : "Destination host unknown",
-        8  : "Source host isolated",
-        9  : "Destination network is administratively prohibited",
-        10 : "Destination host is administratively prohibited",
-        11 : "Network unreachable for Type of Service",
-        12 : "Host unreachable for Type of Service",
-        13 : "Communication administratively prohibited",
-        14 : "Host precedence violation",
-        15 : "Precedence cutoff in effect"}
+        0: "Network unreachable",
+        1: "Host unreachable",
+        2: "Protocol unreachable",
+        3: "Port unreachable",
+        4: "Datagram too big",
+        5: "Source route failed",
+        6: "Destination network unknown",
+        7: "Destination host unknown",
+        8: "Source host isolated",
+        9: "Destination network is administratively prohibited",
+        10: "Destination host is administratively prohibited",
+        11: "Network unreachable for Type of Service",
+        12: "Host unreachable for Type of Service",
+        13: "Communication administratively prohibited",
+        14: "Host precedence violation",
+        15: "Precedence cutoff in effect"
+    }
+
     def __repr__(self):
         return self.code_dict.get(self.code, "Unknown error code '%s'" % (self.code))
+
     def unpack(self):
         self.original_ippacket = _parse_ip_packet(self.data[4:])
 
-class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
+
+class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
     def __init__(self, **kwargs):
         # start at seqno 32
         self.echo_seqno = 32L
@@ -229,11 +249,14 @@ class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
         self.__last_key_error = None
         self.__key_error_num = 0
         self.t_dict = {}
+
     def init_socket(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
+
     def close(self):
         self.socket.close()
+
     def datagram_received(self, datagram, addr):
         recv_time = time.time()
         parsed_dgram = self.parse_datagram(datagram)
@@ -243,9 +266,11 @@ class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
         # can be none because of error
         if parsed_dgram is not None:
             self.received(parsed_dgram, recv_time=recv_time)
+
     def received(self, dgram):
         """ to be overwritten """
         print "received datagram", dgram
+
     def parse_datagram(self, datagram):
         packet = _parse_ip_packet(datagram)
         header = packet.payload[:4]
@@ -263,9 +288,10 @@ class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
                 raise ValueError(err_str)
         else:
             type_lut_dict = {
-                0 : icmp_echo_reply,
-                3 : icmp_destination_unreachable,
-                8 : icmp_echo}
+                0: icmp_echo_reply,
+                3: icmp_destination_unreachable,
+                8: icmp_echo
+            }
             try:
                 dgram = type_lut_dict[int(packet_type)](code, checksum, data, unpack=True)
             except KeyError:
@@ -281,10 +307,10 @@ class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
                     self.__last_key_error = act_time
                     self.__key_error_num = 0
         return dgram
+
     def send_echo(self, addr, data="icmp_twisted.py data", ident=None):
         self.echo_seqno = (self.echo_seqno + 1) & 0x7fff
         if ident is None:
             ident = os.getpid() & 0x7FFF
         dgram = icmp_echo(data=data, ident=ident, seqno=self.echo_seqno)
         self.socket.sendto(dgram.packed(), (str(addr), 0))
-

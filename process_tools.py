@@ -45,11 +45,12 @@ if sys.version_info[0] == 3:
     unicode = str
     long = int
 
+
 if sys.platform in ["linux2", "linux3", "linux"]:
     # helper function for proepilogue
     from io_stream_helper import io_stream
-    from lxml import etree # @UnresolvedImports
-    from lxml.builder import E # @UnresolvedImports
+    from lxml import etree  # @UnresolvedImports
+    from lxml.builder import E  # @UnresolvedImports
     import grp
     import pwd
 
@@ -59,9 +60,10 @@ except locale.Error:
     ENCODING = "C"
 
 try:
-    import affinity_tools # @UnresolvedImports
+    import affinity_tools  # @UnresolvedImports
 except IOError:
     affinity_tools = None
+
 
 def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
@@ -69,6 +71,7 @@ def getstatusoutput(cmd):
     else:
         import commands
         return commands.getstatusoutput(cmd)
+
 
 # net to sys and reverse functions
 def net_to_sys(in_val):
@@ -81,8 +84,10 @@ def net_to_sys(in_val):
             raise ValueError
     return result
 
+
 def sys_to_net(in_val):
     return pickle.dumps(in_val)
+
 
 def get_except_info(exc_info=None, **kwargs):
     if not exc_info:
@@ -119,6 +124,7 @@ def get_except_info(exc_info=None, **kwargs):
         unicode(_exc_list),
         ", {}".format(", ".join(frame_info)) if frame_info else "")
 
+
 class exception_info(object):
     def __init__(self, **kwargs):
         self.thread_name = threading.currentThread().getName()
@@ -138,9 +144,10 @@ class exception_info(object):
 
 # mapping: server type -> postfix for ZMQ_IDENTITY string
 _CLIENT_TYPE_UUID_MAPPING = {
-    "meta"      : "meta-server",
-    "package"   : "package-client",
+    "meta": "meta-server",
+    "package": "package-client",
 }
+
 
 def get_client_uuid(client_type, uuid=None):
     if uuid is None:
@@ -151,6 +158,7 @@ def get_client_uuid(client_type, uuid=None):
         uuid,
         _CLIENT_TYPE_UUID_MAPPING[client_type],
     )
+
 
 def get_socket(context, r_type, **kwargs):
     _sock = context.socket(getattr(zmq, r_type))
@@ -170,11 +178,13 @@ def get_socket(context, r_type, **kwargs):
         _sock.setsockopt(getattr(zmq, _opt), _value)
     return _sock
 
+
 def zmq_identity_str(id_string):
     return "{}:{}:{:d}".format(
         get_machine_name(),
         id_string,
         os.getpid())
+
 
 def remove_zmq_dirs(dir_name):
     for cur_dir, dir_names, _file_names in os.walk(dir_name, topdown=False):
@@ -195,6 +205,7 @@ LOCAL_ZMQ_DIR = "/tmp/.icsw_zmq/.zmq_{:d}:{:d}".format(
 LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets"
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
+
 
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
@@ -237,6 +248,7 @@ def get_zmq_ipc_name(name, **kwargs):
     )
     return _name
 
+
 def bind_zmq_socket(zmq_socket, name):
     if name.startswith("ipc://"):
         s_name = name[6:]
@@ -259,6 +271,7 @@ def bind_zmq_socket(zmq_socket, name):
         raise
     else:
         logging_tools.my_syslog("zmq_socket bound to {}".format(name))
+
 
 def submit_at_command(com, diff_time=0, as_root=False):
     pre_time_str = "now"
@@ -285,28 +298,30 @@ def submit_at_command(com, diff_time=0, as_root=False):
     return cstat, log_f
 
 PROC_STATUSES = {
-    "R" : psutil.STATUS_RUNNING,
-    "S" : psutil.STATUS_SLEEPING,
-    "D" : psutil.STATUS_DISK_SLEEP,
-    "T" : psutil.STATUS_STOPPED,
-    "t" : psutil.STATUS_TRACING_STOP,
-    "Z" : psutil.STATUS_ZOMBIE,
-    "X" : psutil.STATUS_DEAD,
-    "W" : psutil.STATUS_WAKING
+    "R": psutil.STATUS_RUNNING,
+    "S": psutil.STATUS_SLEEPING,
+    "D": psutil.STATUS_DISK_SLEEP,
+    "T": psutil.STATUS_STOPPED,
+    "t": psutil.STATUS_TRACING_STOP,
+    "Z": psutil.STATUS_ZOMBIE,
+    "X": psutil.STATUS_DEAD,
+    "W": psutil.STATUS_WAKING
 }
 
+
 PROC_INFO_DICT = {
-    psutil.STATUS_RUNNING :  "number of running processes",
-    psutil.STATUS_ZOMBIE : "number of zombie processes",
-    psutil.STATUS_DISK_SLEEP : "processes in uninterruptable sleep",
-    psutil.STATUS_STOPPED : "processes stopped",
-    psutil.STATUS_TRACING_STOP : "processes traced",
-    psutil.STATUS_SLEEPING : "processes sleeping",
-    psutil.STATUS_WAKING : "processes waking",
-    psutil.STATUS_DEAD : "processes dead",
+    psutil.STATUS_RUNNING:  "number of running processes",
+    psutil.STATUS_ZOMBIE: "number of zombie processes",
+    psutil.STATUS_DISK_SLEEP: "processes in uninterruptable sleep",
+    psutil.STATUS_STOPPED: "processes stopped",
+    psutil.STATUS_TRACING_STOP: "processes traced",
+    psutil.STATUS_SLEEPING: "processes sleeping",
+    psutil.STATUS_WAKING: "processes waking",
+    psutil.STATUS_DEAD: "processes dead",
 }
 
 PROC_STATUSES_REV = {value: key for key, value in PROC_STATUSES.iteritems()}
+
 
 def get_mem_info(pid=0, **kwargs):
     if not pid:
@@ -360,7 +375,7 @@ if False:
                 try:
                     mem_start, mem_end = map_p[0].split("-")
                     mem_start, mem_end = (int(mem_start, 16),
-                                          int(mem_end  , 16))
+                                          int(mem_end, 16))
                     mem_size = mem_end - mem_start
                     _perm, _offset, _dev, inode = (
                         map_p[1],
@@ -371,6 +386,7 @@ if False:
                         tot_size += mem_size
                 except:
                     pass
+
 
 def get_stat_info(pid=0):
     if not pid:
@@ -385,6 +401,7 @@ def get_stat_info(pid=0):
         else:
             stat_dict = _build_stat_dict(stat_line)
     return stat_dict
+
 
 def _build_stat_dict(content):
     # parse stat_line
@@ -403,11 +420,13 @@ def _build_stat_dict(content):
         "itrealvalue", "starttime",
         "vsize", "rss", "rlim"
     ]
-    stat_dict = {key.replace("*", "") : value if key.endswith("*") else int(value)
-                      for key, value in zip(stat_keys, stat_parts)}
+    stat_dict = {
+        key.replace("*", ""): value if key.endswith("*") else int(value) for key, value in zip(stat_keys, stat_parts)
+    }
     stat_dict["pid"] = int(pid_part)
     stat_dict["comm"] = com_part
     return stat_dict
+
 
 def beautify_mem_info(mi=None, short=False):
     bs = "B" if short else "Bytes"
@@ -427,23 +446,26 @@ class error(Exception):
     def __init__(self, value=None):
         Exception.__init__(self)
         self.value = value
+
     def __str__(self):
         return self.value
+
 
 class int_error(error):
     def __init__(self):
         error.__init__(self)
 
+
 class meta_server_info(object):
     def __init__(self, name):
         self.__prop_list = [
             ("start_command", "s", None),
-            ("stop_command" , "s", None),
-            ("kill_pids"    , "b", False),
-            ("check_memory" , "b", True),
-            ("exe_name"     , "s", None),
+            ("stop_command", "s", None),
+            ("kill_pids", "b", False),
+            ("check_memory", "b", True),
+            ("exe_name", "s", None),
             ("need_any_pids", "b", 0),
-            ]
+        ]
         parsed = False
         if name.startswith("/"):
             self.__file_name = name
@@ -497,11 +519,11 @@ class meta_server_info(object):
                         name,
                         get_except_info()))
                 else:
-                    act_dict = dict([(line[0].strip().lower(), line[1].strip()) for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1])
+                    act_dict = {line[0].strip().lower(): line[1].strip() for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1}
                     self.__name = act_dict.get("name", None)
                     self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
-                    self.__pid_names = {pid : "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
-                    self.__pid_proc_names = {pid : "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
+                    self.__pid_names = {pid: "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
+                    self.__pid_proc_names = {pid: "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
                     self.__pid_fuzzy = dict([(cur_pid, (0, 0)) for cur_pid in set(self.__pids)])
                     for opt, val_type, def_val in self.__prop_list:
                         if opt in act_dict:
@@ -531,54 +553,75 @@ class meta_server_info(object):
                 setattr(self, opt, def_val)
         self.parsed = parsed
         self.file_init_time = time.time()
+
     def get_file_name(self):
         return self.__file_name
+
     def get_name(self):
         return self.__name
+
     @property
     def name(self):
         return self.__name
+
     def get_last_pid_check_ok_time(self):
         return self.__last_check_ok
+
     def set_last_pid_check_ok_time(self, last_t=None):
         self.__last_check_ok = last_t or time.time()
+
     def set_meta_server_dir(self, msd):
         self.__meta_server_dir = msd
+
     def file_init_time_get(self):
         return self.__file_init_time
+
     def file_init_time_set(self, fi_time):
         self.__file_init_time = fi_time
     file_init_time = property(file_init_time_get, file_init_time_set)
+
     def stop_command_get(self):
         return self._stop_command
+
     def stop_command_set(self, stop_com):
         self._stop_command = stop_com
     stop_command = property(stop_command_get, stop_command_set)
+
     def start_command_get(self):
         return self._start_command
+
     def start_command_set(self, start_com):
         self._start_command = start_com
     start_command = property(start_command_get, start_command_set)
+
     def exe_name_get(self):
         return self.__exe_name
+
     def exe_name_set(self, en):
         self.__exe_name = en
     exe_name = property(exe_name_get, exe_name_set)
+
     def need_any_pids_get(self):
         return self.__need_any_pids
+
     def need_any_pids_set(self, en):
         self.__need_any_pids = en
     need_any_pids = property(need_any_pids_get, need_any_pids_set)
+
     def kill_pids_get(self):
         return self.__kill_pids
+
     def kill_pids_set(self, kp=1):
         self.__kill_pids = kp
     kill_pids = property(kill_pids_get, kill_pids_set)
+
     def check_memory_get(self):
         return self.__check_memory
+
     def check_memory_set(self, cm=1):
         self.__check_memory = cm
     check_memory = property(check_memory_get, check_memory_set)
+
     def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0, process_name=""):
         if not act_pid:
             act_pid = os.getpid()
@@ -599,6 +642,7 @@ class meta_server_info(object):
         self.__pid_names[act_pid] = process_name
         self.__pid_proc_names[act_pid] = _ps_name
         self.__pids.sort()
+
     def remove_actual_pid(self, act_pid=None, mult=0):
         """
         mult: number of pids to remove, defaults to 0 (means all)
@@ -634,16 +678,21 @@ class meta_server_info(object):
                 _parent_pids.append((_pid, _parent_pid))
         pid_list = [_pid for _pid, _parent in _parent_pids if _parent in pid_list or _parent == 1]
         return pid_list
+
     def set_pids(self, in_pids):
         # dangerous, pid_fuzzy not set
         self.__pids = in_pids
     pids = property(get_pids, set_pids)
+
     def get_unique_pids(self):
         return set(self.__pids)
+
     def get_process_name(self, pid):
         return self.__pid_names[pid]
+
     def get_sys_process_name(self, pid):
         return self.__pid_proc_names[pid]
+
     def get_info(self):
         pid_dict = dict([(pid, self.__pids.count(pid)) for pid in self.__pids])
         all_pids = sorted(pid_dict.keys())
@@ -651,11 +700,19 @@ class meta_server_info(object):
             logging_tools.get_plural("unique pid", len(all_pids)),
             logging_tools.get_plural("total thread", len(self.__pids)),
             all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---")
+
     def save_block(self):
         if etree:
             pid_list = E.pid_list()
             for cur_pid in sorted(set(self.__pids)):
-                cur_pid_el = E.pid("{:d}".format(cur_pid), mult="{:d}".format(self.__pids.count(cur_pid)), name=self.__pid_names[cur_pid], proc_name=self.__pid_proc_names[cur_pid])
+                cur_pid_el = E.pid(
+                    "{:d}".format(cur_pid),
+                    mult="{:d}".format(
+                        self.__pids.count(cur_pid)
+                    ),
+                    name=self.__pid_names[cur_pid],
+                    proc_name=self.__pid_proc_names[cur_pid]
+                )
                 f_f, f_c = self.__pid_fuzzy[cur_pid]
                 if f_f:
                     cur_pid_el.attrib["fuzzy_floor"] = "{:d}".format(f_f)
@@ -672,11 +729,14 @@ class meta_server_info(object):
                 if prop_val is not None:
                     xml_struct.find("properties").append(
                         E.prop(str(prop_val), **{
-                            "key"  : opt,
-                            "type" : {
-                                "s" : "string",
-                                "i" : "integer",
-                                "b" : "boolean"}[val_type]}))
+                            "key": opt,
+                            "type": {
+                                "s": "string",
+                                "i": "integer",
+                                "b": "boolean"}[val_type]
+                            }
+                        )
+                    )
             file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)
         else:
             file_content = ["NAME = {}".format(self.__name),
@@ -692,10 +752,13 @@ class meta_server_info(object):
             open(self.__file_name, "w").write(file_content)
         except:
             logging_tools.my_syslog("error writing file {} (meta_server_info for {})".format(self.__file_name, self.__name))
+
     def __eq__(self, other):
         return self.__name == other.get_name() and self.__pids == other.get_pids()
+
     def __ne__(self, other):
         return self.__name != other.get_name() or self.__pids != other.get_pids()
+
     def remove_meta_block(self):
         if not self.__file_name:
             self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
@@ -706,6 +769,7 @@ class meta_server_info(object):
                 self.__file_name,
                 self.__name,
                 get_except_info()))
+
     def check_block(self, act_tc_dict=None, act_dict={}):
         # threadcount dict
         if not act_tc_dict:
@@ -716,8 +780,8 @@ class meta_server_info(object):
             # search pids
             pids_found = [key for key, value in act_dict.iteritems() if value.name() == self.__exe_name]
             self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
-            self.__pid_names.update({key : self.__exe_name for key in pids_found})
-            self.__pid_proc_names.update({key : psutil.Process(key).name() for key in pids_found})
+            self.__pid_names.update({key: self.__exe_name for key in pids_found})
+            self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})
         self.__pids_found = dict([(cur_pid, act_tc_dict[cur_pid]) for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()])
         # structure for check_scripts
         self.pids_found = sum([[cur_pid] * act_tc_dict.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
@@ -769,6 +833,7 @@ class meta_server_info(object):
                 self.pid_checks_failed = 0
                 self.pid_checks_ok += 1
                 self.__last_check_ok = time.time()
+
     def kill_all_found_pids(self):
         all_pids = sorted(self.__pids_found.keys())
         if all_pids:
@@ -800,16 +865,20 @@ class cached_file(object):
         self.__cache_time = kwargs.get("cache_time", 3600)
         self.__last_stat, self.__last_update = (None, None)
         self.update()
+
     @property
     def name(self):
         return self.__name
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_handle:
             self.__log_handle(what, log_level)
         else:
             logging_tools.my_syslog(what, log_level)
+
     def changed(self):
         pass
+
     def update(self):
         if os.path.exists(self.__name):
             try:
@@ -846,6 +915,7 @@ class cached_file(object):
             self.content = None
             self.changed()
 
+
 def save_pid(name, pid=None, mult=1):
     return append_pids(name, pid=pid, mult=mult, mode="w")
 
@@ -858,8 +928,9 @@ RUN_DIR = "/var/run"
 # #    if suse_ver == ["12.1"]:
 # #        RUN_DIR = "/run"
 
+
 def append_pids(name, pid=None, mult=1, mode="a"):
-    if pid == None:
+    if pid is None:
         actp = [os.getpid()]
     else:
         if type(pid) in [int, long]:
@@ -878,8 +949,10 @@ def append_pids(name, pid=None, mult=1, mode="a"):
             os.makedirs(dir_name)
         except:
             pass
-    long_mode = {"a" : "appending",
-                 "w" : "writing"}[mode]
+    long_mode = {
+        "a": "appending",
+        "w": "writing"
+    }[mode]
     try:
         open(fname, mode).write("\n".join(mult * ["{:d}".format(cur_p) for cur_p in actp] + [""]))
     except:
@@ -896,11 +969,12 @@ def append_pids(name, pid=None, mult=1, mode="a"):
                 fname,
                 get_except_info()))
 
+
 def remove_pids(name, pid=None, mult=0):
     """
     mult: number of pids to remove, defaults to 0 (means all)
     """
-    if pid == None:
+    if pid is None:
         actp = [os.getpid()]
     else:
         if type(pid) in [int, long]:
@@ -936,6 +1010,7 @@ def remove_pids(name, pid=None, mult=0):
                 ",".join(["{:d}".format(line) for line in actp]),
                 fname))
 
+
 def delete_pid(name):
     if name.startswith("/"):
         fname = name
@@ -947,6 +1022,7 @@ def delete_pid(name):
         except:
             pass
 
+
 def create_lockfile(lf_name):
     open(lf_name, "w").write(".")
     try:
@@ -954,8 +1030,10 @@ def create_lockfile(lf_name):
     except:
         pass
 
+
 def get_msg_file_name(lf_name):
     return "{}_msg".format(lf_name)
+
 
 def set_lockfile_msg(lf_name, msg):
     if msg and os.path.isfile(lf_name):
@@ -964,6 +1042,7 @@ def set_lockfile_msg(lf_name, msg):
             open(lf_msg_name, "w").write(msg.strip())
         except:
             pass
+
 
 def delete_lockfile(lf_name, msg="OK", check=True):
     set_lockfile_msg(lf_name, msg)
@@ -976,6 +1055,7 @@ def delete_lockfile(lf_name, msg="OK", check=True):
         except IOError:
             if check:
                 logging_tools.my_syslog("error (IOError) deleting lockfile {}: {}".format(lf_name, get_except_info()))
+
 
 def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
     lf_msg_name = get_msg_file_name(lf_name)
@@ -1013,24 +1093,19 @@ def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
             break
     return
 
+
 def set_handles(pfix, error_only=False, **kwargs):
-    # ancient, rotten code ... ugly, FIXME
-# pfix can be:
-#  o   a string, then the pf_dict will be created automatically
-#  o   a dictionary with the following keys: err, out
-#      each key points to a tuple with two values, the first
-#      being an integer (0 ... do not create files, 1 ... create files)
-#      the second being a filename. If the filename starts with a "/",
-#      it is handled as an absolute path
     zmq_context = kwargs.get("zmq_context", None)
     ext_return = kwargs.get("ext_return", False)
     pf_dict = {}
     if type(pfix) in [str, unicode]:
-        pf_dict = {"out" : (1, "{}.out".format(pfix)),
-                   "err" : (1, "{}.err".format(pfix))}
+        pf_dict = {
+            "out": (1, "{}.out".format(pfix)),
+            "err": (1, "{}.err".format(pfix))
+        }
     else:
         pf_dict = pfix
-    if not "strict" in pf_dict:
+    if "strict" not in pf_dict:
         pf_dict["strict"] = True
     dirs = ["/var/log/cluster", "/tmp", "."]
     h_changed = 0
@@ -1103,6 +1178,7 @@ def set_handles(pfix, error_only=False, **kwargs):
     else:
         return h_changed
 
+
 def renice(nice=16):
     try:
         os.nice(nice)
@@ -1110,6 +1186,7 @@ def renice(nice=16):
         logging_tools.my_syslog("Cannot renice to {:d}".format(nice))
     else:
         logging_tools.my_syslog("reniced to {:d}".format(nice))
+
 
 def resolve_user(user):
     try:
@@ -1120,6 +1197,7 @@ def resolve_user(user):
     except KeyError:
         uid_stuff = None
     return uid_stuff
+
 
 def change_user_group(user, group, groups=[], **kwargs):
     try:
@@ -1188,11 +1266,13 @@ def change_user_group(user, group, groups=[], **kwargs):
     logging_tools.my_syslog("  ... actual uid/gid of {:d} is now ({:d}/{:d}) ...".format(os.getpid(), new_uid, new_gid))
     return ok
 
+
 def fix_sysconfig_rights():
     conf_dir = "/etc/sysconfig/cluster"
     target_group = "idg"
     os.chown(conf_dir, 0, grp.getgrnam(target_group)[2])
     os.chmod(conf_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXOTH)
+
 
 def change_user_group_path(path, user, group, **kwargs):
     if "log_com" in kwargs:
@@ -1249,6 +1329,7 @@ def change_user_group_path(path, user, group, **kwargs):
         log_com("  ... path '{}' does not exist".format(path))
     return ok
 
+
 def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, **kwargs):
     os.chdir("/")
     debug_f = None
@@ -1280,6 +1361,7 @@ def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, *
         time.sleep(wait)
         os._exit(0)
     return True
+
 
 def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     max_try_count = 10
@@ -1335,6 +1417,7 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     else:
         return pid_list + [".{:d}".format(x) for x in dotpid_list]
 
+
 def get_proc_list_new(**kwargs):
     attrs = kwargs.get("attrs", None)
     proc_name_list = set(kwargs.get("proc_name_list", []))
@@ -1365,6 +1448,7 @@ def get_proc_list_new(**kwargs):
                 except psutil.NoSuchProcess:
                     pass
     return p_dict
+
 
 def get_proc_list(**kwargs):
     # s_time = time.time()
@@ -1456,12 +1540,14 @@ def get_proc_list(**kwargs):
     # print time.time()-s_time
     return p_dict
 
+
 def bpt_show_childs(in_dict, idx, start):
     print(" " * idx, start, in_dict[start]["name"])
     if in_dict[start]["childs"]:
         p_list = in_dict[start]["childs"].keys()
         for pid in p_list:
             bpt_show_childs(in_dict[start]["childs"], idx + 2, pid)
+
 
 def build_ppid_list(p_dict, pid=None):
     if not pid:
@@ -1474,6 +1560,7 @@ def build_ppid_list(p_dict, pid=None):
         if pid:
             ppid_list.append(pid)
     return ppid_list
+
 
 def build_kill_dict(name, exclude_list=[]):
     # process dict
@@ -1490,6 +1577,7 @@ def build_kill_dict(name, exclude_list=[]):
             pass
     return kill_dict
 
+
 def get_python_cmd(cmdline):
     p_name = None
     for entry in cmdline:
@@ -1504,6 +1592,7 @@ def get_python_cmd(cmdline):
         else:
             break
     return p_name
+
 
 def kill_running_processes(p_name=None, **kwargs):
     my_pid = os.getpid()
@@ -1555,6 +1644,7 @@ def kill_running_processes(p_name=None, **kwargs):
             time.sleep(wait_time)
     return log_lines
 
+
 def fd_change(uid_gid_tuple, d_name, files):
     uid, gid = uid_gid_tuple
     os.chown("{}".format(d_name), uid, gid)
@@ -1563,6 +1653,7 @@ def fd_change(uid_gid_tuple, d_name, files):
             os.chown(os.path.join(d_name, f_name), uid, gid)
         except:
             pass
+
 
 def fix_directories(user, group, f_list):
     try:
@@ -1614,6 +1705,7 @@ def fix_directories(user, group, f_list):
                     named_gid,
                     get_except_info()))
 
+
 def fix_files(user, group, f_dict):
     try:
         named_uid = pwd.getpwnam(user)[2]
@@ -1632,11 +1724,14 @@ def fix_files(user, group, f_dict):
             except:
                 pass
 
+
 def is_linux():
     return sys.platform in ["linux2", "linux3", "linux"]
 
+
 def is_windows():
     return not is_linux()
+
 
 def get_fqdn():
     """
@@ -1651,11 +1746,13 @@ def get_fqdn():
             full_sock_name = "{}.{}".format(mach_name, full_sock_name.split(".")[1])
     return full_sock_name, mach_name
 
+
 def get_programm_name():
     p_name = os.path.basename(sys.argv[0])
     if p_name.endswith(".py"):
         p_name = p_name[:-3]
     return p_name
+
 
 def get_machine_name(short=True):
     if sys.platform in ["linux2", "linux3", "linux"]:
@@ -1679,6 +1776,7 @@ def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
         c_name = "not set"
     return c_name
 
+
 class automount_checker(object):
     def __init__(self, **kwargs):
         if kwargs.get("check_paths", True):
@@ -1686,6 +1784,7 @@ class automount_checker(object):
         else:
             self.__automount_path, self.__autofs_path = ("", "")
             self.__valid = True
+
     def _check_paths(self):
         for act_p in ["/usr/sbin", "/usr/bin", "/sbin", "/bin"]:
             act_path = "{}/automount".format(act_p)
@@ -1702,16 +1801,22 @@ class automount_checker(object):
                 act_path = ""
         self.__autofs_path = act_path
         self.__valid = self.__automount_path and self.__autofs_path
+
     def valid(self):
         return self.__valid
+
     def set_dict(self, in_dict):
         self.__act_dict = in_dict
+
     def get_restart_command(self):
         return "{} restart".format(self.__autofs_path)
+
     def check(self):
         stat, out = getstatusoutput("{} status".format(self.__autofs_path))
-        a_dict = {"c" : {},
-                  "r" : {}}
+        a_dict = {
+            "c": {},
+            "r": {}
+        }
         act_mode = None
         for line in [y.lower() for y in [x.strip() for x in out.split("\n")] if y and not y.startswith("---")]:
             if line.startswith("config"):
@@ -1728,14 +1833,19 @@ class automount_checker(object):
                     a_dict[act_mode].setdefault(mount_type, []).append(mount_point)
         self.__act_dict = a_dict
         return a_dict
+
     def dict_is_valid(self):
         return "c" in self.__act_dict and "r" in self.__act_dict
+
     def automounter_ok(self):
         return self.get_config_string() == self.get_running_string()
+
     def get_config_string(self):
         return self._get_autofs_str(self.__act_dict["c"])
+
     def get_running_string(self):
         return self._get_autofs_str(self.__act_dict["r"])
+
     def _get_autofs_str(self, in_dict):
         if in_dict:
             ret_f = []
@@ -1750,12 +1860,18 @@ class automount_checker(object):
         else:
             return "None defined"
 
+
 def get_arp_dict():
     try:
-        arp_dict = dict([(line_p[3].lower(), line_p[0]) for line_p in [line.strip().split() for line in open("/proc/net/arp", "r").read().split("\n")[1:]] if line_p])
+        arp_dict = {
+            line_p[3].lower(): line_p[0] for line_p in [
+                line.strip().split() for line in open("/proc/net/arp", "r").read().split("\n")[1:]
+            ] if line_p
+        }
     except:
         arp_dict = {}
     return arp_dict
+
 
 def get_char_block_device_dict():
     # parses /proc/devices and returns two dicts
@@ -1776,11 +1892,17 @@ def get_char_block_device_dict():
                 act_dict[int(l_spl[0])] = l_spl[1]
     return char_dict, block_dict
 
+
 def _read_issue_file(f_name):
     ret_dict = {}
     if os.path.isfile(f_name):
-        ret_dict = dict([(c_line[0].strip(), c_line[1].strip()) for c_line in [line.strip().lower().split("=", 1) for line in open(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#") and line.count("=")]])
+        ret_dict = {
+            c_line[0].strip(): c_line[1].strip() for c_line in [
+                line.strip().lower().split("=", 1) for line in open(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#") and line.count("=")
+            ]
+        }
     return ret_dict
+
 
 def fetch_sysinfo(root_dir="/"):
     # late import due to strange build problem on Debian (once again) systems
@@ -1912,7 +2034,11 @@ def fetch_sysinfo(root_dir="/"):
                 elif sys_dict["vendor"] == "debian" and os.path.isdir("/etc/apt"):
                     # try to get info from /etc/apt
                     try:
-                        s_list = [z[2].split("/")[0] for z in [y.split() for y in [x.strip() for x in open("/etc/apt/sources.list", "r").read().split("\n")] if y and not y.startswith("#")] if len(z) > 3]
+                        s_list = [
+                            z[2].split("/")[0] for z in [
+                                y.split() for y in [x.strip() for x in open("/etc/apt/sources.list", "r").read().split("\n")] if y and not y.startswith("#")
+                            ] if len(z) > 3
+                        ]
                     except:
                         pass
                     else:
@@ -1921,6 +2047,7 @@ def fetch_sysinfo(root_dir="/"):
                         # hack
                         sys_dict["version"] = s_list[0]
     return log_lines, sys_dict
+
 
 def find_file(file_name, s_path=None):
     if not s_path:
@@ -1938,6 +2065,7 @@ def find_file(file_name, s_path=None):
     else:
         return None
 
+
 def create_password(**kwargs):
     def_chars = "".join([chr(asc) for asc in range(ord("a"), ord("z") + 1)])
     chars = kwargs.get("chars", "{}{}{}".format(
@@ -1949,11 +2077,12 @@ def create_password(**kwargs):
     length = kwargs.get("length", 8)
     return "".join([chars[random.randrange(len(chars))] for idx in xrange(length)])
 
+
 def get_sys_bits():
     return int(platform.architecture()[0][0:2])
 
+
 if __name__ == "__main__":
-    import pprint
     num = 100
     for call in [get_proc_list, get_proc_list_new]:
         s_time = time.time()
@@ -1963,4 +2092,3 @@ if __name__ == "__main__":
         d_time = e_time - s_time
         print "stresstest {:d} : {:.2f} sec ({:.8f} per call)".format(num, d_time, d_time / num)
     # pprint.pprint(a)
-

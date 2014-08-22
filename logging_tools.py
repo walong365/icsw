@@ -49,13 +49,14 @@ LOG_LEVEL_ERROR = 40
 LOG_LEVEL_CRITICAL = 50
 
 # add the levels to the logging dict
-logging.addLevelName(LOG_LEVEL_OK      , "ok")
-logging.addLevelName(LOG_LEVEL_WARN    , "warn")
-logging.addLevelName(LOG_LEVEL_ERROR   , "err")
+logging.addLevelName(LOG_LEVEL_OK, "ok")
+logging.addLevelName(LOG_LEVEL_WARN, "warn")
+logging.addLevelName(LOG_LEVEL_ERROR, "err")
 logging.addLevelName(LOG_LEVEL_CRITICAL, "crit")
 
 # default unified name
 UNIFIED_NAME = "unified"
+
 
 def rewrite_log_destination(log_dest):
     if log_dest.startswith("uds:"):
@@ -65,21 +66,24 @@ def rewrite_log_destination(log_dest):
             log_dest = "{}_zmq".format(log_dest)
     return log_dest
 
+
 def map_old_to_new_level(in_level):
     return {
-        0  : LOG_LEVEL_OK,
-        5  : LOG_LEVEL_WARN,
-        10 : LOG_LEVEL_ERROR,
-        20 : LOG_LEVEL_CRITICAL,
-        }.get(in_level, in_level)
+        0: LOG_LEVEL_OK,
+        5: LOG_LEVEL_WARN,
+        10: LOG_LEVEL_ERROR,
+        20: LOG_LEVEL_CRITICAL,
+    }.get(in_level, in_level)
+
 
 def map_log_level_to_log_status(log_lev):
     return {
-        LOG_LEVEL_OK       : "i",
-        LOG_LEVEL_WARN     : "w",
-        LOG_LEVEL_ERROR    : "e",
-        LOG_LEVEL_CRITICAL : "c",
-        }.get(log_lev, "c")
+        LOG_LEVEL_OK: "i",
+        LOG_LEVEL_WARN: "w",
+        LOG_LEVEL_ERROR: "e",
+        LOG_LEVEL_CRITICAL: "c",
+    }.get(log_lev, "c")
+
 
 def get_relative_dt(dt_struct):
     act_time = datetime.datetime.now()
@@ -94,6 +98,7 @@ def get_relative_dt(dt_struct):
             return dt_struct.strftime("%a, {:d} days ago %H:%M:%S".format(int(diff_days)))
     else:
         return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
+
 
 def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     if type(num) in [list, set]:
@@ -122,8 +127,10 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
         f_str = u"{:d} "
     return u"{}{}{}".format(
         (show_int and f_str.format(int(r_num))) or "",
-        in_str[0 : end_idx],
-        p_str)
+        in_str[0:end_idx],
+        p_str
+    )
+
 
 def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True):
     if type(in_s) in [str, unicode]:
@@ -143,6 +150,7 @@ def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long
         ret_str = " ".join(ret_str.split())
     return ret_str
 
+
 def interpret_size_str(in_str, **kwargs):
     size_re = re.compile("^(?P<value>\d+(\.\d+)*)\s*(?P<pfix>.*?)b*(yte)*s*$", re.IGNORECASE)
     size_m = size_re.match(in_str)
@@ -150,16 +158,17 @@ def interpret_size_str(in_str, **kwargs):
         value = float(size_m.group("value"))
         pfix = size_m.group("pfix").lower()
         value = int(value * {
-            "m"  : 1024 * 1024,
-            "mi" : 1000 * 1000,
-            "g"  : 1024 * 1024 * 1024,
-            "gi" : 1000 * 1000 * 1000,
-            "t"  : 1024 * 1024 * 1024 * 1024,
-            "ti" : 1000 * 1000 * 1000 * 1000,
-            }.get(pfix, 1))
+            "m": 1024 * 1024,
+            "mi": 1000 * 1000,
+            "g": 1024 * 1024 * 1024,
+            "gi": 1000 * 1000 * 1000,
+            "t": 1024 * 1024 * 1024 * 1024,
+            "ti": 1000 * 1000 * 1000 * 1000,
+        }.get(pfix, 1))
         return value
     else:
         return 0
+
 
 def get_diff_time_str(diff_secs):
     if type(diff_secs) == datetime.timedelta:
@@ -196,6 +205,7 @@ def get_diff_time_str(diff_secs):
         diff_str = "{} [NEGATIVE TIME]".format(diff_str)
     return diff_str
 
+
 def get_time_str(secs):
     parts, left = ([], secs)
     for div in [3600 * 24, 3600, 60]:
@@ -220,13 +230,15 @@ def get_time_str(secs):
     out_f.append(":".join(hms_f))
     return " ".join(out_f)
 
+
 class twisted_log_observer(object):
     def __init__(self, name, destination, **kwargs):
-        kwargs.update({"init_logger" : True})
+        kwargs.update({"init_logger": True})
         self.__logger = get_logger(name,
                                    destination,
                                    **kwargs)
         self.__last_cinfo = 0.0
+
     def __call__(self, in_dict):
         for line in in_dict["message"]:
             self.__logger.log(in_dict.get("log_level", LOG_LEVEL_OK), line)
@@ -238,9 +250,11 @@ class twisted_log_observer(object):
                 self.__last_cinfo = act_time
             for line in in_dict["failure"].getTraceback().split("\n"):
                 self.__logger.log(LOG_LEVEL_CRITICAL, line)
+
     def close(self):
         for handle in self.__logger.logger.handlers:
             handle.close()
+
 
 def get_logger(name, destination, **kwargs):
     """ specify init_logger=True to prepend init.at to the logname """
@@ -283,12 +297,14 @@ def get_logger(name, destination, **kwargs):
         act_adapter = act_logger
     return act_adapter
 
+
 class log_adapter(logging.LoggerAdapter):
     """ small adapater which adds host information to logRecords """
     def __init__(self, logger, extra):
         self.__lock = threading.Lock()
         self.set_prefix()
         logging.LoggerAdapter.__init__(self, logger, extra)
+
     def process(self, msg, kwargs):
         # add hostname and parent process id (to handle multiprocessing logging)
         if sys.platform in ["linux2", "linux3", "linux"]:
@@ -300,10 +316,13 @@ class log_adapter(logging.LoggerAdapter):
             kwargs["extra"].setdefault("host", os.getenv("COMPUTERNAME").lower())
             kwargs["extra"].setdefault("ppid", os.getppid())
         return msg, kwargs
+
     def set_prefix(self, pfix=""):
         self.__prefix = pfix
+
     def log_command(self, what):
         self.log(LOG_LEVEL_OK, "<LCH>{}</LCH>".format(what))
+
     def log(self, level=LOG_LEVEL_OK, what=LOG_LEVEL_OK, *args, **kwargs):
         self.__lock.acquire()
         if type(level) in [str, unicode]:
@@ -320,11 +339,13 @@ class log_adapter(logging.LoggerAdapter):
             print(what, self)
             raise
         self.__lock.release()
+
     def close(self):
         self.log_command("close")
         for handle in self.logger.handlers:
             if hasattr(handle, "close"):
                 handle.close()
+
 
 class zmq_handler(logging.Handler):
     def __init__(self, t_sock, logger_struct, **kwargs):
@@ -332,8 +353,10 @@ class zmq_handler(logging.Handler):
         self._open = True
         logging.Handler.__init__(self)
         self.__logger = logger_struct
+
     def set_target(self, t_sock):
         self.__target = t_sock
+
     def makePickle(self, record):
         """
         Pickles the record in binary format with a length prefix, and
@@ -341,17 +364,19 @@ class zmq_handler(logging.Handler):
         """
         ei = record.exc_info
         if ei:
-            dummy = self.format(record) # just to get traceback text into record.exc_text
-            record.exc_info = None # to avoid Unpickleable error
+            dummy = self.format(record)  # just to get traceback text into record.exc_text
+            record.exc_info = None  # to avoid Unpickleable error
         _d = dict(record.__dict__)
         _d["msg"] = record.getMessage()
         _d["args"] = None
         p_str = pickle.dumps(_d, 1)
         if ei:
-            record.exc_info = ei # for next handler
+            record.exc_info = ei  # for next handler
         return p_str
+
     def emit(self, record):
         self.__target.send(self.makePickle(record))
+
     def close(self):
         if self._open:
             self._open = False
@@ -362,6 +387,7 @@ class zmq_handler(logging.Handler):
             if self.__logger:
                 # remove from handler
                 self.__logger.removeHandler(self)
+
 
 class initat_formatter(object):
     # in fact a dummy formatter
@@ -407,29 +433,36 @@ class initat_formatter(object):
         if hasattr(record, "request"):
             delattr(record, "request")
 
+
 class init_handler(zmq_handler):
     zmq_context = None
+
     def __init__(self, filename=None):
         if not init_handler.zmq_context:
             self._init_zmq()
         pub = self._socket()
         zmq_handler.__init__(self, pub, None)
+
     def _init_zmq(self):
         init_handler.init_pid = os.getpid()
         init_handler.zmq_context = zmq.Context()
+
     def _socket(self):
         cur_context = init_handler.zmq_context
         pub = cur_context.socket(zmq.PUSH)
         pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
         return pub
+
     def emit(self, record):
         if not record.name.startswith("init.at."):
             record.name = "init.at.{}".format(record.name)
         self.format(record)
         zmq_handler.emit(self, record)
 
+
 class init_email_handler(zmq_handler):
     zmq_context = None
+
     def __init__(self, filename=None, *args, **kwargs):
         if not init_handler.zmq_context:
             init_handler.zmq_context = zmq.Context()
@@ -437,9 +470,12 @@ class init_email_handler(zmq_handler):
         pub = cur_context.socket(zmq.PUSH)
         pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_err_zmq"))
         zmq_handler.__init__(self, pub, None)
-        self.__lens = {"name"       : 1,
-                       "threadName" : 1,
-                       "lineno"     : 1}
+        self.__lens = {
+            "name": 1,
+            "threadName": 1,
+            "lineno": 1
+        }
+
     def emit(self, record):
         record.IOS_type = "error"
         self.format(record)
@@ -449,21 +485,26 @@ class init_email_handler(zmq_handler):
         record.ppid = os.getppid()
         zmq_handler.emit(self, record)
 
+
 class init_handler_unified(zmq_handler):
     zmq_context = None
+
     def __init__(self, filename=None, *args, **kwargs):
         if not init_handler.zmq_context:
             self._init_zmq()
         pub = self._socket()
         zmq_handler.__init__(self, pub, None)
+
     def _init_zmq(self):
         init_handler.init_pid = os.getpid()
         init_handler.zmq_context = zmq.Context()
+
     def _socket(self):
         cur_context = init_handler.zmq_context
         pub = cur_context.socket(zmq.PUSH)
         pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
         return pub
+
     def emit(self, record):
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
@@ -478,17 +519,20 @@ class init_handler_unified(zmq_handler):
         record.name = "init.at.{}".format(UNIFIED_NAME)
         zmq_handler.emit(self, record)
 
+
 class queue_handler(logging.Handler):
     """ sends log requests to other queues """
     def __init__(self, t_queue, **kwargs):
         self.__target_queue = t_queue
         self.__pre_tuple = kwargs.get("pre_tuple", "int_log")
         logging.Handler.__init__(self)
+
     def emit(self, record):
         try:
             self.__target_queue.put((self.__pre_tuple, record))
         except:
             self.handleError(record)
+
 
 class progress_counter(object):
     def __init__(self, action, total_count, **kwargs):
@@ -498,10 +542,12 @@ class progress_counter(object):
         self.__start_count = total_count
         self.__lc, self.__sum_lc, self.__print_every = (0, 0, kwargs.get("print_every", 1))
         self.__log_command = kwargs.get("log_command", None)
+
     def _log(self, log_str, **kwargs):
         l_com = kwargs.get("log_command", self.__log_command)
         if l_com and log_str:
             l_com(log_str)
+
     def overview(self, **kwargs):
         if self.__total_count:
             diff_time = time.time() - self.__act_cs_time
@@ -515,6 +561,7 @@ class progress_counter(object):
             log_str = "no entities to work with ({})".format(self.__action)
         self._log(log_str, **kwargs)
         return log_str
+
     def count(self, **kwargs):
         self.__lc += 1
         self.__sum_lc += 1
@@ -541,8 +588,10 @@ class progress_counter(object):
             log_str = ""
         self._log(log_str, **kwargs)
         return log_str
+
     def finished(self):
         return True if not self.__start_count else False
+
 
 class dummy_ios(object):
     """
@@ -551,14 +600,19 @@ class dummy_ios(object):
     """
     def __init__(self):
         self.out_buffer = []
+
     def write(self, what):
         self.out_buffer.append(what)
+
     def close(self):
         pass
+
     def __del__(self):
         pass
+
     def get_content(self):
         return "".join(self.out_buffer)
+
 
 class dummy_ios_low(object):
     def __init__(self, save_fd):
@@ -567,6 +621,7 @@ class dummy_ios_low(object):
         self.tmp_fo = os.tmpfile()
         self.new_fd = self.tmp_fo.fileno()
         os.dup2(self.new_fd, self.orig_fd)
+
     def close(self):
         self.tmp_fo.seek(0)
         self.data = self.tmp_fo.read()
@@ -574,6 +629,7 @@ class dummy_ios_low(object):
         del self.orig_fd
         del self.tmp_fo
         os.close(self.save_fd)
+
 
 class form_list(object):
     def __init__(self):
@@ -583,16 +639,20 @@ class form_list(object):
         self.set_column_separator()
         self.act_row_idx = 0
         self.set_raw_mode()
+
     def set_raw_mode(self, raw_mode=False):
         self.raw_mode = raw_mode
+
     def add_line(self, l_p):
         if type(l_p) in [int, long]:
             l_p = str(l_p)
         if type(l_p) in [str, unicode]:
             l_p = [l_p]
         self.lines.append(tuple(l_p))
+
     def set_column_separator(self, def_val=" "):
         self.col_separator = def_val
+
     def set_format_string(self, row_idx, r_t="s", left="-", pre_string="", post_string="", min_size=0):
         if left == "-":
             left = "<"
@@ -604,12 +664,14 @@ class form_list(object):
             act_row_idx = row_idx
         self.form_dict[act_row_idx] = (r_t, left, pre_string, post_string, 0)
         self.act_row_idx = act_row_idx
+
     def set_header_string(self, row_idx, header):
         if type(header) == list:
             for idx in range(len(header)):
                 self.header_dict[row_idx + idx] = header[idx]
         else:
             self.header_dict[row_idx] = header
+
     def __str__(self):
         if self.raw_mode:
             out_lines = [";".join([self.header_dict.get(idx, "").strip() for idx in range(len(self.header_dict.keys()))])]
@@ -656,10 +718,13 @@ class form_list(object):
                 # print b_form_str_dict[len(l_p)]
                 out_lines.append((b_form_str_dict[len(l_p)].format(*l_p)).rstrip())
         return "\n".join(out_lines)
+
     def __len__(self):
         return len(self.lines)
+
     def __unicode__(self):
         return self.__str__()
+
 
 class form_entry(object):
     def __init__(self, content, **kwargs):
@@ -671,24 +736,31 @@ class form_entry(object):
         for key, value in kwargs.iteritems():
             setattr(self, key, value)
         setattr(self, "content_type", {
-            str               : "s",
-            unicode           : "s",
-            type(None)        : "s",
-            int               : "d",
-            long              : "d",
-            float             : "f",
-            datetime.date     : "s",
-            datetime.datetime : "s"}.get(type(self.content), "s"))
+            str: "s",
+            unicode: "s",
+            type(None): "s",
+            int: "d",
+            long: "d",
+            float: "f",
+            datetime.date: "s",
+            datetime.datetime: "s"
+        }.get(type(self.content), "s"))
+
     def has_key(self, key):
         return hasattr(self, key)
+
     def __contains__(self, key):
         return hasattr(self, key)
+
     def __getitem__(self, key):
         return getattr(self, key)
+
     def min_len(self):
         return max(len(str(self)), self.min_width)
+
     def __str__(self):
         return self.form_str().format(self.content)
+
     def form_str(self, max_len=None):
         if self.content_type == "d":
             form_str = "d"
@@ -705,12 +777,15 @@ class form_entry(object):
                 form_str,
                 )
         return "{}{}{}".format(self.pre_str, form_str, self.post_str)
+
     def format(self, max_len):
         return self.form_str(max_len).format(self.content)
+
 
 class form_entry_right(form_entry):
     def __init__(self, content, **kwargs):
         form_entry.__init__(self, content, left=False, **kwargs)
+
 
 class new_form_list(object):
     def __init__(self, **kwargs):
@@ -720,6 +795,7 @@ class new_form_list(object):
         self.__strict_mode = kwargs.get("strict_mode", False)
         self.__none_string = kwargs.get("none_string", "None")
         # self.__format_dict = {}
+
     def append(self, add_list):
         # add list is a list of dicts
         for row_idx, item in enumerate(add_list):
@@ -728,10 +804,13 @@ class new_form_list(object):
             if "header" in item:
                 self.__header_dict[row_idx] = (item["left"], item["header"])
         self.__content.append(add_list)
+
     def extend(self, add_list):
         [self.append(_line) for _line in add_list]
+
     def __str__(self):
         return unicode(self)
+
     def __unicode__(self):
         if not self.__content:
             if self.__strict_mode:
@@ -770,8 +849,10 @@ class new_form_list(object):
         for line in self.__content:
             out_lines.append(self.__col_sep.join([entry.format(max_len) for entry, max_len in zip(line, row_lens[:len(line)])]))
         return "\n".join(map(lambda line: line.rstrip(), out_lines))
+
     def __len__(self):
         return len(self.__content)
+
 
 def compress_list(ql, **kwargs):
     # node prefix, postfix, start_string, end_string
@@ -817,6 +898,7 @@ def compress_list(ql, **kwargs):
                 nc_a += [add_p(pef, pof, s_num, l_num)]
     return kwargs.get("separator", ", ").join(sorted(nc_a) + sorted(unmatch_list))
 
+
 def compress_num_list(ql, excl_list=[]):
     def add_p(s_idx, e_idx):
         if e_idx == s_idx:
@@ -844,6 +926,7 @@ def compress_num_list(ql, excl_list=[]):
     if s_num:
         nc_a.append(add_p(s_num, e_num))
     return ", ".join(nc_a)
+
 
 def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
     if log_lev >= LOG_LEVEL_WARN:
@@ -882,20 +965,24 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
     if out:
         print(out_str)
 
+
 def get_log_level_str(level):
     return {
-        LOG_LEVEL_OK       : "ok",
-        LOG_LEVEL_WARN     : "warn",
-        LOG_LEVEL_ERROR    : "err",
-        LOG_LEVEL_CRITICAL : "crit"
+        LOG_LEVEL_OK: "ok",
+        LOG_LEVEL_WARN: "warn",
+        LOG_LEVEL_ERROR: "err",
+        LOG_LEVEL_CRITICAL: "crit"
     }.get(level, "lev{:d}".format(level))
+
 
 class my_formatter(logging.Formatter):
     def __init__(self, *args):
         logging.Formatter.__init__(self, *args)
         self.set_max_line_length(0)
+
     def set_max_line_length(self, max_length):
         self.__max_line_length = max_length
+
     def format(self, message):
         # threshold is 20 bytes longer because of double-formatting
         if self.__max_line_length and len(message.msg) > self.__max_line_length + 20:
@@ -903,6 +990,7 @@ class my_formatter(logging.Formatter):
             if left > 4:
                 message.msg = u"{} ({:d} left)".format(message.msg[:self.__max_line_length], len(message.msg))
         return logging.Formatter.format(self, message)
+
 
 class logfile(logging.handlers.BaseRotatingHandler):
     def __init__(self, filename, mode="a", max_bytes=1000000, encoding=None, max_age_days=365):
@@ -914,8 +1002,10 @@ class logfile(logging.handlers.BaseRotatingHandler):
         self.set_max_bytes(max_bytes)
         self.max_age = max_age_days
         self._cleanup_old_logfiles()
+
     def set_max_bytes(self, max_bytes):
         self.__max_size = max_bytes
+
     def shouldRollover(self, record):
         do_rollover = False
         if self.__max_size > 0:
@@ -926,6 +1016,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
             except ValueError:
                 pass
         return do_rollover
+
     def _cleanup_old_logfiles(self):
         cur_dir = os.path.dirname(self.baseFilename)
         base_name = os.path.basename(self.baseFilename)
@@ -940,6 +1031,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
                     my_syslog("cannot remove file '{}' ({:d} > {:d} days)".format(f_name, act_age, self.max_age), LOG_LEVEL_ERROR)
                 else:
                     my_syslog("removed file '{}' ({:d} > {:d} days)".format(f_name, act_age, self.max_age))
+
     def doRollover(self):
         self._cleanup_old_logfiles()
         self.stream.close()
@@ -981,4 +1073,3 @@ class logfile(logging.handlers.BaseRotatingHandler):
             os.chmod(self.baseFilename, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
             self.mode = "w"
             self.stream = self._open()
-

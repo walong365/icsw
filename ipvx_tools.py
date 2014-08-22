@@ -18,6 +18,7 @@
 
 """ handles ipv4 addresses """
 
+
 class ipv4(object):
     def __init__(self, in_value):
         # cast tuple to list
@@ -31,8 +32,8 @@ class ipv4(object):
                 self.inv_parts.reverse()
                 # print "+",in_value, self.parts, self.inv_parts, "*<br>"
             else:
-                raise ValueError, "error parsing IP address '{}'".format(in_value)
-        elif type(in_value) == type([]):
+                raise ValueError("error parsing IP address '{}'".format(in_value))
+        elif type(in_value) == list:
             if type(in_value[0]) in [type(0), type(0L)]:
                 # value is a list of integer
                 self.parts = [val for val in in_value]
@@ -49,12 +50,14 @@ class ipv4(object):
                 in_value = in_value >> 8
             self.parts = [x for x in self.inv_parts]
             self.parts.reverse()
+
     def value(self):
         bin_ip, mult = (0, 1)
         for idx in range(4):
             bin_ip += self.inv_parts[idx] * mult
             mult = mult * 256
         return bin_ip
+
     def netmask_bits(self):
         bin_mask = self.value()
         if bin_mask:
@@ -65,22 +68,31 @@ class ipv4(object):
         else:
             bits = 0
         return bits
+
     def __str__(self):
         return ".".join([str(y) for y in self.parts])
+
     def __repr__(self):
         return ".".join([str(y) for y in self.parts])
+
     def __len__(self):
         return len(str(self))
+
     def __invert__(self):
         return ipv4(".".join([str(255 - x) for x in self.parts]))
+
     def __and__(self, other):
         return ipv4(".".join([str(x & y) for x, y in zip(self.parts, other.parts)]))
+
     def __or__(self, other):
         return ipv4(".".join([str(x | y) for x, y in zip(self.parts, other.parts)]))
+
     def __eq__(self, other):
         return len([True for x, y in zip(self.parts, other.parts) if x == y]) == 4
+
     def __ne__(self, other):
         return len([True for x, y in zip(self.parts, other.parts) if x == y]) != 4
+
     def __add__(self, other):
         ov = 0
         new_v = [0] * 4
@@ -92,9 +104,10 @@ class ipv4(object):
                 ov += 1
             new_v[i] = new_val
         if ov:
-            raise ValueError, "Overflow while adding IPv4 addresses {} and {}".format(str(self), str(other))
+            raise ValueError("Overflow while adding IPv4 addresses {} and {}".format(str(self), str(other)))
         else:
             return ipv4(".".join([str(x) for x in new_v]))
+
     def __lt__(self, other):
         for i in range(4):
             if self.parts[i] > other.parts[i]:
@@ -102,6 +115,7 @@ class ipv4(object):
             elif self.parts[i] < other.parts[i]:
                 return True
         return False
+
     def __gt__(self, other):
         for i in range(4):
             if self.parts[i] < other.parts[i]:
@@ -109,6 +123,7 @@ class ipv4(object):
             elif self.parts[i] > other.parts[i]:
                 return True
         return False
+
     def __le__(self, other):
         for i in range(4):
             if self.parts[i] > other.parts[i]:
@@ -116,6 +131,7 @@ class ipv4(object):
             elif self.parts[i] < other.parts[i]:
                 return True
         return True
+
     def __ge__(self, other):
         for i in range(4):
             if self.parts[i] < other.parts[i]:
@@ -123,6 +139,7 @@ class ipv4(object):
             elif self.parts[i] > other.parts[i]:
                 return True
         return True
+
     def find_matching_network(self, nw_list):
         match_list = []
         for nw_stuff in nw_list:
@@ -130,14 +147,14 @@ class ipv4(object):
             if self & netmask == network:
                 match_list.append((netmask.netmask_bits(), nw_stuff))
         return sorted(match_list, reverse=True)
+
     def network_matches(self, nw_stuff):
         return self & ipv4(nw_stuff.netmask) == ipv4(nw_stuff.network)
 
+
 def get_network_name_from_mask(mask):
     return {
-        "255.255.255.0" : "C",
-        "255.255.0.0"   : "B",
-        "255.0.0.0"     : "A",
+        "255.255.255.0": "C",
+        "255.255.0.0": "B",
+        "255.0.0.0": "A",
     }.get(mask, mask)
-
-

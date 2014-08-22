@@ -30,6 +30,7 @@ import subprocess
 import sys
 import tempfile
 
+
 # copy from process_tools
 def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
@@ -38,80 +39,100 @@ def getstatusoutput(cmd):
         import commands
         return commands.getstatusoutput(cmd)
 
+
 def get_cpu_basic_info():
     try:
-        cpu_dict = {k.strip().lower() : v.strip() for k, v in [x.strip().split(":", 1) for x in open("/proc/cpuinfo", "r").readlines() if x.count(":")]}
+        cpu_dict = {
+            k.strip().lower(): v.strip() for k, v in [
+                x.strip().split(":", 1) for x in open("/proc/cpuinfo", "r").readlines() if x.count(":")
+            ]
+        }
     except:
         cpu_dict = {}
     return cpu_dict
 
+
 def correct_cpu_dict(in_dict):
-    for t_id, s_id in [("vendor_id" , "vendor"),
-                       ("cpu family", "family")]:
-        if s_id in in_dict and not t_id in in_dict:
+    for t_id, s_id in [
+        ("vendor_id", "vendor"),
+        ("cpu family", "family")
+    ]:
+        if s_id in in_dict and t_id not in in_dict:
             in_dict[t_id] = in_dict[s_id]
     return in_dict
 
+
 def get_cpu_info(vendor, family, model):
-    cpu_dict = {"intel" : {"5" : {"0" : ("P5 A-step"     , "i586"),
-                                  "1" : ("P5"            , "i586"),
-                                  "2" : ("P54C"          , "i586"),
-                                  "3" : ("P24T Overdrive", "i586"),
-                                  "4" : ("P55C"          , "i586"),
-                                  "7" : ("P54C"          , "i586"),
-                                  "8" : ("P55C (0.25um)" , "i586")
-                                  },
-                           "6" : {"0"  : ("P6 A-step"                                     , "i686"),
-                                  "1"  : ("P6"                                            , "i686"),
-                                  "3"  : ("P2 (0.28um)"                                   , "i686"),
-                                  "5"  : ("P2 (0.25um)"                                   , "i686"),
-                                  "6"  : ("P2 with on-die L2 Cache"                       , "i686"),
-                                  "7"  : ("P3 (0.25um)"                                   , "i686"),
-                                  "8"  : ("P3 (0.18um) with 256 KB on-die L2 Cache"       , "i686"),
-                                  "9"  : ("PM (0.13um) with 1MB on-die L2 Cache"          , "i686"),
-                                  "10" : ("P3 (0.18um) with 1 or 2MB on-die L2 Cache"     , "i686"),
-                                  "11" : ("P3 (0.13um) with 256 or 512 KB on-die L2 Cache", "i686"),
-                                  "13" : ("P4 M (0.13um) with 2048 KB on-die L2 Cache"    , "i686"),
-                                  "14" : ("P4 M (65nm) with 2 MB on-die L2 Cache"         , "i686"),
-                                  "15" : ("Core 2 DC (65nm) with 4 MB on-die L2 Cache"    , "x86_64")
-                                  },
-                           "15" : {"0" : ("P4 (0.18um)", "i686"),
-                                   "1" : ("P4 (0.18um)", "i686"),
-                                   "2" : ("P4 (0.13um)", "i686"),
-                                   "3" : ("P4 (0.09um)", "i686"),
-                                   "4" : ("P4 (0.09um)", "x86_64"),
-                                   "6" : ("P4 (65nm)"  , "x86_64")
-                                   },
-                           "Itanium 2" : {"0" : ("McKinley (0.18 um)"            , "ia64"),
-                                          "1" : ("Madison or Deerfield (0.13 um)", "ia64"),
-                                          "2" : ("Madison 9M (0.13 um)"          , "ia64")},
-                           },
-                "amd" : {"5" : {"0"  : ("SSA5 (PR75,PR90,PR100)"   , "i586"),
-                                "1"  : ("5k86 (PR120, PR133)"      , "i586"),
-                                "2"  : ("5k86 (PR166)"             , "i586"),
-                                "3"  : ("5k86 (PR200)"             , "i586"),
-                                "6"  : ("K6 (0.30um)"              , "i586"),
-                                "7"  : ("K6 (0.25um)"              , "i586"),
-                                "8"  : ("K6-2"                     , "i586"),
-                                "9"  : ("K6-III"                   , "i586"),
-                                "13" : ("K6-2+ or K6-III+ (0.18um)", "i586")
-                                },
-                         "6" : {"1"  : ("Athlon (0.25um)" , "i686"),
-                                "2"  : ("Athlon (0.18um)" , "i686"),
-                                "3"  : ("Athlon (SF Core)", "i686"),
-                                "4"  : ("Athlon (TB Core)", "i686"),
-                                "6"  : ("Athlon (PM Core)", "i686"),
-                                "7"  : ("Athlon (MG Core)", "i686"),
-                                "8"  : ("Athlon (TH Core)", "i686"),
-                                "10" : ("Athlon (BT Core)", "i686")
-                                },
-                         "15" : {"4"  : ("Athlon64 (0.13um)"    , "x86_64"),
-                                 "5"  : ("Opteron DP (0.13um)"  , "x86_64"),
-                                 "15" : ("Athlon64/939 (0.13um)", "x86_64"),
-                                 "31" : ("Athlon64/939 (0.13um)", "x86_64")
-                                 }
-                         }
-                }
+    cpu_dict = {
+        "intel": {
+            "5": {
+                "0": ("P5 A-step", "i586"),
+                "1": ("P5", "i586"),
+                "2": ("P54C", "i586"),
+                "3": ("P24T Overdrive", "i586"),
+                "4": ("P55C", "i586"),
+                "7": ("P54C", "i586"),
+                "8": ("P55C (0.25um)", "i586")
+            },
+            "6": {
+                "0": ("P6 A-step", "i686"),
+                "1": ("P6", "i686"),
+                "3": ("P2 (0.28um)", "i686"),
+                "5": ("P2 (0.25um)", "i686"),
+                "6": ("P2 with on-die L2 Cache", "i686"),
+                "7": ("P3 (0.25um)", "i686"),
+                "8": ("P3 (0.18um) with 256 KB on-die L2 Cache", "i686"),
+                "9": ("PM (0.13um) with 1MB on-die L2 Cache", "i686"),
+                "10": ("P3 (0.18um) with 1 or 2MB on-die L2 Cache", "i686"),
+                "11": ("P3 (0.13um) with 256 or 512 KB on-die L2 Cache", "i686"),
+                "13": ("P4 M (0.13um) with 2048 KB on-die L2 Cache", "i686"),
+                "14": ("P4 M (65nm) with 2 MB on-die L2 Cache", "i686"),
+                "15": ("Core 2 DC (65nm) with 4 MB on-die L2 Cache" "x86_64")
+            },
+            "15": {
+                "0": ("P4 (0.18um)", "i686"),
+                "1": ("P4 (0.18um)", "i686"),
+                "2": ("P4 (0.13um)", "i686"),
+                "3": ("P4 (0.09um)", "i686"),
+                "4": ("P4 (0.09um)", "x86_64"),
+                "6": ("P4 (65nm)", "x86_64")
+            },
+            "Itanium 2": {
+                "0": ("McKinley (0.18 um)", "ia64"),
+                "1": ("Madison or Deerfield (0.13 um)", "ia64"),
+                "2": ("Madison 9M (0.13 um)", "ia64")
+            },
+        },
+        "amd": {
+            "5": {
+                "0": ("SSA5 (PR75,PR90,PR100)", "i586"),
+                "1": ("5k86 (PR120, PR133)", "i586"),
+                "2": ("5k86 (PR166)", "i586"),
+                "3": ("5k86 (PR200)", "i586"),
+                "6": ("K6 (0.30um)", "i586"),
+                "7": ("K6 (0.25um)", "i586"),
+                "8": ("K6-2", "i586"),
+                "9": ("K6-III", "i586"),
+                "13": ("K6-2+ or K6-III+ (0.18um)", "i586")
+            },
+            "6": {
+                "1": ("Athlon (0.25um)", "i686"),
+                "2": ("Athlon (0.18um)", "i686"),
+                "3": ("Athlon (SF Core)", "i686"),
+                "4": ("Athlon (TB Core)", "i686"),
+                "6": ("Athlon (PM Core)", "i686"),
+                "7": ("Athlon (MG Core)", "i686"),
+                "8": ("Athlon (TH Core)", "i686"),
+                "10": ("Athlon (BT Core)", "i686")
+            },
+            "15": {
+                "4": ("Athlon64 (0.13um)", "x86_64"),
+                "5": ("Opteron DP (0.13um)", "x86_64"),
+                "15": ("Athlon64/939 (0.13um)", "x86_64"),
+                "31": ("Athlon64/939 (0.13um)", "x86_64")
+            }
+        }
+    }
     if re.search("intel", vendor.lower()):
         ven = "intel"
     elif re.search("amd", vendor.lower()):
@@ -127,8 +148,10 @@ def get_cpu_info(vendor, family, model):
                 long_type, short_type = fam_dict[model]
     return short_type, long_type
 
+
 class cpu_value(object):
     int_re = re.compile("^(?P<pre_str>.*)\s+\((?P<int>\d+)\)")
+
     def __init__(self, in_str):
         self.add_value = ""
         if type(in_str) in [int, long]:
@@ -152,11 +175,13 @@ class cpu_value(object):
                 # string
                 self.v_type = "s"
                 self.value = in_str
+
     def __repr__(self):
         return "cpu_value, type {}, value {}{}".format(
             self.v_type,
             self.value,
             self.add_value and ", {}".format(self.add_value) or "")
+
 
 class cpu_info_part(object):
     def __init__(self, act_key):
@@ -171,43 +196,53 @@ class cpu_info_part(object):
         self.num_key = act_source
         self.str_key = act_key
         self.__value_dict = {}
+
     def bump_num_key(self):
         # increase num_key
         num_key = self.num_key
-        if type(num_key) == type(0):
+        if type(num_key) in [int, long]:
             num_key = (num_key,)
         num_key = list(num_key)
-        if type(num_key[-1]) == type(""):
+        if type(num_key[-1]) in [str, unicode]:
             num_key.append(0)
         else:
             num_key[-1] += 1
         self.num_key = tuple(num_key)
+
     def add_line(self, line):
         if line.count("---"):
             pass
         else:
-            if type(self.num_key) == type(0):
+            if type(self.num_key) in [int, long]:
                 in_key, in_value = [part.strip() for part in line.split(":", 1)]
                 in_key = int(in_key, 16)
             else:
                 in_key, in_value = [part.strip() for part in line.split("=", 1)]
             self[in_key] = in_value
+
     def __setitem__(self, key, value):
         self.__value_dict[key] = cpu_value(value)
+
     def __getitem__(self, key):
         return self.__value_dict[key]
+
     def has_key(self, key):
         return key in self.__value_dict
+
     def __contains__(self, key):
         return key in self.__value_dict
+
     def keys(self):
         return self.__value_dict.keys()
+
     def values(self):
         return self.__value_dict.values()
+
     def __repr__(self):
         return "cpu_info_part {} ({})".format(
             self.str_key,
             logging_tools.get_plural("key", len(self.__value_dict.keys())))
+
 
 class old_cpu_info(object):
     def __init__(self, lines):
@@ -221,7 +256,7 @@ class old_cpu_info(object):
         while lines[0][l_shift] == " ":
             l_shift += 1
         lines = [line[l_shift:] for line in lines]
-        self.__complex_dict = {"simple" : {"brand" : "no brand-info found"}}
+        self.__complex_dict = {"simple": {"brand": "no brand-info found"}}
         while True:
             act_line = lines.pop(0)
             if act_line.endswith(":"):
@@ -274,9 +309,9 @@ class old_cpu_info(object):
                 if act_value.startswith("L"):
                     cache_num = int(act_value[1])
                     cache_size = act_value.split(",")[0].split(":")[1]
-                    pfix = {"k" : 1024,
-                            "m" : 1024 * 1024,
-                            "g" : 1024 * 1024 * 1024}.get(cache_size[-1].lower(), 1)
+                    pfix = {"k": 1024,
+                            "m": 1024 * 1024,
+                            "g": 1024 * 1024 * 1024}.get(cache_size[-1].lower(), 1)
                     cache_size = int(cache_size[:-1]) * pfix
                     self.cache_size[cache_num] += cache_size
         else:
@@ -284,7 +319,7 @@ class old_cpu_info(object):
             l1_key_pf = int("0x80000005", 16)
             l2_key_pf = int("0x80000006", 16)
             for key in self.keys():
-                if type(key) == type(()):
+                if type(key) == list:
                     if key[0] == l1_key_pf:
                         cache_level = 1
                     elif key[0] == l2_key_pf:
@@ -302,16 +337,22 @@ class old_cpu_info(object):
         if not self.cache_size[2] and self.cache_size[3]:
             self.cache_size[2] = self.cache_size[3]
             self.cache_size[3] = 0
+
     def has_key(self, key):
         return key in self.__complex_dict
+
     def __contains__(self, key):
         return key in self.__complex_dict
+
     def keys(self):
         return self.__complex_dict.keys()
+
     def __getitem__(self, key):
         return self.__complex_dict[key]
+
     def __setitem__(self, key, value):
         self.__complex_dict[key] = value
+
 
 class cpu_layout(object):
     def __init__(self):
@@ -320,6 +361,7 @@ class cpu_layout(object):
         self.__cores = {}
         # dict : socket -> domain -> die -> core -> lcore
         self.__layout = {}
+
     def add_logical_core(self, core_num, core_struct, socket_num):
         self.__cores[core_num] = core_struct
         l1_cache_idx = self.__cache_share[1].get_cache_num(core_num)
@@ -330,19 +372,32 @@ class cpu_layout(object):
         else:
             self.has_l3_cache = False
             l3_cache_idx = 0
-        num_dict = {"core_num"    : core_num,
-                    "ht_core_num" : l1_cache_idx,
-                    "die_num"     : l2_cache_idx,
-                    "domain_num"  : l3_cache_idx,
-                    "socket_num"  : socket_num}
-        self.__layout.setdefault(num_dict["socket_num"], {}).setdefault(num_dict["domain_num"], {}).setdefault(num_dict["die_num"], {}).setdefault(num_dict["ht_core_num"], []).append(num_dict["core_num"])
+        num_dict = {
+            "core_num": core_num,
+            "ht_core_num": l1_cache_idx,
+            "die_num": l2_cache_idx,
+            "domain_num": l3_cache_idx,
+            "socket_num": socket_num
+        }
+        self.__layout.setdefault(
+            num_dict["socket_num"], {}
+        ).setdefault(
+            num_dict["domain_num"], {}
+        ).setdefault(
+            num_dict["die_num"], {}
+        ).setdefault(
+            num_dict["ht_core_num"], []
+        ).append(num_dict["core_num"])
         core_struct._set_num_dict(num_dict)
+
     def place_core(self, core_num, cache_level, shares_with):
-        if not cache_level in self.__cache_share:
+        if cache_level not in self.__cache_share:
             self.__cache_share[cache_level] = share_map(cache_level)
         self.__cache_share[cache_level].place_core(core_num, shares_with)
+
     def _get_layout_dict(self):
         return self.__layout
+
 
 class share_map(object):
     def __init__(self, c_level):
@@ -351,6 +406,7 @@ class share_map(object):
         self.__core_dict = {}
         self.__cache_lut = {}
         self.__core_lut = {}
+
     def place_core(self, core_num, shares_with):
         self.__core_dict[core_num] = shares_with
         if core_num in self.__core_lut:
@@ -361,8 +417,10 @@ class share_map(object):
             for s_core in shares_with:
                 self.__core_lut[s_core] = cache_num
             self.__cache_lut[cache_num] = shares_with
+
     def get_cache_num(self, core_num):
         return self.__core_lut.get(core_num, None)
+
     def __repr__(self):
         return "share_map for level {:d} cache, {}: {}".format(
             self.cache_level,
@@ -370,6 +428,7 @@ class share_map(object):
             ", ".join(["{:d} [{}]".format(
                 c_num,
                 ":".join(["{:d}".format(core_num) for core_num in self.__cache_lut[c_num]])) for c_num in xrange(self.num_caches)]))
+
 
 class cpu_info(object):
     def __init__(self, in_dict):
@@ -390,29 +449,39 @@ class cpu_info(object):
         if "cache" in in_dict.get("sys_info", {}):
             self._set_cache_info(in_dict["sys_info"]["cache"])
         self._set_cpu_id()
+
     def _set_num_dict(self, in_dict=None):
         if in_dict is None:
             for key in ["core", "ht_core", "die", "domain", "socket"]:
                 self["{}_num".format(key)] = 0
         else:
             self.__v_dict.update(in_dict)
+
     def has_key(self, key):
         return key in self.__v_dict
+
     def __contains__(self, key):
         return key in self.__v_dict
+
     def keys(self):
         return self.__v_dict.keys()
+
     def __getitem__(self, key):
         return self.__v_dict[key]
+
     def get(self, key, default):
         return self.__v_dict.get(key, default)
+
     def __setitem__(self, key, value):
         self.__v_dict[key] = value
+
     def _set_cpu_id(self):
         if self["online"]:
             self["cpu_id"] = ".".join([str(self[key]) for key in ["cpu_family", "model", "stepping", "cpuid_level"]])
+
     def has_valid_cache_info(self):
         return True if self.cache_info else False
+
     def _set_cache_info(self, in_dict=None):
         if in_dict is not None:
             self.cache_info["share_dict"] = {}
@@ -428,6 +497,7 @@ class cpu_info(object):
                     core_list = set([idx for idx in xrange(256) if (1 << idx) & scm])
                     self.cache_info["share_dict"].setdefault(c_stuff["level"], set()).update(core_list)
         # pprint.pprint(self.cache_info)
+
     def _get_cache_share_info(self, c_num):
         if c_num in self.cache_info.get("share_dict", {}):
             share_info = self.cache_info["share_dict"][c_num]
@@ -435,18 +505,29 @@ class cpu_info(object):
                 return "excl"
             else:
                 return "shared by {}".format(", ".join(["{:d}".format(core) for core in sorted(share_info)]))
+
     def get_cache_sizes(self):
         return self.cache_info["size"]
+
     def get_short_cache_info(self):
         return "".join([self._get_size_str(self.cache_info["size"][cache_num]).replace(" ", "").replace("B", "") for cache_num in [1, 2, 3]])
+
     def get_cache_info_str(self):
         if sum(self.cache_info["size"].values(), 0):
-            return ", ".join(["L{:d}: {}{}".format(
-                cache_num,
-                self._get_size_str(self.cache_info["size"][cache_num]),
-                " ({})".format(self._get_cache_share_info(cache_num)) if self._get_cache_share_info(cache_num) else "") for cache_num in range(1, 4) if self.cache_info["size"][cache_num]])
+            return ", ".join(
+                [
+                    "L{:d}: {}{}".format(
+                        cache_num,
+                        self._get_size_str(self.cache_info["size"][cache_num]),
+                        " ({})".format(
+                            self._get_cache_share_info(cache_num)
+                        ) if self._get_cache_share_info(cache_num) else ""
+                    ) for cache_num in range(1, 4) if self.cache_info["size"][cache_num]
+                ]
+            )
         else:
             return "No cache info found"
+
     def set_cache_from_cpuid_info(self, in_dict):
         # if self.has_key(4):
         #    # this information is not reliable, hyper_threading is always reported true even when disabled in bios (bignode / Liebherr)
@@ -463,15 +544,16 @@ class cpu_info(object):
                 if act_value.startswith("L"):
                     cache_num = int(act_value[1])
                     cache_size = act_value.split(",")[0].split(":")[1]
-                    pfix = {"k" : 1024,
-                            "m" : 1024 * 1024,
-                            "g" : 1024 * 1024 * 1024}.get(cache_size[-1].lower(), 1)
+                    pfix = {"k": 1024,
+                            "m": 1024 * 1024,
+                            "g": 1024 * 1024 * 1024}.get(cache_size[-1].lower(), 1)
                     cache_size = int(cache_size[:-1]) * pfix
                     self.cache_info["size"][cache_num] += cache_size
         # correct wrong cache-reporting
         if not self.cache_info["size"][2] and self.cache_info["size"][3]:
             self.cache_info["size"][2] = self.cache_info["size"][3]
             self.cache_info["size"][3] = 0
+
     def _get_size_str(self, num):
         if num >= 1024 * 1024:
             return "{:d} MB".format(num / (1024 * 1024))
@@ -479,6 +561,7 @@ class cpu_info(object):
             return "{:d} kB".format(num / (1024))
         else:
             return "0 B"
+
     def __repr__(self):
         if self["online"]:
             return "core info (idx {:d}), socket is {:d}, phys_core {:d}, {}, {}".format(
@@ -490,6 +573,7 @@ class cpu_info(object):
         else:
             print("core info (idx {:d}), offline".format(self.core_num))
 
+
 class global_cpu_info(object):
     def __init__(self, **kwargs):
         for bin_name in ["/opt/cluster/bin/cpuid", "/usr/bin/cpuid"]:
@@ -498,11 +582,11 @@ class global_cpu_info(object):
                 break
         _xml = kwargs.get("xml", None)
         if _xml is not None:
-            kernel_tuple = _xml.xpath(".//ns0:cpu_info/ns0:kernel_tuple", namespaces={"ns0" : server_command.XML_NS}, smart_strings=False)[0]
+            kernel_tuple = _xml.xpath(".//ns0:cpu_info/ns0:kernel_tuple", namespaces={"ns0": server_command.XML_NS}, smart_strings=False)[0]
             self.c_stat_kernel, self.c_out_kernel = (int(kernel_tuple.attrib["stat"]), bz2.decompress(base64.b64decode(kernel_tuple.text)))
-            cpuid_tuple = _xml.xpath(".//ns0:cpu_info/ns0:cpuid_tuple", namespaces={"ns0" : server_command.XML_NS}, smart_strings=False)[0]
+            cpuid_tuple = _xml.xpath(".//ns0:cpu_info/ns0:cpuid_tuple", namespaces={"ns0": server_command.XML_NS}, smart_strings=False)[0]
             self.c_stat_cpuid, self.c_out_cpuid = (int(cpuid_tuple.attrib["stat"]), bz2.decompress(base64.b64decode(cpuid_tuple.text)))
-            proc_dict = _xml.xpath(".//ns0:cpu_info/ns0:proc_dict", namespaces={"ns0" : server_command.XML_NS}, smart_strings=False)[0]
+            proc_dict = _xml.xpath(".//ns0:cpu_info/ns0:proc_dict", namespaces={"ns0": server_command.XML_NS}, smart_strings=False)[0]
             self.__proc_dict = marshal.loads(bz2.decompress(base64.b64decode(proc_dict.text)))
         else:
             self.c_stat_kernel, self.c_out_kernel = getstatusoutput("{} -k -r".format(self.__cpuid_binary))
@@ -514,6 +598,7 @@ class global_cpu_info(object):
             self.__proc_dict = self._read_proc_info()
         if kwargs.get("parse", False):
             self.parse_info()
+
     def get_send_dict(self, srv_com):
         el_builder = srv_com.builder
         cpu_info = el_builder("cpu_info", version="1")
@@ -521,6 +606,7 @@ class global_cpu_info(object):
                          el_builder("cpuid_tuple", base64.b64encode(bz2.compress(self.c_out_cpuid)), stat="{:d}".format(self.c_stat_cpuid)),
                          el_builder("proc_dict", base64.b64encode(bz2.compress(marshal.dumps(self.__proc_dict))))])
         srv_com["cpu_info"] = cpu_info
+
     def parse_info(self):
         if self.c_out_kernel.split("\n")[1].strip().startswith("0x"):
             # only parse if hex_dump is found
@@ -566,6 +652,7 @@ class global_cpu_info(object):
                     for cpu_idx in self.cpu_idxs():
                         self[cpu_idx].set_cache_from_cpuid_info(cpuid_cpu)
         self._check_layout()
+
     def _check_layout(self):
         phys_dict = {}
         # socket -> core -> cpu_num
@@ -650,24 +737,28 @@ class global_cpu_info(object):
                                            self.__cpu_dict[core_num],
                                            cs_dict[core_num])
         self.layout = my_layout
+
     def _check_proc_dict(self):
         # some sanity checks for proc_dict
         for _key, value in self.__proc_dict.iteritems():
-            if not "online" in value:
+            if "online" not in value:
                 value["online"] = True
+
     def _parse_size(self, in_str):
         if in_str.isdigit():
             return int(in_str)
         else:
-            return int(in_str[:-1]) * {"k" : 1024,
-                                       "m" : 1024 * 1024,
-                                       "g" : 1024 * 1024 * 1024}[in_str[-1].lower()]
+            return int(in_str[:-1]) * {"k": 1024,
+                                       "m": 1024 * 1024,
+                                       "g": 1024 * 1024 * 1024}[in_str[-1].lower()]
+
     def _parse_proc_value(self, in_val):
         in_val = in_val.strip()
         if in_val.isdigit():
             return int(in_val)
         else:
             return in_val
+
     def _read_proc_info(self):
         sys_base_dir = "/sys/devices/system/cpu/"
         if os.path.isdir(sys_base_dir):
@@ -690,7 +781,9 @@ class global_cpu_info(object):
                     else:
                         break
                 if act_cpu_lines:
-                    act_cpu_dict = dict([(key.strip().replace(" ", "_"), self._parse_proc_value(value)) for key, value in [act_line.split(":", 1) for act_line in act_cpu_lines]])
+                    act_cpu_dict = {
+                        key.strip().replace(" ", "_"): self._parse_proc_value(value) for key, value in [act_line.split(":", 1) for act_line in act_cpu_lines]
+                    }
                     act_cpu_dict["online"] = True
                     # check for info from /sys/
                     sys_dict = {}
@@ -737,35 +830,44 @@ class global_cpu_info(object):
         else:
             raise IOError("cannot find %s" % (cpu_info_file))
         # check for disabled cpus
-        dis_cpus = [cpu_idx for cpu_idx in sys_cpus if not cpu_idx in cpu_dict]
+        dis_cpus = [cpu_idx for cpu_idx in sys_cpus if cpu_idx not in cpu_dict]
         for dis_cpu in dis_cpus:
-            cpu_dict[dis_cpu] = {"online"    : False,
-                                 "processor" : dis_cpu}
+            cpu_dict[dis_cpu] = {
+                "online": False,
+                "processor": dis_cpu
+            }
         return cpu_dict
+
     def cpu_idxs(self):
         return self.__cpu_dict.keys()
+
     def __getitem__(self, key):
         return self.__cpu_dict[key]
+
     def __setitem__(self, key, value):
         self.__cpu_dict[key] = value
+
     def __repr__(self):
         return "CPU info, %s found:\n%s" % (logging_tools.get_plural("core", self.num_cores()),
                                             "\n".join(["  %s" % (str(self[core_num])) for core_num in sorted(self.cpu_cores())]))
+
     def num_sockets(self):
         # return number of cpu_sockets
         return len(set([cpu["socket_num"] for cpu in self.__cpu_dict.itervalues() if cpu["online"]]))
+
     def num_cores(self):
         # return number of cpu_cores
         return len(self.__cpu_dict.keys())
+
     def cpu_cores(self):
         # return cpu_cores
         return sorted(self.__cpu_dict.keys())
 
+
 def get_cpuid():
-    gci = global_cpu_info(parse=True) # , check_topology=False)
+    gci = global_cpu_info(parse=True)  # , check_topology=False)
     first_cpu = gci[gci.cpu_idxs()[0]]
     # full cpuid-string:
     # [VERSION]_[L1SIZE][L2SIZE][L3SIZE]_[CPUID]
     return "0_%s_%s" % (first_cpu.get_short_cache_info(),
                         first_cpu["cpu_id"])
-

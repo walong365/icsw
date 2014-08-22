@@ -24,6 +24,7 @@ import os
 import pickle
 import zmq
 
+
 def zmq_socket_name(sock_name, **kwargs):
     if not sock_name.endswith("_zmq"):
         sock_name = "{}_zmq".format(sock_name)
@@ -31,6 +32,7 @@ def zmq_socket_name(sock_name, **kwargs):
         if not sock_name.startswith("ipc://"):
             sock_name = "ipc://{}".format(sock_name)
     return sock_name
+
 
 class io_stream(object):
     def __init__(self, sock_name="/var/lib/logging_server/py_err_zmq", **kwargs):
@@ -44,28 +46,33 @@ class io_stream(object):
         self.__buffer = u""
         if kwargs.get("register_atexit", True):
             atexit.register(self.close)
+
     @property
     def stream_target(self):
         return self.__sock_name
+
     def write(self, err_str):
         self.__buffer = u"{}{}".format(self.__buffer, err_str)
         if len(self.__buffer) > 1024:
             self.flush()
         return len(err_str)
+
     def flush(self):
         if not self.__buffer:
             return
         pid, t_dict = (
             os.getpid(),
             {
-                "IOS_type"  : "error",
-                "error_str" : self.__buffer,
-                "pid"       : os.getpid(),
+                "IOS_type": "error",
+                "error_str": self.__buffer,
+                "pid": os.getpid(),
             }
         )
         if os.path.isdir("/proc/{:d}".format(pid)):
             try:
-                stat_lines = [(entry.split() + ["", ""])[0 : 2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")]
+                stat_lines = [
+                    (entry.split() + ["", ""])[0:2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")
+                ]
             except:
                 pass
             else:
@@ -77,14 +84,17 @@ class io_stream(object):
                         t_dict[r_what] = rest
         self.__zmq_sock.send(pickle.dumps(t_dict))
         self.__buffer = u""
+
     def fileno(self):
         # dangerous, do not use
         return self.__zmq_sock.getsockopt(zmq.FD)
+
     def close(self):
         if self.__zmq_sock:
             self.flush()
             self.__zmq_sock.close()
             # important: set socket attribute to None
             self.__zmq_sock = None
+
     def __del__(self):
         self.close()

@@ -15,6 +15,7 @@ import mimetypes
 
 SENDMAIL_BIN = process_tools.find_file("sendmail")
 
+
 class disclaimer_handler(object):
     def __init__(self):
         self._log_template = logging_tools.get_logger(
@@ -25,10 +26,12 @@ class disclaimer_handler(object):
         self.args = sys.argv
         self.log("{:d} args: {}".format(len(self.args), ", ".join(self.args)))
         self.log("sendmail is at {}".format(SENDMAIL_BIN))
+
     def recv_mail(self):
         self.src_mail = sys.stdin.read()
         self.log("src mail has {}".format(logging_tools.get_size_str(len(self.src_mail))))
         self.dst_mail = self.src_mail
+
     def log_mail(self, prefix, _mail):
         self.log("email structure {} processing".format(prefix))
         self.log("content type is {}".format(_mail.get_content_type()))
@@ -36,6 +39,7 @@ class disclaimer_handler(object):
         _dict = {}
         for _idx, _part in enumerate(_mail.walk(), 1):
             self.log("part {:<3d} has type {}".format(_idx, _part.get_content_type()))
+
     def process(self):
         my_parser = FeedParser()
         my_parser.feed(self.src_mail)
@@ -83,6 +87,7 @@ class disclaimer_handler(object):
         self.log_mail("after", _email)
         self.dst_mail = _email.as_string()
         self.log("dst mail has {}".format(logging_tools.get_size_str(len(self.dst_mail))))
+
     def send_mail(self):
         _sm_args = [SENDMAIL_BIN] + self.args[1:]
         self.log("calling sendmail with '{}'".format(" ".join(_sm_args)))
@@ -91,10 +96,13 @@ class disclaimer_handler(object):
         self._result = sm_proc.wait()
         self.log("sendmail process ended with {}".format(self._result))
         self.log("stdout / stderr : '{}' / '{}'".format(_stdout, _stderr))
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self._log_template.log(log_level, what)
+
     def close(self):
         self._log_template.close()
+
 
 def main():
     my_disc = disclaimer_handler()

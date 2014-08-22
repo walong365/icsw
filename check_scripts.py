@@ -27,8 +27,8 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import argparse
 import commands
 import datetime
@@ -44,6 +44,7 @@ except:
     config_tools = None
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
+
 
 def check_processes(name, pids, pid_thread_dict, any_ok):
     ret_state = 7
@@ -161,6 +162,7 @@ INSTANCE_XML = """
 </instances>
 """
 
+
 def get_instance_xml():
     instance_xml = etree.fromstring(INSTANCE_XML)
     # check for additional instances
@@ -192,10 +194,11 @@ def get_instance_xml():
             ("to_check", "0"),
             ("process_name", name),
             ("meta_server_name", name),
-            ]:
-            if not key in cur_el.attrib:
+        ]:
+            if key not in cur_el.attrib:
                 cur_el.attrib[key] = def_value
     return instance_xml
+
 
 def check_system(opt_ns):
     instance_xml = get_instance_xml()
@@ -377,21 +380,29 @@ def check_system(opt_ns):
             )
     return instance_xml
 
+
 def get_default_ns():
-    def_ns = argparse.Namespace(all=True, instance=[], system=[], server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True, no_database=False)
+    def_ns = argparse.Namespace(
+        all=True, instance=[], system=[], server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True, no_database=False
+    )
     return def_ns
+
 
 def show_xml(opt_ns, res_xml, iteration=0):
     # color strings (green / yellow / red / normal)
-    col_str_dict = {0 : "\033[1;32m",
-                    1 : "\033[1;33m",
-                    2 : "\033[1;31m",
-                    3 : "\033[m\017"}
-    rc_dict = {0 : (0, "running"),
-               1 : (2, "error"),
-               5 : (1, "skipped"),
-               6 : (1, "not install"),
-               7 : (2, "dead")}
+    col_str_dict = {
+        0: "\033[1;32m",
+        1: "\033[1;33m",
+        2: "\033[1;31m",
+        3: "\033[m\017"
+    }
+    rc_dict = {
+        0: (0, "running"),
+        1: (2, "error"),
+        5: (1, "skipped"),
+        6: (1, "not install"),
+        7: (2, "dead")
+    }
     rc_strs = dict([(key, "{}{}{}".format(col_str_dict[wc], value, col_str_dict[3]))
                     for key, (wc, value) in rc_dict.iteritems()])
     out_bl = logging_tools.new_form_list()
@@ -506,6 +517,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
     #    print "\n".join(_lines)
     print(unicode(out_bl))
 
+
 def do_action_xml(opt_ns, res_xml, mode):
     structs = res_xml.findall("instance[@checked='1']")
     if not opt_ns.quiet:
@@ -535,6 +547,7 @@ def do_action_xml(opt_ns, res_xml, mode):
                         cur_name,
                     )
                 )
+
 
 def main():
     my_parser = argparse.ArgumentParser()

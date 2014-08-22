@@ -41,8 +41,10 @@ CA_MODES = ["ca", "server", "client"]
 
 __all__ = ["openssl_config_mixin", "ca"]
 
+
 def build_subj(sub_dict):
     return "/{}/".format("/".join(["{}={}".format(_key, sub_dict[_key].replace(" ", r"\ ")) for _key in _KEYS if _key in sub_dict]))
+
 
 class openssl_config(object):
     def __init__(self, name):
@@ -65,6 +67,7 @@ class openssl_config(object):
             else:
                 key, value = _line.split("=", 1)
                 _lines[key.strip()] = value.strip()
+
     def write(self, name=None):
         name = name or self._filename
         _lines = []
@@ -79,10 +82,13 @@ class openssl_config(object):
                 for key, value in self._pdicts[_part].iteritems():
                     _lines.append(_form_str.format(key, value))
         file(name, "w").write("\n".join(_lines))
+
     def keys(self):
         return self._pdicts.keys()
+
     def __getitem__(self, key):
         return self._pdicts[key]
+
     def get(self, part, key, default=None, expand=False):
         if key in self._pdicts[part]:
             _val = self._pdicts[part][key]
@@ -91,6 +97,7 @@ class openssl_config(object):
             return _val
         else:
             return default
+
     def set(self, part, key, value=None):
         part = part or ""
         if type(key) == list:
@@ -103,14 +110,17 @@ class openssl_config(object):
         for key, value in kv_list:
             _lines[key] = value
         self._pdicts[part] = _lines
+
     def delete_part(self, part):
         if part in self._parts:
             self._parts.remove(part)
             del self._pdicts[part]
+
     def copy_part(self, src_part, dst_part):
         if dst_part not in self._parts:
             self._parts.append(dst_part)
         self._pdicts[dst_part] = OrderedDict([(key, value) for key, value in self._pdicts[src_part].iteritems()])
+
 
 class ca_index(OrderedDict):
     def __init__(self, f_name):
@@ -119,13 +129,13 @@ class ca_index(OrderedDict):
             if _line.strip():
                 _vals = _line.split("\t")
                 self[_vals[3]] = {
-                    "type"      : _vals[0],
-                    "exp_date"  : self._parse_date(_vals[1]),
-                    "rev_date"  : self._parse_date(_vals[2]),
-                    "rev_cause" : self._parse_rev_cause(_vals[2]),
-                    "serial"    : _vals[3],
-                    "file"      : _vals[4],
-                    "name"      : _vals[5],
+                    "type": _vals[0],
+                    "exp_date": self._parse_date(_vals[1]),
+                    "rev_date": self._parse_date(_vals[2]),
+                    "rev_cause": self._parse_rev_cause(_vals[2]),
+                    "serial": _vals[3],
+                    "file": _vals[4],
+                    "name": _vals[5],
                 }
                 # _rev = crypto.Revoked()
                 # _rev.set_serial(_vals[3])
@@ -137,25 +147,30 @@ class ca_index(OrderedDict):
         # print _cert.get_issuer().get_components()
         # print _cert.get_serial_number()
         # print crypto.Revoked().all_reasons()
+
     def _parse_date(self, in_str):
         if in_str:
             return datetime.datetime.strptime(in_str.split(",")[0], "%y%m%d%H%M%SZ")
         else:
             return None
+
     def format_date(self, in_dt):
         if in_dt is None:
             return ""
         else:
             return datetime.datetime.strftime(in_dt, "%Y%m%d%H%M%SZ")
+
     def _parse_rev_cause(self, in_str):
         if in_str.count(","):
             return in_str.split(",", 1)[1]
         else:
             return ""
 
+
 class ssl_secure(object):
     def __init__(self, *args, **kwargs):
         self.__backup = kwargs.get("backup", False)
+
     def __call__(self, func):
         def _newf(*args, **kwargs):
             _self = args[0]
@@ -179,8 +194,10 @@ class ssl_secure(object):
                 os.chmod(_tar_name, stat.S_IREAD)
             return ret_value
         return _newf
+
     def _tar_filter(self, tar_info):
         return tar_info
+
 
 class ca(object):
     def __init__(self, name, log_com):
@@ -196,6 +213,7 @@ class ca(object):
         self.certs = []
         if self.ca_ok:
             self._read_certs()
+
     def _check_dir(self):
         if not os.path.isdir(CA_DIR):
             os.makedirs(CA_DIR)
@@ -203,17 +221,22 @@ class ca(object):
             os.makedirs(BACKUP_DIR)
         os.chmod(CA_DIR, stat.S_IEXEC | stat.S_IREAD | stat.S_IWRITE)
         os.chmod(BACKUP_DIR, stat.S_IEXEC | stat.S_IREAD | stat.S_IWRITE)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[ca {}] {}".format(self.name, what), log_level)
+
     @property
     def ca_key(self):
         return os.path.join(self.ca_dir, "private", "cakey.pem")
+
     @property
     def ca_req(self):
         return os.path.join(self.ca_dir, "careq.pem")
+
     @property
     def ca_cert(self):
         return os.path.join(self.ca_dir, "cacert.pem")
+
     @ssl_secure(backup=True)
     def create(self, obj_dict):
         os.mkdir(self.ca_dir)
@@ -222,7 +245,9 @@ class ca(object):
         file(os.path.join(self.ca_dir, "index.txt"), "w").close()
         self._create_ssl_config()
         self.ca_ok = False
-        _success, _out = self.call_openssl("req", "-batch", "-new", "-keyout", self.ca_key, "-out", self.ca_req,
+        _success, _out = self.call_openssl(
+            "req",
+            "-batch", "-new", "-keyout", self.ca_key, "-out", self.ca_req,
             "-subj", build_subj(obj_dict),
             "-passin", "pass:{}".format(self.password),
             "-passout", "pass:{}".format(self.password),
@@ -230,18 +255,18 @@ class ca(object):
         if _success:
             _ssl_cnf = openssl_config(self.ssl_config_name)
             _x509_defaults = {
-                "ca" : [
+                "ca": [
                     ("authorityKeyIdentifier", "keyid:always,issuer:always"),
                     ("nsCertType", "sslCA, emailCA"),
                     ("keyUsage", "critical, keyCertSign, cRLsign"),
                     ("basicConstraints", "critical,CA:true"),
                 ],
-                "server" : [
+                "server": [
                     ("authorityKeyIdentifier", "keyid,issuer:always"),
                     ("nsCertType", "server"),
                     ("basicConstraints", "CA:FALSE"),
                 ],
-                "client" : [
+                "client": [
                     ("nsCertType", "client, email, objsign"),
                     ("basicConstraints", "CA:FALSE"),
                     ("keyUsage", "critical, digitalSignature, keyEncipherment"),
@@ -283,6 +308,7 @@ class ca(object):
             )
         self.ca_ok = _success
         return self.ca_ok
+
     def _create_ssl_config(self):
         if not os.path.exists(self.ssl_config_name):
             _src_file = None
@@ -306,16 +332,18 @@ class ca(object):
                 os.chmod(self.ssl_config_name, stat.S_IREAD | stat.S_IWRITE)
             else:
                 self.log("cannot create {}: no src_file found".format(self.ssl_config_name), logging_tools.LOG_LEVEL_CRITICAL)
+
     @ssl_secure(backup=True)
     def new_cert(self, obj_dict, mode, file_name, **kwargs):
         if mode in ["ca"]:
-            raise KeyError, "mode '{}' not allowed".format(mode)
+            raise KeyError("mode '{}' not allowed".format(mode))
         run_ok = False
         _cert_temp = tempfile.mkdtemp("_cert")
         _success, _out = self.call_openssl("genrsa", "-out", os.path.join(_cert_temp, "key.pem"), "1024")
         _ext_file = os.path.join(_cert_temp, "extfile")
         if _success:
-            _success, _out = self.call_openssl("req", "-batch", "-new", "-key", os.path.join(_cert_temp, "key.pem"),
+            _success, _out = self.call_openssl(
+                "req", "-batch", "-new", "-key", os.path.join(_cert_temp, "key.pem"),
                 "-subj", build_subj(obj_dict),
                 "-out", os.path.join(_cert_temp, "req.pem"),
                 )
@@ -327,7 +355,8 @@ class ca(object):
                     _add_list = ["DNS:{}".format(_dns) for _dns in _dev.all_dns()] + ["IP:{}".format(_ip) for _ip in _dev.all_ips()]
                     if _add_list:
                         file(_ext_file, "w").write("subjectAltName={}".format(",".join(_add_list)))
-                _success, _out = self.call_openssl("ca",
+                _success, _out = self.call_openssl(
+                    "ca",
                     "-batch", "-policy", "policy_anything",
                     "-name", "ca_{}".format(mode),
                     "-days", obj_dict["days"],
@@ -340,7 +369,9 @@ class ca(object):
                 if _success:
                     run_ok = True
                     # copy request and key
-                    _serial = "{:x}".format(crypto.load_certificate(crypto.FILETYPE_PEM, file(os.path.join(_cert_temp, "cert.pem"), "r").read()).get_serial_number()).upper()
+                    _serial = "{:x}".format(
+                        crypto.load_certificate(crypto.FILETYPE_PEM, file(os.path.join(_cert_temp, "cert.pem"), "r").read()).get_serial_number()
+                    ).upper()
                     for src_file, dst_dir in [("key.pem", "keys"), ("req.pem", "reqs")]:
                         file(os.path.join(self.ca_dir, dst_dir, "{}.pem".format(_serial)), "w").write(file(os.path.join(_cert_temp, src_file), "r").read())
                     # create target file
@@ -351,15 +382,18 @@ class ca(object):
                     _tf.close()
         shutil.rmtree(_cert_temp)
         return run_ok
+
     @ssl_secure()
     def _read_certs(self):
         _ssl_cnf = openssl_config(self.ssl_config_name)
         self.db = ca_index(_ssl_cnf.get("ca_ca", "database", expand=True))
+
     @ssl_secure(backup=True)
     def revoke_cert(self, serial, cause):
         _ssl_cnf = openssl_config(self.ssl_config_name)
         _cert = self.db[serial]
-        _success, _out = self.call_openssl("ca",
+        _success, _out = self.call_openssl(
+            "ca",
             "-batch",
             "-name", self.name,
             "-revoke", os.path.join(_ssl_cnf.get(self.name, "new_certs_dir", expand=True), "{}.pem".format(serial)),
@@ -367,6 +401,7 @@ class ca(object):
             "-crl_reason", cause,
         )
         return _success
+
     def call_openssl(self, command, *args):
         _com = "{} {} {} {}".format(
             self.openssl_bin,
@@ -386,4 +421,3 @@ class ca(object):
         for _line_num, _line in enumerate(result):
             self.log(" {:3d} : {}".format(_line_num + 1, _line))
         return success, result
-

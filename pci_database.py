@@ -22,6 +22,7 @@ import os
 import re
 import struct
 
+
 def get_pci_dicts(fname=None):
     vdict, cdict = ({}, {})
     if fname:
@@ -54,7 +55,7 @@ def get_pci_dicts(fname=None):
                     vendormatch = vendorline.match(line)
                     if vendormatch:
                         actvendor = vendormatch.group(1)
-                        vdict[actvendor] = {"name" : vendormatch.group(2).strip()}
+                        vdict[actvendor] = {"name": vendormatch.group(2).strip()}
                     else:
                         devmatch = devline.match(line)
                         if devmatch:
@@ -63,12 +64,13 @@ def get_pci_dicts(fname=None):
                 classmatch = classline.match(line)
                 if classmatch:
                     actclass = classmatch.group(1)
-                    cdict[actclass] = {"name" : classmatch.group(2).strip()}
+                    cdict[actclass] = {"name": classmatch.group(2).strip()}
                 else:
                     subclassmatch = subclassline.match(line)
                     if subclassmatch:
                         cdict[actclass][subclassmatch.group(1)] = subclassmatch.group(2).strip()
     return vdict, cdict
+
 
 def get_actual_pci_struct(vdict=None, cdict=None):
     if not vdict and not cdict:
@@ -102,16 +104,18 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                     pclass = "{:02x}".format(struct.unpack("B", fbytes[11])[0])
                     subclass = "{:02x}".format(struct.unpack("B", fbytes[10])[0])
                     revision = "{:02x}".format(struct.unpack("B", fbytes[8])[0])
-                actd = {"domain"       : pcdomain,
-                        "vendor"       : vendor,
-                        "device"       : device,
-                        "class"        : pclass,
-                        "subclass"     : subclass,
-                        "vendorname"   : "unknown vendor {}".format(vendor),
-                        "devicename"   : "unknown device {}".format(device),
-                        "classname"    : "unknown class {}".format(pclass),
-                        "subclassname" : "unknown subclass {}".format(subclass),
-                        "revision"     : revision}
+                actd = {
+                    "domain": pcdomain,
+                    "vendor": vendor,
+                    "device": device,
+                    "class": pclass,
+                    "subclass": subclass,
+                    "vendorname": "unknown vendor {}".format(vendor),
+                    "devicename": "unknown device {}".format(device),
+                    "classname": "unknown class {}".format(pclass),
+                    "subclassname": "unknown subclass {}".format(subclass),
+                    "revision": revision
+                }
                 if vendor in vdict:
                     actd["vendorname"] = vdict[vendor]["name"]
                     if device in vdict[vendor]:

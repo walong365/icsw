@@ -16,7 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from lxml import etree # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
 import logging_tools
 import os
 import process_tools
@@ -24,19 +24,22 @@ import sys
 import time
 
 try:
-    import libvirt # @UnresolvedImport
+    import libvirt  # @UnresolvedImport
 except:
     libvirt = None
 
 LIBVIRT_RO_SOCK_NAME = "/var/run/libvirt/libvirt-sock-ro"
 
+
 def libvirt_ok():
     return True if libvirt else False
+
 
 class base_stats(object):
     def __init__(self):
         self.__first_run = True
         self.cpu_used = 0.0
+
     def feed(self, *args):
         act_time = time.time()
         cpu_used = args[4]
@@ -49,6 +52,7 @@ class base_stats(object):
             except:
                 self.cpu_used = 0.0
         self.__cpu_used, self.__feed_time = (cpu_used, act_time)
+
 
 class disk_info(object):
     def __init__(self, xml_object):
@@ -63,14 +67,17 @@ class disk_info(object):
                     self.src_type, self.src_ref = (src_type, src_obj.attrib[src_type])
         self.dev = self.__xml_object.xpath(".//target", smart_strings=False)[0].attrib["dev"]
         self.bus = self.__xml_object.xpath(".//target", smart_strings=False)[0].attrib["bus"]
+
     def get_info(self):
         return "device '{}' on bus '{}', source is {} ({})".format(
             self.dev,
             self.bus,
             self.src_ref,
             self.src_type)
+
     def _clear_stats(self):
         self.stats = dict([(key, dict([(s_key, 0) for s_key in ["reqs", "bytes"]])) for key in ["read", "write"]])
+
     def feed(self, *args):
         act_time = time.time()
         if self.__first_run:
@@ -79,8 +86,9 @@ class disk_info(object):
             diff_time = max(abs(act_time - self.__feed_time), 1)
             try:
                 for key, offset in [
-                    ("read" , 0),
-                    ("write", 2)]:
+                    ("read", 0),
+                    ("write", 2)
+                ]:
                     for rel_offset, rel_key in enumerate(["reqs", "bytes"]):
                         self.stats[key][rel_key] = (
                             args[offset + rel_offset] - self.__prev_args[offset + rel_offset]
@@ -88,6 +96,7 @@ class disk_info(object):
             except:
                 self._clear_stats()
         self.__prev_args, self.__feed_time = (args, act_time)
+
 
 class net_info(object):
     def __init__(self, xml_object):
@@ -98,14 +107,17 @@ class net_info(object):
         self.model = self.__xml_object.xpath(".//model", smart_strings=False)[0].attrib["type"]
         self.source = self.__xml_object.xpath(".//source", smart_strings=False)[0].attrib["bridge"]
         self.mac_address = self.__xml_object.xpath(".//mac", smart_strings=False)[0].attrib["address"]
+
     def get_info(self):
         return "device {} (model {}) on {}, MAC is {}".format(
             self.dev,
             self.model,
             self.source,
             self.mac_address)
+
     def _clear_stats(self):
         self.stats = dict([(key, dict([(s_key, 0) for s_key in ["bytes", "packets", "errs", "drops"]])) for key in ["read", "write"]])
+
     def feed(self, *args):
         act_time = time.time()
         if self.__first_run:
@@ -114,13 +126,15 @@ class net_info(object):
             diff_time = max(abs(act_time - self.__feed_time), 1)
             try:
                 for key, offset in [
-                    ("read" , 0),
-                    ("write", 4)]:
+                    ("read", 0),
+                    ("write", 4)
+                ]:
                     for rel_offset, rel_key in enumerate(["bytes", "packets", "errs", "drops"]):
                         self.stats[key][rel_key] = (args[offset + rel_offset] - self.__prev_args[offset + rel_offset]) / diff_time
             except:
                 self._clear_stats()
         self.__prev_args, self.__feed_time = (args, act_time)
+
 
 class virt_instance(object):
     def __init__(self, i_id, log_com, ro_conn):
@@ -128,8 +142,10 @@ class virt_instance(object):
         self.inst_id = i_id
         self.dom_handle = ro_conn.lookupByID(self.inst_id)
         self._update_xml()
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[{}] {}".format(self.name, what), log_level)
+
     def _update_xml(self):
         self.name = self.dom_handle.name()
         self.log("Instance name is '{}', ID is {}".format(
@@ -159,8 +175,10 @@ class virt_instance(object):
             self.net_dict[net_entry.xpath(".//target", smart_strings=False)[0].attrib["dev"]] = cur_net_info
             self.log(cur_net_info.get_info())
         self.base_info = base_stats()
+
     def close(self):
         del self.dom_handle
+
     def update(self):
         # print dir(self.dom_handle)
         self.base_info.feed(*self.dom_handle.info())
@@ -170,6 +188,7 @@ class virt_instance(object):
         for act_net in self.net_dict:
             self.net_dict[act_net].feed(*self.dom_handle.interfaceStats(act_net))
             # print "    ", act_net, self.net_dict[act_net].stats
+
 
 class libvirt_connection(object):
     def __init__(self, read_only=True, **kwargs):
@@ -181,16 +200,20 @@ class libvirt_connection(object):
         self.__conn = None
         self.__inst_dict = {}
         self.__missing_logged = False
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_lines.append((log_level, what))
         if self.log_com:
             self.log_com("[lvc] {}".format(what), log_level)
+
     def stdout_log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print "[{:<5s}] {}".format(logging_tools.get_log_level_str(log_level), what)
+
     def close(self, **kwargs):
         self._close_con()
         if kwargs.get("keep_log_lines", False):
             self.log_lines = []
+
     def _close_con(self):
         if self.__conn:
             try:
@@ -199,6 +222,7 @@ class libvirt_connection(object):
                 self.log("error closing connection: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             del self.__conn
             self.__conn = None
+
     @property
     def connection(self):
         if not self.__conn:
@@ -223,10 +247,13 @@ class libvirt_connection(object):
                     self.log("no libvirt defined or socket {} not found".format(LIBVIRT_RO_SOCK_NAME), logging_tools.LOG_LEVEL_ERROR)
                 self.__conn = None
         return self.__conn
+
     def keys(self):
         return self.__inst_dict.keys()
+
     def __getitem__(self, key):
         return self.__inst_dict[key]
+
     def conn_call(self, conn, call_name, *args, **kwargs):
         for retry in [0, 1]:
             try:
@@ -242,6 +269,7 @@ class libvirt_connection(object):
             else:
                 break
         return res
+
     def update(self):
         conn = self.connection
         if conn is not None:
@@ -270,34 +298,41 @@ class libvirt_connection(object):
                         self.remove_domain(old_id)
                 for same_id in cur_ids & present_ids:
                     self[same_id].update()
+
     def add_domain(self, new_inst):
         self.__inst_dict[new_inst.inst_id] = new_inst
+
     def remove_domain(self, inst_id):
         self.__inst_dict[inst_id].close()
         del self.__inst_dict[inst_id]
+
     def get_status(self):
         conn = self.connection
         if conn:
             ret_dict = {
-                "info"         : self.conn_call(conn, "getInfo"),
-                "type"         : self.conn_call(conn, "getType"),
-                "version"      : self.conn_call(conn, "getVersion"),
-                "capabilities" : self.conn_call(conn, "getCapabilities"),
+                "info": self.conn_call(conn, "getInfo"),
+                "type": self.conn_call(conn, "getType"),
+                "version": self.conn_call(conn, "getVersion"),
+                "capabilities": self.conn_call(conn, "getCapabilities"),
             }
         else:
             ret_dict = {}
         return ret_dict
+
     def domain_overview(self):
         conn = self.connection
         if conn:
             dom_dict = {
-                "running" : {},
-                "defined" : {}}
+                "running": {},
+                "defined": {}
+            }
             domain_ids = self.conn_call(conn, "listDomainsID")
             for act_id in domain_ids:
                 act_dom = self.conn_call(conn, "lookupByID", act_id)
-                dom_dict["running"][act_id] = {"name" : act_dom.name(),
-                                               "info" : act_dom.info()}
+                dom_dict["running"][act_id] = {
+                    "name": act_dom.name(),
+                    "info": act_dom.info()
+                }
                 del act_dom
             domain_names = self.conn_call(conn, "listDefinedDomains")
             for act_name in domain_names:
@@ -308,11 +343,14 @@ class libvirt_connection(object):
             # better return an error ?
             dom_dict = {}
         return dom_dict
+
     def domain_status(self, cm):
         conn = self.connection
         if conn:
-            r_dict = {"cm"   : cm,
-                      "desc" : None}
+            r_dict = {
+                "cm": cm,
+                "desc": None
+            }
             domain_ids = self.conn_call(conn, "listDomainsID")
             for act_id in domain_ids:
                 act_dom = self.conn_call(conn, "lookupByID", act_id)
@@ -322,6 +360,7 @@ class libvirt_connection(object):
         else:
             r_dict = {}
         return r_dict
+
 
 def _monitor_test():
     cur_con = libvirt_connection(log_com="stdout")
@@ -335,4 +374,3 @@ if __name__ == "__main__":
             _monitor_test()
     print "Loadable module, exiting"
     sys.exit(0)
-
