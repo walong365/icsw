@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
 from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
-from lxml.builder import E # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 from rest_framework import serializers
 import ipvx_tools
 import logging
@@ -27,6 +27,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
+
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
     identifier = models.CharField(unique=True, max_length=48, blank=False)
@@ -35,22 +36,27 @@ class network_device_type(models.Model):
     mac_bytes = models.PositiveIntegerField(default=6)
     allow_virtual_interfaces = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'network_device_type'
         app_label = "backbone"
+
     def match(self, devname):
         if self.allow_virtual_interfaces and devname.count(":") == 1:
             _m_name = devname.split(":")[0]
         else:
             _m_name = devname
         return re.match(self.name_re, _m_name)
+
     def info_string(self):
         return unicode(self)
+
     def __unicode__(self):
         return u"{} ({} [{:d}])".format(
             self.identifier,
             self.description,
             self.mac_bytes)
+
 
 @receiver(signals.post_init, sender=network_device_type)
 def network_device_type_post_init(sender, **kwargs):
@@ -63,6 +69,7 @@ def network_device_type_post_init(sender, **kwargs):
             else:
                 cur_inst.name_re = "^{}\d+$".format(cur_inst.identifier)
             cur_inst.save()
+
 
 @receiver(signals.pre_save, sender=network_device_type)
 def network_device_type_pre_save(sender, **kwargs):
@@ -87,6 +94,7 @@ def network_device_type_pre_save(sender, **kwargs):
             )
         _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
 
+
 class network_type(models.Model):
     idx = models.AutoField(db_column="network_type_idx", primary_key=True)
     identifier = models.CharField(
@@ -99,13 +107,16 @@ class network_type(models.Model):
             ("l", "local")))
     description = models.CharField(max_length=192, blank=False)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'network_type'
         app_label = "backbone"
+
     def __unicode__(self):
         return u"{} ({})".format(
             self.description,
             self.identifier)
+
 
 class network(models.Model):
     idx = models.AutoField(db_column="network_idx", primary_key=True)
@@ -134,17 +145,22 @@ class network(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     network_device_type = models.ManyToManyField("backbone.network_device_type")
     enforce_unique_ips = models.BooleanField(default=False)
+
     class CSW_Meta:
         permissions = (
             ("modify_network", "modify global network settings", False),
         )
+
     def get_identifier(self):
         return self.network_type.identifier
+
     def num_ip(self):
         return self.net_ip_set.all().count()
+
     class Meta:
         db_table = u'network'
         app_label = "backbone"
+
     def get_info(self):
         all_slaves = self.rel_master_network.all()
         # return extended info
@@ -155,8 +171,10 @@ class network(models.Model):
             ": {}".format([cur_slave.identifier for cur_slave in all_slaves]) if all_slaves else "",
         )
         return log_str
+
     def info_string(self):
         return unicode(self)
+
     def __unicode__(self):
         return u"{} ({}/{}, {})".format(
             self.identifier,
@@ -165,13 +183,14 @@ class network(models.Model):
             self.network_type.identifier
         )
 
+
 @receiver(signals.pre_save, sender=network)
 def network_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         # what was the changed attribute
         change_attr = getattr(cur_inst, "change_attribute", None)
-        _check_integer(cur_inst, "penalty", min_val= -100, max_val=100)
+        _check_integer(cur_inst, "penalty", min_val=-100, max_val=100)
         nw_type = cur_inst.network_type.identifier
         if cur_inst.rel_master_network.all().count() and nw_type != "p":
             raise ValidationError("slave networks exists, cannot change type")
@@ -214,6 +233,7 @@ def network_pre_save(sender, **kwargs):
         for key, value in ip_dict.iteritems():
             setattr(cur_inst, key, unicode(value))
 
+
 class net_ip(models.Model):
     idx = models.AutoField(db_column="netip_idx", primary_key=True)
     ip = models.CharField(max_length=48)
@@ -224,6 +244,7 @@ class net_ip(models.Model):
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
+
     def copy(self):
         return net_ip(
             ip=self.ip,
@@ -233,10 +254,13 @@ class net_ip(models.Model):
             alias_excl=self.alias_excl,
             domain_tree_node=self.domain_tree_node,
             )
+
     def get_hex_ip(self):
         return "".join(["%02X" % (int(part)) for part in self.ip.split(".")])
+
     def __unicode__(self):
         return self.ip
+
     @property
     def full_name(self):
         if not self.domain_tree_node_id:
@@ -247,9 +271,11 @@ class net_ip(models.Model):
         else:
             return self.netdevice.device.name
         return
+
     class Meta:
         db_table = u"netip"
         app_label = "backbone"
+
 
 @receiver(signals.pre_save, sender=net_ip)
 def net_ip_pre_save(sender, **kwargs):
@@ -298,6 +324,7 @@ def net_ip_pre_save(sender, **kwargs):
             else:
                 raise ValidationError("IP already used for {} (enforce_unique_ips == True)".format(unicode(present_ip.netdevice.device)))
 
+
 @receiver(signals.pre_delete, sender=net_ip)
 def net_ip_pre_delete(sender, **kwargs):
     cur_inst = kwargs["instance"]
@@ -309,6 +336,7 @@ def net_ip_pre_delete(sender, **kwargs):
                 # remove bootnetdevice
                 cur_dev.bootnetdevice = None
                 cur_dev.save(update_fields=["bootnetdevice"])
+
 
 @receiver(signals.post_save, sender=net_ip)
 def net_ip_post_save(sender, **kwargs):
@@ -331,33 +359,42 @@ def net_ip_post_save(sender, **kwargs):
             if cur_inst.netdevice.device.bootserver_id:
                 bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
 
+
 class network_device_type_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
+
     class Meta:
         model = network_device_type
+
 
 class network_type_serializer(serializers.ModelSerializer):
     class Meta:
         model = network_type
 
+
 class network_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
     network_type_identifier = serializers.Field(source="get_identifier")
     num_ip = serializers.Field(0)
+
     class Meta:
         model = network
+
 
 class network_with_ip_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
     network_type_identifier = serializers.Field(source="get_identifier")
     num_ip = serializers.Field(source="num_ip")
+
     class Meta:
         model = network
+
 
 class net_ip_serializer(serializers.ModelSerializer):
     # network = network_serializer()
     class Meta:
         model = net_ip
+
 
 class netdevice(models.Model):
     idx = models.AutoField(db_column="netdevice_idx", primary_key=True)
@@ -387,12 +424,14 @@ class netdevice(models.Model):
     # enabled, in fact admin enabled
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
         self.saved_values = {
-            "penalty" : self.penalty,
-            "routing" : self.routing,
+            "penalty": self.penalty,
+            "routing": self.routing,
         }
+
     def copy(self):
         return netdevice(
             devname=self.devname,
@@ -416,6 +455,7 @@ class netdevice(models.Model):
             # hm ...
             # bridge_device=self.bridge_device,
         )
+
     def find_matching_network_device_type(self):
         match_list = [ndt for ndt in network_device_type.objects.all() if ndt.match(self.devname)]
         if len(match_list) == 0:
@@ -425,38 +465,51 @@ class netdevice(models.Model):
         else:
             # take ndt with shortest name_re
             return sorted([(len(ndt.name_re), ndt) for ndt in match_list])[0][1]
+
     def get_dummy_macaddr(self):
         return ":".join(["00"] * self.network_device_type.mac_bytes)
+
     class CSW_Meta:
         fk_ignore_list = ["net_ip", "peer_information"]
+
     class Meta:
         db_table = u'netdevice'
         ordering = ("devname",)
         app_label = "backbone"
+
     def delete(self, *args, **kwargs):
         super(netdevice, self).delete(*args, **kwargs)
+
     @property
     def ethtool_autoneg(self):
         return (self.ethtool_options or 0) & 3
+
     @property
     def ethtool_duplex(self):
         return ((self.ethtool_options or 0) >> 2) & 3
+
     @property
     def ethtool_speed(self):
         return ((self.ethtool_options or 0) >> 4) & 7
+
     @ethtool_autoneg.setter
     def ethtool_autoneg(self, in_val):
         self.ethtool_options = ((self.ethtool_options or 0) & ~3) | int(in_val)
+
     @ethtool_duplex.setter
     def ethtool_duplex(self, in_val):
         self.ethtool_options = ((self.ethtool_options or 0) & ~12) | (int(in_val) << 2)
+
     @ethtool_speed.setter
     def ethtool_speed(self, in_val):
         self.ethtool_options = ((self.ethtool_options or 0) & 15) | (int(in_val) << 4)
+
     def ethtool_string(self):
         return ",".join(["FIXME"])
+
     def __unicode__(self):
         return self.devname
+
 
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
@@ -467,13 +520,16 @@ def netdevice_pre_delete(sender, **kwargs):
     #        cur_dev.bootnetdevice = None
     #        cur_dev.save(update_fields=["bootnetdevice"])
 
+
 class netdevice_serializer(serializers.ModelSerializer):
     net_ip_set = net_ip_serializer(many=True)
     ethtool_autoneg = serializers.Field(source="ethtool_autoneg")
     ethtool_duplex = serializers.Field(source="ethtool_duplex")
     ethtool_speed = serializers.Field(source="ethtool_speed")
+
     class Meta:
         model = netdevice
+
 
 @receiver(signals.pre_save, sender=netdevice)
 def netdevice_pre_save(sender, **kwargs):
@@ -522,11 +578,12 @@ def netdevice_pre_save(sender, **kwargs):
                 raise ValidationError("cannot be my own VLAN master")
             if cur_inst.master_device.master_device_id:
                 raise ValidationError("cannot chain VLAN devices")
-        if cur_inst.netdevice_speed_id == None:
+        if cur_inst.netdevice_speed_id is None:
             # set a default
             cur_inst.netdevice_speed = netdevice_speed.objects.get(Q(speed_bps=1000000000) & Q(full_duplex=True) & Q(check_via_ethtool=False))
         # if cur_inst.vlan_id and not cur_inst.master_device_id:
         #    raise ValidationError("need a VLAN master")
+
 
 @receiver(signals.post_save, sender=netdevice)
 def netdevice_post_save(sender, **kwargs):
@@ -535,10 +592,12 @@ def netdevice_post_save(sender, **kwargs):
         if _cur_inst.device.bootserver_id:
             bootsettings_changed.send(sender=_cur_inst, device=_cur_inst.device, cause="netdevice_changed")
 
+
 @receiver(signals.post_delete, sender=netdevice)
 def netdevice_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+
 
 class netdevice_speed(models.Model):
     idx = models.AutoField(db_column="netdevice_speed_idx", primary_key=True)
@@ -546,12 +605,15 @@ class netdevice_speed(models.Model):
     check_via_ethtool = models.BooleanField(default=True)
     full_duplex = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = u'netdevice_speed'
         ordering = ("speed_bps", "full_duplex")
         app_label = "backbone"
+
     def info_string(self):
         return unicode(self)
+
     def __unicode__(self):
         _s_str, lut_idx = ("", 0)
         cur_s = self.speed_bps
@@ -564,10 +626,13 @@ class netdevice_speed(models.Model):
             "full" if self.full_duplex else "half",
             "check via ethtool" if self.check_via_ethtool else "no check")
 
+
 class netdevice_speed_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
+
     class Meta:
         model = netdevice_speed
+
 
 @receiver(signals.pre_save, sender=network_type)
 def network_type_pre_save(sender, **kwargs):
@@ -577,24 +642,30 @@ def network_type_pre_save(sender, **kwargs):
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
 
+
 class peer_information(models.Model):
     idx = models.AutoField(db_column="peer_information_idx", primary_key=True)
     s_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_s_netdevice")
     d_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_d_netdevice")
     penalty = models.IntegerField(default=0, verbose_name="cost")
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return u"{} [{:d}] {}".format(
             self.s_netdevice.devname,
             self.penalty,
-            self.d_netdevice.devname)
+            self.d_netdevice.devname
+        )
+
     class Meta:
         db_table = u'peer_information'
         app_label = "backbone"
 
+
 class peer_information_serializer(serializers.ModelSerializer):
     class Meta:
         model = peer_information
+
 
 @receiver(signals.pre_save, sender=peer_information)
 def peer_information_pre_save(sender, **kwargs):
@@ -611,13 +682,14 @@ def peer_information_pre_save(sender, **kwargs):
                 raise ValidationError("peer already exists ({:d}, {:d})".format(cur_inst.s_netdevice_d, cur_inst.d_netdevice_id))
         _check_integer(cur_inst, "penalty", min_val=1)
 
+
 @receiver(signals.post_save, sender=peer_information)
 def peer_information_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
 
+
 @receiver(signals.post_delete, sender=peer_information)
 def peer_information_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-
