@@ -909,16 +909,16 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.get_display_data = (data) ->
                 return scope[scope.struct_name].display_data(data)
             scope.show_pe_info = (data) ->
+                r_list = []
                 if data.rms_pe_info.length
-                    r_list = []
                     for _entry in data.rms_pe_info
                         r_list.push("#{_entry.hostname} (#{_entry.slots})")
-                    return r_list.join(",")
                 else
                     if data.device of scope.device_dict
-                        return scope.device_dict[data.device].full_name
+                        r_list.push("#{scope.device_dict[data.device].full_name} (#{data.slots})")
                     else
-                        return "---"
+                        r_list.push("---")
+                return r_list.join(",")
             scope.has_rrd = (data) ->
                 if data.rms_pe_info.length
                     any_rrd = false
