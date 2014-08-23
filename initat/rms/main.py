@@ -25,8 +25,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from initat.rms.config import global_config, COM_PORT
 from initat.rms.rms_server_version import VERSION_STRING
-from initat.rms.server import server_process
 from initat.rms.rmsmon import call_command
+from initat.rms.server import server_process
 import cluster_location
 import config_tools
 import configfile
@@ -37,19 +37,21 @@ def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
-        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name, prog_name))),
-        ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("CHECK"               , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", writeback=False)),
-        ("USER"                , configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
-        ("GROUP"               , configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
-        ("GROUPS"              , configfile.array_c_var(["idg"])),
-        ("FORCE"               , configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
-        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("FORCE_SCAN"          , configfile.bool_c_var(False, help_string="force initial scan of accounting file [%(default)s]", action="store_true", only_commandline=True)),
+        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name))),
+        ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", writeback=False)),
+        ("USER", configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
+        ("GROUP", configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
+        ("GROUPS", configfile.array_c_var(["idg"])),
+        ("FORCE", configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
+        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME", configfile.str_c_var(prog_name)),
+        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("FORCE_SCAN", configfile.bool_c_var(
+            False, help_string="force initial scan of accounting file [%(default)s]", action="store_true",
+            only_commandline=True)),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
@@ -83,8 +85,10 @@ def main():
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     sge_dict = {}
-    for v_name, v_src, v_default in [("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
-                                     ("SGE_CELL", "/etc/sge_cell", "default")]:
+    for v_name, v_src, v_default in [
+        ("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
+        ("SGE_CELL", "/etc/sge_cell", "default")
+    ]:
         if os.path.isfile(v_src):
             sge_dict[v_name] = file(v_src, "r").read().strip()
         else:
@@ -104,20 +108,20 @@ def main():
         global_config,
         "sge_server",
         [
-            ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
-            ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
+            ("CHECK_ITERATIONS", configfile.int_c_var(3)),
+            ("COM_PORT", configfile.int_c_var(COM_PORT)),
             ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
-            ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
-            ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),  # , fixed=True)),
-            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),  # , fixed=True)),
-            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),  # , fixed=True)),
-            ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
-            ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
-            ("STRICT_MODE"                    , configfile.bool_c_var(False)),
-            ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
-            ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
-            ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))
+            ("FROM_ADDR", configfile.str_c_var("sge_server")),
+            ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at")),
+            ("SGE_ARCH", configfile.str_c_var(sge_dict["SGE_ARCH"])),  # , fixed=True)),
+            ("SGE_ROOT", configfile.str_c_var(sge_dict["SGE_ROOT"])),  # , fixed=True)),
+            ("SGE_CELL", configfile.str_c_var(sge_dict["SGE_CELL"])),  # , fixed=True)),
+            ("MONITOR_JOBS", configfile.bool_c_var(True)),
+            ("TRACE_FAIRSHARE", configfile.bool_c_var(False)),
+            ("STRICT_MODE", configfile.bool_c_var(False)),
+            ("APPEND_SERIAL_COMPLEX", configfile.bool_c_var(True)),
+            ("CLEAR_ITERATIONS", configfile.int_c_var(1)),
+            ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300))
         ],
         dummy_run=global_config["DUMMY_RUN"]
     )
@@ -136,7 +140,4 @@ def main():
     else:
         print "Debugging RMS-server"
     ret_state = server_process().loop()
-    sys.exit(ret_state)
-
-if __name__ == "__main__":
-    main()
+    return ret_state

@@ -77,6 +77,7 @@ class accounting_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
+        self._init_environ()
         # job stop/start info
         self.register_func("job_ss_info", self._job_ss_info)
         self.register_timer(self._check_accounting, 600)
@@ -84,8 +85,18 @@ class accounting_process(threading_tools.process_obj):
         self.__full_scan_done = False
         # caching
         self._disable_cache()
-        self._check_accounting()
         # self.register_func("get_job_xml", self._get_job_xml)
+
+    def process_running(self):
+        # initial accounting run
+        self._check_accounting()
+        # check the last week
+        _stime = datetime.datetime.now() - datetime.timedelta(days=7)
+        self._check_accounting({"start_time" : _stime.strftime("%Y%m%d%H%M")})
+
+    def _init_environ(self):
+        os.environ["SGE_ROOT"] = global_config["SGE_ROOT"]
+        os.environ["SGE_CELL"] = global_config["SGE_CELL"]
 
     def _get_sge_bin(self, name):
         return os.path.join(global_config["SGE_ROOT"], "bin", global_config["SGE_ARCH"], name)
@@ -108,6 +119,7 @@ class accounting_process(threading_tools.process_obj):
                     self.__entries_scanned / max(self.__ac_e_time - self.__ac_s_time, 0.0001),
                 )
             )
+            self._log_missing(self._get_missing_dict())
 
     def _enable_cache(self):
         self.log("enabling cache")
@@ -120,56 +132,84 @@ class accounting_process(threading_tools.process_obj):
         )
         self.__cache.update({key: {} for key in _OBJ_DICT.iterkeys()})
 
-    def _log_missing(self):
-        _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("rms_job__jobid", flat=True)
-        if _missing_ids.count():
+    def _get_missing_dict(self):
+        _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("rms_job__jobid", "rms_job__jobid", "rms_job__taskid")
+        _mis_dict = {}
+        for _entry in _missing_ids:
+            _id = "{:d}".format(_entry[1])
+            if _entry[2]:
+                _id = "{}.{:d}".format(
+                    _id,
+                    _entry[2],
+                )
+            _mis_dict.setdefault(_id, []).append(_entry[0])
+        return _mis_dict
+
+    def _log_missing(self, _mis_dict):
+        if _mis_dict:
             self.log(
-                "ids still missing in accounting database: {:d}".format(_missing_ids.count()),
+                "entries missing in accounting database: {:d} ({})".format(
+                    sum(len(_val) for _val in _mis_dict.itervalues()),
+                    logging_tools.get_plural("job", len(_mis_dict)),
+                ),
                 logging_tools.LOG_LEVEL_WARN
+            )
+            self.log(
+                ", ".join(
+                    [
+                        "{}{}".format(_key, " ({:d})".format(len(_mis_dict[_key])) if len(_mis_dict[_key]) > 1 else "") for _key in sorted(_mis_dict.keys())
+                    ]
+                )
             )
         else:
             self.log("all jobs accounted")
 
     def _check_accounting(self, *args, **kwargs):
-        self.__jobs_added = 0
-        self.__entries_scanned, self.__highest_id = (0, 0)
+        # init stats
+        self.__jobs_added, self.__entries_scanned, self.__highest_id = (
+            0,
+            0,
+            0,
+        )
+        self.__jobs_scanned = set()
         if args:
             _data = args[0]
-            self._call_qacct("-j", "{:d}".format(_data["job_id"]))
+            if "job_id" in _data:
+                self._call_qacct("-j", "{:d}".format(_data["job_id"]))
+            elif "start_time" in _data:
+                self._call_qacct("-b", _data["start_time"], "-j")
+            else:
+                self.log(
+                    "cannot parse args / kwargs: {}, {}".format(str(args), str(kwargs)),
+                    logging_tools.LOG_LEVEL_ERROR,
+                )
         else:
             # get jobs without valid accounting info
             _jobs = rms_job_run.objects.all().count()
-            _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("rms_job__jobid", flat=True)
+            _mis_dict = self._get_missing_dict()
+            # _missing_ids = rms_job_run.objects.filter(Q(qacct_called=False)).values_list("rms_job__jobid", flat=True)
             if not _jobs:
                 self.__full_scan_done = True
                 self.log("no jobs in database, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._enable_cache()
                 self._call_qacct("-j")
                 self._disable_cache(log=True)
-                self._log_missing()
             elif global_config["FORCE_SCAN"] and not self.__full_scan_done:
                 self.__full_scan_done = True
                 self.log("full scan forced, checking accounting info", logging_tools.LOG_LEVEL_WARN)
                 self._enable_cache()
                 self._call_qacct("-j")
                 self._disable_cache(log=True)
-                self._log_missing()
-            elif len(_missing_ids) > 10:
-                self.log("accounting info for {:d} jobs missing, doing a full scan".format(len(_missing_ids)), logging_tools.LOG_LEVEL_WARN)
-                self._call_qacct("-j")
+            elif len(_mis_dict) > 1000:
+                self._log_missing(_mis_dict)
                 self._enable_cache()
-                self._log_missing(log=True)
+                self._call_qacct("-j")
                 self._disable_cache(log=True)
             else:
-                self.log(
-                    "accounting info missing for {}: {}".format(
-                        logging_tools.get_plural("job", len(_missing_ids)),
-                        ", ".join(["{:d}".format(_id) for _id in _missing_ids])
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
-                )
-                for _id in _missing_ids:
-                    self._call_qacct("-j", "{:d}".format(_id))
+                self._log_missing(_mis_dict)
+                for _id in sorted(_mis_dict.iterkeys()):
+                    self._call_qacct("-j", "{}".format(_id))
+                self._log_stats()
         if self.__jobs_added:
             self.log("added {}".format(logging_tools.get_plural("job", self.__jobs_added)))
 
@@ -183,6 +223,15 @@ class accounting_process(threading_tools.process_obj):
         )
         if not cur_stat:
             self._interpret_qacct(cur_out)
+
+    def _log_stats(self):
+        self.log(
+            "scanned {:d} entries ({:d} jobs, up to jobnumber {:d})".format(
+                self.__entries_scanned,
+                len(self.__jobs_scanned),
+                self.__highest_id,
+            )
+        )
 
     def _interpret_qacct(self, cur_out):
         _dict = {}
@@ -215,6 +264,12 @@ class accounting_process(threading_tools.process_obj):
             in_dict["jobnumber"],
             ".{:d}".format(in_dict["taskid"]) if in_dict["taskid"] else "",
         )
+        self.__entries_scanned += 1
+        self.__jobs_scanned.add(_job_id)
+        self.__highest_id = max(self.__highest_id, in_dict["jobnumber"])
+        if not self.__entries_scanned % 100:
+            self._log_stats()
+
         try:
             _cur_job_run = rms_job_run.objects.get(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
         except rms_job_run.DoesNotExist:
@@ -222,16 +277,27 @@ class accounting_process(threading_tools.process_obj):
         except rms_job_run.MultipleObjectsReturned:
             _job_runs = rms_job_run.objects.filter(Q(rms_job__jobid=in_dict["jobnumber"]) & Q(rms_job__taskid=in_dict["taskid"]))
             # find matching objects
-            if any([_cur_job_run.start_time == in_dict["start_time"] and _cur_job_run.end_time == in_dict["end_time"] for _cur_job_run in _job_runs]):
+            _match = [
+                _cur_job_run for _cur_job_run in _job_runs if _cur_job_run.start_time == in_dict["start_time"] and _cur_job_run.end_time == in_dict["end_time"]
+            ]
+            if len(_match):
                 # entry found with same start / end time, no need to update
-                _cur_job_run = None
+                if len(_match) > 1:
+                    self.log(
+                        "found more than one matching job_run ({:d}) for job {}, please check code".format(
+                            len(_match),
+                            _job_id,
+                        ),
+                        logging_tools.LOG_LEVEL_OK
+                    )
+                _cur_job_run = _match[0]
+                # print "*", len(_match), _cur_job_run.qacct_called, _job_id, len(_job_runs)
+                # if _job_id == "8129":
+                #    for _e in _job_runs:
+                #        print _e.start_time, _e.end_time
             else:
                 # create new run
                 _cur_job_run = self._add_job_from_qacct(_job_id, in_dict)
-        self.__entries_scanned += 1
-        self.__highest_id = max(self.__highest_id, in_dict["jobnumber"])
-        if not self.__entries_scanned % 100:
-            self.log("scanned {:d} jobs (up to jobnumber {:d})".format(self.__entries_scanned, self.__highest_id))
 
         if _cur_job_run is not None:
             if _cur_job_run.qacct_called:
