@@ -394,7 +394,7 @@ class host_message(object):
     def get_result(self, result):
         if result is None:
             result = self.srv_com
-        if type(result) == list:
+        if type(result) == tuple:
             # from interpret
             if not self.xml_input:
                 ret_str = u"%d\0%s" % (
