@@ -890,7 +890,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     group_stuff = all_groups[user_stuff.group_id]
                     if user_stuff.export_id in home_exp_dict.keys():
                         home_stuff = home_exp_dict[user_stuff.export_id]
-                        if group_stuff.homestart and group_stuff.homestart not in ["/None", "/none"]:
+                        if group_stuff.homestart and group_stuff.homestart not in ["/None", "/none"] and user_stuff.home:
                             export_dict[
                                 os.path.normpath(
                                     os.path.join(group_stuff.homestart, user_stuff.home)
