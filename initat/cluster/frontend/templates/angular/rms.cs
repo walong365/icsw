@@ -104,7 +104,7 @@ header_toggle = """
             ng-repeat="entry in struct.headers"
             type="button"
             ng-class="struct.get_btn_class(entry)"
-            value="{{ entry }}"
+            value="{{ struct.get_header(entry) }}"
             ng-click="struct.change_entry(entry)"
             ng-show="struct.header_not_hidden(entry)"
         ></input>
