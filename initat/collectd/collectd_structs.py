@@ -120,7 +120,7 @@ class host_info(object):
             # store calls (short info)
             stores="{:d}".format(self.stores),
             store_to_disk="1" if self.store_to_disk else "0",
-            )
+        )
 
     def get_key_list(self, key_filter):
         h_info = self.get_host_info()

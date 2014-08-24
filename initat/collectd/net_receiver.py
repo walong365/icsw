@@ -22,10 +22,10 @@
 """ net receiver process for collectd-init """
 
 from initat.collectd.collectd_structs import host_info
-from initat.collectd.collectd_types import * # @UnusedWildImport
+from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.config import global_config, IPC_SOCK, log_base
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
+from lxml import etree  # @UnresolvedImports
+from lxml.builder import E  # @UnresolvedImports
 import logging_tools
 import multiprocessing
 import process_tools
@@ -37,11 +37,13 @@ import uuid_tools
 import signal
 import zmq
 
+
 class net_receiver(multiprocessing.Process, log_base):
     def __init__(self):
         multiprocessing.Process.__init__(self, target=self._code, name="0MQ_net_receiver")
         self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
         self.grapher_id = "{}:grapher:".format(uuid_tools.get_uuid().get_urn())
+
     def _init(self):
         threading.currentThread().name = "netrecv"
         # init zmq_context and logging
@@ -55,6 +57,7 @@ class net_receiver(multiprocessing.Process, log_base):
         self._init_vars()
         self._init_hosts()
         self._init_sockets()
+
     def _init_perfdata(self):
         re_list = []
         for key in globals().keys():
@@ -64,6 +67,7 @@ class net_receiver(multiprocessing.Process, log_base):
                     obj = obj()
                     re_list.append((obj.PD_RE, obj))
         self.__pd_re_list = re_list
+
     def _init_sockets(self):
         self.receiver = self.zmq_context.socket(zmq.PULL)
         self.com = self.zmq_context.socket(zmq.ROUTER)
@@ -76,7 +80,8 @@ class net_receiver(multiprocessing.Process, log_base):
             (zmq.SNDHWM, 256),
             (zmq.RCVHWM, 256),
             (zmq.TCP_KEEPALIVE, 1),
-            (zmq.TCP_KEEPALIVE_IDLE, 300)]:
+            (zmq.TCP_KEEPALIVE_IDLE, 300)
+        ]:
             self.grapher.setsockopt(flag, value)
             self.command.setsockopt(flag, value)
         self.com.connect(IPC_SOCK)
@@ -93,29 +98,33 @@ class net_receiver(multiprocessing.Process, log_base):
             ))
         self.log("grapher_id is {}".format(self.grapher_id))
         self.__poller_dict = {
-            self.receiver : self._recv_data,
-            self.command : self._recv_command,
-            self.com : self._recv_com,
+            self.receiver: self._recv_data,
+            self.command: self._recv_command,
+            self.com: self._recv_com,
             }
         self.__disabled_uuids = set()
         self.poller.register(self.receiver, zmq.POLLIN)
         self.poller.register(self.command, zmq.POLLIN)
         self.poller.register(self.com, zmq.POLLIN)
+
     def _init_hosts(self):
         # init host and perfdata structs
         host_info.setup()
         self.__hosts = {}
         # counter when to send data to rrd-grapher
         self.__perfdatas_cnt = {}
+
     def _init_vars(self):
         self.__start_time = time.time()
         self.__trees_read, self.__pds_read = (0, 0)
         self.__total_size_trees, self.__total_size_pds = (0, 0)
         self.__distinct_hosts_mv = set()
         self.__distinct_hosts_pd = set()
+
     def _close(self):
         self._log_stats()
         self._close_sockets()
+
     def _close_sockets(self):
         self.com.close()
         self.receiver.close()
@@ -124,6 +133,7 @@ class net_receiver(multiprocessing.Process, log_base):
         self.log("0MQ net receiver finished")
         self.close_log()
         self.zmq_context.term()
+
     def _code(self):
         self._init()
         try:
@@ -138,6 +148,7 @@ class net_receiver(multiprocessing.Process, log_base):
             # self.com.send_unicode("bg", zmq.SNDMORE)
             # self.com.send("stop")
         self._close()
+
     def _log_stats(self):
         self.__end_time = time.time()
         diff_time = max(1, abs(self.__end_time - self.__start_time))
@@ -159,12 +170,15 @@ class net_receiver(multiprocessing.Process, log_base):
             logging_tools.get_diff_time_str(self.__end_time - self.__start_time),
         ))
         self._init_vars()
+
     def _send_to_grapher(self, send_xml):
         self.grapher.send_unicode(self.grapher_id, zmq.SNDMORE)
         self.grapher.send_unicode(unicode(send_xml))
+
     def _send_to_main(self, send_obj):
         self.com.send_unicode("main", zmq.SNDMORE)
         self.com.send_pyobj(send_obj)
+
     def _loop(self):
         self.__run = True
         while self.__run:
@@ -174,8 +188,9 @@ class net_receiver(multiprocessing.Process, log_base):
                 self.log("got ZMQError, exiting", logging_tools.LOG_LEVEL_ERROR)
                 break
             else:
-                for in_sock, in_type in rcv_list:
+                for in_sock, _in_type in rcv_list:
                     self.__poller_dict[in_sock](in_sock)
+
     def _recv_com(self, in_sock):
         _src_proc = in_sock.recv_unicode()
         _recv = in_sock.recv_pyobj()
@@ -185,12 +200,14 @@ class net_receiver(multiprocessing.Process, log_base):
             _recv = None
         if _recv is not None:
             self.log("got unknown data {} {}".format(str(_recv), _src_proc), logging_tools.LOG_LEVEL_ERROR)
+
     def _recv_data(self, in_sock):
         in_data = in_sock.recv()
         self._process_data(in_data)
         if abs(time.time() - self.__start_time) > 300:
             # periodic log stats
             self._log_stats()
+
     def _recv_command(self, in_sock):
         in_uuid = in_sock.recv_unicode()
         in_xml = in_sock.recv_unicode()
@@ -217,6 +234,7 @@ class net_receiver(multiprocessing.Process, log_base):
                     )
             in_sock.send_unicode(in_uuid, zmq.SNDMORE)
             in_sock.send_unicode(unicode(in_com))
+
     def _handle_disabled_hosts(self, in_com, com_text):
         uuids_to_disable = set(in_com.xpath(".//ns:device/@uuid")) & set(self.__hosts.keys())
         cur_disabled = set([key for key, value in self.__hosts.iteritems() if not value.store_to_disk])
@@ -240,6 +258,7 @@ class net_receiver(multiprocessing.Process, log_base):
                 _host = self.__hosts[_to_en]
                 _host.store_to_disk = True
                 self.log("enabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
+
     def _handle_hk_command(self, in_com, com_text):
         h_filter, k_filter = (
             in_com.get("host_filter", ".*"),
@@ -273,7 +292,13 @@ class net_receiver(multiprocessing.Process, log_base):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        match_uuids = [_value[1] for _value in sorted([(self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)])]
+        match_uuids = [
+            _value[1] for _value in sorted(
+                [
+                    (self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)
+                ]
+            )
+        ]
         if com_text == "host_list":
             result = E.host_list(entries="{:d}".format(len(match_uuids)))
             for cur_uuid in match_uuids:
@@ -285,6 +310,7 @@ class net_receiver(multiprocessing.Process, log_base):
                 result.append(self.__hosts[cur_uuid].get_key_list(key_filter))
             in_com["result"] = result
         in_com.set_result("got command {}".format(com_text))
+
     def _feed_host_info(self, host_uuid, host_name, _xml):
         if host_uuid not in self.__hosts:
             self.__hosts[host_uuid] = host_info(self.log_template, host_uuid, host_name)
@@ -293,9 +319,11 @@ class net_receiver(multiprocessing.Process, log_base):
             new_com = server_command.srv_command(command="mv_info")
             new_com["vector"] = _xml
             self._send_to_grapher(new_com)
+
     def _feed_host_info_ov(self, host_uuid, host_name, _xml):
         # update only values
         self.__hosts[host_uuid].update_ov(_xml)
+
     def _process_data(self, in_tree):
         # adopt tree format for faster handling in collectd loop
         try:
@@ -314,6 +342,7 @@ class net_receiver(multiprocessing.Process, log_base):
                     self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("unknown handle_name '{}'".format(handle_name), logging_tools.LOG_LEVEL_ERROR)
+
     def _check_for_ext_perfdata(self, mach_values):
         # unique tuple
         pd_tuple = (mach_values[0], mach_values[1])
@@ -327,6 +356,7 @@ class net_receiver(multiprocessing.Process, log_base):
             self.__perfdatas_cnt[pd_tuple] = 10
             pd_obj = globals()["{}_pdata".format(mach_values[0])]()
             self._send_to_grapher(pd_obj.build_perfdata_info(mach_values))
+
     def _handle_machine_vector(self, _xml, data_len):
         self.__trees_read += 1
         self.__total_size_trees += data_len
@@ -360,6 +390,7 @@ class net_receiver(multiprocessing.Process, log_base):
             values = self.__hosts[host_uuid].get_values(_xml, simple)
             r_data = ("mvector", host_name, recv_time, values)
             yield r_data
+
     def _handle_perf_data(self, _xml, data_len):
         self.__total_size_pds += data_len
         # iterate over lines
@@ -373,6 +404,7 @@ class net_receiver(multiprocessing.Process, log_base):
                     self._check_for_ext_perfdata(mach_values)
                     yield ("pdata", mach_values)
         raise StopIteration
+
     def _find_matching_pd_handler(self, p_data, perf_value):
         values = []
         for cur_re, re_obj in self.__pd_re_list:
