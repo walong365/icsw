@@ -25,7 +25,7 @@
 
 from initat.host_monitoring import hm_classes
 import commands
-import license_tool # @UnresolvedImport
+import license_tool  # @UnresolvedImport
 import logging_tools
 import os
 import process_tools
@@ -37,27 +37,34 @@ import sys
 import time
 import zmq
 
+
 class error(Exception):
     def __init__(self, value):
         self.value = value
+
     def __str__(self):
         return self.value
+
 
 class term_error(error):
     def __init__(self):
         pass
 
+
 class alarm_error(error):
     def __init__(self):
         pass
+
 
 class stop_error(error):
     def __init__(self):
         pass
 
+
 class int_error(error):
     def __init__(self):
         pass
+
 
 def raw_read(fd):
     ret_str = ""
@@ -69,17 +76,20 @@ def raw_read(fd):
             ret_str = "{}{}".format(ret_str, in_byte)
     return ret_str
 
+
 def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict):
     configured_lics = []
     if not os.path.isdir(act_conf["LM_UTIL_PATH"]):
         log_template.error("Error: LM_UTIL_PATH '%s' is not directory" % (act_conf["LM_UTIL_PATH"]))
     else:
         # build different license-server calls
-        all_server_addrs = dict([("%d@%s" % (act_lic.get_port(), act_lic.get_host()), True) for act_lic in actual_licenses.values() if act_lic.get_license_type() == "simple"]).keys()
+        all_server_addrs = {
+            "{:d}@{}".format(act_lic.get_port(), act_lic.get_host()): True for act_lic in actual_licenses.values() if act_lic.get_license_type() == "simple"
+        }.keys()
         # print "asa:", all_server_addrs
         q_s_time = time.time()
         for server_addr in all_server_addrs:
-            if not server_addr in lc_dict:
+            if server_addr not in lc_dict:
                 lc_dict[server_addr] = license_tool.license_check(
                     lmutil_path=os.path.join(
                         act_conf["LM_UTIL_PATH"],
@@ -113,6 +123,7 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     act_lic.set_changed()
     return configured_lics
 
+
 def calculate_compound_licenses(log_template, actual_licenses, configured_lics):
     comp_keys = [key for key, value in actual_licenses.iteritems() if value.get_is_used() and value.get_license_type() == "compound"]
     for comp_key in sorted(comp_keys):
@@ -120,11 +131,14 @@ def calculate_compound_licenses(log_template, actual_licenses, configured_lics):
         for log_line, log_level in actual_licenses[comp_key].handle_compound(actual_licenses):
             log_template.log(log_level, log_line)
 
+
 def build_sge_report_lines(log_template, configured_lics, actual_lics):
     lines = ["start"]
-    rep_dict = {"lics_in_use"   : [],
-                "simple_lics"   : 0,
-                "compound_lics" : 0}
+    rep_dict = {
+        "lics_in_use": [],
+        "simple_lics": 0,
+        "compound_lics": 0
+    }
     for configured_lic in configured_lics:
         act_lic = actual_lics[configured_lic]
         free_lics = act_lic.get_free_num()
@@ -136,12 +150,15 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics):
             rep_dict["lics_in_use"].append(configured_lic)
         if act_lic.get_changed():
             log_template.info(
-                "reporting %d free of %d for %s" % (free_lics,
+                "reporting {:d} free of {:d} for {}".format(
+                    free_lics,
                     act_lic.get_total_num(),
-                    configured_lic))
+                    configured_lic)
+                )
         lines.append("global:%s:%d" % (configured_lic, free_lics))
     lines.append("end")
     return lines, rep_dict
+
 
 def get_used(log_template, qstat_bin):
     act_dict = {}
@@ -174,6 +191,7 @@ def get_used(log_template, qstat_bin):
                         act_dict[dict_name][res_name] += res_value
     return act_dict
 
+
 def write_ext_data(vector_socket, log_template, actual_licenses):
     drop_com = server_command.srv_command(command="set_vector")
     add_obj = drop_com.builder("values")
@@ -188,6 +206,7 @@ def write_ext_data(vector_socket, log_template, actual_licenses):
     log_template.log("sending %d bytes to vector_socket" % (len(send_str)))
     vector_socket.send_unicode(send_str)
 
+
 def main():
     # change IO-descriptors
     zmq_context = zmq.Context()
@@ -201,10 +220,10 @@ def main():
     base_dir = "/etc/sysconfig/licenses"
     my_pid = os.getpid()
     log_template.info("starting for pid %d, base_dir is %s" % (my_pid, base_dir))
-    if not os.environ.has_key("SGE_ROOT"):
+    if "SGE_ROOT" not in os.environ:
         log_template.error("Error, no SGE_ROOT environment variable set")
         sys.exit(1)
-    if not os.environ.has_key("SGE_CELL"):
+    if "SGE_CELL" not in os.environ:
         log_template.error("Error, no SGE_CELL environment variable set")
         sys.exit(1)
     sge_root, sge_cell = (os.environ["SGE_ROOT"],
@@ -253,7 +272,11 @@ def main():
                     file_time = os.stat(site_lic_file_name)[stat.ST_MTIME]
                     if not actual_licenses or file_time > lic_read_time:
                         log_template.info("reading license_file for site %s" % (act_site))
-                        actual_licenses = sge_license_tools.parse_license_lines(sge_license_tools.read_site_license_file(base_dir, act_site), act_site, ng_dict=ng_dict)
+                        actual_licenses = sge_license_tools.parse_license_lines(
+                            sge_license_tools.read_site_license_file(base_dir, act_site),
+                            act_site,
+                            ng_dict=ng_dict
+                        )
                         lic_read_time = file_time
                         write_ext_ok = False
                     else:
@@ -271,14 +294,14 @@ def main():
                         logging_tools.get_plural("license", len(actual_licenses.keys())),
                         len(configured_licenses),
                         len(rep_dict["lics_in_use"]),
-                        rep_dict["lics_in_use"] and " (%s)" % (", ".join(rep_dict["lics_in_use"])) or "",
+                        rep_dict["lics_in_use"] and " ({})".format(", ".join(rep_dict["lics_in_use"])) or "",
                         rep_dict["simple_lics"],
                         rep_dict["compound_lics"],
                         logging_tools.get_diff_time_str(end_time - start_time)))
                 else:
                     log_template.warning("site_file for site %s not readable (base_dir is %s)" % (act_site, base_dir))
     except KeyboardInterrupt:
-        log_template.warning("proc %d: got KeyboardInterrupt, exiting ..." % (my_pid))
+        log_template.warning("proc {:d}: got KeyboardInterrupt, exiting ...".format(my_pid))
     except term_error:
         log_template.warning("proc %d: got term-signal, exiting ..." % (my_pid))
     except stop_error:
@@ -291,4 +314,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
