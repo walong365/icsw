@@ -33,6 +33,7 @@ import mail_tools
 import logging_tools
 import zmq
 
+
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("-f", "--from", type=str, help="from address [%(default)s]", default="root@localhost")
@@ -46,12 +47,21 @@ def main():
         "send_mail",
         "uds:/var/lib/logging-server/py_log_zmq",
         zmq=True,
-        context=context)
+        context=context
+    )
     cur_opts = my_parser.parse_args()
     if cur_opts.to_all:
         from initat.cluster.backbone.models import user
         from django.db.models import Q
-        all_users = [entry for entry in list(user.objects.exclude(Q(email='')).filter(Q(active=True) & Q(group__active=True)).values_list("email", flat=True)) if entry.count("@")]
+        all_users = [
+            entry for entry in list(
+                user.objects.exclude(
+                    Q(email='')
+                ).filter(
+                    Q(active=True) & Q(group__active=True)
+                ).values_list("email", flat=True)
+            ) if entry.count("@")
+        ]
         cur_opts.to = all_users
         log_template.info(
             "sending to {}: {}".format(
@@ -68,7 +78,8 @@ def main():
                 ",".join(cur_opts.to),
                 cur_opts.subject,
                 m_stat,
-                "\n".join(m_ret_f))
+                "\n".join(m_ret_f)
+            )
         )
     else:
         log_template.info(
@@ -83,4 +94,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
