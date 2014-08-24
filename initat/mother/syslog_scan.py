@@ -1,16 +1,39 @@
 #!/usr/bin/python-init -Otu
+#
+# Copyright (C) 2012,2014 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of mother
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FTNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" simple command snippet for rsyslog """
 
 import sys
 import logging_tools
 import zmq
 import process_tools
 
+
 def open_socket(zmq_context):
     send_sock = zmq_context.socket(zmq.DEALER)
-    send_sock.setsockopt(zmq.IDENTITY, "%s:syslog_scan" % (process_tools.get_machine_name()))
+    send_sock.setsockopt(zmq.IDENTITY, "{}:syslog_scan".format(process_tools.get_machine_name()))
     send_sock.setsockopt(zmq.LINGER, 0)
     send_sock.connect("tcp://localhost:8000")
     return send_sock
+
 
 def main():
     zmq_context = zmq.Context()
@@ -26,7 +49,7 @@ def main():
         if not line:
             break
         try:
-            timestamp, host, msg = line.split(None, 2)
+            _timestamp, host, msg = line.split(None, 2)
         except:
             log_template.log(logging_tools.LOG_LEVEL_ERROR,
                              "error parsing line %s: %s" % (line, process_tools.get_except_info()))

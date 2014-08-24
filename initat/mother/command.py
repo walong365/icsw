@@ -31,13 +31,14 @@ from initat.mother.config import global_config
 import config_tools
 import logging_tools
 import process_tools
-import re
 import server_command
 import threading_tools
+
 
 class snmp_scheme(object):
     def __init__(self, cdc):
         self.cdc = cdc
+
     def set_command(self, command):
         _list = []
         if command == "cycle":
@@ -50,25 +51,31 @@ class snmp_scheme(object):
             _list = ["S", _list]
         return _list
 
+
 class apcv1_scheme(snmp_scheme):
     def cycle(self):
         # cdc ... controlling device connection
         return [
             (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=3)),
         ]
+
     def on(self):
         # cdc ... controlling device connection
         # delayed on : 5, delayed off : 6, delayed cycle : 7
         return [
             (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=1)),
         ]
+
     def off(self):
         # cdc ... controlling device connection
         return [
             (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=2)),
         ]
 
-_SNMP_SCHEME_LUT = {"apcv1" : apcv1_scheme}
+_SNMP_SCHEME_LUT = {
+    "apcv1": apcv1_scheme
+}
+
 
 class hc_command(object):
     def __init__(self, user_id, xml_struct, router_obj):
@@ -86,16 +93,16 @@ class hc_command(object):
             unicode(cur_cd.child)))
         # better use subclasses, FIXME
         var_list = {
-            "ipmi" : [
+            "ipmi": [
                 ("IPMI_USERNAME", "admin"),
                 ("IPMI_PASSWORD", "admin"),
                 ("IPMI_INTERFACE", ""),
                 ],
-            "ilo4" : [
+            "ilo4": [
                 ("ILO_USERNAME", "Administrator"),
                 ("ILO_PASSWORD", "passwd"),
                 ],
-            "snmp" : [
+            "snmp": [
                 ("SNMP_SCHEME", None),
                 ("SNMP_VERSION", 2),
                 ("SNMP_WRITE_COMMUNITY", "private"),
@@ -163,9 +170,11 @@ class hc_command(object):
                 com_ip,
                 var_dict["IPMI_USERNAME"],
                 var_dict["IPMI_PASSWORD"],
-                {"on"    : "on",
-                 "off"   : "off",
-                 "cycle" : "cycle"}.get(command, "status")
+                {
+                    "on": "on",
+                    "off": "off",
+                    "cycle": "cycle"
+                }.get(command, "status")
             )
         # ilo4 is no longer supported, use ipmi with IPMI_INTERFACE=lanplus
         # elif self.curl_base == "ilo4":
@@ -179,6 +188,7 @@ class hc_command(object):
         #         "cycle" : "cycle"}.get(command, "status")
         #    )
         return com_str
+
     def hc_done(self, hc_sc):
         cur_out = hc_sc.read()
         self.log("hc_com finished with stat %d (%d bytes)" % (
@@ -188,6 +198,7 @@ class hc_command(object):
             if line.strip():
                 self.log(" %3d %s" % (line_num + 1, line), logging_tools.LOG_LEVEL_ERROR if hc_sc.result else logging_tools.LOG_LEVEL_OK, dev=self.cd_obj.child)
         hc_sc.terminate()
+
     def get_var(self, var_name, default_val=None):
         try:
             cur_var = self.cd_obj.parent.device_variable_set.get(Q(name=var_name))
@@ -203,6 +214,7 @@ class hc_command(object):
         if cur_var:
             var_value = cur_var.value
         return var_value
+
     def get_ip_to_host(self, dev_struct, router_obj):
         all_paths = sorted(
             router_obj.get_ndl_ndl_pathes(
@@ -218,25 +230,31 @@ class hc_command(object):
             if ip_list:
                 com_ip = ip_list[0]
         return com_ip
+
     def snmp_finished(self, *args):
         hc_command.unregister(self)
+
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         hc_command.process.log("[hc] %s" % (what), log_level)
+
     @staticmethod
     def register(cur_hc):
         hc_command.g_log("registered %d" % (cur_hc.cur_id))
         hc_command.hc_lut[cur_hc.cur_id] = cur_hc
+
     @staticmethod
     def unregister(cur_hc):
         hc_command.g_log("unregistered %d" % (cur_hc.cur_id))
         del hc_command.hc_lut[cur_hc.cur_id]
+
     @staticmethod
     def setup(proc):
         hc_command.process = proc
         hc_command.hc_lut = {}
         hc_command.g_log("init hc_command")
         hc_command.hc_id = 0
+
     @staticmethod
     def feed_snmp_result(*args):
         if args[0] in hc_command.hc_lut:
@@ -246,6 +264,7 @@ class hc_command(object):
                 args[0],
                 str(args),
                 ), logging_tools.LOG_LEVEL_ERROR)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dev=None):
         hc_command.process.log("[hc] %s" % (what), log_level)
         if dev is not None:
@@ -256,6 +275,7 @@ class hc_command(object):
                 "[hc] %s" % (what),
                 user=self.user,
             )
+
 
 class external_command_process(threading_tools.process_obj):
     def process_init(self):
@@ -282,29 +302,37 @@ class external_command_process(threading_tools.process_obj):
         self.register_timer(self._check_commands, 10)
         hc_command.setup(self)
         self.send_pool_message("register_return", "command", target="snmp_process")
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         self.__log_template.close()
+
     def _delay_command(self, *args, **kwargs):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
         _new_sc = simple_command(args[0], delay_time=kwargs.get("delay_time", 0))
+
     def _server_com(self, s_com):
-        dst_call = {"alter_macadr"  : self._adw_macaddr,
-                    "delete_macadr" : self._adw_macaddr,
-                    "write_macadr"  : self._adw_macaddr,
-                    "syslog_line"   : self._syslog_line}.get(s_com.get_command(), None)
+        dst_call = {
+            "alter_macadr": self._adw_macaddr,
+            "delete_macadr": self._adw_macaddr,
+            "write_macadr": self._adw_macaddr,
+            "syslog_line": self._syslog_line
+        }.get(s_com.get_command(), None)
         if dst_call:
             dst_call(s_com.get_command(), s_com)
         else:
             self.log("Unknown server_message_command: %s" % (s_com.get_command()), logging_tools.LOG_LEVEL_ERROR)
-        if s_com.get_option_dict().has_key("SIGNAL_MAIN_THREAD"):
+        if "SIGNAL_MAIN_THREAD" in s_com.get_option_dict():
             self.send_pool_message(s_com.get_option_dict()["SIGNAL_MAIN_THREAD"])
+
     def _check_commands(self):
         simple_command.check()
         if simple_command.idle():
             self.unregister_timer(self._check_commands)
+
     def _hard_control(self, zmq_id, in_com, *args, **kwargs):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
@@ -312,8 +340,10 @@ class external_command_process(threading_tools.process_obj):
         self.router_obj.check_for_update()
         for cur_dev in in_com.xpath(".//ns:device", smart_strings=False):
             hc_command(in_com.get("user_id", None), cur_dev, self.router_obj)
+
     def sc_finished(self, sc_com):
         self.log("simple command done")
         print sc_com.read()
+
     def _snmp_finished(self, *args, **kwargs):
         hc_command.feed_snmp_result(*args)

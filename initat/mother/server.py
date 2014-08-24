@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import network, status
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.mother.config import global_config
 from initat.snmp_relay.snmp_process import snmp_process
-from lxml import etree # @UnresolvedImports
+from lxml import etree  # @UnresolvedImports
 import cluster_location
 import configfile
 import initat.mother.command
@@ -41,6 +41,7 @@ import server_command
 import threading_tools
 import uuid_tools
 import zmq
+
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -94,6 +95,7 @@ class server_process(threading_tools.process_pool):
             init_ok = False
         if not init_ok:
             self._int_error("bind problem")
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -101,12 +103,14 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
+
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=6)
@@ -122,16 +126,20 @@ class server_process(threading_tools.process_pool):
         else:
             msi_block = None
         return msi_block
+
     def _init_subsys(self):
         self.log("init subsystems")
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _re_insert_config(self):
         self.log("re-insert config")
         cluster_location.write_config("mother_server", global_config)
+
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -140,16 +148,19 @@ class server_process(threading_tools.process_pool):
         self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def loop_end(self):
         # config_control.close_clients()
         self._disable_syslog_config()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+
     def loop_post(self):
         for open_sock in self.socket_dict.itervalues():
             open_sock.close()
         self.__log_template.close()
+
     def _init_network_sockets(self):
         success = True
         my_0mq_id = get_server_uuid("mother")
@@ -157,9 +168,9 @@ class server_process(threading_tools.process_pool):
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
-            ("router", "ROUTER", global_config["SERVER_PUB_PORT"] , self._new_com),
-            ("pull"  , "PULL"  , global_config["SERVER_PULL_PORT"], self._new_com),
-            ]:
+            ("router", "ROUTER", global_config["SERVER_PUB_PORT"], self._new_com),
+            ("pull", "PULL", global_config["SERVER_PULL_PORT"], self._new_com),
+        ]:
             client = process_tools.get_socket(
                 self.zmq_context,
                 sock_type,
@@ -195,6 +206,7 @@ class server_process(threading_tools.process_pool):
                 self.socket_dict[key] = client
         self.connection_set = set()
         return success
+
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
@@ -230,12 +242,13 @@ class server_process(threading_tools.process_pool):
                             self.log(
                                 "got command '{}' from {}, ignoring".format(
                                     etree.tostring(srv_com.tree),
-                                    data[0]),
+                                    data[0]
+                                ),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
                     else:
                         srv_com.update_source()
-                        if cur_com in ["status", "refresh", "soft_control"]: # alter_macaddr
+                        if cur_com in ["status", "refresh", "soft_control"]:  # alter_macaddr
                             t_proc = "control"
                             self.log("got command {}, sending to {} process".format(cur_com, t_proc))
                             self.send_to_process(
@@ -281,6 +294,7 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("wrong number of data chunks ({:d} != 2), data is '{}'".format(len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
+
     def _send_return(self, src_id, src_pid, zmq_id, srv_com, *args):
         self.log("returning 0MQ message to {} ({} ...)".format(zmq_id, srv_com[0:16]))
         if zmq_id.endswith(":hoststatus:"):
@@ -297,6 +311,7 @@ class server_process(threading_tools.process_pool):
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
+
     def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str, target_ip):
         dst_addr = "tcp://{}:2002".format(target_ip)
         if dst_addr not in self.connection_set:
@@ -320,6 +335,7 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
     # utility calls
+
     def _prepare_directories(self):
         self.log("Checking directories ...")
         for d_dir in [global_config["TFTP_DIR"],
@@ -339,44 +355,46 @@ class server_process(threading_tools.process_pool):
                     os.symlink(s_link, d_link)
                 except:
                     pass
+
     def _check_status_entries(self):
         map_dict = {
-            "memtest" : [
-                ("prod_link" , False),
+            "memtest": [
+                ("prod_link", False),
                 ("memory_test", True),
-                ("boot_local" , False),
-                ("do_install" , False),
-                ("is_clean"   , False)],
-            "boot_local" : [
-                ("prod_link"  , False),
+                ("boot_local", False),
+                ("do_install", False),
+                ("is_clean", False)],
+            "boot_local": [
+                ("prod_link", False),
                 ("memory_test", False),
-                ("boot_local" , True),
-                ("do_install" , False),
-                ("is_clean"   , False)],
-            "boot_clean" : [
-                ("prod_link"  , True),
+                ("boot_local", True),
+                ("do_install", False),
+                ("is_clean", False)],
+            "boot_clean": [
+                ("prod_link", True),
                 ("memory_test", False),
-                ("boot_local" , False),
-                ("do_install" , False),
-                ("is_clean"   , True)],
-            "boot" : [
-                ("prod_link"  , True),
+                ("boot_local", False),
+                ("do_install", False),
+                ("is_clean", True)],
+            "boot": [
+                ("prod_link", True),
                 ("memory_test", False),
-                ("boot_local" , False),
-                ("do_install" , False),
-                ("is_clean"   , False)],
-            "installation_clean" : [
-                ("prod_link"  , True),
+                ("boot_local", False),
+                ("do_install", False),
+                ("is_clean", False)],
+            "installation_clean": [
+                ("prod_link", True),
                 ("memory_test", False),
-                ("boot_local" , False),
-                ("do_install" , True),
-                ("is_clean"   , True)],
-            "installation" : [
-                ("prod_link"  , True),
+                ("boot_local", False),
+                ("do_install", True),
+                ("is_clean", True)],
+            "installation": [
+                ("prod_link", True),
                 ("memory_test", False),
-                ("boot_local" , False),
-                ("do_install" , True),
-                ("is_clean"   , False)]}
+                ("boot_local", False),
+                ("do_install", True),
+                ("is_clean", False)]
+        }
         for mod_status in status.objects.filter(Q(allow_boolean_modify=True)):
             cur_uc = unicode(mod_status)
             if mod_status.status in map_dict:
@@ -388,12 +406,17 @@ class server_process(threading_tools.process_pool):
                 mod_status.save()
             else:
                 self.log("unknown status '{}' ({})".format(mod_status.status, cur_uc), logging_tools.LOG_LEVEL_ERROR)
+
     def _check_nfs_exports(self):
         log_lines = []
         if global_config["MODIFY_NFS_CONFIG"]:
             exp_file = "/etc/exports"
             if os.path.isfile(exp_file):
-                act_exports = dict([(part[0], " ".join(part[1:])) for part in [line.strip().split() for line in open(exp_file, "r").read().split("\n")] if len(part) > 1 and part[0].startswith("/")])
+                act_exports = {
+                    part[0]: " ".join(part[1:]) for part in [
+                        line.strip().split() for line in open(exp_file, "r").read().split("\n")
+                    ] if len(part) > 1 and part[0].startswith("/")
+                }
                 self.log("found /etc/exports file with {}:".format(logging_tools.get_plural("export entry", len(act_exports))))
                 exp_keys = sorted(act_exports.keys())
                 my_fm = logging_tools.form_list()
@@ -409,16 +432,17 @@ class server_process(threading_tools.process_pool):
             valid_nt_ids = ["p", "b"]
             valid_nets = network.objects.filter(Q(network_type__identifier__in=valid_nt_ids))
             exp_dict = {
-                "etherboot" : "ro",
-                "kernels"   : "ro",
-                "images"    : "ro",
-                "config"    : "rw"}
+                "etherboot": "ro",
+                "kernels": "ro",
+                "images": "ro",
+                "config": "rw"
+            }
             new_exports = {}
             exp_nets = ["{}/{}".format(cur_net.network, cur_net.netmask) for cur_net in valid_nets]
             if exp_nets:
                 for exp_dir, rws in exp_dict.iteritems():
                     act_exp_dir = os.path.join(global_config["TFTP_DIR"], exp_dir)
-                    if not act_exp_dir in act_exports:
+                    if act_exp_dir not in act_exports:
                         new_exports[act_exp_dir] = " ".join(["{}({},no_root_squash,async,no_subtree_check)".format(exp_net, rws) for exp_net in exp_nets])
             if new_exports:
                 open(exp_file, "a").write("\n".join(["{:<30s} {}".format(x, y) for x, y in new_exports.iteritems()] + [""]))
@@ -428,8 +452,9 @@ class server_process(threading_tools.process_pool):
                 self.log("starting the at-command '{}' gave {:d}:".format(at_command, at_stat))
                 for log_line in add_log_lines:
                     self.log(log_line)
+
     def _enable_syslog_config(self):
-        syslog_exe_dict = {value.pid : value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
+        syslog_exe_dict = {value.pid: value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
         syslog_type = None
         for key, value in syslog_exe_dict.iteritems():
             self.log("syslog process found: {}".format(key))
@@ -443,32 +468,38 @@ class server_process(threading_tools.process_pool):
             self._enable_rsyslog()
         elif self.__syslog_type == "syslog-ng":
             self._enable_syslog_ng()
+
     def _disable_syslog_config(self):
         if self.__syslog_type == "rsyslogd":
             self._disable_rsyslog()
         elif self.__syslog_type == "syslog-ng":
             self._disable_syslog_ng()
+
     def _enable_rsyslog(self):
         import initat.mother.syslog_scan
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary %s" % (initat.mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),
+            "$actionomprogbinary {}".format(initat.mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
             ""]
         slcn = "/etc/rsyslog.d/mother.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
         self._reload_syslog()
+
     def _disable_rsyslog(self):
         slcn = "/etc/rsyslog.d/mother.conf"
         if os.path.isfile(slcn):
             os.unlink(slcn)
         self._reload_syslog()
+
     def _enable_syslog_ng(self):
         print "no longer supported"
+
     def _disable_syslog_ng(self):
         print "no longer supported"
+
     def _reload_syslog(self):
         syslog_rc = None
         syslog_found = False
@@ -486,6 +517,7 @@ class server_process(threading_tools.process_pool):
         self.log("submitting %s gave %d:" % (restart_com, stat))
         for line in out_f:
             self.log(line)
+
     def _check_netboot_functionality(self):
         global_config.add_config_entries([
             ("PXEBOOT", configfile.bool_c_var(False, source="default")),
@@ -500,12 +532,14 @@ class server_process(threading_tools.process_pool):
                     self.log("Cannot read pxelinux.0 from %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
                 else:
                     pxe_dir = os.path.dirname(pxe_path)
-                    global_config.add_config_entries([
-                        ("PXEBOOT"   , configfile.bool_c_var(True, source="filesystem")),
-                        ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem")),
-                        ("MEMDISK"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "memdisk"), "rb").read(), source="filesystem")),
-                        ("LDLINUX"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "ldlinux.c32"), "rb").read(), source="filesystem")),
-                        ])
+                    global_config.add_config_entries(
+                        [
+                            ("PXEBOOT", configfile.bool_c_var(True, source="filesystem")),
+                            ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem")),
+                            ("MEMDISK", configfile.blob_c_var(file(os.path.join(pxe_dir, "memdisk"), "rb").read(), source="filesystem")),
+                            ("LDLINUX", configfile.blob_c_var(file(os.path.join(pxe_dir, "ldlinux.c32"), "rb").read(), source="filesystem")),
+                        ]
+                    )
                     self.log("Found pxelinux.0 and ldlinux.c32 in {}".format(pxe_dir))
                     nb_ok = True
                     break
@@ -521,12 +555,14 @@ class server_process(threading_tools.process_pool):
                 except:
                     self.log("Cannot read mboot.c32 from %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
                 else:
-                    global_config.add_config_entries([
-                        ("XENBOOT"  , configfile.bool_c_var(True, source="filesystem")),
-                        ("MBOOT.C32", configfile.blob_c_var(mb32_0, source="filesystem"))])
+                    global_config.add_config_entries(
+                        [
+                            ("XENBOOT", configfile.bool_c_var(True, source="filesystem")),
+                            ("MBOOT.C32", configfile.blob_c_var(mb32_0, source="filesystem"))
+                        ]
+                    )
                     self.log("Found mboot.c32 in %s" % (mb32_path))
                     break
             else:
                 self.log("Found no mboot.c32 in %s" % (mb32_path), logging_tools.LOG_LEVEL_WARN)
         return nb_ok
-

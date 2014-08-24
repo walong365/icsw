@@ -34,6 +34,7 @@ import server_command
 import threading_tools
 import time
 
+
 class kernel_sync_process(threading_tools.process_obj):
     def process_init(self):
         # , config, db_con, **args):
@@ -58,29 +59,35 @@ class kernel_sync_process(threading_tools.process_obj):
         self.register_func("srv_command", self._srv_command)
         self.register_func("rescan_kernels", self._rescan_kernels)
         self.kernel_dev = config_tools.server_check(server_type="kernel_server")
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         self.__log_template.close()
+
     def _rescan_kernels(self, *args, **kwargs):
         src_id, srv_com_str = args[0:2]
         srv_com = server_command.srv_command(source=srv_com_str)
         self._check_kernel_dir(srv_com)
         self.send_pool_message("send_return", src_id, unicode(srv_com))
+
     def _srv_command(self, srv_com, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
         if srv_com["command"].text == "check_kernel_dir":
             self._check_kernel_dir(srv_com)
+
     def _check_kernel_dir(self, srv_com):
         self.log("checking kernel dir")
         # build option dict
         opt_dict = {}
         for key, def_value in {
-            "ignore_kernel_build_machine" : False,
-            "kernels_to_insert"           : [],
-            "check_list"                  : [],
-            "insert_all_found"            : False,
-            "kernels_to_sync"             : {}}.iteritems():
+            "ignore_kernel_build_machine": False,
+            "kernels_to_insert": [],
+            "check_list": [],
+            "insert_all_found": False,
+            "kernels_to_sync": {}
+        }.iteritems():
             if key in srv_com:
                 cur_val = srv_com[key].text
                 if type(def_value) == bool:
@@ -89,9 +96,12 @@ class kernel_sync_process(threading_tools.process_obj):
                 cur_val = def_value
             opt_dict[key] = cur_val
         # self.__ks_check._check(dc)
-        self.log("option_dict has %s: %s" % (
-            logging_tools.get_plural("key", len(opt_dict.keys())),
-            ", ".join(["%s (%s, %s)" % (key, str(type(value)), str(value)) for key, value in opt_dict.iteritems()])))
+        self.log(
+            "option_dict has {}: {}".format(
+                logging_tools.get_plural("key", len(opt_dict.keys())),
+                ", ".join(["%s (%s, %s)" % (key, str(type(value)), str(value)) for key, value in opt_dict.iteritems()])
+            )
+        )
         kernels_found, problems = ({}, [])
         srv_com.update_source()
         # send reply now or do we need more data ?
@@ -183,6 +193,7 @@ class kernel_sync_process(threading_tools.process_obj):
         # if srv_com.get_queue() and not reply_now:
         #    srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
         # print srv_com.pretty_print()
+
     def thread_running(self):
         self.log("my role is %s" % (self.__config["SYNCER_ROLE"]))
         # dicts for sync info
@@ -190,6 +201,7 @@ class kernel_sync_process(threading_tools.process_obj):
         self.__pending_syncs = {}
         # information
         self.__sync_dict = {}
+
     def _kernel_sync_data(self, srv_com):
         dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
         sync_dict = srv_com.get_option_dict()
@@ -244,6 +256,7 @@ class kernel_sync_process(threading_tools.process_obj):
                     self.log("synced kernel")
                     del act_kernel
         dc.release()
+
     def _sync_kernels(self, srv_com):
         dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
         sync_dict = srv_com.get_option_dict()
@@ -337,6 +350,7 @@ class kernel_sync_process(threading_tools.process_obj):
                                         "send_com"    : send_com}))
                     del act_kernel
         dc.release()
+
     def _remove_pending_sync(self, act_kernel, s_name, s_role):
         k_name = act_kernel.name
         self.__pending_syncs[k_name].remove((s_name, s_role))
@@ -350,6 +364,7 @@ class kernel_sync_process(threading_tools.process_obj):
             del self.__pending_syncs[k_name]
             if not self.__pending_syncs:
                 self.log("no syncs pending")
+
     def _srv_ok(self, (in_dict, recv_str)):
         try:
             srv_reply = server_command.server_reply(recv_str)
@@ -366,6 +381,7 @@ class kernel_sync_process(threading_tools.process_obj):
                                   logging_tools.LOG_LEVEL_OK if srv_reply.get_state() == server_command.SRV_REPLY_STATE_OK else logging_tools.LOG_LEVEL_ERROR,
                                   db_write=True)
         self._remove_pending_sync(in_dict["kernel"], in_dict["server_name"], in_dict["server_role"])
+
     def _srv_error(self, (in_dict, cause)):
         self.log("got error %s" % (cause),
                  logging_tools.LOG_LEVEL_ERROR)
@@ -375,12 +391,14 @@ class kernel_sync_process(threading_tools.process_obj):
                               logging_tools.LOG_LEVEL_ERROR,
                               db_write=True)
         self._remove_pending_sync(in_dict["kernel"], in_dict["server_name"], in_dict["server_role"])
+
     def _connect_timeout(self, sock):
         self.log("error connecting to %s" % (sock.get_target_host()),
                  logging_tools.LOG_LEVEL_ERROR)
         # remove references to command_class
         sock.delete()
         sock.close()
+
     def _connect_state_call(self, **args):
         if args["state"] == "error":
             self.log("connect error to %s" % (args["host"]),

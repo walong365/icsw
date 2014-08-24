@@ -1,10 +1,9 @@
-#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012,2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of mother
 #
 # This program is free software; you can redistribute it and/or modify
@@ -27,30 +26,36 @@ import time
 import subprocess
 import logging_tools
 
+
 class command_stream(object):
     def __init__(self, stream_id):
         self.stream_id = stream_id
         self.log("init stream")
         self.__commands = []
         self.__running = False
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         simple_command.process.log("[cs {}] {}".format(self.stream_id, what), log_level)
+
     def new_command(self, new_sc):
         self.__commands.append(new_sc)
         new_sc.stream = self
         if not self.__running:
             self.__running = True
             self.__commands.pop(0).call()
+
     def done(self):
         if self.__commands:
             self.__commands.pop(0).call()
         else:
             self.__running = False
-        
+
+
 class simple_command(object):
     sc_idx = 0
     com_list = []
     stream_dict = {}
+
     def __init__(self, com_str, **kwargs):
         simple_command.sc_idx += 1
         self.idx = simple_command.sc_idx
@@ -77,15 +82,18 @@ class simple_command(object):
             else:
                 self.call()
         simple_command.com_list.append(self)
+
     @staticmethod
     def feed_stream(cur_sc):
-        if not cur_sc.stream_id in simple_command.stream_dict:
+        if cur_sc.stream_id not in simple_command.stream_dict:
             simple_command.stream_dict[cur_sc.stream_id] = command_stream(cur_sc.stream_id)
         simple_command.stream_dict[cur_sc.stream_id].new_command(cur_sc)
+
     @staticmethod
     def setup(process):
         simple_command.process = process
         simple_command.process.log("init simple_command metastructure")
+
     @staticmethod
     def check():
         cur_time = time.time()
@@ -103,25 +111,31 @@ class simple_command(object):
             if keep:
                 new_list.append(com)
         simple_command.com_list = new_list
+
     @staticmethod
     def idle():
         return True if not simple_command.com_list else False
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com("[sc %d] %s" % (self.idx, what), log_level)
         else:
             simple_command.process.log("[sc %d] %s" % (self.idx, what), log_level)
+
     def terminate(self):
         if self.popen:
             del self.popen
+
     def finished(self):
         self.result = self.popen.poll()
-        return self.result != None
+        return self.result is not None
+
     def read(self):
         if self.popen:
             return self.popen.stdout.read()
         else:
             return None
+
     def done(self):
         self.end_time = time.time()
         if self.done_func:
@@ -130,6 +144,7 @@ class simple_command(object):
             simple_command.process.sc_finished(self)
         if self.stream:
             self.stream.done()
+
     def call(self):
         self.start_time = time.time()
         self.popen = subprocess.Popen(self.com_str, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
