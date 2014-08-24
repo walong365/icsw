@@ -23,6 +23,8 @@
 from django.core.cache import cache
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
+from initat.cluster.backbone.models import device
+from django.db.models import Q
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
 import commands
@@ -83,6 +85,20 @@ class queue_info(object):
             if _short in _state:
                 setattr(self, _attr, getattr(self, _attr) + 1)
 
+    @property
+    def free(self):
+        return self.total - self.used
+
+    def __repr__(self):
+        return unicode(self)
+
+    def __unicode__(self):
+        return "{:d} used, {:d} total, {:d} reserved".format(
+            self.used,
+            self.total,
+            self.reserved,
+        )
+
 
 class rms_mon_process(threading_tools.process_obj):
     def process_init(self):
@@ -93,6 +109,7 @@ class rms_mon_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
+        self._init_cache()
         self.__node_options = sge_tools.get_empty_node_options()
         self._init_network()
         self._init_sge_info()
@@ -104,6 +121,11 @@ class rms_mon_process(threading_tools.process_obj):
         self.register_func("full_reload", self._full_reload)
         # job stop/start info
         self.register_timer(self._update, 30)
+
+    def _init_cache(self):
+        self.__cache = {
+            "device": {}
+        }
 
     def _init_sge_info(self):
         self.log("init sge_info")
@@ -120,11 +142,17 @@ class rms_mon_process(threading_tools.process_obj):
         os.environ["SGE_CELL"] = global_config["SGE_CELL"]
 
     def _init_network(self):
-        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
+        _v_conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         vector_socket = self.zmq_context.socket(zmq.PUSH)
         vector_socket.setsockopt(zmq.LINGER, 0)
-        vector_socket.connect(conn_str)
+        vector_socket.connect(_v_conn_str)
         self.vector_socket = vector_socket
+        _c_conn_str = "tcp://localhost:8002"
+        collectd_socket = self.zmq_context.socket(zmq.PUSH)
+        collectd_socket.setsockopt(zmq.LINGER, 0)
+        collectd_socket.setsockopt(zmq.IMMEDIATE, 1),
+        collectd_socket.connect(_c_conn_str)
+        self.collectd_socket = collectd_socket
 
     def _update(self):
         self.__sge_info.update(no_file_cache=True, force_update=True)
@@ -132,17 +160,40 @@ class rms_mon_process(threading_tools.process_obj):
         _res = sge_tools.build_node_list(self.__sge_info, self.__node_options)
         self._generate_slotinfo(_res)
 
+    def _get_device(self, dev_str):
+        if dev_str in self.__cache["device"]:
+            _dev = self.__cache["device"][dev_str]
+        else:
+            if not dev_str.count("."):
+                # short name
+                try:
+                    _dev = device.objects.get(Q(name=dev_str))
+                except device.DoesNotExist:
+                    self.log("no device with short name '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
+                    _dev = None
+            else:
+                _short, _domain = dev_str.split(".", 1)
+                try:
+                    _dev = device.objects.get(Q(name=_short) & Q(domain_tree_node__full_name=_domain))
+                except device.DoesNotExist:
+                    self.log("no device with FQDN '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
+                    _dev = None
+            self.__cache["device"][dev_str] = _dev
+        return _dev
+
     def _generate_slotinfo(self, _res):
         _queue_names = set()
         _host_names = set()
-        act_time = time.time()
+        act_time = int(time.time())
+        _s_time = time.time()
+        _host_stats = {}
         # queue dict
         _queues = {"total": queue_info()}
         for _node in _res.findall(".//node"):
             _host = _node.findtext("host")
             _queue = _node.findtext("queue")
             _queue_names.add(_queue)
-            _host_names.add(_queue)
+            _host_names.add(_host)
             _su, _sr, _st = (
                 int(_node.findtext("slots_used")),
                 int(_node.findtext("slots_reserved")),
@@ -153,7 +204,11 @@ class rms_mon_process(threading_tools.process_obj):
             if _queue not in _queues:
                 _queues[_queue] = queue_info()
             _queues[_queue].feed(_st, _sr, _su, _state)
+            if _host not in _host_stats:
+                _host_stats[_host] = queue_info()
+            _host_stats[_host].feed(_st, _sr, _su, _state)
         # print _res
+        # vector socket
         drop_com = server_command.srv_command(command="set_vector")
         _bldr = drop_com.builder()
         _rms_vector = _bldr("values")
@@ -181,26 +236,27 @@ class rms_mon_process(threading_tools.process_obj):
                 base=1000,
             ).build_xml(_bldr)
         )
+        report_list = [
+            ("total", "slots defined"),
+            ("reserved", "slots reserved"),
+            ("used", "slots used"),
+            ("free", "slots free"),
+            ("error", "instances in error state"),
+            ("disabled", "instances in disabled state"),
+            ("alarm", "instances in alarm state"),
+            ("unknown", "instances in error state"),
+            ("count", "instances"),
+        ]
         for q_name, q_value in _queues.iteritems():
             # sanitize queue name
             q_name = q_name.replace(".", "_")
-            for _key, _value, _info in [
-                ("total", q_value.total, "slots defined"),
-                ("reserved", q_value.reserved, "slots reserved"),
-                ("used", q_value.used, "slots used"),
-                ("free", q_value.total - q_value.used, "slots free"),
-                ("error", q_value.error, "instances in error state"),
-                ("disabled", q_value.disabled, "instances in disabled state"),
-                ("alarm", q_value.alarm, "instances in alarm state"),
-                ("unknown", q_value.unknown, "instances in error state"),
-                ("count", q_value.count, "instances"),
-            ]:
+            for _key, _info in report_list:
                 _rms_vector.append(
                     hm_classes.mvect_entry(
                         "rms.queues.{}.{}".format(q_name, _key),
                         info="{} in queue {}".format(_info, q_name),
                         default=0,
-                        value=_value,
+                        value=getattr(q_value, _key),
                         factor=1,
                         valid_until=valid_until,
                         base=1000,
@@ -211,6 +267,45 @@ class rms_mon_process(threading_tools.process_obj):
         # for cap_name in self.__cap_list:
         #    self.__server_cap_dict[cap_name](cur_time, drop_com)
         self.vector_socket.send_unicode(unicode(drop_com))
+        # collectd commands
+        valid_hosts = {
+            _host: _dev for _host, _dev in [
+                (_host, self._get_device(_host)) for _host in _host_names
+            ] if _dev is not None and _host in _host_stats
+        }
+        for _host_name, _dev in valid_hosts.iteritems():
+            mach_vect = E.machine_vector(
+                time="{:d}".format(act_time),
+                simple="0",
+                name=_dev.full_name,
+                uuid=_dev.uuid,
+            )
+            q_value = _host_stats[_host_name]
+            mach_vect.extend(
+                [
+                    hm_classes.mvect_entry(
+                        "rms.slots.{}".format(_key),
+                        info="{}".format(_info),
+                        default=0,
+                        value=getattr(q_value, _key),
+                        factor=1,
+                        valid_until=valid_until,
+                        base=1000,
+                    ).build_xml(E) for _key, _info in report_list
+                ]
+            )
+            try:
+                self.collectd_socket.send_unicode(etree.tostring(mach_vect), zmq.DONTWAIT)
+            except:
+                self.log(
+                    "error sending rms-slot info regarding {} to collectd: {}".format(
+                        _dev.full_name,
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+        _e_time = time.time()
+        self.log("info handling took {}".format(logging_tools.get_diff_time_str(_e_time - _s_time)))
 
     def _full_reload(self, *args, **kwargs):
         self.log("doing a full_reload")
@@ -342,4 +437,5 @@ class rms_mon_process(threading_tools.process_obj):
 
     def loop_post(self):
         self.vector_socket.close()
+        self.collectd_socket.close()
         self.__log_template.close()
