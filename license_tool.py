@@ -23,14 +23,15 @@
 
 """ ask license server and return an XML-represenation of license situation """
 
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import argparse
 import datetime
 import logging_tools
 import subprocess
 import sys
 import time
+
 
 class license_check(object):
     def __init__(self, **kwargs):
@@ -44,35 +45,51 @@ class license_check(object):
             if self.server_port.startswith("/"):
                 self.server_port = file(self.server_port, "r").read().strip().split()[0]
             self.server_port = int(self.server_port)
-        self.log("license server at %s (port %d)" % (self.server_addr, self.server_port))
+        self.log("license server {} (port {:d})".format(self.server_addr, self.server_port))
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         what = u"[lc] {}".format(what)
         if self.log_com:
             self.log_com(log_level, what)
         else:
             logging_tools.my_syslog("[{:d}] {}".format(log_level, what))
+
     def call_external(self, com_line):
         popen = subprocess.Popen(com_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         ret_code = popen.wait()
         return ret_code, popen.stdout.read()
+
+    def _strip_string(self, in_str):
+        if in_str.endswith(","):
+            return in_str[:-1]
+        else:
+            return in_str
+
     def check(self):
         s_time = time.time()
         self.log("starting check")
-        ext_code, ext_lines = self.call_external("%s lmstat -a -c %d@%s" % (
-            self.lmutil_path,
-            self.server_port,
-            self.server_addr))
-        ret_struct = E.license_info(server_address=self.server_addr,
-                                    server_port="%d" % (self.server_port))
+        ext_code, ext_lines = self.call_external(
+            "{} lmstat -a -c {:d}@{}".format(
+                self.lmutil_path,
+                self.server_port,
+                self.server_addr
+            )
+        )
+        ret_struct = E.license_info(
+            server_address=self.server_addr,
+            server_port="{:d}".format(self.server_port)
+        )
         if ext_code:
             ret_struct.attrib.update({
-                "state" : "%d" % (logging_tools.LOG_LEVEL_ERROR),
-                "info"  : "%s" % (ext_lines)})
+                "state": "{:d}".format(logging_tools.LOG_LEVEL_ERROR),
+                "info": "{}".format(ext_lines)}
+            )
             line_num = 0
         else:
             ret_struct.attrib.update({
-                "state" : "%d" % (logging_tools.LOG_LEVEL_OK),
-                "info"  : "call successfull"})
+                "state": "{:d}".format(logging_tools.LOG_LEVEL_OK),
+                "info": "call successfull"}
+            )
             ret_struct.append(E.license_servers())
             ret_struct.append(E.licenses())
             found_server = set()
@@ -84,6 +101,7 @@ class license_check(object):
                     continue
                 lline = line.lower()
                 lparts = lline.strip().split()
+                # print lline  # , lparts
                 if lline.count("license server status"):
                     server_info = lparts[-1]
                     server_port, server_addr = server_info.split("@")
@@ -105,14 +123,19 @@ class license_check(object):
                             issued=lparts[5],
                             used=lparts[10],
                             reserved="0",
-                            free="%d" % (int(lparts[5]) - int(lparts[10])))
+                            free="{:d}".format(int(lparts[5]) - int(lparts[10])))
                         ret_struct.find("licenses").append(cur_lic)
                 if cur_lic is not None:
-                    if "\"%s\"" % (cur_lic.attrib["name"]) == lparts[0]:
+                    if "\"{}\"".format(cur_lic.attrib["name"]) == lparts[0]:
                         cur_lic_version = E.version(
-                            version=lparts[1].replace(",", ""),
-                            vendor=lparts[-1],
-                            floating="false")
+                            version=self._strip_string(lparts[1]),
+                            # vendor=lparts[-1],
+                            floating="false",
+                        )
+                        if "vendor:" in lparts and "expiry:" in lparts:
+                            cur_lic_version.attrib["vendor"] = self._strip_string(lparts[3])
+                        else:
+                            cur_lic_version.attrib["vendor"] = self._strip_string(lparts[-1])
                         cur_lic.append(cur_lic_version)
                     else:
                         if cur_lic_version is not None:
@@ -125,7 +148,7 @@ class license_check(object):
                                     num=lparts[0],
                                     target=" ".join(lparts[3:])
                                 ))
-                                cur_lic.attrib["reserved"] = "%d" % (int(cur_lic.attrib["reserved"]) + int(lparts[0]))
+                                cur_lic.attrib["reserved"] = "{:d}".format(int(cur_lic.attrib["reserved"]) + int(lparts[0]))
                             else:
                                 if cur_lic_version.find("usages") is None:
                                     cur_lic_version.append(E.usages())
@@ -141,20 +164,29 @@ class license_check(object):
                                 # remove linger info (if present)
                                 start_data = (start_data.split("(")[0]).strip()
                                 co_datetime = datetime.datetime.strptime(
-                                    "%d %s" % (cur_year,
-                                               start_data.title()), "%Y %a %m/%d %H:%M")
+                                    "{:d} {}".format(
+                                        cur_year,
+                                        start_data.title()
+                                    ), "%Y %a %m/%d %H:%M"
+                                )
                                 cur_lic_version.find("usages").append(E.usage(
-                                    num="%d" % (num_lics),
+                                    num="{:d}".format(num_lics),
                                     user=lparts[0],
                                     client_long=lparts[1],
                                     client_short=lparts[2],
                                     client_version=lparts[3][1:-1],
-                                    checkout_time="%.2f" % (time.mktime(co_datetime.timetuple())),
+                                    checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
                                 ))
         e_time = time.time()
-        ret_struct.attrib["run_time"] = "%.3f" % (e_time - s_time)
-        self.log("done, %d lines in %s" % (line_num, logging_tools.get_diff_time_str(e_time - s_time)))
+        ret_struct.attrib["run_time"] = "{:.3f}".format(e_time - s_time)
+        self.log(
+            "done, {:d} lines in {}".format(
+                line_num,
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
         return ret_struct
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -176,7 +208,7 @@ def main():
         for cur_lic in xml_res.findall(".//license"):
             lic_name = cur_lic.attrib["name"]
             for attr_name in ["issued", "used", "free", "reserved"]:
-                glob_dict["%s_%s" % (lic_name, attr_name)] = int(cur_lic.attrib[attr_name])
+                glob_dict["{}_{}".format(lic_name, attr_name)] = int(cur_lic.attrib[attr_name])
         ret_val = eval(opts.check_eval, glob_dict)
         if not ret_val:
             ret_code = 1
@@ -196,4 +228,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
