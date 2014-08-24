@@ -21,10 +21,11 @@
 """ rms-server, monitoring process """
 
 from django.core.cache import cache
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import device
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
-from initat.cluster.backbone.models import device
-from django.db.models import Q
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
 import commands
@@ -109,6 +110,7 @@ class rms_mon_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
+        connection.close()
         self._init_cache()
         self.__node_options = sge_tools.get_empty_node_options()
         self._init_network()
@@ -171,12 +173,30 @@ class rms_mon_process(threading_tools.process_obj):
                 except device.DoesNotExist:
                     self.log("no device with short name '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
                     _dev = None
+                except device.MultipleObjectsReturned:
+                    self.log(
+                        "got more than one result for short name '{}': {}".format(
+                            dev_str,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    _dev = None
             else:
                 _short, _domain = dev_str.split(".", 1)
                 try:
                     _dev = device.objects.get(Q(name=_short) & Q(domain_tree_node__full_name=_domain))
                 except device.DoesNotExist:
                     self.log("no device with FQDN '{}' found".format(dev_str), logging_tools.LOG_LEVEL_ERROR)
+                    _dev = None
+                except device.MultipleObjectsReturned:
+                    self.log(
+                        "got more than one result for FQDN '{}': {}".format(
+                            dev_str,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                     _dev = None
             self.__cache["device"][dev_str] = _dev
         return _dev
