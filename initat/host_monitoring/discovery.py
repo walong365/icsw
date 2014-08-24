@@ -25,8 +25,8 @@
 from initat.host_monitoring import limits
 from initat.host_monitoring.constants import MAPPING_FILE_IDS
 from initat.host_monitoring.struct import host_message
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import logging_tools
 import os
 import process_tools
@@ -34,9 +34,13 @@ import server_command
 import time
 import zmq
 
+
 class id_discovery(object):
     # discover 0mq ids
-    __slots__ = ["port", "host", "raw_connect", "conn_str", "init_time", "srv_com", "src_id", "xml_input", "socket"]
+    __slots__ = [
+        "port", "host", "raw_connect", "conn_str", "init_time", "srv_com", "src_id", "xml_input", "socket"
+    ]
+
     def __init__(self, srv_com, src_id, xml_input):
         self.port = int(srv_com["port"].text)
         self.host = srv_com["host"].text
@@ -78,18 +82,22 @@ class id_discovery(object):
                 dealer_message = server_command.srv_command(command="get_0mq_id")
                 dealer_message["target_ip"] = self.host
                 self.socket.send_unicode(unicode(dealer_message))
+
     def send_return(self, error_msg):
         self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
         dummy_mes = host_message(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
         dummy_mes.set_result(limits.nag_STATE_CRITICAL, error_msg)
         self.send_result(dummy_mes)
+
     def send_result(self, host_mes, result=None):
         id_discovery.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
         id_discovery.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         self.close()
+
     def error(self, zmq_sock):
         self.log("got error for socket", logging_tools.LOG_LEVEL_ERROR)
         time.sleep(1)
+
     def get_result(self, zmq_sock):
         if self.conn_str in id_discovery.last_try:
             del id_discovery.last_try[self.conn_str]
@@ -106,27 +114,36 @@ class id_discovery(object):
             if zmq_id in id_discovery.reverse_mapping and (self.host not in id_discovery.reverse_mapping[zmq_id]) and id_discovery.force_resolve:
                 self.log("0MQ is {} but already used by {}: {}".format(
                     zmq_id,
-                    logging_tools.get_plural("host", len(id_discovery.reverse_mapping[zmq_id])),
-                    ", ".join(sorted(id_discovery.reverse_mapping[zmq_id]))),
-                         logging_tools.LOG_LEVEL_ERROR)
+                    logging_tools.get_plural(
+                        "host", len(id_discovery.reverse_mapping[zmq_id])
+                    ),
+                    ", ".join(
+                        sorted(
+                            id_discovery.reverse_mapping[zmq_id])
+                        )
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 self.send_return("0MQ id not unique, virtual host setup found ?")
             else:
                 if zmq_id.lower().count("unknown command"):
                     self.log("received illegal zmq_id '{}'".format(zmq_id), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("0MQ id is {}".format(zmq_id))
-                    id_discovery.set_mapping(self.conn_str, zmq_id) # mapping[self.conn_str] = zmq_id
+                    id_discovery.set_mapping(self.conn_str, zmq_id)  # mapping[self.conn_str] = zmq_id
                     # reinject
                     if self.port == 2001:
                         id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
                     else:
                         id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
                 self.close()
+
     @staticmethod
     def save_mapping():
         if id_discovery.save_file:
             id_discovery.relayer_process.log("saving mapping file")
             file(MAPPING_FILE_IDS, "w").write(etree.tostring(id_discovery.mapping_xml, pretty_print=True))
+
     def close(self):
         del self.srv_com
         if self.socket:
@@ -138,8 +155,10 @@ class id_discovery(object):
             del id_discovery.pending[self.conn_str]
         self.log("closing")
         del self
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         id_discovery.relayer_process.log("[idd, %s] %s" % (self.conn_str, what), log_level)
+
     @staticmethod
     def reload_mapping():
         id_discovery.reverse_mapping = {}
@@ -182,6 +201,7 @@ class id_discovery(object):
         else:
             id_discovery.mapping = {}
             id_discovery.mapping_xml = E.zmq_mapping()
+
     @staticmethod
     def init(r_process, backlog_size, timeout, verbose, force_resolve):
         id_discovery.relayer_process = r_process
@@ -193,10 +213,12 @@ class id_discovery(object):
         # last discovery try
         id_discovery.last_try = {}
         id_discovery.reload_mapping()
+
     @staticmethod
     def destroy():
         for value in list(id_discovery.pending.values()):
             value.close()
+
     @staticmethod
     def set_mapping(conn_str, uuid):
         if uuid.lower().count("unknown command"):
@@ -218,15 +240,19 @@ class id_discovery(object):
         if uuid_el.text != uuid:
             uuid_el.text = uuid
             id_discovery.save_mapping()
+
     @staticmethod
     def is_pending(conn_str):
         return conn_str in id_discovery.pending
+
     @staticmethod
     def has_mapping(conn_str):
         return conn_str in id_discovery.mapping
+
     @staticmethod
     def get_mapping(conn_str):
         return id_discovery.mapping[conn_str]
+
     @staticmethod
     def check_timeout(cur_time):
         del_list = []
@@ -238,4 +264,3 @@ class id_discovery(object):
             # set last try flag
             id_discovery.last_try[cur_ids.conn_str] = cur_time
             cur_ids.send_return("timeout triggered, closing")
-

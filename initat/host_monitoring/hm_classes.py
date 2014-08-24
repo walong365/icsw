@@ -25,6 +25,7 @@ import server_command
 import subprocess
 import time
 
+
 def net_to_sys(in_val):
     try:
         result = cPickle.loads(in_val)
@@ -35,13 +36,18 @@ def net_to_sys(in_val):
             raise
     return result
 
+
 def sys_to_net(in_val):
     return cPickle.dumps(in_val)
 
+
 class subprocess_struct(object):
-    __slots__ = ["srv_com", "command", "command_line", "com_num", "popen", "srv_process",
+    __slots__ = [
+        "srv_com", "command", "command_line", "com_num", "popen", "srv_process",
         "cb_func", "_init_time", "terminated", "__nfts", "__return_sent", "__finished",
-        "multi_command", "run_info", "src_id"]
+        "multi_command", "run_info", "src_id"
+    ]
+
     class Meta:
         max_usage = 2
         direct = False
@@ -49,6 +55,7 @@ class subprocess_struct(object):
         use_popen = True
         verbose = False
         id_str = "not_set"
+
     def __init__(self, srv_com, com_line, cb_func=None):
         # copy Meta keys
         for key in dir(subprocess_struct.Meta):
@@ -71,12 +78,13 @@ class subprocess_struct(object):
         self.__return_sent = False
         # finished
         self.__finished = False
+
     def run(self):
         run_info = {}
         if self.multi_command:
             if self.command_line:
                 cur_cl = self.command_line[self.com_num]
-                if type(cur_cl) == type(()):
+                if type(cur_cl) == tuple:
                     # in case of tuple
                     run_info["comline"] = cur_cl[0]
                 else:
@@ -94,17 +102,21 @@ class subprocess_struct(object):
                 self.log("popen '{}'".format(run_info["comline"]))
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
             self.started()
+
     def set_send_stuff(self, srv_proc, src_id, zmq_sock):
         self.srv_process = srv_proc
         self.src_id = src_id
         self.zmq_sock = zmq_sock
+
     def started(self):
         pass
+
     def read(self):
         if self.popen:
             return self.popen.stdout.read()
         else:
             return None
+
     def finished(self):
         if self.run_info["comline"] is None:
             self.run_info["result"] = 0
@@ -134,11 +146,13 @@ class subprocess_struct(object):
                     fin = True
         self.__finished = fin
         return fin
+
     def process(self):
         if self.cb_func:
             self.cb_func(self)
         else:
             self.srv_com.set_result("default process() call", server_command.SRV_REPLY_STATE_ERROR)
+
     def terminate(self):
         self.popen.kill()
         if getattr(self, "srv_com"):
@@ -146,6 +160,7 @@ class subprocess_struct(object):
                 "runtime ({}) exceeded".format(logging_tools.get_plural("second", self.Meta.max_runtime)),
                 server_command.SRV_REPLY_STATE_ERROR
             )
+
     def send_return(self):
         if not self.__return_sent:
             self.__return_sent = True
@@ -158,14 +173,17 @@ class subprocess_struct(object):
             if self.popen:
                 del self.popen
 
+
 class hm_module(object):
     class Meta:
         priority = 0
+
     def __init__(self, name, mod_obj):
         self.name = name
         self.obj = mod_obj
         self.__commands = {}
         self.base_init()
+
     def add_command(self, com_name, call_obj):
         if type(call_obj) == type:
             if com_name.endswith("_command"):
@@ -173,25 +191,34 @@ class hm_module(object):
             new_co = call_obj(com_name)
             new_co.module = self
             self.__commands[com_name] = new_co
+
     @property
     def commands(self):
         return self.__commands
+
     def register_server(self, proc_pool):
         self.process_pool = proc_pool
+
     def base_init(self):
         # called directly after init (usefull for collclient)
         pass
+
     def init_module(self):
         pass
+
     def close_module(self):
         pass
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.process_pool.log("[{}] {}".format(self.name, what), log_level)
+
     def __unicode__(self):
         return u"module {}, priority {:d}".format(self.name, self.Meta.priority)
 
+
 class hm_command(object):
     info_str = ""
+
     def __init__(self, name, **kwargs):
         self.name = name
         # argument parser
@@ -211,18 +238,22 @@ class hm_command(object):
                 # self.parser.add_argument("arguments", nargs="+", help="additional arguments")
                 self.parser.add_argument("arguments", nargs="+", help=kwargs.get("arguments_name", "additional arguments"))
             else:
-                raise ValueError, "positonal_argument flag not in [1, True, False]"
+                raise ValueError("positonal_argument flag not in [1, True, False]")
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.module.process_pool.log("[{}] {}".format(self.name, what), log_level)
+
     def _parser_exit(self, status=0, message=None):
         raise ValueError, (status, message)
     # self.parser_exit, self.parser_message = (status, message)
+
     def _parser_error(self, message):
         raise ValueError, (2, message)
         self.parser_exit, self.parser_message = (2, message)
+
     def handle_commandline(self, arg_list):
         # for arguments use "--" to separate them from the commandline arguments
         if self.partial:
@@ -233,8 +264,12 @@ class hm_command(object):
             unknown.extend(res_ns.arguments)
         return res_ns, unknown
 
+
 class mvect_entry(object):
-    __slots__ = ["name", "default", "info", "unit", "base", "value", "factor", "v_type", "valid_until"]
+    __slots__ = [
+        "name", "default", "info", "unit", "base", "value", "factor", "v_type", "valid_until"
+    ]
+
     def __init__(self, name, **kwargs):
         self.name = name
         # info, description for user
@@ -262,15 +297,19 @@ class mvect_entry(object):
             self.default = kwargs["default"]
             # value
             self.value = kwargs.get("value", self.default)
-            self.v_type = {type(0)   : "i",
-                           type(0L)  : "i",
-                           type(0.0) : "f"}.get(type(self.default), "s")
+            self.v_type = {
+                type(0): "i",
+                type(0L): "i",
+                type(0.0): "f",
+            }.get(type(self.default), "s")
         self.valid_until = kwargs.get("valid_until", None)
         if self.valid_until:
             self.valid_until = int(self.valid_until)
+
     def update_from_mvec(self, in_mv):
         self.value = in_mv.value
         self.valid_until = in_mv.valid_until
+
     def update(self, value):
         if value is None:
             # unknown
@@ -289,12 +328,15 @@ class mvect_entry(object):
             except:
                 # cast to None
                 self.value = None
+
     def update_default(self):
         # init value with default value for entries without valid_until settings
         if not self.valid_until:
             self.value = self.default
+
     def check_timeout(self, cur_time):
         return True if (self.valid_until and cur_time > self.valid_until) else False
+
     def get_form_entry(self, idx):
         act_line = []
         sub_keys = (self.name.split(".") + ["", "", "", "", ""])[0:6]
@@ -306,13 +348,18 @@ class mvect_entry(object):
             act_pf, val_str = ("", "<unknown>")
         else:
             act_pf, val_str = self._get_val_str(self.value * self.factor)
-        act_line.extend([logging_tools.form_entry_right(val_str, header="value"),
-                         logging_tools.form_entry_right(act_pf, header=" "),
-                         logging_tools.form_entry(self.unit, header="unit"),
-                         logging_tools.form_entry("({:3d})".format(idx), header="idx"),
-                         logging_tools.form_entry("{:d}".format(self.valid_until) if self.valid_until else "---", header="valid_until"),
-                         logging_tools.form_entry(self._build_info_string(), header="info")])
+        act_line.extend(
+            [
+                logging_tools.form_entry_right(val_str, header="value"),
+                logging_tools.form_entry_right(act_pf, header=" "),
+                logging_tools.form_entry(self.unit, header="unit"),
+                logging_tools.form_entry("({:3d})".format(idx), header="idx"),
+                logging_tools.form_entry("{:d}".format(self.valid_until) if self.valid_until else "---", header="valid_until"),
+                logging_tools.form_entry(self._build_info_string(), header="info")
+            ]
+        )
         return act_line
+
     def _get_val_str(self, val):
         act_pf = ""
         pf_list = ["k", "M", "G", "T", "E", "P"]
@@ -327,38 +374,44 @@ class mvect_entry(object):
         else:
             val_str = "{:<14s}".format(str(val))
         return act_pf, val_str
+
     def _build_info_string(self):
         ret_str = self.info
         ref_p = self.name.split(".")
         for idx in xrange(len(ref_p)):
             ret_str = ret_str.replace("${:d}".format(idx + 1), ref_p[idx])
         return ret_str
+
     def build_simple_xml(self, builder):
         return builder("m", n=self.name, v=str(self.value))
+
     def build_simple_json(self):
         return (self.name, str(self.value))
+
     def build_xml(self, builder):
         kwargs = {
-            "name"   : self.name,
-            "info"   : self.info,
-            "unit"   : self.unit,
-            "v_type" : self.v_type,
-            "value"  : str(self.value)}
+            "name": self.name,
+            "info": self.info,
+            "unit": self.unit,
+            "v_type": self.v_type,
+            "value": str(self.value)
+        }
         for key, ns_value in [
             ("valid_until", None),
-            ("base"       , 1),
-            ("factor"     , 1)]:
+            ("base", 1),
+            ("factor", 1)
+        ]:
             if getattr(self, key) != ns_value:
                 kwargs[key] = "{:d}".format(int(getattr(self, key)))
         return builder("mve", **kwargs)
+
     def build_json(self):
         return {
-            "name"   : self.name,
-            "info"   : self.info,
-            "unit"   : self.unit,
-            "v_type" : self.v_type,
-            "value"  : str(self.value),
-            "base"   : self.base,
-            "factor" : self.factor,
-            }
-
+            "name": self.name,
+            "info": self.info,
+            "unit": self.unit,
+            "v_type": self.v_type,
+            "value": str(self.value),
+            "base": self.base,
+            "factor": self.factor,
+        }
