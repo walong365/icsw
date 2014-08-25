@@ -5,7 +5,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of rms-tools
+# This file is part of init-license-tools
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as

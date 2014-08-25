@@ -5,7 +5,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of rms-tools
+# This file is part of init-license-tools
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -60,6 +60,8 @@ def get_sge_environment():
     if not os.path.isfile(qconf_bin):
         print("No qconf command found under {}".format(_sge_dict["SGE_ROOT"]))
         sys.exit(1)
+    _sge_dict["QCONF_BIN"] = qconf_bin
+    _sge_dict["SGE_ARCH"] = sge_arch
     print(
         ", ".join(["{} is {}".format(_key, _sge_dict[_key]) for _key in sorted(_sge_dict.iterkeys())])
     )
@@ -295,40 +297,6 @@ def read_text_file(tf_name, ignore_hashes=False):
         if ignore_hashes:
             lines = [line for line in lines if not line.startswith("#")]
     return lines
-
-
-def read_site_config_file(base_dir, cf_name):
-    try:
-        lines = read_text_file("%s/%s" % (base_dir, cf_name), True)
-    except IOError:
-        print "An IOError occured: %s" % (process_tools.get_except_info())
-        sys.exit(1)
-    else:
-        return lines
-
-
-def read_default_site_file(base_dir, cf_name):
-    act_site = ""
-    try:
-        lines = read_text_file("%s/%s" % (base_dir, cf_name), True)
-    except IOError:
-        pass
-    else:
-        if lines:
-            act_site = lines[0].strip()
-    return act_site
-
-
-def parse_site_config_file(base_dir, act_site, act_conf):
-    slf_name = os.path.normpath("%s/lic_%s.src_config" % (base_dir, act_site))
-    try:
-        lines = read_text_file(slf_name)
-    except IOError:
-        print "An IOError occured (%s) while reading sit_config for site '%s', ignoring..." % (process_tools.get_except_info(), act_site)
-    else:
-        for key, value in [x for x in [y.split(None, 1) for y in lines] if len(x) == 2]:
-            act_conf[key.upper()] = value
-    return act_conf
 
 
 def parse_license_lines(lines, act_site, **kwargs):
