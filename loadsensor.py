@@ -76,8 +76,8 @@ def raw_read(fd):
 
 def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict):
     configured_lics = []
-    if not os.path.isdir(act_conf["LM_UTIL_PATH"]):
-        log_template.error("Error: LM_UTIL_PATH '{}' is not directory".format(act_conf["LM_UTIL_PATH"]))
+    if not os.path.isfile(act_conf["LMUTIL_PATH"]):
+        log_template.error("Error: LMUTIL_PATH '{}' is not a file".format(act_conf["LMUTIL_PATH"]))
     else:
         # build different license-server calls
         all_server_addrs = set(
@@ -91,8 +91,8 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
             if server_addr not in lc_dict:
                 lc_dict[server_addr] = license_tool.license_check(
                     lmutil_path=os.path.join(
-                        act_conf["LM_UTIL_PATH"],
-                        act_conf["LM_UTIL_COMMAND"]),
+                        act_conf["LMUTIL_PATH"]
+                    ),
                     port=int(server_addr.split("@")[0]),
                     server=server_addr.split("@")[1],
                     log_com=log_template.log)
@@ -222,6 +222,7 @@ def main():
         sge_license_tools.get_site_config_file_name(base_dir, act_site),
     ).dict
     log_template.info("read config for actual site '%s'" % (act_site))
+    log_template.info("keys in config: {:d}".format(len(act_conf.keys())))
     for key, value in act_conf.iteritems():
         log_template.info(" - %-20s : %s" % (key, value))
     call_num = 0
@@ -284,6 +285,7 @@ def main():
         log_template.warning("proc %d: got stop-signal, exiting ..." % (my_pid))
     except int_error:
         log_template.warning("proc %d: got int-signal, exiting ..." % (my_pid))
+    log_template.close()
     zmq_context.term()
     sys.exit(0)
 

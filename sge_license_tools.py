@@ -32,7 +32,6 @@ ACT_SITE_NAME = "actual_SITE"
 DEFAULT_SITE = "local"
 BASE_DIR = "/etc/sysconfig/licenses"
 
-
 DEFAULT_CONFIG = {
     "LMUTIL_PATH": "/opt/cluster/bin/lmutil",
     "LICENSE_FILE": ""
@@ -62,9 +61,6 @@ def get_sge_environment():
         sys.exit(1)
     _sge_dict["QCONF_BIN"] = qconf_bin
     _sge_dict["SGE_ARCH"] = sge_arch
-    print(
-        ", ".join(["{} is {}".format(_key, _sge_dict[_key]) for _key in sorted(_sge_dict.iterkeys())])
-    )
     return _sge_dict
 
 
