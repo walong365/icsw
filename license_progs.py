@@ -1,10 +1,10 @@
 #!/usr/bin/python-init -Ot
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005,2007,2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of rms-tools
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,243 +20,205 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" modify license settings """
 
 import sys
-import getopt
+import argparse
 import os
-import os.path
-import re
 import time
+import tempfile
 import sge_license_tools
+import license_tool
 import logging_tools
+import process_tools
 
-LIC_VERSION = 0.3
 
-def parse_sge_file(lines):
-    new_lines = []
-    new_line = ""
-    for line in [x.strip() for x in lines.split("\n") if x.strip()]:
-        if line.endswith("\\"):
-            new_line += (line[:-1]).strip()
-        else:
-            new_line += line
-            new_lines.append(new_line)
-            new_line = ""
-    return dict([(x[0], x[1]) for x in [y.split(None, 1) for y in new_lines]])
-
-def create_sge_file(fname, in_dict):
-    open(fname, "w").write("\n".join(["%s %s" % (k, v) for k, v in in_dict.iteritems()] + [""]))
-    
-def append_to_site_license_file(base_dir, act_site, new_licenses):
-    lic_file = "%s/lic_%s.conf" % (base_dir, act_site)
-    try:
-        ap_file = open(lic_file, "a")
-    except IOError, what:
-        print "Cannot append to site-license file %s: %s" % (lic_file, what)
-    else:
-        if new_licenses:
-            new_lic_names = sorted(new_licenses.keys())
-            print "Appending %d new licenses to site-license file %s" % (len(new_lic_names), lic_file)
-            ap_file.write("\n".join(["#",
-                                     "# %d licenses added %s" % (len(new_lic_names), time.ctime()),
-                                     "#"]))
-            form_str = "%-40s %-40s %-40s %s\n"
-            ap_file.write("#\n%s#\n" % (form_str % ("#license", "lic_server_setting", "attribute", "total")))
-            for new_lic_name in new_lic_names:
-                nl_stuff = new_licenses[new_lic_name]
-                ap_file.write(form_str % ("#lic_%s_%s" % (act_site, new_lic_name),
-                                          nl_stuff.get_lic_server_spec(),
-                                          nl_stuff.get_attribute(),
-                                          str(nl_stuff.get_total_num())))
-        ap_file.close()
-        
-def main():
-    prog_name = os.path.basename(sys.argv[0]).split(".")[0]
-    glob_short_options = "hb:s:"
-    glob_long_options = ["version", "help"]
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], glob_short_options, glob_long_options)
-    except getopt.GetoptError, why:
-        print "Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]), why)
-        sys.exit(-1)
-    base_dir, act_site = ("/etc/sysconfig/licenses", "")
-    act_conf = sge_license_tools.DEFAULT_CONFIG
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            print "Usage: %s [OPTIONS]" % (prog_name)
-            print "  where options is one or more of"
-            print "    -h, --help        this help"
-            print "    --version         show program version"
-            print "    -b BASEDIR        sets basedir, default is actual dir (%s)" % (base_dir)
-            print "    -s SITE           select site"
-            print "config file syntax is:"
-            print "  [KEY] [VALUE]       where key is one of (with default):"
-            for k, v in act_conf.iteritems():
-                print "%s%-20s : %s" % (" " * 22, k, v and v or "<no default value>")
-            sys.exit(0)
-        if opt == "--version":
-            print "%s, version is %s" % (prog_name, LIC_VERSION)
-            sys.exit(0)
-        if opt == "-b":
-            if not os.path.isdir(arg):
-                print "Error: basedir '%s' is not a directory" % (arg)
-                sys.exit(-1)
-            else:
-                base_dir = os.path.normpath(arg)
-        if opt == "-s":
-            if arg.strip():
-                act_site = arg.strip()
-            else:
-                print "Error parsing site-string '%s'" % (arg)
-                sys.exit(1)
-    if not os.path.isdir(base_dir):
+def _create_base_dir(opts):
+    if not os.path.isdir(opts.base):
         try:
-            os.makedirs(base_dir)
+            os.makedirs(opts.base)
         except IOError:
-            print "Error creating base_dir '%s', exiting ..." % (base_dir)
+            print("Error creating base_dir '{}': {}".format(opts.base, process_tools.get_except_info()))
             sys.exit(1)
         else:
-            print "Successfully created base_dir '%s'" % (base_dir)
-    valid_sites = sge_license_tools.read_site_config_file(base_dir, sge_license_tools.SITE_CONF_NAME)
-    if not act_site:
-        if valid_sites:
-            default_site = sge_license_tools.read_default_site_file(base_dir, sge_license_tools.ACT_SITE_NAME)
-            if default_site:
-                if default_site in valid_sites:
-                    act_site = default_site
-                else:
-                    print "Default site '%s' not found in lic_SITES.conf, exiting" % (default_site)
-                    sys.exit(1)
-            else:
-                act_site = valid_sites[0]
-                print "No site given and no default site defined, taking first (%s) from list (%s)" % (act_site, ", ".join(valid_sites))
-        else:
-            print "No site given and no sites found in lic_SITES.conf, exiting"
-            sys.exit(1)
-    if act_site in valid_sites:
-        pass
+            print("Successfully created base_dir '{}'".format(opts.base))
+
+
+def _log(level, what):
+    print("[{:2d}] {}".format(level, what))
+
+
+def _lic_fetch(opts, act_conf):
+    _cur_lic = license_tool.license_check(
+        log_com=_log,
+        lmutil_path=act_conf["LMUTIL_PATH"],
+        license_file=act_conf["LICENSE_FILE"],
+    )
+    _xml = _cur_lic.check()
+    if int(_xml.attrib["state"]) > logging_tools.LOG_LEVEL_OK:
+        print("error calling license server: {}".format(_xml.attrib["info"]))
     else:
-        print "Error, given site %s not in list of valid sites: %s" % (act_site, ", ".join(valid_sites))
-        sys.exit(2)
-    print "%s, running in basedir %s" % (prog_name, base_dir)
-    sge_license_tools.parse_site_config_file(base_dir, act_site, act_conf)
-    needed_keys_dict = {"lic_fetch" : ["LM_UTIL_COMMAND", "LM_UTIL_PATH"]}
-    if prog_name in needed_keys_dict.keys():
-        failed_keys, empty_keys = ([], [])
-        for nk in needed_keys_dict[prog_name]:
-            if nk not in act_conf.keys():
-                failed_keys.append(nk)
-            elif not act_conf[nk]:
-                empty_keys.append(nk)
-        if failed_keys:
-            print "the following keys are missing: %s" % (", ".join(failed_keys))
-            sys.exit(2)
-        if empty_keys:
-            print "the following keys are empty: %s" % (", ".join(empty_keys))
-            sys.exit(2)
-    if prog_name == "lic_fetch":
-        lmstat_command = "lmstat -a"
-        if act_conf["LICENSE_FILE"]:
-            lmstat_command += " -c %s" % (act_conf["LICENSE_FILE"])
-        if not os.path.isdir(act_conf["LM_UTIL_PATH"]):
-            print "Error: LM_UTIL_PATH '%s' is not directory" % (act_conf["LM_UTIL_PATH"])
-            sys.exit(-1)
-        stat, out = sge_license_tools.call_command("%s/%s %s" % (act_conf["LM_UTIL_PATH"], act_conf["LM_UTIL_COMMAND"], lmstat_command), 1)
-        stat_re = re.compile("^License server status: (?P<lic_server_spec>\S+).*$")
-        users_re = re.compile("^Users of (?P<attribute>\S+): .* of (?P<total>\d+) .* of (?P<used>\d+).*$")
-        out_lines = [y for y in [x.strip() for x in out.split("\n")] if y]
-        act_lic_server_settings = ""
-        act_licenses = {}
-        for line in out_lines:
-            stat_mo, users_mo = (stat_re.match(line),
-                                 users_re.match(line))
-            if stat_mo:
-                act_lic_server_settings = stat_mo.group("lic_server_spec")
-            if users_mo:
-                attribute, total, used = (users_mo.group("attribute"),
-                                          int(users_mo.group("total")),
-                                          int(users_mo.group("used")))
-                if not act_lic_server_settings:
-                    print "Warning, found valid attribute_line but no adjacent host_line"
-                else:
-                    new_lic = sge_license_tools.sge_license(attribute,
-                                                            license_server=act_lic_server_settings,
-                                                            license_type="simple")
-                    new_lic.set_total_num(total)
-                    new_lic.set_used_num(used)
-                    act_licenses[new_lic.get_name()] = new_lic
-        old_license_file = sge_license_tools.read_site_license_file(base_dir, act_site)
-        old_licenses = sge_license_tools.parse_license_lines(old_license_file, act_site)
-        print "Discovered %d licenses, %d of them are in use" % (len(old_licenses.keys()), len([1 for x in old_licenses.values() if x.get_is_used()]))
-        new_licenses = {}
-        # check for new attributes
-        for al_name in sorted(act_licenses.keys()):
-            if not old_licenses.has_key(al_name):
-                al_stuff = act_licenses[al_name]
-                print "discovered new license %s (%s, %d)" % (al_stuff.get_name(), al_stuff.get_attribute(), al_stuff.get_total_num())
-                new_licenses[al_name] = al_stuff
-        if new_licenses:
-            append_to_site_license_file(base_dir, act_site, new_licenses)
-    elif prog_name == "lic_config":
-        if not os.environ.has_key("SGE_ROOT"):
-            print "Error, no SGE_ROOT environment variable set"
-            sys.exit(1)
-        if not os.environ.has_key("SGE_CELL"):
-            print "Error, no SGE_CELL environment variable set"
-            sys.exit(1)
-        sge_root, sge_cell = (os.environ["SGE_ROOT"],
-                              os.environ["SGE_CELL"])
-        arch_util = "%s/util/arch" % (sge_root)
-        if not os.path.isfile(arch_util):
-            print "No arch-utility found in %s/util" % (sge_root)
-            sys.exit(1)
-        sge_stat, sge_arch = sge_license_tools.call_command(arch_util)
-        sge_arch = sge_arch.strip()
-        print "SGE_ROOT is %s, SGE_CELL is %s, SGE_ARCH is %s" % (sge_root, sge_cell, sge_arch)
-        qconf_bin = "%s/bin/%s/qconf" % (sge_root, sge_arch)
-        if not os.path.isfile(qconf_bin):
-            print "No qconf command found under %s" % (sge_root)
-        # modify complexes
-        complex_stat, complex_out = sge_license_tools.call_command("%s -sc" % (qconf_bin), 1)
-        defined_complexes = [y for y in [x.strip() for x in complex_out.split("\n")] if y and not y.startswith("#")]
-        defined_complex_names = [x.split()[0] for x in defined_complexes]
-        actual_license_file = sge_license_tools.read_site_license_file(base_dir, act_site)
-        actual_licenses = sge_license_tools.parse_license_lines(actual_license_file, act_site)
-        licenses_to_use = [x.get_name() for x in actual_licenses.values() if x.get_is_used()]
-        temp_file_name = "/tmp/.sge_new_complexes."
-        temp_file = open(temp_file_name, "w")
-        temp_file.write("\n".join(defined_complexes + [""]))
-        form_str = "%s %s INT <= YES YES 0 0\n"
-        for new_lic_name in licenses_to_use:
-            if new_lic_name not in defined_complex_names:
-                new_lic = actual_licenses[new_lic_name]
-                temp_file.write(form_str % (new_lic_name, new_lic_name))
-        temp_file.close()
-        complex_stat, complex_out = sge_license_tools.call_command("%s -Mc %s" % (qconf_bin, temp_file_name), 1, 1)
-        os.unlink(temp_file_name)
-        # modify global execution host
-        geh_stat, geh_out = sge_license_tools.call_command("%s -se global" % (qconf_bin), 1)
-        geh_dict = parse_sge_file(geh_out)
-        if geh_dict["complex_values"] == "NONE":
-            geh_complexes = {}
-        else:
-            geh_complexes = dict([(k, v) for k, v in [x.split("=") for x in geh_dict["complex_values"].split(",")]])
-        for new_lic_name in licenses_to_use:
-            if new_lic_name not in geh_complexes.keys():
-                geh_complexes[new_lic_name] = str(actual_licenses[new_lic_name].get_total_num())
-        if geh_complexes:
-            geh_dict["complex_values"] = ",".join(["%s=%s" % (k, v) for k, v in geh_complexes.iteritems()])
-        # kill unused entries
-        for kk in ["load_values", "processors"]:
-            if geh_dict.has_key(kk):
-                del geh_dict[kk]
-        temp_file_name = "/tmp/.sge_geh_definition."
-        create_sge_file(temp_file_name, geh_dict)
-        geh_stat, geh_out = sge_license_tools.call_command("%s -Me %s" % (qconf_bin, temp_file_name), 1)
-        os.unlink(temp_file_name)
+        _srv_info = _xml.find(".//license_servers/server").attrib["info"]
+        new_lics = {}
+        for _lic in _xml.findall(".//license"):
+            new_lic = sge_license_tools.sge_license(
+                _lic.get("name"),
+                license_server=_srv_info,
+                license_type="simple"
+            )
+            new_lic.total_num = int(_lic.get("issued"))
+            new_lic.used_num = int(_lic.get("used"))
+            new_lics[new_lic.name] = new_lic
+        current_lics_file = sge_license_tools.text_file(
+            sge_license_tools.get_site_license_file_name(opts.base, opts.site),
+            ignore_missing=True,
+            strip_empty=False,
+            strip_hash=False,
+        )
+        current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
+        print(
+            "Discovered {:d} licenses, {:d} of them are currently in use".format(
+                len(current_lics),
+                len([True for _lic in current_lics.itervalues() if _lic.is_used])
+            )
+        )
+        lics_to_add = set(new_lics) - set(current_lics)
+        _new_content = [
+            "",
+            "#",
+            "# {} licenses added on {}".format(len(lics_to_add), time.ctime()),
+            "#",
+        ]
+        form_str = "{:<40s} {:<40s} {:<40s} {:d}"
+        for _al_key in sorted(lics_to_add):
+            _lic_to_add = new_lics[_al_key]
+            print(
+                "discovered new license {} ({}, {:d})".format(
+                    _lic_to_add.name,
+                    _lic_to_add.attribute,
+                    _lic_to_add.total_num,
+                )
+            )
+            _new_content.append(
+                form_str.format(
+                    "#lic_{}_{}".format(opts.site, _al_key),
+                    _lic_to_add.get_lic_server_spec(),
+                    _lic_to_add.attribute,
+                    _lic_to_add.total_num,
+                )
+            )
+        if lics_to_add:
+            current_lics_file.write(_new_content, mode="a")
+
+
+def _lic_config(opts, act_conf, sge_dict):
+    # complexes and complex names
+    _sge_cxs, _sge_cns = sge_license_tools.get_sge_complexes(sge_dict)
+    current_lics_file = sge_license_tools.text_file(
+        sge_license_tools.get_site_license_file_name(opts.base, opts.site),
+        ignore_missing=True,
+        strip_empty=False,
+        strip_hash=False,
+    )
+    current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
+    _lics_to_use = [_lic.name for _lic in current_lics.itervalues() if _lic.is_used]
+    # modify complexes
+    with tempfile.NamedTemporaryFile() as _tmpfile:
+        form_str = "{} {} INT <= YES YES 0 0\n"
+        changed = False
+        for new_lic_name in _lics_to_use:
+            if new_lic_name not in _sge_cns:
+                changed = True
+                _tmpfile.write(form_str.format(new_lic_name, new_lic_name))
+        if changed:
+            _tmpfile.write("\n".join(_sge_cxs) + "\n")
+            # rewind
+            _tmpfile.seek(0)
+            sge_license_tools.call_command("{} -Mc {}".format(sge_dict["QCONF_BIN"], _tmpfile.name), 1, True)
+    # modify global execution host
+    # attribute string
+    ac_str = ",".join(["{}={:d}".format(_lic_to_use, current_lics[_lic_to_use].total_num) for _lic_to_use in _lics_to_use])
+    if ac_str:
+        _mod_stat, _mod_out = sge_license_tools.call_command("{} -mattr exechost complex_values {} global".format(sge_dict["QCONF_BIN"], ac_str), 1, True)
+
+
+def main():
+    # read current sites (to determine default site)
+    _act_site_file = sge_license_tools.text_file(
+        os.path.join(sge_license_tools.BASE_DIR, sge_license_tools.ACT_SITE_NAME),
+        ignore_missing=True,
+        content=[sge_license_tools.DEFAULT_SITE],
+    )
+    _act_site = _act_site_file.lines
+    if _act_site:
+        _def_site = _act_site[0]
     else:
-        print "Unknown program-mode %s" % (prog_name)
-        sys.exit(-1)
-        
+        _def_site = sge_license_tools.DEFAULT_SITE
+        print("setting '{}' as default site".format(_def_site))
+        _def_sites = [_def_site]
+        _act_site_file.write(content=[_def_site])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base", type=str, default=sge_license_tools.BASE_DIR, help="set basedir [%(default)s]")
+    parser.add_argument("--site", type=str, default=_def_site, help="select site [%(default)s], add if not already present")
+    parser.add_argument("--list-sites", default=False, action="store_true", help="list defined sites [%(default)s]")
+    parser.add_argument("--show-config", default=False, action="store_true", help="show config of choosen site [%(default)s]")
+    parser.add_argument("--set-as-default", default=False, action="store_true", help="set site as default site [%(default)s]")
+    parser.add_argument("--create", default=False, action="store_true", help="create missing files [%(default)s]")
+    parser.add_argument("--port", default=0, type=int, help="license server port to use [%(default)s]")
+    parser.add_argument("--host", default="", type=str, help="license server to use [%(default)s]")
+    parser.add_argument("--mode", default="config", choices=["config", "fetch"], help="operation mode [%(default)s]")
+    opts = parser.parse_args()
+    # print "*", opts
+    _create_base_dir(opts)
+
+    if opts.site != _def_site and opts.set_as_default:
+        _act_site_file.write(content=[opts.site])
+
+    valid_sites_file = sge_license_tools.text_file(
+        os.path.join(opts.base, sge_license_tools.SITE_CONF_NAME),
+        create=opts.create,
+        content=[sge_license_tools.DEFAULT_SITE],
+    )
+    valid_sites = valid_sites_file.lines
+    if opts.site not in valid_sites:
+        valid_sites.append(opts.site)
+        print("adding '{}' to list of sites".format(opts.site))
+        valid_sites_file.write(content=valid_sites)
+
+    if opts.list_sites:
+        print("{}:".format(logging_tools.get_plural("defined site", len(valid_sites))))
+        for _site in valid_sites:
+            print(" - {}".format(_site))
+
+    act_conf_file = sge_license_tools.text_file(
+        sge_license_tools.get_site_config_file_name(opts.base, opts.site),
+        content=sge_license_tools.DEFAULT_CONFIG,
+        create=True,
+    )
+    act_conf = act_conf_file.dict
+
+    if opts.port and opts.host and not act_conf["LICENSE_FILE"]:
+        _new_lic = "{:d}@{}".format(opts.port, opts.host)
+        print("set LICENSE_FILE of config for site '{}' to {}".format(opts.site, _new_lic))
+        act_conf["LICENSE_FILE"] = _new_lic
+        act_conf_file.write(act_conf)
+
+    if opts.show_config:
+        print(
+            "Config for site '{}' in {}:".format(
+                opts.site,
+                sge_license_tools.get_site_config_file_name(opts.base, opts.site),
+            )
+        )
+        for _key in sorted(act_conf):
+            print " - {:<20} = '{}'".format(_key, act_conf[_key])
+
+    if opts.mode == "fetch":
+        _lic_fetch(opts, act_conf)
+
+    elif opts.mode == "config":
+
+        _lic_config(opts, act_conf, sge_license_tools.get_sge_environment())
+
 if __name__ == "__main__":
     main()
