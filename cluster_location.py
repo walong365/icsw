@@ -49,10 +49,12 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
         if num_serv:
             # dict of local vars without specified host
             l_var_wo_host = {}
-            for short in ["str",
-                          "int",
-                          "blob",
-                          "bool"]:
+            for short in [
+                "str",
+                "int",
+                "blob",
+                "bool"
+            ]:
                 # very similiar code appears in config_tools.py
                 src_sql_obj = _VAR_LUT[short].objects
                 if init_list and not kwargs.get("read_all", False):
@@ -94,7 +96,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                         l_var_wo_host[var_name.upper()] = new_val
             # check for vars to insert
             for wo_var_name, wo_var in l_var_wo_host.iteritems():
-                if not wo_var_name in g_config or g_config.get_source(wo_var_name) == "default":
+                if wo_var_name not in g_config or g_config.get_source(wo_var_name) == "default":
                     g_config.add_config_entries([(wo_var_name, wo_var)])
 
 
