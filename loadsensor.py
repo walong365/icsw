@@ -21,18 +21,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from sge_license_tools import ACT_SITE_NAME
-
 """ python interface to emulate a loadsensor for SGE """
 
-from initat.host_monitoring import hm_classes
 import commands
 import license_tool  # @UnresolvedImport
 import logging_tools
 import os
-import process_tools
 import re
-import server_command
 import sge_license_tools
 import stat
 import sys
@@ -199,21 +194,6 @@ def get_used(log_template, qstat_bin):
     return act_dict
 
 
-def write_ext_data(vector_socket, log_template, actual_licenses):
-    drop_com = server_command.srv_command(command="set_vector")
-    add_obj = drop_com.builder("values")
-    cur_time = time.time()
-    for lic_stuff in actual_licenses.itervalues():
-        for cur_mve in lic_stuff.get_mvect_entries(hm_classes.mvect_entry):
-            cur_mve.valid_until = cur_time + 120
-            add_obj.append(cur_mve.build_xml(drop_com.builder))
-    drop_com["vector_loadsensor"] = add_obj
-    drop_com["vector_loadsensor"].attrib["type"] = "vector"
-    send_str = unicode(drop_com)
-    log_template.log("sending %d bytes to vector_socket" % (len(send_str)))
-    vector_socket.send_unicode(send_str)
-
-
 def main():
     # change IO-descriptors
     zmq_context = zmq.Context()
@@ -254,10 +234,6 @@ def main():
     # license_check_dict
     lc_dict = {}
     # vector socket
-    conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-    vector_socket = zmq_context.socket(zmq.PUSH)
-    vector_socket.setsockopt(zmq.LINGER, 0)
-    vector_socket.connect(conn_str)
     try:
         while True:
             in_lines = raw_read(io_in_fd)
@@ -283,17 +259,12 @@ def main():
                             act_site
                         )
                         lic_read_time = file_time
-                        write_ext_ok = False
-                    else:
-                        write_ext_ok = True
                     configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
                     calculate_compound_licenses(log_template, actual_licenses, configured_licenses)
                     sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses)
                     # report to SGE
                     print "\n".join(sge_lines)
-                    if write_ext_ok:
-                        write_ext_data(vector_socket, log_template, actual_licenses)
                     end_time = time.time()
                     log_template.info("%s defined, %d configured, %d in use%s, (%d simple, %d compound), took %s" % (
                         logging_tools.get_plural("license", len(actual_licenses.keys())),
@@ -313,7 +284,6 @@ def main():
         log_template.warning("proc %d: got stop-signal, exiting ..." % (my_pid))
     except int_error:
         log_template.warning("proc %d: got int-signal, exiting ..." % (my_pid))
-    vector_socket.close()
     zmq_context.term()
     sys.exit(0)
 
