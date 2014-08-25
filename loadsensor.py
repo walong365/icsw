@@ -82,7 +82,7 @@ def raw_read(fd):
 def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict):
     configured_lics = []
     if not os.path.isdir(act_conf["LM_UTIL_PATH"]):
-        log_template.error("Error: LM_UTIL_PATH '%s' is not directory" % (act_conf["LM_UTIL_PATH"]))
+        log_template.error("Error: LM_UTIL_PATH '{}' is not directory".format(act_conf["LM_UTIL_PATH"]))
     else:
         # build different license-server calls
         all_server_addrs = set(
@@ -162,7 +162,7 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics):
                     act_lic.total_num,
                     configured_lic)
                 )
-        lines.append("global:%s:%d" % (configured_lic, free_lics))
+        lines.append("global:{}:{:d}".format(configured_lic, free_lics))
     lines.append("end")
     return lines, rep_dict
 
@@ -173,9 +173,9 @@ def get_used(log_template, qstat_bin):
     act_com = "{} -ne -r".format(qstat_bin)
     c_stat, out = commands.getstatusoutput(act_com)
     if c_stat:
-        log_template.error("Error calling %s (%d):" % (act_com, c_stat))
+        log_template.error("Error calling {} ({:d}):".format(act_com, c_stat))
         for line in out.split("\n"):
-            log_template.error(" - %s" % (line.rstrip()))
+            log_template.error(" - {}".format(line.rstrip()))
     else:
         act_job_mode = "?"
         for line_parts in [x.strip().split() for x in out.split("\n") if x.strip()]:
@@ -183,7 +183,7 @@ def get_used(log_template, qstat_bin):
             if job_id_re.match(job_id) and len(line_parts) >= 9:
                 act_job_mode = line_parts[4]
             elif len(line_parts) >= 3:
-                if ("%s %s" % (line_parts[0], line_parts[1])).lower() == "hard resources:":
+                if ("{} {}".format(line_parts[0], line_parts[1])).lower() == "hard resources:":
                     res_name, res_value = line_parts[2].split("=")
                     if "r" in act_job_mode or "R" in act_job_mode or "t" in act_job_mode:
                         dict_name = "used"
@@ -226,21 +226,9 @@ def main():
     )
     base_dir = "/etc/sysconfig/licenses"
     my_pid = os.getpid()
-    log_template.info("starting for pid %d, base_dir is %s" % (my_pid, base_dir))
-    if "SGE_ROOT" not in os.environ:
-        log_template.error("Error, no SGE_ROOT environment variable set")
-        sys.exit(1)
-    if "SGE_CELL" not in os.environ:
-        log_template.error("Error, no SGE_CELL environment variable set")
-        sys.exit(1)
-    sge_root, sge_cell = (os.environ["SGE_ROOT"],
-                          os.environ["SGE_CELL"])
-    arch_util = "%s/util/arch" % (sge_root)
-    if not os.path.isfile(arch_util):
-        log_template.error("No arch-utility found in %s/util" % (sge_root))
-        sys.exit(1)
-    sge_arch = commands.getoutput(arch_util)
-    log_template.info("SGE_ROOT is %s, SGE_CELL is %s, SGE_ARCH is %s" % (sge_root, sge_cell, sge_arch))
+    sge_dict = sge_license_tools.get_sge_environment()
+    log_template.info("starting for pid {:d}, base_dir is {}".format(my_pid, base_dir))
+    log_template.info(sge_license_tools.get_sge_log_line(sge_dict))
     _act_site_file = sge_license_tools.text_file(
         os.path.join(base_dir, sge_license_tools.ACT_SITE_NAME),
     )
@@ -259,7 +247,7 @@ def main():
     call_num = 0
     io_in_fd = sys.stdin.fileno()
     io_out_fd = sys.stdout.fileno()
-    log_template.info("starting up, input handle is %d, output handle is %d" % (io_in_fd, io_out_fd))
+    log_template.info("starting up, input handle is {:d}, output handle is {:d}".format(io_in_fd, io_out_fd))
     actual_licenses, lic_read_time = ([], time.time())
     # read node_grouping file
     # ng_dict = sge_license_tools.read_ng_file(log_template)
@@ -275,7 +263,7 @@ def main():
             in_lines = raw_read(io_in_fd)
             call_num += 1
             if in_lines == "quit":
-                log_template.warning("call #%d, received '%s'" % (call_num, in_lines))
+                log_template.warning("call #{:d}, received '{}'".format(call_num, in_lines))
                 break
             else:
                 log_template.info("starting reporting load values (call #%d)" % (call_num))

@@ -40,40 +40,34 @@ DEFAULT_CONFIG = {
 
 
 def get_sge_environment():
-    if "SGE_ROOT" not in os.environ:
-        print "Error, no SGE_ROOT environment variable set"
-        sys.exit(1)
-    if "SGE_CELL" not in os.environ:
-        print "Error, no SGE_CELL environment variable set"
-        sys.exit(1)
-    sge_root, sge_cell = (
-        os.environ["SGE_ROOT"],
-        os.environ["SGE_CELL"]
-    )
-    arch_util = "{}/util/arch".format(sge_root)
+    _sge_dict = {}
+    for _key in ["sge_root", "sge_cell"]:
+        if _key.upper() not in os.environ:
+            _file = os.path.join("/etc", _key)
+            if os.path.isfile(_file):
+                _sge_dict[_key.upper()] = file(_file, "r").read().strip()
+            else:
+                print("Error, no {} environment variable set or defined in {}".format(_key.upper(), _file))
+        else:
+            _sge_dict[_key.upper()] = os.environ[_key.upper()]
+    arch_util = "{}/util/arch".format(_sge_dict["SGE_ROOT"])
     if not os.path.isfile(arch_util):
-        print("No arch-utility found in {}/util".format(sge_root))
+        print("No arch-utility found in {}/util".format(_sge_dict["SGE_ROOT"]))
         sys.exit(1)
     _sge_stat, sge_arch = call_command(arch_util)
     sge_arch = sge_arch.strip()
-    qconf_bin = "{}/bin/{}/qconf".format(sge_root, sge_arch)
+    qconf_bin = "{}/bin/{}/qconf".format(_sge_dict["SGE_ROOT"], sge_arch)
     if not os.path.isfile(qconf_bin):
-        print("No qconf command found under {}".format(sge_root))
+        print("No qconf command found under {}".format(_sge_dict["SGE_ROOT"]))
         sys.exit(1)
     print(
-        "SGE_ROOT is {}, SGE_CELL is {}, SGE_ARCH is {}, qconf is at {}".format(
-            sge_root,
-            sge_cell,
-            sge_arch,
-            qconf_bin,
-        )
+        ", ".join(["{} is {}".format(_key, _sge_dict[_key]) for _key in sorted(_sge_dict.iterkeys())])
     )
-    return {
-        "SGE_ROOT": sge_root,
-        "SGE_CELL": sge_cell,
-        "SGE_ARCH": sge_arch,
-        "QCONF_BIN": qconf_bin,
-    }
+    return _sge_dict
+
+
+def get_sge_log_line(sge_dict):
+    return ", ".join(["{} is {}".format(_key, sge_dict[_key]) for _key in sorted(sge_dict.iterkeys())])
 
 
 def get_sge_complexes(sge_dict):
