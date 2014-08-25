@@ -21,9 +21,10 @@
 """ rms-server, process definitions """
 
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.rms.config import global_config
-from initat.rms.rmsmon import rms_mon_process
 from initat.rms.accounting import accounting_process
+from initat.rms.config import global_config
+from initat.rms.license import license_process
+from initat.rms.rmsmon import rms_mon_process
 import cluster_location
 import configfile
 import logging_tools
@@ -52,6 +53,7 @@ class server_process(threading_tools.process_pool):
         # self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(rms_mon_process("rms_mon"), start=True)
         self.add_process(accounting_process("accounting"), start=True)
+        self.add_process(license_process("license"), start=True)
         self.register_func("command_result", self._com_result)
         # self._init_em()
         # self.register_timer(self._check_db, 3600, instant=True)
@@ -99,12 +101,12 @@ class server_process(threading_tools.process_pool):
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("rms_server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
             msi_block.start_command = "/etc/init.d/rms-server start"
             msi_block.stop_command = "/etc/init.d/rms-server force-stop"
             msi_block.kill_pids = True

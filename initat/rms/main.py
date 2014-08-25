@@ -97,7 +97,7 @@ def main():
             else:
                 print "error: Cannot read %s from file %s, exiting..." % (v_name, v_src)
                 sys.exit(2)
-    stat, sge_dict["SGE_ARCH"], _log_lines = call_command("/%s/util/arch" % (sge_dict["SGE_ROOT"]))
+    stat, sge_dict["SGE_ARCH"], _log_lines = call_command("/{}/util/arch".format(sge_dict["SGE_ROOT"]))
     if stat:
         if global_config["FORCE"]:
             sge_dict["SGE_ARCH"] = "lx26_amd64"
@@ -106,7 +106,7 @@ def main():
             sys.exit(1)
     cluster_location.read_config_from_db(
         global_config,
-        "sge_server",
+        "rms_server",
         [
             ("CHECK_ITERATIONS", configfile.int_c_var(3)),
             ("COM_PORT", configfile.int_c_var(COM_PORT)),
@@ -121,7 +121,9 @@ def main():
             ("STRICT_MODE", configfile.bool_c_var(False)),
             ("APPEND_SERIAL_COMPLEX", configfile.bool_c_var(True)),
             ("CLEAR_ITERATIONS", configfile.int_c_var(1)),
-            ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300))
+            ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300)),
+            ("LICENSE_BASE", configfile.str_c_var("/etc/sysconfig/licenses")),
+            ("TRACK_LICENSES", configfile.bool_c_var(False)),
         ],
         dummy_run=global_config["DUMMY_RUN"]
     )
