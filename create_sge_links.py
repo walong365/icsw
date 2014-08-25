@@ -28,6 +28,7 @@ import os
 import shutil
 import sys
 
+
 def read_base_config():
     files_ok = True
     var_dict = {}
@@ -45,6 +46,7 @@ def read_base_config():
         sys.exit(1)
     return var_dict
 
+
 def call_command(com):
     c_stat, out = commands.getstatusoutput(com)
     if c_stat:
@@ -54,6 +56,7 @@ def call_command(com):
     else:
         print "Calling {} successfull".format(com)
     return out.split("\n")
+
 
 def create_blu_links(var_dict):
     # deprecated, do not use
@@ -102,11 +105,13 @@ def create_blu_links(var_dict):
     # primary architecture
     return all_prim_ents
 
+
 def remove_py_files(var_dict):
     for dir_path, _dir_names, file_names in os.walk(var_dict["SGE_ROOT"]):
         for file_name in file_names:
             if [True for x in [".pyo", ".pyc", ".py"] if file_name.endswith(x)]:
                 os.unlink(os.path.join(dir_path, file_name))
+
 
 def copy_files(var_dict, src_name, dst_dir):
     file_name = os.path.join(var_dict["SGE_DIST_DIR"], src_name)
@@ -119,6 +124,7 @@ def copy_files(var_dict, src_name, dst_dir):
     else:
         print "cannot find file {}, exiting ...".format(file_name)
         sys.exit(5)
+
 
 def generate_links(l_dict):
     for l_target, l_sources in l_dict.iteritems():
@@ -145,6 +151,7 @@ def generate_links(l_dict):
             if not os.path.islink(s_file):
                 print "Linking from {} to {}".format(s_file, l2_target)
                 os.symlink(l2_target, s_file)
+
 
 def do_modules(var_dict):
     MOD_DIR = "/opt/cluster/Modules/modulefiles"
@@ -184,6 +191,7 @@ setenv SGE_ARCH %{SGE_ARCH}
     file(mod_file, "w").write(sge_template)
     print("created the module file {}".format(mod_file))
 
+
 def main():
     # read basic vars
     var_dict = read_base_config()
@@ -217,17 +225,23 @@ def main():
     # copy 3rdparty-files
     copy_files(var_dict, ".party_files", "3rd_party")
     # build link dict
-    link_dict = {"{}/3rd_party/proepilogue.py".format(var_dict["SGE_ROOT"]) : ["{}/3rd_party/{}".format(var_dict["SGE_ROOT"], _entry) for _entry in [
-        "prologue",
-        "epilogue",
-        "lamstart",
-        "lamstop",
-        "pestart",
-        "pestop",
-        "mvapich2start",
-        "mvapich2stop"]]}
+    link_dict = {
+        "{}/3rd_party/proepilogue.py".format(var_dict["SGE_ROOT"]): [
+            "{}/3rd_party/{}".format(var_dict["SGE_ROOT"], _entry) for _entry in [
+                "prologue",
+                "epilogue",
+                "lamstart",
+                "lamstop",
+                "pestart",
+                "pestop",
+                "mvapich2start",
+                "mvapich2stop"
+            ]
+        ]
+    }
     generate_links(link_dict)
     do_modules(var_dict)
+
 
 if __name__ == "__main__":
     main()
