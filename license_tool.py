@@ -37,14 +37,23 @@ class license_check(object):
     def __init__(self, **kwargs):
         self.log_com = kwargs.get("log_com", None)
         self.lmutil_path = kwargs.get("lmutil_path", "/opt/cluster/bin/lmutil")
-        self.server_addr = kwargs.get("server", "localhost")
-        if self.server_addr.startswith("/"):
-            self.server_addr = file(self.server_addr, "r").read().strip().split()[0]
-        self.server_port = kwargs.get("port", "1055")
-        if type(self.server_port) not in [int, long]:
-            if self.server_port.startswith("/"):
-                self.server_port = file(self.server_port, "r").read().strip().split()[0]
-            self.server_port = int(self.server_port)
+        if "license_file" in kwargs:
+            _lic_file = kwargs["license_file"]
+            if _lic_file.count("@"):
+                _port, self.server_addr = _lic_file.split("@")
+                self.server_port = int(_port)
+            else:
+                print("unknown license_file '{}'".format(_lic_file))
+                sys.exit(-1)
+        else:
+            self.server_addr = kwargs.get("server", "localhost")
+            if self.server_addr.startswith("/"):
+                self.server_addr = file(self.server_addr, "r").read().strip().split()[0]
+            self.server_port = kwargs.get("port", "1055")
+            if type(self.server_port) not in [int, long]:
+                if self.server_port.startswith("/"):
+                    self.server_port = file(self.server_port, "r").read().strip().split()[0]
+                self.server_port = int(self.server_port)
         self.log("license server {} (port {:d})".format(self.server_addr, self.server_port))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
