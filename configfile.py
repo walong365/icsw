@@ -455,7 +455,7 @@ class configuration(object):
 
     def add_config_entries(self, entries, **kwargs):
         if type(entries) == dict:
-            entries = [(key, value) for key, value in entries.iteritems()]
+            entries = sorted([(key, value) for key, value in entries.iteritems()])
         for key, value in entries:
             # check for override of database flag
             if not value._database_set and "database" in kwargs:
