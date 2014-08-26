@@ -366,6 +366,7 @@ def handle_complex_licenses(actual_licenses):
     comp_keys = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used and _value.license_type == "complex"]
     for comp_key in sorted(comp_keys):
         _lines.extend(actual_licenses[comp_key].handle_complex(actual_licenses))
+    return _lines
 
 
 def parse_license_lines(lines, act_site, **kwargs):
@@ -441,7 +442,6 @@ def parse_license_lines(lines, act_site, **kwargs):
 
 def update_usage(lic_dict, srv_xml):
     [_value.reset() for _value in lic_dict.itervalues()]
-    print etree.tostring(srv_xml, pretty_print=True)
     for cur_lic in srv_xml.xpath(".//license[@name]", smart_strings=False):
         name = cur_lic.attrib["name"]
         act_lic = lic_dict.get(name, None)
