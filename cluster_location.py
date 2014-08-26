@@ -58,12 +58,16 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                 # very similiar code appears in config_tools.py
                 src_sql_obj = _VAR_LUT[short].objects
                 if init_list and not kwargs.get("read_all", False):
-                    src_sql_obj = src_sql_obj.filter(Q(name__in=[var_name for var_name, _var_value in init_list]))
+                    src_sql_obj = src_sql_obj.filter(
+                        Q(name__in=[var_name for var_name, _var_value in init_list])
+                    )
                 for db_rec in src_sql_obj.filter(
-                    (Q(device=0) | Q(device=None) | Q(device=serv_idx)) &
-                    (Q(config__name=real_config_name)) &
-                    (Q(config__device_config__device=serv_idx))
-                ):
+                    (
+                        Q(device=0) | Q(device=None) | Q(device=serv_idx)
+                    ) &
+                    Q(config__name=real_config_name) &
+                    Q(config__device_config__device=serv_idx)
+                ).order_by("name"):
                     if db_rec.name.count(":"):
                         var_global = False
                         local_host_name, var_name = db_rec.name.split(":", 1)
@@ -251,7 +255,8 @@ def write_config(server_type, g_config, **kwargs):
                         description = "{} default value from {} on {}".format(
                             var_range_name,
                             srv_info.config_name,
-                            full_host_name),
+                            full_host_name,
+                        )
                     var_obj(
                         name=real_k_name,
                         description=description,
