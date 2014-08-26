@@ -205,7 +205,7 @@ def main():
                     cur_used = {_key: _value.used for _key, _value in actual_licenses.iteritems()}
                     configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
-                    for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses, cur_used):
+                    for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
                         log_template.log(log_line, log_level)
                     sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses, cur_used)
                     # report to SGE
