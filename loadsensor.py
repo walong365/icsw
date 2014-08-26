@@ -23,11 +23,9 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
-import commands
 import license_tool  # @UnresolvedImport
 import logging_tools
 import os
-import re
 import sge_license_tools
 import stat
 import sys
@@ -105,41 +103,17 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                 ", ".join(all_server_addrs)
             )
         )
-        for cur_lic in srv_result.xpath(".//license[@name]", smart_strings=False):
-            name = cur_lic.attrib["name"]
-            act_lic = actual_licenses.get(name, None)
-            if act_lic and act_lic.is_used:
-                configured_lics.append(name)
-                _total, used = (
-                    int(cur_lic.attrib["issued"]),
-                    int(cur_lic.attrib["used"]) - int(cur_lic.attrib.get("reserved", "0")))
-                if act_lic.used_num != used:
-                    log_template.info(
-                        "attribute {}: use_count changed from {:d} to {:d}".format(
-                            act_lic.attribute,
-                            act_lic.used_num,
-                            used
-                        )
-                    )
-                    act_lic.used_num = int(used)
-                    act_lic.changed = True
+        sge_license_tools.update_usage(actual_licenses, srv_result)
+        configured_lics = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
     return configured_lics
 
 
-def calculate_compound_licenses(log_template, actual_licenses, configured_lics):
-    comp_keys = [key for key, value in actual_licenses.iteritems() if value.is_used and value.license_type == "compound"]
-    for comp_key in sorted(comp_keys):
-        configured_lics.append(comp_key)
-        for log_line, log_level in actual_licenses[comp_key].handle_compound(actual_licenses):
-            log_template.log(log_level, log_line)
-
-
-def build_sge_report_lines(log_template, configured_lics, actual_lics):
+def build_sge_report_lines(log_template, configured_lics, actual_lics, cur_used):
     lines = ["start"]
     rep_dict = {
         "lics_in_use": [],
         "simple_lics": 0,
-        "compound_lics": 0
+        "complex_lics": 0
     }
     for configured_lic in configured_lics:
         act_lic = actual_lics[configured_lic]
@@ -147,10 +121,10 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics):
         if act_lic.license_type == "simple":
             rep_dict["simple_lics"] += 1
         else:
-            rep_dict["compound_lics"] += 1
+            rep_dict["complex_lics"] += 1
         if free_lics != act_lic.total_num:
             rep_dict["lics_in_use"].append(configured_lic)
-        if act_lic.changed:
+        if configured_lic not in cur_used or act_lic.num_used != cur_used[configured_lic]:
             log_template.info(
                 "reporting {:d} free of {:d} for {}".format(
                     free_lics,
@@ -160,38 +134,6 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics):
         lines.append("global:{}:{:d}".format(configured_lic, free_lics))
     lines.append("end")
     return lines, rep_dict
-
-
-def get_used(log_template, qstat_bin):
-    act_dict = {}
-    job_id_re = re.compile("\d+\.*\d*")
-    act_com = "{} -ne -r".format(qstat_bin)
-    c_stat, out = commands.getstatusoutput(act_com)
-    if c_stat:
-        log_template.error("Error calling {} ({:d}):".format(act_com, c_stat))
-        for line in out.split("\n"):
-            log_template.error(" - {}".format(line.rstrip()))
-    else:
-        act_job_mode = "?"
-        for line_parts in [x.strip().split() for x in out.split("\n") if x.strip()]:
-            job_id = line_parts[0]
-            if job_id_re.match(job_id) and len(line_parts) >= 9:
-                act_job_mode = line_parts[4]
-            elif len(line_parts) >= 3:
-                if ("{} {}".format(line_parts[0], line_parts[1])).lower() == "hard resources:":
-                    res_name, res_value = line_parts[2].split("=")
-                    if "r" in act_job_mode or "R" in act_job_mode or "t" in act_job_mode:
-                        dict_name = "used"
-                    else:
-                        dict_name = "requested"
-                    act_dict.setdefault(dict_name, {}).setdefault(res_name, 0)
-                    try:
-                        res_value = int(res_value)
-                    except ValueError:
-                        pass
-                    else:
-                        act_dict[dict_name][res_name] += res_value
-    return act_dict
 
 
 def main():
@@ -260,23 +202,28 @@ def main():
                             act_site
                         )
                         lic_read_time = file_time
+                    cur_used = {_key: _value.used_num for _key, _value in actual_licenses.iteritems()}
                     configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
-                    calculate_compound_licenses(log_template, actual_licenses, configured_licenses)
-                    sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses)
+                    for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
+                        log_template.log(log_line, log_level)
+                    sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses, cur_used)
                     # report to SGE
                     print "\n".join(sge_lines)
                     end_time = time.time()
-                    log_template.info("%s defined, %d configured, %d in use%s, (%d simple, %d compound), took %s" % (
-                        logging_tools.get_plural("license", len(actual_licenses.keys())),
-                        len(configured_licenses),
-                        len(rep_dict["lics_in_use"]),
-                        rep_dict["lics_in_use"] and " ({})".format(", ".join(rep_dict["lics_in_use"])) or "",
-                        rep_dict["simple_lics"],
-                        rep_dict["compound_lics"],
-                        logging_tools.get_diff_time_str(end_time - start_time)))
+                    log_template.info(
+                        "{} defined, {:d} configured, {:d} in use{}, ({:d} simple, {:d} complex), took {}".format(
+                            logging_tools.get_plural("license", len(actual_licenses.keys())),
+                            len(configured_licenses),
+                            len(rep_dict["lics_in_use"]),
+                            rep_dict["lics_in_use"] and " ({})".format(", ".join(rep_dict["lics_in_use"])) or "",
+                            rep_dict["simple_lics"],
+                            rep_dict["complex_lics"],
+                            logging_tools.get_diff_time_str(end_time - start_time)
+                        )
+                    )
                 else:
-                    log_template.warning("site_file for site %s not readable (base_dir is %s)" % (act_site, base_dir))
+                    log_template.warning("site_file for site {} not readable (base_dir is {})".format(act_site, base_dir))
     except KeyboardInterrupt:
         log_template.warning("proc {:d}: got KeyboardInterrupt, exiting ...".format(my_pid))
     except term_error:

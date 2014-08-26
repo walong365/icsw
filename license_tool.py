@@ -20,6 +20,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from sge_license_tools import sge_license
+import sge_license_tools
 
 """ ask license server and return an XML-represenation of license situation """
 
@@ -74,7 +76,7 @@ class license_check(object):
         else:
             return in_str
 
-    def check(self):
+    def check(self, license_names=None):
         s_time = time.time()
         self.log("starting check")
         ext_code, ext_lines = self.call_external(
@@ -95,15 +97,16 @@ class license_check(object):
             )
             line_num = 0
         else:
-            ret_struct.attrib.update({
-                "state": "{:d}".format(logging_tools.LOG_LEVEL_OK),
-                "info": "call successfull"}
+            ret_struct.attrib.update(
+                {
+                    "state": "{:d}".format(logging_tools.LOG_LEVEL_OK),
+                    "info": "call successfull"
+                }
             )
             ret_struct.append(E.license_servers())
             ret_struct.append(E.licenses())
             found_server = set()
             cur_lic, cur_srv = (None, None)
-            cur_year = datetime.datetime.now().year
             # populate structure
             for line_num, line in enumerate(ext_lines.split("\n")):
                 if not line.strip():
@@ -127,13 +130,17 @@ class license_check(object):
                     if lic_stat == "error":
                         pass
                     else:
-                        cur_lic = E.license(
-                            name=lparts[2][:-1],
-                            issued=lparts[5],
-                            used=lparts[10],
-                            reserved="0",
-                            free="{:d}".format(int(lparts[5]) - int(lparts[10])))
-                        ret_struct.find("licenses").append(cur_lic)
+                        _lic_name = lparts[2][:-1]
+                        if license_names is None or _lic_name in license_names:
+                            cur_lic = E.license(
+                                name=_lic_name,
+                                issued=lparts[5],
+                                used=lparts[10],
+                                reserved="0",
+                                free="{:d}".format(int(lparts[5]) - int(lparts[10])),
+                                source="server",
+                            )
+                            ret_struct.find("licenses").append(cur_lic)
                 if cur_lic is not None:
                     if "\"{}\"".format(cur_lic.attrib["name"]) == lparts[0]:
                         cur_lic_version = E.version(
@@ -142,50 +149,19 @@ class license_check(object):
                             floating="false",
                         )
                         if "vendor:" in lparts and "expiry:" in lparts:
-                            cur_lic_version.attrib["vendor"] = self._strip_string(lparts[3])
+                            _v_idx = lparts.index("vendor:")
+                            _e_idx = lparts.index("expiry:")
+                            _exp = lparts[_e_idx + 1]
+                            if _exp not in ["1-jan-0"]:
+                                cur_lic_version.attrib["expiry"] = datetime.datetime.strptime(_exp, "%d-%b-%Y").strftime(sge_license_tools.EXPIRY_DT)
+                            cur_lic_version.attrib["vendor"] = self._strip_string(lparts[_v_idx + 1])
                         else:
                             cur_lic_version.attrib["vendor"] = self._strip_string(lparts[-1])
+                            cur_lic_version.attrib["expiry"] = ""
                         cur_lic.append(cur_lic_version)
                     else:
                         if cur_lic_version is not None:
-                            if lparts[0] == "floating":
-                                cur_lic_version.attrib["floating"] = "true"
-                            elif lparts[1].count("reservation"):
-                                if cur_lic_version.find("reservations") is None:
-                                    cur_lic_version.append(E.reservations())
-                                cur_lic_version.find("reservations").append(E.reservation(
-                                    num=lparts[0],
-                                    target=" ".join(lparts[3:])
-                                ))
-                                cur_lic.attrib["reserved"] = "{:d}".format(int(cur_lic.attrib["reserved"]) + int(lparts[0]))
-                            else:
-                                if cur_lic_version.find("usages") is None:
-                                    cur_lic_version.append(E.usages())
-                                # add usage
-                                if lparts[-1].count("license"):
-                                    num_lics = int(lparts[-2])
-                                    lparts.pop(-1)
-                                    lparts.pop(-1)
-                                    lparts[-1] = lparts[-1][:-1]
-                                else:
-                                    num_lics = 1
-                                start_data = " ".join(lparts[7:])
-                                # remove linger info (if present)
-                                start_data = (start_data.split("(")[0]).strip()
-                                co_datetime = datetime.datetime.strptime(
-                                    "{:d} {}".format(
-                                        cur_year,
-                                        start_data.title()
-                                    ), "%Y %a %m/%d %H:%M"
-                                )
-                                cur_lic_version.find("usages").append(E.usage(
-                                    num="{:d}".format(num_lics),
-                                    user=lparts[0],
-                                    client_long=lparts[1],
-                                    client_short=lparts[2],
-                                    client_version=lparts[3][1:-1],
-                                    checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
-                                ))
+                            self._feed_license_version(cur_lic, cur_lic_version, lparts)
         e_time = time.time()
         ret_struct.attrib["run_time"] = "{:.3f}".format(e_time - s_time)
         self.log(
@@ -195,6 +171,49 @@ class license_check(object):
             )
         )
         return ret_struct
+
+    def _feed_license_version(self, cur_lic, cur_lic_version, lparts):
+        cur_year = datetime.datetime.now().year
+        if lparts[0] == "floating":
+            cur_lic_version.attrib["floating"] = "true"
+        elif lparts[1].count("reservation"):
+            if cur_lic_version.find("reservations") is None:
+                cur_lic_version.append(E.reservations())
+            cur_lic_version.find("reservations").append(E.reservation(
+                num=lparts[0],
+                target=" ".join(lparts[3:])
+            ))
+            cur_lic.attrib["reserved"] = "{:d}".format(int(cur_lic.attrib["reserved"]) + int(lparts[0]))
+        else:
+            if cur_lic_version.find("usages") is None:
+                cur_lic_version.append(E.usages())
+            # add usage
+            if lparts[-1].count("license"):
+                num_lics = int(lparts[-2])
+                lparts.pop(-1)
+                lparts.pop(-1)
+                lparts[-1] = lparts[-1][:-1]
+            else:
+                num_lics = 1
+            start_data = " ".join(lparts[7:])
+            # remove linger info (if present)
+            start_data = (start_data.split("(")[0]).strip()
+            co_datetime = datetime.datetime.strptime(
+                "{:d} {}".format(
+                    cur_year,
+                    start_data.title()
+                ), "%Y %a %m/%d %H:%M"
+            )
+            cur_lic_version.find("usages").append(
+                E.usage(
+                    num="{:d}".format(num_lics),
+                    user=lparts[0],
+                    client_long=lparts[1],
+                    client_short=lparts[2],
+                    client_version=lparts[3][1:-1],
+                    checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
+                )
+            )
 
 
 def main():

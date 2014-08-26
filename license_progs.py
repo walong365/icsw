@@ -22,15 +22,16 @@
 #
 """ modify license settings """
 
-import sys
+from lxml import etree
 import argparse
-import os
-import time
-import tempfile
-import sge_license_tools
 import license_tool
 import logging_tools
+import os
 import process_tools
+import sge_license_tools
+import sys
+import tempfile
+import time
 
 
 def _create_base_dir(opts):
@@ -48,7 +49,32 @@ def _log(level, what):
     print("[{:2d}] {}".format(level, what))
 
 
+def _lic_show(opts, act_conf):
+    _cur_lic = license_tool.license_check(
+        log_com=_log,
+        lmutil_path=act_conf["LMUTIL_PATH"],
+        license_file=act_conf["LICENSE_FILE"],
+    )
+    _xml = _cur_lic.check()
+    current_lics = sge_license_tools.parse_license_lines(
+        sge_license_tools.text_file(
+            sge_license_tools.get_site_license_file_name(opts.base, opts.site),
+            ignore_missing=True,
+            strip_empty=False,
+            strip_hash=False,
+        ).lines,
+        opts.site
+    )
+    sge_license_tools.update_usage(current_lics, _xml)
+    out_list = logging_tools.new_form_list()
+    for _name in sorted(current_lics.keys()):
+        _lic = current_lics[_name]
+        out_list.append(_lic.get_info_line())
+    print unicode(out_list)
+
+
 def _lic_fetch(opts, act_conf):
+    # query license server and update licenses
     _cur_lic = license_tool.license_check(
         log_com=_log,
         lmutil_path=act_conf["LMUTIL_PATH"],
@@ -61,13 +87,7 @@ def _lic_fetch(opts, act_conf):
         _srv_info = _xml.find(".//license_servers/server").attrib["info"]
         new_lics = {}
         for _lic in _xml.findall(".//license"):
-            new_lic = sge_license_tools.sge_license(
-                _lic.get("name"),
-                license_server=_srv_info,
-                license_type="simple"
-            )
-            new_lic.total_num = int(_lic.get("issued"))
-            new_lic.used_num = int(_lic.get("used"))
+            new_lic = sge_license_tools.sge_license(_lic, site=opts.site)
             new_lics[new_lic.name] = new_lic
         current_lics_file = sge_license_tools.text_file(
             sge_license_tools.get_site_license_file_name(opts.base, opts.site),
@@ -77,38 +97,47 @@ def _lic_fetch(opts, act_conf):
         )
         current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
         print(
-            "Discovered {:d} licenses, {:d} of them are currently in use".format(
+            "discovered {:d} licenses, {:d} of them are currently in use".format(
                 len(current_lics),
                 len([True for _lic in current_lics.itervalues() if _lic.is_used])
             )
         )
-        lics_to_add = set(new_lics) - set(current_lics)
-        _new_content = [
-            "",
-            "#",
-            "# {} licenses added on {}".format(len(lics_to_add), time.ctime()),
-            "#",
-        ]
-        form_str = "{:<40s} {:<40s} {:<40s} {:d}"
-        for _al_key in sorted(lics_to_add):
+        for _al_key in sorted(set(new_lics) - set(current_lics)):
             _lic_to_add = new_lics[_al_key]
+            _lic_to_add.added = time.ctime()
             print(
-                "discovered new license {} ({}, {:d})".format(
+                "add new license {} ({}, {:d})".format(
                     _lic_to_add.name,
                     _lic_to_add.attribute,
                     _lic_to_add.total_num,
                 )
             )
-            _new_content.append(
-                form_str.format(
-                    "#lic_{}_{}".format(opts.site, _al_key),
-                    _lic_to_add.get_lic_server_spec(),
-                    _lic_to_add.attribute,
-                    _lic_to_add.total_num,
-                )
-            )
-        if lics_to_add:
-            current_lics_file.write(_new_content, mode="a")
+            current_lics[_al_key] = _lic_to_add
+        for _cmp_key in sorted(set(new_lics) & set(current_lics)):
+            current_lics[_cmp_key].update(new_lics[_cmp_key])
+        current_lics_file.write(etree.tostring(sge_license_tools.build_license_xml(opts.site, current_lics), pretty_print=True))
+
+
+def _lic_addc(opts, act_conf):
+    current_lics_file = sge_license_tools.text_file(
+        sge_license_tools.get_site_license_file_name(opts.base, opts.site),
+        ignore_missing=True,
+        strip_empty=False,
+        strip_hash=False,
+    )
+    current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
+    if not opts.complex_name or opts.complex_name in current_lics:
+        print "complex name '{}' empty or already used".format(opts.complex_name)
+        sys.exit(1)
+    new_lic = sge_license_tools.sge_license(
+        opts.complex_name,
+        license_type="complex",
+        eval_str=opts.eval_str,
+        site=opts.site,
+        added=time.ctime()
+    )
+    current_lics[new_lic.name] = new_lic
+    current_lics_file.write(etree.tostring(sge_license_tools.build_license_xml(opts.site, current_lics), pretty_print=True))
 
 
 def _lic_config(opts, act_conf, sge_dict):
@@ -121,6 +150,7 @@ def _lic_config(opts, act_conf, sge_dict):
         strip_hash=False,
     )
     current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
+    sge_license_tools.handle_complex_licenses(current_lics)
     _lics_to_use = [_lic.name for _lic in current_lics.itervalues() if _lic.is_used]
     # modify complexes
     with tempfile.NamedTemporaryFile() as _tmpfile:
@@ -135,6 +165,8 @@ def _lic_config(opts, act_conf, sge_dict):
             # rewind
             _tmpfile.seek(0)
             sge_license_tools.call_command("{} -Mc {}".format(sge_dict["QCONF_BIN"], _tmpfile.name), 1, True)
+            print("waiting for 2 seconds...")
+            time.sleep(2)
     # modify global execution host
     # attribute string
     ac_str = ",".join(["{}={:d}".format(_lic_to_use, current_lics[_lic_to_use].total_num) for _lic_to_use in _lics_to_use])
@@ -160,13 +192,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--base", type=str, default=sge_license_tools.BASE_DIR, help="set basedir [%(default)s]")
     parser.add_argument("--site", type=str, default=_def_site, help="select site [%(default)s], add if not already present")
-    parser.add_argument("--list-sites", default=False, action="store_true", help="list defined sites [%(default)s]")
-    parser.add_argument("--show-config", default=False, action="store_true", help="show config of choosen site [%(default)s]")
     parser.add_argument("--set-as-default", default=False, action="store_true", help="set site as default site [%(default)s]")
     parser.add_argument("--create", default=False, action="store_true", help="create missing files [%(default)s]")
-    parser.add_argument("--port", default=0, type=int, help="license server port to use [%(default)s]")
-    parser.add_argument("--host", default="", type=str, help="license server to use [%(default)s]")
-    parser.add_argument("--mode", default="config", choices=["config", "fetch"], help="operation mode [%(default)s]")
+    _srv_group = parser.add_argument_group("server specs")
+    _srv_group.add_argument("--port", default=0, type=int, help="license server port to use [%(default)s]")
+    _srv_group.add_argument("--host", default="", type=str, help="license server to use [%(default)s]")
+    parser.add_argument("--mode", default="show", choices=["config", "fetch", "addc", "show"], help="operation mode [%(default)s]")
+    _cmp_group = parser.add_argument_group("complex handling")
+    _cmp_group.add_argument("--complex-name", default="", type=str, help="name of new complex [%(default)s]")
+    _cmp_group.add_argument("--eval-str", default="1", type=str, help="evaluation string for new complex [%(default)s]")
+    _query_group = parser.add_argument_group("query options")
+    _query_group.add_argument("--list-sites", default=False, action="store_true", help="list defined sites [%(default)s]")
+    _query_group.add_argument("--show-config", default=False, action="store_true", help="show config of choosen site [%(default)s]")
     opts = parser.parse_args()
     # print "*", opts
     _create_base_dir(opts)
@@ -213,12 +250,17 @@ def main():
         for _key in sorted(act_conf):
             print " - {:<20} = '{}'".format(_key, act_conf[_key])
 
-    if opts.mode == "fetch":
+    if opts.mode == "show":
+        _lic_show(opts, act_conf)
+
+    elif opts.mode == "fetch":
         _lic_fetch(opts, act_conf)
 
     elif opts.mode == "config":
-
         _lic_config(opts, act_conf, sge_license_tools.get_sge_environment())
+
+    elif opts.mode == "addc":
+        _lic_addc(opts, act_conf)
 
 if __name__ == "__main__":
     main()
