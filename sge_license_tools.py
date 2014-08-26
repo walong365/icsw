@@ -1,4 +1,5 @@
 #!/usr/bin/python-init -Ot
+#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2005-2008,2012-2014 Andreas Lang-Nevyjel, init.at
@@ -87,26 +88,27 @@ class sge_license(object):
         # just for bookkeeping
         self.expires = None
         self.site = kwargs.get("site", "unknown")
-        self.used_num = 0
+        self.used = 0
         if etree.iselement(attribute):
             # init from xml
             _xml = attribute
             # print etree.tostring(_xml, pretty_print=True)
             if _xml.get("source", "file") == "server":
+                # source from license fetch via lmutil lmstat
                 _version = _xml.find("version")
                 # xml from license check
                 self.name = _xml.get("name")
                 self.attribute = _xml.get("name")
                 self.license_type = "simple"
                 # do not set license servers
-                self.total_num = int(_xml.get("issued", "0"))
-                self.reserved_num = int(_xml.get("reserved", "0"))
+                self.total = int(_xml.get("issued", "0"))
+                self.reserved = int(_xml.get("reserved", "0"))
                 # show in frontend / command tools
                 self.show = True
                 # is used: set for SGE
                 self.is_used = False
                 # limit usage (reserve this number of licenses for external usage)
-                self.limit_num = 0
+                self.limit = 0
                 self.added = "unknown"
                 if _version is not None and _version.get("expiry", ""):
                     self.expires = datetime.datetime.strptime(_version.get("expiry"), EXPIRY_DT)
@@ -117,23 +119,24 @@ class sge_license(object):
                 if self.license_type == "simple":
                     for _lic_srv in _xml.findall("license_servers/license_server"):
                         self.__lic_servers.append((int(_lic_srv.get("port")), _lic_srv.get("address")))
+                    self.__match_str = _xml.get("match_str", "")
                 else:
                     self.__eval_str = _xml.get("eval_str")
-                self.total_num = int(_xml.get("total"))
-                self.reserved_num = int(_xml.get("reserved"))
-                self.limit_num = int(_xml.get("limit", "0"))
+                self.total = int(_xml.get("total"))
+                self.reserved = int(_xml.get("reserved"))
+                self.limit = int(_xml.get("limit", "0"))
                 self.is_used = True if int(_xml.get("in_use", "0")) else False
                 self.show = True if int(_xml.get("show", "1")) else False
                 self.added = _xml.get("added", "unknown")
                 self.expires = _xml.get("expires", "")
                 if self.expires:
                     self.expires = datetime.datetime.strptime(self.expires, EXPIRY_DT)
-                self.used_num = 0
+                self.used = 0
         else:
             self.is_used = False
-            self.total_num = 0
-            self.reserved_num = 0
-            self.limit_num = 0
+            self.total = 0
+            self.reserved = 0
+            self.limit = 0
             self.show = True
             self.name = attribute.lower()
             self.attribute = attribute
@@ -143,6 +146,7 @@ class sge_license(object):
                 for lsp_part in lsp_parts:
                     port, host = lsp_part.split("@")
                     self.__lic_servers.append((int(port), host))
+                    self.__match_str = kwargs.get("match_str", "")
             else:
                 self.__eval_str = kwargs.get("eval_str", "1")
             self.added = "unknown"
@@ -151,12 +155,12 @@ class sge_license(object):
         if isinstance(other, sge_license):
             if other.expires:
                 self.expires = other.expires
-            self.total_num = other.total_num
-            self.reserved_num = other.reserved_num
+            self.total = other.total
+            self.reserved = other.reserved
         else:
             # xml input from server
-            self.total_num = int(other.get("issued", "0"))
-            self.reserved_num = int(other.get("reserved", "0"))
+            self.total = int(other.get("issued", "0"))
+            self.reserved = int(other.get("reserved", "0"))
 
     @property
     def full_name(self):
@@ -169,7 +173,19 @@ class sge_license(object):
     def reset(self):
         # reset usage counters
         # used from server
-        self.used_num = 0
+        self.used = 0
+        # used from sge
+        self.sge_used = 0
+        self.external_used = 0
+
+    def num_sge_specific(self, lic_xml):
+        _num_sge = 0
+        if self.__match_str:
+            match_re = re.compile(self.__match_str)
+            for _usage in lic_xml.findall(".//usage"):
+                if match_re.match(_usage.attrib["client_short"]):
+                    _num_sge += int(_usage.get("num", "0"))
+        return _num_sge
 
     def get_xml(self):
         base_lic = E.license(
@@ -177,17 +193,18 @@ class sge_license(object):
             name=self.name,
             attribute=self.attribute,
             type=self.license_type,
-            total="{:d}".format(self.total_num),
-            reserved="{:d}".format(self.reserved_num),
+            total="{:d}".format(self.total),
+            reserved="{:d}".format(self.reserved),
             show="1" if self.show else "0",
-            limit="{:d}".format(self.limit_num),
+            limit="{:d}".format(self.limit),
             added=self.added,
             in_use="1" if self.is_used else "0",
         )
         if self.license_type == "simple":
             base_lic.attrib.update(
                 {
-                    "expires": "" if not self.expires else self.expires.strftime(EXPIRY_DT)
+                    "expires": "" if not self.expires else self.expires.strftime(EXPIRY_DT),
+                    "match_str": self.__match_str,
                 }
             )
             base_lic.append(
@@ -199,7 +216,7 @@ class sge_license(object):
         else:
             base_lic.attrib.update(
                 {
-                    "eval_str": self.__eval_str
+                    "eval_str": self.__eval_str,
                 }
             )
             pass
@@ -208,18 +225,36 @@ class sge_license(object):
     def get_mvect_entries(self, mvect_entry):
         r_list = [
             mvect_entry(
-                "lic.%s.used" % (self.name),
-                info="Licenses used for %s (%s)" % (self.name, self.info),
+                "lic.{}.used".format(self.name),
+                info="used for {} ({})".format(self.name, self.info),
                 default=0
             ),
             mvect_entry(
-                "lic.%s.free" % (self.name),
-                info="Licenses free for %s (%s)" % (self.name, self.info),
+                "lic.{}.free".format(self.name),
+                info="free for {} ({})".format(self.name, self.info),
+                default=0
+            ),
+            mvect_entry(
+                "lic.{}.total".format(self.name),
+                info="# of licenses for {} ({})".format(self.name, self.info),
+                default=0
+            ),
+            mvect_entry(
+                "lic.{}.used_rms".format(self.name),
+                info="rms local used for {} ({})".format(self.name, self.info),
+                default=0
+            ),
+            mvect_entry(
+                "lic.{}.used_external".format(self.name),
+                info="external local used for {} ({})".format(self.name, self.info),
                 default=0
             ),
         ]
-        r_list[0].update(self.used_num)
-        r_list[1].update(self.free_num)
+        r_list[0].update(self.used)
+        r_list[1].update(self.free)
+        r_list[2].update(self.total)
+        r_list[3].update(self.sge_used)
+        r_list[4].update(self.external_used)
         return r_list
 
     def get_info_line(self):
@@ -228,13 +263,14 @@ class sge_license(object):
             logging_tools.form_entry(self.license_type, header="type"),
             logging_tools.form_entry("yes" if self.is_used else "no", header="for SGE"),
             logging_tools.form_entry("yes" if self.show else "no", header="show"),
-            logging_tools.form_entry_right(self.total_num, header="total"),
-            logging_tools.form_entry_right(self.reserved_num, header="reserved"),
-            logging_tools.form_entry_right(self.limit_num, header="limit"),
-            logging_tools.form_entry_right(self.used_num, header="used"),
-            logging_tools.form_entry_right(0, header="SGE"),
-            logging_tools.form_entry_right(0, header="external"),
-            logging_tools.form_entry_right(self.free_num, header="free"),
+            logging_tools.form_entry_right(self.total, header="total"),
+            logging_tools.form_entry_right(self.reserved, header="reserved"),
+            logging_tools.form_entry_right(self.limit, header="limit"),
+            logging_tools.form_entry_right(self.used, header="used"),
+            logging_tools.form_entry_right(self.sge_used, header="SGE"),
+            logging_tools.form_entry_right(self.external_used, header="external"),
+            logging_tools.form_entry_right(self.free, header="free"),
+            logging_tools.form_entry(self.expires.strftime(EXPIRY_DT) if self.expires else "---", header="expires"),
         ]
 
     def _get_info(self):
@@ -244,9 +280,9 @@ class sge_license(object):
             return "complex [{}]".format(self.__eval_str)
     info = property(_get_info)
 
-    def _get_free_num(self):
-        return self.total_num - self.used_num
-    free_num = property(_get_free_num)
+    def _get_free(self):
+        return self.total - self.used
+    free = property(_get_free)
 
     def get_port(self, idx=0):
         return self.__lic_servers[idx][0]
@@ -257,11 +293,15 @@ class sge_license(object):
     def set_eval_str(self, eval_str):
         self.__eval_str = eval_str
 
-    def handle_complex(self, lic_dict):
+    def handle_complex(self, lic_dict, prev_dict=None):
+        prev_dict = prev_dict or {}
         log_lines = []
         _simple_keys = [_key for _key, _value in lic_dict.iteritems() if _value.license_type == "simple"]
+        # return log_lines
         for _type in ["total", "used", "limit"]:
-            t_attr = "{}_num".format(_type)
+            if self.license_type == "complex" and _type in ["used", "limit"]:
+                continue
+            t_attr = "{}".format(_type)
             _glob = {_key: getattr(lic_dict[_key], t_attr) for _key in _simple_keys}
             try:
                 _result = eval(self.__eval_str, _glob)
@@ -277,19 +317,19 @@ class sge_license(object):
                 )
                 setattr(self, t_attr, 0)
             else:
-                if _result != getattr(self, t_attr):
+                if _type == "used" and prev_dict.get(self.name, _result) != _result:
                     log_lines.append(
                         (
                             "{} for {} changed from {:d} to {:d}".format(
                                 _type,
                                 self.name,
-                                getattr(self, t_attr),
+                                prev_dict[self.name],
                                 _result
                             ),
                             logging_tools.LOG_LEVEL_OK
                         )
                     )
-                    setattr(self, t_attr, _result)
+                setattr(self, t_attr, _result)
         return log_lines
 
 
@@ -406,14 +446,14 @@ def parse_license_lines(lines, act_site, **kwargs):
                     ng_dict=kwargs.get("ng_dict", {}),
                     site=act_site,
                 )
-                new_lic.total_num = int(simple_lic.group("tot_num"))
+                new_lic.total = int(simple_lic.group("tot_num"))
             elif complex_lic:
                 new_lic = sge_license(
                     complex_lic.group("attribute"),
                     license_type="complex",
                     ng_dict=kwargs.get("ng_dict", {}),
                     site=act_site,
-                    eval_str=complex_lic.group("eval_str")
+                    eval_str=complex_lic.group("eval_str"),
                 )
             else:
                 new_lic = None
@@ -442,14 +482,52 @@ def parse_license_lines(lines, act_site, **kwargs):
     return new_dict
 
 
+def set_sge_used(lic_dict, used_dict):
+    for _key, _lic in lic_dict.iteritems():
+        if _key in used_dict:
+            _lic.sge_used = used_dict[_key]
+            if _lic.license_type == "complex":
+                _lic.used += _lic.sge_used
+            else:
+                _lic.external_used -= _lic.sge_used
+
+
+def parse_sge_used(sge_dict):
+    act_com = "{} -ne -r -xml".format(sge_dict["QSTAT_BIN"])
+    c_stat, out = call_command(act_com)
+    _used = {}
+    if not c_stat:
+        _tree = etree.fromstring(out)
+        for _job in _tree.findall(".//job_list[@state='running']"):
+            _slots_el = _job.find("slots")
+            if _slots_el is not None:
+                _slots = int(_slots_el.text)
+            else:
+                _slots = 1
+            _req_list = []
+            for _req in _job.findall("hard_request"):
+                _val = int(float(_req.text) * _slots + 0.5)
+                _used.setdefault(_req.attrib["name"], []).append(_val)
+    _used = {_key: sum(_value) for _key, _value in _used.iteritems()}
+    return _used
+
+
 def update_usage(lic_dict, srv_xml):
     [_value.reset() for _value in lic_dict.itervalues()]
     for cur_lic in srv_xml.xpath(".//license[@name]", smart_strings=False):
         name = cur_lic.attrib["name"]
         act_lic = lic_dict.get(name, None)
         if act_lic and act_lic.is_used:
+            print etree.tostring(cur_lic, pretty_print=True)
             act_lic.update(cur_lic)
-            act_lic.used_num = int(cur_lic.get("used", "0"))
+            act_lic.used = int(cur_lic.get("used", "0")) - int(cur_lic.get("reserved", "0"))
+            if act_lic.license_type == "simple":
+                # decide if this license is external or sge local
+                _num_sge = act_lic.num_sge_specific(cur_lic)
+                act_lic.sge_used += _num_sge
+                act_lic.external_used += act_lic.used - _num_sge
+            else:
+                act_lic.external_used += act_lic.used
 
 
 def call_command(command, exit_on_fail=0, show_output=False):

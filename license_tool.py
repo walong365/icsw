@@ -209,7 +209,7 @@ class license_check(object):
                     num="{:d}".format(num_lics),
                     user=lparts[0],
                     client_long=lparts[1],
-                    client_short=lparts[2],
+                    client_short=lparts[2].split(".")[0],
                     client_version=lparts[3][1:-1],
                     checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
                 )

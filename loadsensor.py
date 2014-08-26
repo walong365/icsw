@@ -117,18 +117,18 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics, cur_used)
     }
     for configured_lic in configured_lics:
         act_lic = actual_lics[configured_lic]
-        free_lics = act_lic.free_num
+        free_lics = act_lic.free
         if act_lic.license_type == "simple":
             rep_dict["simple_lics"] += 1
         else:
             rep_dict["complex_lics"] += 1
-        if free_lics != act_lic.total_num:
+        if free_lics != act_lic.total:
             rep_dict["lics_in_use"].append(configured_lic)
-        if configured_lic not in cur_used or act_lic.used_num != cur_used[configured_lic]:
+        if configured_lic not in cur_used or act_lic.used != cur_used[configured_lic]:
             log_template.info(
                 "reporting {:d} free of {:d} for {}".format(
                     free_lics,
-                    act_lic.total_num,
+                    act_lic.total,
                     configured_lic)
                 )
         lines.append("global:{}:{:d}".format(configured_lic, free_lics))
@@ -202,10 +202,10 @@ def main():
                             act_site
                         )
                         lic_read_time = file_time
-                    cur_used = {_key: _value.used_num for _key, _value in actual_licenses.iteritems()}
+                    cur_used = {_key: _value.used for _key, _value in actual_licenses.iteritems()}
                     configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
-                    for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
+                    for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses, cur_used):
                         log_template.log(log_line, log_level)
                     sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses, cur_used)
                     # report to SGE

@@ -1,4 +1,5 @@
 #!/usr/bin/python-init -Ot
+#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2005,2007,2014 Andreas Lang-Nevyjel, init.at
@@ -34,6 +35,11 @@ import tempfile
 import time
 
 
+# dummy logger
+def _log(level, what):
+    print("[{:2d}] {}".format(level, what))
+
+
 def _create_base_dir(opts):
     if not os.path.isdir(opts.base):
         try:
@@ -45,11 +51,8 @@ def _create_base_dir(opts):
             print("Successfully created base_dir '{}'".format(opts.base))
 
 
-def _log(level, what):
-    print("[{:2d}] {}".format(level, what))
-
-
 def _lic_show(opts, act_conf):
+    sge_dict = sge_license_tools.get_sge_environment()
     _cur_lic = license_tool.license_check(
         log_com=_log,
         lmutil_path=act_conf["LMUTIL_PATH"],
@@ -66,11 +69,14 @@ def _lic_show(opts, act_conf):
         opts.site
     )
     sge_license_tools.update_usage(current_lics, _xml)
+    sge_license_tools.set_sge_used(current_lics, sge_license_tools.parse_sge_used(sge_dict))
     sge_license_tools.handle_complex_licenses(current_lics)
     out_list = logging_tools.new_form_list()
-    for _name in sorted(current_lics.keys()):
-        _lic = current_lics[_name]
-        out_list.append(_lic.get_info_line())
+    for _t_type in ["simple", "complex"]:
+        for _name in sorted(current_lics.keys()):
+            _lic = current_lics[_name]
+            if _lic.license_type == _t_type:
+                out_list.append(_lic.get_info_line())
     print unicode(out_list)
 
 
@@ -110,7 +116,7 @@ def _lic_fetch(opts, act_conf):
                 "add new license {} ({}, {:d})".format(
                     _lic_to_add.name,
                     _lic_to_add.attribute,
-                    _lic_to_add.total_num,
+                    _lic_to_add.total,
                 )
             )
             current_lics[_al_key] = _lic_to_add
@@ -141,7 +147,8 @@ def _lic_addc(opts, act_conf):
     current_lics_file.write(etree.tostring(sge_license_tools.build_license_xml(opts.site, current_lics), pretty_print=True))
 
 
-def _lic_config(opts, act_conf, sge_dict):
+def _lic_config(opts, act_conf):
+    sge_dict = sge_license_tools.get_sge_environment()
     # complexes and complex names
     _sge_cxs, _sge_cns = sge_license_tools.get_sge_complexes(sge_dict)
     current_lics_file = sge_license_tools.text_file(
@@ -170,7 +177,7 @@ def _lic_config(opts, act_conf, sge_dict):
             time.sleep(2)
     # modify global execution host
     # attribute string
-    ac_str = ",".join(["{}={:d}".format(_lic_to_use, current_lics[_lic_to_use].total_num) for _lic_to_use in _lics_to_use])
+    ac_str = ",".join(["{}={:d}".format(_lic_to_use, current_lics[_lic_to_use].total) for _lic_to_use in _lics_to_use])
     if ac_str:
         _mod_stat, _mod_out = sge_license_tools.call_command("{} -mattr exechost complex_values {} global".format(sge_dict["QCONF_BIN"], ac_str), 1, True)
 
@@ -258,7 +265,7 @@ def main():
         _lic_fetch(opts, act_conf)
 
     elif opts.mode == "config":
-        _lic_config(opts, act_conf, sge_license_tools.get_sge_environment())
+        _lic_config(opts, act_conf)
 
     elif opts.mode == "addc":
         _lic_addc(opts, act_conf)
