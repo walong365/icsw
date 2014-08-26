@@ -5,18 +5,19 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 from rest_framework import serializers
 
 __all__ = [
     "package_repo", "package_repo_serializer",
     "package_search", "package_search_serializer",
     "package_search_result", "package_search_result_serializer",
-    "package", # "package_serializer",
-    "package_device_connection", # "package_device_connection_serializer",
+    "package",  # "package_serializer",
+    "package_device_connection",  # "package_device_connection_serializer",
     "package_service", "package_service_serializer",
-    ]
+]
+
 
 class package_service(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -27,13 +28,16 @@ class package_service(models.Model):
     url = models.CharField(max_length=256, default="")
     type = models.CharField(max_length=64, default="ris")
     created = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
 
+
 class package_service_serializer(serializers.ModelSerializer):
     class Meta:
         model = package_service
+
 
 # package related models
 class package_repo(models.Model):
@@ -54,14 +58,17 @@ class package_repo(models.Model):
         ("yum", "yum (redhat)"),
         ], default="zypper")
     # service = models.CharField(max_length=128, default="")
+
     def __unicode__(self):
         return self.name
+
     @property
     def distributable(self):
         is_d = False
         if self.publish_to_nodes:
             is_d = True if not self.url.startswith("dir:") else False
         return is_d
+
     def get_xml(self):
         return E.package_repo(
             unicode(self),
@@ -75,11 +82,13 @@ class package_repo(models.Model):
             gpg_check="1" if self.gpg_check else "0",
             publish_to_nodes="1" if self.publish_to_nodes else "0",
             url=self.url)
+
     def get_service_name(self):
         if self.service_id:
             return self.service.name
         else:
             return ""
+
     def repo_str(self):
         _vf = [
             "[{}]".format(self.alias),
@@ -95,14 +104,18 @@ class package_repo(models.Model):
         if self.service_id:
             _vf.append("service={}".format(self.service.name))
         return "\n".join(_vf)
+
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
 
+
 class package_repo_serializer(serializers.ModelSerializer):
     service_name = serializers.Field(source="get_service_name")
+
     class Meta:
         model = package_repo
+
 
 class package_search(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -113,25 +126,30 @@ class package_search(models.Model):
     num_searches = models.IntegerField(default=0)
     # state diagramm ini (new) -> run -> done -> wait (search again pressed) -> run -> done -> ...
     current_state = models.CharField(max_length=6, choices=(
-        ("ini" , "initialised"),
+        ("ini", "initialised"),
         ("wait", "waiting"),
-        ("run" , "search running"),
+        ("run", "search running"),
         ("done", "search done")), default="ini")
     deleted = models.BooleanField(default=False)
     # number of results for the last search
     results = models.IntegerField(default=0)
     last_search = models.DateTimeField(null=True, auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.search_string
+
     class CSW_Meta:
         fk_ignore_list = ["package_search_result"]
+
     class Meta:
         app_label = "backbone"
+
 
 class package_search_serializer(serializers.ModelSerializer):
     class Meta:
         model = package_search
+
 
 @receiver(signals.pre_save, sender=package_search)
 def package_search_pre_save(sender, **kwargs):
@@ -143,13 +161,14 @@ def package_search_pre_save(sender, **kwargs):
             if num_ss:
                 raise ValidationError("search_string already used")
 
+
 class package_search_result(models.Model):
     idx = models.AutoField(primary_key=True)
     package_search = models.ForeignKey(package_search)
     name = models.CharField(max_length=128, default="")
     kind = models.CharField(max_length=16, default="package", choices=(
         ("package", "Package"),
-        ("patch"  , "Patch"),
+        ("patch", "Patch"),
     ))
     arch = models.CharField(max_length=32, default="")
     # version w. release
@@ -157,6 +176,7 @@ class package_search_result(models.Model):
     copied = models.BooleanField(default=False)
     package_repo = models.ForeignKey("backbone.package_repo", null=True)
     created = models.DateTimeField(auto_now_add=True)
+
     def create_package(self, exact=True, target_repo=None):
         new_p = package(
             name=self.name,
@@ -176,13 +196,16 @@ class package_search_result(models.Model):
             self.copied = True
             self.save()
         return new_p
+
     class Meta:
         ordering = ("name", "arch", "version",)
         app_label = "backbone"
 
+
 class package_search_result_serializer(serializers.ModelSerializer):
     class Meta:
         model = package_search_result
+
 
 class package(models.Model):
     idx = models.AutoField(db_column="package_idx", primary_key=True)
@@ -190,7 +213,7 @@ class package(models.Model):
     version = models.CharField(max_length=128)
     kind = models.CharField(max_length=16, default="package", choices=(
         ("package", "Package"),
-        ("patch"  , "Patch"),
+        ("patch", "Patch"),
     ))
     always_latest = models.BooleanField(default=False)
     arch = models.CharField(max_length=32, default="")
@@ -199,6 +222,7 @@ class package(models.Model):
     package_repo = models.ForeignKey("backbone.package_repo", null=True)
     target_repo = models.ForeignKey("backbone.package_repo", null=True, related_name="target_repo_package")
     created = models.DateTimeField(auto_now_add=True)
+
     def get_xml(self):
         return E.package(
             unicode(self),
@@ -212,24 +236,29 @@ class package(models.Model):
             package_repo="{:d}".format(self.package_repo_id or 0),
             always_latest="{:d}".format(1 if self.always_latest else 0),
         )
+
     def __unicode__(self):
         if self.always_latest:
             return u"{}-LATEST".format(self.name)
         else:
             return u"{}-{}".format(self.name, self.version)
+
     class CSW_Meta:
         permissions = (
             ("package_install", "access package install site", False),
         )
+
     def target_repo_name(self):
         if self.target_repo_id:
             return self.target_repo.name
         else:
             return ""
+
     class Meta:
         db_table = u'package'
         unique_together = (("name", "version", "arch", "kind", "target_repo",),)
         app_label = "backbone"
+
 
 @receiver(signals.pre_save, sender=package)
 def package_pre_save(sender, **kwargs):
@@ -243,16 +272,18 @@ def package_pre_save(sender, **kwargs):
         if len(cur_pack):
             raise ValidationError("Package already exists")
 
+
 class package_device_connection(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     package = models.ForeignKey("backbone.package")
     # target state
+
     target_state = models.CharField(max_length=8, choices=(
-        ("keep"   , "keep"),
+        ("keep", "keep"),
         ("install", "install"),
         ("upgrade", "upgrade"),
-        ("erase"  , "erase")), default="keep")
+        ("erase", "erase")), default="keep")
     installed = models.CharField(max_length=8, choices=(
         ("u", "unknown"),
         ("y", "yes"),
@@ -262,8 +293,8 @@ class package_device_connection(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     response_type = models.CharField(max_length=16, choices=(
         ("zypper_xml", "zypper_xml"),
-        ("yum_flat"  , "yum_flat"),
-        ("unknown"   , "unknown"),
+        ("yum_flat", "yum_flat"),
+        ("unknown", "unknown"),
         ), default="zypper_xml")
     response_str = models.TextField(max_length=65535, default="")
     # install time of package
@@ -277,6 +308,7 @@ class package_device_connection(models.Model):
     image_list = models.ManyToManyField("backbone.image", blank=True)
     kernel_dep = models.BooleanField(default=False)
     kernel_list = models.ManyToManyField("backbone.kernel", blank=True)
+
     def get_xml(self, with_package=False):
         pdc_xml = E.package_device_connection(
             pk="{:d}".format(self.pk),
@@ -291,6 +323,7 @@ class package_device_connection(models.Model):
         if with_package:
             pdc_xml.append(self.package.get_xml())
         return pdc_xml
+
     def interpret_response(self):
         if self.response_type == "zypper_xml":
             # print "..", self.response_str
@@ -312,10 +345,12 @@ class package_device_connection(models.Model):
                         install_summary = install_summary[0]
                         if not len(install_summary):
                             # nohting to do, set according to target state
-                            self.installed = {"keep"    : "u",
-                                              "install" : "y",
-                                              "upgrade" : "y",
-                                              "erase"   : "n"}[self.target_state]
+                            self.installed = {
+                                "keep": "u",
+                                "install": "y",
+                                "upgrade": "y",
+                                "erase": "n",
+                            }[self.target_state]
                         else:
                             if len(install_summary.xpath(".//to-install", smart_strings=False)):
                                 self.installed = "y"
@@ -414,8 +449,10 @@ class package_device_connection(models.Model):
                     self.install_time = 0
         else:
             self.installed = "u"
+
     class Meta:
         app_label = "backbone"
+
 
 @receiver(signals.pre_save, sender=package_device_connection)
 def package_device_connection_pre_save(sender, **kwargs):

@@ -23,19 +23,23 @@ from threading import local
 
 _thread_local = local()
 
+
 class thread_local_middleware(object):
     def process_request(self, request):
         _thread_local.request = request
         _thread_local.test = "test"
         _thread_local.user = getattr(request, "user", None)
+
     @property
     def user(self):
         return getattr(_thread_local, "user", None)
+
     @property
     def request(self):
         return getattr(_thread_local, "request", None)
 
 REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
+
 
 # reversion 1.5
 class revision_middleware(object):
@@ -48,25 +52,30 @@ class revision_middleware(object):
             revision_context_manager.start()
             if hasattr(request, "user") and request.user.is_authenticated():
                 revision_context_manager.set_user(request.user)
+
     def _close_revision(self, request):
         """Closes the revision."""
         if request.META.get((REVISION_MIDDLEWARE_FLAG, self), False):
             del request.META[(REVISION_MIDDLEWARE_FLAG, self)]
             revision_context_manager.end()
+
     def process_response(self, request, response):
         """Closes the revision."""
         self._close_revision(request)
         return response
+
     def process_exception(self, request, exception):
         """Closes the revision."""
         revision_context_manager.invalidate()
         self._close_revision(request)
+
 
 def get_terminal_size():
     height, width, _hp, _wp = struct.unpack(
         'HHHH',
         fcntl.ioctl(0, termios.TIOCGWINSZ, struct.pack('HHHH', 0, 0, 0, 0)))
     return width, height
+
 
 def show_database_calls(**kwargs):
     if connection:
@@ -111,6 +120,7 @@ def show_database_calls(**kwargs):
                 print u"{:6.2f} {}".format(float(act_sql["time"]), out_str)
     else:
         print "django.db.connection not loaded in backbone.middleware.py"
+
 
 class database_debug(object):
     def process_response(self, request, response):

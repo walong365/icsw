@@ -9,7 +9,7 @@ import sys
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
-ugettext = lambda s : s
+ugettext = lambda s: s
 
 # monkey-patch threading for python 2.7.x
 if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
@@ -30,12 +30,12 @@ if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
     INIT_PRODUCT_NAME = "CORVUS"
     # INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe
     # INIT_PRODUCT_FAMILY = "Corvus woodfordi" # Buntschnabelkrähe
-    INIT_PRODUCT_FAMILY = "Corvus frugilegus" # Saatkrähe
+    INIT_PRODUCT_FAMILY = "Corvus frugilegus"  # Saatkrähe
 else:
     INIT_PRODUCT_NAME = "NOCTUA"
     # INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu
     # INIT_PRODUCT_FAMILY = "Strigidae pulsatrix perspicillata" # Brillenkauz
-    INIT_PRODUCT_FAMILY = "Strigidae ascalaphus" # Wüstenuhu
+    INIT_PRODUCT_FAMILY = "Strigidae ascalaphus"  # Wüstenuhu
 
 ALLOWED_HOSTS = ["*"]
 
@@ -47,12 +47,12 @@ MAIL_SERVER = "localhost"
 
 DATABASES = {
     "default": {
-        "ENGINE"   : "django.db.backends.mysql",
-        "NAME"     : "",
-        "USER"     : "",
-        "PASSWORD" : "",
-        "HOST"     : "",
-        "PORT"     : "",
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "",
+        "USER": "",
+        "PASSWORD": "",
+        "HOST": "",
+        "PORT": "",
         # "CONN_MAX_AGE" : 30,
     }
 }
@@ -88,30 +88,32 @@ mon_dict = dict([(key.split("_")[1], value) for key, value in [
 
 for src_key, dst_key in [
     ("DATABASE", "NAME"),
-    ("USER"    , "USER"),
-    ("PASSWD"  , "PASSWORD"),
-    ("HOST"    , "HOST"),
-    ("ENGINE"  , "ENGINE")]:
+    ("USER", "USER"),
+    ("PASSWD", "PASSWORD"),
+    ("HOST", "HOST"),
+    ("ENGINE", "ENGINE")
+]:
     if src_key in sql_dict:
         DATABASES["default"][dst_key] = sql_dict[src_key]
 
 if mon_dict:
     DATABASES["monitor"] = dict([(key, value) for key, value in DATABASES["default"].iteritems()])
-    for src_key , dst_key in [
+    for src_key, dst_key in [
         ("DATABASE", "NAME"),
-        ("USER"    , "USER"),
-        ("PASSWD"  , "PASSWORD"),
-        ("HOST"    , "HOST"),
-        ("ENGINE"  , "ENGINE")]:
+        ("USER", "USER"),
+        ("PASSWD", "PASSWORD"),
+        ("HOST", "HOST"),
+        ("ENGINE", "ENGINE")
+    ]:
         if src_key in mon_dict:
             DATABASES["monitor"][dst_key] = mon_dict[src_key]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
 CACHES = {
-    "default" : {
-        "BACKEND"  : "django.core.cache.backends.memcached.MemcachedCache",
-        "LOCATION" : "127.0.0.1:11211",
+    "default": {
+        "BACKEND": "django.core.cache.backends.memcached.MemcachedCache",
+        "LOCATION": "127.0.0.1:11211",
     }
 }
 
@@ -199,7 +201,6 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 TEMPLATE_LOADERS = (
     "django.template.loaders.filesystem.Loader",
     "django.template.loaders.app_directories.Loader",
-#     'django.template.loaders.eggs.Loader',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -335,8 +336,8 @@ STATICFILES_DIRS.append(
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
 PIPELINE_CSS = {
-    "part1" : {
-        "source_filenames" : {
+    "part1": {
+        "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
             "js/libs/dynatree/skin/ui.dynatree.css",
@@ -353,21 +354,21 @@ PIPELINE_CSS = {
             # hm, not working
             # "js/libs/ui-select-0.2.1/select.css",
         },
-        "output_filename" : "pipeline/css/part1.css"
+        "output_filename": "pipeline/css/part1.css"
     }
 }
 
 PIPELINE_JS = {
-    "js_jquery_new" : {
-        "source_filenames" : {
+    "js_jquery_new": {
+        "source_filenames": {
             "js/libs/modernizr-2.8.1.min.js",
             "js/plugins.js",
             "js/libs/jquery-2.1.1.min.js",
         },
-        "output_filename" : "pipeline/js/jquery_new.js"
+        "output_filename": "pipeline/js/jquery_new.js"
     },
-    "js_base" : {
-        "source_filenames" : {
+    "js_base": {
+        "source_filenames": {
             "js/libs/jquery-ui-1.10.2.custom.js",
             "js/libs/jquery-migrate-1.2.1.min.js",
             "js/libs/jquery.layout-latest.min.js",
@@ -387,10 +388,10 @@ PIPELINE_JS = {
             "js/libs/moment-with-locales.min.js",
             "js/libs/jquery.Jcrop.min.js",
         },
-        "output_filename" : "pipeline/js/base.js"
+        "output_filename": "pipeline/js/base.js"
     },
-    "js_extra1" : {
-        "source_filenames" : {
+    "js_extra1": {
+        "source_filenames": {
             "js/codemirror/addon/selection/active-line.js",
             "js/codemirror/mode/python/python.js",
             "js/codemirror/mode/xml/xml.js",
@@ -413,7 +414,7 @@ PIPELINE_JS = {
             # "js/libs/angular-strap.min.js",
             # "js/libs/angular-strap.tpl.min.js",
         },
-        "output_filename" : "pipeline/js/extra1.js"
+        "output_filename": "pipeline/js/extra1.js"
     }
 }
 
@@ -429,7 +430,7 @@ AUTHENTICATION_BACKENDS = (
 )
 AUTH_USER_MODEL = "backbone.user"
 
-if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
+if "NO_AUTO_ADD_APPLICATIONS" not in os.environ:
     # my authentication backend
 
     # add everything below cluster
@@ -477,7 +478,7 @@ LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
-    from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION # @UnresolvedImport
+    from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION  # @UnresolvedImport
     sys.path.remove(local_dir)
 else:
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
@@ -496,17 +497,17 @@ rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG els
 ]
 
 REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES' : tuple(rest_renderers),
-    "DEFAULT_PARSER_CLASSES"   : (
+    'DEFAULT_RENDERER_CLASSES': tuple(rest_renderers),
+    "DEFAULT_PARSER_CLASSES": (
         "rest_framework.parsers.XMLParser",
         "rest_framework.parsers.JSONParser",
     ),
-    "DEFAULT_AUTHENTICATION_CLASSES" : (
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.BasicAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
-    "EXCEPTION_HANDLER" : "initat.cluster.frontend.rest_views.csw_exception_handler",
-    "ID_FIELD_NAME" : "idx",
+    "EXCEPTION_HANDLER": "initat.cluster.frontend.rest_views.csw_exception_handler",
+    "ID_FIELD_NAME": "idx",
 }
 
 # SOUTH config
@@ -514,51 +515,51 @@ SOUTH_LOGGING_ON = True
 SOUTH_LOGGING_FILE = "/var/log/cluster/south.log"
 
 LOGGING = {
-    'version' : 1,
-    'disable_existing_loggers' : True,
-    'formatters' : {
-        "initat" : {
-            "()" : "logging_tools.initat_formatter",
+    'version': 1,
+    'disable_existing_loggers': True,
+    'formatters': {
+        "initat": {
+            "()": "logging_tools.initat_formatter",
         },
-        'verbose' : {
-            'format' : '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
         },
-        'simple' : {
-            'format' : '%(levelname)s %(message)s'
-        },
-    },
-    'handlers' : {
-        "init_unified" : {
-            "level"     : "INFO" if DEBUG else "WARN",
-            "class"     : "logging_tools.init_handler_unified",
-            "formatter" : "initat",
-        },
-        "init" : {
-            "level"     : 'INFO' if DEBUG else "WARN",
-            "class"     : "logging_tools.init_handler",
-            "formatter" : "initat",
-        },
-        "init_mail" : {
-            "level"     : "ERROR",
-            "class"     : "logging_tools.init_email_handler",
-            "formatter" : "initat",
+        'simple': {
+            'format': '%(levelname)s %(message)s'
         },
     },
-    'loggers' : {
-        'django' : {
-            'handlers'  : ['init_unified', "init_mail"],
-            'propagate' : True,
-            'level'     : 'WARN',
+    'handlers': {
+        "init_unified": {
+            "level": "INFO" if DEBUG else "WARN",
+            "class": "logging_tools.init_handler_unified",
+            "formatter": "initat",
         },
-        'initat' : {
-            'handlers'  : ['init_unified', "init_mail"],
-            'propagate' : True,
-            'level'     : 'WARN',
+        "init": {
+            "level": 'INFO' if DEBUG else "WARN",
+            "class": "logging_tools.init_handler",
+            "formatter": "initat",
         },
-        'cluster' : {
-            'handlers'  : ['init', "init_mail"],
-            'propagate' : True,
-            'level'     : 'INFO' if DEBUG else "WARN",
+        "init_mail": {
+            "level": "ERROR",
+            "class": "logging_tools.init_email_handler",
+            "formatter": "initat",
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['init_unified', "init_mail"],
+            'propagate': True,
+            'level': 'WARN',
+        },
+        'initat': {
+            'handlers': ['init_unified', "init_mail"],
+            'propagate': True,
+            'level': 'WARN',
+        },
+        'cluster': {
+            'handlers': ['init', "init_mail"],
+            'propagate': True,
+            'level': 'INFO' if DEBUG else "WARN",
         },
     }
 }

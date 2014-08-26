@@ -51,16 +51,17 @@ __all__ = [
     "mon_service_templ", "mon_service_templ_serializer",
     "mon_service_esc_templ", "mon_service_esc_templ_serializer",
     # distribution models
-    "mon_dist_master", # "mon_dist_master_serializer",
-    "mon_dist_slave", # "mon_dist_slave_serializer",
+    "mon_dist_master",  # "mon_dist_master_serializer",
+    "mon_dist_slave",  # "mon_dist_slave_serializer",
     "monitoring_hint", "monitoring_hint_serializer",
     "mon_check_command_special", "mon_check_command_special_serializer",
     # trace
-    "mon_trace", # monitoring trace for speedup
+    "mon_trace",  # monitoring trace for speedup
     # unreachable info
-    "mon_build_unreachable", # track unreachable devices
-    "parse_commandline", # commandline parsing
-    ]
+    "mon_build_unreachable",  # track unreachable devices
+    "parse_commandline",  # commandline parsing
+]
+
 
 class mon_trace(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -71,9 +72,11 @@ class mon_trace(models.Model):
     srv_netdevice_fp = models.CharField(max_length=128, default="", db_index=True)
     traces = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
+
     @staticmethod
     def get_fp(net_idxs):
         return ":".join(["{:d}".format(_idx) for _idx in net_idxs])
+
     @staticmethod
     def create_trace(dev, dev_fp, srv_fp, traces):
         new_tr = mon_trace.objects.create(
@@ -83,12 +86,16 @@ class mon_trace(models.Model):
             traces=traces,
         )
         return new_tr
+
     def set_trace(self, traces):
         self.traces = json.dumps(traces)
+
     def get_trace(self):
         return json.loads(self.traces)
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_dist_base(models.Model):
     # start of build
@@ -107,8 +114,10 @@ class mon_dist_base(models.Model):
     # unroutable devices, always zero for slaves
     unreachable_devices = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         abstract = True
+
 
 # distribution models, one per run
 class mon_dist_slave(mon_dist_base):
@@ -128,8 +137,10 @@ class mon_dist_slave(mon_dist_base):
     size_data = models.IntegerField(default=0)
     # with overhead
     size_raw = models.IntegerField(default=0)
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_dist_master(mon_dist_base):
     idx = models.AutoField(primary_key=True)
@@ -137,9 +148,11 @@ class mon_dist_master(mon_dist_base):
     version = models.IntegerField(default=0)
     # version of of md-config-server
     md_version = models.CharField(max_length=128, default="")
+
     class Meta:
         app_label = "backbone"
         ordering = ("-idx",)
+
 
 class mon_build_unreachable(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -148,8 +161,10 @@ class mon_build_unreachable(models.Model):
     device_name = models.CharField(max_length=256, default="")
     devicegroup_name = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -163,14 +178,18 @@ class mon_host_cluster(models.Model):
     # True for user editable (user created) clusters
     user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_host_cluster_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_host_cluster
+
 
 @receiver(signals.pre_save, sender=mon_host_cluster)
 def mon_host_cluster_pre_save(sender, **kwargs):
@@ -178,9 +197,11 @@ def mon_host_cluster_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
         for attr_name, min_val, max_val in [
-            ("warn_value" , 0, 128),
-            ("error_value", 0, 128)]:
+            ("warn_value", 0, 128),
+            ("error_value", 0, 128)
+        ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
 
 class mon_service_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -195,14 +216,18 @@ class mon_service_cluster(models.Model):
     # True for user editable (user created) clusters
     user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_service_cluster_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_service_cluster
+
 
 @receiver(signals.pre_save, sender=mon_service_cluster)
 def mon_service_cluster_pre_save(sender, **kwargs):
@@ -210,23 +235,29 @@ def mon_service_cluster_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
         for attr_name, min_val, max_val in [
-            ("warn_value" , 0, 128),
-            ("error_value", 0, 128)]:
+            ("warn_value", 0, 128),
+            ("error_value", 0, 128)
+        ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
 
 class host_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     name = models.CharField(max_length=64, unique=True, blank=False, null=False)
     command_line = models.CharField(max_length=128, unique=True, blank=False, null=False)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return "hcc_{}".format(self.name)
+
     class Meta:
         app_label = "backbone"
+
 
 class host_check_command_serializer(serializers.ModelSerializer):
     class Meta:
         model = host_check_command
+
 
 class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -235,17 +266,22 @@ class mon_check_command_special(models.Model):
     description = models.CharField(max_length=256, default="")
     is_active = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
     @property
     def md_name(self):
         return "special_{:d}_{}".format(self.idx, self.name)
+
     class Meta:
         app_label = "backbone"
+
     def __unicode__(self):
         return "mccs_{}".format(self.name)
+
 
 class mon_check_command_special_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_check_command_special
+
 
 def parse_commandline(com_line):
     """
@@ -265,7 +301,9 @@ def parse_commandline(com_line):
     $ARG#$
 
     """
-    com_re = re.compile("^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(?P<var_name>[^:^}]+?)(\:(?P<default>[^}]+))*}\$*)|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$")
+    com_re = re.compile(
+        "^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(?P<var_name>[^:^}]+?)(\:(?P<default>[^}]+))*}\$*)|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$"
+    )
     cur_line = com_line
     # where to start the match to avoid infinite loop
     s_idx = 0
@@ -324,12 +362,13 @@ def parse_commandline(com_line):
     return {
         "arg_lut": arg_lut,
         "arg_list": arg_list,
-        "parsed_com_line" : _parsed_com_line,
-        "num_args" : _num_args,
-        "default_values" : _default_values,
+        "parsed_com_line": _parsed_com_line,
+        "num_args": _num_args,
+        "default_values": _default_values,
     }, log_lines
-    #self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
-    
+    # self.__arg_lut, self.__arg_list = (arg_lut, arg_list)
+
+
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
@@ -338,7 +377,7 @@ class mon_check_command(models.Model):
     mon_check_command_type = models.ForeignKey("backbone.mon_check_command_type", null=True, default=None, blank=True)
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # only unique per config
-    name = models.CharField(max_length=192) # , unique=True)
+    name = models.CharField(max_length=192)  # , unique=True)
     # flag for special commands (@<SREF>@command)
     mon_check_command_special = models.ForeignKey("backbone.mon_check_command_special", null=True, blank=True)
     # for mon_check_special_command this is empty
@@ -358,28 +397,37 @@ class mon_check_command(models.Model):
     event_handler_enabled = models.BooleanField(default=True)
     # which tcp port(s) cover this check
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
+
     def get_object_type(self):
         return "mon"
+
     class Meta:
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
         app_label = "backbone"
+
     class CSW_Meta:
         permissions = (
             ("setup_monitoring", "Change monitoring settings", False),
         )
+
     def __unicode__(self):
         return "mcc_{}".format(self.name)
 
+
 class mon_check_command_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
+
     class Meta:
         model = mon_check_command
 
+
 class mon_check_command_nat_serializer(serializers.ModelSerializer):
     config = serializers.SlugRelatedField(slug_field="name")
+
     class Meta:
         model = mon_check_command
+
 
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_pre_save(sender, **kwargs):
@@ -405,15 +453,19 @@ def mon_check_command_pre_save(sender, **kwargs):
             cur_inst.save()
             raise ValidationError("cannot be an event handler and reference to another event handler")
 
+
 class mon_check_command_type(models.Model):
     idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         db_table = u'ng_check_command_type'
         app_label = "backbone"
+
 
 class mon_contact(models.Model):
     idx = models.AutoField(db_column="ng_contact_idx", primary_key=True)
@@ -434,22 +486,28 @@ class mon_contact(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     notifications = models.ManyToManyField("backbone.mon_notification", blank=True)
     mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
+
     def get_user_name(self):
         return u"{} ({} {})".format(
             self.user.login,
             self.user.first_name,
             self.user.last_name,
             )
+
     def __unicode__(self):
         return unicode(self.user)
+
     class Meta:
         db_table = u'ng_contact'
         app_label = "backbone"
 
+
 class mon_contact_serializer(serializers.ModelSerializer):
     user_name = serializers.Field(source="get_user_name")
+
     class Meta:
         model = mon_contact
+
 
 @receiver(signals.pre_save, sender=mon_contact)
 def mon_contact_pre_save(sender, **kwargs):
@@ -459,31 +517,36 @@ def mon_contact_pre_save(sender, **kwargs):
         if cur_inst.user_id in used_user_ids:
             raise ValidationError("user already in used by mon_contact")
 
+
 class mon_notification(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=128, blank=False, unique=True)
     channel = models.CharField(max_length=8, choices=[
         ("mail", "E-Mail"),
-        ("sms" , "SMS")], blank=False)
+        ("sms", "SMS")], blank=False)
     not_type = models.CharField(max_length=8, choices=[
-        ("host"   , "Host"),
+        ("host", "Host"),
         ("service", "Service")], blank=False)
     subject = models.CharField(max_length=140, blank=True)
     content = models.CharField(max_length=4096, blank=False)
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return "{} ({} via {})".format(
             self.name,
             self.not_type,
             self.channel,
         )
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_notification_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_notification
+
 
 @receiver(signals.pre_save, sender=mon_notification)
 def mon_notification_pre_save(sender, **kwargs):
@@ -502,6 +565,7 @@ contactgroup -> mon_service_templ
              -> members
 """
 
+
 class mon_contactgroup(models.Model):
     idx = models.AutoField(db_column="ng_contactgroup_idx", primary_key=True)
     name = models.CharField(max_length=192, unique=True)
@@ -511,22 +575,27 @@ class mon_contactgroup(models.Model):
     members = models.ManyToManyField("backbone.mon_contact", blank=True)
     service_templates = models.ManyToManyField("backbone.mon_service_templ", blank=True)
     service_esc_templates = models.ManyToManyField("backbone.mon_service_esc_templ", blank=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         db_table = u'ng_contactgroup'
         app_label = "backbone"
+
 
 class mon_contactgroup_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_contactgroup
         fields = ("idx", "name", "alias", "device_groups", "members", "service_templates", "service_esc_templates",)
 
+
 @receiver(signals.pre_save, sender=mon_contactgroup)
 def mon_contactgroup_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
+
 
 class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
@@ -561,15 +630,19 @@ class mon_device_templ(models.Model):
     check_freshness = models.BooleanField(default=False)
     freshness_threshold = models.IntegerField(default=60)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         db_table = u'ng_device_templ'
         app_label = "backbone"
 
+
 class mon_device_templ_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_device_templ
+
 
 @receiver(signals.pre_save, sender=mon_device_templ)
 def mon_device_templ_pre_save(sender, **kwargs):
@@ -578,15 +651,16 @@ def mon_device_templ_pre_save(sender, **kwargs):
         if not cur_inst.name.strip():
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
-            ("max_attempts"       , 1, 10),
-            ("ninterval"          , 0, 60 * 24),
-            ("low_flap_threshold" , 0, 100),
+            ("max_attempts", 1, 10),
+            ("ninterval", 0, 60 * 24),
+            ("low_flap_threshold", 0, 100),
             ("high_flap_threshold", 0, 100),
-            ("check_interval"     , 1, 60),
-            ("retry_interval"     , 1, 60),
+            ("check_interval", 1, 60),
+            ("retry_interval", 1, 60),
             ("freshness_threshold", 10, 24 * 3600 * 365),
-            ]:
+        ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
 
 class mon_device_esc_templ(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -602,14 +676,18 @@ class mon_device_esc_templ(models.Model):
     nflapping = models.BooleanField(default=False)
     nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_device_esc_templ_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_device_esc_templ
+
 
 @receiver(signals.pre_save, sender=mon_device_esc_templ)
 def mon_device_esc_templ_pre_save(sender, **kwargs):
@@ -619,9 +697,11 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
             raise ValidationError("name must not be empty")
         for attr_name, min_val, max_val in [
             ("first_notification", 1, 10),
-            ("last_notification" , 1, 10),
-            ("ninterval"         , 0, 60 * 24)]:
+            ("last_notification", 1, 10),
+            ("ninterval", 0, 60 * 24)
+        ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
 
 class mon_host_dependency_templ(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -638,29 +718,48 @@ class mon_host_dependency_templ(models.Model):
     nfc_pending = models.BooleanField(default=False)
     dependency_period = models.ForeignKey("backbone.mon_period")
     date = models.DateTimeField(auto_now_add=True)
+
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_{}".format(_long))]) or "n"
+        return ",".join(
+            [
+                short for short, _long in [
+                    ("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")
+                ] if getattr(self, "efc_{}".format(_long))
+            ]
+        ) or "n"
+
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_{}".format(_long))]) or "n"
+        return ",".join(
+            [
+                short for short, _long in [
+                    ("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")
+                ] if getattr(self, "nfc_{}".format(_long))
+            ]
+        ) or "n"
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
+
 
 class mon_host_dependency_templ_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_host_dependency_templ
 
+
 @receiver(signals.pre_save, sender=mon_host_dependency_templ)
 def mon_host_dependency_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "priority", min_val= -128, max_val=128)
+        _check_integer(cur_inst, "priority", min_val=-128, max_val=128)
         if not cur_inst.name.strip():
             raise ValidationError("name must not be empty")
+
 
 class mon_host_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -669,27 +768,41 @@ class mon_host_dependency(models.Model):
     mon_host_dependency_templ = models.ForeignKey("backbone.mon_host_dependency_templ")
     mon_host_cluster = models.ForeignKey("backbone.mon_host_cluster", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def is_valid(self):
         return True if (self.mon_host_dependency_templ_id) else False
+
     def get_id(self, devices=None, dependent_devices=None):
         # returns an unique ID
         return "{{{:d}:{:d}:[{}]:[{}]}}".format(
             self.mon_host_dependency_templ_id or 0,
             self.mon_host_cluster_id or 0,
-            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
-            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
-            )
+            ",".join(["{:d}".format(val) for val in sorted(
+                [
+                    sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())
+                ]
+            )]),
+            ",".join(["{:d}".format(val) for val in sorted(
+                [
+                    sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())
+                ]
+            )]),
+        )
+
     def feed_config(self, conf):
         conf["inherits_parent"] = "1" if self.mon_host_dependency_templ.inherits_parent else "0"
         conf["execution_failure_criteria"] = self.mon_host_dependency_templ.execution_failure_criteria
         conf["notification_failure_criteria"] = self.mon_host_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_host_dependency_templ.dependency_period.name
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_host_dependency_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_host_dependency
+
 
 class mon_service_dependency_templ(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -708,29 +821,47 @@ class mon_service_dependency_templ(models.Model):
     nfc_pending = models.BooleanField(default=False)
     dependency_period = models.ForeignKey("backbone.mon_period")
     date = models.DateTimeField(auto_now_add=True)
+
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_{}".format(_long))]) or "n"
+        return ",".join(
+            [
+                short for short, _long in [
+                    ("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")
+                ] if getattr(self, "efc_{}".format(_long))
+            ]) or "n"
+
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_{}".format(_long))]) or "n"
+        return ",".join(
+            [
+                short for short, _long in [
+                    ("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")
+                ] if getattr(self, "nfc_{}".format(_long))
+            ]
+        ) or "n"
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
+
 
 class mon_service_dependency_templ_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_service_dependency_templ
 
+
 @receiver(signals.pre_save, sender=mon_service_dependency_templ)
 def mon_service_dependency_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "priority", min_val= -128, max_val=128)
+        _check_integer(cur_inst, "priority", min_val=-128, max_val=128)
         if not cur_inst.name.strip():
             raise ValidationError("name must not be empty")
+
 
 class mon_service_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -742,8 +873,10 @@ class mon_service_dependency(models.Model):
     # overrides device and mon_check_command
     mon_service_cluster = models.ForeignKey("backbone.mon_service_cluster", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def is_valid(self):
         return True if (self.mon_service_dependency_templ_id and self.mon_check_command_id and self.dependent_mon_check_command_id) else False
+
     def get_id(self, devices=None, dependent_devices=None):
         # returns an unique ID
         return "{{{:d}:{:d}:{:d}:{:d}:[{}]:[{}]}}".format(
@@ -751,20 +884,40 @@ class mon_service_dependency(models.Model):
             self.dependent_mon_check_command_id or 0,
             self.mon_service_dependency_templ_id or 0,
             self.mon_service_cluster_id or 0,
-            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
-            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
-            )
+            ",".join(
+                [
+                    "{:d}".format(val) for val in sorted(
+                        [
+                            sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())
+                        ]
+                    )
+                ]
+            ),
+            ",".join(
+                [
+                    "{:d}".format(val) for val in sorted(
+                        [
+                            sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())
+                        ]
+                    )
+                ]
+            ),
+        )
+
     def feed_config(self, conf):
         conf["inherits_parent"] = "1" if self.mon_service_dependency_templ.inherits_parent else "0"
         conf["execution_failure_criteria"] = self.mon_service_dependency_templ.execution_failure_criteria
         conf["notification_failure_criteria"] = self.mon_service_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_service_dependency_templ.dependency_period.name
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_service_dependency_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_service_dependency
+
 
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
@@ -776,18 +929,23 @@ class mon_ext_host(models.Model):
     # gd2
     statusmap_image = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     def data_image_field(self):
         _url = settings.STATIC_URL + "icinga/{}".format(self.icon_image)
         return _url
+
     class Meta:
         ordering = ("name",)
         db_table = u'ng_ext_host'
         app_label = "backbone"
 
+
 class mon_ext_host_serializer(serializers.ModelSerializer):
     data_image = serializers.Field(source="data_image_field")
+
     class Meta:
         model = mon_ext_host
 
@@ -803,20 +961,25 @@ class mon_period(models.Model):
     fri_range = models.CharField(max_length=48, blank=True, db_column="frirange")
     sat_range = models.CharField(max_length=48, blank=True, db_column="satrange")
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         db_table = u'ng_period'
         app_label = "backbone"
 
+
 class mon_period_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_period
-        fields = ("idx", "name", "alias", "sun_range", "mon_range", "tue_range",
+        fields = (
+            "idx", "name", "alias", "sun_range", "mon_range", "tue_range",
             "wed_range", "thu_range", "fri_range", "sat_range", "service_check_period",
             # "mon_device_templ_set",
-            )
-        read_only_fields = ("service_check_period",) # "mon_device_templ_set")
+        )
+        read_only_fields = ("service_check_period",)  # "mon_device_templ_set")
+
 
 @receiver(signals.pre_save, sender=mon_period)
 def mon_period_pre_save(sender, **kwargs):
@@ -847,6 +1010,7 @@ def mon_period_pre_save(sender, **kwargs):
                     new_val.append("{:02d}:{:02d}".format(hours, minutes))
                 setattr(cur_inst, r_name, "-".join(new_val))
 
+
 class mon_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
     name = models.CharField(max_length=192, unique=True)
@@ -874,15 +1038,19 @@ class mon_service_templ(models.Model):
     check_freshness = models.BooleanField(default=False)
     freshness_threshold = models.IntegerField(default=60)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         db_table = u'ng_service_templ'
         app_label = "backbone"
 
+
 class mon_service_templ_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_service_templ
+
 
 @receiver(signals.pre_save, sender=mon_service_templ)
 def mon_service_templ_pre_save(sender, **kwargs):
@@ -891,15 +1059,16 @@ def mon_service_templ_pre_save(sender, **kwargs):
         if not cur_inst.name.strip():
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
-            ("max_attempts"  , 1, 10),
+            ("max_attempts", 1, 10),
             ("check_interval", 1, 60),
             ("retry_interval", 1, 60),
-            ("ninterval"     , 0, 60),
-            ("low_flap_threshold" , 0, 100),
+            ("ninterval", 0, 60),
+            ("low_flap_threshold", 0, 100),
             ("high_flap_threshold", 0, 100),
             ("freshness_threshold", 10, 24 * 3600 * 365),
-            ]:
+        ]:
             _cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
 
 class mon_service_esc_templ(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -915,14 +1084,18 @@ class mon_service_esc_templ(models.Model):
     nflapping = models.BooleanField(default=False)
     nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+
     def __unicode__(self):
         return self.name
+
     class Meta:
         app_label = "backbone"
+
 
 class mon_service_esc_templ_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_service_esc_templ
+
 
 @receiver(signals.pre_save, sender=mon_service_esc_templ)
 def mon_service_esc_templ_pre_save(sender, **kwargs):
@@ -932,9 +1105,11 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
             ("first_notification", 1, 10),
-            ("last_notification" , 1, 10),
-            ("ninterval"         , 0, 60)]:
+            ("last_notification", 1, 10),
+            ("ninterval", 0, 60)
+        ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
 
 class monitoring_hint(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -984,6 +1159,7 @@ class monitoring_hint(models.Model):
     # datasource : (c)ache, (s)erver, (p)ersistent
     datasource = models.CharField(max_length=6, default="s", choices=[("c", "cache"), ("s", "server"), ("p", "persistent")])
     date = models.DateTimeField(auto_now_add=True)
+
     def update_limits(self, m_value, limit_dict):
         if type(m_value) in [int, long]:
             v_type = "int"
@@ -1001,12 +1177,14 @@ class monitoring_hint(models.Model):
                     changed = True
                     setattr(self, v_key, value)
         return changed
+
     def get_limit(self, name, default):
         key = "{}_{}".format(name, self.get_v_type_display())
         if getattr(self, "{}_source".format(key)) == "n":
             return default
         else:
             return str(getattr(self, key))
+
     def set_value(self, value):
         if type(value) in [int, long]:
             v_type = "int"
@@ -1017,14 +1195,25 @@ class monitoring_hint(models.Model):
         v_key = "value_{}".format(v_type)
         setattr(self, v_key, value)
         self.save(update_fields=[v_key])
+
     def get_limit_list(self):
-        v_type = {"f" : "float", "i" : "int"}[self.v_type]
-        return [(s_key, getattr(self, "{}_{}".format(key, v_type))) for s_key, key in [("lc", "lower_crit"), ("lw", "lower_warn"), ("uw", "upper_warn"), ("uc", "upper_crit")] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"]
+        v_type = {
+            "f": "float",
+            "i": "int"
+        }[self.v_type]
+        return [
+            (s_key, getattr(self, "{}_{}".format(key, v_type))) for s_key, key in [
+                ("lc", "lower_crit"), ("lw", "lower_warn"), ("uw", "upper_warn"), ("uc", "upper_crit")
+            ] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"
+        ]
+
     def __unicode__(self):
         return u"{} ({}) for {}".format(self.m_type, self.key, unicode(self.device))
+
     class Meta:
         app_label = "backbone"
         ordering = ("m_type", "key",)
+
 
 class monitoring_hint_serializer(serializers.ModelSerializer):
     class Meta:

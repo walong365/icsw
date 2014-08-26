@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "background_job", "background_job_serializer",
     "background_job_run", "background_job_run_serializer",
-    ]
+]
+
 
 class background_job(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -62,25 +63,33 @@ class background_job(models.Model):
     valid_until = models.DateTimeField(null=True)
     # number of servers to contact
     num_servers = models.IntegerField(default=0)
+
     def __unicode__(self):
         return "background_job {:d}".format(self.idx)
+
     def initiator_name(self):
         return self.initiator.full_name
+
     def user_name(self):
         return unicode(self.user) if self.user_id else "---"
+
     class Meta:
         ordering = ("-date",)
         app_label = "backbone"
+
     class CSW_Meta:
         permissions = (
             ("show_background", "Show background jobs", False),
         )
 
+
 class background_job_serializer(serializers.ModelSerializer):
     initiator_name = serializers.Field(source="initiator_name")
     user_name = serializers.Field(source="user_name")
+
     class Meta:
         model = background_job
+
 
 class background_job_run(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -101,9 +110,11 @@ class background_job_run(models.Model):
     end = models.DateTimeField(null=True)
     # created
     date = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         ordering = ("date",)
         app_label = "backbone"
+
 
 class background_job_run_serializer(serializers.ModelSerializer):
     class Meta:

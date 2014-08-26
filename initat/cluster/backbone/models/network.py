@@ -6,8 +6,8 @@ from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
-from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
-from lxml.builder import E  # @UnresolvedImport
+from initat.cluster.backbone.signals import bootsettings_changed
+# from lxml.builder import E  # @UnresolvedImport
 from rest_framework import serializers
 import ipvx_tools
 import logging
