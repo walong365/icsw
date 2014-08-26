@@ -518,7 +518,6 @@ def update_usage(lic_dict, srv_xml):
         name = cur_lic.attrib["name"]
         act_lic = lic_dict.get(name, None)
         if act_lic and act_lic.is_used:
-            print etree.tostring(cur_lic, pretty_print=True)
             act_lic.update(cur_lic)
             act_lic.used = int(cur_lic.get("used", "0")) - int(cur_lic.get("reserved", "0"))
             if act_lic.license_type == "simple":
