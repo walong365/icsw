@@ -89,6 +89,9 @@ class license_process(threading_tools.process_obj):
         # set environment
         os.environ["SGE_ROOT"] = global_config["SGE_ROOT"]
         os.environ["SGE_CELL"] = global_config["SGE_CELL"]
+        # get sge environment
+        self._sge_dict = sge_license_tools.get_sge_environment()
+        self.log(sge_license_tools.get_sge_log_line(self._sge_dict))
 
     def _init_network(self):
         _v_conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
@@ -125,7 +128,41 @@ class license_process(threading_tools.process_obj):
             create=True,
         ).dict
         self._parse_actual_license_usage(actual_licenses, act_conf)
+        for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
+            if log_level > logging_tools.LOG_LEVEL_WARN:
+                self.log(log_line, log_level)
         self.write_ext_data(actual_licenses)
+
+    def _get_used(self, qstat_bin):
+        act_dict = {}
+        job_id_re = re.compile("\d+\.*\d*")
+        act_com = "{} -ne -r".format(qstat_bin)
+        c_stat, out = commands.getstatusoutput(act_com)
+        if c_stat:
+            log_template.error("Error calling {} ({:d}):".format(act_com, c_stat))
+            for line in out.split("\n"):
+                log_template.error(" - {}".format(line.rstrip()))
+        else:
+            act_job_mode = "?"
+            for line_parts in [x.strip().split() for x in out.split("\n") if x.strip()]:
+                job_id = line_parts[0]
+                if job_id_re.match(job_id) and len(line_parts) >= 9:
+                    act_job_mode = line_parts[4]
+                elif len(line_parts) >= 3:
+                    if ("{} {}".format(line_parts[0], line_parts[1])).lower() == "hard resources:":
+                        res_name, res_value = line_parts[2].split("=")
+                        if "r" in act_job_mode or "R" in act_job_mode or "t" in act_job_mode:
+                            dict_name = "used"
+                        else:
+                            dict_name = "requested"
+                        act_dict.setdefault(dict_name, {}).setdefault(res_name, 0)
+                        try:
+                            res_value = int(res_value)
+                        except ValueError:
+                            pass
+                        else:
+                            act_dict[dict_name][res_name] += res_value
+        return act_dict
 
     def _parse_actual_license_usage(self, actual_licenses, act_conf):
         configured_lics = []
@@ -142,14 +179,16 @@ class license_process(threading_tools.process_obj):
             q_s_time = time.time()
             for server_addr in all_server_addrs:
                 if server_addr not in self.__lc_dict:
+                    self.log("init new license_check object for server {}".format(server_addr))
                     self.__lc_dict[server_addr] = license_tool.license_check(
                         lmutil_path=os.path.join(
                             act_conf["LMUTIL_PATH"]
                         ),
                         port=int(server_addr.split("@")[0]),
                         server=server_addr.split("@")[1],
-                        log_com=self.log)
-                srv_result = self.__lc_dict[server_addr].check()
+                        log_com=self.log
+                    )
+                srv_result = self.__lc_dict[server_addr].check(license_names=actual_licenses)
             q_e_time = time.time()
             self.log(
                 "{} to query, took {}: {}".format(
@@ -158,24 +197,8 @@ class license_process(threading_tools.process_obj):
                     ", ".join(all_server_addrs)
                 )
             )
-            for cur_lic in srv_result.xpath(".//license[@name]", smart_strings=False):
-                name = cur_lic.attrib["name"]
-                act_lic = actual_licenses.get(name, None)
-                if act_lic and act_lic.is_used:
-                    configured_lics.append(name)
-                    _total, used = (
-                        int(cur_lic.attrib["issued"]),
-                        int(cur_lic.attrib["used"]) - int(cur_lic.attrib.get("reserved", "0")))
-                    if act_lic.used_num != used:
-                        self.log(
-                            "attribute {}: use_count changed from {:d} to {:d}".format(
-                                act_lic.attribute,
-                                act_lic.used_num,
-                                used
-                            )
-                        )
-                        act_lic.used_num = int(used)
-                        act_lic.changed = True
+            sge_license_tools.update_usage(actual_licenses, srv_result)
+            configured_lics = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
         return configured_lics
 
     def write_ext_data(self, actual_licenses):
