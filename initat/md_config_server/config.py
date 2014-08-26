@@ -2160,7 +2160,7 @@ class all_contacts(host_type_config):
     def _add_contacts_from_db(self, gen_conf):
         all_nots = mon_notification.objects.all()
         for contact in mon_contact.objects.all().select_related("user"):
-            full_name = ("{} {}".format(contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
+            full_name = (u"{} {}".format(contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
             not_h_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled]
