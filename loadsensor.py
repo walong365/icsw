@@ -124,7 +124,7 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics, cur_used)
             rep_dict["complex_lics"] += 1
         if free_lics != act_lic.total_num:
             rep_dict["lics_in_use"].append(configured_lic)
-        if configured_lic not in cur_used or act_lic.num_used != cur_used[configured_lic]:
+        if configured_lic not in cur_used or act_lic.used_num != cur_used[configured_lic]:
             log_template.info(
                 "reporting {:d} free of {:d} for {}".format(
                     free_lics,
@@ -216,7 +216,7 @@ def main():
                             logging_tools.get_plural("license", len(actual_licenses.keys())),
                             len(configured_licenses),
                             len(rep_dict["lics_in_use"]),
-                            rep_dict["lics_in_use"] and " ({})".format(", ".join(rep_dict["lics_in_use"])) or "",
+                            rep_dict["lics_in_use"] and " ({})".format(", ".join(sorted(rep_dict["lics_in_use"]))) or "",
                             rep_dict["simple_lics"],
                             rep_dict["complex_lics"],
                             logging_tools.get_diff_time_str(end_time - start_time)

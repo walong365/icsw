@@ -225,6 +225,7 @@ class sge_license(object):
     def get_info_line(self):
         return [
             logging_tools.form_entry(self.name, header="name"),
+            logging_tools.form_entry(self.license_type, header="type"),
             logging_tools.form_entry("yes" if self.is_used else "no", header="for SGE"),
             logging_tools.form_entry("yes" if self.show else "no", header="show"),
             logging_tools.form_entry_right(self.total_num, header="total"),
@@ -233,6 +234,7 @@ class sge_license(object):
             logging_tools.form_entry_right(self.used_num, header="used"),
             logging_tools.form_entry_right(0, header="SGE"),
             logging_tools.form_entry_right(0, header="external"),
+            logging_tools.form_entry_right(self.free_num, header="free"),
         ]
 
     def _get_info(self):
@@ -243,7 +245,7 @@ class sge_license(object):
     info = property(_get_info)
 
     def _get_free_num(self):
-        return self.__total - self.__used
+        return self.total_num - self.used_num
     free_num = property(_get_free_num)
 
     def get_port(self, idx=0):
