@@ -18,15 +18,15 @@
 """ connects to remote device to scan its network device(s) """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device, netdevice, net_ip, netdevice_speed
+from initat.cluster.backbone.models import device, netdevice, net_ip, netdevice_speed, get_related_models
 import cs_base_class
 import logging_tools
 import net_tools
 import process_tools
 import server_command
-import sys
 
 IGNORE_LIST = ["tun", "tap", "vnet"]
+
 
 class nd_struct(object):
     def __init__(self, dev_name, in_dict, br_dict):
@@ -35,14 +35,17 @@ class nd_struct(object):
         self.br_dict = br_dict
         self.nd = None
         nd_struct.dict[self.dev_name] = self
+
     @staticmethod
     def setup(cur_inst, device, default_nds):
         nd_struct.cur_inst = cur_inst
         nd_struct.device = device
         nd_struct.default_nds = default_nds
         nd_struct.dict = {}
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         nd_struct.cur_inst.log("[nd {}] {}".format(self.dev_name, what), log_level)
+
     def create(self):
         cur_nd = netdevice(
             device=nd_struct.device,
@@ -74,6 +77,7 @@ class nd_struct(object):
                 )
             new_ip.save()
             self.log("added IP {} (network {})".format(new_ip.ip, unicode(new_ip.network)))
+
     def link_bridge_slaves(self):
         for _slave_name in self.br_dict.get("interfaces", []):
             if _slave_name in nd_struct.dict:
@@ -83,9 +87,11 @@ class nd_struct(object):
                     self.log("enslaving {}".format(_slave_name))
                     _slave_nd.save()
 
+
 class scan_network_info(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["pk", "scan_address", "strict_mode"]
+
     def _call(self, cur_inst):
         # print cur_inst.option_dict
         dev_pk = int(cur_inst.option_dict["pk"])
@@ -182,7 +188,3 @@ class scan_network_info(cs_base_class.server_com):
             cur_inst.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_WARN)
         else:
             cur_inst.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_OK)
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
