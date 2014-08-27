@@ -79,6 +79,9 @@ class license_process(threading_tools.process_obj):
     def _init_sge_info(self):
         self._license_base = global_config["LICENSE_BASE"]
         self._track = global_config["TRACK_LICENSES"]
+        self._modify_sge = global_config["MODIFY_SGE_GLOBAL"]
+        # store currently configured values, used for logging
+        self._sge_lic_set = {}
         self.__lc_dict = {}
         self.log(
             "init sge environment for license tracking in {} ({})".format(
@@ -128,44 +131,49 @@ class license_process(threading_tools.process_obj):
             create=True,
         ).dict
         self._parse_actual_license_usage(actual_licenses, act_conf)
+        sge_license_tools.set_sge_used(actual_licenses, self._sge_dict)
         for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
             if log_level > logging_tools.LOG_LEVEL_WARN:
                 self.log(log_line, log_level)
+        configured_lics = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
         self.write_ext_data(actual_licenses)
+        if self._modify_sge:
+            self._set_sge_global_limits(actual_licenses, configured_lics)
 
-    def _get_used(self, qstat_bin):
-        act_dict = {}
-        job_id_re = re.compile("\d+\.*\d*")
-        act_com = "{} -ne -r".format(qstat_bin)
-        c_stat, out = commands.getstatusoutput(act_com)
-        if c_stat:
-            log_template.error("Error calling {} ({:d}):".format(act_com, c_stat))
-            for line in out.split("\n"):
-                log_template.error(" - {}".format(line.rstrip()))
-        else:
-            act_job_mode = "?"
-            for line_parts in [x.strip().split() for x in out.split("\n") if x.strip()]:
-                job_id = line_parts[0]
-                if job_id_re.match(job_id) and len(line_parts) >= 9:
-                    act_job_mode = line_parts[4]
-                elif len(line_parts) >= 3:
-                    if ("{} {}".format(line_parts[0], line_parts[1])).lower() == "hard resources:":
-                        res_name, res_value = line_parts[2].split("=")
-                        if "r" in act_job_mode or "R" in act_job_mode or "t" in act_job_mode:
-                            dict_name = "used"
-                        else:
-                            dict_name = "requested"
-                        act_dict.setdefault(dict_name, {}).setdefault(res_name, 0)
-                        try:
-                            res_value = int(res_value)
-                        except ValueError:
-                            pass
-                        else:
-                            act_dict[dict_name][res_name] += res_value
-        return act_dict
+    def _set_sge_global_limits(self, actual_licenses, configured_lics):
+        _new_dict = {}
+        for _cl in configured_lics:
+            _lic = actual_licenses[_cl]
+            _new_dict[_lic.name] = _lic.get_sge_available()
+        # log differences
+        _diff_keys = [_key for _key in _new_dict.iterkeys() if _new_dict[_key] != self._sge_lic_set.get(_key, None)]
+        if _diff_keys:
+            self.log(
+                "changing {}: {}".format(
+                    logging_tools.get_plural("global exec_host complex", len(_diff_keys)),
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                "{:d} -> {:d}".format(
+                                    self._sge_lic_set[_key],
+                                    _new_dict[_key],
+                                ) if _key in self._sge_lic_set else "{:d}".format(_new_dict[_key])
+                            ) for _key in sorted(_diff_keys)
+                        ]
+                    )
+                )
+            )
+        ac_str = ",".join(["{}={:d}".format(_lic_to_use, _new_dict[_lic_to_use]) for _lic_to_use in configured_lics])
+        if ac_str:
+            _mod_stat, _mod_out = sge_license_tools.call_command(
+                "{} -mattr exechost complex_values {} global".format(self._sge_dict["QCONF_BIN"], ac_str),
+                0,
+                True,
+                self.log
+            )
 
     def _parse_actual_license_usage(self, actual_licenses, act_conf):
-        configured_lics = []
         if not os.path.isfile(act_conf["LMUTIL_PATH"]):
             self.log("Error: LMUTIL_PATH '{}' is not a file".format(act_conf["LMUTIL_PATH"]))
         else:
@@ -198,8 +206,6 @@ class license_process(threading_tools.process_obj):
                 )
             )
             sge_license_tools.update_usage(actual_licenses, srv_result)
-            configured_lics = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
-        return configured_lics
 
     def write_ext_data(self, actual_licenses):
         drop_com = server_command.srv_command(command="set_vector")

@@ -31,6 +31,7 @@ import cluster_location
 import config_tools
 import configfile
 import process_tools
+import sge_license_tools
 
 
 def main():
@@ -124,9 +125,12 @@ def main():
             ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300)),
             ("LICENSE_BASE", configfile.str_c_var("/etc/sysconfig/licenses")),
             ("TRACK_LICENSES", configfile.bool_c_var(False)),
+            ("MODIFY_SGE_GLOBAL", configfile.bool_c_var(False)),
         ],
         dummy_run=global_config["DUMMY_RUN"]
     )
+    # check modify_sge_global flag and set filesystem flag accordingly
+    sge_license_tools.handle_license_policy(global_config["LICENSE_BASE"], global_config["MODIFY_SGE_GLOBAL"])
     pid_dir = "/var/run/{}".format(os.path.dirname(global_config["PID_NAME"]))
     if pid_dir not in ["/var/run", "/var/run/"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
