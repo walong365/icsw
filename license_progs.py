@@ -57,6 +57,7 @@ def _lic_show(opts, act_conf):
         log_com=_log,
         lmutil_path=act_conf["LMUTIL_PATH"],
         license_file=act_conf["LICENSE_FILE"],
+        verbose=False,
     )
     _xml = _cur_lic.check()
     current_lics = sge_license_tools.parse_license_lines(
@@ -86,6 +87,7 @@ def _lic_fetch(opts, act_conf):
         log_com=_log,
         lmutil_path=act_conf["LMUTIL_PATH"],
         license_file=act_conf["LICENSE_FILE"],
+        verbose=False,
     )
     _xml = _cur_lic.check()
     if int(_xml.attrib["state"]) > logging_tools.LOG_LEVEL_OK:

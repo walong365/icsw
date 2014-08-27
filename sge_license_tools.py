@@ -226,27 +226,27 @@ class sge_license(object):
         r_list = [
             mvect_entry(
                 "lic.{}.used".format(self.name),
-                info="used for {} ({})".format(self.name, self.info),
+                info="used {}".format(self.info),
                 default=0
             ),
             mvect_entry(
                 "lic.{}.free".format(self.name),
-                info="free for {} ({})".format(self.name, self.info),
+                info="free {}".format(self.info),
                 default=0
             ),
             mvect_entry(
                 "lic.{}.total".format(self.name),
-                info="# of licenses for {} ({})".format(self.name, self.info),
+                info="total {}".format(self.info),
                 default=0
             ),
             mvect_entry(
                 "lic.{}.used_rms".format(self.name),
-                info="rms local used for {} ({})".format(self.name, self.info),
+                info="cluster used {}".format(self.info),
                 default=0
             ),
             mvect_entry(
                 "lic.{}.used_external".format(self.name),
-                info="external local used for {} ({})".format(self.name, self.info),
+                info="external used {}".format(self.info),
                 default=0
             ),
         ]
@@ -267,7 +267,8 @@ class sge_license(object):
             logging_tools.form_entry_right(self.reserved, header="reserved"),
             logging_tools.form_entry_right(self.limit, header="limit"),
             logging_tools.form_entry_right(self.used, header="used"),
-            logging_tools.form_entry_right(self.sge_used, header="SGE"),
+            logging_tools.form_entry_right(self.total - self.limit, header="avail"),
+            logging_tools.form_entry_right(self.sge_used, header="cluster"),
             logging_tools.form_entry_right(self.external_used, header="external"),
             logging_tools.form_entry_right(self.free, header="free"),
             logging_tools.form_entry(self.expires.strftime(EXPIRY_DT) if self.expires else "---", header="expires"),
@@ -275,9 +276,9 @@ class sge_license(object):
 
     def _get_info(self):
         if self.license_type == "simple":
-            return "simple via {}".format(logging_tools.get_plural("server", len(self.__lic_servers)))
+            return "{}, simple via {}".format(self.name, logging_tools.get_plural("server", len(self.__lic_servers)))
         else:
-            return "complex [{}]".format(self.__eval_str)
+            return "{}, complex [{}]".format(self.name, self.__eval_str)
     info = property(_get_info)
 
     def _get_free(self):

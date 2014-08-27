@@ -38,6 +38,7 @@ import time
 class license_check(object):
     def __init__(self, **kwargs):
         self.log_com = kwargs.get("log_com", None)
+        self.verbose = kwargs.get("verbose", True)
         self.lmutil_path = kwargs.get("lmutil_path", "/opt/cluster/bin/lmutil")
         if "license_file" in kwargs:
             _lic_file = kwargs["license_file"]
@@ -59,6 +60,8 @@ class license_check(object):
         self.log("license server {} (port {:d})".format(self.server_addr, self.server_port))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if log_level == logging_tools.LOG_LEVEL_OK and not self.verbose:
+            return
         what = u"[lc] {}".format(what)
         if self.log_com:
             self.log_com(log_level, what)
