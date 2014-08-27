@@ -175,11 +175,9 @@ def _lic_config(opts, act_conf):
             # rewind
             _tmpfile.seek(0)
             sge_license_tools.call_command("{} -Mc {}".format(sge_dict["QCONF_BIN"], _tmpfile.name), 1, True)
-            print("waiting for 2 seconds...")
-            time.sleep(2)
     # modify global execution host
     # attribute string
-    ac_str = ",".join(["{}={:d}".format(_lic_to_use, current_lics[_lic_to_use].total) for _lic_to_use in _lics_to_use])
+    ac_str = ",".join(["{}={:d}".format(_lic_to_use, current_lics[_lic_to_use].total - current_lics[_lic_to_use].limit) for _lic_to_use in _lics_to_use])
     if ac_str:
         _mod_stat, _mod_out = sge_license_tools.call_command("{} -mattr exechost complex_values {} global".format(sge_dict["QCONF_BIN"], ac_str), 1, True)
 

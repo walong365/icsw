@@ -187,6 +187,10 @@ class sge_license(object):
                     _num_sge += int(_usage.get("num", "0"))
         return _num_sge
 
+    def get_sge_available(self):
+        # return number of available licenses for sge
+        return self.total - max(self.external_used, self.limit)
+
     def get_xml(self):
         base_lic = E.license(
             full_name=self.full_name,
@@ -340,6 +344,18 @@ def get_site_license_file_name(base_dir, act_site):
 
 def get_site_config_file_name(base_dir, act_site):
     return os.path.normpath(os.path.join(base_dir, "lic_{}.src_config".format(act_site)))
+
+
+def handle_license_policy(base_dir, flag=None):
+    _hlp_fn = os.path.join(base_dir, ".license_policy")
+    if flag is not None:
+        # flag is given, write
+        # - 1 to file if rms-server sets the complex_values of the global execution host or
+        # - 0 if the system relies on the loadsensor
+        file(_hlp_fn, "w").write("1" if flag else "0")
+    else:
+        flag = True if int(file(_hlp_fn, "r").read().strip()) else False
+    return flag
 
 
 class text_file(object):
@@ -530,22 +546,27 @@ def update_usage(lic_dict, srv_xml):
                 act_lic.external_used += act_lic.used
 
 
-def call_command(command, exit_on_fail=0, show_output=False):
+def call_command(command, exit_on_fail=0, show_output=False, log_com=None):
+    def _log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        if log_com:
+            log_com(what, log_level)
+        else:
+            print(what)
     _stat, _out = process_tools.getstatusoutput(command)
     if _stat:
-        print("Something went wrong while calling '{}' (code {:d}):".format(command, _stat))
+        _log("Something went wrong while calling '{}' (code {:d}):".format(command, _stat), logging_tools.LOG_LEVEL_ERROR)
         for _line in _out.split("\n"):
-            print(" * {}".format(_line))
+            _log(" * {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
         if exit_on_fail:
             sys.exit(exit_on_fail)
     else:
         if show_output:
-            print(
+            _log(
                 "Output of '{}': {}".format(
                     command,
                     _out and "{}".format(logging_tools.get_plural("line", len(_out.split("\n")))) or "<no output>"
                 )
             )
             for _line in _out.split("\n"):
-                print(" - {}".format(_line))
+                _log(" - {}".format(_line))
     return _stat, _out

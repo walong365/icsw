@@ -202,26 +202,31 @@ def main():
                             act_site
                         )
                         lic_read_time = file_time
-                    cur_used = {_key: _value.used for _key, _value in actual_licenses.iteritems()}
-                    configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
-                    # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
-                    for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
-                        log_template.log(log_line, log_level)
-                    sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses, cur_used)
+                    if not sge_license_tools.handle_license_policy(base_dir):
+                        cur_used = {_key: _value.used for _key, _value in actual_licenses.iteritems()}
+                        configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
+                        # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
+                        for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
+                            log_template.log(log_line, log_level)
+                        sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses, cur_used)
+                    else:
+                        log_template.log("licenses are controlled via rms-server, reporting nothing to SGE", logging_tools.LOG_LEVEL_WARN)
+                        sge_lines, rep_dict = ([], None)
                     # report to SGE
                     print "\n".join(sge_lines)
                     end_time = time.time()
-                    log_template.info(
-                        "{} defined, {:d} configured, {:d} in use{}, ({:d} simple, {:d} complex), took {}".format(
-                            logging_tools.get_plural("license", len(actual_licenses.keys())),
-                            len(configured_licenses),
-                            len(rep_dict["lics_in_use"]),
-                            rep_dict["lics_in_use"] and " ({})".format(", ".join(sorted(rep_dict["lics_in_use"]))) or "",
-                            rep_dict["simple_lics"],
-                            rep_dict["complex_lics"],
-                            logging_tools.get_diff_time_str(end_time - start_time)
+                    if rep_dict:
+                        log_template.info(
+                            "{} defined, {:d} configured, {:d} in use{}, ({:d} simple, {:d} complex), took {}".format(
+                                logging_tools.get_plural("license", len(actual_licenses.keys())),
+                                len(configured_licenses),
+                                len(rep_dict["lics_in_use"]),
+                                rep_dict["lics_in_use"] and " ({})".format(", ".join(sorted(rep_dict["lics_in_use"]))) or "",
+                                rep_dict["simple_lics"],
+                                rep_dict["complex_lics"],
+                                logging_tools.get_diff_time_str(end_time - start_time)
+                            )
                         )
-                    )
                 else:
                     log_template.warning("site_file for site {} not readable (base_dir is {})".format(act_site, base_dir))
     except KeyboardInterrupt:
