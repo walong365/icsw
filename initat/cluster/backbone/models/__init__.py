@@ -1180,7 +1180,7 @@ class device(models.Model):
     # uptime (with timestamp)
     uptime = models.IntegerField(default=0)
     uptime_timestamp = models.DateTimeField(null=True, default=None)
-    bootnetdevice = models.ForeignKey("backbone.netdevice", null=True, related_name="boot_net_device")
+    bootnetdevice = models.ForeignKey("backbone.netdevice", null=True, related_name="boot_net_device", on_delete=models.SET_NULL)
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server", blank=True)
     reachable_via_bootserver = models.BooleanField(default=False)
     dhcp_mac = models.NullBooleanField(null=True, blank=True, default=False)

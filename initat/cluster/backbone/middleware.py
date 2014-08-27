@@ -3,21 +3,19 @@
 # from backend.models import site_call_log, session_call_log
 from django.conf import settings
 
+from reversion.revisions import revision_context_manager
+import fcntl
+import struct
+import termios
+
 DB_DEBUG = False
 
 if hasattr(settings, "DATABASE_DEBUG"):
     DB_DEBUG = settings.DATABASE_DEBUG
 else:
     DB_DEBUG = settings.DEBUG
-
 if DB_DEBUG:
     from django.db import connection
-else:
-    connection = None
-from reversion.revisions import revision_context_manager
-import fcntl
-import struct
-import termios
 
 from threading import local
 
@@ -78,7 +76,14 @@ def get_terminal_size():
 
 
 def show_database_calls(**kwargs):
-    if connection:
+    DB_DEBUG = False
+
+    if hasattr(settings, "DATABASE_DEBUG"):
+        DB_DEBUG = settings.DATABASE_DEBUG
+    else:
+        DB_DEBUG = settings.DEBUG
+    if DB_DEBUG:
+        from django.db import connection
         full = kwargs.get("full", False)
         tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
         try:

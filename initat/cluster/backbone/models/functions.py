@@ -23,6 +23,7 @@
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.db import models
 from django.db.models import Q
 import pytz
 import time
@@ -113,15 +114,18 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
         _rel_name = rel_obj.model._meta.object_name
-        # print rel_obj.model._meta.object_name, rel_obj.model._meta.object_name in ignore_list, ignore_list
         if _rel_name not in ignore_list_static:
-            ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
-            if ref_list:
-                _lock_list.append("{} -> {} ({:d})".format(rel_field_name, _rel_name, len(ref_list)))
-                if detail:
-                    used_objs.extend(ref_list)
-                else:
-                    used_objs += len(ref_list)
+            if rel_obj.field.rel.on_delete == models.SET_NULL:
+                # ignore foreign keys where on_delete == SET_NULL
+                pass
+            else:
+                ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name: in_obj})) if entry not in ignore_objs]
+                if ref_list:
+                    _lock_list.append("{} -> {} ({:d})".format(rel_field_name, _rel_name, len(ref_list)))
+                    if detail:
+                        used_objs.extend(ref_list)
+                    else:
+                        used_objs += len(ref_list)
         else:
             # _rel_name can be missing from ignore list in case the object references the target more than once
             # (again peer_information in netdevice)
