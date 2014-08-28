@@ -1114,6 +1114,8 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
 class monitoring_hint(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
+    # call idx, for multi-server-call specials
+    call_idx = models.IntegerField(default=0)
     m_type = models.CharField(max_length=32, choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
     # key of vector or OID
     key = models.CharField(default="", max_length=255)
