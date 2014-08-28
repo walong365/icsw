@@ -24,7 +24,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
     mon_contactgroup, netdevice, network_type, user, config, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    mon_check_command_special, mon_trace
+    mon_check_command_special
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \

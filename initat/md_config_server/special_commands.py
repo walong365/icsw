@@ -75,7 +75,7 @@ class special_base(object):
         self.host = host
 
     def _store_cache(self):
-        self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__cache))))
+        self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__hint_list))))
         monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
         for ch in self.__hint_list:
             ch.save()
@@ -156,11 +156,12 @@ class special_base(object):
         # transforms server reply to monitoring hints
         return []
 
-    def _salt_hints(self, in_list):
+    def _salt_hints(self, in_list, call_idx):
         for hint in in_list:
             hint.datasource = "s"
             hint.device = self.host
             hint.m_type = self.ds_name
+            hint.call_idx = call_idx
         return in_list
 
     @property
@@ -228,7 +229,8 @@ class special_base(object):
                         )
                         _result_ok = True
                         log_level = logging_tools.LOG_LEVEL_OK
-                        hint_list = self._salt_hints(self.to_hint(srv_reply))
+                        # salt hints, add call_idx
+                        hint_list = self._salt_hints(self.to_hint(srv_reply), self.__call_idx)
                         # as default all hints are used for monitor checks
                         for _entry in hint_list:
                             _entry.check_created = True
@@ -243,27 +245,11 @@ class special_base(object):
                 # use cache only when first call went wrong and we have something in the cache
                 self.__use_cache = True
         if self.__use_cache:
-            hint_list = self.__cache
+            hint_list = [_entry for _entry in self.__cache if _entry.call_idx == self.__call_idx]
             self.log("take result from cache")
         else:
+            # add persistent values
             self.add_persistent_entries(hint_list)
-            self.__hint_list = hint_list
-            # print "feed"
-            # print "uc"
-            # hint_list = []
-            # if len(self.__cache) > self.__call_idx:
-            #    srv_reply = self.__cache[self.__call_idx]
-            #    self.log("take result from cache [index %d]" % (
-            #        self.__call_idx
-            #    ))
-            # else:
-            #    self.log(
-            #        "cache too small (%s)" % (
-            #            "%d <= %d" % (len(self.__cache), self.__call_idx) if self.__cache else "is empty",
-            #        ),
-            #        logging_tools.LOG_LEVEL_WARN
-            #    )
-            #    srv_reply = None
         self.__call_idx += 1
         return hint_list
 
