@@ -118,9 +118,9 @@ class xml_response(object):
     def _get_value_xml(self, key, value):
         if type(value) == list:
             ret_val = E.value_list(**{
-                "name" : key,
-                "num"  : "{:d}".format(len(value)),
-                "type" : "list",
+                "name": key,
+                "num": "{:d}".format(len(value)),
+                "type": "list",
             })
             for _val_num, sub_val in enumerate(value):
                 ret_val.append(self._get_value_xml(key, sub_val))
@@ -260,7 +260,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
         if kwargs.get("split_send", True):
             send_list = cur_router.check_for_split_send(srv_type, send_com)
             if cur_router.no_bootserver_devices:
-            # for _miss_pk, _miss_name in cur_router.no_bootserver_devices:
+                # for _miss_pk, _miss_name in cur_router.no_bootserver_devices:
                 cur_router._log(
                     request,
                     _log_lines,

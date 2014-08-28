@@ -38,74 +38,84 @@ from initat.cluster.frontend.forms import mon_period_form, mon_notification_form
     device_group
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from lxml.builder import E # @UnresolvedImports
+from lxml.builder import E  # @UnresolvedImports
 import base64
 import json
 import logging
-import logging_tools
 import process_tools
 import server_command
 import socket
 
 logger = logging.getLogger("cluster.monitoring")
 
+
 class setup(permission_required_mixin, View):
     all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
+
     def get(self, request):
         # print mon_contact_form()
         return render_me(
             request, "monitoring_setup.html", {
-                "mon_period_form" : mon_period_form(),
-                "mon_notification_form" : mon_notification_form(),
-                "mon_contact_form" : mon_contact_form(),
-                "mon_service_templ_form" : mon_service_templ_form(),
-                "host_check_command_form" : host_check_command_form(),
-                "mon_contactgroup_form" : mon_contactgroup_form(),
-                "mon_device_templ_form" : mon_device_templ_form(),
+                "mon_period_form": mon_period_form(),
+                "mon_notification_form": mon_notification_form(),
+                "mon_contact_form": mon_contact_form(),
+                "mon_service_templ_form": mon_service_templ_form(),
+                "host_check_command_form": host_check_command_form(),
+                "mon_contactgroup_form": mon_contactgroup_form(),
+                "mon_device_templ_form": mon_device_templ_form(),
                 }
         )()
+
 
 class setup_cluster(permission_required_mixin, View):
     all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
+
     def get(self, request):
         return render_me(
             request, "monitoring_setup_cluster.html", {
-                "mon_host_cluster_form" : mon_host_cluster_form(),
-                "mon_service_cluster_form" : mon_service_cluster_form(),
-                "mon_host_dependency_templ_form" : mon_host_dependency_templ_form(),
-                "mon_service_dependency_templ_form" : mon_service_dependency_templ_form(),
-                "mon_host_dependency_form" : mon_host_dependency_form(),
-                "mon_service_dependency_form" : mon_service_dependency_form(),
+                "mon_host_cluster_form": mon_host_cluster_form(),
+                "mon_service_cluster_form": mon_service_cluster_form(),
+                "mon_host_dependency_templ_form": mon_host_dependency_templ_form(),
+                "mon_service_dependency_templ_form": mon_service_dependency_templ_form(),
+                "mon_host_dependency_form": mon_host_dependency_form(),
+                "mon_service_dependency_form": mon_service_dependency_form(),
                 }
         )()
 
+
 class build_info(permission_required_mixin, View):
     all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
+
     def get(self, request):
         return render_me(
             request, "monitoring_build_info.html", {
                 }
         )()
 
+
 class setup_escalation(permission_required_mixin, View):
     all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
+
     def get(self, request):
         return render_me(
             request, "monitoring_setup_escalation.html", {
-                "mon_service_esc_templ_form" : mon_service_esc_templ_form(),
-                "mon_device_esc_templ_form" : mon_device_esc_templ_form(),
+                "mon_service_esc_templ_form": mon_service_esc_templ_form(),
+                "mon_device_esc_templ_form": mon_device_esc_templ_form(),
                 }
         )()
 
+
 class device_config(permission_required_mixin, View):
     all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
+
     def get(self, request):
         return render_me(
             request, "monitoring_device.html", {
-                "device_monitoring_form" : device_monitoring_form(),
-                "device_object_level_permission" : "backbone.device.change_monitoring",
+                "device_monitoring_form": device_monitoring_form(),
+                "device_object_level_permission": "backbone.device.change_monitoring",
             }
         )()
+
 
 class create_config(View):
     @method_decorator(login_required)
@@ -115,6 +125,7 @@ class create_config(View):
         result = contact_server(request, "md-config", srv_com, connection_id="wf_mdrc")
         if result:
             request.xml_response["result"] = E.devices()
+
 
 class call_icinga(View):
     @method_decorator(login_required)
@@ -129,6 +140,7 @@ class call_icinga(View):
         )
         return resp
 
+
 class fetch_partition(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -140,6 +152,7 @@ class fetch_partition(View):
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         _result = contact_server(request, "server", srv_com, timeout=30)
+
 
 class clear_partition(View):
     @method_decorator(login_required)
@@ -158,6 +171,7 @@ class clear_partition(View):
                 request.xml_response.warn(u"partition table {} removed".format(_part))
                 _part.delete()
 
+
 class use_partition(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -168,6 +182,7 @@ class use_partition(View):
         part_dev.act_partition_table = part_dev.partition_table
         part_dev.save(update_fields=["act_partition_table"])
         request.xml_response.info("set {} as act_partition_table".format(unicode(part_dev.partition_table)))
+
 
 class get_node_config(View):
     @method_decorator(login_required)
@@ -192,6 +207,7 @@ class get_node_config(View):
         else:
             request.xml_response.error("no config", logger=logger)
 
+
 class get_node_status(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -215,6 +231,7 @@ class get_node_status(View):
             else:
                 request.xml_response.error("no service or node_results", logger=logger)
 
+
 class livestatus(View):
     @method_decorator(login_required)
     def get(self, request):
@@ -222,6 +239,7 @@ class livestatus(View):
             request, "monitoring_livestatus.html", {
                 }
         )()
+
 
 class delete_hint(View):
     @method_decorator(xml_wrapper)
@@ -255,8 +273,8 @@ class get_mon_vars(View):
                     )
         return HttpResponse(json.dumps(
             [
-                {"idx" : 0, "name": "please choose..."}
-            ] + 
+                {"idx": 0, "name": "please choose..."}
+            ] +
             [
                 {
                     "idx": _idx,
@@ -286,8 +304,10 @@ class resolve_name(View):
                 logger.info(u"resolved {} to {}".format(fqdn, _ip))
                 request.xml_response["ip"] = _ip
 
+
 class create_device(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_tree"]
+
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
@@ -398,4 +418,3 @@ class create_device(permission_required_mixin, View):
                     except:
                         request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
                         cur_ip = None
-

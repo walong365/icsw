@@ -33,7 +33,7 @@ from initat.cluster.frontend.forms import kernel_form, image_form, partition_tab
     partition_form, partition_disc_form, partition_sys_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.render import render_me
-from lxml.builder import E # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import logging
 import os
 import process_tools
@@ -41,15 +41,17 @@ import server_command
 
 logger = logging.getLogger("cluster.setup")
 
+
 class partition_overview(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "part_overview.html", {
-            "partition_table_form" : partition_table_form(),
-            "partition_disc_form"  : partition_disc_form(),
-            "partition_sys_form"   : partition_sys_form(),
-            "partition_form"       : partition_form(),
+            "partition_table_form": partition_table_form(),
+            "partition_disc_form": partition_disc_form(),
+            "partition_sys_form": partition_sys_form(),
+            "partition_form": partition_form(),
             })()
+
 
 class validate_partition(View):
     @method_decorator(login_required)
@@ -69,18 +71,20 @@ class validate_partition(View):
             *[E.problem(p_str, g_problem="1" if g_problem else "0", level="%d" % (cur_lev)) for cur_lev, p_str, g_problem in prob_list]
         )
 
+
 class image_overview(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "image_overview.html", {
-            "image_form" : image_form(),
+            "image_form": image_form(),
             })()
+
 
 class kernel_overview(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "kernel_overview.html", {
-            "kernel_form" : kernel_form(),
+            "kernel_form": kernel_form(),
             })()
 
 class scan_for_images(View):
@@ -109,6 +113,7 @@ class scan_for_images(View):
                     request.xml_response["response"] = f_img_list
                 else:
                     request.xml_response.error("no images found", logger)
+
 
 class use_image(View):
     @method_decorator(login_required)
@@ -160,6 +165,7 @@ class use_image(View):
                 request.xml_response.error("image has vanished ?", logger)
         else:
             request.xml_response.error("image already exists", logger)
+
 
 class rescan_kernels(View):
     @method_decorator(login_required)

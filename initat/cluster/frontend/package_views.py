@@ -37,7 +37,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.forms import package_search_form, package_action_form
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from rest_framework.renderers import JSONRenderer
-from lxml.builder import E # @UnresolvedImports
+from lxml.builder import E  # @UnresolvedImports
 import logging
 import logging_tools
 import json
@@ -45,14 +45,17 @@ import server_command
 
 logger = logging.getLogger("cluster.package")
 
+
 class repo_overview(permission_required_mixin, View):
     all_required_permissions = ["backbone.package.package_install"]
+
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "package_install.html", {
-            "package_search_form" : package_search_form(request=request),
-            "package_action_form" : package_action_form(),
+            "package_search_form": package_search_form(request=request),
+            "package_action_form": package_action_form(),
             })()
+
     @method_decorator(xml_wrapper)
     def post(self, request):
         cur_mode = request.POST.get("mode", None)
@@ -62,9 +65,11 @@ class repo_overview(permission_required_mixin, View):
         else:
             request.xml_response.error("unknown mode '%s'" % (cur_mode))
 
+
 def reload_searches(request):
     srv_com = server_command.srv_command(command="reload_searches")
     return contact_server(request, "package", srv_com, timeout=5, log_result=False)
+
 
 class retry_search(View):
     @method_decorator(login_required)
@@ -85,6 +90,7 @@ class retry_search(View):
                 reload_searches(request)
             else:
                 request.xml_response.warn("search is in wrong state '%s'" % (cur_search.current_state), logger)
+
 
 class use_package(View):
     @method_decorator(login_required)
@@ -111,6 +117,7 @@ class use_package(View):
             else:
                 request.xml_response.info("copied package_result", logger)
 
+
 class unuse_package(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -123,11 +130,14 @@ class unuse_package(View):
         else:
             num_ref = get_related_models(cur_p)
             if num_ref:
-                request.xml_response.error("cannot remove: %s" % (logging_tools.get_plural("reference", num_ref)),
-                            logger)
+                request.xml_response.error(
+                    "cannot remove: {}".format(logging_tools.get_plural("reference", num_ref)),
+                    logger
+                )
             else:
                 cur_p.delete()
                 request.xml_response.info("removed package", logger)
+
 
 class add_package(View):
     @method_decorator(login_required)
@@ -154,6 +164,7 @@ class add_package(View):
             request.xml_response.warn("%s already existed" % (logging_tools.get_plural("connection", num_error)), logger)
         request.xml_response["result"] = JSONRenderer().render(package_device_connection_serializer(new_pdcs, many=True).data)
 
+
 class remove_package(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -172,6 +183,7 @@ class remove_package(View):
             request.xml_response.info("%s removed" % (logging_tools.get_plural("connection", num_ok)), logger)
         if num_error:
             request.xml_response.error("%s not there" % (logging_tools.get_plural("connection", num_error)), logger)
+
 
 class change_package(View):
     @method_decorator(login_required)
@@ -219,6 +231,7 @@ class change_package(View):
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)
 
+
 class change_target_state(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -228,6 +241,7 @@ class change_target_state(View):
         cur_pdc.target_state = _post["value"]
         cur_pdc.save()
         # signal package-server ?
+
 
 class change_package_flag(View):
     @method_decorator(login_required)
@@ -249,12 +263,14 @@ class change_package_flag(View):
         cur_pdc.save()
         # signal package-server ?
 
+
 class get_pdc_status(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
         cur_pdc = package_device_connection.objects.get(Q(pk=_post["pdc_pk"]))
         request.xml_response["pdc_status"] = cur_pdc.response_str
+
 
 class synchronize(View):
     @method_decorator(login_required)
@@ -265,4 +281,3 @@ class synchronize(View):
         if result:
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)
-

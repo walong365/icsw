@@ -740,4 +740,3 @@ for src_mod, obj_name in REST_LIST:
                 "serializer_class": ser_class
             }
         )
-

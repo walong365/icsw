@@ -34,24 +34,28 @@ import server_command
 
 logger = logging.getLogger("cluster.main")
 
+
 class index(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "index.html", {"index_view" : True, "doc_page" : "index"})()
+        return render_me(request, "index.html", {"index_view": True, "doc_page": "index"})()
+
 
 class permissions_denied(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "permission_denied.html")()
 
+
 class info_page(View):
     @method_decorator(login_required)
     def get(self, request):
         cur_routing = routing.srv_type_routing(force=True)
         return render_me(request, "info_page.html", {
-            "routing" : json.dumps(cur_routing.resolv_dict),
-            "local_device" : unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
+            "routing": json.dumps(cur_routing.resolv_dict),
+            "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
         })()
+
 
 class get_server_info(View):
     @method_decorator(login_required)
@@ -74,6 +78,7 @@ class get_server_info(View):
                 srv_com.tree.tag = srv_com.tree.tag.split("}")[-1]
                 _server_list.append(srv_com.tree)
         request.xml_response["result"] = _server_list
+
 
 class server_control(View):
     @method_decorator(login_required)

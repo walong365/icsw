@@ -33,7 +33,7 @@ from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form, global_settings_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
-from lxml.builder import E # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import json
 import config_tools
 import logging
@@ -41,17 +41,20 @@ import server_command
 
 logger = logging.getLogger("cluster.user")
 
+
 class overview(permission_required_mixin, View):
     any_required_permissions = (
         "backbone.user.admin",
         "backbone.group.group_admin"
-            )
+    )
+
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return render_me(request, "user_overview_tree.html", {
-            "group_detail_form" : group_detail_form(),
-            "user_detail_form"  : user_detail_form(),
+            "group_detail_form": group_detail_form(),
+            "user_detail_form": user_detail_form(),
             })()
+
 
 class sync_users(View):
     @method_decorator(login_required)
@@ -80,6 +83,7 @@ class sync_users(View):
         if config_tools.server_check(server_type="md-config").effective_device:
             srv_com = server_command.srv_command(command="sync_http_users")
             _result = contact_server(request, "md-config", srv_com)
+
 
 class save_layout_state(View):
     @method_decorator(login_required)
@@ -144,6 +148,7 @@ class set_user_var(View):
         update_session_object(request)
         request.session.save()
 
+
 class get_user_var(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -160,13 +165,14 @@ class get_user_var(View):
                 ]
             )
 
+
 class change_object_permission(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
         auth_pk = int(_post["auth_pk"])
-        auth_obj = {"g" : group, "u" : user}[_post["auth_type"]].objects.get(Q(pk=auth_pk))
+        auth_obj = {"g": group, "u": user}[_post["auth_type"]].objects.get(Q(pk=auth_pk))
         set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=_post["csw_idx"]))
         obj_pk = int(_post["obj_idx"])
         add = True if int(_post["set"]) else False
@@ -237,6 +243,7 @@ class change_object_permission(View):
                 # print "not there"
                 pass
 
+
 class account_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -246,18 +253,22 @@ class account_info(View):
             instance=cur_user,
             auto_id="user__%d__%%s" % (cur_user.pk),
         )
-        return render_me(request, "account_info.html", {
-            "form" : cur_form,
-            "user" : cur_user,
-            })()
+        return render_me(
+            request, "account_info.html", {
+                "form": cur_form,
+                "user": cur_user,
+            }
+        )()
+
 
 class global_settings(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def get(self, request):
         return render_me(request, "global_settings.html", {
-            "form" : global_settings_form()
+            "form": global_settings_form()
             })()
+
 
 class background_job_info(View):
     @method_decorator(login_required)
@@ -265,6 +276,7 @@ class background_job_info(View):
     def get(self, request):
         return render_me(request, "background_job_info.html", {
             })()
+
 
 class clear_home_dir_created(View):
     @method_decorator(login_required)

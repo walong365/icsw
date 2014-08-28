@@ -44,31 +44,36 @@ import logging_tools
 
 logger = logging.getLogger("cluster.network")
 
+
 class device_network(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
             request, "device_network.html", {
-                "netdevice_form" : netdevice_form(),
-                "net_ip_form" : net_ip_form(),
-                "peer_information_s_form" : peer_information_s_form(),
-                "peer_information_d_form" : peer_information_d_form(),
-                "device_object_level_permission" : "backbone.device.change_network",
+                "netdevice_form": netdevice_form(),
+                "net_ip_form": net_ip_form(),
+                "peer_information_s_form": peer_information_s_form(),
+                "peer_information_d_form": peer_information_d_form(),
+                "device_object_level_permission": "backbone.device.change_network",
             }
         )()
 
+
 class show_cluster_networks(permission_required_mixin, View):
     all_required_permissions = ["backbone.network.modify_network"]
+
     def get(self, request):
         return render_me(request, "cluster_networks.html", {
-            "network_form" : network_form(),
-            "network_device_type_form" : network_device_type_form(),
-            "network_type_form" : network_type_form(),
+            "network_form": network_form(),
+            "network_device_type_form": network_device_type_form(),
+            "network_type_form": network_type_form(),
             })()
+
 
 class json_network(View):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         logger.log(log_level, "[jsn] %s" % (what))
+
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
@@ -85,6 +90,7 @@ class json_network(View):
         # time.sleep(10)
         # pprint.pprint(json_obj)
         return HttpResponse(json_obj, mimetype="application/json")
+
 
 class copy_network(View):
     @method_decorator(login_required)
@@ -146,7 +152,8 @@ class copy_network(View):
                     "net_ip_set",
                     "net_ip_set__network",
                     "net_ip_set__domain_tree_node",
-                    "net_ip_set__network__network_type"):
+                    "net_ip_set__network__network_type"
+                ):
                     src_dict[cur_nd.devname] = cur_nd
                     if cur_nd.master_device_id:
                         vlan_master_dict[cur_nd.devname] = cur_nd.master_device.devname
@@ -162,7 +169,8 @@ class copy_network(View):
                     new_nd.save()
                     for cur_ip in cur_nd.net_ip_set.all().prefetch_related(
                         "network",
-                        "network__network_type"):
+                        "network__network_type"
+                    ):
                         new_ip = cur_ip.copy()
                         new_ip.netdevice = new_nd
                         if cur_ip.network.network_type.identifier != "l":
@@ -175,7 +183,7 @@ class copy_network(View):
                     # peering
                     if cur_nd.pk in peer_dict:
                         for target_nd, penalty in peer_dict[cur_nd.pk]:
-                            if target_nd == None:
+                            if target_nd is None:
                                 # local peer
                                 peer_information(
                                     s_netdevice=new_nd,
@@ -202,19 +210,22 @@ class copy_network(View):
         else:
             request.xml_response.error("no target_devices", logger)
 
+
 class get_domain_name_tree(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_domain_name_tree"]
+
     def get(self, request):
         return render_me(request, "domain_name_tree.html", {
-            "domain_name_tree_form" : domain_tree_node_form(),
-            "doc_page"              : "domain_name_tree",
+            "domain_name_tree_form": domain_tree_node_form(),
+            "doc_page": "domain_name_tree",
             })()
+
 
 class get_network_clusters(permission_required_mixin, View):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         logger.log(log_level, "[jsn] %s" % (what))
     all_required_permissions = []
+
     def post(self, request):
         r_obj = config_tools.router_object(self.log)
         return HttpResponse(json.dumps(r_obj.get_clusters()), mimetype="application/json")
-

@@ -39,10 +39,12 @@ import logging
 
 logger = logging.getLogger("cluster.setup")
 
+
 class redirect_to_main(View):
     @method_decorator(never_cache)
     def get(self, request):
         return HttpResponseRedirect(reverse("session:login"))
+
 
 def _get_login_screen_type():
     try:
@@ -52,6 +54,7 @@ def _get_login_screen_type():
     else:
         _lst = cur_cs.login_screen_type
     return _lst
+
 
 def _get_login_hints():
     # show login hints ?
@@ -70,6 +73,7 @@ def _get_login_hints():
         _hints = []
     return json.dumps(_hints)
 
+
 def _get_cluster_name():
     try:
         c_name = device_variable.objects.values_list("val_str", flat=True).get(
@@ -80,22 +84,25 @@ def _get_cluster_name():
     else:
         return c_name
 
+
 def login_page(request, **kwargs):
         return render_me(request, "login.html", {
-            "CLUSTER_NAME"      : _get_cluster_name(),
-            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
-            "login_form"        : kwargs.get("login_form", authentication_form()),
-            "from_logout"       : kwargs.get("from_logout", False),
-            "login_hints"       : _get_login_hints(),
-            "app_path"          : reverse("session:login")
+            "CLUSTER_NAME": _get_cluster_name(),
+            "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
+            "login_form": kwargs.get("login_form", authentication_form()),
+            "from_logout": kwargs.get("from_logout", False),
+            "login_hints": _get_login_hints(),
+            "app_path": reverse("session:login")
             }
         )()
+
 
 class sess_logout(View):
     def get(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
         return login_page(request, from_logout=from_logout)
+
 
 def _login(request, _user_object, login_form=None):
     login(request, _user_object)
@@ -110,6 +117,7 @@ def _login(request, _user_object, login_form=None):
     _user_object.save(update_fields=["login_count"])
     update_session_object(request)
 
+
 class sess_login(View):
     def get(self, request):
         if user.objects.all().count():
@@ -119,6 +127,7 @@ class sess_login(View):
                     _login(request, first_user)
                     return HttpResponseRedirect(reverse("user:account_info"))
         return login_page(request)
+
     def post(self, request):
         _post = request.POST
         login_form = authentication_form(data=_post)
