@@ -174,7 +174,7 @@ def get_socket(context, r_type, **kwargs):
         ("TCP_KEEPALIVE_IDLE", 300),
         ("RECONNECT_IVL_MAX", 500),
         ("RECONNECT_IVL", 200),
-        ]:
+    ]:
         _sock.setsockopt(getattr(zmq, _opt), _value)
     return _sock
 
@@ -657,6 +657,7 @@ class meta_server_info(object):
             while act_pid in self.__pids:
                 self.__pids.remove(act_pid)
         self.__pids.sort()
+
     def get_pids(self, process_name=None):
         pid_list = self.__pids
         if process_name is None:
@@ -816,7 +817,11 @@ class meta_server_info(object):
             "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in missing_list else (
                 "{:d} {}, {:d} found)".format(
                     abs(bound_dict[cur_pid]),
-                    "missing (lower bound is {:d}".format(self.__pids_expected[cur_pid][0]) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(self.__pids_expected[cur_pid][1]),
+                    "missing (lower bound is {:d}".format(
+                        self.__pids_expected[cur_pid][0]
+                    ) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
+                        self.__pids_expected[cur_pid][1]
+                    ),
                     self.__pids_found.get(cur_pid, 0),
                 ) if bound_dict[cur_pid] else "OK"
             )
@@ -1147,8 +1152,10 @@ def set_handles(pfix, error_only=False, **kwargs):
                     except:
                         logging_tools.my_syslog("cannot chmod() '{}' to 0640".format(f_name))
             if act_h:
-                new_h_struct[name] = {"handle" : act_h,
-                                      "type"   : acth_t}
+                new_h_struct[name] = {
+                    "handle": act_h,
+                    "type": acth_t
+                }
         if len(new_h_struct.keys()) < len(h_names.keys()):
             for act_h in new_h_struct.keys():
                 new_h_struct[act_h]["handle"].close()
@@ -1239,7 +1246,11 @@ def change_user_group(user, group, groups=[], **kwargs):
     except:
         act_gid_name = "<unknown>"
     if add_groups:
-        logging_tools.my_syslog("Trying to set additional groups to {} ({})".format(", ".join(add_group_names), ", ".join(["{:d}".format(x) for x in add_groups])))
+        logging_tools.my_syslog(
+            "Trying to set additional groups to {} ({})".format(
+                ", ".join(add_group_names), ", ".join(["{:d}".format(x) for x in add_groups])
+            )
+        )
         os.setgroups(add_groups)
     logging_tools.my_syslog("Trying to drop pid {:d} from [{} ({:d}), {} ({:d})] to [{} ({:d}), {} ({:d})] ...".format(
         os.getpid(),
@@ -1766,6 +1777,7 @@ def get_machine_name(short=True):
     else:
         return m_name
 
+
 def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
     if os.path.isfile(f_name):
         try:
@@ -1898,7 +1910,8 @@ def _read_issue_file(f_name):
     if os.path.isfile(f_name):
         ret_dict = {
             c_line[0].strip(): c_line[1].strip() for c_line in [
-                line.strip().lower().split("=", 1) for line in open(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#") and line.count("=")
+                line.strip().lower().split("=", 1) for line in open(f_name, "r").read().split("\n") if
+                line.strip() and not line.strip().startswith("#") and line.count("=")
             ]
         }
     return ret_dict

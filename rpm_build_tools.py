@@ -34,8 +34,9 @@ default_ns = argparse.Namespace(
     packager="%s@%s" % (pwd.getpwuid(os.getuid())[0], process_tools.get_machine_name()),
     user="root",
     group="root",
-    arch={"i686" : "i586"}.get(os.uname()[4], os.uname()[4])
+    arch={"i686": "i586"}.get(os.uname()[4], os.uname()[4])
 )
+
 
 class package_parser(argparse.ArgumentParser):
     def __init__(self):
@@ -56,6 +57,7 @@ class package_parser(argparse.ArgumentParser):
         self.add_argument("--preun-script", default="", help="filename of preun-script content")
         self.add_argument("--provides", default="", type=str, help="string of for the %%provide attribute")
         self.add_argument("args", nargs="+", help="file specifier (SRC[:DST])")
+
     def parse_args(self):
         opts = argparse.ArgumentParser.parse_args(self)
         # read pre / post scripts
@@ -72,6 +74,7 @@ class package_parser(argparse.ArgumentParser):
                     sys.exit(1)
         return opts
 
+
 class build_package(object):
     def __init__(self, pack_ns, **kwargs):
         self.__value_dict = {}
@@ -85,8 +88,10 @@ class build_package(object):
         for key, value in kwargs.iteritems():
             self[key] = value
         self._set_package_file_names()
+
     def __setitem__(self, key, value):
         self.__value_dict[key] = value
+
     def __getitem__(self, key):
         if key in self.__value_dict:
             return self.__value_dict[key]
@@ -94,11 +99,13 @@ class build_package(object):
             return getattr(self.__pack_ns, key)
         else:
             return getattr(default_ns, key)
+
     def get(self, key, default):
         if key in self:
             return self[key]
         else:
             return default
+
     def __contains__(self, key):
         if key in self.__value_dict:
             return True
@@ -106,6 +113,7 @@ class build_package(object):
             return True
         else:
             return hasattr(default_ns, key)
+
     def _check_system_settings(self):
         sys_dict = process_tools.fetch_sysinfo()[1]
         sys_version = sys_dict["version"]
@@ -120,6 +128,7 @@ class build_package(object):
         else:
             self.rpm_build_com = "rpmbuild"
         self._check_system_dirs()
+
     def _check_system_dirs(self):
         if os.getuid() == 0:
             if not os.path.isdir(self.rpm_base_dir):
@@ -129,12 +138,14 @@ class build_package(object):
                 if not os.path.isdir(t_dir):
                     print "  Generating directory %s ... " % (t_dir)
                     os.mkdir(t_dir)
+
     def _set_package_file_names(self):
         self.spec_file_name = "%s/SPECS/%s.spec" % (self.rpm_base_dir, self["name"])
         self.tgz_file_name = "%s/SOURCES/%s.tgz" % (self.rpm_base_dir, self["name"])
         self.short_package_name = "%s-%s-%s.%s.rpm" % (self["name"], self["version"], self["release"], self["arch"])
         self.long_package_name = "%s/RPMS/%s/%s" % (self.rpm_base_dir, self["arch"], self.short_package_name)
         self.src_package_name = "%s/SRPMS/%s-%s-%s.src.rpm" % (self.rpm_base_dir, self["name"], self["version"], self["release"])
+
     def write_specfile(self, content):
         print "Generating specfile ..."
         spec_contents = [
@@ -208,7 +219,7 @@ class build_package(object):
             script_key = "%s_script" % (script_type)
             if script_key in self:
                 script_content = self[script_key]
-                if type(script_content) == type(""):
+                if type(script_content) in [str, unicode]:
                     script_content = script_content.split("\n")
                 spec_contents.extend(["",
                                       "%%%s" % (script_type),
@@ -224,13 +235,15 @@ class build_package(object):
             # if [x for x in file_dirs if x in self["doc_dirs"]]:
             #    spec_contents.append("%%doc \"%s\"" % (df))
             spec_contents.append("\"%s\"" % (df))
-                # spec_contents.extend(["%%dir \"%s\"" % (act_dir) for act_dir in dest_dirs])
+            # spec_contents.extend(["%%dir \"%s\"" % (act_dir) for act_dir in dest_dirs])
         for _src_dir, dest_dir in content.get_types("d"):
             spec_contents.append("%%dir %s" % (dest_dir))
         file(self.spec_file_name, "wb").write("\n".join(spec_contents + [""]))
         # spec_file.close()
+
     def _str_rep(self, in_str):
         return in_str.replace("(", "\(").replace(")", "\)").replace("$", "\$")
+
     def create_tgz_file(self, content):
         tgz_files = content.get_tgz_files()
         print "Generating tgz-file (%s) ..." % (logging_tools.get_plural("entry", len(tgz_files)))
@@ -256,6 +269,7 @@ class build_package(object):
                 print ".",
             tgz_files = tgz_files[num_sim:]
         print
+
     def build_package(self):
         print "Building package..."
         stat, out = commands.getstatusoutput(
@@ -270,6 +284,7 @@ class build_package(object):
                 print "    %s" % (line.rstrip())
         else:
             self.build_ok = True
+
 
 class file_content_list(object):
     def __init__(self, s_points, **args):
@@ -301,8 +316,10 @@ class file_content_list(object):
         exc_dir_names = set(args.get("exclude_dir_names", []))
         # iterate over start_points
         for start_point in start_points:
-            excl_dict = {"files" : [],
-                         "dirs"  : []}
+            excl_dict = {
+                "files": [],
+                "dirs": []
+            }
             files_found = []
             if start_point.count(":") > 1:
                 print "Error, need a source- and an optional destination path (%s), found too many (%d) colons" % (start_point,
@@ -373,29 +390,37 @@ class file_content_list(object):
                     start_point,
                     ", ".join(["%s: %d" % (key, len(value)) for key, value in excl_dict.iteritems()]))
         # pprint.pprint(self.__content_list)
+
     def _remove_leading_slash(self, path):
         while path.startswith("/"):
             path = path[1:]
         return path
+
     def _add_leading_slash(self, path):
         if not path.startswith("/"):
             path = "/{}".format(path)
         return path
+
     def _add_file_to_content(self, s_file, s_part, d_part):
         self.__content_list.append(("f", self._remove_leading_slash(s_file), os.path.normpath(s_file.replace(s_part, d_part))))
+
     def _add_dir_to_content(self, d_path, s_part, d_part):
         self.__content_list.append(("d", d_path, os.path.normpath(d_path.replace(s_part, d_part))))
+
     def _add_absolute_link_to_content(self, link_src, link_dst, s_part, d_part):
         self.__content_list.append(("la", os.path.normpath(link_src.replace(s_part, d_part)), link_dst))
+
     def _add_relative_link_to_content(self, link_src, link_dst, s_part, d_part):
         self.__content_list.append(("lr", os.path.normpath(link_src), link_dst))
+
     def _get_file_info(self, f_name):
         return os.stat("/%s" % (f_name))[stat.ST_SIZE]
+
     def show_content(self):
         # print "Passt"
         # return
-        file_dict = {_v[1] : _v[2] for _v in self.__content_list if _v[0] == "f"}
-        dir_dict = {_v[1] : _v[2] for _v in self.__content_list if _v[0] == "d"}
+        file_dict = {_v[1]: _v[2] for _v in self.__content_list if _v[0] == "f"}
+        dir_dict = {_v[1]: _v[2] for _v in self.__content_list if _v[0] == "d"}
         file_keys, dir_keys = (sorted(file_dict.keys()),
                                sorted(dir_dict.keys()))
         if file_keys:
@@ -406,10 +431,12 @@ class file_content_list(object):
             print "Content of dir-list (source -> dest, %s):" % (logging_tools.get_plural("entry", len(dir_keys)))
             for sd in dir_keys:
                 print "  %-40s -> %s" % (sd, dir_dict[sd])
+
     def __ne__(self):
         return True if self.__content_list else False
+
     def get_types(self, s_type):
         return [(src, dst) for e_type, src, dst in self.__content_list if e_type == s_type]
-    def get_tgz_files(self):
-        return ["\"/%s\"" % (src) for e_type, src, dst in self.__content_list if e_type == "f"]
 
+    def get_tgz_files(self):
+        return ["\"/%s\"" % (src) for e_type, src, _dst in self.__content_list if e_type == "f"]

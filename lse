@@ -32,6 +32,7 @@ import process_tools
 import sys
 import time
 
+
 class error_rec(object):
     def __init__(self, pid, s_name, uid, uname, gid, gname):
         self.__pid = pid
@@ -40,21 +41,28 @@ class error_rec(object):
         self.__uname, self.__gname = (uname, gname)
         self.__lines = []
         self.set_idx()
+
     def set_idx(self, idx=0):
         self.__idx = idx
+
     def get_pid(self):
         return self.__pid
+
     def get_uid(self):
         return self.__uid
+
     def get_uname(self):
         return self.__uname
+
     def get_source_name(self):
         return self.__source_name
+
     def add_line(self, l_date, state, line):
         if not self.__lines:
             self.__err_time = datetime.datetime(*time.strptime(l_date)[0:6])
             self.__err_date = datetime.datetime(*time.strptime(l_date)[0:3])
         self.__lines.append((state, line))
+
     def get_err_time_str(self):
         diff_time = self.__err_date.now() - self.__err_date
         if diff_time.days == 0:
@@ -64,15 +72,18 @@ class error_rec(object):
         else:
             t_str = self.__err_time.strftime("%a, %d. %b %Y %H:%M:%S")
         return t_str
+
     def get_form_parts(self):
         return [
-                logging_tools.form_entry(self.__idx, header="idx"),
-                logging_tools.form_entry(self.get_err_time_str(), header="time"),
-                logging_tools.form_entry(self.__pid, header="PID"),
-                logging_tools.form_entry(len(self.__lines), header="lines"),
-                logging_tools.form_entry("%d (%s)" % (self.__uid, self.__uname), header="user"),
-                logging_tools.form_entry("%d (%s)" % (self.__gid, self.__gname), header="group"),
-                logging_tools.form_entry(self.__source_name, header="source")]
+            logging_tools.form_entry(self.__idx, header="idx"),
+            logging_tools.form_entry(self.get_err_time_str(), header="time"),
+            logging_tools.form_entry(self.__pid, header="PID"),
+            logging_tools.form_entry(len(self.__lines), header="lines"),
+            logging_tools.form_entry("%d (%s)" % (self.__uid, self.__uname), header="user"),
+            logging_tools.form_entry("%d (%s)" % (self.__gid, self.__gname), header="group"),
+            logging_tools.form_entry(self.__source_name, header="source")
+        ]
+
     def get_header(self):
         return "Error %d occured %s, pid %d, uid/gid is (%d/%d [%s/%s]), source %s, %s:" % (
             self.__idx,
@@ -84,12 +95,15 @@ class error_rec(object):
             self.__gname,
             self.__source_name,
             logging_tools.get_plural("line", len(self.__lines)))
+
     def show_lines(self):
         f_str = "%%3d (%%%ds) : %%s" % (max([len(x) for x, _y in self.__lines]))
         return "\n".join([f_str % (l_idx, state, line) for (state, line), l_idx in zip(self.__lines, xrange(len(self.__lines)))])
+
     def __repr__(self):
         return "error from pid %d (%s)" % (self.__pid,
                                            logging_tools.get_plural("line", len(self.__lines)))
+
 
 def main():
     my_parser = argparse.ArgumentParser()
@@ -226,7 +240,7 @@ def main():
         options.index = idx_show
     if options.index:
         for idx in options.index:
-            if idx_dict.has_key(idx):
+            if idx in idx_dict:
                 act_err = idx_dict[idx]
                 print act_err.get_header()
                 print act_err.show_lines()

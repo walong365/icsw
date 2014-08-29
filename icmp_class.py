@@ -78,6 +78,7 @@ class ip_packet(object):
         self.checksum = 0
         self.tot_len = self.ihl + len(payload)
         self.checksum = _checksum(self.packed())
+
     def packed(self):
         """ return packed version """
         if len(self.options) > 0:

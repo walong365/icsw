@@ -290,6 +290,7 @@ class old_cpu_info(object):
             if "extended model" in self[(1, "eax")] and "model" in self[(1, "eax")]:
                 self[(1, "eax")]["model"] = self[(1, "eax")]["model"].value + 16 * self[(1, "eax")]["extended model"].value
         self._set_cpu_flags()
+
     def _set_cpu_flags(self):
         if 4 in self:
             # this information is not reliable, hyper_threading is always reported true even when disabled in bios (bignode / Liebherr)

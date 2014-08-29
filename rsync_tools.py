@@ -17,29 +17,35 @@
 #
 """ rsync tools """
 
-import sys
-import logging_tools
 import commands
+import logging_tools
 import time
+
 
 class rsync_call(object):
     def __init__(self, **args):
         self.__log_command = args.get("log_command", None)
         if args.get("source_path"):
-            self.__v_dict = {"source_path" : args["source_path"],
-                             "dest_path"   : args["dest_path"],
-                             "start_time"  : None,
-                             "run_time"    : None,
-                             "verbose"     : args.get("verbose", False)}
+            self.__v_dict = {
+                "source_path": args["source_path"],
+                "dest_path": args["dest_path"],
+                "start_time": None,
+                "run_time": None,
+                "verbose": args.get("verbose", False)
+            }
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         if self.__log_command:
             self.__log_command("[rsync] %s" % (what), level)
         else:
             logging_tools.my_syslog(what, level)
+
     def __getitem__(self, key):
         return self.__v_dict[key]
+
     def __setitem__(self, key, value):
         self.__v_dict[key] = value
+
     def rsync(self):
         log_lines = []
         self["start_time"] = time.time()
@@ -69,30 +75,34 @@ class rsync_call(object):
         # show it
         # pprint.pprint(self.__v_dict)
         return log_lines
+
     def _interpret_call_stat(self, cs):
         # return strings
-        r_str_dict = {0  : "Success",
-                      1  : "Syntax or usage error",
-                      2  : "Protocol incompatibility",
-                      3  : "Errors selecting input/output files, dirs",
-                      4  : "Requested action not supported: an attempt was made to manipulate 64-bit files on a platform that cannot support them; or an option was specified that is supported by the client and not by the server.",
-                      5  : "Error starting client-server protocol",
-                      6  : "Daemon unable to append to log-file",
-                      10 : "Error in socket I/O",
-                      11 : "Error in file I/O",
-                      12 : "Error in rsync protocol data stream",
-                      13 : "Errors with program diagnostics",
-                      14 : "Error in IPC code",
-                      20 : "Received SIGUSR1 or SIGINT",
-                      21 : "Some error returned by waitpid()",
-                      22 : "Error allocating core memory buffers",
-                      23 : "Partial transfer due to error",
-                      24 : "Partial transfer due to vanished source files",
-                      25 : "The --max-delete limit stopped deletions",
-                      30 : "Timeout in data send/receive"}
+        r_str_dict = {
+            0: "Success",
+            1: "Syntax or usage error",
+            2: "Protocol incompatibility",
+            3: "Errors selecting input/output files, dirs",
+            4: "Requested action not supported: an attempt was made to manipulate 64-bit files on a platform that cannot support them; or an option was specified that is supported by the client and not by the server.",
+            5: "Error starting client-server protocol",
+            6: "Daemon unable to append to log-file",
+            10: "Error in socket I/O",
+            11: "Error in file I/O",
+            12: "Error in rsync protocol data stream",
+            13: "Errors with program diagnostics",
+            14: "Error in IPC code",
+            20: "Received SIGUSR1 or SIGINT",
+            21: "Some error returned by waitpid()",
+            22: "Error allocating core memory buffers",
+            23: "Partial transfer due to error",
+            24: "Partial transfer due to vanished source files",
+            25: "The --max-delete limit stopped deletions",
+            30: "Timeout in data send/receive"
+        }
         # left and right call stat
         l_cs, r_cs = (cs >> 8, cs & 255)
         return "[%s]" % (", ".join(["%s (%d)" % (r_str_dict.get(act_cs, "unknown code %d" % (act_cs)), act_cs) for act_cs in [l_cs, r_cs]]))
+
     def _interpret_output(self):
         key_list = ["number of files",
                     "number of files transferred",
@@ -111,7 +121,3 @@ class rsync_call(object):
                         value = value[:-6].strip()
                     key_dict[key_lut[key.lower()]] = int(value)
         self["decoded"] = key_dict
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..:"
-    sys.exit(1)

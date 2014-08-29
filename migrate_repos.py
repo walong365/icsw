@@ -40,12 +40,14 @@ NO_SUB_REPOS = set(["extra"])
 URL_RE = re.compile("^(http|dir)://.*(www.initat.org|local/packages).*/RPMs/(?P<dist>[^/]+)($|/(?P<rest>.*?)/*$)")
 REPO_RE = re.compile("^(?P<name>.*?)(-(?P<version>[^-]+))*$")
 
+
 class repo(dict):
     def __init__(self, name, opts):
         super(dict, self).__init__()
         self.opts = opts
         self.name = name
         self._read()
+
     def _read(self):
         if self.opts.to_devel:
             target_pf = "-devel"
@@ -95,11 +97,13 @@ class repo(dict):
                                 baseurl=new_url,
                                 )
                             print "    emit() done"
+
     def _to_dict(self):
         for line in self.content:
             kv_m = KV_RE.match(line)
             if kv_m:
                 self[kv_m.group("key").lower()] = kv_m.group("value")
+
     def _emit(self, f_name, **kwargs):
         c_dict = dict([(key, kwargs.get(key, value)) for key, value in self.iteritems()])
         # pprint.pprint(c_dict)
@@ -107,6 +111,7 @@ class repo(dict):
         for key, value in c_dict.iteritems():
             content.append("{}={}".format(key, value))
         file(f_name, "w").write("\n".join(content + [""]))
+
 
 def main():
     arg_p = argparse.ArgumentParser()
