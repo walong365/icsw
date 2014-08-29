@@ -21,6 +21,7 @@ from initat.cluster_server.config import global_config
 import configfile
 import cs_base_class
 
+
 class reload_config(cs_base_class.server_com):
     def _call(self, cur_inst):
         configfile.read_config_from_db(global_config, self.dc, "server")

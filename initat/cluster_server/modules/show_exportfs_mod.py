@@ -20,11 +20,12 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import device_config, home_export_list
 import cs_base_class
-import sys
+
 
 class show_exportfs(cs_base_class.server_com):
     class Meta:
         needed_configs = ["server"]
+
     def _call(self, cur_inst):
         # normal exports
         exp_entries = device_config.objects.filter(
@@ -35,12 +36,15 @@ class show_exportfs(cs_base_class.server_com):
             dev_pk, act_pk = (entry.device.pk,
                               entry.config.pk)
             ei_dict.setdefault(
-                dev_pk, {}).setdefault(
-                    act_pk, {
-                        "export"       : None,
-                        "import"       : None,
-                        "node_postfix" : "",
-                        "options"      : "-soft"})
+                dev_pk, {}
+            ).setdefault(
+                act_pk, {
+                    "export": None,
+                    "import": None,
+                    "node_postfix": "",
+                    "options": "-soft"
+                }
+            )
             for c_str in entry.config.config_str_set.all():
                 if c_str.name in ei_dict[dev_pk][act_pk]:
                     ei_dict[dev_pk][act_pk][c_str.name] = c_str.value
@@ -74,7 +78,3 @@ class show_exportfs(cs_base_class.server_com):
         cur_inst.srv_com.set_result(
             "ok showed {:d} local and {:d} foreign exports".format(num_dict["local"], num_dict["foreign"])
         )
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

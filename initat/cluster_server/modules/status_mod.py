@@ -30,9 +30,11 @@ import process_tools
 import server_command
 import uuid_tools
 
+
 class status(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
+
     def _call(self, cur_inst):
         p_dict = self.process_pool.get_info_dict()
         cur_cdg = device.objects.get(Q(device_group__cluster_device_group=True))
@@ -51,6 +53,7 @@ class status(cs_base_class.server_com):
             server_command.SRV_REPLY_STATE_OK if all_running else server_command.SRV_REPLY_STATE_ERROR,
         )
 
+
 class server_status(cs_base_class.server_com):
     def _call(self, cur_inst):
         default_ns = check_scripts.get_default_ns()
@@ -60,6 +63,7 @@ class server_status(cs_base_class.server_com):
         cur_inst.srv_com.set_result(
             "checked system",
             )
+
 
 class server_control(cs_base_class.server_com):
     def _call(self, cur_inst):
@@ -86,10 +90,12 @@ class server_control(cs_base_class.server_com):
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
 
+
 # merged from modify_service_mod
 class modify_service(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["service", "mode"]
+
     def _call(self, cur_inst):
         full_service_name = "/etc/init.d/{}".format(self.option_dict["service"])
         if self.option_dict["mode"] in ["start", "stop", "restart"]:
@@ -116,6 +122,7 @@ class modify_service(cs_base_class.server_com):
                 server_command.SRV_REPLY_STATE_ERROR
             )
 
+
 # merged from check_server_mod, still needed ?
 class check_server(cs_base_class.server_com):
     def _call(self, cur_inst):
@@ -123,8 +130,16 @@ class check_server(cs_base_class.server_com):
         # def_ns["full_status"] = True
         # def_ns["mem_info"] = True
         ret_dict = check_scripts.check_system(def_ns)
-        pub_coms = sorted([com_name for com_name, com_struct in initat.cluster_server.command_dict.iteritems() if com_struct.Meta.public_via_net])
-        priv_coms = sorted([com_name for com_name, com_struct in initat.cluster_server.command_dict.iteritems() if not com_struct.Meta.public_via_net])
+        pub_coms = sorted(
+            [
+                com_name for com_name, com_struct in initat.cluster_server.modules.command_dict.iteritems() if com_struct.Meta.public_via_net
+            ]
+        )
+        priv_coms = sorted(
+            [
+                com_name for com_name, com_struct in initat.cluster_server.modules.command_dict.iteritems() if not com_struct.Meta.public_via_net
+            ]
+        )
         # FIXME, sql info not transfered
         for _key, value in ret_dict.iteritems():
             if type(value) == dict and "sql" in value:
@@ -133,40 +148,45 @@ class check_server(cs_base_class.server_com):
             "returned server info",
         )
         cur_inst.srv_com["result:server_info"] = {
-            "version"          : global_config["VERSION"],
-            "uuid"             : uuid_tools.get_uuid().get_urn(),
-            "server_status"    : ret_dict,
-            "public_commands"  : pub_coms,
-            "private_commands" : priv_coms}
+            "version": global_config["VERSION"],
+            "uuid": uuid_tools.get_uuid().get_urn(),
+            "server_status": ret_dict,
+            "public_commands": pub_coms,
+            "private_commands": priv_coms
+        }
+
 
 # merged from version_mod
 class version(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
+
     def _call(self, cur_inst):
         cur_inst.srv_com["version"] = global_config["VERSION"]
         cur_inst.srv_com.set_result(
             "version is {}".format(global_config["VERSION"])
         )
 
+
 # merged from get_uuid_mod
 class get_uuid(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
+
     def _call(self, cur_inst):
         cur_inst.srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
         cur_inst.srv_com.set_result(
             "uuid is {}".format(uuid_tools.get_uuid().get_urn()),
         )
 
+
 class get_0mq_id(cs_base_class.server_com):
     class Meta:
         show_execution_time = False
+
     def _call(self, cur_inst):
         zmq_id = "{}:clusterserver:".format(uuid_tools.get_uuid().get_urn())
         cur_inst.srv_com["zmq_id"] = zmq_id
         cur_inst.srv_com.set_result(
             "0MQ_ID is {}".format(zmq_id),
         )
-
-

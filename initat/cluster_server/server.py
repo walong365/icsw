@@ -20,16 +20,16 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
-from initat.cluster_server.background import usv_server, quota
 from initat.cluster.backbone.routing import get_server_uuid
+from initat.cluster_server.background import usv_server, quota
 from initat.cluster_server.backup_process import backup_process
-from initat.cluster_server.notify import notify_mixin
 from initat.cluster_server.config import global_config
+from initat.cluster_server.notify import notify_mixin
 import cluster_location
 import config_tools
 import configfile
 import datetime
-import initat.cluster_server
+import initat.cluster_server.modules
 import logging_tools
 import os
 import process_tools
@@ -38,6 +38,7 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
+
 
 class server_process(threading_tools.process_pool, notify_mixin):
     def __init__(self, options):
@@ -73,6 +74,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
             self._init_network_sockets()
             self.init_notify_framework(global_config)
             self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -80,9 +82,11 @@ class server_process(threading_tools.process_pool, notify_mixin):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     @property
     def log_template(self):
         return self.__log_template
+
     def _set_next_backup_time(self, first=False):
         self.__next_backup_dt = datetime.datetime.now().replace(microsecond=0)
         if global_config["BACKUP_DATABASE"] and first:
@@ -96,15 +100,17 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.log("setting {} backup-time to {}".format(
             "first" if first else "next",
             self.__next_backup_dt if self.__next_backup_dt else "now"))
+
     def _bg_finished(self, *args, **kwargs):
         func_name = args[2]
         self.log("background task for '{}' finished".format(func_name))
-        initat.cluster_server.command_dict[func_name].Meta.cur_running -= 1
+        initat.cluster_server.modules.command_dict[func_name].Meta.cur_running -= 1
+
     def _init_capabilities(self):
         self.log("init server capabilities")
         self.__server_cap_dict = {
-            "usv_server" : usv_server.usv_server_stuff(self),
-            "quota"      : quota.quota_stuff(self),
+            "usv_server": usv_server.usv_server_stuff(self),
+            "quota": quota.quota_stuff(self),
             # "dummy"      : dummy_stuff(self),
             }
         self.__cap_list = []
@@ -113,11 +119,13 @@ class server_process(threading_tools.process_pool, notify_mixin):
             if _sql_info.effective_device:
                 self.__cap_list.append(key)
             self.log("capability {}: {}".format(key, "enabled" if key in self.__cap_list else "disabled"))
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -126,12 +134,14 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def _re_insert_config(self):
         if self.__run_command:
             self.log("running command, skipping re-insert of config", logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("re-insert config")
             cluster_location.write_config("server", global_config)
+
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -140,6 +150,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.add_actual_pid(configfile.get_manager_pid(), mult=1, process_name="manager")
             self.__msi_block.save_block()
+
     def process_exit(self, src_process, src_pid):
         process_tools.remove_pids(self.__pid_name, src_pid)
         process_tools.remove_pids(self.__pid_name, configfile.get_manager_pid(), mult=1)
@@ -150,6 +161,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         if src_process == "backup_process" and global_config["BACKUP_DATABASE"]:
             self.log("backup process finished, exiting")
             self["exit_requested"] = True
+
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
@@ -165,6 +177,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         else:
             msi_block = None
         return msi_block
+
     def _check_uuid(self):
         self.log("uuid checking")
         self.log(" - cluster_device_uuid is '{}'".format(uuid_tools.get_uuid().get_urn()))
@@ -177,7 +190,12 @@ class server_process(threading_tools.process_pool, notify_mixin):
             my_dev.uuid = file_uuid
             my_dev.save()
         # uuid is also stored as device variable
-        _uuid_var = cluster_location.db_device_variable(global_config["SERVER_IDX"], "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
+        _uuid_var = cluster_location.db_device_variable(
+            global_config["SERVER_IDX"],
+            "device_uuid",
+            description="UUID of device",
+            value=uuid_tools.get_uuid().get_urn()
+        )
         # recognize for which devices i am responsible
         dev_r = cluster_location.device_recognition()
         if dev_r.device_dict:
@@ -188,6 +206,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
             for cur_dev in dev_r.device_dict.itervalues():
                 cluster_location.db_device_variable(cur_dev, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
                 cluster_location.db_device_variable(cur_dev, "is_virtual", description="Flag set for Virtual Machines", value=1)
+
     def loop_end(self):
         if not self.__run_command:
             if self.com_socket:
@@ -198,8 +217,10 @@ class server_process(threading_tools.process_pool, notify_mixin):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+
     def loop_post(self):
         self.__log_template.close()
+
     def _init_network_sockets(self):
         self.__connection_dict = {}
         self.__discovery_dict = {}
@@ -213,10 +234,13 @@ class server_process(threading_tools.process_pool, notify_mixin):
             try:
                 client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
             except zmq.ZMQError:
-                self.log("error binding to {:d}: {}".format(
-                    global_config["COM_PORT"],
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "error binding to {:d}: {}".format(
+                        global_config["COM_PORT"],
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
                 raise
             else:
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
@@ -228,6 +252,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
         self.log("connected vector_socket to {}".format(conn_str))
+
     def _recv_command(self, zmq_sock):
         data = []
         while True:
@@ -244,11 +269,13 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 "data stream has wrong length ({}) != 2".format(len(data)),
                 logging_tools.LOG_LEVEL_ERROR
             )
+
     def _client_connect_timeout(self, sock):
         self.log("connect timeout", logging_tools.LOG_LEVEL_ERROR)
         self.set_error("error connect timeout")
         self._int_error("timeout")
         sock.close()
+
     def _run_command(self):
         self.log("direct command {}".format(global_config["COMMAND"]))
         cur_com = server_command.srv_command(command=global_config["COMMAND"])
@@ -257,10 +284,13 @@ class server_process(threading_tools.process_pool, notify_mixin):
             try:
                 key, value = keyval.split(":", 1)
             except:
-                self.log("error parsing option_key from '{}': {}".format(
-                    keyval,
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error parsing option_key from '{}': {}".format(
+                        keyval,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 cur_com["server_key:{}".format(key)] = value
         self._process_command(cur_com)
@@ -270,6 +300,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         print cur_com["result"].attrib["reply"]
         if global_config["SHOW_RESULT"]:
             print cur_com.pretty_print()
+
     def _execute_command(self, srv_com):
         com_name = srv_com["command"].text
         if com_name in initat.cluster_server.modules.command_dict:
@@ -328,6 +359,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 "command {} not known".format(com_name),
                 server_command.SRV_REPLY_STATE_CRITICAL
             )
+
     def _process_command(self, srv_com):
         _send_return = True
         com_name = srv_com["command"].text
@@ -342,12 +374,13 @@ class server_process(threading_tools.process_pool, notify_mixin):
             else:
                 self._execute_command(srv_com)
         return _send_return
+
     def _update(self):
         cur_time = time.time()
         cur_dt = datetime.datetime.now().replace(microsecond=0)
         if not global_config["DEBUG"]:
             cur_dt = cur_dt.replace(minute=0, second=0)
-        if cur_dt == self.__next_backup_dt or self.__next_backup_dt == None:
+        if cur_dt == self.__next_backup_dt or self.__next_backup_dt is None:
             self._set_next_backup_time()
             self.log("start DB-backup")
             self.add_process(backup_process("backup_process"), start=True)
@@ -360,6 +393,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         for cap_name in self.__cap_list:
             self.__server_cap_dict[cap_name](cur_time, drop_com)
         self.vector_socket.send_unicode(unicode(drop_com))
+
     def send_to_server(self, conn_str, srv_uuid, srv_com, **kwargs):
         _success = True
         local = kwargs.get("local", False)
@@ -378,6 +412,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 self.log("cannot send to {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                 _success = False
         return _success
+
     def _recv_discovery(self, sock):
         result = server_command.srv_command(source=sock.recv_unicode())
         discovery_id = result["discovery_id"].text
@@ -410,14 +445,19 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("connected to {}".format(conn_str))
+
     def get_client_ret_state(self):
         return self.__client_error, self.__client_ret_str
+
     def _load_modules(self):
         self.log("init modules from cluster_server")
         if initat.cluster_server.modules.error_log:
             self.log(
-                "{} while loading:".format(logging_tools.get_plural("error", len(initat.cluster_server.modules.error_log))),
-                logging_tools.LOG_LEVEL_ERROR)
+                "{} while loading:".format(
+                    logging_tools.get_plural("error", len(initat.cluster_server.modules.error_log))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             for line_num, err_line in enumerate(initat.cluster_server.modules.error_log):
                 self.log(
                     "{:2d} : {}".format(
@@ -455,4 +495,3 @@ class server_process(threading_tools.process_pool, notify_mixin):
             initat.cluster_server.modules.command_names.remove(del_name)
             del initat.cluster_server.modules.command_dict[del_name]
         self.log("Found {}".format(logging_tools.get_plural("command", len(initat.cluster_server.modules.command_names))))
-

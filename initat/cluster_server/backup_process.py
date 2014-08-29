@@ -31,8 +31,10 @@ import stat
 import threading_tools
 import time
 
+
 class dummy_file(file):
     ending = None
+
 
 class backup_process(threading_tools.process_obj):
     def process_init(self):
@@ -41,8 +43,10 @@ class backup_process(threading_tools.process_obj):
             global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         connection.close()
         self.register_func("start_backup", self._start_backup)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def _start_backup(self, *args, **kwargs):
         self.log("starting backup")
         bu_dir = global_config["DATABASE_DUMP_DIR"]
@@ -60,6 +64,7 @@ class backup_process(threading_tools.process_obj):
         self._fast_backup(bu_dir)
         self._normal_backup(bu_dir)
         self._exit_process()
+
     def _fast_backup(self, bu_dir):
         # start 'fast' django backup
         s_time = time.time()
@@ -81,6 +86,7 @@ class backup_process(threading_tools.process_obj):
         dumpdatafast.BASE_OBJECT = None
         e_time = time.time()
         self.log("fast backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+
     def _normal_backup(self, bu_dir):
         # start 'normal' django backup
         s_time = time.time()
@@ -110,6 +116,6 @@ class backup_process(threading_tools.process_obj):
         os.unlink(full_path)
         e_time = time.time()
         self.log("normal backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+
     def loop_post(self):
         self.__log_template.close()
-

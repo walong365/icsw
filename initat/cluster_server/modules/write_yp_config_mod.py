@@ -26,16 +26,17 @@ import cs_base_class
 import cs_tools
 import logging_tools
 import os
-import pprint
 import re
 import server_command
 import shutil
 import time
 
+
 class write_yp_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["yp_server"]
-    def _call(self, cur_inst): # call_it(self, opt_dict, call_params):
+
+    def _call(self, cur_inst):  # call_it(self, opt_dict, call_params):
         try:
             import gdbm
         except ImportError:
@@ -106,7 +107,14 @@ class write_yp_config(cs_base_class.server_com):
             group_stuff = all_groups[user_stuff.group_id]
             if user_stuff.export_id in home_exp_dict.keys():
                 home_stuff = home_exp_dict[user_stuff.export_id]
-                export_dict[os.path.normpath("%s/%s" % (group_stuff.homestart, user_stuff.home))] = (home_stuff["options"], "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home))
+                export_dict[
+                    os.path.normpath(
+                        os.path.join(group_stuff.homestart, user_stuff.home)
+                    )
+                ] = (
+                    home_stuff["options"],
+                    "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home)
+                )
             else:
                 self.log("skipping user %s (no valid export entry)" % (unicode(user_stuff)), logging_tools.LOG_LEVEL_WARN)
         # print export_dict
@@ -168,8 +176,20 @@ class write_yp_config(cs_base_class.server_com):
                 # hm, in fact we have an SHA1 password, this will not work...
                 pw_enc = "$5$${}".format(password)
             full_name = " ".join([(getattr(user_struct, key) or "").strip() for key in ["title", "first_name", "last_name"]]) or user_struct.login
-            pbn.append((user_struct.login, "%s:%s:%d:%d:%s:%s:%s" % (user_struct.login, pw_enc, user_struct.uid, group_struct.gid, full_name, home, user_struct.shell)))
-            pbu.append(("%d" % (user_struct.uid), "%s:%s:%d:%d:%s:%s:%s" % (user_struct.login, pw_enc, user_struct.uid, group_struct.gid, full_name, home, user_struct.shell)))
+            pbn.append(
+                (
+                    user_struct.login,
+                    "%s:%s:%d:%d:%s:%s:%s" % (
+                        user_struct.login, pw_enc, user_struct.uid, group_struct.gid, full_name, home, user_struct.shell
+                    )
+                )
+            )
+            pbu.append(
+                (
+                    "%d" % (user_struct.uid),
+                    "%s:%s:%d:%d:%s:%s:%s" % (user_struct.login, pw_enc, user_struct.uid, group_struct.gid, full_name, home, user_struct.shell)
+                )
+            )
         ext_keys["passwd.byuid"] = pbu
         ext_keys["passwd.byname"] = pbn
         # home-exports
@@ -275,4 +295,3 @@ class write_yp_config(cs_base_class.server_com):
                         logging_tools.get_plural("YP-map", num_maps),
                     ),
                 )
-

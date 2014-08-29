@@ -27,10 +27,12 @@ import server_command
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 
+
 class get_image_list(cs_base_class.server_com):
     class Meta:
         needed_configs = ["image_server"]
         needed_config_keys = ["IMAGE_SOURCE_DIR"]
+
     def _call(self, cur_inst):
         source_dir = global_config["IMAGE_SOURCE_DIR"]
         if os.path.isdir(source_dir):
@@ -40,18 +42,19 @@ class get_image_list(cs_base_class.server_com):
                 dirs_found = os.listdir(t_dir)
                 if len([x for x in dirs_found if x in NEEDED_IMAGE_DIRS]) == len(NEEDED_IMAGE_DIRS):
                     try:
-                        log_lines, sys_dict = process_tools.fetch_sysinfo(t_dir)
+                        _log_lines, sys_dict = process_tools.fetch_sysinfo(t_dir)
                     except:
                         sys_dict = {}
                     else:
                         sys_dict["bitcount"] = {
-                            "i386"   : 32,
-                            "i486"   : 32,
-                            "i586"   : 32,
-                            "i686"   : 32,
-                            "x86_64" : 64,
-                            "alpha"  : 64,
-                            "ia64"   : 64}.get(sys_dict.get("arch", "???"), 0)
+                            "i386": 32,
+                            "i486": 32,
+                            "i586": 32,
+                            "i686": 32,
+                            "x86_64": 64,
+                            "alpha": 64,
+                            "ia64": 64
+                        }.get(sys_dict.get("arch", "???"), 0)
                     valid_sys[os.path.basename(t_dir)] = sys_dict
                 else:
                     dirs_missing = [x for x in NEEDED_IMAGE_DIRS if x not in dirs_found]

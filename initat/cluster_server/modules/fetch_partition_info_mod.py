@@ -18,7 +18,7 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
-     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip
+    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip
 from initat.cluster_server.config import global_config
 import base64
 import bz2
@@ -29,11 +29,12 @@ import net_tools
 import partition_tools
 import process_tools
 import server_command
-import sys
+
 
 class fetch_partition_info(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["device_pk"]
+
     def _call(self, cur_inst):
         target_pks = cur_inst.option_dict["device_pk"].split(",")
         cur_inst.log("got %s: %s" % (logging_tools.get_plural("pk", len(target_pks)),
@@ -57,10 +58,12 @@ class fetch_partition_info(cs_base_class.server_com):
                         cur_dev.target_ip = found_ips[0].ip
                         break
             if cur_dev.target_ip:
-                cur_inst.log("contact device %s via %s" % (
-                    unicode(cur_dev),
-                    cur_dev.target_ip)
-                             )
+                cur_inst.log(
+                    "contact device %s via %s" % (
+                        unicode(cur_dev),
+                        cur_dev.target_ip
+                    )
+                )
             else:
                 cur_inst.log("no route to device %s found" % (unicode(cur_dev)),
                              logging_tools.LOG_LEVEL_ERROR)
@@ -110,7 +113,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     except:
                         lvm_info = partition_tools.lvm_struct("xml", xml=lvm_dict)
                     else:
-                        raise ValueError, "it seems the client is using pickled transfers"
+                        raise ValueError("it seems the client is using pickled transfers")
                     partition_name, partition_info = (
                         "%s_part" % (target_dev.full_name),
                         "generated partition_setup from device '%s'" % (target_dev.full_name))
@@ -121,7 +124,9 @@ class fetch_partition_info(cs_base_class.server_com):
                         pass
                     else:
                         # read previous settings
-                        for entry in cur_pt.partition_disc_set.all().values_list("partition__mountpoint", "partition__warn_threshold", "partition__crit_threshold"):
+                        for entry in cur_pt.partition_disc_set.all().values_list(
+                            "partition__mountpoint", "partition__warn_threshold", "partition__crit_threshold"
+                        ):
                             prev_th_dict[entry[0]] = (entry[1], entry[2])
                         for entry in cur_pt.lvm_vg_set.all().values_list("lvm_lv__mountpoint", "lvm_lv__warn_threshold", "lvm_lv__crit_threshold"):
                             prev_th_dict[entry[0]] = (entry[1], entry[2])
@@ -136,15 +141,16 @@ class fetch_partition_info(cs_base_class.server_com):
                                     "backbone:partition_disc",
                                     "backbone:lvm_lv",
                                     "backbone:lvm_vg",
-                                    "backbone:sys_partition"]:
+                                    "backbone:sys_partition"
+                                ]:
                                     pass
                                 elif rel_obj.name == "backbone:device":
-                                    for ref_obj in  rel_obj.model.objects.filter(Q(**{rel_obj.field.name : cur_pt})):
+                                    for ref_obj in rel_obj.model.objects.filter(Q(**{rel_obj.field.name: cur_pt})):
                                         self.log("cleaning %s of %s" % (rel_obj.field.name, unicode(ref_obj)))
                                         setattr(ref_obj, rel_obj.field.name, None)
                                         ref_obj.save()
                                 else:
-                                    raise ValueError, "unknown related object %s for partition_info" % (rel_obj.name)
+                                    raise ValueError("unknown related object %s for partition_info" % (rel_obj.name))
                             cur_pt.delete()
                         target_dev.act_partition_table = None
                     # fetch partition_fs
@@ -195,7 +201,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                 cur_inst.log("ignoring partition because hex_type = None", logging_tools.LOG_LEVEL_WARN)
                             else:
                                 hex_type = hex_type[2:].lower()
-                                if part == None:
+                                if part is None:
                                     # special multipath without partition
                                     part = "0"
                                 elif part.startswith("part"):
@@ -204,7 +210,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                 elif part.startswith("p"):
                                     # compaq array
                                     part = part[1:]
-                                if part_stuff.has_key("mountpoint"):
+                                if "mountpoint" in part_stuff:
                                     fs_stuff = fs_dict.get(hex_type, {}).get(part_stuff["fstype"].lower(), None)
                                     if fs_stuff is None and "fstype" in part_stuff and part_stuff["fstype"] in fs_dict:
                                         fs_stuff = fs_dict[part_stuff["fstype"]]
@@ -224,7 +230,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                         self.log("skipping partition {} because fs_stuff is None".format(part), logging_tools.LOG_LEVEL_WARN)
                                         new_part = None
                                 else:
-                                    if fs_dict.has_key(hex_type):
+                                    if hex_type in fs_dict:
                                         if hex_type == "82":
                                             new_part = partition(
                                                 partition_disc=new_disc,
@@ -235,7 +241,13 @@ class fetch_partition_info(cs_base_class.server_com):
                                                 mount_options="defaults",
                                             )
                                         else:
-                                            self.log("skipping partition {} because no mountpoint and no matching fs_dict (hex_type {})".format(part, hex_type), logging_tools.LOG_LEVEL_ERROR)
+                                            self.log(
+                                                "skipping partition {} because no mountpoint and no matching fs_dict (hex_type {})".format(
+                                                    part,
+                                                    hex_type
+                                                ),
+                                                logging_tools.LOG_LEVEL_ERROR
+                                            )
                                             new_part = None
                                     else:
                                         new_part = partition(
@@ -253,7 +265,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                 _part_name = "%s%s" % (dev, part)
                     for part, part_stuff in sys_dict.iteritems():
                         self.log("handling part %s (sys)" % (part))
-                        if type(part_stuff) == type({}):
+                        if type(part_stuff) == dict:
                             part_stuff = [part_stuff]
                         for p_stuff in part_stuff:
                             # ignore tmpfs mounts
@@ -281,11 +293,11 @@ class fetch_partition_info(cs_base_class.server_com):
                             self.log("handling LV %s" % (lv_name))
                             mount_options = lv_stuff.get(
                                 "mount_options", {
-                                    "dump"       : 0,
-                                    "fsck"       : 0,
-                                    "mountpoint" : "",
-                                    "options"    : "",
-                                    "fstype"     : "",
+                                    "dump": 0,
+                                    "fsck": 0,
+                                    "mountpoint": "",
+                                    "options": "",
+                                    "fstype": "",
                                 }
                             )
                             mount_options["fstype_idx"] = None
@@ -334,7 +346,3 @@ class fetch_partition_info(cs_base_class.server_com):
             cur_inst.srv_com.set_result(u"warning %s" % ("; ".join(ret_f)), server_command.SRV_REPLY_STATE_WARN)
         else:
             cur_inst.srv_com.set_result(u"ok %s" % ("; ".join(ret_f)), server_command.SRV_REPLY_STATE_OK)
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

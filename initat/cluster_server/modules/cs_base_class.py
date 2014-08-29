@@ -29,29 +29,35 @@ import server_command
 import threading_tools
 import time
 
+
 class bg_process(threading_tools.process_obj):
     class Meta:
         background = False
         show_execution_time = True
+
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.register_func("set_option_dict", self._set_option_dict)
-        self.register_func("set_srv_com"    , self._set_srv_com)
-        self.register_func("start_command"  , self._start_command)
+        self.register_func("set_srv_com", self._set_srv_com)
+        self.register_func("start_command", self._start_command)
         connection.close()
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def _set_option_dict(self, opt_dict, **kwargs):
         self.option_dict = opt_dict
+
     def _set_srv_com(self, srv_com, **kwargs):
         self.srv_com = server_command.srv_command(source=srv_com)
+
     def _start_command(self, com_name, **kwargs):
         self.log("starting command '{}'".format(com_name))
         # print [key for key in sys.modules.keys() if key.count("cluster_s")]
-        import initat.cluster_server
-        ex_code = initat.cluster_server.command_dict[com_name]
+        import initat.cluster_server.modules
+        ex_code = initat.cluster_server.modules.command_dict[com_name]
         loc_inst = com_instance(ex_code, self.srv_com, self.option_dict, self.Meta, self.zmq_context)
         loc_inst.log = self.log
         loc_inst()
@@ -63,29 +69,36 @@ class bg_process(threading_tools.process_obj):
         self.log("state ({:d}): {}".format(ret_state, ret_str))
         self.send_pool_message("bg_finished", com_name)
         self._exit_process()
+
     def loop_post(self):
         self.__log_template.close()
 
+
 class com_instance(object):
     bg_idx = 0
+
     def __init__(self, sc_obj, srv_com, option_dict, meta_struct, zmq_context):
         self.sc_obj = sc_obj
         self.srv_com = srv_com
         self.option_dict = option_dict
         self.Meta = meta_struct
         self.zmq_context = zmq_context
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.sc_obj.log(u"[ci] {}".format(what), log_level)
+
     def write_start_log(self):
         if self.Meta.write_log:
             self.log(u"Got command {}, {}: {}".format(
                 self.srv_com["command"].text,
                 logging_tools.get_plural("config", len(self.Meta.actual_configs)),
                 ", ".join(self.Meta.actual_configs) or "none"))
+
     def write_end_log(self):
         if self.Meta.write_log:
             # FIXME
             pass
+
     def __call__(self):
         if self.Meta.background:
             if self.Meta.cur_running < self.Meta.max_instances:
@@ -158,6 +171,7 @@ class com_instance(object):
             if db_debug:
                 self.log("queries executed : {:d}".format(len(connection.queries) - pre_queries))
 
+
 class server_com(object):
     class Meta:
         # callable via net
@@ -186,15 +200,19 @@ class server_com(object):
         cur_running = 0
         # is disbaled
         disabled = False
+
     def __init__(self):
         # copy Meta keys
         for key in dir(server_com.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(server_com.Meta, key))
+
     def link(self, process_pool):
         self.process_pool = process_pool
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.process_pool.log(u"[com] {}".format(what), log_level)
+
     def check_config(self, loc_config, force=False):
         self.server_idx, self.act_config_name = (0, "")
         doit, srv_origin, err_str = (False, "---", "OK")
@@ -223,6 +241,6 @@ class server_com(object):
         if doit and srv_origin == "---":
             srv_origin = "yes"
         return (doit, srv_origin, err_str)
+
     def __call__(self, srv_com, option_dict):
         return com_instance(self, srv_com, option_dict, self.Meta, self.process_pool.zmq_context)
-

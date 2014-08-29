@@ -23,19 +23,28 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from initat.cluster_server.modules import cs_base_class
 import imp
-import os.path
 import pkgutil
 import pprint
 import process_tools
 
 imp_dir = os.path.dirname(__file__)
 
-__all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listdir(imp_dir) if entry.endswith("_mod.py")] if cur_entry and not cur_entry.startswith("_")]
+__all__ = [
+    cur_entry for cur_entry in [
+        entry.split(".")[0] for entry in os.listdir(imp_dir) if entry.endswith("_mod.py")
+    ] if cur_entry and not cur_entry.startswith("_")
+]
 
 _new_hm_list = []
 for mod_name in __all__:
     new_mod = __import__(mod_name, globals(), locals())
-    _new_hm_list.extend([cur_obj for cur_obj in [getattr(new_mod, key) for key in dir(new_mod)] if type(cur_obj) == type and issubclass(cur_obj, cs_base_class.server_com)])
+    _new_hm_list.extend(
+        [
+            cur_obj for cur_obj in [
+                getattr(new_mod, key) for key in dir(new_mod)
+            ] if type(cur_obj) == type and issubclass(cur_obj, cs_base_class.server_com)
+        ]
+    )
 
 error_log = []
 command_dict = {}
@@ -43,9 +52,12 @@ for hm in _new_hm_list:
     try:
         command_dict[hm.__name__] = hm()
     except:
-        error_log.append("{} : {}".format(
-            hm.__name__,
-            process_tools.get_except_info()))
+        error_log.append(
+            "{} : {}".format(
+                hm.__name__,
+                process_tools.get_except_info()
+            )
+        )
     else:
         if not hm.Meta.disabled:
             command_dict[hm.__name__].name = hm.__name__

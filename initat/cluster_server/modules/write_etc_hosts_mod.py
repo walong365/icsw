@@ -34,14 +34,15 @@ SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"
 GROUP_DIR = "/opt/cluster/etc/pdsh"
 
+
 class write_etc_hosts(cs_base_class.server_com):
     class Meta:
         needed_configs = ["auto_etc_hosts"]
+
     def _call(self, cur_inst):
         file_list = []
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
-        # is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server(self.dc, self.Meta.actual_configs[0], True, False)
 
         is_server, serv_idx, _server_type, _server_str, _config_idx, _real_server_name = cluster_location.is_server("server", True, False)
         if is_server and serv_idx != self.server_idx:
@@ -50,27 +51,23 @@ class write_etc_hosts(cs_base_class.server_com):
         dev_r = cluster_location.device_recognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))
         # get all peers to local machine and local netdevices
-        my_idxs = netdevice.objects.filter(Q(device__in=server_idxs) & Q(device__enabled=True) & Q(device__device_group__enabled=True)).values_list("pk", flat=True)
+        my_idxs = netdevice.objects.filter(
+            Q(device__in=server_idxs) & Q(device__enabled=True) & Q(device__device_group__enabled=True)
+        ).values_list("pk", flat=True)
         # ref_table
         route_obj = router_object(cur_inst.log)
         all_paths = []
         for s_ndev in my_idxs:
             all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())
         # pprint.pprint(all_paths)
-        nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.all().select_related("device").prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node")])
+        nd_lut = {cur_nd.pk: cur_nd for cur_nd in netdevice.objects.all().select_related(
+            "device"
+        ).prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node")}
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
         rsa_key_dict = {}
         for _db_rec in ssh_vars:
             pass
-            # not handled FIXME
-            # print "* ssh_var *", db_rec
-            # if db_rec["val_blob"] and db_rec["dvname"] == "ssh_host_rsa_key_pub":
-                # if type(db_rec["val_blob"]) == type(array.array("b")):
-                    # key_str = db_rec["val_blob"].tostring().split()
-                # else:
-                    # key_str = db_rec["val_blob"].split()
-                # rsa_key_dict[db_rec["name"]] = " ".join(key_str)
         # read pre/post lines from /etc/hosts
         pre_host_lines, post_host_lines = ([], [])
         # parse pre/post host_lines
@@ -131,7 +128,13 @@ class write_etc_hosts(cs_base_class.server_com):
                 if cur_dtn.full_name:
                     if cur_dtn.create_short_names:
                         # also create short_names
-                        out_names = (" ".join(["{}.{} {}".format(host_name, cur_dtn.full_name, host_name) for host_name in host_names if not host_name.count(".")])).split()
+                        out_names = (
+                            " ".join(
+                                [
+                                    "{}.{} {}".format(host_name, cur_dtn.full_name, host_name) for host_name in host_names if not host_name.count(".")
+                                ]
+                            )
+                        ).split()
                     else:
                         # only print the long names
                         out_names = ["{}.{}".format(host_name, cur_dtn.full_name) for host_name in host_names if not host_name.count(".")]
@@ -145,7 +148,13 @@ class write_etc_hosts(cs_base_class.server_com):
                 # add names with dot
                 out_names.extend([host_name for host_name in host_names if host_name.count(".")])
                 # name_dict without localhost
-                name_dict.setdefault(target_nd.device.name, []).extend([out_name for out_name in out_names if out_name not in name_dict[target_nd.device.name] and not out_name.startswith("localhost")])
+                name_dict.setdefault(
+                    target_nd.device.name, []
+                ).extend(
+                    [
+                        out_name for out_name in out_names if out_name not in name_dict[target_nd.device.name] and not out_name.startswith("localhost")
+                    ]
+                )
                 ip_dict.setdefault(cur_ip.ip, [])
                 if out_names not in [entry[1] for entry in ip_dict[cur_ip.ip]]:
                     if cur_ip.ip != "0.0.0.0":
@@ -185,7 +194,9 @@ class write_etc_hosts(cs_base_class.server_com):
                 except:
                     pass
             # get all devices with netips
-            all_devs = device.objects.filter(Q(netdevice__net_ip__ip__contains=".")).values_list("name", "device_group__name").order_by("device_group__name", "name")
+            all_devs = device.objects.filter(
+                Q(netdevice__net_ip__ip__contains=".")
+            ).values_list("name", "device_group__name").order_by("device_group__name", "name")
             dg_dict = {}
             for dev_name, dg_name in all_devs:
                 dg_dict.setdefault(dg_name, []).append(dev_name)

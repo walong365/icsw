@@ -20,6 +20,7 @@
 
 import re
 
+
 def hostname_expand(hname, in_str):
     host_re = re.compile("^(?P<pre>.*)(?P<type>%h)(?P<post>.*)$")
     hre = True

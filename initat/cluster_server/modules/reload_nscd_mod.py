@@ -20,6 +20,7 @@ import cs_base_class
 import process_tools
 import server_command
 
+
 class reload_nscd(cs_base_class.server_com):
     def _call(self, cur_inst):
         cstat, log_f = process_tools.submit_at_command("/etc/init.d/nscd restart", 1)

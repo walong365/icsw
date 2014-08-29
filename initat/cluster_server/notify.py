@@ -34,9 +34,10 @@ import server_command
 
 # background job command mapping
 BGJ_CM = {
-    "sync_users"         : True,
-    "change_bootsetting" : True,
+    "sync_users": True,
+    "change_bootsetting": True,
 }
+
 
 class notify_mixin(object):
     def init_notify_framework(self, global_config):
@@ -56,10 +57,13 @@ class notify_mixin(object):
             self["exit_requested"] = True
         # check for background jobs and register timer to check for every 10 minutes
         self.register_timer(self.check_notify, 10 * 60, instant=True, oneshot=True)
+
     def check_notify(self):
         self.srv_routing.update()
         # step 1: delete pending jobs which are too old
-        _timeout = background_job.objects.filter(Q(initiator=self.srv_routing.local_device.pk) & Q(state__in=["pre-init", "pending"]) & Q(valid_until__lte=datetime.datetime.now()))
+        _timeout = background_job.objects.filter(
+            Q(initiator=self.srv_routing.local_device.pk) & Q(state__in=["pre-init", "pending"]) & Q(valid_until__lte=datetime.datetime.now())
+        )
         if _timeout.count():
             self.log("{} timeout".format(logging_tools.get_plural("background job", _timeout.count())), logging_tools.LOG_LEVEL_WARN)
             for _to in _timeout:
@@ -84,6 +88,7 @@ class notify_mixin(object):
                 self.log("pending background jobs: {:d}".format(_pc))
                 for _cur_bg in _pending:
                     self._handle_bgj(_cur_bg)
+
     def _handle_bgj(self, cur_bg):
         if cur_bg.command not in BGJ_CM:
             cur_bg.state = "ended"
@@ -100,6 +105,7 @@ class notify_mixin(object):
                 self.log("no {} function defined".format(_com_name), logging_tools.LOG_LEVEL_CRITICAL)
                 cur_bg.state = "ended"
                 cur_bg.save()
+
     def notify_waiting_for_job(self, srv_com):
         _waiting = False
         if "bgjrid" in srv_com:
@@ -107,6 +113,7 @@ class notify_mixin(object):
             if _id in self.__waiting_ids:
                 _waiting = True
         return _waiting
+
     def notify_handle_result(self, srv_com):
         _str, _state = srv_com.get_log_tuple()
         _id = int(srv_com["*bgjrid"])
@@ -124,11 +131,13 @@ class notify_mixin(object):
         _run_job.end = cluster_timezone.localize(datetime.datetime.now())
         _run_job.save()
         self.notify_check_for_bgj_finish(_run_job.background_job)
+
     def notify_check_for_bgj_finish(self, cur_bg):
         if not cur_bg.background_job_run_set.filter(Q(result="")).count():
             cur_bg.state = "done"
             cur_bg.save()
             self.log("{} finished".format(unicode(cur_bg)))
+
     def _bgjp_change_bootsetting(self, cur_bg):
         _src_com = server_command.srv_command(source=cur_bg.command_xml)
         dev = device.objects.get(Q(pk=int(_src_com.xpath(".//ns:object/@pk")[0])))
@@ -150,9 +159,14 @@ class notify_mixin(object):
             )
         ]
         self._run_bg_jobs(cur_bg, to_run)
+
     def _bgjp_sync_users(self, cur_bg):
         # step 1: create user homes
-        create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)).select_related("export__device")
+        create_user_list = user.objects.exclude(
+            Q(export=None)
+        ).filter(
+            Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)
+        ).select_related("export__device")
         to_run = []
         if create_user_list.count():
             self.log("{} to create".format(logging_tools.get_plural("user home", len(create_user_list))))
@@ -178,7 +192,7 @@ class notify_mixin(object):
             ("ldap_server", "sync_ldap_config", "server"),
             ("yp_server", "write_yp_config", "server"),
             ("monitor_server", "sync_http_users", "md-config"),
-            ]:
+        ]:
             _sc = config_tools.server_check(server_type=_config)
             if _sc.effective_device:
                 self.log(u"effective device for {} (command {}) is {}".format(
@@ -202,6 +216,7 @@ class notify_mixin(object):
         if no_device:
             self.log("no device(s) found for {}".format(", ".join(no_device)), logging_tools.LOG_LEVEL_WARN)
         self._run_bg_jobs(cur_bg, to_run)
+
     def _run_bg_jobs(self, cur_bg, to_run):
         if to_run:
             self.log("commands to execute: {:d}".format(len(to_run)))

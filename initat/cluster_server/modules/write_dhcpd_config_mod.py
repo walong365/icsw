@@ -18,7 +18,7 @@
 """ writes the dhcpd.conf in /etc """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, network
+from initat.cluster.backbone.models import network
 from initat.cluster_server.config import global_config
 import config_tools
 import cs_base_class
@@ -26,10 +26,12 @@ import os
 import process_tools
 import server_command
 
+
 class write_dhcpd_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["mother_server"]
         needed_option_keys = ["authoritative"]
+
     def _call(self, cur_inst):
         my_c = config_tools.server_check(server_type="mother_server")
         boot_ips = my_c.identifier_ip_lut.get("b", [])
@@ -44,10 +46,16 @@ class write_dhcpd_config(cs_base_class.server_com):
         else:
             boot_ip = boot_ips[0]
             boot_net = boot_ip.network
-            add_nets = list([(cur_net.network_type.identifier, cur_net) for cur_net in network.objects.exclude(
-                pk=boot_net.pk).filter(
-                Q(net_ip__netdevice__device=my_c.effective_device) &
-                Q(network_type__identifier__in=["s", "p", "o"])).distinct()])
+            add_nets = list(
+                [
+                    (cur_net.network_type.identifier, cur_net) for cur_net in network.objects.exclude(
+                        pk=boot_net.pk
+                    ).filter(
+                        Q(net_ip__netdevice__device=my_c.effective_device) &
+                        Q(network_type__identifier__in=["s", "p", "o"])
+                    ).distinct()
+                ]
+            )
             add_nets = sum([[_sub_net for _value, _sub_net in add_nets if _value == _t_val] for _t_val in ["p", "s", "o"]], [])
             dhcpd_c = [
                 "ddns-update-style none;",
@@ -68,9 +76,11 @@ class write_dhcpd_config(cs_base_class.server_com):
             for act_net in [boot_net] + add_nets:
                 if act_net.gw_pri > gw_pri:
                     gw_pri, gateway = (act_net.gw_pri, act_net.gateway)
-                for key, configs, add_dict in [("domain-name-servers", ["name_server", "name_slave"], {}),
-                                               ("ntp-servers", ["xntp_server"], {}),
-                                               ("nis-servers", ["yp_server"], {"domainname" : "nis-domain"})]:
+                for key, configs, _add_dict in [
+                    ("domain-name-servers", ["name_server", "name_slave"], {}),
+                    ("ntp-servers", ["xntp_server"], {}),
+                    ("nis-servers", ["yp_server"], {"domainname" : "nis-domain"})
+                ]:
                     found_confs = set(cur_dc.keys()) & set(configs)
                     if found_confs:
                         # some configs found
@@ -102,10 +112,13 @@ class write_dhcpd_config(cs_base_class.server_com):
                 local_found_dict = found_dict.get(act_net.pk, {})
                 for key in ["domain-name-servers", "ntp-servers", "nis-servers"]:
                     if key in local_found_dict:
-                        dhcpd_c.append("    {}    option {} {};".format(
-                            comment_sign,
-                            key,
-                            ", ".join(["%s" % (cur_dev.name) for cur_dev, ip_list in local_found_dict[key]])))
+                        dhcpd_c.append(
+                            "    {}    option {} {};".format(
+                                comment_sign,
+                                key,
+                                ", ".join(["{}".format(cur_dev.name) for cur_dev, _ip_list in local_found_dict[key]])
+                            )
+                        )
                 dhcpd_c.extend([
                     "    {}    server-identifier {};".format(
                         comment_sign,
@@ -130,7 +143,7 @@ class write_dhcpd_config(cs_base_class.server_com):
                 if os.path.isfile("/etc/init.d/%s" % (s_name)):
                     cstat, log_f = process_tools.submit_at_command("/etc/init.d/%s restart" % (s_name), 1)
                     for log_line in log_f:
-                        self.log(log_f)
+                        self.log(log_line)
                     if cstat:
                         ret_state, ret_str = (
                             server_command.SRV_REPLY_STATE_ERROR,
