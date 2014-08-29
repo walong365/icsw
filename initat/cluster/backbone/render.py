@@ -36,6 +36,7 @@ import routing
 
 logger = logging.getLogger("cluster.render")
 
+
 class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request = request
@@ -46,16 +47,20 @@ class render_me(object):
         for key, value in kwargs.iteritems():
             self.my_dict[key] = value
         # just for debug purposes
+
     def update(self, in_dict):
         self.my_dict.update(in_dict)
+
     def __call__(self, *args):
         return self.render(*args)
+
     def _unfold(self, in_dict):
         _keys = in_dict.keys()
         # unfold dictionary
         for _key in _keys:
             _parts = _key.split(".")
             in_dict.setdefault(_parts[0], {}).setdefault(_parts[1], {})[_parts[2]] = in_dict[_key]
+
     def render(self, *args):
         in_dict = {}
         for add_dict in args:
@@ -66,7 +71,7 @@ class render_me(object):
             op_dict = self.request.user.get_all_object_perms(None)
             self._unfold(gp_dict)
             self._unfold(op_dict)
-            _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
+            _user = {"idx": self.request.user.pk, "pk": self.request.user.pk}
             _num_bg_jobs = background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()
             # routing info
             _service_types = {key: True for key in routing.srv_type_routing().service_types}
@@ -85,7 +90,7 @@ class render_me(object):
         # store routing types as json
         self.my_dict["SERVICE_TYPES"] = json.dumps(_service_types)
         # add transformed dict ( md-config -> md_config )
-        _service_types.update({key.replace("-", "_") : value for key, value in _service_types.iteritems()})
+        _service_types.update({key.replace("-", "_"): value for key, value in _service_types.iteritems()})
         self.my_dict["DJANGO_SERVICE_TYPES"] = _service_types
         # store as json for angular
         self.my_dict["CLUSTER_LICENSE"] = json.dumps(cur_clc.licenses)
@@ -98,15 +103,18 @@ class render_me(object):
             self.my_dict,
             context_instance=django.template.RequestContext(self.request))
 
+
 def render_string(request, template_name, in_dict=None):
     return unicode(render_to_string(
         template_name,
         in_dict if in_dict is not None else {},
         django.template.RequestContext(request)))
 
+
 class permission_required_mixin(object):
     all_required_permissions = ()
     any_required_permissions = ()
+
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         perm_ok = True
@@ -140,4 +148,4 @@ class permission_required_mixin(object):
             request,
             *args,
             **kwargs
-            )
+        )

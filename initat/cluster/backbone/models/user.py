@@ -969,7 +969,7 @@ class group(models.Model):
         app_label = "backbone"
 
     def __unicode__(self):
-        return "{} (gid={:d})".format(
+        return u"{} (gid={:d})".format(
             self.groupname,
             self.gid)
 

@@ -10,6 +10,7 @@ from initat.cluster.backbone.models import user
 
 logger = logging.getLogger("cluster.auth")
 
+
 class db_backend(object):
     def authenticate(self, username=None, password=None):
         try:
@@ -44,9 +45,9 @@ class db_backend(object):
                     pw_hash,
                     username))
                 return None
+
     def get_user(self, user_id):
         try:
             return user.objects.get(Q(pk=user_id))
         except user.DoesNotExist:
             return None
-

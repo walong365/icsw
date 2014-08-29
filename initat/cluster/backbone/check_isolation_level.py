@@ -7,6 +7,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
+
 def main():
     # check isolation level
     if settings.DATABASES["default"]["ENGINE"].count("mysql"):
