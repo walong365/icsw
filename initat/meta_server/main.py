@@ -36,26 +36,34 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
+
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
     global_config.add_config_entries([
-        ("MAILSERVER"          , configfile.str_c_var("localhost", help_string="Mailserver to use [%(default)s]")),
-        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("COM_PORT"            , configfile.int_c_var(8012, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p", autoconf_exclude=True)),
-        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log", autoconf_exclude=True)),
-        ("LOG_NAME"            , configfile.str_c_var("meta-server", autoconf_exclude=True)),
-        ("MAIN_DIR"            , configfile.str_c_var("/var/lib/meta-server", autoconf_exclude=True)),
-        ("KILL_RUNNING"        , configfile.bool_c_var(True, autoconf_exclude=True)),
-        ("FROM_NAME"           , configfile.str_c_var("meta-server", help_string="from address for info mails [%(default)s]")),
-        ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),
-        ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
-        ("FAILED_CHECK_TIME"   , configfile.int_c_var(120, help_string="time in seconds to wait befor we do something [%(default)d]")),
-        ("TRACK_CSW_MEMORY"    , configfile.bool_c_var(False, help_string="enable tracking of the memory usage of the CSW [%(default)s]", action="store_true")),
-        ("MIN_CHECK_TIME"      , configfile.int_c_var(20, info="minimum time between two checks [%(default)s]", autoconf_exclude=True)),
-        ("MIN_MEMCHECK_TIME"   , configfile.int_c_var(300, info="minimum time between two memory checks [%(default)s]", autoconf_exclude=True)),
-        ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name, autoconf_exclude=True)),
-        ("PID_NAME"            , configfile.str_c_var("meta-server", autoconf_exclude=True))])
+        ("MAILSERVER", configfile.str_c_var("localhost", help_string="Mailserver to use [%(default)s]")),
+        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        (
+            "COM_PORT",
+            configfile.int_c_var(
+                8012,
+                info="listening Port",
+                help_string="port to communicate [%(default)i]", short_options="p", autoconf_exclude=True
+            )
+        ),
+        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log", autoconf_exclude=True)),
+        ("LOG_NAME", configfile.str_c_var("meta-server", autoconf_exclude=True)),
+        ("MAIN_DIR", configfile.str_c_var("/var/lib/meta-server", autoconf_exclude=True)),
+        ("KILL_RUNNING", configfile.bool_c_var(True, autoconf_exclude=True)),
+        ("FROM_NAME", configfile.str_c_var("meta-server", help_string="from address for info mails [%(default)s]")),
+        ("FROM_ADDR", configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),
+        ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
+        ("FAILED_CHECK_TIME", configfile.int_c_var(120, help_string="time in seconds to wait befor we do something [%(default)d]")),
+        ("TRACK_CSW_MEMORY", configfile.bool_c_var(False, help_string="enable tracking of the memory usage of the CSW [%(default)s]", action="store_true")),
+        ("MIN_CHECK_TIME", configfile.int_c_var(20, info="minimum time between two checks [%(default)s]", autoconf_exclude=True)),
+        ("MIN_MEMCHECK_TIME", configfile.int_c_var(300, info="minimum time between two memory checks [%(default)s]", autoconf_exclude=True)),
+        ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, autoconf_exclude=True)),
+        ("PID_NAME", configfile.str_c_var("meta-server", autoconf_exclude=True))])
     global_config.parse_file()
     options = global_config.handle_commandline(
         description="meta-server, version is {}".format(VERSION_STRING),
@@ -79,4 +87,3 @@ def main():
             print "Debugging meta-server on {}".format(global_config["SERVER_FULL_NAME"])
             main_process().loop()
     return 0
-

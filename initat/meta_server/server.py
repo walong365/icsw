@@ -43,6 +43,7 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
+
 class main_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
@@ -68,11 +69,13 @@ class main_process(threading_tools.process_pool):
         act_commands = self._check_for_new_info([])
         self._call_commands(act_commands)
         self.register_timer(self._check, 30, instant=True)
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def _check_dirs(self):
         main_dir = global_config["MAIN_DIR"]
         if not os.path.isdir(main_dir):
@@ -87,6 +90,7 @@ class main_process(threading_tools.process_pool):
                 new_stat,
                 ))
             os.chmod(main_dir, new_stat)
+
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
@@ -94,7 +98,7 @@ class main_process(threading_tools.process_pool):
         _spm = global_config.single_process_mode()
         if not _spm:
             process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
-        if True: # not self.__options.DEBUG:
+        if True:  # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("meta-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
@@ -107,11 +111,13 @@ class main_process(threading_tools.process_pool):
         else:
             msi_block = None
         self.__msi_block = msi_block
+
     def _sigint(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _init_network_sockets(self):
         client = process_tools.get_socket(
             self.zmq_context,
@@ -140,6 +146,7 @@ class main_process(threading_tools.process_pool):
         self.vector_socket = vector_socket
         # memory info send dict
         self.mis_dict = {}
+
     def _get_msi_block(self, srv_com):
         # check if a valid msi-block name is stored in arg_list
         _msi_block = None
@@ -158,6 +165,7 @@ class main_process(threading_tools.process_pool):
         else:
             srv_com.set_result("no args given", server_command.SRV_REPLY_STATE_ERROR)
         return _msi_block
+
     def _recv_command(self, zmq_sock):
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)
@@ -201,6 +209,7 @@ class main_process(threading_tools.process_pool):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -212,12 +221,14 @@ class main_process(threading_tools.process_pool):
         self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
         if self.vector_socket:
             self.vector_socket.close()
+
     def _handle_msi_command(self, srv_com, msi_block):
         command = srv_com["*command"]
         if command == "msi_exists":
@@ -243,9 +254,11 @@ class main_process(threading_tools.process_pool):
                     self._call_command(msi_block.start_command, srv_com, merge_reply=True)
                 else:
                     srv_com.set_result("no stop or start command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
+
     def _call_commands(self, act_commands):
         for _com in act_commands:
             self._call_command(_com)
+
     def _call_command(self, act_command, srv_com=None, merge_reply=False):
         # call command directly
         self.log("calling command '{}'".format(act_command))
@@ -279,8 +292,10 @@ class main_process(threading_tools.process_pool):
                 _r_str,
                 _r_state,
                 )
+
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
+
     def _check_for_new_info(self, problem_list, ignore_commands=False):
         # problem_list: list of problematic blocks we have to check
         change, act_commands = (False, [])
@@ -300,8 +315,24 @@ class main_process(threading_tools.process_pool):
                             act_commands = []
                         else:
                             act_time = time.localtime()
-                            new_name = "{}_{:04d}{:02d}{:02d}_{:02d}:{:02d}:{:02d}".format(fname, act_time[0], act_time[1], act_time[2], act_time[3], act_time[4], act_time[5])
-                            self.log("read {} from {} file {}, renaming to {}".format(logging_tools.get_plural("command", len(act_commands)), fname, full_name, new_name))
+                            new_name = "{}_{:04d}{:02d}{:02d}_{:02d}:{:02d}:{:02d}".format(
+                                fname,
+                                act_time[0],
+                                act_time[1],
+                                act_time[2],
+                                act_time[3],
+                                act_time[4],
+                                act_time[5]
+                            )
+                            self.log(
+                                "read {} from {} file {}, renaming to {}".format(
+                                    logging_tools.get_plural(
+                                        "command",
+                                        len(act_commands)
+                                    ),
+                                    fname, full_name, new_name
+                                )
+                            )
                             try:
                                 os.rename(full_name, os.path.join(global_config["MAIN_DIR"], new_name))
                             except:
@@ -315,13 +346,19 @@ class main_process(threading_tools.process_pool):
                     # ignore heartbeat files
                     pass
                 else:
-                    fn_dict = dict([(m_block.get_file_name(), m_block) for m_block in self.__check_dict.itervalues()])
-                    if not full_name in fn_dict:
+                    fn_dict = {m_block.get_file_name(): m_block for m_block in self.__check_dict.itervalues()}
+                    if full_name not in fn_dict:
                         new_meta_info = process_tools.meta_server_info(full_name)
                         nm_name = new_meta_info.get_name()
                         if nm_name:
                             self.__check_dict[nm_name] = new_meta_info
-                            self.log("discovered new meta_info_block for {} (file {}, info: {})".format(new_meta_info.get_name(), full_name, new_meta_info.get_info()))
+                            self.log(
+                                "discovered new meta_info_block for {} (file {}, info: {})".format(
+                                    new_meta_info.get_name(),
+                                    full_name,
+                                    new_meta_info.get_info()
+                                )
+                            )
                             change = True
                         else:
                             self.log("error reading meta_info_block {} (get_name() returned None)".format(fname),
@@ -336,7 +373,13 @@ class main_process(threading_tools.process_pool):
                                 new_meta_info.set_last_pid_check_ok_time(self.__check_dict[nm_name].get_last_pid_check_ok_time())
                                 new_meta_info.pid_checks_failed = self.__check_dict[nm_name].pid_checks_failed
                                 self.__check_dict[nm_name] = new_meta_info
-                                self.log("updated meta_info_block for {} (from file {}, info: {})".format(new_meta_info.get_name(), full_name, new_meta_info.get_info()))
+                                self.log(
+                                    "updated meta_info_block for {} (from file {}, info: {})".format(
+                                        new_meta_info.get_name(),
+                                        full_name,
+                                        new_meta_info.get_info()
+                                    )
+                                )
                                 change = True
         del_list = []
         for cname in self.__check_dict.keys():
@@ -351,6 +394,7 @@ class main_process(threading_tools.process_pool):
             all_names = sorted(self.__check_dict.keys())
             self.log("{} present: {}".format(logging_tools.get_plural("meta_info_block", len(all_names)), ", ".join(all_names)))
         return act_commands
+
     def _check(self):
         act_time = time.time()
         if abs(act_time - self.__last_update_time) < global_config["MIN_CHECK_TIME"]:
@@ -364,6 +408,7 @@ class main_process(threading_tools.process_pool):
             act_commands = self._check_for_new_info(self.__problem_list)
             self._call_commands(act_commands)
             self._check_processes()
+
     def _check_processes(self):
         act_time = time.time()
         del_list = []
@@ -402,8 +447,10 @@ class main_process(threading_tools.process_pool):
                         "starting repair sequence",
                         "",
                     ]
-                    self.log("*** starting repair sequence",
-                         logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "*** starting repair sequence",
+                        logging_tools.LOG_LEVEL_WARN
+                    )
                     if struct.stop_command:
                         self._call_command(struct.stop_command)
                         mail_text.extend(
@@ -454,6 +501,7 @@ class main_process(threading_tools.process_pool):
             self.log("removed {}: {}".format(logging_tools.get_plural("block", len(del_list)), ", ".join(del_list)))
             for d_p in del_list:
                 del self.__check_dict[d_p]
+
     def _show_meminfo(self, mem_info_dict):
         act_time = time.time()
         self.__act_meminfo_line += 1
@@ -483,7 +531,13 @@ class main_process(threading_tools.process_pool):
                     new_keys.add(f_key)
                     my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
                 if proc_name not in self.mis_dict:
-                    self.mis_dict[key] = hm_classes.mvect_entry("mem.icsw.{}.total".format(key), info="memory usage of {}".format(key), default=0, unit="Byte", base=1024)
+                    self.mis_dict[key] = hm_classes.mvect_entry(
+                        "mem.icsw.{}.total".format(key),
+                        info="memory usage of {}".format(key),
+                        default=0,
+                        unit="Byte",
+                        base=1024
+                    )
                 self.mis_dict[key].update(tot_mem)
                 self.mis_dict[key].valid_until = mv_valid
                 new_keys.add(key)
@@ -499,10 +553,18 @@ class main_process(threading_tools.process_pool):
         self.log(
             "Memory info: {}".format(
                 " / ".join([
-                    process_tools.beautify_mem_info(sum([value[1] for value in mem_info_dict.get(key, {}).itervalues()]), short=True) for key in act_meminfo_keys
+                    process_tools.beautify_mem_info(
+                        sum(
+                            [
+                                value[1] for value in mem_info_dict.get(key, {}).itervalues()
+                            ]
+                        ),
+                        short=True
+                    ) for key in act_meminfo_keys
                 ])
             )
         )
+
     def loop_post(self):
         self.network_socket.close()
         self.__log_template.close()
