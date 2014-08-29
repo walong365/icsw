@@ -225,7 +225,7 @@ class relay_code(threading_tools.process_pool):
             srv_com = server_command.srv_command(
                 command="relayer_info",
                 host=self.master_ip,
-                port="%d" % (self.master_port),
+                port="{:d}".format(self.master_port),
                 relayer_version=VERSION_STRING,
                 uuid=uuid_tools.get_uuid().get_urn(),
                 mon_version=self.__mon_version,
@@ -630,7 +630,7 @@ class relay_code(threading_tools.process_pool):
                             _e.timeout(parts[2]),
                             _e.raw_connect(parts[3]),
                             _e.arguments(
-                                *[getattr(_e, "arg%d" % (arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
+                                *[getattr(_e, "arg{:d}".format(arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
                             ),
                             _e.arg_list(" ".join(arg_list)),
                         ])
@@ -704,9 +704,13 @@ class relay_code(threading_tools.process_pool):
                                 con_mode = "T"
                         # decide which code to use
                         if self.__verbose:
-                            self.log("connection to '%s:%d' via %s" % (t_host,
-                                                                       int(srv_com["port"].text),
-                                                                       con_mode))
+                            self.log(
+                                "connection to '{}:{:d}' via {}".format(
+                                    t_host,
+                                    int(srv_com["port"].text),
+                                    con_mode
+                                )
+                            )
                         if int(srv_com["port"].text) != 2001:
                             # connect to non-host-monitoring service
                             if con_mode == "0":
@@ -792,7 +796,7 @@ class relay_code(threading_tools.process_pool):
     def _send_to_master(self, srv_com):
         if self.master_ip:
             srv_com["host"] = self.master_ip
-            srv_com["port"] = "%d" % (self.master_port)
+            srv_com["port"] = "{:d}".format(self.master_port)
             self._send_to_nhm_service(None, srv_com, None, register=False)
         else:
             self.log("no master-ip set, discarding message", logging_tools.LOG_LEVEL_WARN)
@@ -804,8 +808,10 @@ class relay_code(threading_tools.process_pool):
 
     def _send_to_client(self, src_id, srv_com, xml_input):
         # generate new xml from srv_com
-        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
-                                    int(srv_com["port"].text))
+        conn_str = "tcp://{}:{:d}".format(
+            srv_com["host"].text,
+            int(srv_com["port"].text)
+        )
         if id_discovery.has_mapping(conn_str):
             id_str = id_discovery.get_mapping(conn_str)
             cur_hc = host_connection.get_hc_0mq(conn_str, id_str)
@@ -838,9 +844,10 @@ class relay_code(threading_tools.process_pool):
             self.log(u"connection {} not present in __nhm_connections, ignoring disconnect".format(conn_str), logging_tools.LOG_LEVEL_WARN)
 
     def _send_to_nhm_service(self, src_id, srv_com, xml_input, **kwargs):
-        conn_str = "tcp://%s:%d" % (
+        conn_str = "tcp://{}:{:d}".format(
             srv_com["host"].text,
-            int(srv_com["port"].text))
+            int(srv_com["port"].text)
+        )
         if id_discovery.has_mapping(conn_str):
             connected = conn_str in self.__nhm_connections
             # trigger id discovery
@@ -883,7 +890,7 @@ class relay_code(threading_tools.process_pool):
     def _send_result(self, identity, reply_str, reply_state):
         self.sender_socket.send_unicode(identity, zmq.SNDMORE)
         self.sender_socket.send_unicode(
-            "%d\0%s".format(
+            "{:d}\0{}".format(
                 reply_state,
                 reply_str
             )
@@ -939,8 +946,10 @@ class relay_code(threading_tools.process_pool):
             cur_hc.return_error(cur_mes, "command '%s' not defined on relayer" % (com_name))
 
     def _send_to_old_nhm_service(self, src_id, srv_com, xml_input):
-        conn_str = "tcp://%s:%d" % (srv_com["host"].text,
-                                    int(srv_com["port"].text))
+        conn_str = "tcp://{}:{:d}".format(
+            srv_com["host"].text,
+            int(srv_com["port"].text)
+        )
         cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
         cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
@@ -961,7 +970,7 @@ class relay_code(threading_tools.process_pool):
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
-                self.log("Config info : [%d] %s" % (log_level, log_line))
+                self.log("Config info : [{:d}] {}".format(log_level, log_line))
         except:
             self.log("error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -1071,7 +1080,7 @@ class relay_code(threading_tools.process_pool):
         new_vers = int(srv_com["version"].text)
         ret_com = server_command.srv_command(
             command="file_content_result",
-            version="%d" % (new_vers),
+            version="{:d}".format(new_vers),
             slave_name=srv_com["slave_name"].text,
             file_name=t_file,
         )

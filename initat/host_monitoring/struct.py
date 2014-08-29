@@ -395,7 +395,7 @@ class host_message(object):
 
     def check_timeout(self, cur_time, to_value):
         # check for timeout, to_value is a global timeout from the host_connection object
-        _timeout = self.get_runtime(cur_time) > min(to_value, self.timeout - 2)
+        _timeout = self.get_runtime(cur_time) > min(to_value, self.timeout)
         return _timeout
 
     def get_runtime(self, cur_time):
