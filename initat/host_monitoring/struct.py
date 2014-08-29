@@ -330,8 +330,8 @@ class host_connection(object):
             # self.send_result(cur_mes, res_tuple)
 
     def _handle_old_result(self, mes_id, result):
-        if mes_id in host_connection.messages:
-            cur_mes = host_connection.messages[mes_id]
+        if mes_id in self.messages:
+            cur_mes = self.messages[mes_id]
             if result.startswith("no valid"):
                 res_tuple = (limits.nag_STATE_CRITICAL, result)
             else:
