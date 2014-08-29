@@ -918,7 +918,7 @@ mh_devrow_template = """
 """
 
 mh_row_template = """
-<td>{{ hint.m_type }}</td>
+<td title="from run {{ hint.call_idx }}">{{ hint.m_type }}</td>
 <td>{{ hint.key }}</td>
 <td>{{ hint.persistent | yesno1 }}</td>
 <td>{{ hint.datasource }}</td>
