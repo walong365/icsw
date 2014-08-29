@@ -81,6 +81,7 @@ class relay_code(threading_tools.process_pool):
             self.log("automatic resolving is disabled")
             self._resolve_address = self._resolve_address_noresolve
         # pending_connection.init(self)
+        # global timeout value for host connections
         self.__global_timeout = global_config["TIMEOUT"]
         self._show_config()
         self._get_mon_version()
@@ -340,13 +341,19 @@ class relay_code(threading_tools.process_pool):
         for key, value in self.__nhm_dict.iteritems():
             if abs(value[0] - cur_time) > self.__global_timeout:
                 del_list.append(key)
-                self._send_result(value[1]["identity"].text,
-                                  "error timeout (cto)",
-                                  server_command.SRV_REPLY_STATE_ERROR)
+                self._send_result(
+                    value[1]["identity"].text,
+                    "error timeout (cto)",
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
         if del_list:
-            self.log("removing %s: %s" % (logging_tools.get_plural("nhm key", len(del_list)),
-                                          ", ".join(sorted(del_list))),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "removing {}: {}".format(
+                    logging_tools.get_plural("nhm key", len(del_list)),
+                    ", ".join(sorted(del_list))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             for key in del_list:
                 del self.__nhm_dict[key]
         # check raw_nhm timeouts
@@ -354,13 +361,19 @@ class relay_code(threading_tools.process_pool):
         for key, value in self.__raw_nhm_dict.iteritems():
             if abs(value[0] - cur_time) > self.__global_timeout:
                 del_list.append(key)
-                self._send_result(value[1]["identity"].text,
-                                  "error timeout (rcto)",
-                                  server_command.SRV_REPLY_STATE_ERROR)
+                self._send_result(
+                    value[1]["identity"].text,
+                    "error timeout (rcto)",
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
         if del_list:
-            self.log("removing %s: %s" % (logging_tools.get_plural("raw nhm key", len(del_list)),
-                                          ", ".join(sorted(del_list))),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "removing {}: {}".format(
+                    logging_tools.get_plural("raw nhm key", len(del_list)),
+                    ", ".join(sorted(del_list))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             for key in del_list:
                 del self.__raw_nhm_dict[key]
         # check delayed
@@ -406,8 +419,10 @@ class relay_code(threading_tools.process_pool):
         # raw_nhm (not host monitoring) dictionary for timeout, raw connections (no XML)
         self.__raw_nhm_dict = {}
         self.__nhm_connections = set()
-        sock_list = [("ipc", "receiver", zmq.PULL, 2),
-                     ("ipc", "sender", zmq.PUB , 1024)]
+        sock_list = [
+            ("ipc", "receiver", zmq.PULL, 2),
+            ("ipc", "sender", zmq.PUB, 1024)
+        ]
         [setattr(self, "{}_socket".format(short_sock_name), None) for _sock_proto, short_sock_name, _a0, _b0 in sock_list]
         for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
@@ -604,7 +619,7 @@ class relay_code(threading_tools.process_pool):
                         com_part = cur_str[cur_size + 1:]
                         arg_list.append(cur_str[:cur_size].decode("utf-8"))
                     if com_part:
-                        raise ValueError, "not fully parsed (%s)" % (com_part)
+                        raise ValueError("not fully parsed ({})".format(com_part))
                     else:
                         cur_com = arg_list.pop(0) if arg_list else ""
                         srv_com = server_command.srv_command(command=cur_com, identity=src_id)
@@ -795,7 +810,7 @@ class relay_code(threading_tools.process_pool):
             id_str = id_discovery.get_mapping(conn_str)
             cur_hc = host_connection.get_hc_0mq(conn_str, id_str)
             com_name = srv_com["command"].text
-            cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
             if com_name in self.modules.command_dict:
                 com_struct = self.modules.command_dict[srv_com["command"].text]
                 # handle commandline
@@ -805,7 +820,7 @@ class relay_code(threading_tools.process_pool):
         elif id_discovery.is_pending(conn_str):
             cur_hc = host_connection.get_hc_0mq(conn_str)
             com_name = srv_com["command"].text
-            cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
+            cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
             cur_hc.return_error(cur_mes, "0mq discovery in progress")
         else:
             id_discovery(srv_com, src_id, xml_input)
@@ -868,9 +883,11 @@ class relay_code(threading_tools.process_pool):
     def _send_result(self, identity, reply_str, reply_state):
         self.sender_socket.send_unicode(identity, zmq.SNDMORE)
         self.sender_socket.send_unicode(
-            "%d\0%s" % (
+            "%d\0%s".format(
                 reply_state,
-                reply_str))
+                reply_str
+            )
+        )
 
     def _recv_nhm_result(self, zmq_sock):
         data = []
@@ -913,7 +930,7 @@ class relay_code(threading_tools.process_pool):
                                     int(srv_com["port"].text))
         cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
-        cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
+        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         if com_name in self.modules.command_dict:
             com_struct = self.modules.command_dict[com_name]
             cur_hc.send(cur_mes, com_struct)
@@ -926,7 +943,7 @@ class relay_code(threading_tools.process_pool):
                                     int(srv_com["port"].text))
         cur_hc = host_connection.get_hc_tcp(conn_str, dummy_connection=True)
         com_name = srv_com["command"].text
-        cur_mes = host_connection.add_message(host_message(com_name, src_id, srv_com, xml_input))
+        cur_mes = cur_hc.add_message(host_message(com_name, src_id, srv_com, xml_input))
         cur_hc.send(cur_mes, None)
         self.__old_send_lut[cur_mes.src_id] = cur_hc
 

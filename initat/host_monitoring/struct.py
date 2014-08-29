@@ -80,11 +80,16 @@ class host_connection(object):
 
     def __init__(self, conn_str, **kwargs):
         self.zmq_id = kwargs.get("zmq_id", "ms")
-        self.tcp_con = kwargs.get("dummy_connection", False)
-        host_connection.hc_dict[(not self.tcp_con, conn_str)] = self
-        self.sr_probe = sr_probe(self)
-        self.__open = False
         self.__conn_str = conn_str
+        self.tcp_con = kwargs.get("dummy_connection", False)
+        host_connection.hc_dict[self.hc_dict_key] = self
+        self.sr_probe = sr_probe(self)
+        self.messages = {}
+        self.__open = False
+
+    @property
+    def hc_dict_key(self):
+        return (not self.tcp_con, self.__conn_str)
 
     @property
     def conn_str(self):
@@ -99,16 +104,18 @@ class host_connection(object):
     @staticmethod
     def init(r_process, backlog_size, timeout, verbose):
         host_connection.relayer_process = r_process
-        host_connection.messages = {}
         # 2 queues for 0MQ and tcp, 0MQ is (True, conn_str), TCP is (False, conn_str)
         host_connection.hc_dict = {}
+        # lut to map message_ids to host_connections
+        host_connection.message_lut = {}
         host_connection.backlog_size = backlog_size
         host_connection.timeout = timeout
         host_connection.verbose = verbose
-        host_connection.g_log("backlog size is {:d}, timeout is {:d}, verbose is {}".format(
-            host_connection.backlog_size,
-            host_connection.timeout,
-            str(host_connection.verbose),
+        host_connection.g_log(
+            "backlog size is {:d}, timeout is {:d}, verbose is {}".format(
+                host_connection.backlog_size,
+                host_connection.timeout,
+                str(host_connection.verbose),
             )
         )
         # router socket
@@ -125,7 +132,6 @@ class host_connection(object):
         new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
-        # host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
 
     @staticmethod
     def get_hc_0mq(conn_str, target_id="ms", **kwargs):
@@ -152,6 +158,7 @@ class host_connection(object):
         # global check_timeout function
         cur_time = time.time()
         id_discovery.check_timeout(cur_time)
+        # check timeouts for all host connections
         [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
 
     @staticmethod
@@ -160,19 +167,16 @@ class host_connection(object):
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        host_connection.relayer_process.log("[hc] %s" % (what), log_level)
+        host_connection.relayer_process.log("[hc] {}".format(what), log_level)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        host_connection.relayer_process.log("[hc %s] %s" % (self.__conn_str, what), log_level)
+        host_connection.relayer_process.log("[hc {}] {}".format(self.__conn_str, what), log_level)
 
     def check_timeout(self, cur_time):
-        # check all messages for current host
+        # check all messages for current host_connection
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
         if to_messages:
             for to_mes in to_messages:
-                if not self.tcp_con:
-                    pass
-                    # self.__backlog_counter -= 1
                 self.return_error(
                     to_mes,
                     "timeout (after {:.2f} seconds [{:.2f}, {:.2f}])".format(
@@ -200,9 +204,9 @@ class host_connection(object):
             host_connection.zmq_socket.close()
             self.__open = False
 
-    @staticmethod
-    def add_message(new_mes):
-        host_connection.messages[new_mes.src_id] = new_mes
+    def add_message(self, new_mes):
+        host_connection.message_lut[new_mes.src_id] = self.hc_dict_key
+        self.messages[new_mes.src_id] = new_mes
         return new_mes
 
     def send(self, host_mes, com_struct):
@@ -257,15 +261,16 @@ class host_connection(object):
     def send_result(self, host_mes, result=None):
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
-        del host_connection.messages[host_mes.src_id]
+        del self.messages[host_mes.src_id]
+        del host_connection.message_lut[host_mes.src_id]
         del host_mes
 
-    @staticmethod
-    def _send_result(host_mes, result=None):
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
-        del host_connection.messages[host_mes.src_id]
-        del host_mes
+    # @staticmethod
+    # def _send_result(host_mes, result=None):
+    #    host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
+    #    host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
+    #    del host_connection.messages[host_mes.src_id]
+    #    del host_mes
 
     def return_error(self, host_mes, error_str):
         host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
@@ -290,35 +295,40 @@ class host_connection(object):
     def _handle_result(result):
         # print unicode(result)
         mes_id = result["relayer_id"].text
-        if mes_id in host_connection.messages:
+        # if mes_id in host_connection.messages:
+        if mes_id in host_connection.message_lut:
             host_connection.relayer_process._new_client(result["host"].text, int(result["port"].text))
             if "host_unresolved" in result:
                 host_connection.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
-            cur_mes = host_connection.messages[mes_id]
-            if cur_mes.sent:
-                cur_mes.sent = False
-                # self.__backlog_counter -= 1
-            if len(result.xpath(".//ns:raw", smart_strings=False)):
-                # raw response, no interpret
-                cur_mes.srv_com = result
-                host_connection._send_result(cur_mes, None)
-                # self.send_result(cur_mes, None)
-            else:
-                try:
-                    res_tuple = cur_mes.interpret(result)
-                except:
-                    res_tuple = (
-                        limits.nag_STATE_CRITICAL,
-                        "error interpreting result: %s" % (
-                            process_tools.get_except_info()))
-                    exc_info = process_tools.exception_info()
-                    for line in exc_info.log_lines:
-                        host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
-                host_connection._send_result(cur_mes, res_tuple)
-                # self.send_result(cur_mes, res_tuple)
+            host_connection.hc_dict[host_connection.message_lut[mes_id]].handle_result(mes_id, result)
         else:
             host_connection.g_log("got result for delayed id '%s'" % (mes_id), logging_tools.LOG_LEVEL_WARN)
         del result
+
+    def handle_result(self, mes_id, result):
+        cur_mes = self.messages[mes_id]
+        if cur_mes.sent:
+            cur_mes.sent = False
+            # self.__backlog_counter -= 1
+        if len(result.xpath(".//ns:raw", smart_strings=False)):
+            # raw response, no interpret
+            cur_mes.srv_com = result
+            self.send_result(cur_mes, None)
+            # self.send_result(cur_mes, None)
+        else:
+            try:
+                res_tuple = cur_mes.interpret(result)
+            except:
+                res_tuple = (
+                    limits.nag_STATE_CRITICAL,
+                    "error interpreting result: %s" % (
+                        process_tools.get_except_info()))
+                exc_info = process_tools.exception_info()
+                for line in exc_info.log_lines:
+                    host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
+            self.send_result(cur_mes, res_tuple)
+            # self.send_result(cur_mes, res_tuple)
+
     def _handle_old_result(self, mes_id, result):
         if mes_id in host_connection.messages:
             cur_mes = host_connection.messages[mes_id]
@@ -385,7 +395,7 @@ class host_message(object):
 
     def check_timeout(self, cur_time, to_value):
         # check for timeout, to_value is a global timeout from the host_connection object
-        _timeout = abs(cur_time - self.s_time) > min(to_value, self.timeout - 2)
+        _timeout = self.get_runtime(cur_time) > min(to_value, self.timeout - 2)
         return _timeout
 
     def get_runtime(self, cur_time):

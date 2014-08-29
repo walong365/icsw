@@ -36,9 +36,9 @@ import sys
 def show_command_info():
     from initat.host_monitoring import modules
     if modules.IMPORT_ERRORS:
-        print "Import errors:"
+        print("Import errors:")
         for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
-            print "%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str)
+            print("%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str))
     valid_names = sorted(modules.command_dict.keys())
     for mod in modules.module_list:
         c_names = [name for name in valid_names if modules.command_dict[name].module == mod]
@@ -76,7 +76,7 @@ def run_code(prog_name, global_config):
         from initat.host_monitoring.client import client_code
         ret_state = client_code(global_config)
     else:
-        print "Unknown mode {}".format(prog_name)
+        print("Unknown mode {}".format(prog_name))
         ret_state = -1
     return ret_state
 
@@ -86,16 +86,16 @@ def main():
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
-            ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-            ("ZMQ_DEBUG"              , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-            ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
-            ("LOG_NAME"               , configfile.str_c_var(prog_name, autoconf_exclude=True)),
-            ("KILL_RUNNING"           , configfile.bool_c_var(True, autoconf_exclude=True)),
-            ("SHOW_COMMAND_INFO"      , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
-            ("BACKLOG_SIZE"           , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
-            ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-            ("OBJGRAPH"               , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
-            ("NICE_LEVEL"             , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
+            ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+            ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+            ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
+            ("LOG_NAME", configfile.str_c_var(prog_name, autoconf_exclude=True)),
+            ("KILL_RUNNING", configfile.bool_c_var(True, autoconf_exclude=True)),
+            ("SHOW_COMMAND_INFO", configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
+            ("BACKLOG_SIZE", configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
+            ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+            ("OBJGRAPH", configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
+            ("NICE_LEVEL", configfile.int_c_var(10, help_string="nice level [%(default)d]")),
             (
                 "PID_NAME",
                 configfile.str_c_var(
@@ -111,14 +111,44 @@ def main():
     if prog_name == "collserver":
         global_config.add_config_entries(
             [
-                ("COM_PORT", configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p", autoconf_exclude=True)),
+                (
+                    "COM_PORT",
+                    configfile.int_c_var(
+                        2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p", autoconf_exclude=True
+                    )
+                ),
                 ("ENABLE_KSM", configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]")),
                 ("ENABLE_HUGE", configfile.bool_c_var(False, info="enable hugepages", help_string="enable hugepages [%(default)s]")),
                 ("HUGEPAGES", configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]")),
-                ("NO_INOTIFY", configfile.bool_c_var(False, info="disable inotify process", help_string="disable inotify proces [%(default)s]", action="store_true")),
-                ("AFFINITY", configfile.bool_c_var(False, info="enable process_affinity tools", help_string="enables pinning of processes to certain cores", action="store_true")),
-                ("TRACK_IPMI", configfile.bool_c_var(False, info="enable tracking of IPMI sensors", help_string="enable tracking of IPMI sensor data", action="store_true")),
-                ("INOTIFY_IDLE_TIMEOUT", configfile.int_c_var(5, info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]")),
+                (
+                    "NO_INOTIFY",
+                    configfile.bool_c_var(
+                        False,
+                        info="disable inotify process",
+                        help_string="disable inotify proces [%(default)s]", action="store_true"
+                    )
+                ),
+                (
+                    "AFFINITY",
+                    configfile.bool_c_var(
+                        False, info="enable process_affinity tools",
+                        help_string="enables pinning of processes to certain cores", action="store_true"
+                    )
+                ),
+                (
+                    "TRACK_IPMI",
+                    configfile.bool_c_var(
+                        False, info="enable tracking of IPMI sensors",
+                        help_string="enable tracking of IPMI sensor data", action="store_true"
+                    )
+                ),
+                (
+                    "INOTIFY_IDLE_TIMEOUT",
+                    configfile.int_c_var(
+                        5,
+                        info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]"
+                    )
+                ),
                 ("RUN_ARGUS", configfile.bool_c_var(False, help_string="enable argus [%(default)s]")),
                 ("MACHVECTOR_POLL_COUNTER", configfile.int_c_var(30, help_string="machvector poll counter")),
             ]
