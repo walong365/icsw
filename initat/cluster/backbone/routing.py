@@ -39,6 +39,7 @@ _SRV_TYPE_PORT_MAPPING = {
     "grapher": 8003,
     "server": 8004,
     "config": 8005,
+    "discovery": 8006,
     "package": 8007,
     "rms": 8009,
     "md-config": 8010,
@@ -52,6 +53,7 @@ _SRV_TYPE_UUID_MAPPING = {
     "grapher": "grapher",
     "md-config": "md-config-server",
     "rms": "rms-server",
+    "discovery": "discovery-server",
     "config": "config-server",
     "package": "package-server"
 }
@@ -63,6 +65,7 @@ _SRV_NAME_TYPE_MAPPING = {
     "server": ["server"],
     "config": ["config_server"],
     "package": ["package_server"],
+    "discovery" : ["discovery_server"],
     # sge_server is deprecated, still in use
     "rms": ["rms_server", "sge_server"],
     "md-config": ["monitor_server"],
