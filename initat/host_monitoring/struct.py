@@ -265,13 +265,6 @@ class host_connection(object):
         del host_connection.message_lut[host_mes.src_id]
         del host_mes
 
-    # @staticmethod
-    # def _send_result(host_mes, result=None):
-    #    host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-    #    host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
-    #    del host_connection.messages[host_mes.src_id]
-    #    del host_mes
-
     def return_error(self, host_mes, error_str):
         host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
         self.send_result(host_mes)

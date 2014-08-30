@@ -634,15 +634,6 @@ class relay_code(threading_tools.process_pool):
                             ),
                             _e.arg_list(" ".join(arg_list)),
                         ])
-                        # print srv_com.pretty_print()
-                        # srv_com["host"] = parts[0]
-                        # srv_com["port"] = parts[1]
-                        # srv_com["timeout"] = parts[2]
-                        # srv_com["raw_connect"] = parts[3]
-                        # for arg_index, arg in enumerate(arg_list):
-                        #    srv_com["arguments:arg%d" % (arg_index)] = arg
-                        # srv_com["arg_list"] = " ".join(arg_list)
-                        # print srv_com.pretty_print()
                 except:
                     self.log("error parsing %s: %s" % (data, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     srv_com = None

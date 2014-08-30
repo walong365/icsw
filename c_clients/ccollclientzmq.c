@@ -109,7 +109,7 @@ int main(int argc, char **argv)
 
     retcode = STATE_CRITICAL;
 
-    timeout = 10;
+    timeout = 15;
     port = 2001;
     verbose = 0;
     quiet = 0;
