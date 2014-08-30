@@ -314,7 +314,6 @@ class data_store(object):
 
     def _create_struct(self, top_node, full_key):
         parts = full_key.split(".")[:-1]
-        print full_key, parts
         cur_node = top_node
         for part_idx, part in enumerate(parts):
             cur_node = top_node.find("*[@part='{}']".format(part))
