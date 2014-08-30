@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -25,3 +25,4 @@ import process_tools
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 # collectd command PORT
 CD_COM_PORT = 8008
+SERVER_COM_PORT = 8003

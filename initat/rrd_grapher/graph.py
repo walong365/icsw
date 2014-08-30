@@ -26,9 +26,9 @@ from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
+import datetime
 import dateutil.parser
 import logging_tools
-import uuid
 import os
 import pprint
 import process_tools
@@ -37,7 +37,7 @@ import rrdtool  # @UnresolvedImport
 import server_command
 import threading_tools
 import time
-import datetime
+import uuid
 
 
 def rrd_escape(in_str):
@@ -61,7 +61,7 @@ def strftime(in_dt, comp_dt=None):
             return cluster_timezone.normalize(in_dt).strftime("%d. %b %Y, %H:%M:%S")
 
 
-class colorizer(object):
+class Colorizer(object):
     def __init__(self, log_com):
         self.log_com = log_com
         self.def_color_table = "dark28"
@@ -85,8 +85,15 @@ class colorizer(object):
         self.color_rules = etree.fromstring(file(_cr_file, "r").read())
         self.log("read colorrules from {}".format(_cr_file))
         self.match_re_keys = [
-            (re.compile("^{}".format(entry.attrib["key"].replace(".", r"\."))),
-             entry) for entry in self.color_rules.xpath(".//entry[@key]", smart_strings=False)]
+            (
+                re.compile(
+                    "^{}".format(
+                        entry.attrib["key"].replace(".", r"\.")
+                    )
+                ),
+                entry
+            ) for entry in self.color_rules.xpath(".//entry[@key]", smart_strings=False)
+        ]
         # fast lookup table, store computed lookups
         self.fast_lut = {}
 
@@ -305,7 +312,7 @@ class graph_var(object):
 
 
 class RRDGraph(object):
-    def __init__(self, log_com, colorzer, para_dict):
+    def __init__(self, log_com, colorizer, para_dict):
         self.log_com = log_com
         self.para_dict = {
             "size": "400x200",
@@ -318,7 +325,7 @@ class RRDGraph(object):
             "selected_job": 0,
         }
         self.para_dict.update(para_dict)
-        self.colorizer = colorzer
+        self.colorizer = colorizer
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com(u"[RRDG] {}".format(what), log_level)
@@ -694,7 +701,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         self.vector_dict = {}
         self.graph_root = global_config["GRAPH_ROOT"]
         self.log("graphs go into {}".format(self.graph_root))
-        self.colorizer = colorizer(self.log)
+        self.colorizer = Colorizer(self.log)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)

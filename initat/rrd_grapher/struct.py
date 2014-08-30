@@ -25,8 +25,8 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_variable
 from initat.rrd_grapher.config import global_config
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import copy
 import logging_tools
 import os
@@ -34,30 +34,32 @@ import process_tools
 import re
 import time
 
+
 # a similiar structure is used in md-config-server/config.py
 class var_cache(dict):
     def __init__(self, cdg, def_dict=None):
         super(var_cache, self).__init__(self)
         self.__cdg = cdg
         self.__def_dict = def_dict or {}
+
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
             "GLOBAL",
-            "dg__%d" % (cur_dev.device_group_id),
-            "dev__%d" % (cur_dev.pk))
+            "dg__{:d}".format(cur_dev.device_group_id),
+            "dev__{:d}".format(cur_dev.pk))
         if global_key not in self:
             # read global configs
-            self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
+            self[global_key] = {cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=self.__cdg))}
             # update with def_dict
             for key, value in self.__def_dict.iteritems():
                 if key not in self[global_key]:
                     self[global_key][key] = value
         if dg_key not in self:
             # read device_group configs
-            self[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))])
+            self[dg_key] = {cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))}
         if dev_key not in self:
             # read device configs
-            self[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev))])
+            self[dev_key] = {cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev))}
         ret_dict, info_dict = ({}, {})
         # for s_key in ret_dict.iterkeys():
         for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
@@ -68,6 +70,7 @@ class var_cache(dict):
                     info_dict[key_n] += 1
         return ret_dict, info_dict
 
+
 class data_store(object):
     def __init__(self, cur_dev):
         self.pk = cur_dev.pk
@@ -75,11 +78,12 @@ class data_store(object):
         # name of rrd-files on disk
         self.store_name = ""
         self.xml_vector = E.machine_vector()
+
     def restore(self):
         try:
             self.xml_vector = etree.fromstring(file(self.data_file_name(), "r").read())
         except:
-            self.log("cannot interpret XML: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log("cannot interpret XML: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             self.xml_vector = E.machine_vector()
         else:
             # for pure-pde vectors no store name is set
@@ -90,12 +94,12 @@ class data_store(object):
                 self.log("found duplicate entries, removing them")
                 removed = 0
                 for cur_mve in all_mves:
-                    sub_list = self.xml_vector.xpath(".//mve[@name='%s']" % (cur_mve), smart_strings=False)
+                    sub_list = self.xml_vector.xpath(".//mve[@name='{}']".format(cur_mve), smart_strings=False)
                     for sub_entry in sub_list[:-1]:
                         sub_entry.getparent().remove(sub_entry)
                         removed += 1
                         changed = True
-                self.log("removed %d entries" % (removed))
+                self.log("removed {}".format(logging_tools.get_plural("entry", removed)))
             for fix_el in self.xml_vector.xpath(".//*[@file_name and not(@active)]", smart_strings=False):
                 fix_el.attrib["active"] = "1"
                 changed = True
@@ -105,6 +109,7 @@ class data_store(object):
             # changed
         # send a copy to the grapher
         self.sync_to_grapher()
+
     def feed(self, in_vector):
         # self.xml_vector = in_vector
         if self.store_name != in_vector.attrib["name"]:
@@ -134,6 +139,7 @@ class data_store(object):
             self.log("mve: %d keys total" % (len(new_keys)))
         self.set_active_rrds()
         self.store()
+
     def feed_pd(self, host_name, pd_type, pd_info):
         # we ignore the global store name for perfdata stores
         old_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
@@ -174,6 +180,7 @@ class data_store(object):
         #    self.log("pde: %d keys total" % (len(new_keys)))
         self.set_active_rrds()
         self.store()
+
     def _update_pd_entry(self, entry, src_entry, rrd_dir):
         entry.attrib["last_update"] = "%d" % (time.time())
         entry.attrib["active"] = "1"
@@ -189,50 +196,62 @@ class data_store(object):
         if len(entry) == len(src_entry):
             for v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
                 for key, def_value in [
-                    ("info"  , "performance_data"),
+                    ("info", "performance_data"),
                     ("v_type", "f"),
-                    ("unit"  , "1"),
-                    ("name"  , None),
-                    ("index" , "%d" % (v_idx))]:
+                    ("unit", "1"),
+                    ("name", None),
+                    ("index", "{:d}".format(v_idx))
+                ]:
                     cur_value.attrib[key] = src_value.get(key, def_value)
                 cur_value.attrib["key"] = src_value.get("key", cur_value.attrib["name"])
+
     def _update_entry(self, entry, src_entry, rrd_dir):
         for key, def_value in [
-            ("info"  , None),
+            ("info", None),
             ("v_type", None),
-            ("full"  , entry.get("name")),
-            ("unit"  , "1"),
-            ("base"  , "1"),
-            ("factor", "1")]:
+            ("full", entry.get("name")),
+            ("unit", "1"),
+            ("base", "1"),
+            ("factor", "1")
+        ]:
             entry.attrib[key] = src_entry.get(key, def_value)
         # last update time
         entry.attrib["last_update"] = "%d" % (time.time())
         entry.attrib["active"] = "1"
         entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
+
     def store(self):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))
         # sync XML to grapher
         self.sync_to_grapher()
+
     def set_active_rrds(self):
         device.objects.filter(Q(pk=self.pk)).update(has_active_rrds=True)
+
     def sync_to_grapher(self):
         data_store.process.send_to_process(
             "graph",
             "xml_info",
             self.pk,
-            etree.tostring(self.struct_xml_vector("graph")))
+            etree.tostring(self.struct_xml_vector("graph"))
+        )
+
     def data_file_name(self):
         return os.path.join(data_store.store_dir, "%s_%d.info.xml" % (self.name, self.pk))
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log("[ds %s] %s" % (
             self.name,
             what), log_level)
+
     @staticmethod
     def has_rrd_xml(dev_pk):
         return dev_pk in data_store.__devices
+
     @staticmethod
     def present_pks():
         return data_store.__devices.keys()
+
     def struct_xml_vector(self, mode):
         """
         rebuild the flat tree to a structured tree
@@ -240,7 +259,9 @@ class data_store(object):
         # mode is one of web or graph
         if mode not in ["web", "graph"]:
             raise ValueError("mode '{}' is not correct".format(mode))
+        # web mode: show tree in webfrontend
         web_mode = mode == "web"
+        # graph mode: sent shortened representation to graph process
         graph_mode = mode == "graph"
         cur_xml = self.xml_vector
         all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name", smart_strings=False))
@@ -255,7 +276,7 @@ class data_store(object):
                     s_dict[part] = (new_el, {})
                 s_xml, s_dict = s_dict[part]
             add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='%s']" % (key)))
-            # remove unneded entries
+            # remove unneded entries, depending on mode
             if web_mode:
                 for rem_attr in ["file_name", "last_update", "sane_name"]:
                     if rem_attr in add_entry.attrib:
@@ -272,17 +293,17 @@ class data_store(object):
         # add pde entries
         pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde[@active='1']")])
         for pde_key, type_inst, pde_node in pde_keys:
-            ti_str = "/%s" % (type_inst) if type_inst else ""
+            ti_str = "/{}".format(type_inst) if type_inst else ""
             for sub_val in pde_node:
                 new_val = copy.deepcopy(sub_val)
                 v_key = sub_val.get("key", sub_val.get("name"))
-                sr_node = self._create_struct(xml_vect, "%s.%s" % (pde_key, v_key))
+                sr_node = self._create_struct(xml_vect, "{}.{}".format(pde_key, v_key))
                 new_val.attrib["part"] = new_val.attrib["name"]
                 new_val.attrib["name"] = "pde:{}.{}{}".format(
                     sr_node.get("name", sr_node.get("part")),
                     new_val.get("name"),
                     ti_str,
-                    )
+                )
                 new_val.attrib["type_instance"] = type_inst
                 new_val.attrib["info"] += " [PD]"
                 if graph_mode:
@@ -290,16 +311,19 @@ class data_store(object):
                 sr_node.append(new_val)
         # print etree.tostring(xml_vect, pretty_print=True)
         return xml_vect
+
     def _create_struct(self, top_node, full_key):
         parts = full_key.split(".")[:-1]
+        print full_key, parts
         cur_node = top_node
         for part_idx, part in enumerate(parts):
-            cur_node = top_node.find("*[@part='%s']" % (part))
+            cur_node = top_node.find("*[@part='{}']".format(part))
             if cur_node is None:
                 cur_node = E.entry(name=".".join(parts[:part_idx + 1]), part=part)
                 top_node.append(cur_node)
             top_node = cur_node
         return cur_node
+
     @staticmethod
     def merge_node_results(res_list):
         if len(res_list) > 1:
@@ -312,9 +336,11 @@ class data_store(object):
                     empty_nodes.append(entry.attrib)
                     entry.getparent().remove(entry)
             data_store.g_log(
-                "merging %s (%s empty)" % (
+                "merging {} ({} empty)".format(
                     logging_tools.get_plural("node result", len(res_list)),
-                    logging_tools.get_plural("entry", len(empty_nodes))))
+                    logging_tools.get_plural("entry", len(empty_nodes))
+                )
+            )
             if len(res_list):
                 # build a list of all structural entries
                 all_keys = set()
@@ -370,12 +396,14 @@ class data_store(object):
                 return E.node_results()
         else:
             return res_list
+
     def _expand_info(self, entry):
         info = entry.attrib["info"]
         parts = entry.attrib["name"].split(".")
         for idx in xrange(len(parts)):
             info = info.replace("$%d" % (idx + 1), parts[idx])
         return info
+
     @staticmethod
     def get_rrd_xml(dev_pk, mode=None):
         if mode:
@@ -383,9 +411,11 @@ class data_store(object):
         else:
             # do a deepcopy (just to be sure)
             return copy.deepcopy(data_store.__devices[dev_pk].xml_vector)
+
     @staticmethod
     def get_instance(pk):
         return data_store.__devices[pk]
+
     @staticmethod
     def setup(srv_proc):
         data_store.process = srv_proc
@@ -420,6 +450,7 @@ class data_store(object):
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log("[ds] %s" % (what), log_level)
+
     @staticmethod
     def feed_perfdata(name, pd_type, pd_info):
         match_dev = None
@@ -454,6 +485,7 @@ class data_store(object):
             data_store.g_log(
                 "no device found (name=%s, pd_type=%s)" % (name, pd_type),
                 logging_tools.LOG_LEVEL_ERROR)
+
     @staticmethod
     def feed_vector(in_vector):
         # print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
@@ -504,4 +536,3 @@ class data_store(object):
                 logging_tools.get_plural("key", len(in_vector.attrib)),
                 ", ".join(["%s=%s" % (key, str(value)) for key, value in in_vector.attrib.iteritems()])
             ), logging_tools.LOG_LEVEL_ERROR)
-

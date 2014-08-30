@@ -1,4 +1,4 @@
-    # Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,6 +19,7 @@
 #
 """ server-part of rrd-grapher """
 
+from config_tools import router_object
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
@@ -26,11 +27,10 @@ from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config, CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.struct import data_store, var_cache
-from config_tools import router_object
-from lxml.builder import E # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import cluster_location
-import configfile
 import config_tools
+import configfile
 import logging_tools
 import os
 import process_tools
@@ -41,9 +41,10 @@ import time
 import uuid_tools
 import zmq
 try:
-    import rrdtool # @UnresolvedImport
+    import rrdtool  # @UnresolvedImport
 except ImportError:
     rrdtool = None
+
 
 class server_process(threading_tools.process_pool, threading_tools.operational_error_mixin):
     def __init__(self):
@@ -54,9 +55,10 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         if not global_config["DEBUG"]:
             process_tools.set_handles({
-                "out" : (1, "rrd-grapher.out"),
-                "err" : (0, "/var/lib/logging-server/py_err_zmq")},
-                                      zmq_context=self.zmq_context)
+                "out": (1, "rrd-grapher.out"),
+                "err": (0, "/var/lib/logging-server/py_err_zmq")},
+                zmq_context=self.zmq_context
+            )
         self.__msi_block = self._init_msi_block()
         # re-insert config
         self._re_insert_config()
@@ -72,6 +74,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
         self.register_timer(self._connect_to_collectd, 300, instant=True)
         data_store.setup(self)
+
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -80,8 +83,10 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def _re_insert_config(self):
         cluster_location.write_config("rrd_server", global_config)
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -89,20 +94,24 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self._connect_to_collectd()
+
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
+
     def _get_disabled_hosts(self):
         disabled_hosts = device.objects.filter(Q(store_rrd_data=False))
         num_dis = disabled_hosts.count()
@@ -124,11 +133,14 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 ) for cur_dev in disabled_hosts]
             )
         return dis_com
+
     def _check_reachability(self, devs, var_cache, _router, _type):
         _reachable, _unreachable = ([], [])
         _sc = config_tools.server_check(server_type="rrd_server")
         for dev in devs:
-            _path = _sc.get_route_to_other_device(_router, config_tools.server_check(device=dev, config=None, server_type="node"), allow_route_to_other_networks=True)
+            _path = _sc.get_route_to_other_device(
+                _router, config_tools.server_check(device=dev, config=None, server_type="node"), allow_route_to_other_networks=True
+            )
             if not len(_path):
                 _unreachable.append(dev)
             else:
@@ -151,9 +163,14 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 ),
             )
         return _reachable
+
     def _get_snmp_hosts(self, _router):
         # var cache
-        _vc = var_cache(device.objects.get(Q(device_group__cluster_device_group=True)), {"SNMP_VERSION" : 1, "SNMP_READ_COMMUNITY" : "public", "SNMP_SCHEME" : "unknown"})
+        _vc = var_cache(
+            device.objects.get(
+                Q(device_group__cluster_device_group=True)
+            ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public", "SNMP_SCHEME": "unknown"}
+        )
         snmp_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="snmp://") & Q(enable_perfdata=True))
         _reachable = self._check_reachability(snmp_hosts, _vc, _router, "SNMP")
         snmp_com = server_command.srv_command(command="snmp_hosts")
@@ -173,9 +190,14 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             ]
         )
         return snmp_com
+
     def _get_ipmi_hosts(self, _router):
         # var cache
-        _vc = var_cache(device.objects.get(Q(device_group__cluster_device_group=True)), {"IPMI_USERNAME" : "notset", "IPMI_PASSWORD" : "notset", "IPMI_INTERFACE" : ""})
+        _vc = var_cache(
+            device.objects.get(
+                Q(device_group__cluster_device_group=True)
+            ), {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
+        )
         ipmi_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="ipmi://") & Q(enable_perfdata=True))
         _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")
         ipmi_com = server_command.srv_command(command="ipmi_hosts")
@@ -195,6 +217,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             ]
         )
         return ipmi_com
+
     def _connect_to_collectd(self):
         _router = router_object(self.log)
         send_coms = [self._get_disabled_hosts(), self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]
@@ -219,6 +242,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         )
         if _error_keys:
             [self._open_collectd_socket(_host) for _host in _error_keys]
+
     def _check_for_stale_rrds(self):
         cur_time = time.time()
         # set stale after two hours
@@ -276,6 +300,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     cur_dev.has_active_rrds = is_active
                     cur_dev.save(update_fields=["has_active_rrds"])
         self.log("checked for stale entries, modified {}".format(logging_tools.get_plural("device", num_changed)))
+
     def _clear_old_graphs(self):
         cur_time = time.time()
         graph_root = global_config["GRAPH_ROOT"]
@@ -299,6 +324,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     os.unlink(del_entry)
                 except:
                     pass
+
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
@@ -314,19 +340,16 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         else:
             msi_block = None
         return msi_block
+
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
+
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)
         self.bind_id = get_server_uuid("grapher")
-        client.setsockopt(zmq.IDENTITY, self.bind_id)
-        client.setsockopt(zmq.SNDHWM, 256)
-        client.setsockopt(zmq.RCVHWM, 256)
-        client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+        client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id)
         bind_str = "tcp://*:{:d}".format(global_config["COM_PORT"])
         try:
             client.bind(bind_str)
@@ -336,7 +359,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     global_config["COM_PORT"],
                     process_tools.get_except_info()
                 ),
-                logging_tools.LOG_LEVEL_CRITICAL)
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
             raise
         else:
             self.log("bound to {} (id {})".format(bind_str, self.bind_id))
@@ -346,6 +370,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self._collectd_sockets = {}
         collectd_hosts = ["127.0.0.1"]
         [self._open_collectd_socket(_host) for _host in collectd_hosts]
+
     def _open_collectd_socket(self, _ch):
         if _ch in self._collectd_sockets:
             self._collectd_sockets[_ch].close()
@@ -363,10 +388,13 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
         _cs.connect(_conn_str)
         self._collectd_sockets[_ch] = _cs
+
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
+
     def _interpret_perfdata_info(self, host_name, pd_type, pd_info):
         data_store.feed_perfdata(host_name, pd_type, pd_info)
+
     def _get_node_rrd(self, srv_com):
         node_results = E.node_results()
         dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
@@ -382,6 +410,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         if int(dev_list.get("merge_results", "0")):
             node_results = data_store.merge_node_results(node_results)
         srv_com["result"] = node_results
+
     def _recv_command(self, zmq_sock):
         in_data = []
         while True:
@@ -395,7 +424,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             except:
                 self.log(
                     "error interpreting command: {}".format(process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 # send something back
                 self.com_socket.send_unicode(src_id, zmq.SNDMORE)
                 self.com_socket.send_unicode("internal error")
@@ -404,13 +434,14 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 if self.__verbose or cur_com not in ["ocsp-event", "ochp-event" "vector", "perfdata_info"]:
                     self.log("got command '{}' from '{}'".format(
                         cur_com,
-                        srv_com["source"].attrib["host"]))
+                        srv_com["source"].attrib["host"])
+                    )
                 srv_com.update_source()
                 send_return = True
                 srv_reply, srv_state = (
                     "ok processed command {}".format(cur_com),
                     server_command.SRV_REPLY_STATE_OK
-                    )
+                )
                 if cur_com in ["mv_info"]:
                     self._interpret_mv_info(srv_com["vector"])
                     send_return = False
@@ -432,7 +463,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     srv_reply, srv_state = (
                         "unknown command '{}'".format(cur_com),
                         server_command.SRV_REPLY_STATE_ERROR,
-                        )
+                    )
                 if send_return:
                     srv_com.set_result(srv_reply, srv_state)
                     self.com_socket.send_unicode(src_id, zmq.SNDMORE)
@@ -445,17 +476,19 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     len(in_data),
                     in_data[0]),
                 logging_tools.LOG_LEVEL_ERROR)
+
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+
     def loop_post(self):
         self.com_socket.close()
-        for key, _sock in self._collectd_sockets.iteritems():
+        for _key, _sock in self._collectd_sockets.iteritems():
             _sock.close()
         self.__log_template.close()
+
     def thread_loop_post(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
-
