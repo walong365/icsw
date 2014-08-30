@@ -32,9 +32,9 @@ from lxml.builder import E  # @UnresolvedImport
 import argparse
 import commands
 import datetime
-import psutil
 import logging_tools
 import process_tools
+import psutil
 import stat
 import subprocess
 import time
@@ -136,6 +136,11 @@ INSTANCE_XML = """
             <config_name>server</config_name>
         </config_names>
     </instance>
+    <instance name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1">
+        <config_names>
+            <config_name>discovery_server</config_name>
+        </config_names>
+    </instance>
     <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>config_server</config_name>
@@ -157,7 +162,7 @@ INSTANCE_XML = """
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
-        </config_names>
+        </config_names>-
     </instance>
 </instances>
 """
@@ -300,14 +305,15 @@ def check_system(opt_ns):
                             E.diff_info(
                                 pid="{:d}".format(key),
                                 diff="{:d}".format(value)
-                            ) for key, value in diff_dict.iteritems()],
-                            num_started="{:d}".format(num_started),
-                            num_found="{:d}".format(num_found),
-                            num_diff="{:d}".format(num_diff),
-                            pid_time="{:d}".format(pid_time),
-                            state="{:d}".format(act_state)
-                        )
+                            ) for key, value in diff_dict.iteritems()
+                        ],
+                        num_started="{:d}".format(num_started),
+                        num_found="{:d}".format(num_found),
+                        num_diff="{:d}".format(num_diff),
+                        pid_time="{:d}".format(pid_time),
+                        state="{:d}".format(act_state)
                     )
+                )
             else:
                 if os.path.isfile(init_script_name):
                     if pid_file_name == "":
@@ -428,7 +434,13 @@ def show_xml(opt_ns, res_xml, iteration=0):
                 else:
                     diffs_found = s_info.findall("diff_info")
                     if diffs_found:
-                        diff_str = ", [diff: {}]".format(", ".join(["{:d}: {:d}".format(int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found]))
+                        diff_str = ", [diff: {}]".format(
+                            ", ".join(
+                                [
+                                    "{:d}: {:d}".format(int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found
+                                ]
+                            )
+                        )
                     else:
                         diff_str = ""
                     if num_diff < 0:
@@ -490,9 +502,11 @@ def show_xml(opt_ns, res_xml, iteration=0):
                         logging_tools.form_entry(
                             "{} {}".format(
                                 logging_tools.get_plural("level", rlevs, 0),
-                                ", ".join([r_lev for r_lev in rlevs])),
-                                header="runlevels"
-                            ))
+                                ", ".join([r_lev for r_lev in rlevs])
+                            ),
+                            header="runlevels"
+                        )
+                    )
                 else:
                     cur_line.append(logging_tools.form_entry("no runlevels", header="runlevels"))
             else:
@@ -605,4 +619,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
