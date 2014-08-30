@@ -143,7 +143,7 @@ def main():
             )
         ),
         ("EVENT_BROKER_OPTIONS", configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
-        ("CCOLLCLIENT_TIMEOUT", configfile.int_c_var(6)),
+        ("CCOLLCLIENT_TIMEOUT", configfile.int_c_var(10)),
         ("CSNMPCLIENT_TIMEOUT", configfile.int_c_var(20)),
         ("MAX_SERVICE_CHECK_SPREAD", configfile.int_c_var(5)),
         ("MAX_HOST_CHECK_SPREAD", configfile.int_c_var(5)),
