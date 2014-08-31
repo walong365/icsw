@@ -66,6 +66,8 @@ def main():
     if not sql_info.effective_device:
         print "not a discovery_server"
         sys.exit(5)
+    else:
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:

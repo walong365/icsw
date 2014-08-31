@@ -23,9 +23,8 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.cluster_config_server.build_process import build_process
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.config_control import config_control
+from initat.discovery_server.config import global_config
+from initat.discovery_server.discovery import discovery_process
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import cluster_location
@@ -48,12 +47,11 @@ class server_process(threading_tools.process_pool):
         self._re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
-        self._init_subsys()
+        self.add_process(discovery_process("discovery"), start=True)
         self._init_network_sockets()
-        self.add_process(build_process("build"), start=True)
+        self.register_func("discovery_result", self._discovery_result)
+        # self.add_process(build_process("build"), start=True)
         connection.close()
-        self.register_func("client_update", self._client_update)
-        self.register_func("complex_result", self._complex_result)
         self.__run_idx = 0
         self.__pending_commands = {}
 
@@ -64,10 +62,6 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
-
-    def _init_subsys(self):
-        self.log("init subsystems")
-        config_control.init(self)
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -111,56 +105,43 @@ class server_process(threading_tools.process_pool):
         return msi_block
 
     def loop_end(self):
-        config_control.close_clients()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        for open_sock in self.socket_dict.itervalues():
-            open_sock.close()
+        self.com_socket.close()
         self.__log_template.close()
 
     def _init_network_sockets(self):
         my_0mq_id = get_server_uuid("config")
         self.bind_id = my_0mq_id
-        self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
-        for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PORT"] , self._new_com),
-        ]:
-            client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, my_0mq_id)
-            client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.RCVHWM, 256)
-            client.setsockopt(zmq.SNDHWM, 256)
-            client.setsockopt(zmq.BACKLOG, 1)
-            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-            client.setsockopt(zmq.RECONNECT_IVL, 200)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-            conn_str = "tcp://*:%d" % (bind_port)
-            try:
-                client.bind(conn_str)
-            except zmq.ZMQError:
-                self.log(
-                    "error binding to {}{{{:d}}}: {}".format(
-                        conn_str,
-                        sock_type,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_CRITICAL
+        self.com_socket = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id)
+        conn_str = "tcp://*:{:d}".format(global_config["SERVER_PORT"])
+        try:
+            self.com_socket.bind(conn_str)
+        except zmq.ZMQError:
+            self.log(
+                "error binding to {}: {}".format(
+                    conn_str,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
+            self.com_socket.close()
+        else:
+            self.log(
+                "bind socket to {}".format(
+                    conn_str,
                 )
-                client.close()
-            else:
-                self.log(
-                    "bind to port {}{{{:d}}}".format(
-                        conn_str,
-                        sock_type
-                    )
-                )
-                self.register_poller(client, zmq.POLLIN, target_func)
-                self.socket_dict[key] = client
+            )
+            self.register_poller(self.com_socket, zmq.POLLIN, self._new_com)
+
+    def _discovery_result(self, *args, **kwargs):
+        _src_prod, _src_pid, id_str, srv_com = args
+        self.com_socket.send_unicode(id_str, zmq.SNDMORE)
+        self.com_socket.send_unicode(srv_com)
 
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
@@ -168,64 +149,17 @@ class server_process(threading_tools.process_pool):
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
             c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
-            try:
-                cur_com = srv_com["command"].text
-            except:
-                if srv_com.tree.find("nodeinfo") is not None:
-                    node_text = srv_com.tree.findtext("nodeinfo")
-                    src_id = data[0].split(":")[0]
-                    if not config_control.has_client(src_id):
-                        try:
-                            new_dev = device.objects.get(Q(uuid=src_id) | Q(uuid__startswith=src_id[:-5]))
-                        except device.DoesNotExist:
-                            self.log("no device with UUID %s found in database" % (src_id),
-                                     logging_tools.LOG_LEVEL_ERROR)
-                            cur_c = None
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-                            zmq_sock.send_unicode("error unknown UUID")
-                        else:
-                            cur_c = config_control.add_client(new_dev)
-                    else:
-                        cur_c = config_control.get_client(src_id)
-                    if cur_c is not None:
-                        cur_c.handle_nodeinfo(data[0], node_text)
-                else:
-                    self.log(
-                        "got command '{}' from {}, ignoring".format(etree.tostring(srv_com.tree), data[0]),
-                        logging_tools.LOG_LEVEL_ERROR)
+            cur_com = srv_com["command"].text
+            srv_com.update_source()
+            if cur_com in [
+                "fetch_partition_info", "scan_network_info"
+            ]:
+                self.send_to_process("discovery", cur_com, c_uid, unicode(srv_com))
             else:
-                srv_com.update_source()
-                if cur_com == "register":
-                    self._register_client(c_uid, srv_com)
-                elif cur_com == "get_0mq_id":
-                    srv_com["result"] = None
-                    srv_com["zmq_id"] = self.bind_id
-                    srv_com["result"].attrib.update({
-                        "reply" : "0MQ_ID is %s" % (self.bind_id),
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-                    self._send_simple_return(c_uid, unicode(srv_com))
-                elif cur_com == "status":
-                    srv_com["result"] = None
-                    srv_com["result"].attrib.update({
-                        "reply" : "up and running",
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-                    self._send_simple_return(c_uid, unicode(srv_com))
-                else:
-                    if c_uid.endswith("webfrontend"):
-                        # special command from webfrontend, FIXME
-                        srv_com["command"].attrib["source"] = "external"
-                        self._handle_wfe_command(zmq_sock, c_uid, srv_com)
-                    else:
-                        try:
-                            cur_client = None  # client.get(c_uid)
-                        except KeyError:
-                            self.log("unknown uid %s, not known" % (c_uid),
-                                     logging_tools.LOG_LEVEL_CRITICAL)
-                        else:
-                            if cur_client is None:
-                                self.log("cur_client is None (command: %s)" % (cur_com), logging_tools.LOG_LEVEL_WARN)
-                            else:
-                                cur_client.new_command(srv_com)
+                srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
+                self.com_socket.send_unicode(c_uid, zmq.SNDMORE)
+                self.com_socket.send_unicode(unicode(srv_com))
+
         else:
             self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
