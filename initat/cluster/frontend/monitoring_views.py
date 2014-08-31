@@ -149,9 +149,8 @@ class fetch_partition(View):
         part_dev = device.objects.get(Q(pk=_post["pk"]))
         logger.info("reading partition info from %s" % (unicode(part_dev)))
         srv_com = server_command.srv_command(command="fetch_partition_info")
-        srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
-        srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
-        _result = contact_server(request, "server", srv_com, timeout=30)
+        srv_com["device_pk"] = "{:d}".format(part_dev.pk)
+        _result = contact_server(request, "discovery", srv_com, timeout=30)
 
 
 class clear_partition(View):

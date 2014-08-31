@@ -219,7 +219,7 @@ class scan_device_network(View):
         _dev = device.objects.get(Q(pk=_data["pk"]))
         logger.info("scanning network settings from %s" % (unicode(_dev)))
         srv_com = server_command.srv_command(command="scan_network_info")
-        srv_com["server_key:pk"] = "%d" % (_dev.pk)
-        srv_com["server_key:scan_address"] = _data["scan_address"]
-        srv_com["server_key:strict_mode"] = "1" if _data["strict_mode"] else "0"
-        _result = contact_server(request, "server", srv_com, timeout=30)
+        srv_com["pk"] = "%d" % (_dev.pk)
+        srv_com["scan_address"] = _data["scan_address"]
+        srv_com["strict_mode"] = "1" if _data["strict_mode"] else "0"
+        _result = contact_server(request, "discovery", srv_com, timeout=30)
