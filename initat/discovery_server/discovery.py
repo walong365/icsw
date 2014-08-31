@@ -22,9 +22,8 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
-    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip
+    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed
 from initat.discovery_server.config import global_config
-from lxml import etree
 import base64
 import bz2
 import config_tools
@@ -34,14 +33,6 @@ import partition_tools
 import process_tools
 import server_command
 import threading_tools
-
-from django.db.models import Q
-from initat.cluster.backbone.models import device, netdevice, net_ip, netdevice_speed, get_related_models
-import cs_base_class
-import logging_tools
-import net_tools
-import process_tools
-import server_command
 
 IGNORE_LIST = ["tun", "tap", "vnet"]
 
@@ -135,7 +126,7 @@ class discovery_process(threading_tools.process_obj):
         self.__log_template.close()
 
     def fetch_partition_info(self, srv_com):
-        target_pks = srv_com["server_key:device_pk"].text.split(",")
+        target_pks = srv_com["device_pk"].text.split(",")
         self.log("got %s: %s" % (logging_tools.get_plural("pk", len(target_pks)),
                                      ", ".join(target_pks)))
         src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
@@ -452,9 +443,9 @@ class discovery_process(threading_tools.process_obj):
 
     def scan_network_info(self, srv_com):
         # print cur_inst.option_dict
-        dev_pk = int(srv_com["server_key:pk"])
-        strict_mode = True if int(srv_com["server_key:strict_mode"]) else False
-        scan_address = srv_com["server_key:scan_address"]
+        dev_pk = int(srv_com["pk"])
+        strict_mode = True if int(srv_com["strict_mode"]) else False
+        scan_address = srv_com["scan_address"]
         scan_dev = device.objects.get(Q(pk=dev_pk))
         self.log("scanning network for device '{}' ({:d}), scan_address is '{}', strict_mode is {}".format(
             unicode(scan_dev),
@@ -546,4 +537,3 @@ class discovery_process(threading_tools.process_obj):
             self.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_WARN)
         else:
             self.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_OK)
-
