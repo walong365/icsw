@@ -106,10 +106,17 @@ def main():
                     ).pk
                 )
             ),
-            ("GRAPH_ROOT", configfile.str_c_var(
-                os.path.abspath(os.path.join(
-                    settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT,
-                    "graphs"))))
+            (
+                "GRAPH_ROOT",
+                configfile.str_c_var(
+                    os.path.abspath(
+                        os.path.join(
+                            settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT,
+                            "graphs"
+                            )
+                    )
+                )
+            )
         ]
     )
     _create_dirs()
@@ -118,7 +125,9 @@ def main():
     process_tools.fix_directories(
         global_config["USER"],
         global_config["GROUP"],
-        ["/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["RRD_DIR"]]
+        [
+            "/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["RRD_DIR"]
+        ]
     )
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
