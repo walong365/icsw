@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -200,17 +198,15 @@ class server_process(threading_tools.process_pool):
                 if cur_com == "register":
                     self._register_client(c_uid, srv_com)
                 elif cur_com == "get_0mq_id":
-                    srv_com["result"] = None
                     srv_com["zmq_id"] = self.bind_id
-                    srv_com["result"].attrib.update({
-                        "reply" : "0MQ_ID is %s" % (self.bind_id),
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                    srv_com.set_result(
+                        "0MQ_ID is {}".format(self.bind_id),
+                    )
                     self._send_simple_return(c_uid, unicode(srv_com))
                 elif cur_com == "status":
-                    srv_com["result"] = None
-                    srv_com["result"].attrib.update({
-                        "reply" : "up and running",
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                    srv_com.set_result(
+                        "up and running"
+                    )
                     self._send_simple_return(c_uid, unicode(srv_com))
                 else:
                     if c_uid.endswith("webfrontend"):
