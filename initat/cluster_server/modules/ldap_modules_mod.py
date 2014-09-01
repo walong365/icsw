@@ -118,6 +118,13 @@ class ldap_mixin(object):
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
         except ldap.LDAPError:
+            self.log(
+                u"add error: {}, {}".format(
+                    dn,
+                    str(in_dict)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             success, err_str = (False, self._get_ldap_err_str(dn))
         else:
             success, err_str = (True, "")
@@ -127,6 +134,12 @@ class ldap_mixin(object):
         try:
             ld.delete_s(dn)
         except ldap.LDAPError:
+            self.log(
+                u"delete error: {}".format(
+                    dn,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             success, err_str = (False, self._get_ldap_err_str(dn))
         else:
             success, err_str = (True, "")
@@ -143,6 +156,13 @@ class ldap_mixin(object):
         try:
             ld.modify_s(dn, new_list)
         except ldap.LDAPError:
+            self.log(
+                u"modify error: {}, {}".format(
+                    dn,
+                    str(new_list)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             success, err_str = (False, self._get_ldap_err_str(dn))
         else:
             success, err_str = (True, "")
