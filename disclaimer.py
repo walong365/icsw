@@ -1,17 +1,16 @@
 #!/usr/bin/python-init -Otu
 
-import sys
+from email.parser import FeedParser
+from lxml import etree  # @UnresolvedImport
+import email
 import logging_tools
+import os
 import process_tools
 import subprocess
-import os
-import email
-from email.parser import FeedParser
-from email.mime.base import MIMEBase
-from email.mime.text import MIMEText
-from email.mime.image import MIMEImage
-import email.mime.multipart
-import mimetypes
+import codecs
+import sys
+import tempfile
+import re
 
 SENDMAIL_BIN = process_tools.find_file("sendmail")
 
@@ -26,6 +25,15 @@ class disclaimer_handler(object):
         self.args = sys.argv
         self.log("{:d} args: {}".format(len(self.args), ", ".join(self.args)))
         self.log("sendmail is at {}".format(SENDMAIL_BIN))
+        self._read_user_info()
+
+    def _read_user_info(self):
+        _ui_name = "/etc/postfix/user_info.xml"
+        self.ui_tree = etree.fromstring(codecs.open(_ui_name, "r", "utf-8").read())
+        self.log("read user_info from {} ({})".format(
+            _ui_name,
+            logging_tools.get_plural("entry", len(self.ui_tree.findall(".//user"))),
+        ))
 
     def recv_mail(self):
         self.src_mail = sys.stdin.read()
@@ -40,53 +48,148 @@ class disclaimer_handler(object):
         for _idx, _part in enumerate(_mail.walk(), 1):
             self.log("part {:<3d} has type {}".format(_idx, _part.get_content_type()))
 
+    def _parse_from_to(self, _email):
+        _rewrite, _from_address = (False, "")
+        try:
+            _from_list = [email.utils.parseaddr(_email["From"])]
+            _to_list = [email.utils.parseaddr(_value) for _value in _email["To"].split(",")]
+        except:
+            self.log("cannot parse from and / or to field: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            if len(_from_list) and len(_to_list):
+                self.log("to ({:d}) is {}".format(len(_to_list), ", ".join(["'{}' / '{}'".format(_val[0], _val[1]) for _val in _to_list])))
+                _from = _from_list[0]
+                self.log("from is '{}' / '{}'".format(_from[0], _from[1]))
+                _from_domains = set([_from[1].split("@")[1] for _from in _from_list])
+                _to_domains = set([_to[1].split("@")[1] for _to in _to_list])
+                self.log("from / to domains: {}, {}".format(", ".join(_from_domains), ", ".join(_to_domains)))
+                if _from_domains == _to_domains:
+                    self.log("same domains, no rewrite")
+                else:
+                    _rewrite = True
+                    _from_address = _from[1]
+                    self.log("enable rewriting with from address '{}'".format(_from_address))
+            else:
+                self.log("from and / or to fields are empty", logging_tools.LOG_LEVEL_WARN)
+        return _rewrite, _from_address
+
+    def _find_user(self, _from_address):
+        _found = None
+        for _user in self.ui_tree.findall(".//user[@match]"):
+            _re_m = re.compile(_user.attrib["match"])
+            if _re_m.match(_from_address):
+                _found = _user
+                break
+        return _found
+
     def process(self):
         my_parser = FeedParser()
         my_parser.feed(self.src_mail)
+        self.dst_mail = self.src_mail
         _email = my_parser.close()
-        _from = email.utils.parseaddr(_email["From"])
-        _to = [email.utils.parseaddr(_value) for _value in _email["To"].split(",")]
-        self.log("to ({:d}) is {}".format(len(_to), ", ".join(["'{}' / '{}'".format(_val[0], _val[1]) for _val in _to])))
-        self.log("from is '{}' / '{}'".format(_from[0], _from[1]))
-        # fixme
-        # _to = _email.get_all("To", [])
-        self.log_mail("before", _email)
-        self.log("{:d} defects: {}".format(len(_email.defects), ", ".join([str(_val) for _val in _email.defects]) or "---"))
-        if not _email.is_multipart():
-            _payload = _email.get_payload()
-            # self.log("*** {}".format(_email.get_payload()))
-            # self.log("{}".format(type(_email.get_payload())))
-            _text = MIMEText(_email.get_payload())
-            # print _text, type(_text)
-            _email.set_payload([_text])
-            self.log("changing content-type to multipart/mixed")
-            _email.set_type("multipart/mixed")
-            # self.log(str(_email.get_params()))
-        for add_file in ["disclaimer.txt", "default.html"]:
-            _path = os.path.join("/etc/postfix", add_file)
-            if os.path.isfile(_path):
-                _m_type, _s_type = mimetypes.guess_type(_path)[0].split("/")
-                self.log("guessed mimetype for {}: {} / {}".format(_path, _m_type, _s_type))
-                if _m_type == "text":
-                    _attach = MIMEText(file(_path, "rb").read(), _s_type)
-                elif _m_type == "image":
-                    _attach = MIMEImage(file(_path, "rb").read(), _s_type)
-                else:
-                    _attach = MIMEBase(_m_type, _s_type)
-                    _attach.set_payload(file(_path, "rb").read())
-                    email.encoders.encode_base64(_attach)
-                _email.attach(_attach)
+        _do_rewrite, _from_address = self._parse_from_to(_email)
+        if _do_rewrite:
+            user_xml = self._find_user(_from_address)
+            if user_xml is None:
+                self.log("no matching user found, no rewrite", logging_tools.LOG_LEVEL_WARN)
             else:
-                self.log("attachment {} not found".format(add_file), logging_tools.LOG_LEVEL_ERROR)
-        _map_list = [("multipart/alternative", "multipart/mixed"), ]
-        for _src, _dst in _map_list:
-            if _email.get_content_type().lower() == _src:
-                self.log("rewriting content_type from {} to {}".format(_src, _dst))
-                _email.set_type(_dst)
-        # _email.add_header("X-INIT-FOOTER-ADDED", "yes")
-        self.log_mail("after", _email)
-        self.dst_mail = _email.as_string()
-        self.log("dst mail has {}".format(logging_tools.get_size_str(len(self.dst_mail))))
+                self.do_rewrite(_email, user_xml)
+        return
+
+    def disclaimer_html(self, user_xml):
+        src_html = codecs.open("/etc/postfix/default.html", "rb", "utf-8").read()
+        return self.disclaimer_rewrite(src_html, user_xml)
+
+    def disclaimer_text(self, user_xml):
+        src_text = codecs.open("/etc/postfix/default.txt", "rb", "utf-8").read()
+        return self.disclaimer_rewrite(src_text, user_xml)
+
+    def disclaimer_rewrite(self, in_text, user_xml):
+        match_re = re.compile("^(?P<pre_text>.*?)({(?P<code>.*)\})(?P<post_text>.*)")
+        out_lines = []
+        for _line in in_text.split("\n"):
+            _cur_m = match_re.match(_line)
+            if _cur_m is None:
+                out_lines.append(_line)
+            else:
+                _code = _cur_m.group("code")
+                _ccc = _code.count(":")
+                _add_dict = {
+                    "pre": "",
+                    "post": "",
+                    "notfound": "",
+                }
+                if _ccc:
+                    _parts = _code.split(":")
+                    _code = _parts.pop(0)
+                    for _part in _parts:
+                        if _part.count("="):
+                            _key, _value = _part.split("=", 1)
+                            _add_dict[_key] = _value
+                self.log(
+                    u"found code tag '{}' in line '{}' ({})".format(
+                        _code,
+                        _line,
+                        ", ".join(["{}='{}'".format(_key, _value) for _key, _value in _add_dict.iteritems()])
+                    )
+                )
+                s_str = "{}".format(
+                    {
+                        "mobile": "phone[@type='mobile']",
+                        "tel": "phone[@type='office']",
+                    }.get(_code, _code)
+                )
+                _found_el = user_xml.find(s_str)
+                if _found_el is None:
+                    rep_str = _add_dict["notfound"]
+                    self.log(" ... not found, using '{}'".format(rep_str), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    raw_rep_str = _found_el.text
+                    rep_str = u"{}{}{}".format(_add_dict["pre"], raw_rep_str, _add_dict["post"])
+                    self.log(
+                        u"found replacement for code {} ({}): '{}' ({})".format(
+                            _code,
+                            s_str,
+                            rep_str,
+                            raw_rep_str,
+                        )
+                    )
+                out_lines.append(
+                    u"{}{}{}".format(
+                        _cur_m.group("pre_text"),
+                        rep_str,
+                        _cur_m.group("post_text")
+                    )
+                )
+        return u"\n".join(out_lines)
+
+    def do_rewrite(self, _email, user_xml):
+        _tmpdir = tempfile.mkdtemp()
+        self.log("tempdir is {}".format(_tmpdir))
+        _src_mail = os.path.join(_tmpdir, "in")
+        _dis_html = os.path.join(_tmpdir, "dis.html")
+        _dis_text = os.path.join(_tmpdir, "dis.txt")
+        open(_src_mail, "wb").write(self.src_mail)
+        codecs.open(_dis_html, "wb", "utf-8").write(self.disclaimer_html(user_xml))
+        codecs.open(_dis_text, "wb", "utf-8").write(self.disclaimer_text(user_xml))
+        self.log("size of mail before processing is {}".format(logging_tools.get_size_str(len(self.src_mail))))
+        _call_args = [
+            "/usr/local/bin/altermime",
+            "--input={}".format(_src_mail),
+            "--disclaimer={}".format(_dis_text),
+            "--disclaimer-html={}".format(_dis_html),
+            # "--force-for-bad-html",
+            # "--force-into-b64",
+        ]
+        self.log("call_args are {}".format(" ".join(_call_args)))
+        _result = subprocess.call(
+            _call_args
+        )
+        self.log("result is {:d}".format(_result))
+        # rewind
+        self.dst_mail = file(_src_mail, "r").read()
+        self.log("size of mail after processing is {}".format(logging_tools.get_size_str(len(self.dst_mail))))
+        # os.unlink(_tmpfile.name)
 
     def send_mail(self):
         _sm_args = [SENDMAIL_BIN] + self.args[1:]
@@ -110,7 +213,9 @@ def main():
     try:
         my_disc.process()
     except:
-        my_disc.log("error processing: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+        _exc_info = process_tools.exception_info()
+        for _line in _exc_info.log_lines:
+            my_disc.log("error processing: {}".format(_line), logging_tools.LOG_LEVEL_CRITICAL)
     my_disc.send_mail()
     my_disc.close()
     return my_disc._result
