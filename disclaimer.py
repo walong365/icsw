@@ -61,6 +61,9 @@ class disclaimer_handler(object):
         try:
             _from_list = [email.utils.parseaddr(_email["From"])]
             _to_list = [email.utils.parseaddr(_value) for _value in _email["To"].split(",")]
+            if _email["Cc"]:
+                _cc_list = [email.utils.parseaddr(_value) for _value in _email["Cc"].split(",")]
+                self.log("cc list: {}".format(_cc_list))
         except:
             self.log("cannot parse from and / or to field: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -70,15 +73,24 @@ class disclaimer_handler(object):
                 self.log("from is '{}' / '{}'".format(_from[0], _from[1]))
                 _from_domains = set([_from[1].split("@")[1] for _from in _from_list])
                 _to_domains = set([_to[1].split("@")[1] for _to in _to_list])
+                _cc_domains = set([_cc[1].split("@")[1] for _cc in _cc_list])
+                self.log("domain list of cc: {}".format(_cc_domains))
                 self.log("from / to domains: {}, {}".format(", ".join(_from_domains), ", ".join(_to_domains)))
                 if _from_domains == _to_domains:
                     self.log("same domains, no rewrite")
+                    if _cc_domains and _from_domains != _cc_domains:
+                        _rewrite = True
+                        _from_address = _from[1]
+                        self.log("enable rewriting with from address '{}'".format(_from_address))
+                    else:
+                        self.log("same domains in cc, no rewrite")
                 else:
                     _rewrite = True
                     _from_address = _from[1]
                     self.log("enable rewriting with from address '{}'".format(_from_address))
             else:
                 self.log("from and / or to fields are empty", logging_tools.LOG_LEVEL_WARN)
+            self.log("rewrite variable is {}".format(_rewrite))
         return _rewrite, _from_address
 
     def _find_user(self, _from_address):
