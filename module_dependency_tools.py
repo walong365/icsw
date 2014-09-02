@@ -119,10 +119,10 @@ class dependency_handler(object):
                 add_next_line = anl
             # simplify
             dep_lines2 = [line.replace("//", "/").replace("//", "/").split(":") for line in dep_lines2]
-            dep_dict = dict([(key, value.strip().split()) for key, value in [entry for entry in dep_lines2 if len(entry) == 2]])
+            dep_dict = {key: value.strip().split() for key, value in [entry for entry in dep_lines2 if len(entry) == 2]}
             # kernel_mod_dict = dict([(os.path.basename(key), key) for key in dep_dict.iterkeys()])
-            kernel_lut_dict = dict([(key, os.path.basename(key)) for key in dep_dict.iterkeys()])
-            dep_dict = dict([(os.path.basename(key), set([kernel_lut_dict[m_path] for m_path in value])) for key, value in dep_dict.iteritems()])
+            kernel_lut_dict = {key: os.path.basename(key) for key in dep_dict.iterkeys()}
+            dep_dict = {os.path.basename(key): set([kernel_lut_dict[m_path] for m_path in value]) for key, value in dep_dict.iteritems()}
             first_found = copy.deepcopy(matches_found)
             m_iter = 0
             while True:
@@ -169,7 +169,7 @@ class dependency_handler(object):
                         self.log("no firmware files needed for {}".format(f_module))
             self.firmware_list = fw_lines
         if kwargs.get("resolve_module_dict", False):
-            mod_dict = dict([(key, file_dict[value]) for key, value in mod_dict.iteritems()])
+            mod_dict = {key: file_dict[value] for key, value in mod_dict.iteritems()}
         self.module_dict = mod_dict
         self.module_list = [file_dict[entry] for entry in matches_found]
         self.error_list = not_found_mods

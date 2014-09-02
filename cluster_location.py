@@ -216,6 +216,7 @@ def write_config(server_type, g_config, **kwargs):
             # if config.get_source(k) == "default":
             # only deal with int and str-variables
             var_obj = type_dict.get(g_config.get_type(key), None)
+            # print key, var_obj, g_config.database(key)
             if var_obj is not None and g_config.database(key):
                 other_types = set([value for _key, value in type_dict.items() if _key != g_config.get_type(key)])
                 # var global / local
