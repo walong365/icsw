@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from django.conf.global_settings import LOGGING
 """ grapher part of rrd-grapher service """
 
 from django.conf import settings
@@ -30,6 +31,7 @@ import datetime
 import dateutil.parser
 import logging_tools
 import os
+import stat
 import pprint
 import process_tools
 import re
@@ -493,14 +495,20 @@ class RRDGraph(object):
                         # machine vector entry
                         def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
                     if def_xml is not None:
-                        _unique += 1
-                        self.defs[(_unique, graph_key)] = graph_var(
-                            self,
-                            def_xml,
-                            graph_key,
-                            dev_dict[cur_pk]
-                        ).graph_def(_unique, timeshift=self.para_dict["timeshift"])
-                        draw_keys.append((_unique, graph_key))
+                        _take = True
+                        if "file_name" in def_xml.attrib:
+                            if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
+                                self.log("skipping {} (file is too small)".format(def_xml.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                                _take = False
+                        if _take:
+                            _unique += 1
+                            self.defs[(_unique, graph_key)] = graph_var(
+                                self,
+                                def_xml,
+                                graph_key,
+                                dev_dict[cur_pk]
+                            ).graph_def(_unique, timeshift=self.para_dict["timeshift"])
+                            draw_keys.append((_unique, graph_key))
             if self.defs:
                 draw_it = True
                 removed_keys = set()

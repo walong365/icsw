@@ -34,6 +34,9 @@ try:
 except:
     rrdtool = None
 
+# constant, change to limit RRDs to be converted at once
+MAX_FOUND = 0
+
 
 class resize_process(threading_tools.process_obj, threading_tools.operational_error_mixin):
     def process_init(self):
@@ -50,7 +53,7 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         cov_keys = [_key for _key in global_config.keys() if _key.startswith("RRD_COVERAGE")]
         self.rrd_coverage = [global_config[_key] for _key in cov_keys]
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
-        self.register_timer(self.check_size, 24 * 3600, first_timeout=1)
+        self.register_timer(self.check_size, 6 * 3600, first_timeout=1)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -68,7 +71,6 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
     def check_size(self):
         # init target coverage dict
         self.tc_dict = {}
-        MAX_FOUND = 0
         if not rrdtool:
             self.log("no rrdtool, ignoring resize call", logging_tools.LOG_LEVEL_WARN)
         elif not self.rrd_coverage:
@@ -101,10 +103,6 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
     def find_best_tc(self, rra_name, tc_dict):
         _tw = rrd_tools.RRA.total_width(rra_name)
         _min_key = min([(abs(_tw - _value["total"]), _key) for _key, _value in tc_dict.iteritems()])[1]
-        return _min_key
-
-    def find_best_rra_name(self, rra_names, tc_dict, tc_key):
-        _min_key = min([(abs(rrd_tools.RRA.total_width(_name) - tc_dict[tc_key]["total"]), _name) for _name in rra_names])[1]
         return _min_key
 
     def check_rrd_file(self, f_name):
@@ -140,14 +138,21 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
                 self.log("file {} is empty".format(f_name), logging_tools.LOG_LEVEL_WARN)
         return _changed
 
+    def find_best_rra_name(self, rra_names, tc_dict, tc_key):
+        _min_key = min([(abs(rrd_tools.RRA.total_width(_name) - tc_dict[tc_key]["total"]), _name) for _name in rra_names])[1]
+        return _min_key
+
+    def find_ref_rras(self, cf, rra_names):
+        return sorted(list(set([_entry for _entry in rra_names if _entry.startswith("RRA-{}-".format(cf))])), key=rrd_tools.RRA.total_width)
+
     def check_rrd_file_2(self, f_name, _rrd):
         # flush cache
         _rrd_short_names = set(_rrd["rra_short_names"])
         tc_dict = self.get_tc_dict(_rrd["step"])
         _target_short_names = set([_value["name"] for _value in tc_dict.itervalues()])
-        if _rrd_short_names != _target_short_names or True:
+        if _rrd_short_names != _target_short_names:
             _rrd.build_rras()
-            self.log("RRD and target differs ({})".format(f_name))
+            self.log("RRAs for {} differ from target".format(f_name))
             try:
                 rrdtool.flushcached("--daemon", self.rrd_cache_socket, f_name)
             except:
@@ -159,6 +164,7 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
             _new_popcount = {}
             for _key in tc_dict.iterkeys():
                 _short_src_rra_name = self.find_best_rra_name(_rrd["rra_short_names"], tc_dict, _key)
+                # find best srouce
                 _src_rra_names = [_name for _name in _rrd["rra_names"] if _name.endswith("-{}".format(_short_src_rra_name))]
                 self.log("for '{}' we will use '{}' ({})".format(_key, _short_src_rra_name, ", ".join(_src_rra_names)))
                 _tc_value = tc_dict[_key]
@@ -170,17 +176,18 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
                     _new_names.add(_tc_full_name)
                     # check if this RRA is already present
                     if _tc_full_name not in _prev_names:
+                        _src_cf = rrd_tools.RRA.parse_cf(_src_rra_name)
                         # print _src_rra, _tc_value
                         new_rra = rrd_tools.RRA.create(
                             step=_rrd["step"],
                             rows=_tc_value["rows"],
-                            cf=_src_rra_name.split("-")[1],
+                            cf=_src_cf,
                             xff=_src_rra.xff,
                             pdp=_tc_value["pdp"],
                             ref_rra=_src_rra,
                             log_com=_rrd.log,
                         )
-                        new_rra.fit_data(_src_rra)
+                        new_rra.fit_data([_rrd["rra_dict"][_name] for _name in self.find_ref_rras(_src_cf, _rrd["rra_names"])])
                         _rrd.add_rra(new_rra)
                     else:
                         new_rra = _src_rra
