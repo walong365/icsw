@@ -400,7 +400,7 @@ class RRD(dict):
         self.__ignore_slot_mismatch = kwargs.get("ignore_slot_mismatch", False)
         self.file_name = f_name
         self.__rras_built = False
-        self.build_rras = kwargs.get("build_rras", False)
+        self.__build_rras = kwargs.get("build_rras", False)
         self.log_com = kwargs.get("log_com", None)
         first_bytes = file(self.file_name, "rb").read(8)
         if first_bytes[0:3] == "RRD":
@@ -450,24 +450,24 @@ class RRD(dict):
             if _new_name not in self["rra_names"]:
                 self["rra_names"].append(_new_name)
                 self["rra_short_names"].append(_new_short_name)
-        if self.build_rras:
-            self._build_rras()
+        if self.__build_rras:
+            self.build_rras()
 
-    def _build_rras(self):
-        self.__rras_built = True
-        for _rra_idx, rra_entry in self["rra"].iteritems():
-            # print rra_entry
-            _new_name = RRA.rra_name(rra_entry, self["step"])
-            if _new_name not in self["rra_list"]:
+    def build_rras(self):
+        if not self.__rras_built:
+            self.__rras_built = True
+            for _rra_idx, rra_entry in self["rra"].iteritems():
+                # print rra_entry
+                _new_name = RRA.rra_name(rra_entry, self["step"])
+                if _new_name not in self["rra_list"]:
 
-                new_rra = RRA(self["step"], rra_entry, self.file_name, act_time=self["last_update"])
-                # if new_rra.check_slot_mismatch(self.__ignore_slot_mismatch):
-                self["rra_list"].append(new_rra.name)
-                self["rra_dict"][new_rra.name] = new_rra
-            else:
-                # print self["rra_dict"][new_rra.name].popcount, new_rra.popcount
-                self.log("RRA name {} already used".format(_new_name), logging_tools.LOG_LEVEL_ERROR)
-        # pprint.pprint(self)
+                    new_rra = RRA(self["step"], rra_entry, self.file_name, act_time=self["last_update"])
+                    # if new_rra.check_slot_mismatch(self.__ignore_slot_mismatch):
+                    self["rra_list"].append(new_rra.name)
+                    self["rra_dict"][new_rra.name] = new_rra
+                else:
+                    # print self["rra_dict"][new_rra.name].popcount, new_rra.popcount
+                    self.log("RRA name {} already used".format(_new_name), logging_tools.LOG_LEVEL_ERROR)
 
     def find_best_match(self, rra_name, **args):
         rra_parts = rra_name.split("-")
