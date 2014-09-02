@@ -11,6 +11,7 @@ import codecs
 import sys
 import tempfile
 import re
+from StringIO import StringIO
 
 SENDMAIL_BIN = process_tools.find_file("sendmail")
 
@@ -28,12 +29,19 @@ class disclaimer_handler(object):
         self._read_user_info()
 
     def _read_user_info(self):
+        # has to be UTF-8 encoded
         _ui_name = "/etc/postfix/user_info.xml"
-        self.ui_tree = etree.fromstring(codecs.open(_ui_name, "r", "ISO-8859-1").read())
-        self.log("read user_info from {} ({})".format(
-            _ui_name,
-            logging_tools.get_plural("entry", len(self.ui_tree.findall(".//user"))),
-        ))
+        try:
+            _parser = etree.XMLParser(recover=False, encoding="utf-8")
+            self.ui_tree = etree.parse(StringIO(codecs.open(_ui_name, "r", "utf-8").read()), _parser)
+        except:
+            self.log("error reading ui_tree {}: {}".format(_ui_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.ui_tree = None
+        else:
+            self.log("read user_info from {} ({})".format(
+                _ui_name,
+                logging_tools.get_plural("entry", len(self.ui_tree.findall(".//user"))),
+            ))
 
     def recv_mail(self):
         self.src_mail = sys.stdin.read()
@@ -97,11 +105,11 @@ class disclaimer_handler(object):
         return
 
     def disclaimer_html(self, user_xml):
-        src_html = codecs.open("/etc/postfix/default.html", "rb", "ISO-8859-1").read()
+        src_html = codecs.open("/etc/postfix/default.html", "rb", "utf-8").read()
         return self.disclaimer_rewrite(src_html, user_xml)
 
     def disclaimer_text(self, user_xml):
-        src_text = codecs.open("/etc/postfix/default.txt", "rb", "ISO-8859-1").read()
+        src_text = codecs.open("/etc/postfix/default.txt", "rb", "utf-8").read()
         return self.disclaimer_rewrite(src_text, user_xml)
 
     def disclaimer_rewrite(self, in_text, user_xml):
@@ -143,7 +151,11 @@ class disclaimer_handler(object):
                         "mail":  "email",
                     }.get(_code, _code)
                 )
-                _found_el = user_xml.find(s_str)
+                try:
+                    _found_el = user_xml.find(s_str)
+                except:
+                    self.log("error in XML find ({}): {}".format(s_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    _found_el = None
                 if _found_el is None:
                     rep_str = _add_dict["notfound"]
                     self.log(" ... not found, using '{}'".format(rep_str), logging_tools.LOG_LEVEL_ERROR)

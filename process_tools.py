@@ -162,13 +162,16 @@ def get_client_uuid(client_type, uuid=None):
 
 def get_socket(context, r_type, **kwargs):
     _sock = context.socket(getattr(zmq, r_type))
-    if r_type in ["ROUTER"]:
+    # DEALER from grapher/server.py
+    if r_type in ["ROUTER", "DEALER"]:
         _sock.setsockopt(zmq.IDENTITY, kwargs["identity"])
+    if r_type in ["ROUTER"]:
         _sock.setsockopt(zmq.ROUTER_MANDATORY, 1)
     for _opt, _value in [
         ("LINGER", 100),
         ("SNDHWM", 256),
         ("RCVHWM", 256),
+        ("SNDTIMEO", 500),
         ("BACKLOG", 1),
         ("TCP_KEEPALIVE", 1),
         ("TCP_KEEPALIVE_IDLE", 300),
@@ -176,6 +179,8 @@ def get_socket(context, r_type, **kwargs):
         ("RECONNECT_IVL", 200),
     ]:
         _sock.setsockopt(getattr(zmq, _opt), _value)
+    if kwargs.get("immediate", False):
+        _sock.setsockopt(getattr(zmq, "IMMEDIATE"), True)
     return _sock
 
 
@@ -200,7 +205,8 @@ def remove_zmq_dirs(dir_name):
 
 LOCAL_ZMQ_DIR = "/tmp/.icsw_zmq/.zmq_{:d}:{:d}".format(
     os.getuid(),
-    os.getpid())
+    os.getpid(),
+)
 
 LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets"
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())

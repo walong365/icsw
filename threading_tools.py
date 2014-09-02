@@ -264,7 +264,7 @@ class timer_base(object):
     def register_timer(self, cb_func, timeout, **kwargs):
         s_time = time.time()
         if not kwargs.get("instant", False):
-            s_time = s_time + timeout
+            s_time = s_time + kwargs.get("first_timeout", timeout)
         self.__timer_list.append(_timer_obj(timeout, s_time, cb_func, **kwargs))
         self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
         if not self.__loop_timer:
