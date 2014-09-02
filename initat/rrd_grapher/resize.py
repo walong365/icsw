@@ -111,75 +111,90 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         _changed = False
         s_time = time.time()
         try:
-            _rrd = rrd_tools.RRD(f_name, log_com=self.log, build_rras=True)
-        except:
-            self.log("cannot get info about {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-            for _line in process_tools.exception_info().log_lines:
-                self.log(_line, logging_tools.LOG_LEVEL_ERROR)
-        else:
             _old_size = os.stat(f_name)[stat.ST_SIZE]
-            # flush cache
-            _rrd_short_names = set(_rrd["rra_short_names"])
-            tc_dict = self.get_tc_dict(_rrd["step"])
-            _target_short_names = set([_value["name"] for _value in tc_dict.itervalues()])
-            if _rrd_short_names != _target_short_names:
-                self.log("RRD and target differs ({})".format(f_name))
+        except:
+            self.log("cannot get size of {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            _old_size = 0
+        else:
+            if _old_size:
                 try:
-                    rrdtool.flushcached("--daemon", self.rrd_cache_socket, f_name)
+                    _rrd = rrd_tools.RRD(f_name, log_com=self.log, build_rras=False)
                 except:
-                    self.log("error flushing {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                # pprint.pprint(info)
-                _prev_names = set([_entry for _entry in _rrd["rra_names"]])
-                _prev_popcount = {_key: _rrd["rra_dict"][_key].popcount[1] for _key in _prev_names}
-                _new_names = set()
-                _new_popcount = {}
-                for _key in tc_dict.iterkeys():
-                    _short_src_rra_name = self.find_best_rra_name(_rrd["rra_short_names"], tc_dict, _key)
-                    _src_rra_names = [_name for _name in _rrd["rra_names"] if _name.endswith("-{}".format(_short_src_rra_name))]
-                    self.log("for '{}' we will use '{}' ({})".format(_key, _short_src_rra_name, ", ".join(_src_rra_names)))
-                    _tc_value = tc_dict[_key]
-                    for _src_rra_name in _src_rra_names:
-                        _src_rra = _rrd["rra_dict"][_src_rra_name]
-                        # add RRA/CF to name
-                        _tc_full_name = rrd_tools.RRA.fill_rra_name(_tc_value["name"], _src_rra_name)
-                        # is needed in target
-                        _new_names.add(_tc_full_name)
-                        # check if this RRA is already present
-                        if _tc_full_name not in _prev_names:
-                            # print _src_rra, _tc_value
-                            new_rra = rrd_tools.RRA.create(
-                                step=_rrd["step"],
-                                rows=_tc_value["rows"],
-                                cf=_src_rra_name.split("-")[1],
-                                xff=_src_rra.xff,
-                                pdp=_tc_value["pdp"],
-                                ref_rra=_src_rra,
-                                log_com=_rrd.log,
+                    self.log("cannot get info about {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    for _line in process_tools.exception_info().log_lines:
+                        self.log(_line, logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    _changed = self.check_rrd_file_2(f_name, _rrd)
+                    if _changed:
+                        _new_size = os.stat(f_name)[stat.ST_SIZE]
+                        e_time = time.time()
+                        self.log(
+                            "modification of {} took {} ({} -> {} Bytes)".format(
+                                f_name,
+                                logging_tools.get_diff_time_str(e_time - s_time),
+                                _old_size,
+                                _new_size,
                             )
-                            new_rra.fit_data(_src_rra)
-                            _rrd.add_rra(new_rra)
-                        else:
-                            new_rra = _src_rra
-                        _new_popcount[_tc_full_name] = new_rra.popcount[1]
-                # delete old rras
-                [_rrd.remove_rra(_del_name) for _del_name in _prev_names - _new_names]
-                self.log("RRA list changed from")
-                self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _prev_popcount[_name]) for _name in sorted(list(_prev_names))])))
-                self.log("to")
-                self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _new_popcount[_name]) for _name in sorted(list(_new_names))])))
-                file(f_name, "wb").write(_rrd.content())
-                _new_size = os.stat(f_name)[stat.ST_SIZE]
-                _changed = True
-        if _changed:
-            e_time = time.time()
-            self.log(
-                "modification of {} took {} ({} -> {} Bytes)".format(
-                    f_name,
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                    _old_size,
-                    _new_size,
-                )
-            )
+                        )
+            else:
+                self.log("file {} is empty".format(f_name), logging_tools.LOG_LEVEL_WARN)
+        return _changed
+
+    def check_rrd_file_2(self, f_name, _rrd):
+        # flush cache
+        _rrd_short_names = set(_rrd["rra_short_names"])
+        tc_dict = self.get_tc_dict(_rrd["step"])
+        _target_short_names = set([_value["name"] for _value in tc_dict.itervalues()])
+        if _rrd_short_names != _target_short_names or True:
+            _rrd.build_rras()
+            self.log("RRD and target differs ({})".format(f_name))
+            try:
+                rrdtool.flushcached("--daemon", self.rrd_cache_socket, f_name)
+            except:
+                self.log("error flushing {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            # pprint.pprint(info)
+            _prev_names = set([_entry for _entry in _rrd["rra_names"]])
+            _prev_popcount = {_key: _rrd["rra_dict"][_key].popcount[1] for _key in _prev_names}
+            _new_names = set()
+            _new_popcount = {}
+            for _key in tc_dict.iterkeys():
+                _short_src_rra_name = self.find_best_rra_name(_rrd["rra_short_names"], tc_dict, _key)
+                _src_rra_names = [_name for _name in _rrd["rra_names"] if _name.endswith("-{}".format(_short_src_rra_name))]
+                self.log("for '{}' we will use '{}' ({})".format(_key, _short_src_rra_name, ", ".join(_src_rra_names)))
+                _tc_value = tc_dict[_key]
+                for _src_rra_name in _src_rra_names:
+                    _src_rra = _rrd["rra_dict"][_src_rra_name]
+                    # add RRA/CF to name
+                    _tc_full_name = rrd_tools.RRA.fill_rra_name(_tc_value["name"], _src_rra_name)
+                    # is needed in target
+                    _new_names.add(_tc_full_name)
+                    # check if this RRA is already present
+                    if _tc_full_name not in _prev_names:
+                        # print _src_rra, _tc_value
+                        new_rra = rrd_tools.RRA.create(
+                            step=_rrd["step"],
+                            rows=_tc_value["rows"],
+                            cf=_src_rra_name.split("-")[1],
+                            xff=_src_rra.xff,
+                            pdp=_tc_value["pdp"],
+                            ref_rra=_src_rra,
+                            log_com=_rrd.log,
+                        )
+                        new_rra.fit_data(_src_rra)
+                        _rrd.add_rra(new_rra)
+                    else:
+                        new_rra = _src_rra
+                    _new_popcount[_tc_full_name] = new_rra.popcount[1]
+            # delete old rras
+            [_rrd.remove_rra(_del_name) for _del_name in _prev_names - _new_names]
+            self.log("RRA list changed from")
+            self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _prev_popcount[_name]) for _name in sorted(list(_prev_names))])))
+            self.log("to")
+            self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _new_popcount[_name]) for _name in sorted(list(_new_names))])))
+            file(f_name, "wb").write(_rrd.content())
+            _changed = True
+        else:
+            _changed = False
         return _changed
 
     def loop_post(self):
