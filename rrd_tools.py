@@ -24,7 +24,6 @@ from lxml.builder import E
 import subprocess
 import logging_tools
 import os
-import pprint
 import re
 import rrdtool  # @UnresolvedImport
 import tempfile
@@ -207,6 +206,10 @@ class RRA(object):
         return "{}-{}".format("-".join(full_name.split("-", 2)[0:2]), short_name)
 
     @staticmethod
+    def parse_cf(in_str):
+        return in_str.split("-")[1]
+
+    @staticmethod
     def parse_width_str(in_str, step=60):
         _res_dict = None
         # returns
@@ -347,26 +350,27 @@ class RRA(object):
                     )
         return my_tuple
 
-    def fit_data(self, other_rra):
+    def fit_data(self, other_rras):
         # this is the first idx from the other stream, mapped to our system
-        other_s_idx = self.rows - (other_rra.end_time - other_rra.start_time) / self.time_step + 1
-        idx_offset = other_s_idx if other_s_idx > 0 else 0
-        _debug = False  # self.name=="RRA-MAX-288-500-300" and other_rra.name=="RRA-MAX-1-600-300"
         _checked, _changed = (0, 0)
-        for s_idx, val_tuple in enumerate(self.stream[2][idx_offset:]):
-            _checked += 1
-            if None in val_tuple:
-                tuple_time = (s_idx + idx_offset) * self.time_step + self.start_time
-                other_val_tuple = other_rra.get_val_tuple(tuple_time)
-                real_tuple = tuple([my_val if my_val is not None else other_val for my_val, other_val in zip(list(val_tuple), list(other_val_tuple))])
-                # print s_idx, real_tuple, val_tuple
-                if real_tuple != val_tuple:
-                    _changed += 1
-                    self.stream[2][idx_offset + s_idx] = real_tuple
+        _debug = False  # self.name=="RRA-MAX-288-500-300" and other_rra.name=="RRA-MAX-1-600-300"
+        for other_rra in other_rras:
+            other_s_idx = self.rows - (other_rra.end_time - other_rra.start_time) / self.time_step + 1
+            idx_offset = other_s_idx if other_s_idx > 0 else 0
+            for s_idx, val_tuple in enumerate(self.stream[2][idx_offset:]):
+                _checked += 1
+                if None in val_tuple:
+                    tuple_time = (s_idx + idx_offset) * self.time_step + self.start_time
+                    other_val_tuple = other_rra.get_val_tuple(tuple_time)
+                    real_tuple = tuple([my_val if my_val is not None else other_val for my_val, other_val in zip(list(val_tuple), list(other_val_tuple))])
+                    # print s_idx, real_tuple, val_tuple
+                    if real_tuple != val_tuple:
+                        _changed += 1
+                        self.stream[2][idx_offset + s_idx] = real_tuple
         if _changed or _debug:
             self.log(
                 "Copying from {} to {}, checked {:d}, changed {:d} (stream_len is {:d})".format(
-                    other_rra.name,
+                    ", ".join([other_rra.name.split("-", 2)[2] for other_rra in other_rras]),
                     self.name,
                     _checked,
                     _changed,
