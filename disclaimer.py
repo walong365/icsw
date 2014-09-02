@@ -29,7 +29,7 @@ class disclaimer_handler(object):
 
     def _read_user_info(self):
         _ui_name = "/etc/postfix/user_info.xml"
-        self.ui_tree = etree.fromstring(codecs.open(_ui_name, "r", "utf-8").read())
+        self.ui_tree = etree.fromstring(codecs.open(_ui_name, "r", "ISO-8859-1").read())
         self.log("read user_info from {} ({})".format(
             _ui_name,
             logging_tools.get_plural("entry", len(self.ui_tree.findall(".//user"))),
@@ -97,11 +97,11 @@ class disclaimer_handler(object):
         return
 
     def disclaimer_html(self, user_xml):
-        src_html = codecs.open("/etc/postfix/default.html", "rb", "utf-8").read()
+        src_html = codecs.open("/etc/postfix/default.html", "rb", "ISO-8859-1").read()
         return self.disclaimer_rewrite(src_html, user_xml)
 
     def disclaimer_text(self, user_xml):
-        src_text = codecs.open("/etc/postfix/default.txt", "rb", "utf-8").read()
+        src_text = codecs.open("/etc/postfix/default.txt", "rb", "ISO-8859-1").read()
         return self.disclaimer_rewrite(src_text, user_xml)
 
     def disclaimer_rewrite(self, in_text, user_xml):
@@ -113,14 +113,14 @@ class disclaimer_handler(object):
                 out_lines.append(_line)
             else:
                 _code = _cur_m.group("code")
-                _ccc = _code.count(":")
+                _ccc = _code.count(":::")
                 _add_dict = {
                     "pre": "",
                     "post": "",
                     "notfound": "",
                 }
                 if _ccc:
-                    _parts = _code.split(":")
+                    _parts = _code.split(":::")
                     _code = _parts.pop(0)
                     for _part in _parts:
                         if _part.count("="):
@@ -137,6 +137,10 @@ class disclaimer_handler(object):
                     {
                         "mobile": "phone[@type='mobile']",
                         "tel": "phone[@type='office']",
+                        "link": "link",
+                        "name": "name",
+                        "position": "department",
+                        "mail":  "email",
                     }.get(_code, _code)
                 )
                 _found_el = user_xml.find(s_str)
