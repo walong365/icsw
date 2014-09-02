@@ -28,6 +28,7 @@ from django.conf import settings
 from initat.cluster.backbone.models import log_source
 from initat.rrd_grapher.config import global_config, SERVER_COM_PORT
 from initat.rrd_grapher.server import server_process
+import cluster_location
 import config_tools
 import configfile
 import process_tools
@@ -68,10 +69,11 @@ def main():
                 prog_name
             )
         )),
-        ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT)),
+        ("COM_PORT", configfile.int_c_var(SERVER_COM_PORT, database=True)),
         ("SERVER_PATH", configfile.bool_c_var(False, help_string="set server_path to store RRDs [%(default)s]", only_commandline=True)),
         ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc")),
+        ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
+        ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached.sock", database=True)),
         ("GRAPHCONFIG_BASE", configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="name of colortable file")),
     ])
     global_config.parse_file()
@@ -114,11 +116,20 @@ def main():
                             settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT,
                             "graphs"
                             )
-                    )
+                    ),
+                    database=True
                 )
-            )
+            ),
         ]
     )
+    cluster_location.read_config_from_db(global_config, "rrd_server", [
+        ("RRD_COVERAGE_1", configfile.str_c_var("1min for 2days", database=True)),
+        ("RRD_COVERAGE_2", configfile.str_c_var("5min for 2 week", database=True)),
+        ("RRD_COVERAGE_3", configfile.str_c_var("15mins for 1month", database=True)),
+        ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
+        ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
+        ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
+    ])
     _create_dirs()
 
     process_tools.renice()

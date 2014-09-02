@@ -26,6 +26,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config, CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
+from initat.rrd_grapher.resize import resize_process
 from initat.rrd_grapher.struct import data_store, var_cache
 from lxml.builder import E  # @UnresolvedImport
 import cluster_location
@@ -68,6 +69,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self._log_config()
         self._init_network_sockets()
         self.add_process(graph_process("graph"), start=True)
+        self.add_process(resize_process("resize"), start=True)
         connection.close()
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
@@ -265,7 +267,9 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                             self.log("cannot get info for {} via rrdtool: {}".format(
                                 f_name,
                                 process_tools.get_except_info()
-                                ), logging_tools.LOG_LEVEL_ERROR)
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                         else:
                             c_time = int(rrd_info["last_update"])
                             stale = abs(cur_time - c_time) > MAX_DT
@@ -331,8 +335,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("rrd-grapher")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
+            msi_block.add_actual_pid(mult=4, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
             msi_block.start_command = "/etc/init.d/rrd-grapher start"
             msi_block.stop_command = "/etc/init.d/rrd-grapher force-stop"
             msi_block.kill_pids = True
@@ -375,15 +379,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         if _ch in self._collectd_sockets:
             self._collectd_sockets[_ch].close()
             del self._collectd_sockets[_ch]
-        _cs = self.zmq_context.socket(zmq.DEALER)
         _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
-        _cs.setsockopt(zmq.IDENTITY, self.bind_id)
-        _cs.setsockopt(zmq.SNDHWM, 256)
-        _cs.setsockopt(zmq.RCVHWM, 256)
-        _cs.setsockopt(zmq.SNDTIMEO, 500)
-        _cs.setsockopt(zmq.IMMEDIATE, True)
-        _cs.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        _cs.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+        _cs = process_tools.get_socket(self.zmq_context, "DEALER", identity=self.bind_id)
         _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
         self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
         _cs.connect(_conn_str)
