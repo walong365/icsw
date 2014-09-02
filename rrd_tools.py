@@ -2,7 +2,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file belongs to the python-modules-rrd package
+# This file belongs to the python-modules-base package
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -17,22 +17,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from django.conf.global_settings import LOGGING
-""" midlewarelayer for rrdtools """
+""" midleware layer for rrdtools """
 
-import commands
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E
+import subprocess
 import logging_tools
 import os
 import pprint
+import re
 import rrdtool  # @UnresolvedImport
 import tempfile
 import time
-import re
-from lxml import etree  # @UnresolvedImport
-from lxml.builder import E
 
 
-WS_RE = re.compile("^(?P<slot_num>\d+)(?P<slot_type>\S+?)s*\s+for\s+(?P<total_num>\d+)(?P<total_type>\S+?)s*$")
+WS_RE = re.compile("^(?P<slot_num>\d+)\s*(?P<slot_type>\S+?)s*\s+for\s+(?P<total_num>\d+)\s*(?P<total_type>\S+?)s*$")
 
 
 def _format_value(in_value):
@@ -42,6 +41,38 @@ def _format_value(in_value):
         return "{:d}".format(in_value)
     else:
         return "{:.10e}".format(in_value)
+
+
+def _parse_rrd_info(rrd_info):
+    def get_key_list(in_key):
+        ret_list = []
+        for entry in in_key.split("."):
+            if entry.count("["):
+                first_key = entry.split("[")[0]
+                second_key = entry.split("[")[1].split("]")[0]
+                if second_key.isdigit():
+                    second_key = int(second_key)
+                ret_list.extend([first_key, second_key])
+            else:
+                ret_list.append(entry)
+        return ret_list
+    if "ds" in rrd_info:
+        # old style, pass
+        pass
+    else:
+        # reinterpret rrd-tool
+        new_info = {}
+        for key, value in rrd_info.iteritems():
+            if key.count("["):
+                key_list = get_key_list(key)
+                sub_dict = new_info
+                for sub_key in key_list[:-1]:
+                    sub_dict = sub_dict.setdefault(sub_key, {})
+                sub_dict[key_list[-1]] = value
+            else:
+                new_info[key] = value
+        rrd_info = new_info
+    return rrd_info
 
 
 class RRA(object):
@@ -250,7 +281,7 @@ class RRA(object):
             logging_tools.get_diff_time_str(self.length),
         )
 
-    def get_xml(self):
+    def xml(self):
         ds_list = self.stream[1]
         rra_stream = self.stream
         if len(rra_stream[2]) < 10:
@@ -281,7 +312,7 @@ class RRA(object):
                         *[
                             E.v(_format_value(value)) for value in values
                         ]
-                    ) for _act_time, values in zip(range(*rra_stream[0]), rra_stream[2])
+                    ) for _act_time, values in zip(range(*rra_stream[0]), rra_stream[2])[:-1]
                 ]
             )
         )
@@ -363,45 +394,13 @@ class RRA(object):
         return changed
 
 
-def _parse_rrd_info(rrd_info):
-    def get_key_list(in_key):
-        ret_list = []
-        for entry in in_key.split("."):
-            if entry.count("["):
-                first_key = entry.split("[")[0]
-                second_key = entry.split("[")[1].split("]")[0]
-                if second_key.isdigit():
-                    second_key = int(second_key)
-                ret_list.extend([first_key, second_key])
-            else:
-                ret_list.append(entry)
-        return ret_list
-    if "ds" in rrd_info:
-        # old style, pass
-        pass
-    else:
-        # reinterpret rrd-tool
-        new_info = {}
-        for key, value in rrd_info.iteritems():
-            if key.count("["):
-                key_list = get_key_list(key)
-                sub_dict = new_info
-                for sub_key in key_list[:-1]:
-                    sub_dict = sub_dict.setdefault(sub_key, {})
-                sub_dict[key_list[-1]] = value
-            else:
-                new_info[key] = value
-        rrd_info = new_info
-    return rrd_info
-
-
 class RRD(dict):
     def __init__(self, f_name, **kwargs):
         dict.__init__(self)
         self.__ignore_slot_mismatch = kwargs.get("ignore_slot_mismatch", False)
         self.file_name = f_name
         self.__rras_built = False
-        self.build_rras = kwargs.get("build_rras", False)
+        self.__build_rras = kwargs.get("build_rras", False)
         self.log_com = kwargs.get("log_com", None)
         first_bytes = file(self.file_name, "rb").read(8)
         if first_bytes[0:3] == "RRD":
@@ -451,24 +450,24 @@ class RRD(dict):
             if _new_name not in self["rra_names"]:
                 self["rra_names"].append(_new_name)
                 self["rra_short_names"].append(_new_short_name)
-        if self.build_rras:
-            self._build_rras()
+        if self.__build_rras:
+            self.build_rras()
 
-    def _build_rras(self):
-        self.__rras_built = True
-        for _rra_idx, rra_entry in self["rra"].iteritems():
-            # print rra_entry
-            _new_name = RRA.rra_name(rra_entry, self["step"])
-            if _new_name not in self["rra_list"]:
+    def build_rras(self):
+        if not self.__rras_built:
+            self.__rras_built = True
+            for _rra_idx, rra_entry in self["rra"].iteritems():
+                # print rra_entry
+                _new_name = RRA.rra_name(rra_entry, self["step"])
+                if _new_name not in self["rra_list"]:
 
-                new_rra = RRA(self["step"], rra_entry, self.file_name, act_time=self["last_update"])
-                # if new_rra.check_slot_mismatch(self.__ignore_slot_mismatch):
-                self["rra_list"].append(new_rra.name)
-                self["rra_dict"][new_rra.name] = new_rra
-            else:
-                # print self["rra_dict"][new_rra.name].popcount, new_rra.popcount
-                self.log("RRA name {} already used".format(_new_name), logging_tools.LOG_LEVEL_ERROR)
-        # pprint.pprint(self)
+                    new_rra = RRA(self["step"], rra_entry, self.file_name, act_time=self["last_update"])
+                    # if new_rra.check_slot_mismatch(self.__ignore_slot_mismatch):
+                    self["rra_list"].append(new_rra.name)
+                    self["rra_dict"][new_rra.name] = new_rra
+                else:
+                    # print self["rra_dict"][new_rra.name].popcount, new_rra.popcount
+                    self.log("RRA name {} already used".format(_new_name), logging_tools.LOG_LEVEL_ERROR)
 
     def find_best_match(self, rra_name, **args):
         rra_parts = rra_name.split("-")
@@ -699,8 +698,8 @@ class RRD(dict):
                 my_rra.stream = (my_rra.stream[0], my_rra.stream[1], merged_stream)
         return success
 
-    def write_rra(self, file_name, no_restore, **args):
-        self.log("Writing RRD-file to {}".format(file_name))
+    def xml(self):
+        # self.log("Writing RRD-file to {}".format(file_name))
         # generate dump-file
         _xml = E.rrd(
             E.version(self["rrd_version"]),
@@ -720,41 +719,45 @@ class RRD(dict):
                 ) for ds_name, ds_struct in [(_ds_name, self["ds"][_ds_name]) for _ds_name in self["rra_dict"].values()[0].stream[1]]
             ] + [
                 # rra databases
-                self["rra_dict"][rra_name].get_xml() for rra_name in self["rra_list"]
+                self["rra_dict"][rra_name].xml() for rra_name in self["rra_list"]
             ]
         )
-        if no_restore:
-            temp_file = file_name
-        else:
-            temp_fileno, temp_file = tempfile.mkstemp()
-            if os.path.isfile(file_name):
-                print "  Removing already present file %s" % (file_name)
-                os.unlink(file_name)
-        file(temp_file, "w").write(etree.tostring(_xml))
-        if not no_restore:
-            num_restore_tries, restore_retry_time = (args.get("restore_retries", 1),
-                                                     args.get("restore_retry_time", 5))
-            for idx in xrange(num_restore_tries):
-                if idx:
-                    time.sleep(restore_retry_time)
-                command = "rrdtool restore %s %s -r" % (temp_file,
-                                                        file_name)
-                r_stat, r_out = commands.getstatusoutput(command)
-                if r_stat:
-                    print "Something went wrong creating '%s' from '%s' (%d): %s" % (file_name,
-                                                                                     temp_file,
-                                                                                     r_stat,
-                                                                                     r_out)
-                else:
-                    break
-            os.close(temp_fileno)
-            os.unlink(temp_file)
+        return _xml
+
+    def content(self):
+        with tempfile.NamedTemporaryFile(delete=False) as _xmlfile:
+            with tempfile.NamedTemporaryFile(delete=False) as _rrdfile:
+                _xmlfile.write(etree.tostring(self.xml()))
+                _xmlfile.close()
+                os.unlink(_rrdfile.name)
+                args = [
+                    "/opt/cluster/bin/rrdtool",
+                    "restore",
+                    _xmlfile.name,
+                    _rrdfile.name,
+                    "-r"
+                ]
+                _stat = subprocess.call(args)
+                _content = file(_rrdfile.name, "rb").read()
+                os.unlink(_xmlfile.name)
+                os.unlink(_rrdfile.name)
+        return _content
 
     def show_info(self, **args):
         if args.get("full_info", False):
-            print "%s:" % (logging_tools.get_plural("RRA", len(self["rra_list"])))
+            print(
+                "{}:".format(
+                    logging_tools.get_plural("RRA", len(self["rra_list"]))
+                )
+            )
             for rra_key in sorted(self["rra_list"]):
-                print self["rra_dict"][rra_key].show_info()
+                print(
+                    self["rra_dict"][rra_key].show_info()
+                )
         else:
-            print "%s: %s" % (logging_tools.get_plural("RRA", len(self["rra_list"])),
-                              ", ".join(sorted(self["rra_list"])))
+            print(
+                "{}: {}".format(
+                    logging_tools.get_plural("RRA", len(self["rra_list"])),
+                    ", ".join(sorted(self["rra_list"]))
+                )
+            )
