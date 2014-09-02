@@ -858,6 +858,12 @@ LoadPlugin unixsock
 	CreateFilesAsync false
 	CollectStatistics true
 	RRARows 1920
+	# timespans in seconds, defaults to
+	# - 1 hours (3600)
+	# - 1 day (86400)
+	# - 1 week (604800)
+	# - 31 days (2678400)
+	# - 1 year (366 days, 31622400)
 </Plugin>
 
 #<Plugin rrdtool>
