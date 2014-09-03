@@ -17,7 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from django.conf.global_settings import LOGGING
 """ grapher part of rrd-grapher service """
 
 from django.conf import settings
@@ -40,6 +39,8 @@ import server_command
 import threading_tools
 import time
 import uuid
+
+FLOAT_FMT = "{:.6f}"
 
 
 def rrd_escape(in_str):
@@ -140,7 +141,7 @@ class Colorizer(object):
 
 
 class graph_var(object):
-    def __init__(self, rrd_graph, entry, key, dev_name=""):
+    def __init__(self, rrd_graph, graph_target, entry, key, dev_name=""):
         # XML entry
         self.entry = entry
         # graph key (load.1)
@@ -148,8 +149,9 @@ class graph_var(object):
         # device name
         self.dev_name = dev_name
         self.rrd_graph = rrd_graph
+        self.graph_target = graph_target
         self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
-        self.name = "v{:d}".format(self.rrd_graph.get_def_idx())
+        self.name = "v{:d}".format(self.graph_target.get_def_idx())
 
     def __getitem__(self, key):
         return self.entry.attrib[key]
@@ -313,6 +315,101 @@ class graph_var(object):
         )
 
 
+class GraphTarget(object):
+    def __init__(self, g_key, dev_list, graph_keys):
+        self.graph_key = g_key
+        self.dev_list = dev_list
+        self.graph_keys = graph_keys
+        self.graph_name = "gfx_{}_{}_{:d}.png".format(self.graph_key, uuid.uuid4(), int(time.time()))  #
+        self.rel_file_loc = os.path.join(
+            "/{}/static/graphs/{}".format(
+                settings.REL_SITE_ROOT,
+                self.graph_name
+            )
+        )
+        # rrd post arguments, will not be reset
+        self.__post_args = {}
+
+    @property
+    def dev_id_str(self):
+        return ",".join([dev_id for dev_id, _dev_pk in self.dev_list])
+
+    @property
+    def rrd_post_args(self):
+        return [
+            "{} {}".format(_key, _value) for _key, _value in self.__post_args.iteritems()
+        ]
+
+    def set_post_arg(self, key, value):
+        if key in ["-l", "-u"]:
+            if key not in self.__post_args:
+                self.__post_args[key] = value
+            else:
+                if key == "l" and float(value) < float(self.__post_args[key]):
+                    self.__post_args[key] = value
+                elif key == "u" and float(value) > float(self.__post_args[key]):
+                    self.__post_args[key] = value
+        else:
+            self.__post_args[key] = value
+
+    def reset(self):
+        self.defs = {}
+        self.draw_result = None
+        self.removed_keys = []
+        self.__result_dict = None
+
+    def get_def_idx(self):
+        return len(self.defs) + 1
+
+    def set_y_mm(self, _min, _max):
+        # set min / max values for ordinate
+        self.set_post_arg("-l", _min)
+        self.set_post_arg("-u", _max)
+
+    @property
+    def removed_key_xml(self):
+        return E.removed_keys(
+            *[
+                E.removed_key(_key, device="{:d}".format(_pk)) for _pk, _key in self.removed_keys
+            ]
+        )
+
+    @property
+    def valid(self):
+        return True if self.defs and (self.draw_result is not None) else False
+
+    @property
+    def result_dict(self):
+        if self.__result_dict is None:
+            self.__result_dict = {
+                key: "{:d}".format(value) if type(value) in [
+                    int, long
+                ] else FLOAT_FMT.format(value) for key, value in self.draw_result.iteritems() if not key.startswith("print[")
+            }
+        return self.__result_dict
+
+    def graph_xml(self, dev_dict):
+        _xml = E.graph(
+            E.devices(
+                *[
+                    E.device(
+                        unicode(dev_dict[_dev_key[1]]),
+                        pk="{:d}".format(_dev_key[1])
+                    ) for _dev_key in self.dev_list
+                ]
+            ),
+            self.removed_key_xml,
+            fmt_graph_key="gk_{}".format(self.graph_key),
+            # devices key
+            fmt_device_key="dk_{}".format(self.dev_id_str),
+        )
+        if self.valid:
+            _xml.attrib["href"] = self.rel_file_loc
+            for _key, _value in self.result_dict.iteritems():
+                _xml.attrib[_key] = _value
+        return _xml
+
+
 class RRDGraph(object):
     def __init__(self, log_com, colorizer, para_dict):
         self.log_com = log_com
@@ -326,6 +423,7 @@ class RRDGraph(object):
             "job_mode": "none",
             "selected_job": 0,
         }
+        self.dt_1970 = dateutil.parser.parse("1970-01-01 00:00 +0000")
         self.para_dict.update(para_dict)
         self.colorizer = colorizer
 
@@ -338,45 +436,7 @@ class RRDGraph(object):
         g_key_dict = {flk: sorted([key for key in graph_keys if key.split(".")[0].split(":")[-1] == flk]) for flk in first_level_keys}
         return g_key_dict
 
-    def get_def_idx(self):
-        return len(self.defs) + 1
-
-    def graph(self, vector_dict, dev_pks, graph_keys):
-        timeframe = abs((self.para_dict["end_time"] - self.para_dict["start_time"]).total_seconds())
-        graph_size = self.para_dict["size"]
-        graph_width, graph_height = [int(value) for value in graph_size.split("x")]
-        self.log("width / height : {:d} x {:d}, timeframe {}".format(
-            graph_width,
-            graph_height,
-            logging_tools.get_diff_time_str(timeframe),
-        ))
-        # store for DEF generation
-        self.width = graph_width
-        self.height = graph_height
-        dev_dict = {cur_dev.pk: unicode(cur_dev.full_name) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))}
-        s_graph_key_dict = self._create_graph_keys(graph_keys)
-        self.log(
-            "found {}: {}".format(
-                logging_tools.get_plural("device", len(dev_pks)),
-                ", ".join(["{:d} ({})".format(pk, dev_dict.get(pk, "unknown")) for pk in dev_pks])))
-        self.log("graph keys: {}".format(", ".join(graph_keys)))
-        self.log(
-            "top level keys: {:d}; {}".format(
-                len(s_graph_key_dict),
-                ", ".join(sorted(s_graph_key_dict)),
-            )
-        )
-        graph_key_list = []
-        enumerated_dev_pks = [("{:d}.{:d}".format(_idx, _pk), _pk) for _idx, _pk in enumerate(dev_pks)]
-        # one device per graph
-        if self.para_dict["merge_devices"]:
-            graph_key_list = [(g_key, enumerated_dev_pks, v_list) for g_key, v_list in s_graph_key_dict.iteritems()]
-        else:
-            for g_key, v_list in s_graph_key_dict.iteritems():
-                for dev_id, dev_pk in enumerated_dev_pks:
-                    graph_key_list.append((g_key, [(dev_id, dev_pk)], v_list))
-        self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
-        graph_list = E.graph_list()
+    def _get_jobs(self, dev_dict):
         # job addon dict
         _job_add_dict = {}
         if self.para_dict["job_mode"] in ["selected", "all"]:
@@ -448,248 +508,263 @@ class RRDGraph(object):
                             "hostname": _entry["hostname"],
                         }
                     )
-            # pprint.pprint(_job_add_dict)
+        return _job_add_dict
 
-        for tlk, dev_list, graph_keys in sorted(graph_key_list):
-            dev_id_str = ",".join([dev_id for dev_id, dev_pk in dev_list])
-            graph_name = "gfx_{}_{}_{:d}.png".format(tlk, uuid.uuid4(), int(time.time()))
-            abs_file_loc, rel_file_loc = (
-                os.path.join(self.para_dict["graph_root"], graph_name),
-                os.path.join("/{}/static/graphs/{}".format(settings.REL_SITE_ROOT, graph_name)),
-            )
-            dt_1970 = dateutil.parser.parse("1970-01-01 00:00 +0000")
-            # clear list of defs
-            self.defs = {}
-            # reset colorizer for current graph
-            self.colorizer.reset()
-            self.abs_start_time = int((self.para_dict["start_time"] - dt_1970).total_seconds())
-            self.abs_end_time = int((self.para_dict["end_time"] - dt_1970).total_seconds())
-            rrd_pre_args = [
-                abs_file_loc,
-                "-E",  # slope mode
-                "-Rlight",  # font render mode, slight hint
-                "-Gnormal",  # render mode
-                "-P",  # use pango markup
-                # "-nDEFAULT:8:",
-                "-w {:d}".format(graph_width),
-                "-h {:d}".format(graph_height),
-                "-aPNG",  # image forma
-                "--daemon", "unix:/var/run/rrdcached.sock",  # rrd caching daemon address
-                "-W CORVUS by init.at",  # title
-                "--slope-mode",  # slope mode
-                "-cBACK#ffffff",
-                "--end", "{:d}".format(self.abs_end_time),  # end
-                "--start", "{:d}".format(self.abs_start_time),  # start
-                graph_var(self, None, "").header_line,
-            ]
-            rrd_post_args = {}
-            _unique = 0
-            draw_keys = []
-            for graph_key in sorted(graph_keys):
-                for _cur_id, cur_pk in dev_list:
-                    dev_vector = vector_dict[cur_pk]
-                    if graph_key.startswith("pde:"):
-                        # performance data from icinga
-                        def_xml = dev_vector.find(".//value[@name='{}']".format(graph_key))
-                    else:
-                        # machine vector entry
-                        def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
-                    if def_xml is not None:
-                        _take = True
-                        if "file_name" in def_xml.attrib:
-                            if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
-                                self.log("skipping {} (file is too small)".format(def_xml.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
-                                _take = False
-                        if _take:
-                            _unique += 1
-                            self.defs[(_unique, graph_key)] = graph_var(
-                                self,
-                                def_xml,
-                                graph_key,
-                                dev_dict[cur_pk]
-                            ).graph_def(_unique, timeshift=self.para_dict["timeshift"])
-                            draw_keys.append((_unique, graph_key))
-            if self.defs:
-                draw_it = True
-                removed_keys = set()
-                while draw_it:
-                    rrd_args = rrd_pre_args + sum([self.defs[_key] for _key in draw_keys], [])
-                    rrd_args.extend(
-                        [
-                            "{} {}".format(_key, _value) for _key, _value in rrd_post_args.iteritems()
-                        ]
-                    )
-                    rrd_args.extend([
-                        "--title",
-                        "{} on {} (tf: {})".format(
-                            tlk,
-                            dev_dict.get(dev_list[0][1], "unknown") if len(dev_list) == 1 else logging_tools.get_plural("device", len(dev_list)),
-                            # logging_tools.get_plural("result", len(self.defs)),
-                            logging_tools.get_diff_time_str(timeframe)),
-                    ])
-                    # add job info
-                    # todo: draw rectangles for jobs
-                    # rrd_args.extend(
-                    #    [
-                    #        "CDEF:xd=TIME,1408540706,GT,v1,*",
-                    #        "LINE1:xd#0044ff",
-                    #    ]
-                    # )
-                    for _stuff, _pk in dev_list:
-                        for _job_info in _job_add_dict.get(_pk, []):
-                            if len(dev_list) == 1:
-                                _us_info = "{}, {}".format(
-                                    _job_info["user"],
-                                    logging_tools.get_plural("slot", _job_info["slots"]),
-                                )
-                            else:
-                                _us_info = "{}, {} on {}".format(
-                                    _job_info["user"],
-                                    logging_tools.get_plural("slot", _job_info["slots"]),
-                                    _job_info["hostname"],
-                                )
-                            if _job_info["start_time"] and _job_info["end_time"]:
-                                rrd_args.extend(
-                                    [
-                                        "VRULE:{}#4444ee:{}".format(
-                                            int((_job_info["start_time"] - dt_1970).total_seconds()),
-                                            rrd_escape(
-                                                "{} start".format(
-                                                    _job_info["job"],
-                                                )
-                                            )
-                                        ),
-                                        "VRULE:{}#ee4444:{}\l".format(
-                                            int((_job_info["end_time"] - dt_1970).total_seconds()),
-                                            rrd_escape(
-                                                "end, {} - {}, {}".format(
-                                                    strftime(_job_info["start_time"]),
-                                                    strftime(_job_info["end_time"], _job_info["start_time"]),
-                                                    _us_info,
-                                                )
-                                            )
-                                        ),
-                                    ]
-                                )
-                            elif _job_info["start_time"]:
-                                rrd_args.append(
-                                    "VRULE:{}#4444ee:{}\l".format(
-                                        int((_job_info["start_time"] - dt_1970).total_seconds()),
-                                        rrd_escape(
-                                            "{} start, {}, {}".format(
-                                                _job_info["job"],
-                                                strftime(_job_info["start_time"]),
-                                                _us_info,
-                                            )
-                                        )
-                                    )
-                                )
-                            elif _job_info["end_time"]:
-                                rrd_args.append(
-                                    "VRULE:{}#ee4444:{}\l".format(
-                                        int((_job_info["end_time"] - dt_1970).total_seconds()),
-                                        rrd_escape(
-                                            "{} end  , {}, {}".format(
-                                                _job_info["job"],
-                                                strftime(_job_info["end_time"]),
-                                                _us_info,
-                                            )
-                                        )
-                                    )
-                                )
-                    # self.log("calling graphv ({})".format(" ".join(rrd_args)))
-                    try:
-                        draw_result = rrdtool.graphv(*rrd_args)
-                    except:
-                        self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                        if global_config["DEBUG"]:
-                            pprint.pprint(rrd_args)
-                        draw_result = None
-                        draw_it = False
-                    else:
-                        # compare draw results, add -l / -u when scale_y is true
-                        # pprint.pprint(draw_result)
-                        res_dict = {
-                            value.split("=", 1)[0]: value.split("=", 1)[1] for key, value in draw_result.iteritems() if key.startswith("print[")
-                        }
-                        # reorganize
-                        val_dict = {}
-                        for key, value in res_dict.iteritems():
-                            _split = key.split(".")
-                            cf = _split.pop(-1)
-                            try:
-                                value = float(value)
-                            except:
-                                pass
-                            else:
-                                value = None if value == 0.0 else value
-                            # extract device pk from key
-                            _unique_id = int(_split.pop(0))
-                            _key = ".".join(_split)
-                            if value is not None:
-                                val_dict.setdefault((_unique_id, _key), {})[cf] = value
-                        # check if the graphs shall always include y=0
-                        draw_it = False
-                        if self.para_dict["include_zero"]:
-                            if "value_min" in draw_result and "value_max" in draw_result:
-                                if draw_result["value_min"] > 0.0:
-                                    rrd_post_args["-l"] = "0"
-                                    draw_it = True
-                                if draw_result["value_max"] < 0.0:
-                                    rrd_post_args["-u"] = "0"
-                                    draw_it = True
-                        # check for empty graphs
-                        empty_keys = set(draw_keys) - set(val_dict.keys())
-                        if empty_keys and self.para_dict["hide_empty"]:
-                            self.log(
-                                u"{}: {}".format(
-                                    logging_tools.get_plural("empty key", len(empty_keys)),
-                                    ", ".join(sorted(["{} (dev {:d})".format(_key, _pk) for _pk, _key in empty_keys])),
-                                )
-                            )
-                            removed_keys |= empty_keys
-                            draw_keys = [_key for _key in draw_keys if _key not in empty_keys]
-                            # self.defs = {key : value for key, value in self.defs.iteritems() if key not in empty_keys}
-                            if not draw_keys:
-                                draw_result = None
-                            else:
-                                draw_it = True
-                rem_key_el = E.removed_keys(
-                    *[E.removed_key(_key, device="{:d}".format(_pk)) for _pk, _key in removed_keys]
-                )
-                if self.defs and (draw_result is not None):
-                    # defs present
-                    graph_list.append(
-                        E.graph(
-                            # not needed right now
-                            E.devices(
-                                *[E.device(unicode(dev_dict[_dev_key[1]]), pk="{:d}".format(_dev_key[1])) for _dev_key in dev_list]
-                            ),
-                            rem_key_el,
-                            # graph key
-                            fmt_graph_key="gk_{}".format(tlk),
-                            # devices key
-                            fmt_device_key="dk_{}".format(dev_id_str),
-                            href=rel_file_loc,
-                            **dict(
-                                [
-                                    (
-                                        key,
-                                        "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)
-                                    ) for key, value in draw_result.iteritems() if not key.startswith("print[")
-                                ]
-                            )
-                        )
+    def _create_job_args(self, dev_list, _job_add_dict):
+        _ext_args = []
+        for _stuff, _pk in dev_list:
+            for _job_info in _job_add_dict.get(_pk, []):
+                if len(dev_list) == 1:
+                    _us_info = "{}, {}".format(
+                        _job_info["user"],
+                        logging_tools.get_plural("slot", _job_info["slots"]),
                     )
                 else:
-                    # empty graph
-                    graph_list.append(
-                        E.graph(
-                            rem_key_el
+                    _us_info = "{}, {} on {}".format(
+                        _job_info["user"],
+                        logging_tools.get_plural("slot", _job_info["slots"]),
+                        _job_info["hostname"],
+                    )
+                if _job_info["start_time"] and _job_info["end_time"]:
+                    _ext_args.extend(
+                        [
+                            "VRULE:{}#4444ee:{}".format(
+                                int((_job_info["start_time"] - self.dt_1970).total_seconds()),
+                                rrd_escape(
+                                    "{} start".format(
+                                        _job_info["job"],
+                                    )
+                                )
+                            ),
+                            "VRULE:{}#ee4444:{}\l".format(
+                                int((_job_info["end_time"] - self.dt_1970).total_seconds()),
+                                rrd_escape(
+                                    "end, {} - {}, {}".format(
+                                        strftime(_job_info["start_time"]),
+                                        strftime(_job_info["end_time"], _job_info["start_time"]),
+                                        _us_info,
+                                    )
+                                )
+                            ),
+                        ]
+                    )
+                elif _job_info["start_time"]:
+                    _ext_args.append(
+                        "VRULE:{}#4444ee:{}\l".format(
+                            int((_job_info["start_time"] - self.dt_1970).total_seconds()),
+                            rrd_escape(
+                                "{} start, {}, {}".format(
+                                    _job_info["job"],
+                                    strftime(_job_info["start_time"]),
+                                    _us_info,
+                                )
+                            )
                         )
                     )
-            else:
-                self.log("no DEFs for graph_key_dict {}".format(tlk), logging_tools.LOG_LEVEL_ERROR)
+                elif _job_info["end_time"]:
+                    _ext_args.append(
+                        "VRULE:{}#ee4444:{}\l".format(
+                            int((_job_info["end_time"] - self.dt_1970).total_seconds()),
+                            rrd_escape(
+                                "{} end  , {}, {}".format(
+                                    _job_info["job"],
+                                    strftime(_job_info["end_time"]),
+                                    _us_info,
+                                )
+                            )
+                        )
+                    )
+        return _ext_args
+
+    def graph(self, vector_dict, dev_pks, graph_keys):
+        timeframe = abs((self.para_dict["end_time"] - self.para_dict["start_time"]).total_seconds())
+        graph_size = self.para_dict["size"]
+        graph_width, graph_height = [int(value) for value in graph_size.split("x")]
+        self.log("width / height : {:d} x {:d}, timeframe {}".format(
+            graph_width,
+            graph_height,
+            logging_tools.get_diff_time_str(timeframe),
+        ))
+        # store for DEF generation
+        self.width = graph_width
+        self.height = graph_height
+        dev_dict = {cur_dev.pk: unicode(cur_dev.full_name) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))}
+        s_graph_key_dict = self._create_graph_keys(graph_keys)
+        self.log(
+            "found {}: {}".format(
+                logging_tools.get_plural("device", len(dev_pks)),
+                ", ".join(["{:d} ({})".format(pk, dev_dict.get(pk, "unknown")) for pk in dev_pks])))
+        self.log("graph keys: {}".format(", ".join(graph_keys)))
+        self.log(
+            "top level keys: {:d}; {}".format(
+                len(s_graph_key_dict),
+                ", ".join(sorted(s_graph_key_dict)),
+            )
+        )
+        enumerated_dev_pks = [("{:d}.{:d}".format(_idx, _pk), _pk) for _idx, _pk in enumerate(dev_pks)]
+        # one device per graph
+        if self.para_dict["merge_devices"]:
+            graph_key_list = [[GraphTarget(g_key, enumerated_dev_pks, v_list)] for g_key, v_list in s_graph_key_dict.iteritems()]
+        else:
+            graph_key_list = []
+            for g_key, v_list in sorted(s_graph_key_dict.iteritems()):
+                graph_key_list.append([GraphTarget(g_key, [(dev_id, dev_pk)], v_list) for dev_id, dev_pk in enumerated_dev_pks])
+        self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
+        graph_list = E.graph_list()
+        _job_add_dict = self._get_jobs(dev_dict)
+        for _graph_line in graph_key_list:
+            # iterate in case scale_y is True
+            _iterate_line, _line_iteration = (True, 0)
+            while _iterate_line:
+                for _graph_target in _graph_line:
+                    abs_file_loc = os.path.join(self.para_dict["graph_root"], _graph_target.graph_name)
+                    # clear list of defs, reset result
+                    _graph_target.reset()
+                    # reset colorizer for current graph
+                    self.colorizer.reset()
+                    self.abs_start_time = int((self.para_dict["start_time"] - self.dt_1970).total_seconds())
+                    self.abs_end_time = int((self.para_dict["end_time"] - self.dt_1970).total_seconds())
+                    rrd_pre_args = [
+                        abs_file_loc,
+                        "-E",  # slope mode
+                        "-Rlight",  # font render mode, slight hint
+                        "-Gnormal",  # render mode
+                        "-P",  # use pango markup
+                        # "-nDEFAULT:8:",
+                        "-w {:d}".format(graph_width),
+                        "-h {:d}".format(graph_height),
+                        "-aPNG",  # image forma
+                        "--daemon", "unix:{}".format(global_config["RRD_CACHED_SOCKET"]),  # rrd caching daemon address
+                        "-W CORVUS by init.at",  # title
+                        "--slope-mode",  # slope mode
+                        "-cBACK#ffffff",
+                        "--end", "{:d}".format(self.abs_end_time),  # end
+                        "--start", "{:d}".format(self.abs_start_time),  # start
+                        graph_var(self, _graph_target, None, "").header_line,
+                    ]
+                    _unique = 0
+                    draw_keys = []
+                    for graph_key in sorted(_graph_target.graph_keys):
+                        for _cur_id, cur_pk in _graph_target.dev_list:
+                            dev_vector = vector_dict[cur_pk]
+                            if graph_key.startswith("pde:"):
+                                # performance data from icinga
+                                def_xml = dev_vector.find(".//value[@name='{}']".format(graph_key))
+                            else:
+                                # machine vector entry
+                                def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
+                            if def_xml is not None:
+                                _take = True
+                                if "file_name" in def_xml.attrib:
+                                    if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
+                                        self.log("skipping {} (file is too small)".format(def_xml.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                                        _take = False
+                                if _take:
+                                    _unique += 1
+                                    _graph_target.defs[(_unique, graph_key)] = graph_var(
+                                        self,
+                                        _graph_target,
+                                        def_xml,
+                                        graph_key,
+                                        dev_dict[cur_pk]
+                                    ).graph_def(_unique, timeshift=self.para_dict["timeshift"])
+                                    draw_keys.append((_unique, graph_key))
+                    if _graph_target.defs:
+                        draw_it = True
+                        removed_keys = set()
+                        while draw_it:
+                            rrd_args = rrd_pre_args + sum([_graph_target.defs[_key] for _key in draw_keys], [])
+                            rrd_args.extend(_graph_target.rrd_post_args)
+                            rrd_args.extend([
+                                "--title",
+                                "{} on {} (tf: {})".format(
+                                    _graph_target.graph_key,
+                                    dev_dict.get(_graph_target.dev_list[0][1], "unknown") if len(_graph_target.dev_list) == 1 else logging_tools.get_plural("device", len(_graph_target.dev_list)),
+                                    logging_tools.get_diff_time_str(timeframe)),
+                            ])
+                            rrd_args.extend(self._create_job_args(_graph_target.dev_list, _job_add_dict))
+                            try:
+                                draw_result = rrdtool.graphv(*rrd_args)
+                            except:
+                                self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                if global_config["DEBUG"]:
+                                    pprint.pprint(rrd_args)
+                                draw_result = None
+                                draw_it = False
+                            else:
+                                # compare draw results, add -l / -u when scale_y is true
+                                # pprint.pprint(draw_result)
+                                res_dict = {
+                                    value.split("=", 1)[0]: value.split("=", 1)[1] for key, value in draw_result.iteritems() if key.startswith("print[")
+                                }
+                                # reorganize
+                                val_dict = {}
+                                for key, value in res_dict.iteritems():
+                                    _split = key.split(".")
+                                    cf = _split.pop(-1)
+                                    try:
+                                        value = float(value)
+                                    except:
+                                        pass
+                                    else:
+                                        value = None if value == 0.0 else value
+                                    # extract device pk from key
+                                    _unique_id = int(_split.pop(0))
+                                    _key = ".".join(_split)
+                                    if value is not None:
+                                        val_dict.setdefault((_unique_id, _key), {})[cf] = value
+                                # check if the graphs shall always include y=0
+                                draw_it = False
+                                if self.para_dict["include_zero"]:
+                                    if "value_min" in draw_result and "value_max" in draw_result:
+                                        if draw_result["value_min"] > 0.0:
+                                            _graph_target.set_post_arg("-l", "0")
+                                            draw_it = True
+                                        if draw_result["value_max"] < 0.0:
+                                            _graph_target.set_post_arg("-u", "0")
+                                            draw_it = True
+                                # check for empty graphs
+                                empty_keys = set(draw_keys) - set(val_dict.keys())
+                                if empty_keys and self.para_dict["hide_empty"]:
+                                    self.log(
+                                        u"{}: {}".format(
+                                            logging_tools.get_plural("empty key", len(empty_keys)),
+                                            ", ".join(sorted(["{} (dev {:d})".format(_key, _pk) for _pk, _key in empty_keys])),
+                                        )
+                                    )
+                                    removed_keys |= empty_keys
+                                    draw_keys = [_key for _key in draw_keys if _key not in empty_keys]
+                                    if not draw_keys:
+                                        draw_result = None
+                                    else:
+                                        draw_it = True
+                        _graph_target.draw_result = draw_result
+                        _graph_target.removed_keys = removed_keys
+                    else:
+                        self.log("no DEFs for graph_key_dict {}".format(_graph_target.graph_key), logging_tools.LOG_LEVEL_ERROR)
+                _iterate_line = False
+                _valid_graphs = [_entry for _entry in _graph_line if _entry.valid]
+                if _line_iteration == 0 and self.para_dict["scale_y"] and len(_valid_graphs) > 1:
+                    _line_iteration += 1
+                    _vmin_v, _vmax_v = (
+                        [_entry.draw_result["value_min"] for _entry in _valid_graphs],
+                        [_entry.draw_result["value_max"] for _entry in _valid_graphs],
+                    )
+                    if set(_vmin_v) > 1 or set(_vmax_v) > 1:
+                        _vmin, _vmax = (FLOAT_FMT.format(min(_vmin_v)), FLOAT_FMT.format(max(_vmax_v)))
+                        self.log(
+                            "setting y_min / y_max for {} to {} / {}".format(
+                                _valid_graphs[0].graph_key,
+                                _vmin,
+                                _vmax,
+                            )
+                        )
+                        [_entry.set_y_mm(_vmin, _vmax) for _entry in _valid_graphs]
+                        _iterate_line = True
+                if not _iterate_line:
+                    graph_list.extend(
+                        [_graph_target.graph_xml(dev_dict) for _graph_target in _graph_line]
+                    )
         # print etree.tostring(graph_list, pretty_print=True)
         return graph_list
 
