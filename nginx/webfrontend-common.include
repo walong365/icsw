@@ -9,6 +9,7 @@ env=NODE_PATH=/opt/cluster/lib/node_modules:/opt/cluster/lib/node_modules/npm/no
 env=DJANGO_SETTINGS_MODULE=settings
 ; needed for pre-start script
 env=DJANGO_APP_DIR=%(django_app_dir)
+env=PYTHON_EGG_CACHE=/tmp/.uwsgi_corvus_egg_cache
 env=DJANGO_APP=%(django_app)
 
 py-programname=python-init
