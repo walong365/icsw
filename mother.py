@@ -27,6 +27,9 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import django
+django.setup()
+
 from initat.mother.main import main
 
 sys.exit(main())
