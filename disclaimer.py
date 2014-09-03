@@ -64,6 +64,8 @@ class disclaimer_handler(object):
             if _email["Cc"]:
                 _cc_list = [email.utils.parseaddr(_value) for _value in _email["Cc"].split(",")]
                 self.log("cc list: {}".format(_cc_list))
+            else:
+                _cc_list = []
         except:
             self.log("cannot parse from and / or to field: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
