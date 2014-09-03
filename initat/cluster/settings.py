@@ -235,52 +235,29 @@ TEMPLATE_DIRS = (
     "/opt/cluster/share/doc/handbook/chunks",
 )
 
-if "INITIAL_MIGRATION_RUN" in os.environ:
-    INSTALLED_APPS = (
-        # "django.contrib.auth",
-        "django.contrib.contenttypes",
-        "django.contrib.sessions",
-        "django.contrib.sites",
-        "django.contrib.messages",
-        "django.contrib.staticfiles",
-        # Uncomment the next line to enable the admin:
-        # "django.contrib.admin",
-        # Uncomment the next line to enable admin documentation:
-        # "django.contrib.admindocs",
-        "django_extensions",
-        # "reversion",
-        # removed as of django 1.7
-        # "south",
-        # "pipeline",
-        # "static_precompiler",
-        # "crispy_forms",
-        # cluster
-        # "initat.core",
-    )
-else:
-    INSTALLED_APPS = (
-        "django.contrib.auth",
-        "django.contrib.contenttypes",
-        "django.contrib.sessions",
-        "django.contrib.sites",
-        "django.contrib.messages",
-        "django.contrib.staticfiles",
-        # Uncomment the next line to enable the admin:
-        "django.contrib.admin",
-        # Uncomment the next line to enable admin documentation:
-        # "django.contrib.admindocs",
-        "django_extensions",
-        "reversion",
-        # removed as of django 1.7
-        # "south",
-        "pipeline",
-        "static_precompiler",
-        "crispy_forms",
-        # cluster
-        "initat.core",
-    )
-    if SLAVE_MODE:
-        INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
+INSTALLED_APPS = (
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.sites",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    # Uncomment the next line to enable the admin:
+    "django.contrib.admin",
+    # Uncomment the next line to enable admin documentation:
+    # "django.contrib.admindocs",
+    "django_extensions",
+    "reversion",
+    # removed as of django 1.7
+    # "south",
+    "pipeline",
+    "static_precompiler",
+    "crispy_forms",
+    # cluster
+    "initat.core",
+)
+if SLAVE_MODE:
+    INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
 
 # needed by some modules
 # ZMQ_LOGGING = True
@@ -432,29 +409,27 @@ AUTHENTICATION_BACKENDS = (
 )
 AUTH_USER_MODEL = "backbone.user"
 
-if "NO_AUTO_ADD_APPLICATIONS" not in os.environ:
-    # my authentication backend
+# my authentication backend
 
-    # add everything below cluster
-    dir_name = os.path.dirname(__file__)
-    for sub_dir in os.listdir(dir_name):
-        full_path = os.path.join(dir_name, sub_dir)
-        if os.path.isdir(full_path):
-            if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
-                add_app = "initat.cluster.{}".format(sub_dir)
-                if add_app not in INSTALLED_APPS:
-                    # search for menu file
-                    templ_dir = os.path.join(full_path, "templates")
-                    if os.path.isdir(templ_dir):
-                        for templ_name in os.listdir(templ_dir):
-                            if templ_name.endswith("_menu.html"):
-                                ADDITIONAL_MENU_FILES.append(templ_name)
-                    INSTALLED_APPS.append(add_app)
-    for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
-        add_app = os.environ[add_app_key]
-        if add_app not in INSTALLED_APPS:
-            INSTALLED_APPS.append(add_app)
-    # INSTALLED_APPS.append("initat.core")
+# add everything below cluster
+dir_name = os.path.dirname(__file__)
+for sub_dir in os.listdir(dir_name):
+    full_path = os.path.join(dir_name, sub_dir)
+    if os.path.isdir(full_path):
+        if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
+            add_app = "initat.cluster.{}".format(sub_dir)
+            if add_app not in INSTALLED_APPS:
+                # search for menu file
+                templ_dir = os.path.join(full_path, "templates")
+                if os.path.isdir(templ_dir):
+                    for templ_name in os.listdir(templ_dir):
+                        if templ_name.endswith("_menu.html"):
+                            ADDITIONAL_MENU_FILES.append(templ_name)
+                INSTALLED_APPS.append(add_app)
+for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
+    add_app = os.environ[add_app_key]
+    if add_app not in INSTALLED_APPS:
+        INSTALLED_APPS.append(add_app)
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 

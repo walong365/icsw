@@ -406,26 +406,10 @@ def create_db(opts):
         clear_migrations()
     check_migrations()
     id_flags = ["--no-initial-data"] if opts.no_initial_data else []
-    os.environ["NO_AUTO_ADD_APPLICATIONS"] = "1"
-    os.environ["INITIAL_MIGRATION_RUN"] = "1"
-    migrate_app("backbone", migrate_args=id_flags)
-    # call_manage(["syncdb", "--noinput"] + id_flags)
-    del os.environ["NO_AUTO_ADD_APPLICATIONS"]
-    del os.environ["INITIAL_MIGRATION_RUN"]
+    migrate_app("")
     # schemamigrations
     for _app in ["django.contrib.auth", "reversion", "static_precompiler"]:
         migrate_app(_app)
-    #    call_manage(["schemamigration", _app, "--initial"])
-    # for _sync_app in SYNC_APPS:
-    #    if os.path.isdir(os.path.join(LIB_DIR, "initat", "cluster", _sync_app)):
-    #        call_manage(["schemamigration", _sync_app, "--auto"])
-    #        call_manage(["migrate", _sync_app, "--noinput"])
-    # call_manage(["migrate", "auth", "--noinput"])
-    # call_manage(["migrate", "backbone", "--no-initial-data", "--noinput"])
-    # call_manage(["migrate", "reversion", "--noinput"])
-    # call_manage(["migrate", "static_precompiler", "--noinput"])
-    # call_manage(["syncdb", "--noinput"] + id_flags)
-    # call_manage(["migrate"] + id_flags + ["--noinput"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
