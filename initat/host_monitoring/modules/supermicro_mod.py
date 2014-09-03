@@ -23,8 +23,10 @@ import server_command
 
 SMCIPMI_BIN = "/sbin/SMCIPMITool"
 
+
 class _general(hm_classes.hm_module):
     pass
+
 
 def generate_dict(in_list):
     r_dict = {}
@@ -39,9 +41,9 @@ def generate_dict(in_list):
                     cur_mode = parts[0]
                     num_present, num_possible = [int(entry) for entry in line.split("(")[1].split(")")[0].split("/")]
                     cur_dict = {
-                        "possible" : num_possible,
-                        "present"  : num_present,
-                        "info"     : line.split("(")[0].strip(),
+                        "possible": num_possible,
+                        "present": num_present,
+                        "info": line.split("(")[0].strip(),
                     }
                     r_dict[cur_mode] = cur_dict
                 offset = 0
@@ -61,11 +63,13 @@ def generate_dict(in_list):
                         cur_dict[num] = loc_dict
     return r_dict
 
+
 class smcipmi_struct(hm_classes.subprocess_struct):
     class Meta:
         max_usage = 128
         id_str = "supermicro"
         verbose = True
+
     def __init__(self, log_com, srv_com, target_host, login, passwd, command):
         self.__log_com = log_com
         hm_classes.subprocess_struct.__init__(
@@ -78,8 +82,10 @@ class smcipmi_struct(hm_classes.subprocess_struct):
                 passwd,
                 command),
         )
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[smcipmi] %s" % (what), level)
+
     def process(self):
         if self.run_info["result"]:
             self.srv_com.set_result(
@@ -90,13 +96,16 @@ class smcipmi_struct(hm_classes.subprocess_struct):
             output = self.read()
             self.srv_com["output"] = output
 
+
 class smcipmi_command(hm_classes.hm_command):
     info_str = "SMCIPMITool frontend"
+
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--user", dest="user", type=str, default="ADMIN")
         self.parser.add_argument("--passwd", dest="passwd", type=str, default="ADMIN")
         self.parser.add_argument("--ip", dest="ip", type=str)
+
     def __call__(self, srv_com, cur_ns):
         args = cur_ns.arguments
         if not len(args):
@@ -108,14 +117,14 @@ class smcipmi_command(hm_classes.hm_command):
         else:
             com = args[0]
             real_com = {
-                "counter" : "system",
-                "power"   : "power status",
-                "gigabit" : "gigabit status",
-                "blade"   : "blade status",
-                "ib"      : "ib status",
-                "ibqdr"   : "ib status",
-                "ibfdr"   : "ib status",
-                "cmm"     : "cmm status",
+                "counter": "system",
+                "power": "power status",
+                "gigabit": "gigabit status",
+                "blade": "blade status",
+                "ib": "ib status",
+                "ibqdr": "ib status",
+                "ibfdr": "ib status",
+                "cmm": "cmm status",
             }.get(com, com)
             srv_com["orig_command"] = com
             srv_com["mapped_command"] = real_com
@@ -129,6 +138,7 @@ class smcipmi_command(hm_classes.hm_command):
                 real_com,
             )
         return cur_smcc
+
     def _handle_power(self, in_dict, **kwargs):
         if in_dict["power"] == "on":
             ret_state = limits.nag_STATE_OK
@@ -149,6 +159,7 @@ class smcipmi_command(hm_classes.hm_command):
             int(in_dict["fan 1"]),
             int(in_dict["fan 2"]),
         )
+
     def _handle_blade(self, in_dict, **kwargs):
         if in_dict["power"] == "on" or in_dict["error"]:
             ret_state = limits.nag_STATE_OK
@@ -159,6 +170,7 @@ class smcipmi_command(hm_classes.hm_command):
             in_dict["power"],
             in_dict["error"] if in_dict["error"] else "no error",
         )
+
     def _handle_gigabit(self, in_dict, **kwargs):
         if in_dict["power"] == "on" or in_dict["error"]:
             ret_state = limits.nag_STATE_OK
@@ -169,6 +181,7 @@ class smcipmi_command(hm_classes.hm_command):
             in_dict["power"],
             in_dict["error"] if in_dict["error"] else "no error",
         )
+
     def _handle_cmm(self, in_dict, **kwargs):
         if in_dict["status"] == "ok":
             ret_state = limits.nag_STATE_OK
@@ -179,10 +192,13 @@ class smcipmi_command(hm_classes.hm_command):
             in_dict["status"],
             in_dict["m/s"],
         )
+
     def _handle_ibqdr(self, in_dict, **kwargs):
         return self._handle_ib(in_dict, **kwargs)
+
     def _handle_ibfdr(self, in_dict, **kwargs):
         return self._handle_ib(in_dict, **kwargs)
+
     def _handle_ib(self, in_dict, **kwargs):
         obj_type = kwargs["obj_type"]
         if in_dict["power"] == "on":
@@ -193,6 +209,7 @@ class smcipmi_command(hm_classes.hm_command):
             in_dict[obj_type],
             in_dict["power"],
         )
+
     def interpret(self, srv_com, cur_ns):
         orig_com, _mapped_com = (
             srv_com.xpath(".//ns:orig_command/text()", smart_strings=False)[0],
@@ -221,4 +238,3 @@ class smcipmi_command(hm_classes.hm_command):
                 return limits.nag_STATE_CRITICAL, "key %s not found in %s" % (
                     obj_type,
                     ", ".join(sorted(r_dict.keys())) or "EMPTY")
-

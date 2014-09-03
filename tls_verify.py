@@ -26,6 +26,7 @@ import process_tools
 import sys
 import zmq
 
+
 class allowed_struct(object):
     def __init__(self, in_str):
         in_str = in_str.strip()
@@ -38,6 +39,7 @@ class allowed_struct(object):
             self.key, self.allowed_ip = [part.strip() for part in parts[0].split(":", 1)]
         else:
             self.key, self.allowed_ip = (parts[0], None)
+
     def _parse(self, logger):
         logger.info("building is_allowed struct from {}".format(self.in_str))
         self.__parts = []
@@ -46,6 +48,7 @@ class allowed_struct(object):
                 self._feed_part(part, logger)
             except:
                 logger.error("error parsing in_str '{}': {}".format(self.in_str, process_tools.get_except_info()))
+
     def _feed_part(self, part, logger):
         if part.count(";") == 1:
             p_type, p_info = part.split(";")
@@ -63,6 +66,7 @@ class allowed_struct(object):
                     logger.error("error parsing from/to: {}".format(process_tools.get_except_info()))
                 else:
                     self.__parts.append(("T", (from_time, to_time)))
+
     def is_allowed(self, logger):
         allowed = True
         if self.in_str:
@@ -93,9 +97,11 @@ class allowed_struct(object):
                             allowed = False
         return allowed
 
+
 def parse_line(line):
     a_struct = allowed_struct(line)
     return (a_struct.key, a_struct)
+
 
 def main():
     zmq_context = zmq.Context()
@@ -109,7 +115,7 @@ def main():
     ret_code = 1
     if len(sys.argv) == 3:
         if sys.argv[1] == "0":
-            if os.environ.has_key("config"):
+            if "config" in os.environ:
                 match_name = "{}.tls_match".format(os.environ["config"][:-5])
                 if os.path.isfile(match_name):
                     logger.info(
@@ -120,10 +126,14 @@ def main():
                     # get CN (common name)
                     parts = [part.strip().split("=", 1) for part in sum([_part.split(",") for _part in sys.argv[2].split("/")], []) if part.strip().count("=")]
                     value_dict = dict([(key, value) for key, value in parts])
-                    if value_dict.has_key("CN"):
+                    if "CN" in value_dict:
                         cn = value_dict["CN"]
                         try:
-                            match_dict = dict([parse_line(line) for line in file(match_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")])
+                            match_dict = dict(
+                                [
+                                    parse_line(line) for line in file(match_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+                                ]
+                            )
                         except:
                             logger.error(
                                 "cannot read match-file {}: {}".format(
@@ -164,4 +174,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
