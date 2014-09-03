@@ -29,6 +29,7 @@ import os
 import process_tools
 import stat
 
+
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("-s", dest="full_strip", default=False, action="store_true", help="strip all empty lines from file [%(default)s]")

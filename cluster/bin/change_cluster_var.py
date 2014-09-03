@@ -27,17 +27,23 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import django
+django.setup()
 from initat.cluster.backbone.models import config_str
 import argparse
 import re
 
+
 def _show_var(var):
-    print "{:4d} :: {:<40s} ({:<20s}) : {}".format(
-        var.idx,
-        var.name,
-        var.config.name,
-        var.value,
+    print(
+        "{:4d} :: {:<40s} ({:<20s}) : {}".format(
+            var.idx,
+            var.name,
+            var.config.name,
+            var.value,
         )
+    )
+
 
 def main():
     my_parser = argparse.ArgumentParser()
@@ -60,7 +66,7 @@ def main():
             if options.new_val and _var.value != options.new_val:
                 _var.value = options.new_val
                 _var.save()
-                print "after change -->"
+                print("after change -->")
                 _show_var(_var)
 
 if __name__ == "__main__":
