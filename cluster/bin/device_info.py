@@ -3,7 +3,7 @@
 # Copyright (C) 2001-2006,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file belongs to cluster-backbone-tools
 #
 # This program is free software; you can redistribute it and/or modify
@@ -25,9 +25,13 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import django
+django.setup()
+
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 import argparse
+
 
 def main():
     my_parser = argparse.ArgumentParser()
