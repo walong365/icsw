@@ -50,6 +50,7 @@ LOG_DESTINATION = "ipc:///var/lib/logging-server/py_log_zmq"
 
 MD_SERVER_UUID = uuid_tools.get_uuid().get_urn()
 
+
 class log_base(object):
     def __init__(self):
         self.__log_template = logging_tools.get_logger(
@@ -60,11 +61,13 @@ class log_base(object):
         )
         # ignore alternating process ids
         self.__log_template.log_command("ignore_process_id")
+
     @property
     def log_template(self):
         return self.__log_template
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def close_log(self):
         self.__log_template.close()
-

@@ -19,11 +19,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.collectd.collectd_types import * # @UnusedWildImport
+from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.config import IPC_SOCK, log_base
 from initat.collectd.net_receiver import net_receiver
 from initat.collectd.background import background
-import collectd # @UnresolvedImport
+import collectd  # @UnresolvedImport
 import os
 import time
 import process_tools
@@ -32,11 +32,13 @@ import signal
 import threading
 import zmq
 
+
 class receiver(log_base):
     def __init__(self):
         self.recv_sock = None
         self.__last_sent = {}
         self.lock = threading.Lock()
+
     def start_sub_processes(self):
         self.log("start sub-processes")
         self.net_receiver_proc = net_receiver()
@@ -52,6 +54,7 @@ class receiver(log_base):
         self.send_to_slave("bg", "read_msi_block")
     # def config(self, *args, **kwargs):
     #    print "c", args, kwargs
+
     def init_receiver(self, main_pid):
         self.pid = os.getpid()
         self.name = "main"
@@ -73,6 +76,7 @@ class receiver(log_base):
             os.mkdir(sock_dir)
         self.recv_sock.bind(IPC_SOCK)
         self.start_sub_processes()
+
     def _init_msi_block(self):
         self.log("init meta-server-info block")
         msi_block = process_tools.meta_server_info("collectd")
@@ -82,6 +86,7 @@ class receiver(log_base):
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
+
     def recv(self):
         self.lock.acquire()
         if self.recv_sock:
@@ -102,6 +107,7 @@ class receiver(log_base):
                     else:
                         self.log("unknown data from {} : {}".format(sender, _com), logging_tools.LOG_LEVEL_ERROR)
         self.lock.release()
+
     def send_to_slave(self, slave_name, snd, **kwargs):
         _ign = kwargs.get("ignore_error", False)
         _iter = 0
@@ -118,6 +124,7 @@ class receiver(log_base):
                 time.sleep(0.1)
             else:
                 break
+
     def shutdown(self):
         self.log("shutdown received")
         self.send_to_slave("bg", "exit", ignore_error=True)
@@ -133,6 +140,7 @@ class receiver(log_base):
         self.net_receiver_proc.join()
         self.recv_sock = None
         self.__msi_block.remove_meta_block()
+
     def get_time(self, h_tuple, cur_time):
         cur_time = int(cur_time)
         if h_tuple in self.__last_sent:
@@ -142,11 +150,20 @@ class receiver(log_base):
                 self.log("correcting time for {} (+{:d}s to {:d})".format(str(h_tuple), diff_time, int(cur_time)))
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
+
     def _handle_perfdata(self, data):
         # print "***", data
         _type, type_instance, host_name, time_recv, rsi, v_list = data
         s_time = self.get_time((host_name, "ipd_{}".format(_type)), time_recv)
-        collectd.Values(plugin="perfdata", type_instance=type_instance, host=host_name, time=s_time, type="ipd_{}".format(_type), interval=5 * 60).dispatch(values=v_list[rsi:])
+        collectd.Values(
+            plugin="perfdata",
+            type_instance=type_instance,
+            host=host_name,
+            time=s_time,
+            type="ipd_{}".format(_type),
+            interval=5 * 60
+        ).dispatch(values=v_list[rsi:])
+
     def _handle_tree(self, data):
         host_name, time_recv, values = data
         # print host_name, time_recv
@@ -156,10 +173,12 @@ class receiver(log_base):
             if name:
                 collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
 
+
 # our own functions go here
 def configer(ObjConfiguration):
     # print ObjConfiguration, dir(ObjConfiguration)
     pass
+
 
 def initer(my_recv):
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)
