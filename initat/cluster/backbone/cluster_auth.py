@@ -1,12 +1,11 @@
 #!/usr/bin/python-init
 
+from django.db.models import Q
+from initat.cluster.backbone.models import user
 import base64
 import crypt
 import hashlib
 import logging
-
-from django.db.models import Q
-from initat.cluster.backbone.models import user
 
 logger = logging.getLogger("cluster.auth")
 
