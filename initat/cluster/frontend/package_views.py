@@ -32,10 +32,11 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import package_search, package_search_result, \
     package, get_related_models, package_device_connection, device, kernel, image, \
-    package_device_connection_serializer, package_repo
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.frontend.forms import package_search_form, package_action_form
+    package_repo
 from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.serializers import package_device_connection_serializer
+from initat.cluster.frontend.forms import package_search_form, package_action_form
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.renderers import JSONRenderer
 from lxml.builder import E  # @UnresolvedImports
 import logging

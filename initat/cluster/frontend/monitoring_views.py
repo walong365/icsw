@@ -30,6 +30,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
@@ -37,7 +38,6 @@ from initat.cluster.frontend.forms import mon_period_form, mon_notification_form
     mon_host_dependency_form, mon_service_dependency_form, device_monitoring_form, \
     device_group
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.backbone.render import permission_required_mixin, render_me
 from lxml.builder import E  # @UnresolvedImports
 import base64
 import json
@@ -287,7 +287,7 @@ class get_mon_vars(View):
                     "name": _value[1],
                     "value": _value[2],
                 } for _idx, _value in enumerate(res_list, 1)
-            ]), mimetype="application/json")
+            ]), content_type="application/json")
 
 
 class resolve_name(View):

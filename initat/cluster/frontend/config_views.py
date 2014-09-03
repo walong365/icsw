@@ -25,22 +25,21 @@
 # do not remove mon_check_command, is access via globals()
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
-    get_related_models, config_dump_serializer, mon_check_command, mon_check_command_serializer, \
-    to_system_tz, category, config_str, config_script, config_bool, config_blob, config_int, \
-    config_catalog
+    get_related_models, mon_check_command, category, config_str, \
+    config_script, config_bool, config_blob, config_int, config_catalog
+from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
     config_bool_form, config_script_form, mon_check_command_form, config_catalog_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
+from lxml import etree  # @UnresolvedImports
+from lxml.builder import E  # @UnresolvedImports
 from rest_framework.parsers import XMLParser
 from rest_framework.renderers import XMLRenderer
 import StringIO
@@ -56,20 +55,24 @@ import time
 
 logger = logging.getLogger("cluster.config")
 
+
 class show_configs(permission_required_mixin, View):
     all_required_permissions = ["backbone.config.modify_config"]
+
     def get(self, request):
         return render_me(
-            request, "config_overview.html", {
-                "config_form" : config_form(),
-                "config_catalog_form" : config_catalog_form(),
-                "config_str_form" : config_str_form(),
-                "config_int_form" : config_int_form(),
-                "config_bool_form" : config_bool_form(),
-                "config_script_form" : config_script_form(),
-                "mon_check_command_form" : mon_check_command_form(),
-                }
+            request,
+            "config_overview.html", {
+                "config_form": config_form(),
+                "config_catalog_form": config_catalog_form(),
+                "config_str_form": config_str_form(),
+                "config_int_form": config_int_form(),
+                "config_bool_form": config_bool_form(),
+                "config_script_form": config_script_form(),
+                "mon_check_command_form": mon_check_command_form(),
+            }
         )()
+
 
 def delete_object(request, del_obj, **kwargs):
     num_ref = get_related_models(del_obj)
@@ -85,27 +88,43 @@ def delete_object(request, del_obj, **kwargs):
         else:
             logger.info("deleted {}".format(del_obj._meta.object_name))
 
+
 def _get_device_configs(sel_list, **kwargs):
     dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
     devg_list = [key.split("__")[1] for key in sel_list if key.startswith("devg__")]
     all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(
         Q(enabled=True) & Q(device_group__enabled=True) & (
-            Q(pk__in=dev_list))) # | Q(device_group__in=devg_list)))
+            Q(pk__in=dev_list)))  # | Q(device_group__in=devg_list)))
     # all meta devices
-    meta_devs = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)
-        & (Q(device_type__identifier="MD") & (Q(device_group__in=devg_list) | Q(device_group__device_group__in=dev_list)))).distinct()
+    meta_devs = device.objects.filter(
+        Q(enabled=True) &
+        Q(device_group__enabled=True) & (
+            Q(device_type__identifier="MD") & (
+                Q(device_group__in=devg_list) | Q(device_group__device_group__in=dev_list)
+            )
+        )
+    ).distinct()
     # print meta_devs, devg_list, device.objects.filter(Q(device__device_group__enabled=True)
     #    & (Q(device_type__identifier="MD"))), "*"
-    meta_confs = device_config.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) &
-        Q(device__in=meta_devs)).select_related("device")
+    meta_confs = device_config.objects.filter(
+        Q(device__enabled=True) & Q(device__device_group__enabled=True) & Q(device__in=meta_devs)
+    ).select_related("device")
     # print len(meta_confs), len(meta_devs)
     if "conf" in kwargs:
-        all_confs = device_config.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) &
-            (Q(config=kwargs["conf"]) & (Q(device__in=dev_list)))) # | Q(device__device_group__in=devg_list))))
+        all_confs = device_config.objects.filter(
+            Q(device__enabled=True) & Q(device__device_group__enabled=True) & (
+                Q(config=kwargs["conf"]) & Q(device__in=dev_list)
+            )
+        )  # | Q(device__device_group__in=devg_list))))
         meta_confs = meta_confs.filter(config=kwargs["conf"])
     else:
-        all_confs = device_config.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) &
-            (Q(device__in=dev_list) | (Q(device__device_group__in=devg_list) & Q(device__device_type__identifier="MD"))))
+        all_confs = device_config.objects.filter(
+            Q(device__enabled=True) & Q(device__device_group__enabled=True) & (
+                Q(device__in=dev_list) | (
+                    Q(device__device_group__in=devg_list) & Q(device__device_type__identifier="MD")
+                )
+            )
+        )
     xml_resp = E.device_configs()
     # build dict device_group -> conf_list
     dg_dict = {}
@@ -130,6 +149,7 @@ def _get_device_configs(sel_list, **kwargs):
                 config="{:d}".format(conf_id),
                 meta="1"))
     return xml_resp
+
 
 class alter_config_cb(View):
     @method_decorator(login_required)
@@ -247,6 +267,7 @@ class alter_config_cb(View):
         ])
         request.xml_response["response"] = xml_resp
 
+
 class tree_struct(object):
     def __init__(self, cur_dev, node_list, node=None, depth=0, parent=None):
         self.dev_pk = cur_dev.pk
@@ -272,6 +293,7 @@ class tree_struct(object):
         else:
             self.wc_file = None
             self.childs = []
+
     def get_name(self):
         if self.node:
             return "{}{}".format(
@@ -279,6 +301,7 @@ class tree_struct(object):
                 "/" if self.node.is_dir else "")
         else:
             return "empty"
+
     def __unicode__(self):
         return "\n".join([
             "{}{} ({:d}, {:d}), {}".format(
@@ -289,17 +312,18 @@ class tree_struct(object):
                 self.get_name())
             ] +
             [u"{}".format(unicode(sub_entry)) for sub_entry in self.childs])
+
     def get_dict(self):
         return {
-            "data" : models.wc_files_serializer(self.wc_file).data,
-            "sub_nodes" : [sub_node.get_dict() for sub_node in self.childs],
-            "name" : self.get_name(),
-            "depth" : "{:d}".format(self.depth),
-            "is_dir" : "1" if self.node.is_dir else "0",
-            "is_link" : "1" if self.node.is_link else "0",
-            "node_id" : "{:d}_{:d}".format(self.dev_pk, self.node.pk),
+            "data": models.wc_files_serializer(self.wc_file).data,
+            "sub_nodes": [sub_node.get_dict() for sub_node in self.childs],
+            "name": self.get_name(),
+            "depth": "{:d}".format(self.depth),
+            "is_dir": "1" if self.node.is_dir else "0",
+            "is_link": "1" if self.node.is_link else "0",
+            "node_id": "{:d}_{:d}".format(self.dev_pk, self.node.pk),
             # needed for linking in frontend angular code
-            "parent_id" : "{}".format("{:d}_{:d}".format(self.dev_pk, self.parent.node.pk) if self.parent else "0")
+            "parent_id": "{}".format("{:d}_{:d}".format(self.dev_pk, self.parent.node.pk) if self.parent else "0")
         }
 
 
@@ -310,6 +334,7 @@ class config_encoder(json.JSONEncoder):
             return obj.ctime()
         else:
             return super(config_encoder, self).default(obj)
+
 
 class generate_config(View):
     @method_decorator(login_required)
@@ -332,15 +357,20 @@ class generate_config(View):
             *[srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_list])
         result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
         if result:
-            _json_result = {"devices" : []}
+            _json_result = {"devices": []}
             # request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(".//ns:device", smart_strings=False):
-                res_node = {key : dev_node.get(key) for key in dev_node.attrib.keys()}
+                res_node = {key: dev_node.get(key) for key in dev_node.attrib.keys()}
                 res_node["text"] = dev_node.text
                 res_node["info_dict"] = []
                 for sub_el in dev_node:
                     for _entry in sub_el.findall("entry"):
-                        res_node["info_dict"].append({"key" : _entry.get("key"), "text" : _entry.text})
+                        res_node["info_dict"].append(
+                            {
+                                "key": _entry.get("key"),
+                                "text": _entry.text
+                            }
+                        )
                 if int(dev_node.attrib["state_level"]) < logging_tools.LOG_LEVEL_ERROR:
                     # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                     cur_dev = dev_dict[int(dev_node.attrib["pk"])]
@@ -350,6 +380,7 @@ class generate_config(View):
                 _json_result["devices"].append(res_node)
             request.xml_response["result"] = config_encoder().encode(_json_result)
             request.xml_response.info("build done", logger)
+
 
 class download_configs(View):
     @method_decorator(login_required)
@@ -375,14 +406,17 @@ class download_configs(View):
         # remove all idxs and parent_configs
         for pk_el in xml_tree.xpath(".//idx|.//parent_config|.//categories|.//date", smart_strings=False):
             pk_el.getparent().remove(pk_el)
-        act_resp = HttpResponse(etree.tostring(xml_tree, pretty_print=True),
-                                mimetype="application/xml")
+        act_resp = HttpResponse(
+            etree.tostring(xml_tree, pretty_print=True),
+            content_type="application/xml"
+        )
         act_resp["Content-disposition"] = "attachment; filename=config_{}.xml".format(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
         return act_resp
 
 IGNORE_WHEN_EMPTY = ["categories"]
 IGNORE_ATTRS = ["mon_service_templ"]
-DEFAULT_MAP = {"description" : "description"}
+DEFAULT_MAP = {"description": "description"}
+
 
 def interpret_xml(el_name, in_xml, mapping):
     new_el = getattr(E, el_name)()
@@ -397,6 +431,7 @@ def interpret_xml(el_name, in_xml, mapping):
             new_el.append(getattr(E, key)(mapping.get(key, value)))
     return new_el
 
+
 class upload_config(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -407,11 +442,14 @@ class upload_config(View):
             new_tree = E.root()
             for _config in _tree.findall(".//config"):
                 c_el = interpret_xml("list-item", _config, {})
-                mapping = {"config" : c_el.findtext("name")}
+                mapping = {"config": c_el.findtext("name")}
                 for targ_list in ["mon_check_command", "config_bool", "config_str", "config_int", "config_blob", "config_script"]:
                     c_el.append(getattr(E, "{}_set".format(targ_list))())
                 new_tree.append(c_el)
-                for sub_el in _config.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//config_script|.//mon_check_command", smart_strings=False):
+                for sub_el in _config.xpath(
+                    ".//config_str|.//config_int|.//config_bool|.//config_blob|.//config_script|.//mon_check_command",
+                    smart_strings=False
+                ):
                     if "type" in sub_el.attrib:
                         t_list = c_el.find("config_{}_set".format(sub_el.get("type")))
                     else:
@@ -432,10 +470,14 @@ class upload_config(View):
             # get list of uploads
             _upload_list = cache.get("ICSW_UPLOAD_LIST", [])
             new_key = "ICSW_UPLOAD_{:d}".format(int(time.time()))
-            store_cached_upload({"upload_key" : new_key, "list" : conf_list})
+            store_cached_upload({"upload_key": new_key, "list": conf_list})
             _upload_list.append(new_key)
             cache.set("ICSW_UPLOAD_LIST", _upload_list, None)
-        return HttpResponse(json.dumps("done"), mimetype="application/json")
+        return HttpResponse(
+            json.dumps("done"),
+            content_type="application/json"
+        )
+
 
 def check_upload_config_cache(key):
     _res = None
@@ -443,6 +485,7 @@ def check_upload_config_cache(key):
     if key in _up_list:
         _res = cache.get(key, None)
     return _res
+
 
 class get_cached_uploads(View):
     @method_decorator(login_required)
@@ -458,7 +501,8 @@ class get_cached_uploads(View):
                     _cur_list.append(_cur_val)
                     _act_keys.append(_key)
         cache.set("ICSW_UPLOAD_LIST", _act_keys, None)
-        return HttpResponse(json.dumps(_cur_list), mimetype="application/json")
+        return HttpResponse(json.dumps(_cur_list), content_type="application/json")
+
 
 def store_cached_upload(struct):
     if all([_entry.get("_taken", False) for _entry in struct["list"]]):
@@ -466,8 +510,10 @@ def store_cached_upload(struct):
     else:
         cache.set(struct["upload_key"], struct, 3600)
 
+
 def remove_cached_upload(struct):
     cache.delete(struct["upload_key"])
+
 
 class handle_cached_config(View):
     @method_decorator(login_required)
@@ -482,15 +528,18 @@ class handle_cached_config(View):
                 self._handle_ignore(request, _struct, _post)
             else:
                 request.xml_response.error("unknown mode {}".format(_post["mode"]), logger=logger)
+
     def _handle_take(self, request, _struct, _post):
         for _entry in _struct["list"]:
             if _entry["name"] == _post["name"]:
                 # make a copy because take_config alters entry
                 _entry["_taken"] = self._take_config(request, copy.deepcopy(_entry), config_catalog.objects.get(Q(pk=_post["catalog"])))
                 store_cached_upload(_struct)
+
     def _handle_ignore(self, request, _struct, _post):
         _struct["list"] = [_entry for _entry in _struct["list"] if _entry["name"] != _post["name"]]
         store_cached_upload(_struct)
+
     def _take_config(self, request, conf, ccat):
         _sets = {}
         for key in conf.iterkeys():
@@ -557,6 +606,7 @@ class handle_cached_config(View):
                 request.xml_response.error("cannot create config object: {}".format(unicode(_ent.errors)), logger=logger)
         return taken
 
+
 class get_device_cvars(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -579,6 +629,7 @@ class get_device_cvars(View):
                     res_node.append(sub_el)
                 request.xml_response["result"].append(res_node)
                 request.xml_response.log(int(dev_node.attrib["state_level"]), dev_node.attrib["info_str"], logger=logger)
+
 
 class copy_mon(View):
     @method_decorator(login_required)
@@ -608,6 +659,7 @@ class copy_mon(View):
         _json["date"] = _json["date"].isoformat()
         request.xml_response["mon_cc"] = json.dumps(_json)
 
+
 class delete_objects(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -618,12 +670,11 @@ class delete_objects(View):
             del_dict.setdefault(obj_type, []).append(obj_idx)
         for obj_type, pk_list in del_dict.iteritems():
             {
-                "mon"    : mon_check_command,
-                "script" : config_script,
-                "str"    : config_str,
-                "int"    : config_int,
-                "bool"   : config_bool,
-                "blob"   : config_blob,
+                "mon": mon_check_command,
+                "script": config_script,
+                "str": config_str,
+                "int": config_int,
+                "bool": config_bool,
+                "blob": config_blob,
             }[obj_type].objects.filter(Q(pk__in=pk_list)).delete()
         request.xml_response.info("deleted {}".format(logging_tools.get_plural("object", len(del_list))))
-

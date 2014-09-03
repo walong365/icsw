@@ -89,7 +89,7 @@ class json_network(View):
         # import time
         # time.sleep(10)
         # pprint.pprint(json_obj)
-        return HttpResponse(json_obj, mimetype="application/json")
+        return HttpResponse(json_obj, content_type="application/json")
 
 
 class copy_network(View):
@@ -228,4 +228,4 @@ class get_network_clusters(permission_required_mixin, View):
 
     def post(self, request):
         r_obj = config_tools.router_object(self.log)
-        return HttpResponse(json.dumps(r_obj.get_clusters()), mimetype="application/json")
+        return HttpResponse(json.dumps(r_obj.get_clusters()), content_type="application/json")

@@ -24,17 +24,19 @@
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import get_model, Q
+from django.db.models import Q
+from django.apps import apps
 from initat.core.render import render_string
-from initat.cluster.backbone import models
+from initat.cluster.backbone import models, serializers as model_serializers
 from initat.cluster.backbone.models import user , group, \
-     get_related_models, get_change_reset_list, device, device_serializer, \
-     device_serializer_package_state, domain_name_tree, \
-     category_tree, device_selection, \
-     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-     partition_disc_serializer_create, device_config, device_config_help_serializer, home_export_list, \
+     get_related_models, get_change_reset_list, device, domain_name_tree, \
+     category_tree, device_selection, device_config, home_export_list, \
      csw_permission, peer_information, netdevice, \
-     csw_object_permission, cd_connection, device_serializer_only_boot, network_with_ip_serializer
+     csw_object_permission, cd_connection
+from initat.cluster.backbone.serializers import device_serializer, device_serializer_package_state, \
+     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
+     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
+
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -56,9 +58,10 @@ logger = logging.getLogger("cluster.rest")
 
 # build REST_LIST from models content
 REST_LIST = []
-for key in dir(models):
+_ser_keys = dir(model_serializers)
+for key in _ser_keys:
     if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
-        REST_LIST.append((models, "_".join(key.split("_")[:-1])))
+        REST_LIST.append((model_serializers, "_".join(key.split("_")[:-1])))
 
 init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
 
@@ -495,7 +498,7 @@ class csw_object_list(viewsets.ViewSet):
         return Response(_ser.data)
 
     def _get_objects(self, cur_ct, perm_list):
-        cur_model = get_model(cur_ct.app_label, cur_ct.name)
+        cur_model = apps.get_model(cur_ct.app_label, cur_ct.name)
         _q = cur_model.objects
         _key = "{}.{}".format(cur_ct.app_label, cur_ct.name)
         if _key == "backbone.device":

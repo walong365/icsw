@@ -29,8 +29,9 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device, user_variable, rms_job_run_serializer, rms_job_run
+from initat.cluster.backbone.models import device, user_variable, rms_job_run
 from initat.cluster.backbone.render import render_me
+from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
     update_session_object
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
@@ -213,7 +214,7 @@ class get_rms_json(View):
             "rms_project",
             "rms_pe",
         ).order_by("-rms_job__jobid", "rms_job__taskid", "-pk")[0:100]
-        _done_ser = rms_job_run_serializer(done_jobs).data
+        _done_ser = rms_job_run_serializer(done_jobs, many=True).data
         # pprint.pprint(_done_ser)
         json_resp = {
             "run_table": _sort_list(run_job_list, _post),
@@ -222,7 +223,7 @@ class get_rms_json(View):
             "done_table": _done_ser,
             "files": fc_dict,
         }
-        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
 class get_node_info(View):
@@ -232,7 +233,7 @@ class get_node_info(View):
         _dev_names = json.loads(_post["devnames"])
         dev_list = device.objects.filter(Q(name__in=_dev_names)).select_related("domain_tree_node")
         json_resp = {_entry.name: (_entry.idx, _entry.has_active_rrds, _entry.full_name) for _entry in dev_list}
-        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
 class control_job(View):
@@ -378,7 +379,7 @@ class set_user_setting(View):
             update_session_object(request)
             request.session.save()
         json_resp = {}
-        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
 class get_user_setting(View):
@@ -392,4 +393,4 @@ class get_user_setting(View):
                 json_resp[t_name] = user_vars[var_name].value.split(",")
             else:
                 json_resp[t_name] = []
-        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")

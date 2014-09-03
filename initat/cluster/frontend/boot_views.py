@@ -30,7 +30,8 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
-     kernel, image, partition_table, status, network, devicelog, device_serializer_boot
+     kernel, image, partition_table, status, network, devicelog
+from initat.cluster.backbone.serializers import device_serializer_boot
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import boot_form, boot_single_form, boot_many_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper

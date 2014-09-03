@@ -175,7 +175,7 @@ class xml_response(object):
         """
         return HttpResponse(
             unicode(self),
-            mimetype="application/xml",
+            content_type="application/xml",
         )
 
 

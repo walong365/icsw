@@ -23,12 +23,14 @@
 """ user views """
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import get_model, Q
+from django.db.models import Q
+from django.apps import apps
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_permission, user_permission, group_object_permission, \
-    user_object_permission, group_object_permission_serializer, user_object_permission_serializer
+    user_object_permission
+from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form, global_settings_form
@@ -177,7 +179,7 @@ class change_object_permission(View):
         obj_pk = int(_post["obj_idx"])
         add = True if int(_post["set"]) else False
         level = int(_post["level"])
-        perm_model = get_model(set_perm.content_type.app_label, set_perm.content_type.name).objects.get(Q(pk=obj_pk))
+        perm_model = apps.get_model(set_perm.content_type.app_label, set_perm.content_type.name).objects.get(Q(pk=obj_pk))
         # print perm_model, auth_obj, set_perm
         if add:
             if not auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
