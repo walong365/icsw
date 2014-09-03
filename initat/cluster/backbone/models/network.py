@@ -131,17 +131,17 @@ class network(models.Model):
     # should no longer be used, now in domain_tree_node
     postfix = models.CharField(max_length=12, blank=True)
     info = models.CharField(max_length=255, blank=True)
-    network = models.IPAddressField(blank=False)
-    netmask = models.IPAddressField(blank=False)
-    broadcast = models.IPAddressField(blank=False)
-    gateway = models.IPAddressField(blank=False)
+    network = models.GenericIPAddressField(blank=False)
+    netmask = models.GenericIPAddressField(blank=False)
+    broadcast = models.GenericIPAddressField(blank=False)
+    gateway = models.GenericIPAddressField(blank=False)
     gw_pri = models.IntegerField(null=True, blank=True, default=1)
     # should no longer be used, now in domain_tree_node
     write_bind_config = models.BooleanField(default=False)
     # should no longer be used, now in domain_tree_node
     write_other_network_config = models.BooleanField(default=False)
-    start_range = models.IPAddressField(default="0.0.0.0")
-    end_range = models.IPAddressField(default="0.0.0.0")
+    start_range = models.GenericIPAddressField(default="0.0.0.0")
+    end_range = models.GenericIPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
     network_device_type = models.ManyToManyField("backbone.network_device_type")
     enforce_unique_ips = models.BooleanField(default=False)
