@@ -20,9 +20,11 @@
 """ rrd-grapher for graphing rrd-data """
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import django
+django.setup()
 
 from django.conf import settings
 from initat.cluster.backbone.models import log_source
@@ -32,6 +34,7 @@ import cluster_location
 import config_tools
 import configfile
 import process_tools
+import sys
 
 try:
     from initat.rrd_grapher.version import VERSION_STRING
