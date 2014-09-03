@@ -34,6 +34,7 @@ from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object
 import base64
+import django
 import json
 import logging
 
@@ -86,15 +87,22 @@ def _get_cluster_name():
 
 
 def login_page(request, **kwargs):
-        return render_me(request, "login.html", {
-            "CLUSTER_NAME": _get_cluster_name(),
-            "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
-            "login_form": kwargs.get("login_form", authentication_form()),
-            "from_logout": kwargs.get("from_logout", False),
-            "login_hints": _get_login_hints(),
-            "app_path": reverse("session:login")
-            }
-        )()
+    _vers = []
+    for _v in django.VERSION:
+        if type(_v) == int:
+            _vers.append("{:d}".format(_v))
+        else:
+            break
+    return render_me(request, "login.html", {
+        "CLUSTER_NAME": _get_cluster_name(),
+        "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
+        "login_form": kwargs.get("login_form", authentication_form()),
+        "from_logout": kwargs.get("from_logout", False),
+        "login_hints": _get_login_hints(),
+        "DJANGO_VERSION": ".".join(_vers),
+        "app_path": reverse("session:login")
+        }
+    )()
 
 
 class sess_logout(View):
