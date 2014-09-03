@@ -54,6 +54,7 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         self.rrd_coverage = [global_config[_key] for _key in cov_keys]
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
         self.register_timer(self.check_size, 6 * 3600, first_timeout=1)
+        self.__verbose = not global_config["DEBUG"]
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -93,11 +94,11 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
                 if MAX_FOUND and _found >= MAX_FOUND or not self["run_flag"]:
                     break
             e_time = time.time()
-            self.log("found {:d}, changed {:d}, took {} ({}) ".format(
+            self.log("found {:d}, changed {:d}, took {} ({} per entry) ".format(
                 _found,
                 _changed,
                 logging_tools.get_diff_time_str(e_time - s_time),
-                logging_tools.get_diff_time_str((e_time - s_time) / max(1, _changed)),
+                logging_tools.get_diff_time_str((e_time - s_time) / max(1, _found)),
             ))
 
     def find_best_tc(self, rra_name, tc_dict):
@@ -116,7 +117,7 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         else:
             if _old_size:
                 try:
-                    _rrd = rrd_tools.RRD(f_name, log_com=self.log, build_rras=False)
+                    _rrd = rrd_tools.RRD(f_name, log_com=self.log, build_rras=False, verbose=self.__verbose)
                 except:
                     self.log("cannot get info about {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     for _line in process_tools.exception_info().log_lines:

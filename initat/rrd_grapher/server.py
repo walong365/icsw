@@ -256,6 +256,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             num_active = 0
             for file_el in _struct.xml_vector.xpath(".//*[@file_name]", smart_strings=False):
                 f_name = file_el.attrib["file_name"]
+                is_active = True if int(file_el.get("active", "1")) else False
                 if os.path.isfile(f_name):
                     c_time = os.stat(f_name)[stat.ST_MTIME]
                     stale = abs(cur_time - c_time) > MAX_DT
@@ -273,7 +274,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                         else:
                             c_time = int(rrd_info["last_update"])
                             stale = abs(cur_time - c_time) > MAX_DT
-                    is_active = True if int(file_el.attrib["active"]) else False
                     if is_active:
                         num_active += 1
                     if is_active and stale:
@@ -283,9 +283,10 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                         file_el.attrib["active"] = "1"
                         enabled += 1
                 else:
-                    self.log("file '{}' missing, disabling".format(file_el.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
-                    file_el.attrib["active"] = "0"
-                    disabled += 1
+                    if is_active:
+                        self.log("file '{}' missing, disabling".format(file_el.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                        file_el.attrib["active"] = "0"
+                        disabled += 1
             if enabled or disabled:
                 num_changed += 1
                 self.log("updated active info for {}: {:d} enabled, {:d} disabled".format(
