@@ -29,8 +29,8 @@ import logging_tools
 import os
 import process_tools
 import random
-import stat
 import shutil
+import stat
 import string
 import sys
 import time
@@ -51,21 +51,21 @@ SYNC_APPS = ["liebherr"]
 NEEDED_DIRS = ["/var/log/cluster"]
 
 try:
-    import psycopg2 # @UnresolvedImport
+    import psycopg2  # @UnresolvedImport
 except:
     DB_PRESENT["psql"] = False
 else:
     DB_PRESENT["psql"] = True
 
 try:
-    import MySQLdb # @UnresolvedImport
+    import MySQLdb  # @UnresolvedImport
 except:
     DB_PRESENT["mysql"] = False
 else:
     DB_PRESENT["mysql"] = True
 
 try:
-    import sqlite3 # @UnresolvedImport
+    import sqlite3  # @UnresolvedImport
 except:
     DB_PRESENT["sqlite"] = False
 else:
@@ -74,12 +74,13 @@ else:
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 
+
 # copy from check_local_settings.py
 def check_local_settings():
     LS_DIR = os.path.dirname(LS_FILE)
     sys.path.append(LS_DIR)
     try:
-        from local_settings import SECRET_KEY # @UnresolvedImports
+        from local_settings import SECRET_KEY  # @UnresolvedImports
     except:
         SECRET_KEY = None
     if SECRET_KEY in [None, "None"]:
@@ -93,6 +94,7 @@ def check_local_settings():
             ]
             ))
     sys.path.remove(LS_DIR)
+
 
 def call_manage(args):
     com_str = " ".join([os.path.join(LIB_DIR, "initat", "cluster", "manage.py")] + args)
@@ -116,6 +118,7 @@ def call_manage(args):
             ))
         # print c_out
         return True
+
 
 def _input(in_str, default, **kwargs):
     _choices = kwargs.get("choices", [])
@@ -162,21 +165,27 @@ def _input(in_str, default, **kwargs):
                     break
     return _cur_inp
 
+
 class test_db(dict):
     def __init__(self, db_type, c_dict):
         self.db_type = db_type
         dict.__init__(self)
         self.update(c_dict)
+
     def test_connection(self):
         return True if self.get_connection() is not None else False
+
     def get_connection(self):
         return None
+
     def show_config(self):
         return "No config help defined for db_type {}".format(self.db_type)
+
 
 class test_psql(test_db):
     def __init__(self, c_dict):
         test_db.__init__(self, "psql", c_dict)
+
     def get_connection(self):
         dsn = "dbname={} user={} host={} password={} port={:d}".format(
             self["database"],
@@ -192,6 +201,7 @@ class test_psql(test_db):
             print("cannot connect: {}".format(process_tools.get_except_info()))
             conn = None
         return conn
+
     def show_config(self):
         print("")
         print("you can create the database and the user with")
@@ -206,9 +216,11 @@ class test_psql(test_db):
         print("host    {:<16s}{:<16s}::1/128         md5".format(self["database"], self["user"]))
         print("")
 
+
 class test_mysql(test_db):
     def __init__(self, c_dict):
         test_db.__init__(self, "mysql", c_dict)
+
     def get_connection(self):
         try:
             conn = MySQLdb.connect(
@@ -222,6 +234,7 @@ class test_mysql(test_db):
             print("cannot connect: {}".format(process_tools.get_except_info()))
             conn = None
         return conn
+
     def show_config(self):
         print("")
         print("you can create the database and the user with")
@@ -232,9 +245,11 @@ class test_mysql(test_db):
         print("FLUSH PRIVILEGES;")
         print("")
 
+
 class test_sqlite(test_db):
     def __init__(self, c_dict):
         test_db.__init__(self, "sqlite", c_dict)
+
     def get_connection(self):
         try:
             conn = sqlite3.connect(
@@ -244,6 +259,7 @@ class test_sqlite(test_db):
             print("cannot connect: {}".format(process_tools.get_except_info()))
             conn = None
         return conn
+
     def show_config(self):
         print("")
         print("you can create the database and the user with")
@@ -253,6 +269,7 @@ class test_sqlite(test_db):
         print("GRANT ALL ON {}.* TO '{}'@'localhost' IDENTIFIED BY '{}';".format(self["database"], self["user"], self["passwd"]))
         print("FLUSH PRIVILEGES;")
         print("")
+
 
 def enter_data(c_dict, db_choices):
     print("-" * 20)
@@ -269,28 +286,29 @@ def enter_data(c_dict, db_choices):
         c_dict["passwd"] = ""
         c_dict["port"] = 0
     else:
-        def_port = {"mysql" : 3306, "psql" : 5432, "sqlite" : 0}[c_dict["_engine"]]
+        def_port = {"mysql": 3306, "psql": 5432, "sqlite": 0}[c_dict["_engine"]]
         c_dict["passwd"] = _input("DB passwd", c_dict["passwd"])
         c_dict["port"] = _input("DB port", def_port)
     c_dict["engine"] = {
-        "mysql"  : "django.db.backends.mysql",
-        "psql"   : "django.db.backends.postgresql_psycopg2",
-        "sqlite" : "django.db.backends.sqlite3",
+        "mysql": "django.db.backends.mysql",
+        "psql": "django.db.backends.postgresql_psycopg2",
+        "sqlite": "django.db.backends.sqlite3",
         }[c_dict["_engine"]]
+
 
 def create_db_cf(opts):
     db_choices = [_key for _key in ["psql", "mysql", "sqlite"] if DB_PRESENT[_key]]
     c_dict = {
-        "host"     : opts.host,
-        "user"     : opts.user,
-        "database" : opts.database,
-        "passwd"   : opts.passwd,
-        "_engine"  : opts.engine, # "psql" if "psql" in db_choices else db_choices[0],
+        "host": opts.host,
+        "user": opts.user,
+        "database": opts.database,
+        "passwd": opts.passwd,
+        "_engine": opts.engine,  # "psql" if "psql" in db_choices else db_choices[0],
     }
     while True:
         # enter all relevant data
         enter_data(c_dict, db_choices)
-        test_obj = {"psql" : test_psql, "mysql" : test_mysql, "sqlite" : test_sqlite}[c_dict["_engine"]](c_dict)
+        test_obj = {"psql": test_psql, "mysql": test_mysql, "sqlite": test_sqlite}[c_dict["_engine"]](c_dict)
         if test_obj.test_connection():
             print("connection successfull")
             break
@@ -317,6 +335,7 @@ def create_db_cf(opts):
     else:
         return True
 
+
 def clear_migrations():
     print("clearing existing migrations")
     for mig_dir in MIGRATION_DIRS:
@@ -324,6 +343,7 @@ def clear_migrations():
         if os.path.isdir(fm_dir):
             print("clearing migrations for {}".format(mig_dir))
             shutil.rmtree(fm_dir)
+
 
 def check_migrations():
     print("checking existing migrations")
@@ -339,35 +359,73 @@ def check_migrations():
     else:
         print("no migrations found, OK")
 
+
 def get_pw(size=10):
     return "".join([string.ascii_letters[random.randint(0, len(string.ascii_letters) - 1)] for _idx in xrange(size)])
+
+
+def remove_south(opts):
+    s_paths = [
+        "/opt/python-init/lib/python/site-packages/initat/cluster",
+        "/opt/python-init/lib/python/site-packages",
+    ]
+    for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler"] + SYNC_APPS:
+        found = [_entry for _entry in [os.path.join(_path, _app.replace(".", "/")) for _path in s_paths] if os.path.isdir(_entry)]
+        if len(found):
+            found = found[0]
+            _mig_dir = os.path.join(found, "migrations")
+            if os.path.isdir(_mig_dir):
+                _entries = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py") and _entry[0].isdigit()]
+                if _entries:
+                    # migration dir is not empty
+                    _south = [file(os.path.join(_mig_dir, _entry), "r").read(1000).count("south") for _entry in _entries]
+                    if any(_south):
+                        print("South migrations found in {} for app {}".format(_mig_dir, _app))
+                        for _entry in os.listdir(_mig_dir):
+                            if _entry[0].isdigit() and _entry.count("py"):
+                                _full_path = os.path.join(_mig_dir, _entry)
+                                print("   removing file {}".format(_full_path))
+                                os.unlink(_full_path)
+            else:
+                print("no migration dir found for app {} beneath {}".format(_app, found))
+        else:
+            print("no path found for app {}".format(_app))
+
+
+def migrate_app(_app, **kwargs):
+    call_manage(["makemigrations", _app.split(".")[-1], "--noinput"] + kwargs.get("make_args", []))
+    call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
+
 
 def create_db(opts):
     if os.getuid():
         print("need to be root to create database")
         sys.exit(0)
+    remove_south(opts)
     if opts.clear_migrations:
         clear_migrations()
     check_migrations()
     id_flags = ["--no-initial-data"] if opts.no_initial_data else []
     os.environ["NO_AUTO_ADD_APPLICATIONS"] = "1"
     os.environ["INITIAL_MIGRATION_RUN"] = "1"
-    call_manage(["syncdb", "--noinput"] + id_flags)
+    migrate_app("backbone", migrate_args=id_flags)
+    # call_manage(["syncdb", "--noinput"] + id_flags)
     del os.environ["NO_AUTO_ADD_APPLICATIONS"]
     del os.environ["INITIAL_MIGRATION_RUN"]
     # schemamigrations
-    for _app in ["django.contrib.auth", "backbone", "reversion", "static_precompiler"]:
-        call_manage(["schemamigration", _app, "--initial"])
-    for _sync_app in SYNC_APPS:
-        if os.path.isdir(os.path.join(LIB_DIR, "initat", "cluster", _sync_app)):
-            call_manage(["schemamigration", _sync_app, "--auto"])
-            call_manage(["migrate", _sync_app, "--noinput"])
-    call_manage(["migrate", "auth", "--noinput"])
-    call_manage(["migrate", "backbone", "--no-initial-data", "--noinput"])
-    call_manage(["migrate", "reversion", "--noinput"])
-    call_manage(["migrate", "static_precompiler", "--noinput"])
-    call_manage(["syncdb", "--noinput"] + id_flags)
-    call_manage(["migrate"] + id_flags + ["--noinput"])
+    for _app in ["django.contrib.auth", "reversion", "static_precompiler"]:
+        migrate_app(_app)
+    #    call_manage(["schemamigration", _app, "--initial"])
+    # for _sync_app in SYNC_APPS:
+    #    if os.path.isdir(os.path.join(LIB_DIR, "initat", "cluster", _sync_app)):
+    #        call_manage(["schemamigration", _sync_app, "--auto"])
+    #        call_manage(["migrate", _sync_app, "--noinput"])
+    # call_manage(["migrate", "auth", "--noinput"])
+    # call_manage(["migrate", "backbone", "--no-initial-data", "--noinput"])
+    # call_manage(["migrate", "reversion", "--noinput"])
+    # call_manage(["migrate", "static_precompiler", "--noinput"])
+    # call_manage(["syncdb", "--noinput"] + id_flags)
+    # call_manage(["migrate"] + id_flags + ["--noinput"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -381,31 +439,34 @@ def create_db(opts):
             del os.environ["DJANGO_SUPERUSER_PASSWORD"]
         call_update_funcs(opts)
 
+
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
+        remove_south(opts)
         print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
             if os.path.isdir(_app_dir):
                 print("found app {}".format(_sync_app))
-                _mig_dir = os.path.join(_app_dir, "migrations")
-                if not os.path.isdir(_mig_dir):
-                    print("initial migration for {}".format(_sync_app))
-                    call_manage(["migrate", _sync_app, "--noinput"])
-                if os.path.isdir(_mig_dir):
-                    _py_files = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py")]
-                    if _py_files == ["__init__.py"]:
-                        # initial schema migration call
-                        call_manage(["schemamigration", _sync_app, "--initial"])
-                    call_manage(["schemamigration", _sync_app, "--auto"])
-                    call_manage(["migrate", _sync_app, "--noinput"])
+                # _mig_dir = os.path.join(_app_dir, "migrations")
+                # if not os.path.isdir(_mig_dir):
+                #    print("initial migration for {}".format(_sync_app))
+                #    call_manage(["migrate", _sync_app, "--noinput"])
+                # if os.path.isdir(_mig_dir):
+                # _py_files = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py")]
+                # if _py_files == ["__init__.py"]:
+                #    # initial schema migration call
+                #    call_manage(["schemamigration", _sync_app, "--initial"])
+                call_manage(["makemigrations", _sync_app, "--noinput"])
+                call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
-        call_manage(["schemamigration", "backbone", "--auto"])
-        call_manage(["migrate", "--no-initial-data", "backbone", "--noinput"])
+        for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler"]:
+            migrate_app(_app)
         call_update_funcs(opts)
     else:
         print("cluster migration dir {} not present, please create database".format(CMIG_DIR))
         sys.exit(5)
+
 
 def call_update_funcs(opts):
     create_fixtures()
@@ -413,9 +474,11 @@ def call_update_funcs(opts):
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
 
+
 def create_fixtures():
     call_manage(["create_fixtures"])
     call_manage(["init_csw_permissions"])
+
 
 def check_db_rights():
     if os.path.isfile(DB_FILE):
@@ -424,6 +487,7 @@ def check_db_rights():
             if not c_stat.st_mode & stat.S_IROTH:
                 print "setting R_OTHER flag on {} (because owned by root.root)".format(DB_FILE)
                 os.chmod(DB_FILE, c_stat.st_mode | stat.S_IROTH)
+
 
 def _check_dirs():
     _missing_dirs = []
@@ -438,6 +502,7 @@ def _check_dirs():
     if _missing_dirs:
         print("{} missing: {}".format(logging_tools.get_plural("directory", len(_missing_dirs)), ", ".join(sorted(_missing_dirs))))
         sys.exit(6)
+
 
 def main():
     default_pw = get_pw()
@@ -457,7 +522,12 @@ def main():
     db_flags.add_argument("--host", type=str, default="localhost", help="set database host")
     mig_opts = my_p.add_argument_group("migration options")
     mig_opts.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
-    mig_opts.add_argument("--no-initial-data", default=False, action="store_true", help="disable inserting of initial data [%(default)s], only usefull for the migration form an older version of the clustersoftware")
+    mig_opts.add_argument(
+        "--no-initial-data",
+        default=False,
+        action="store_true",
+        help="disable inserting of initial data [%(default)s], only usefull for the migration form an older version of the clustersoftware"
+    )
     mig_opts.add_argument("--migrate", default=False, action="store_true", help="migrate current cluster database [%(default)s]")
     create_opts = my_p.add_argument_group("database creation options")
     create_opts.add_argument("--superuser", default="admin", type=str, help="name of the superuser [%(default)s]")
@@ -472,9 +542,9 @@ def main():
     opts = my_p.parse_args()
     _check_dirs()
     DB_MAPPINGS = {
-        "psql"   : "python-modules-psycopg2",
-        "mysql"  : "python-modules-mysql",
-        "sqlite" : "python-init",
+        "psql": "python-modules-psycopg2",
+        "mysql": "python-modules-mysql",
+        "sqlite": "python-init",
     }
     if not all(DB_PRESENT.values()):
         print("missing databases layers:")
@@ -551,4 +621,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

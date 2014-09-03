@@ -249,7 +249,8 @@ if "INITIAL_MIGRATION_RUN" in os.environ:
         # "django.contrib.admindocs",
         "django_extensions",
         # "reversion",
-        "south",
+        # removed as of django 1.7
+        # "south",
         # "pipeline",
         # "static_precompiler",
         # "crispy_forms",
@@ -270,7 +271,8 @@ else:
         # "django.contrib.admindocs",
         "django_extensions",
         "reversion",
-        "south",
+        # removed as of django 1.7
+        # "south",
         "pipeline",
         "static_precompiler",
         "crispy_forms",
@@ -513,8 +515,8 @@ REST_FRAMEWORK = {
 }
 
 # SOUTH config
-SOUTH_LOGGING_ON = True
-SOUTH_LOGGING_FILE = "/var/log/cluster/south.log"
+# SOUTH_LOGGING_ON = True
+# SOUTH_LOGGING_FILE = "/var/log/cluster/south.log"
 
 LOGGING = {
     'version': 1,
