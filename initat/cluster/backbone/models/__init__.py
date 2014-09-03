@@ -1675,9 +1675,9 @@ class devicelog(models.Model):
     @staticmethod
     def new_log(cur_dev, log_src, log_stat, text, **kwargs):
         if log_src and type(log_src) in [int, long]:
-            log_src = cached_short_log_source(log_src)
+            log_src = short_log_source_lookup(log_src)
         if log_stat and type(log_stat) in [int, long]:
-            log_stat = cached_log_status(log_stat)
+            log_stat = log_status_lookup(log_stat)
         cur_log = devicelog.objects.create(
             device=cur_dev,
             log_source=log_src or cluster_log_source,
