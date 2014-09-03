@@ -24,6 +24,9 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import django
+django.setup()
+
 from initat.discovery_server.version import VERSION_STRING
 from initat.discovery_server.config import global_config, SERVER_PORT
 from initat.discovery_server.server import server_process
