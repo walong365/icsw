@@ -26,6 +26,9 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import django
+django.setup()
+
 from django.conf import settings
 from initat.cluster.backbone.models import log_source
 from initat.md_config_server.config import global_config
