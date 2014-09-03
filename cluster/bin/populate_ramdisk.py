@@ -26,6 +26,9 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import django
+django.setup()
+
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, initrd_build
 import argparse
@@ -33,10 +36,10 @@ import commands
 import config_tools
 import datetime
 import fnmatch
-import net_tools
 import gzip
 import logging_tools
 import module_dependency_tools
+import net_tools
 import process_tools
 import re
 import server_command
@@ -59,21 +62,23 @@ MOD_REFUSE_LIST = [
 LINUXRC_NAMES = ["init", "linuxrc"]
 
 stage1_dir_dict = {
-    0 : [
+    0: [
         "var/empty",
         "sys",
         "dev/pts"
-        ],
-    1 : [
+    ],
+    1: [
         "root", "tmp", "dev", "etc/pam.d", "proc",
-        "var/run", "var/log", "sbin", "usr/lib", "usr/share"]}
+        "var/run", "var/log", "sbin", "usr/lib", "usr/share"
+    ]
+}
 
 stage1_file_dict = {
-    0 : [
+    0: [
         "inetd", "xinetd", "in.rshd", "tcpd", "in.rlogind", "whoami", "ntpdate", "sntp", "ps", "rmmod", "rmmod.old", "lsmod.old", "depmod.old",
         "insmod.old", "modprobe.old", "route", "free", "arp", "login", "mount.nfs", "lsof", "xz",
-        ],
-    1 : [
+    ],
+    1: [
         "readlink", "ethtool", "cp", "mount", "cat", "ls", "mount", "mkdir", "find", "head",
         "tar", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "rm", "chmod", "basename",
         "sed", "dmesg", "ping", "mknod", "true", "false", "logger", "modprobe", "bash", "load_firmware.sh",
@@ -85,22 +90,22 @@ stage1_file_dict = {
 }
 
 stage2_dir_dict = {
-    0 : [
+    0: [
         "sys",
         "var/empty",
-        ],
-    1 : [
+    ],
+    1: [
         "root", "tmp", "dev", "etc/pam.d", "proc",
         "var/run", "var/log", "dev/pts", "sbin", "usr/lib", "usr/share",
     ]
 }
 
 stage2_file_dict = {
-    0 : [
+    0: [
         "inetd", "xinetd", "mkfs.xfs", "mkfs.btrfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
         "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz", "mkfs.reiserfs",
-        ],
-    1 : [
+    ],
+    1: [
         "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
         "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
@@ -115,22 +120,22 @@ stage2_file_dict = {
 }
 
 stageloc_dir_dict = {
-    0 : [
+    0: [
         "sys",
         "var/empty",
-        ],
-    1 : [
+    ],
+    1: [
         "root", "tmp", "dev", "etc/pam.d", "proc",
         "var/run", "var/log", "dev/pts", "sbin", "usr/lib", "usr/share",
     ]
 }
 
 stageloc_file_dict = {
-    0 : [
+    0: [
         "inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
         "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "mkfs.reiserfs",
-        ],
-    1 : [
+    ],
+    1: [
         "awk", "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
         "df", "tar", "gzip", "gunzip", "umount", "rmdir", "egrep", "fgrep", "grep", "basename",
         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
@@ -144,6 +149,7 @@ stageloc_file_dict = {
     ]
 }
 
+
 def make_debian_fixes(in_dict):
     for _key, val in in_dict.iteritems():
         # remove /dev/pts from stage-dicts
@@ -153,6 +159,7 @@ def make_debian_fixes(in_dict):
         if "vi" in val:
             val.remove("vi")
             val.append("vim.tiny")
+
 
 def get_size_str(b_size):
     if b_size > 1024 * 1024 * 1024:
@@ -164,18 +171,20 @@ def get_size_str(b_size):
     else:
         return "%6d  B" % (b_size)
 
+
 def norm_path(in_path):
     in_path = os.path.normpath(in_path)
     while in_path.count("//"):
         in_path = in_path.replace("//", "/")
     return in_path
 
+
 def eliminate_symlinks(root_dir, in_path):
     # do NOT use os.path.join here
     dir_path = norm_path(os.path.dirname(in_path))
     path_parts = [x for x in dir_path.split("/") if x]
     real_path = ""
-    act_path = "" # %s" % (path_parts.pop(0))
+    act_path = ""  # %s" % (path_parts.pop(0))
     for p_part in path_parts:
         act_path = "{}/{}".format(act_path, p_part)
         if os.path.islink(act_path):
@@ -188,8 +197,10 @@ def eliminate_symlinks(root_dir, in_path):
             real_path = "{}/{}".format(real_path, p_part)
     return "{}/{}".format(real_path, os.path.basename(in_path))
 
+
 def _shorten_module_name(mod_name):
     return mod_name.endswith(".ko") and mod_name[:-3] or (mod_name.endswith(".o") and mod_name[:-2] or mod_name)
+
 
 def get_module_dependencies(kern_dir, mod_list):
     # pure module names
@@ -267,6 +278,7 @@ def get_module_dependencies(kern_dir, mod_list):
                 print "no firmware files needed for {}".format(f_module)
     return [file_dict[entry] for entry in matches_found], not_found_mods, fw_lines
 
+
 def which(file_name, sp):
     for p_p in sp:
         full = "{}/{}".format(p_p, file_name)
@@ -291,6 +303,7 @@ def which(file_name, sp):
     else:
         return full
 
+
 def get_lib_list(in_f):
     _stat, out = commands.getstatusoutput("ldd {}".format(" ".join(in_f)))
     lib_l = []
@@ -310,11 +323,11 @@ def get_lib_list(in_f):
                 if len(out_line.split()) > 2:
                     # print "***", x, len(x.split())
                     lib = out_line.split()[2]
-                    if not lib.startswith("(") and not lib in lib_l:
+                    if not lib.startswith("(") and lib not in lib_l:
                         lib_l += [lib]
                 elif len(out_line.split()) == 2:
                     lib = out_line.split()[0]
-                    if not lib in lib_l:
+                    if lib not in lib_l:
                         lib_l += [lib]
     for lib in lib_l:
         new_lib = None
@@ -342,6 +355,7 @@ def get_lib_list(in_f):
     lib_l2.sort()
     return lib_l2
 
+
 def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, ignore_errors, show_content, add_modules):
     in_file_dict[0].extend(stage_add_dict[0])
     in_file_dict[1].extend(stage_add_dict[1])
@@ -357,7 +371,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     choice_dict, choice_idx, choices_found, choice_lut = ({}, 0, {}, {})
     for sev, names in in_file_dict.iteritems():
         for name in names:
-            if type(name) == type(""):
+            if type(name) in [str, unicode]:
                 file_dict[name] = sev
             else:
                 choice_idx += 1
@@ -369,26 +383,28 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     root_64bit = get_system_bitcount("/")
     pam_dir = "/lib{}/security".format(
         {
-            0 : "",
-            1 : "64"
+            0: "",
+            1: "64"
         }[root_64bit])
     rsyslog_dir = "/lib{}/rsyslog".format(
         {
-            0 : "",
-            1 : "64"
+            0: "",
+            1: "64"
         }[root_64bit])
     rsyslog_dirs = ["/usr{}".format(rsyslog_dir), rsyslog_dir]
     main_lib_dir = "/lib{}".format(
         {
-            0 : "",
-            1 : "64"
+            0: "",
+            1: "64"
         }[root_64bit])
     dir_dict[pam_dir] = 1
     for rsyslog_dir in rsyslog_dirs:
         dir_dict[rsyslog_dir] = 0
     dir_dict["/etc/xinetd.d"] = 0
-    sev_dict = {"W" : 0,
-                "E" : 0}
+    sev_dict = {
+        "W": 0,
+        "E": 0
+    }
     if ignore_errors:
         err_sev = "W"
     else:
@@ -397,8 +413,9 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         print "checking availability of {:d} directories ...".format(len(dir_dict.keys()))
     # check availability of directories
     for _dir, severity in [(os.path.normpath("/{}".format(x)), {
-        0 : "W",
-        1 : "E"}[y]) for x, y in dir_dict.iteritems()]:
+        0: "W",
+        1: "E"
+    }[y]) for x, y in dir_dict.iteritems()]:
         if not os.path.isdir(_dir):
             print " {} dir '{}' not found".format(severity, _dir)
             sev_dict[severity] += 1
@@ -406,7 +423,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         print "checking availability of {:d} files ...".format(len(file_dict.keys()))
     new_file_dict = {}
     path = [x for x in os.environ["PATH"].split(":")] + ["/lib/mkinitrd/bin"]
-    for f_name, severity in [(x, {0 : "W", 1 : err_sev}[y]) for x, y in file_dict.iteritems()]:
+    for f_name, severity in [(x, {0: "W", 1: err_sev}[y]) for x, y in file_dict.iteritems()]:
         full_path = which(f_name, path)
         if not full_path:
             if f_name in choice_dict.keys():
@@ -432,7 +449,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             else:
                 # better error handling, fixme
                 print "  for choice_idx {:d} ({}) we found nothing of {:d}".format(c_idx, ", ".join(p_cns), len(p_cns))
-                sev_dict[{0 : "W", 1 : err_sev}[file_dict[p_cns[0]]]] += 1
+                sev_dict[{0: "W", 1: err_sev}[file_dict[p_cns[0]]]] += 1
     pam_lib_list = []
     if stage_num == 2:
         # init simple pam-stack
@@ -458,7 +475,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         print "resolving directories of {:d} files and libraries ...".format(len(lib_dict.keys()) + len(new_file_dict.keys()))
     dir_list = dir_dict.keys()
     for nd in [os.path.dirname(x) for x in lib_dict.keys() + new_file_dict.keys()]:
-        if not nd in dir_list:
+        if nd not in dir_list:
             dir_list += [nd]
     if verbose:
         print " ... found {:d} distinct directories".format(len(dir_list))
@@ -470,10 +487,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             os.mkdir(dir_name)
             os.chmod(dir_name, dir_mode)
     for file_name, file_type, file_mode, major, minor, file_owner, file_group in [
-        ("/dev/ram0"   , "b", 0640, 1, 0, 0, 0),
-        ("/dev/ram1"   , "b", 0640, 1, 1, 0, 0),
-        ("/dev/ram2"   , "b", 0640, 1, 2, 0, 0),
-        ("/dev/console", "c", 0600, 5, 1, 0, 0)]:
+        ("/dev/ram0", "b", 0640, 1, 0, 0, 0),
+        ("/dev/ram1", "b", 0640, 1, 1, 0, 0),
+        ("/dev/ram2", "b", 0640, 1, 2, 0, 0),
+        ("/dev/console", "c", 0600, 5, 1, 0, 0)
+    ]:
         if not os.path.exists(file_name):
             if file_type == "b":
                 os.mknod(file_name, file_mode | stat.S_IFBLK, os.makedev(major, minor))
@@ -610,9 +628,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
         free_after = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
         print "size saved by stripping: {}".format(get_size_str(free_after - free_before))
     # default shell
-    def_shell = {1 : "/bin/bash",
-                 2 : "/bin/bash",
-                 3 : "/bin/bash"}[stage_num]
+    def_shell = {
+        1: "/bin/bash",
+        2: "/bin/bash",
+        3: "/bin/bash"
+    }[stage_num]
     # pci ids
     pci_f_names = ["/usr/share/pci.ids", "/usr/share/misc/pci.ids", "/usr/share/hwdata/pci.ids", "/NOT_FOUND"]
     for pci_f_name in pci_f_names:
@@ -620,67 +640,88 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             break
     # generate special files
     sfile_dict = {
-        "/etc/passwd" : ["root::0:0:root:/root:{}".format(def_shell),
-                         "bin::1:1:bin:/bin/:{}".format(def_shell),
-                         "daemon::2:2:daemon:/sbin:{}".format(def_shell)],
-        "/etc/shadow" : ["root:GobeG9LDR.gqU:12198:0:10000::::",
-                         "bin:*:8902:0:10000::::"],
-        "/etc/services" : ["nfs     2049/tcp",
-                           "nfs     2049/udp",
-                           "ntp      123/tcp",
-                           "ntp      123/udp",
-                           "time      37/tcp",
-                           "time      37/udp",
-                           "syslog   514/udp",
-                           "shell    514/tcp",
-                           "login    513/tcp",
-                           "tftp      69/udp"],
-        "/etc/group" : ["root:*:0:root",
-                        "bin:*:1:root,bin,daemon",
-                        "tty:*:5:",
-                        "wheel:x:10:"],
-        "/etc/nsswitch.conf" : ["passwd:     files",
-                                "group:      files",
-                                "hosts:      files",
-                                "networks:   files",
-                                "services:   files",
-                                "protocols:  files",
-                                "rpc:        files",
-                                "ethers:     files",
-                                "netmasks:   files",
-                                "netgroup:   files",
-                                "publickey:  files",
-                                "bootparams: files",
-                                "aliases:    files",
-                                "shadow:     files"],
-        "/etc/pam.d/other" : ["auth     required pam_permit.so",
-                              "account  required pam_permit.so",
-                              "password required pam_permit.so",
-                              "session  required pam_permit.so"],
-        "/etc/inetd.conf" : ["shell stream tcp nowait root /usr/sbin/tcpd in.rshd -L",
-                             "login stream tcp nowait root /usr/sbin/tcpd in.rlogind"],
-        "/etc/hosts.allow" : ["ALL: ALL"],
-        "/etc/ld.so.conf" : ["/usr/x86_64-suse-linux/lib64",
-                             "/usr/x86_64-suse-linux/lib",
-                             "/usr/local/lib",
-                             "/lib64",
-                             "/lib",
-                             "/lib64/tls",
-                             "/lib/tls",
-                             "/usr/lib64",
-                             "/usr/lib",
-                             "/usr/local/lib64"],
-        "/etc/netconfig" : ['udp        tpi_clts      v     inet     udp     -       -',
-                            'tcp        tpi_cots_ord  v     inet     tcp     -       -',
-                            'udp6       tpi_clts      v     inet6    udp     -       -',
-                            'tcp6       tpi_cots_ord  v     inet6    tcp     -       -',
-                            'rawip      tpi_raw       -     inet      -      -       -',
-                            'local      tpi_cots_ord  -     loopback  -      -       -',
-                            'unix       tpi_cots_ord  -     loopback  -      -       -']}
+        "/etc/passwd": [
+            "root::0:0:root:/root:{}".format(def_shell),
+            "bin::1:1:bin:/bin/:{}".format(def_shell),
+            "daemon::2:2:daemon:/sbin:{}".format(def_shell)
+        ],
+        "/etc/shadow": [
+            "root:GobeG9LDR.gqU:12198:0:10000::::",
+            "bin:*:8902:0:10000::::"
+        ],
+        "/etc/services": [
+            "nfs     2049/tcp",
+            "nfs     2049/udp",
+            "ntp      123/tcp",
+            "ntp      123/udp",
+            "time      37/tcp",
+            "time      37/udp",
+            "syslog   514/udp",
+            "shell    514/tcp",
+            "login    513/tcp",
+            "tftp      69/udp"
+        ],
+        "/etc/group": [
+            "root:*:0:root",
+            "bin:*:1:root,bin,daemon",
+            "tty:*:5:",
+            "wheel:x:10:"
+        ],
+        "/etc/nsswitch.conf": [
+            "passwd:     files",
+            "group:      files",
+            "hosts:      files",
+            "networks:   files",
+            "services:   files",
+            "protocols:  files",
+            "rpc:        files",
+            "ethers:     files",
+            "netmasks:   files",
+            "netgroup:   files",
+            "publickey:  files",
+            "bootparams: files",
+            "aliases:    files",
+            "shadow:     files"
+        ],
+        "/etc/pam.d/other": [
+            "auth     required pam_permit.so",
+            "account  required pam_permit.so",
+            "password required pam_permit.so",
+            "session  required pam_permit.so"
+        ],
+        "/etc/inetd.conf": [
+            "shell stream tcp nowait root /usr/sbin/tcpd in.rshd -L",
+            "login stream tcp nowait root /usr/sbin/tcpd in.rlogind"
+        ],
+        "/etc/hosts.allow": [
+            "ALL: ALL"
+        ],
+        "/etc/ld.so.conf": [
+            "/usr/x86_64-suse-linux/lib64",
+            "/usr/x86_64-suse-linux/lib",
+            "/usr/local/lib",
+            "/lib64",
+            "/lib",
+            "/lib64/tls",
+            "/lib/tls",
+            "/usr/lib64",
+            "/usr/lib",
+            "/usr/local/lib64"
+        ],
+        "/etc/netconfig": [
+            'udp        tpi_clts      v     inet     udp     -       -',
+            'tcp        tpi_cots_ord  v     inet     tcp     -       -',
+            'udp6       tpi_clts      v     inet6    udp     -       -',
+            'tcp6       tpi_cots_ord  v     inet6    tcp     -       -',
+            'rawip      tpi_raw       -     inet      -      -       -',
+            'local      tpi_cots_ord  -     loopback  -      -       -',
+            'unix       tpi_cots_ord  -     loopback  -      -       -'
+        ]
+    }
     if os.path.isfile(pci_f_name):
         sfile_dict["/usr/share/pci.ids"] = file(pci_f_name, "r").read().split("\n")
     sfile_dict["/etc/xinetd.conf"] = {
-        1 : [
+        1: [
             "defaults",
             "{",
             "    instances       = 60",
@@ -709,37 +750,38 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             "    log_on_failure  += USERID",
             "    server           = /usr/sbin/in.rshd",
             "}"],
-        2 : ["defaults",
-             "{",
-             "    instances       = 60",
-             "    log_type        = SYSLOG authpriv",
-             "    log_on_success  = HOST PID",
-             "    log_on_failure  = HOST",
-             "    cps             = 25 30",
-             "}",
-             "service login",
-             "{",
-             "    disable          = no",
-             "    socket_type      = stream",
-             "    protocol         = tcp",
-             "    wait             = no",
-             "    user             = root",
-             "    log_on_success  += USERID",
-             "    log_on_failure  += USERID",
-             "    server           = /usr/sbin/in.rlogind",
-             "}",
-             "service shell",
-             "{",
-             "    disable          = no",
-             "    socket_type      = stream",
-             "    protocol         = tcp",
-             "    wait             = no",
-             "    user             = root",
-             "    log_on_success  += USERID",
-             "    log_on_failure  += USERID",
-             "    server           = /usr/sbin/in.rshd",
-             "}"],
-        3 : []}[stage_num]
+        2: [
+            "defaults",
+            "{",
+            "    instances       = 60",
+            "    log_type        = SYSLOG authpriv",
+            "    log_on_success  = HOST PID",
+            "    log_on_failure  = HOST",
+            "    cps             = 25 30",
+            "}",
+            "service login",
+            "{",
+            "    disable          = no",
+            "    socket_type      = stream",
+            "    protocol         = tcp",
+            "    wait             = no",
+            "    user             = root",
+            "    log_on_success  += USERID",
+            "    log_on_failure  += USERID",
+            "    server           = /usr/sbin/in.rlogind",
+            "}",
+            "service shell",
+            "{",
+            "    disable          = no",
+            "    socket_type      = stream",
+            "    protocol         = tcp",
+            "    wait             = no",
+            "    user             = root",
+            "    log_on_success  += USERID",
+            "    log_on_failure  += USERID",
+            "    server           = /usr/sbin/in.rshd",
+            "}"],
+        3: []}[stage_num]
     if add_modules:
         sfile_dict["/etc/add_modules"] = ["{} {}".format(mod_name, mod_option) for mod_name, mod_option in add_modules]
     for sfile_name, sfile_content in sfile_dict.iteritems():
@@ -765,6 +807,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     # shutil.rmtree(temp_dir)
     return 1
 
+
 def find_free_loopdevice():
     _c_stat, c_out = commands.getstatusoutput("losetup -a")
     used_loops = [line.split(":", 1)[0] for line in c_out.split("\n")]
@@ -774,6 +817,7 @@ def find_free_loopdevice():
             lo_found = cur_lo
             break
     return lo_found
+
 
 def get_system_bitcount(root_dir):
     init_file = norm_path("{}/sbin/init".format(root_dir))
@@ -797,6 +841,7 @@ def get_system_bitcount(root_dir):
         sys_64bit = 1
     return sys_64bit
 
+
 def main():
     script = sys.argv[0]
     script_basename = os.path.basename(script)
@@ -808,11 +853,21 @@ def main():
     else:
         main_normal()
 
+
 class base_arg_mixin(object):
     def add_base_args(self):
-        self.add_argument("-m", "--modules", dest="modules", default="", type=str, help="comma-separated list of kernel-modules to include in the first stage [%(default)s]")
+        self.add_argument(
+            "-m",
+            "--modules",
+            dest="modules",
+            default="",
+            type=str,
+            help="comma-separated list of kernel-modules to include in the first stage [%(default)s]"
+        )
+
     def base_parse(self, cur_args):
         cur_args.modules = list(set([entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]))
+
 
 class copy_arg_parser(argparse.ArgumentParser, base_arg_mixin):
     def __init__(self):
@@ -830,6 +885,7 @@ class copy_arg_parser(argparse.ArgumentParser, base_arg_mixin):
         self.add_argument("--rescan", default=False, action="store_true", help="rescan kernels after successfull copy [%(default)s]")
         self.add_argument("--build", default=False, action="store_true", help="build initial ramdisk, implies rescan [%(default)s]")
         self.add_base_args()
+
     def parse(self):
         cur_args = self.parse_args()
         if cur_args.build:
@@ -837,6 +893,7 @@ class copy_arg_parser(argparse.ArgumentParser, base_arg_mixin):
         cur_args.image_root = os.getenv("IMAGE_ROOT", "/")
         self.base_parse(cur_args)
         return cur_args
+
 
 class local_arg_parser(argparse.ArgumentParser, base_arg_mixin):
     def __init__(self):
@@ -849,12 +906,14 @@ class local_arg_parser(argparse.ArgumentParser, base_arg_mixin):
         self.add_argument("-d", dest="temp_dir", default="", type=str, help="temporary directory for creating of the stage-disc [%(default)s]")
         self.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="increase verbosity [%(default)d]")
         self.add_base_args()
+
     def parse(self):
         cur_args = self.parse_args()
         cur_args.stage_0_files = [entry.strip() for entry in cur_args.stage_0_files.strip().split(",") if entry.strip()]
         cur_args.stage_1_files = [entry.strip() for entry in cur_args.stage_1_files.strip().split(",") if entry.strip()]
         self.base_parse(cur_args)
         return cur_args
+
 
 def main_copy():
     global verbose
@@ -938,6 +997,7 @@ def main_copy():
                 main_normal()
                 rescan_kernels()
 
+
 def rescan_kernels():
     srv_com = server_command.srv_command(command="rescan_kernels")
     _conn_str = "tcp://localhost:8000"
@@ -956,6 +1016,7 @@ def rescan_kernels():
         res_str, res_state = result.get_log_tuple()
     print "[{}] {}".format(logging_tools.map_log_level_to_log_status(res_state), res_str)
 
+
 def get_link_target(lib_dir, link_name):
     link_file = os.path.join(lib_dir, link_name)
     if os.path.islink(link_file):
@@ -965,25 +1026,56 @@ def get_link_target(lib_dir, link_name):
         link_target = ""
     return link_target
 
+
 def main_local():
     global verbose
     local_args = local_arg_parser().parse()
     _script = sys.argv[0]
-    stage_add_dict = {0 : local_args.stage_0_files,
-                      1 : local_args.stage_1_files,
-                      2 : []}
+    stage_add_dict = {
+        0: local_args.stage_0_files,
+        1: local_args.stage_1_files,
+        2: []
+    }
     if not local_args.temp_dir:
         print "Error, need temp_dir ..."
         sys.exit(1)
     verbose = local_args.verbose
     print "Generating stage{:d} initrd, verbosity level is {:d} ...".format(local_args.stage_num, local_args.verbose)
     if local_args.stage_num == 1:
-        stage_ok = populate_it(local_args.stage_num, local_args.temp_dir, stage1_dir_dict, stage1_file_dict, stage_add_dict, local_args.ignore_errors, local_args.show_content, local_args.modules)
+        stage_ok = populate_it(
+            local_args.stage_num,
+            local_args.temp_dir,
+            stage1_dir_dict,
+            stage1_file_dict,
+            stage_add_dict,
+            local_args.ignore_errors,
+            local_args.show_content,
+            local_args.modules
+        )
     elif local_args.stage_num == 2:
-        stage_ok = populate_it(local_args.stage_num, local_args.temp_dir, stage2_dir_dict, stage2_file_dict, stage_add_dict, local_args.ignore_errors, local_args.show_content, local_args.modules)
+        stage_ok = populate_it(
+            local_args.stage_num,
+            local_args.temp_dir,
+            stage2_dir_dict,
+            stage2_file_dict,
+            stage_add_dict,
+            local_args.ignore_errors,
+            local_args.show_content,
+            local_args.modules
+        )
     else:
-        stage_ok = populate_it(local_args.stage_num, local_args.temp_dir, stageloc_dir_dict, stageloc_file_dict, stage_add_dict, local_args.ignore_errors, local_args.show_content, local_args.modules)
+        stage_ok = populate_it(
+            local_args.stage_num,
+            local_args.temp_dir,
+            stageloc_dir_dict,
+            stageloc_file_dict,
+            stage_add_dict,
+            local_args.ignore_errors,
+            local_args.show_content,
+            local_args.modules
+        )
     sys.exit(stage_ok)
+
 
 def do_show_kernels(dev_assoc):
     out_list = logging_tools.new_form_list(none_string="---")
@@ -997,8 +1089,11 @@ def do_show_kernels(dev_assoc):
                     logging_tools.form_entry(len(drivers), header="#drivers"),
                     logging_tools.form_entry(", ".join(drivers) or None, header="drivers"),
                     logging_tools.form_entry(cur_k.new_kernel.count(), header="#devices"),
-                    logging_tools.form_entry(logging_tools.compress_list(sorted([cur_dev.name for cur_dev in cur_k.new_kernel.all()])) or None, header="#devices"),
-                    ])
+                    logging_tools.form_entry(
+                        logging_tools.compress_list(sorted([cur_dev.name for cur_dev in cur_k.new_kernel.all()])) or None, header="#devices"
+                    ),
+                ]
+            )
     else:
         all_kernels = kernel.objects.all().order_by("name")
         for cur_k in all_kernels:
@@ -1020,8 +1115,10 @@ def do_show_kernels(dev_assoc):
         print "Empty list"
     sys.exit(0)
 
+
 def log_it(what):
     print " - {}".format(what)
+
 
 class arg_parser(argparse.ArgumentParser):
     def __init__(self):
@@ -1037,17 +1134,33 @@ class arg_parser(argparse.ArgumentParser):
         self.add_argument("--grub", dest="add_grub_binaries", default=False, action="store_true", help="add grub binaries in stage1 [%(default)s]")
         self.add_argument("--lilo", dest="add_lilo_binaries", default=False, action="store_true", help="add lilo binaries in stage1 [%(default)s]")
         self.add_argument("-l", dest="show_content", default=False, action="store_true", help="list dirs and files [%(default)s]")
-        self.add_argument("-L", dest="show_kernels", default=0, action="count", help="gives an overview of the used kernels and drivers, use twice to show device association [%(default)d]")
+        self.add_argument(
+            "-L",
+            dest="show_kernels",
+            default=0, action="count", help="gives an overview of the used kernels and drivers, use twice to show device association [%(default)d]"
+        )
         self.add_argument("-S", dest="stage_source_dir", default="/opt/cluster/lcs", type=str, help="source directory of stage files [%(default)s]")
         self.add_argument("-T", dest="stage_target_dir", default="", type=str, help="target directory of init files [%(default)s]")
         self.add_argument("-r", dest="root_dir", default="/", type=str, help="set rootdir [%(default)s]")
-        self.add_argument("-s", dest="init_size", default=0, type=int, help="set the size for the initial ramdisk, is automatically extracted from .config [%(default)d]")
+        self.add_argument(
+            "-s",
+            dest="init_size",
+            default=0,
+            type=int,
+            help="set the size for the initial ramdisk, is automatically extracted from .config [%(default)d]"
+        )
         self.add_argument("-F", dest="force_kernel_server", default=False, action="store_true", help="ignore if no kernel-server [%(default)s]")
         self.add_argument("--set-master-server", default=False, action="store_true", help="sets master-server of kernel to local server_idx [%(default)s]")
-        self.add_argument("-M", dest="modules_file", default="", type=str, help="read list of kernel-modules from this file, if neither -m or -M is used the latest setting from the db is used")
+        self.add_argument(
+            "-M",
+            dest="modules_file",
+            default="",
+            type=str,
+            help="read list of kernel-modules from this file, if neither -m or -M is used the latest setting from the db is used"
+        )
         self.add_argument("--insert-kernel", default=False, action="store_true", help="add kernel to database (if not already present) [%(default)s]")
-        # self.add_argument("--insert", dest="db_insert", default=False, action="store_true", help="insert kernel into database (if not already present) [%(default)s]")
         self.add_argument(dest="kernel_dir", default="", nargs="?")
+
     def parse(self):
         cur_args = self.parse_args()
         if not os.path.isdir(cur_args.root_dir):
@@ -1055,6 +1168,7 @@ class arg_parser(argparse.ArgumentParser):
             sys.exit(0)
         cur_args.modules = [entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]
         return cur_args
+
 
 def main_normal():
     global verbose
@@ -1064,15 +1178,19 @@ def main_normal():
     script = sys.argv[0]
     local_script = "{}_local.py".format(script[:-3])
     stage_add_dict = {
-        1 : {
-            0 : [],
-            1 : []},
-        2 : {
-            0 : [],
-            1 : []},
-        3 : {
-            0 : [],
-            1 : []}}
+        1: {
+            0: [],
+            1: []
+        },
+        2: {
+            0: [],
+            1: []
+        },
+        3: {
+            0: [],
+            1: []
+        }
+    }
 # #    for opt, arg in opts:
 # #        if opt in ["-h", "--help"]:
 # #            print " -M MODFILE           read list of kernel-modules from this file"
@@ -1206,7 +1324,11 @@ def main_normal():
         print " *** Found {}, please move to .config".format(wrong_config_name)
         print
     if os.path.isfile(os.path.join(my_args.kernel_dir, ".config")):
-        conf_lines = [y for y in [x.strip() for x in file(os.path.join(my_args.kernel_dir, ".config"), "r").read().split("\n") if x.strip()] if not y.strip().startswith("#")]
+        conf_lines = [
+            y for y in [
+                x.strip() for x in file(os.path.join(my_args.kernel_dir, ".config"), "r").read().split("\n") if x.strip()
+            ] if not y.strip().startswith("#")
+        ]
         conf_dict = dict([x.split("=", 1) for x in conf_lines])
     else:
         print "Warning, no kernel_config {}/.config found".format(my_args.kernel_dir)
@@ -1271,8 +1393,10 @@ def main_normal():
         print "... gave ({:d}) {}".format(t_stat, t_out)
         if t_stat:
             sys.exit(t_stat)
-    bit_dict = {0 : "32",
-                1 : "64"}
+    bit_dict = {
+        0: "32",
+        1: "64"
+    }
     # check availability of stages
     for stage in ["1", "2", "3", "local"]:
         fname = "/{}/stage{}".format(my_args.stage_source_dir, stage)
@@ -1385,14 +1509,14 @@ def main_normal():
             os.unlink(del_file)
         if os.path.isfile("%s.gz" % (del_file)):
             os.unlink("%s.gz" % (del_file))
-    stage1_dir = tempfile.mkdtemp(".stage1_dir"  , "/%s/tmp/.rdc_" % (my_args.root_dir))
-    stage2_dir = tempfile.mkdtemp(".stage2_dir"  , "/%s/tmp/.rdc_" % (my_args.root_dir))
+    stage1_dir = tempfile.mkdtemp(".stage1_dir", "/%s/tmp/.rdc_" % (my_args.root_dir))
+    stage2_dir = tempfile.mkdtemp(".stage2_dir", "/%s/tmp/.rdc_" % (my_args.root_dir))
     stageloc_dir = tempfile.mkdtemp(".stageloc_dir", "/%s/tmp/.rdc_" % (my_args.root_dir))
     stat_out = []
-    stat_out += [("dd"       , commands.getstatusoutput("dd if=/dev/zero of=%s bs=1024 count=%d" % (stage1_lo_file, my_args.init_size)))]
-    stat_out += [("losetup"  , commands.getstatusoutput("losetup %s %s" % (loop_dev, stage1_lo_file)))]
+    stat_out += [("dd", commands.getstatusoutput("dd if=/dev/zero of=%s bs=1024 count=%d" % (stage1_lo_file, my_args.init_size)))]
+    stat_out += [("losetup", commands.getstatusoutput("losetup %s %s" % (loop_dev, stage1_lo_file)))]
     stat_out += [("mkfs.ext2", commands.getstatusoutput("mkfs.ext2 -F -v -m 0 -b 1024 %s %d" % (stage1_lo_file, my_args.init_size)))]
-    stat_out += [("mount"    , commands.getstatusoutput("mount -o loop -t ext2 %s %s" % (stage1_lo_file, stage1_dir)))]
+    stat_out += [("mount", commands.getstatusoutput("mount -o loop -t ext2 %s %s" % (stage1_lo_file, stage1_dir)))]
     if len([err_name for name, (err_name, line) in stat_out if err_name]):
         print "Something went wrong during setup of stage1:"
         for name, (err_name, line) in stat_out:
@@ -1402,9 +1526,9 @@ def main_normal():
     stage_dirs, del_dirs = ([], [])
     for stage in range(1, 4):
         if not my_args.quiet:
-            print "Generating stage%s initrd ..." % ({1 : "1",
-                                                      2 : "2",
-                                                      3 : "local"}[stage])
+            print "Generating stage%s initrd ..." % ({1: "1",
+                                                      2: "2",
+                                                      3: "local"}[stage])
         act_stage_dir = stage_targ_dirs[stage - 1]
         loc_root_dir = "/".join([""] + act_stage_dir.split("/")[-2:])
         loc_args = " ".join(["-v"] * my_args.verbose)
@@ -1416,7 +1540,10 @@ def main_normal():
             gen_com = "chroot %s /%s %s -d %s -s %d" % (my_args.root_dir, os.path.basename(local_script), loc_args, loc_root_dir, stage)
         else:
             gen_com = "%s %s -s %d -d %s " % (local_script, loc_args, stage, loc_root_dir)
-        gen_com = "%s %s" % (gen_com, " ".join(["-%d %s" % (im_key, ",".join(stage_add_dict[stage][im_key])) for im_key in [0, 1] if stage_add_dict[stage][im_key]]))
+        gen_com = "{} {}".format(
+            gen_com,
+            " ".join(["-%d %s" % (im_key, ",".join(stage_add_dict[stage][im_key])) for im_key in [0, 1] if stage_add_dict[stage][im_key]])
+        )
         if my_args.add_modules and stage in [1, 3]:
             gen_com = "%s --modules %s" % (gen_com, ",".join(["%s:%s" % (mod_name, mod_option) for mod_name, mod_option in my_args.add_modules]))
         if not my_args.quiet:
@@ -1481,19 +1608,29 @@ def main_normal():
     act_dir = os.getcwd()
     stat_out = []
     stat_out += [("mkfs.cramfs", commands.getstatusoutput("mkfs.cramfs -n initrd_stage1 %s %s" % (stage1_dir, stage1_cramfs_file)))]
-    stat_out += [("cpio"       , commands.getstatusoutput("cd %s ; find %s -printf \"%%P\\n\" | cpio -c -o > %s ; cd %s" % (stage1_dir, stage1_dir, stage1_cpio_file, act_dir)))]
-    stat_out += [("umount"     , commands.getstatusoutput("umount %s" % (stage1_dir))),
-                 ("losetup"    , commands.getstatusoutput("losetup -d %s" % (loop_dev)))]
+    stat_out += [
+        (
+            "cpio",
+            commands.getstatusoutput("cd %s ; find %s -printf \"%%P\\n\" | cpio -c -o > %s ; cd %s" % (stage1_dir, stage1_dir, stage1_cpio_file, act_dir))
+        )
+    ]
+    stat_out += [("umount", commands.getstatusoutput("umount %s" % (stage1_dir))),
+                 ("losetup", commands.getstatusoutput("losetup -d %s" % (loop_dev)))]
     # stageloc setup
-    stat_out += [("cpio"       , commands.getstatusoutput("cd %s ; find %s -printf \"%%P\\n\" | cpio -c -o > %s ; cd %s" % (stageloc_dir, stageloc_dir, stageloc_file, act_dir)))]
+    stat_out += [
+        (
+            "cpio",
+            commands.getstatusoutput("cd %s ; find %s -printf \"%%P\\n\" | cpio -c -o > %s ; cd %s" % (stageloc_dir, stageloc_dir, stageloc_file, act_dir))
+        )
+    ]
     if [x for name, (x, y) in stat_out if x]:
         print "Something went wrong during finish of stage1:"
         for name, (err_name, y) in stat_out:
             print "%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (z) for z in y.split("\n")]))
     if stage_dirs_ok:
-        for s1_type, s1_file in [("lo"    , stage1_lo_file),
+        for s1_type, s1_file in [("lo", stage1_lo_file),
                                  ("cramfs", stage1_cramfs_file),
-                                 ("cpio"  , stage1_cpio_file)]:
+                                 ("cpio", stage1_cpio_file)]:
             print "Compressing stage1 (%7s) ... " % (s1_type),
             s_time = time.time()
             o_s1_size = os.stat(s1_file)[stat.ST_SIZE]
