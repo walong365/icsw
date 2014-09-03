@@ -24,7 +24,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
-     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog, user
+     cluster_timezone, log_source_lookup, log_status_lookup, log_source, devicelog, user
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 import config_tools
@@ -1106,7 +1106,7 @@ class host(machine):
             devicelog.new_log(
                 self.device,
                 machine.process.node_src,
-                cached_log_status("i"),
+                log_status_lookup("i"),
                 "set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]))
             macbootlog(
                 device=self.device,
@@ -1125,7 +1125,7 @@ class host(machine):
             devicelog.new_log(
                 self.device,
                 machine.process.node_src,
-                cached_log_status("i"),
+                log_status_lookup("i"),
                 "DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]))
             self.set_recv_state("got IP-Address via DHCP")
             change_fields.add("recvstate")
@@ -1142,7 +1142,7 @@ class host(machine):
         devicelog.new_log(
             self.device,
             machine.process.node_src,
-            cached_log_status("i"),
+            log_status_lookup("i"),
             in_text)
         return "ok got it"
 
@@ -1196,8 +1196,10 @@ class controlling_device(machine):
             self.dhcp_mac_written = None
             self.dhcp_ip_written = None
             self.is_node = False
+
     def get_bnd(self):
         return self.__bnd
+
     def set_bnd(self, val):
         if val is None:
             self.log("clearing bootnetdevice")
@@ -1335,7 +1337,8 @@ class controlling_device(machine):
             com_name,
             logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
             ", ".join(om_shell_coms),
-            ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
+            ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip")
+        )
         simple_command.process.set_check_freq(200)
         for om_shell_com in om_shell_coms:
             om_array = ['server 127.0.0.1',
@@ -1430,7 +1433,7 @@ class controlling_device(machine):
             devicelog.new_log(
                 self.device,
                 machine.process.node_src,
-                cached_log_status("i"),
+                log_status_lookup("i"),
                 "set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]))
             macbootlog(
                 device=self.device,
@@ -1449,7 +1452,7 @@ class controlling_device(machine):
             devicelog.new_log(
                 self.device,
                 machine.process.node_src,
-                cached_log_status("i"),
+                log_status_lookup("i"),
                 "DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]))
             self.set_recv_state("got IP-Address via DHCP")
             change_fields.add("recvstate")
@@ -1540,9 +1543,6 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                 value["recv_list"][seq_to] = None
             # check for ping finish
             if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
-                # all_times = [
-                #    value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) is not None
-                # ]
                 self.__process.send_ping_result(key, value)  # ["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
                 del_keys.append(key)
         for del_key in del_keys:
@@ -1605,7 +1605,7 @@ class node_control_process(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True)
         connection.close()
-        self.node_src = cached_log_source("node", None)
+        self.node_src = log_source_lookup("node", None)
         self.mother_src = log_source.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         # close database connection
         simple_command.setup(self)
@@ -1888,7 +1888,9 @@ class node_control_process(threading_tools.process_obj):
             if in_line.lower().count("no free leases"):
                 # nothing found
                 try:
-                    used_dev = device.objects.get(Q(bootserver=self.sc.effective_device) & Q(netdevice__macaddr__iexact=in_dict["macaddr"].lower()))
+                    _used_dev = device.objects.get(
+                        Q(bootserver=self.sc.effective_device) & Q(netdevice__macaddr__iexact=in_dict["macaddr"].lower())
+                    )
                 except device.DoesNotExist:
                     greedy_devs = device.objects.filter(
                         Q(bootserver=self.sc.effective_device) & Q(dhcp_mac=True)
