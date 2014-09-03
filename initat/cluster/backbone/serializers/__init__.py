@@ -27,7 +27,6 @@ from django.core.signals import request_finished, request_started
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from django.utils.functional import memoize
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \

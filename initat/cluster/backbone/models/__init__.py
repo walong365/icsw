@@ -28,7 +28,7 @@ from django.core.signals import request_finished, request_started
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from django.utils.functional import memoize
+from django.utils.lru_cache import lru_cache
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -1891,15 +1891,26 @@ class log_source(models.Model):
         db_table = u'log_source'
 
 
+@lru_cache()
 def log_source_lookup(identifier, log_dev):
     return log_source.objects.get(Q(identifier=identifier) & Q(device=log_dev))
 
 
+@lru_cache()
 def short_log_source_lookup(idx):
     return log_source.objects.get(Q(pk=idx))
 
-cached_log_source = memoize(log_source_lookup, {}, 2)
-cached_short_log_source = memoize(short_log_source_lookup, {}, 2)
+
+@lru_cache()
+def log_status_lookup(key):
+    if type(key) in [str, unicode]:
+        return log_status.objects.get(Q(identifier=key))
+    else:
+        return log_status.objects.get(Q(log_level={
+            logging_tools.LOG_LEVEL_OK: 0,
+            logging_tools.LOG_LEVEL_WARN: 50,
+            logging_tools.LOG_LEVEL_ERROR: 100,
+            logging_tools.LOG_LEVEL_CRITICAL: 200}[key]))
 
 
 class log_status(models.Model):
@@ -1911,19 +1922,6 @@ class log_status(models.Model):
 
     class Meta:
         db_table = u'log_status'
-
-
-def log_status_lookup(key):
-    if type(key) in [str, unicode]:
-        return log_status.objects.get(Q(identifier=key))
-    else:
-        return log_status.objects.get(Q(log_level={
-            logging_tools.LOG_LEVEL_OK: 0,
-            logging_tools.LOG_LEVEL_WARN: 50,
-            logging_tools.LOG_LEVEL_ERROR: 100,
-            logging_tools.LOG_LEVEL_CRITICAL: 200}[key]))
-
-cached_log_status = memoize(log_status_lookup, {}, 1)
 
 
 class mac_ignore(models.Model):
