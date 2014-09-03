@@ -21,7 +21,7 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, network, config, cached_log_status, log_source, \
+from initat.cluster.backbone.models import device, network, config, log_status_lookup, log_source, \
     net_ip
 from initat.cluster.backbone.routing import get_server_uuid, get_type_from_config
 from initat.cluster_config_server.build_client import build_client
@@ -31,6 +31,7 @@ import config_tools
 import logging_tools
 import threading_tools
 import time
+
 
 def pretty_print(name, obj, offset):
     lines = []
@@ -55,7 +56,7 @@ def pretty_print(name, obj, offset):
         for value in obj:
             lines.extend(pretty_print("%d" % (idx), value, len(head_str)))
             idx += 1
-    elif type(obj) == type(""):
+    elif type(obj) in [str, unicode]:
         if obj:
             lines.append("%s%s(S): %s" % (off_str, name, obj))
         else:
@@ -65,6 +66,7 @@ def pretty_print(name, obj, offset):
     else:
         lines.append("%s%s(?): %s" % (off_str, name, str(obj)))
     return lines
+
 
 class network_tree(dict):
     def __init__(self):
@@ -78,6 +80,7 @@ class network_tree(dict):
             if type(net_pk) in [int, long]:
                 if cur_net.network_type.identifier == "s" and cur_net.master_network_id in self and self[cur_net.master_network_id].network_type.identifier == "p":
                     self[cur_net.master_network_id].idx_list.append(net_pk)
+
 
 class build_process(threading_tools.process_obj):
     def process_init(self):
@@ -95,16 +98,20 @@ class build_process(threading_tools.process_obj):
         # for requests from config_control
         self.register_func("complex_request", self._complex_request)
         build_client.init(self)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         build_client.close_clients()
         self.__log_template.close()
+
     def _complex_request(self, queue_id, dev_name, req_name, *args, **kwargs):
         self.log("got request '%s' for '%s' (%d)" % (req_name, dev_name, queue_id))
         cur_c = build_client.get_client(name=dev_name)
         success = getattr(cur_c, req_name)(*args)
         self.send_pool_message("complex_result", queue_id, success)
+
     def _generate_config(self, attr_dict, **kwargs):
         if global_config["DEBUG"]:
             cur_query_count = len(connection.queries)
@@ -185,7 +192,7 @@ class build_process(threading_tools.process_obj):
         # send result
         e_time = time.time()
         if dev_sc:
-            dev_sc.device.add_log(self.config_src, cached_log_status(int(cur_c.state_level)), "built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+            dev_sc.device.add_log(self.config_src, log_status_lookup(int(cur_c.state_level)), "built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
@@ -194,12 +201,14 @@ class build_process(threading_tools.process_obj):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         # pprint.pprint(cur_c.get_send_dict())
         self.send_pool_message("client_update", cur_c.get_send_dict())
+
     def _generate_vtl(self, conf_dict):
         vtl = []
         for key in sorted(conf_dict.keys()):
             value = self._to_unicode(conf_dict[key])
             vtl.append((key, value))
         return vtl
+
     def _to_unicode(self, value):
         if type(value) in [str, unicode]:
             value = u"'%s'" % (unicode(value))
@@ -215,6 +224,7 @@ class build_process(threading_tools.process_obj):
                 unicode(value),
                 )
         return value
+
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
         self.router_obj.check_for_update()
         running_ip = [ip.ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip.ip].pk == boot_netdev.pk][0]
@@ -277,17 +287,17 @@ class build_process(threading_tools.process_obj):
             new_img = b_dev.new_image
             if new_img:
                 conf_dict["system"] = {
-                    "vendor"  : new_img.sys_vendor,
-                    "version" : new_img.sys_version,
-                    "release" : new_img.sys_release,
+                    "vendor": new_img.sys_vendor,
+                    "version": new_img.sys_version,
+                    "release": new_img.sys_release,
                 }
             else:
                 self.log("no image defined, using defaults")
                 conf_dict["system"] = {
-                    "vendor"  : "suse",
-                    "version" : 12,
-                    "release" : 3,
-                    }
+                    "vendor": "suse",
+                    "version": 13,
+                    "release": 1,
+                }
             conf_dict["device"] = b_dev
             conf_dict["net"] = act_prod_net
             conf_dict["host"] = b_dev.name
@@ -300,13 +310,17 @@ class build_process(threading_tools.process_obj):
 # #                    else:
 # #                        act_prod_net["image"] = {}
             config_pks = list(config.objects.filter(
-                Q(device_config__device=b_dev) |
-                (Q(device_config__device__device_group=b_dev.device_group_id) &
-                 Q(device_config__device__device_type__identifier="MD"))). \
-                              order_by("-priority", "name").distinct().values_list("pk", flat=True))
+                Q(device_config__device=b_dev) | (
+                    Q(device_config__device__device_group=b_dev.device_group_id) &
+                    Q(device_config__device__device_type__identifier="MD")
+                )
+            ). order_by("-priority", "name").distinct().values_list("pk", flat=True))
             parent_pks = []
             while True:
-                new_pks = set(config.objects.exclude(parent_config=None).filter(Q(pk__in=config_pks + parent_pks)).values_list("parent_config", flat=True)) - set(config_pks + parent_pks)
+                new_pks = set(
+                    config.objects.exclude(parent_config=None).filter(
+                        Q(pk__in=config_pks + parent_pks)
+                    ).values_list("parent_config", flat=True)) - set(config_pks + parent_pks)
                 if new_pks:
                     parent_pks.extend(list(new_pks))
                 else:
@@ -333,7 +347,12 @@ class build_process(threading_tools.process_obj):
             # node interfaces
             conf_dict["node_if"] = []
             taken_list, not_taken_list = ([], [])
-            for cur_net in b_dev.netdevice_set.all().prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__network__network_type", "net_ip_set__domain_tree_node"):
+            for cur_net in b_dev.netdevice_set.all().prefetch_related(
+                "net_ip_set",
+                "net_ip_set__network",
+                "net_ip_set__network__network_type",
+                "net_ip_set__domain_tree_node"
+            ):
                 for cur_ip in cur_net.net_ip_set.all():
                     # if cur_ip.network_id
                     if cur_ip.network_id in act_prod_net.idx_list:
@@ -380,11 +399,14 @@ class build_process(threading_tools.process_obj):
                     cur_bc.process_scripts(pk)
                 new_tree.write_config(cur_c, cur_bc)
                 if False in conf_dict["called"]:
-                    cur_c.log("error in scripts for {}: {}".format(
-                        logging_tools.get_plural("config", len(conf_dict["called"][False])),
-                        ", ".join(sorted([unicode(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))),
-                              logging_tools.LOG_LEVEL_ERROR,
-                              state="done")
+                    cur_c.log(
+                        "error in scripts for {}: {}".format(
+                            logging_tools.get_plural("config", len(conf_dict["called"][False])),
+                            ", ".join(sorted([unicode(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR,
+                        state="done"
+                    )
                     cur_c.add_set_keys("error_dict")
                     cur_c.error_dict = dict([(unicode(config_dict[pk]), err_lines) for pk, err_lines in conf_dict["called"][False]])
                 else:
@@ -392,4 +414,3 @@ class build_process(threading_tools.process_obj):
                 cur_bc.close()
             else:
                 cur_c.log("unknown action '%s'" % (cur_c.command), logging_tools.LOG_LEVEL_ERROR, state="done")
-
