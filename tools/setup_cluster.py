@@ -369,7 +369,8 @@ def remove_south(opts):
         "/opt/python-init/lib/python/site-packages/initat/cluster",
         "/opt/python-init/lib/python/site-packages",
     ]
-    for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler"] + SYNC_APPS:
+    _south_removed = False
+    for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler", "django_extensions"] + SYNC_APPS:
         found = [_entry for _entry in [os.path.join(_path, _app.replace(".", "/")) for _path in s_paths] if os.path.isdir(_entry)]
         if len(found):
             found = found[0]
@@ -385,14 +386,20 @@ def remove_south(opts):
                             if _entry[0].isdigit() and _entry.count("py"):
                                 _full_path = os.path.join(_mig_dir, _entry)
                                 print("   removing file {}".format(_full_path))
+                                _south_removed = True
                                 os.unlink(_full_path)
             else:
                 print("no migration dir found for app {} beneath {}".format(_app, found))
         else:
             print("no path found for app {}".format(_app))
+    return _south_removed
 
 
 def migrate_app(_app, **kwargs):
+    if not _app:
+        print("")
+        print("migrating everything...")
+        print("")
     call_manage(["makemigrations", _app.split(".")[-1], "--noinput"] + kwargs.get("make_args", []))
     call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
 
@@ -405,7 +412,6 @@ def create_db(opts):
     if opts.clear_migrations:
         clear_migrations()
     check_migrations()
-    id_flags = ["--no-initial-data"] if opts.no_initial_data else []
     migrate_app("")
     # schemamigrations
     for _app in ["django.contrib.auth", "reversion", "static_precompiler"]:
@@ -426,7 +432,9 @@ def create_db(opts):
 
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
-        remove_south(opts)
+        if remove_south(opts):
+            # some south migrations found -> migrate complete app
+            migrate_app("")
         print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
