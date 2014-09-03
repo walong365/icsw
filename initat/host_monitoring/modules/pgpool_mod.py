@@ -30,7 +30,7 @@ import cPickle
 import logging_tools
 import os
 try:
-    import psycopg2 # @UnresolvedImport
+    import psycopg2  # @UnresolvedImport
 except:
     psycopg2 = None
 
@@ -49,15 +49,16 @@ DEFAULTS = {
 # Key used in srv_com dictionary like objects
 KEY = "pgpool"
 
-NODE_UP_NO_CONN = 1 # Node is up. No connections yet.
-NODE_UP = 2 # Node is up. Connections are pooled.
-NODE_DOWN = 3 # Node is down.
+NODE_UP_NO_CONN = 1  # Node is up. No connections yet.
+NODE_UP = 2  # Node is up. Connections are pooled.
+NODE_DOWN = 3  # Node is down.
 
 NS_DICT = {
-    NODE_UP_NO_CONN : "node up, no connection",
-    NODE_UP : "node up, connections are pooled",
-    NODE_DOWN : "node down",
+    NODE_UP_NO_CONN: "node up, no connection",
+    NODE_UP: "node up, connections are pooled",
+    NODE_DOWN: "node down",
 }
+
 
 class _general(hm_module):
     def init_module(self):
@@ -67,12 +68,15 @@ class _general(hm_module):
             self.log("no psycopg2 module, disabling module", logging_tools.LOG_LEVEL_ERROR)
             self.enabled = False
 
+
 class ArgumentError(Exception):
     pass
+
 
 class PgPoolCommand(hm_command):
     sql = NotImplemented
     key = NotImplemented
+
     def read_config(self):
         self.config = {}
         parser = SafeConfigParser()
@@ -90,6 +94,7 @@ class PgPoolCommand(hm_command):
         # Access via UNIX socket
         if not self.config["host"]:
             del self.config["host"]
+
     def query(self, sql=None):
         """ Passing in sql overrrides self.sql """
         cursor = psycopg2.connect(**self.config).cursor()
@@ -98,14 +103,17 @@ class PgPoolCommand(hm_command):
         else:
             cursor.execute(self.sql)
         return cursor.fetchall()
+
     def pack(self, value):
         """ Since dicts are passed through use pack and unpack to pass arbitrary objects """
         d = {}
         d["result"] = cPickle.dumps(value)
         return d
+
     def unpack(self, packed_dict):
         value = packed_dict["result"]
         return cPickle.loads(value)
+
     def __call__(self, srv_com, cur_ns):
         try:
             result = self.query()
@@ -128,23 +136,35 @@ class pgpool_status_command(PgPoolCommand):
 
 
 class pgpool_nodes_command(PgPoolCommand):
-    info_str = ("Check if the correct node count is returned and all nodes are not "
-               "in status NODE_DOWN")
+    info_str = (
+        "Check if the correct node count is returned and all nodes are not "
+        "in status NODE_DOWN"
+    )
     sql = "SHOW pool_nodes;"
     key = KEY
+
     def __init__(self, name):
         super(PgPoolCommand, self).__init__(name, positional_arguments=True)
         self.read_config()
+
     def interpret(self, srv_com, cur_ns):
         result = self.unpack(srv_com[self.key])
         node_count = len(result)
         state_dict = {
-            _key : [_entry for _entry in result if int(_entry[3]) == _key] for _key in [NODE_DOWN, NODE_UP, NODE_UP_NO_CONN]
+            _key: [_entry for _entry in result if int(_entry[3]) == _key] for _key in [NODE_DOWN, NODE_UP, NODE_UP_NO_CONN]
         }
         # filter empty states
-        state_dict = {_key : _value for _key, _value in state_dict.iteritems() if _value}
+        state_dict = {_key: _value for _key, _value in state_dict.iteritems() if _value}
         # state string
-        state_str = ", ".join(["{:d} {} : {}".format(len(state_dict[_key]), NS_DICT[_key], ",".join([_line[1] for _line in state_dict[_key]])) for _key in sorted(state_dict.keys())])
+        state_str = ", ".join(
+            [
+                "{:d} {} : {}".format(
+                    len(state_dict[_key]),
+                    NS_DICT[_key],
+                    ",".join([_line[1] for _line in state_dict[_key]])
+                ) for _key in sorted(state_dict.keys())
+            ]
+        )
         nodes_up = len(state_dict.get(NODE_UP, []))
         if cur_ns.arguments:
             t_nc = int(cur_ns.arguments[0])
@@ -154,8 +174,9 @@ class pgpool_nodes_command(PgPoolCommand):
             elif node_count != nodes_up:
                 state = limits.nag_STATE_CRITICAL
                 text = "pgpool: {} found but only {}".format(
-                    logging_tools.get_plural("node" , node_count),
-                    logging_tools.get_plural("node up", node_count - nodes_up))
+                    logging_tools.get_plural("node", node_count),
+                    logging_tools.get_plural("node up", node_count - nodes_up)
+                )
             else:
                 state = limits.nag_STATE_OK
                 text = "pgpool node count: {:d}".format(node_count)
@@ -164,15 +185,18 @@ class pgpool_nodes_command(PgPoolCommand):
         text = "{}, status: {}".format(text, state_str)
         return state, text
 
+
 class pgpool_processes_command(PgPoolCommand):
     info_str = "Check for the correct count of pgpool processes"
     sql = "SHOW pool_processes;"
     key = KEY
+
     def __init__(self, name):
         super(PgPoolCommand, self).__init__(name, positional_arguments=True)
         self.parser.add_argument("--min", dest="min", type=int, default=0)
         self.parser.add_argument("--max", dest="max", type=int, default=0)
         self.read_config()
+
     def interpret(self, srv_com, cur_ns):
         result = self.unpack(srv_com[self.key])
         process_count = len(result)
@@ -192,24 +216,29 @@ class pgpool_processes_command(PgPoolCommand):
             )
         return state, text
 
+
 class pgpool_pools_command(PgPoolCommand):
     info_str = "Check for the correct count of pgpool pools"
     sql = "SHOW pool_pools;"
     key = KEY
     # Minimum and maximum count of pgpool pools - most likely to be used with min == max
+
     def __init__(self, name):
         super(PgPoolCommand, self).__init__(name, positional_arguments=True)
         self.parser.add_argument("--min", dest="min", type=int, default=0)
         self.parser.add_argument("--max", dest="max", type=int, default=0)
         self.read_config()
+
     def interpret(self, srv_com, cur_ns):
         def _val(val):
             return int(val) if val.isdigit() else val
         result = self.unpack(srv_com[self.key])
         # import pprint
-        headers = ["pool_pid", "start_time", "pool_id", "backend_id", "database", "username",
-            "create_time", "majorversion", "minorversion", "pool_counter", "pool_backendpid", "pool_connected"]
-        result = [{key : _val(value) for key, value in zip(headers, line)} for line in result]
+        headers = [
+            "pool_pid", "start_time", "pool_id", "backend_id", "database", "username",
+            "create_time", "majorversion", "minorversion", "pool_counter", "pool_backendpid", "pool_connected"
+        ]
+        result = [{key: _val(value) for key, value in zip(headers, line)} for line in result]
         pool_count = len(result)
         if not cur_ns.min <= pool_count <= cur_ns.max:
             state = limits.nag_STATE_CRITICAL
@@ -227,13 +256,16 @@ class pgpool_pools_command(PgPoolCommand):
             )
         return state, text
 
+
 class pgpool_version_command(PgPoolCommand):
     info_str = "Check for a specific version of pgpool"
     sql = "SHOW pool_version;"
     key = KEY
+
     def __init__(self, name):
         super(PgPoolCommand, self).__init__(name, positional_arguments=True)
         self.read_config()
+
     def interpret(self, srv_com, cur_ns):
         result = self.unpack(srv_com[self.key])[0][0]
         if cur_ns.arguments:
@@ -251,4 +283,3 @@ class pgpool_version_command(PgPoolCommand):
         else:
             state, text = (limits.nag_STATE_CRITICAL, "no target version specified")
         return state, text
-

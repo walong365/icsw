@@ -30,13 +30,16 @@ import time
 
 OPENVPN_DIR = "/etc/openvpn"
 
+
 class net_speed(object):
     def __init__(self):
         self.__last_update = None
         self.__act_rx, self.__act_tx = (0., 0.)
+
     def _get_value(self, diff_val, diff_time):
         val = max(0, min(10000000., diff_val / diff_time))
         return val
+
     def feed(self, rx, tx):
         act_time = time.time()
         last_update = self.__last_update
@@ -52,31 +55,35 @@ class net_speed(object):
         else:
             return (0., 0.)
 
+
 class _general(hm_classes.hm_module):
     def __init__(self, *args, **kwargs):
         hm_classes.hm_module.__init__(self, *args, **kwargs)
         # instance dict
         self.__inst_dict = {}
+
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
             logger.warning(u"cannot execute {} ({:d}): {}".format(com, stat, out))
             out = ""
         return out.split("\n")
+
     def init_machine_vector(self, mv):
         # register entries
         self.__base_mv_registered = False
         self.__client_dict = {}
         self.__last_status_update = None
+
     def update_machine_vector(self, mv):
         self.update_status()
         ovpn_keys = self.keys()
         num_total = len(ovpn_keys)
         if num_total and not self.__base_mv_registered:
             self.__base_mv_registered = True
-            mv.register_entry("ovpn.total"      , 0, "Number of OpenVPN Instances")
+            mv.register_entry("ovpn.total", 0, "Number of OpenVPN Instances")
             mv.register_entry("ovpn.operational", 0, "Number of OpenVPN Instances operational")
-            mv.register_entry("ovpn.offline"    , 0, "Number of OpenVPN Instances offline")
+            mv.register_entry("ovpn.offline", 0, "Number of OpenVPN Instances offline")
         if self.__base_mv_registered:
             num_online = len([True for key in ovpn_keys if self[key].state])
             num_offline = num_total - num_online
@@ -101,8 +108,13 @@ class _general(hm_classes.hm_module):
             act_dict = self.__client_dict[ovpn_name]
             for client in clients:
                 c_dict = ovpn_inst[client]
-                client_dict = act_dict.setdefault(client, {"registered" : False,
-                                                           "speed"     : net_speed()})
+                client_dict = act_dict.setdefault(
+                    client,
+                    {
+                        "registered": False,
+                        "speed": net_speed()
+                    }
+                )
                 c_pfix = "ovpn.{}.{}".format(ovpn_name, client.replace(".", "_"))
                 if not client_dict["registered"]:
                     client_dict["registered"] = True
@@ -112,6 +124,7 @@ class _general(hm_classes.hm_module):
                 mv["{}.rx".format(c_pfix)] = act_rx
                 mv["{}.tx".format(c_pfix)] = act_tx
             # pprint.pprint(ovpn_inst.get_repr())
+
     def update_status(self):
         if self.__last_status_update is None or abs(self.__last_status_update - time.time()) > 5:
             # update
@@ -121,7 +134,7 @@ class _general(hm_classes.hm_module):
                 for entry in os.listdir(OPENVPN_DIR):
                     if entry.endswith(".conf") and not entry.startswith("."):
                         e_key = entry[:-5]
-                        if self.__inst_dict.has_key(e_key):
+                        if e_key in self.__inst_dict:
                             try:
                                 self.__inst_dict[e_key].update()
                             except:
@@ -152,10 +165,13 @@ class _general(hm_classes.hm_module):
                         ", ".join(sorted(old_inst))))
                 for inst in old_inst:
                     del self.__inst_dict[inst]
+
     def keys(self):
         return self.__inst_dict.keys()
+
     def __getitem__(self, key):
         return self.__inst_dict[key]
+
 
 class openvpn_instance(object):
     def __init__(self, log_h, name):
@@ -173,12 +189,16 @@ class openvpn_instance(object):
         # speed dict
         self.__speed_dict = {}
         self.update()
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_handle.log(u"[oi] {}".format(what), log_level)
+
     def keys(self):
         return self.__act_dict.keys()
+
     def __getitem__(self, key):
         return self.__act_dict[key]
+
     def update(self):
         self.ovpn_type, self.__device = (
             "unknown",
@@ -232,7 +252,6 @@ class openvpn_instance(object):
                 else:
                     stat_lines = self.__status_obj.content.split("\n")
                     if stat_lines[0].startswith("TITLE"):
-                        act_mode = ""
                         for line in stat_lines:
                             line = line.strip().split(",")
                             if line and line[0]:
@@ -256,19 +275,19 @@ class openvpn_instance(object):
                                     if key == "CLIENT_LIST":
                                         c_name = line[0]
                                         act_dict[c_name] = {
-                                            "online"    : True,
-                                            "src"       : line[1],
-                                            "remote"    : line[2],
-                                            "rx"        : int(line[3]),
-                                            "tx"        : int(line[4]),
-                                            "connected" : int(line[6])
+                                            "online": True,
+                                            "src": line[1],
+                                            "remote": line[2],
+                                            "rx": int(line[3]),
+                                            "tx": int(line[4]),
+                                            "connected": int(line[6])
                                         }
                                         if diff_time:
                                             cur_speed_dict[c_name] = (int(line[3]), int(line[4]))
                                             if c_name in prev_speed_dict:
                                                 act_dict[c_name].update({
-                                                    "rxs" : abs(int(line[3]) - prev_speed_dict[c_name][0]) / diff_time,
-                                                    "txs" : abs(int(line[4]) - prev_speed_dict[c_name][1]) / diff_time,
+                                                    "rxs": abs(int(line[3]) - prev_speed_dict[c_name][0]) / diff_time,
+                                                    "txs": abs(int(line[4]) - prev_speed_dict[c_name][1]) / diff_time,
                                                 })
                                     elif key == "ROUTING_TABLE":
                                         act_dict[line[1]]["reference"] = int(line[4])
@@ -279,7 +298,7 @@ class openvpn_instance(object):
                                     self.__ccd,
                                     client_name)
                                 if os.path.isfile(cconf_name):
-                                    if not self.__client_config_files.has_key(cconf_name):
+                                    if cconf_name not in self.__client_config_files:
                                         self.__client_config_files[cconf_name] = process_tools.cached_file(cconf_name,
                                                                                                            log_handle=self.log)
                                     self.__client_config_files[cconf_name].update()
@@ -288,7 +307,7 @@ class openvpn_instance(object):
                                         for client_line in cconf_object.content.split("\n"):
                                             line_split = client_line.strip().split()
                                             if line_split and line_split[0] == "ifconfig-push":
-                                                act_dict.setdefault(client_name, {"oneline" : False})["client_ip"] = line_split[1]
+                                                act_dict.setdefault(client_name, {"oneline": False})["client_ip"] = line_split[1]
                         self.state, self.status_str = (True, "{} connected".format(logging_tools.get_plural("client", len(act_dict.keys()))))
                     else:
                         self.state, self.status_str = (False, "wrong version of server status file")
@@ -297,19 +316,22 @@ class openvpn_instance(object):
         else:
             self.state, self.status_str = (False, "no status file defined")
         self.__act_dict = act_dict
+
     def get_repr(self):
         return {
-            "state"             : self.state,
-            "status"            : self.status_str,
-            "has_verify_script" : True if self.__verify_script else False,
-            "type"              : self.ovpn_type,
-            "dict"              : self.__act_dict,
-            "device"            : self.__device
+            "state": self.state,
+            "status": self.status_str,
+            "has_verify_script": True if self.__verify_script else False,
+            "type": self.ovpn_type,
+            "dict": self.__act_dict,
+            "device": self.__device
         }
+
 
 class certificate_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
     def _get_pem_status(self, file_name):
         pem_com = "/usr/bin/openssl x509 -in {} -startdate -enddate -noout".format(file_name)
         c_stat, c_out = commands.getstatusoutput(pem_com)
@@ -324,6 +346,7 @@ class certificate_status_command(hm_classes.hm_command):
         else:
             act_dict = None
         return act_dict
+
     def __call__(self, srv_com, cm):
         temp_dir = tempfile.mkdtemp("_certcheck")
         pem_files = sum([glob.glob(s_glob) for s_glob in cm.arguments], [])
@@ -366,26 +389,31 @@ class certificate_status_command(hm_classes.hm_command):
         for file_name in pem_files:
             act_dict = self._get_pem_status(file_name)
             if act_dict:
-                if map_dict.has_key(file_name):
+                if file_name in map_dict:
                     act_dict["openvpn_config"] = map_dict[file_name]
                 cert_dict[file_name] = act_dict
         shutil.rmtree(temp_dir)
         srv_com["certificates"] = cert_dict
+
     def interpret(self, srv_com, cur_ns):
         cert_dict = srv_com["certificates"]
         return self._interpret(cert_dict)
+
     def interpret_old(self, result, parsed_coms):
         cert_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(cert_dict)
+
     def _interpret(self, cert_dict):
         num_dict = dict([(key, 0) for key in ["ok", "warn", "error", "total"]])
         errors = []
         act_time = datetime.datetime.now()
         for file_name in sorted(cert_dict.keys()):
             cert_info = cert_dict[file_name]
-            start_diff_time, end_diff_time = ((act_time - cert_info["notBefore"]).days,
-                                              (cert_info["notAfter"] - act_time).days)
-            if cert_info.has_key("openvpn_config"):
+            start_diff_time, end_diff_time = (
+                (act_time - cert_info["notBefore"]).days,
+                (cert_info["notAfter"] - act_time).days
+            )
+            if "openvpn_config" in cert_info:
                 info_str = "{} ({})".format(
                     file_name,
                     os.path.basename(cert_info["openvpn_config"]))
@@ -422,11 +450,13 @@ class certificate_status_command(hm_classes.hm_command):
             ", ".join([logging_tools.get_plural(key, num_dict[key]) for key in ["ok", "warn", "error"] if num_dict[key]]) or "no problems",
             "; {}".format(", ".join(sorted(errors))) if errors else "")
 
+
 class openvpn_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("-i", dest="instance", type=str, default="ALL")
         self.parser.add_argument("-p", dest="peer", type=str, default="ALL")
+
     def __call__(self, srv_com, cur_ns):
         self.module.update_status()
         insts = self.module.keys()
@@ -437,19 +467,22 @@ class openvpn_status_command(hm_classes.hm_command):
         else:
             ret_dict = {}
         srv_com["openvpn_instances"] = ret_dict
+
     def interpret_old(self, result, parsed_coms):
         inst_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(inst_dict, parsed_coms, self.NOGOOD_srv_com["host"].text)
+
     def interpret(self, srv_com, cur_ns):
         inst_dict = srv_com["openvpn_instances"]
         return self._interpret(inst_dict, cur_ns, srv_com["host"].text)
+
     def _check_single_peer(self, clients, vpn_device, inst_name, peer_name, res_field):
         ret_state = limits.nag_STATE_OK
         p_ip = clients.get(peer_name, {}).get("client_ip", "")
         p_ip_str = " at {}".format(p_ip) if p_ip else ""
-        if clients.has_key(peer_name) and clients[peer_name].get("online", True):
+        if peer_name in clients and clients[peer_name].get("online", True):
             peer_dict = clients[peer_name]
-            if peer_dict.has_key("remote"):
+            if "remote" in peer_dict:
                 remote_ip = peer_dict["remote"]
                 if p_ip:
                     # has p_ip, compare with remote_ip
@@ -488,6 +521,7 @@ class openvpn_status_command(hm_classes.hm_command):
                 p_ip_str))
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state
+
     def _interpret(self, res_dict, cur_ns, host):
         inst_name = cur_ns.instance
         peer_name = cur_ns.peer
@@ -501,15 +535,16 @@ class openvpn_status_command(hm_classes.hm_command):
             check_instances = res_dict.keys()
         for inst_name in sorted(check_instances):
             # iterate over instances
-            if res_dict.has_key(inst_name):
+            if inst_name in res_dict:
                 # instance found
-                if type(res_dict[inst_name]) == type(()):
+                if type(res_dict[inst_name]) is tuple:
                     # old kind of result
                     inst_ok, inst_str, clients = res_dict[inst_name]
-                    i_type, vpn_device, p_ip = (
+                    i_type, vpn_device, _p_ip = (
                         "server",
                         "not set",
-                        "")
+                        ""
+                    )
                 else:
                     # new kind
                     act_sdict = res_dict[inst_name]

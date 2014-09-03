@@ -45,6 +45,7 @@ DEFAULTS = {
 # Key used in srv_com dictionary like objects
 KEY = "postgres"
 
+
 class pg_stat(object):
     def __init__(self, name, mv):
         self.name = name
@@ -52,11 +53,13 @@ class pg_stat(object):
         self._keys = set()
         self._init_keys(mv)
         self.last_ts = None
+
     def _key(self, key):
         _key = "{}.{}".format(self.top_key, key)
         if _key not in self._keys:
             self._keys.add(_key)
         return _key
+
     def _init_keys(self, mv):
         mv.register_entry(self._key("backends"), 0, "number of backends for $3")
         mv.register_entry(self._key("xact_commit"), 0., "number of transactions committed in $3", "1/s"),
@@ -70,13 +73,16 @@ class pg_stat(object):
         mv.register_entry(self._key("tup_deleted"), 0., "number of rows deleted by queries in $3", "1/s"),
         mv.register_entry(self._key("blk_read_time"), 0., "time spent reading data in $3", "s"),
         mv.register_entry(self._key("blk_write_time"), 0., "time spent writing data in $3", "s"),
+
     def feed(self, line, mv):
         cur_time = time.time()
         if self.last_ts:
             diff_time = max(1, abs(cur_time - self.last_ts))
             mv[self._key("backends")] = line["numbackends"]
-            for key in ["xact_commit", "xact_rollback", "blks_read", "blks_hit",
-                "tup_returned", "tup_fetched", "tup_inserted", "tup_updated", "tup_deleted"]:
+            for key in [
+                "xact_commit", "xact_rollback", "blks_read", "blks_hit",
+                "tup_returned", "tup_fetched", "tup_inserted", "tup_updated", "tup_deleted"
+            ]:
                 if key in line and key in self.last_line:
                     mv[self._key(key)] = (line[key] - self.last_line[key]) / diff_time
             for key in ["blk_read_time", "blk_write_time"]:
@@ -84,9 +90,11 @@ class pg_stat(object):
                     mv[self._key(key)] = (line[key] - self.last_line[key]) / (1000. * diff_time)
         self.last_ts = cur_time
         self.last_line = line
+
     def remove(self, mv):
         for key in self._keys:
             mv.unregister_entry(key)
+
 
 class _general(hm_module):
     def init_module(self):
@@ -97,6 +105,7 @@ class _general(hm_module):
             self.log("disabled postgres monitoring because no psycopg2 module available")
             self.enabled = False
         # pprint.pprint(self.query("SELECT * FROM pg_stat_activity;"))
+
     def read_config(self):
         self.config = {}
         parser = SafeConfigParser()
@@ -119,6 +128,7 @@ class _general(hm_module):
             self.log("disabled postgres monitoring because no config-file found")
             self.enabled = False
         # self.config["password"] = "dd"
+
     def query(self, sql):
         try:
             cursor = psycopg2.connect(**self.config).cursor()
@@ -138,8 +148,10 @@ class _general(hm_module):
                 _res = [{key: value for key, value in zip(headers, row)} for row in cursor.fetchall()]
             cursor.close()
         return _res
+
     def init_machine_vector(self, mv):
         self.databases = {}
+
     def update_machine_vector(self, mv):
         if not self.enabled:
             return
