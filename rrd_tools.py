@@ -407,11 +407,14 @@ class RRD(dict):
         self.__build_rras = kwargs.get("build_rras", False)
         self.log_com = kwargs.get("log_com", None)
         first_bytes = file(self.file_name, "rb").read(8)
+        _verbose = kwargs.get("verbose", False)
         if first_bytes[0:3] == "RRD":
-            self.log("Reading RRA-file from {}".format(self.file_name))
+            if _verbose:
+                self.log("Reading RRA-file from {}".format(self.file_name))
             self._parse_raw()
         else:
-            self.log("Reading Dump-file from {}".format(self.file_name))
+            if _verbose:
+                self.log("Reading Dump-file from {}".format(self.file_name))
             self._parse_dump()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
