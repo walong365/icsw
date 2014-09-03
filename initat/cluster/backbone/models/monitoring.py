@@ -25,36 +25,35 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
-from rest_framework import serializers
 import datetime
 import json
 import logging_tools
 import re
 
 __all__ = [
-    "mon_host_cluster", "mon_host_cluster_serializer",
-    "mon_service_cluster", "mon_service_cluster_serializer",
-    "host_check_command", "host_check_command_serializer",
-    "mon_check_command", "mon_check_command_serializer", "mon_check_command_nat_serializer",
+    "mon_host_cluster",
+    "mon_service_cluster",
+    "host_check_command",
+    "mon_check_command",
     "mon_check_command_type",
-    "mon_contact", "mon_contact_serializer",
-    "mon_notification", "mon_notification_serializer",
-    "mon_contactgroup", "mon_contactgroup_serializer",
-    "mon_device_templ", "mon_device_templ_serializer",
-    "mon_device_esc_templ", "mon_device_esc_templ_serializer",
-    "mon_host_dependency_templ", "mon_host_dependency_templ_serializer",
-    "mon_host_dependency", "mon_host_dependency_serializer",
-    "mon_service_dependency_templ", "mon_service_dependency_templ_serializer",
-    "mon_service_dependency", "mon_service_dependency_serializer",
-    "mon_ext_host", "mon_ext_host_serializer",
-    "mon_period", "mon_period_serializer",
-    "mon_service_templ", "mon_service_templ_serializer",
-    "mon_service_esc_templ", "mon_service_esc_templ_serializer",
+    "mon_contact",
+    "mon_notification",
+    "mon_contactgroup",
+    "mon_device_templ",
+    "mon_device_esc_templ",
+    "mon_host_dependency_templ",
+    "mon_host_dependency",
+    "mon_service_dependency_templ",
+    "mon_service_dependency",
+    "mon_ext_host",
+    "mon_period",
+    "mon_service_templ",
+    "mon_service_esc_templ",
     # distribution models
     "mon_dist_master",  # "mon_dist_master_serializer",
     "mon_dist_slave",  # "mon_dist_slave_serializer",
-    "monitoring_hint", "monitoring_hint_serializer",
-    "mon_check_command_special", "mon_check_command_special_serializer",
+    "monitoring_hint",
+    "mon_check_command_special",
     # trace
     "mon_trace",  # monitoring trace for speedup
     # unreachable info
@@ -186,11 +185,6 @@ class mon_host_cluster(models.Model):
         app_label = "backbone"
 
 
-class mon_host_cluster_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_host_cluster
-
-
 @receiver(signals.pre_save, sender=mon_host_cluster)
 def mon_host_cluster_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -224,11 +218,6 @@ class mon_service_cluster(models.Model):
         app_label = "backbone"
 
 
-class mon_service_cluster_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_service_cluster
-
-
 @receiver(signals.pre_save, sender=mon_service_cluster)
 def mon_service_cluster_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -254,11 +243,6 @@ class host_check_command(models.Model):
         app_label = "backbone"
 
 
-class host_check_command_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = host_check_command
-
-
 class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
@@ -276,11 +260,6 @@ class mon_check_command_special(models.Model):
 
     def __unicode__(self):
         return "mccs_{}".format(self.name)
-
-
-class mon_check_command_special_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_check_command_special
 
 
 def parse_commandline(com_line):
@@ -415,20 +394,6 @@ class mon_check_command(models.Model):
         return "mcc_{}".format(self.name)
 
 
-class mon_check_command_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
-
-    class Meta:
-        model = mon_check_command
-
-
-class mon_check_command_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
-
-    class Meta:
-        model = mon_check_command
-
-
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -502,13 +467,6 @@ class mon_contact(models.Model):
         app_label = "backbone"
 
 
-class mon_contact_serializer(serializers.ModelSerializer):
-    user_name = serializers.Field(source="get_user_name")
-
-    class Meta:
-        model = mon_contact
-
-
 @receiver(signals.pre_save, sender=mon_contact)
 def mon_contact_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -541,11 +499,6 @@ class mon_notification(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class mon_notification_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_notification
 
 
 @receiver(signals.pre_save, sender=mon_notification)
@@ -582,12 +535,6 @@ class mon_contactgroup(models.Model):
     class Meta:
         db_table = u'ng_contactgroup'
         app_label = "backbone"
-
-
-class mon_contactgroup_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_contactgroup
-        fields = ("idx", "name", "alias", "device_groups", "members", "service_templates", "service_esc_templates",)
 
 
 @receiver(signals.pre_save, sender=mon_contactgroup)
@@ -639,11 +586,6 @@ class mon_device_templ(models.Model):
         app_label = "backbone"
 
 
-class mon_device_templ_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_device_templ
-
-
 @receiver(signals.pre_save, sender=mon_device_templ)
 def mon_device_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -682,11 +624,6 @@ class mon_device_esc_templ(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class mon_device_esc_templ_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_device_esc_templ
 
 
 @receiver(signals.pre_save, sender=mon_device_esc_templ)
@@ -747,11 +684,6 @@ class mon_host_dependency_templ(models.Model):
         app_label = "backbone"
 
 
-class mon_host_dependency_templ_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_host_dependency_templ
-
-
 @receiver(signals.pre_save, sender=mon_host_dependency_templ)
 def mon_host_dependency_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -799,11 +731,6 @@ class mon_host_dependency(models.Model):
         app_label = "backbone"
 
 
-class mon_host_dependency_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_host_dependency
-
-
 class mon_service_dependency_templ(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -847,11 +774,6 @@ class mon_service_dependency_templ(models.Model):
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
-
-
-class mon_service_dependency_templ_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_service_dependency_templ
 
 
 @receiver(signals.pre_save, sender=mon_service_dependency_templ)
@@ -914,11 +836,6 @@ class mon_service_dependency(models.Model):
         app_label = "backbone"
 
 
-class mon_service_dependency_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_service_dependency
-
-
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -943,12 +860,6 @@ class mon_ext_host(models.Model):
         app_label = "backbone"
 
 
-class mon_ext_host_serializer(serializers.ModelSerializer):
-    data_image = serializers.Field(source="data_image_field")
-
-    class Meta:
-        model = mon_ext_host
-
 class mon_period(models.Model):
     idx = models.AutoField(db_column="ng_period_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, default="")
@@ -968,17 +879,6 @@ class mon_period(models.Model):
     class Meta:
         db_table = u'ng_period'
         app_label = "backbone"
-
-
-class mon_period_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_period
-        fields = (
-            "idx", "name", "alias", "sun_range", "mon_range", "tue_range",
-            "wed_range", "thu_range", "fri_range", "sat_range", "service_check_period",
-            # "mon_device_templ_set",
-        )
-        read_only_fields = ("service_check_period",)  # "mon_device_templ_set")
 
 
 @receiver(signals.pre_save, sender=mon_period)
@@ -1047,11 +947,6 @@ class mon_service_templ(models.Model):
         app_label = "backbone"
 
 
-class mon_service_templ_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_service_templ
-
-
 @receiver(signals.pre_save, sender=mon_service_templ)
 def mon_service_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -1090,11 +985,6 @@ class mon_service_esc_templ(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class mon_service_esc_templ_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = mon_service_esc_templ
 
 
 @receiver(signals.pre_save, sender=mon_service_esc_templ)
@@ -1215,8 +1105,3 @@ class monitoring_hint(models.Model):
     class Meta:
         app_label = "backbone"
         ordering = ("m_type", "key",)
-
-
-class monitoring_hint_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = monitoring_hint

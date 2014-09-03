@@ -25,11 +25,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
-from django.db.models import Q, signals, get_model
+from django import apps
+from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from initat.cluster.backbone.signals import user_changed, group_changed
-from rest_framework import serializers
 import base64
 import crypt
 import django.core.serializers
@@ -41,16 +41,16 @@ import string
 import smbpasswd
 
 __all__ = [
-    "csw_permission", "csw_permission_serializer",
-    "csw_object_permission", "csw_object_permission_serializer",
-    "user", "user_serializer",
-    "group", "group_serializer",
+    "csw_permission",
+    "csw_object_permission",
+    "user",
+    "group",
     "user_device_login",
     "user_variable",
-    "group_permission", "group_permission_serializer",
-    "group_object_permission", "group_object_permission_serializer",
-    "user_permission", "user_permission_serializer",
-    "user_object_permission", "user_object_permission_serializer",
+    "group_permission",
+    "group_object_permission",
+    "user_permission",
+    "user_object_permission",
     "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
     "AC_MASK_DICT",
 ]
@@ -144,7 +144,7 @@ class auth_cache(object):
         code_key = self._get_code_key(app_label, content_name, code_name)
         if self.has_permission(app_label, content_name, code_name) or getattr(self.auth_obj, "is_superuser", False):
             # at fist check global permission, return all devices
-            return set(get_model(app_label, self.__perm_dict[code_key].content_type.name).objects.all().values_list("pk", flat=True))
+            return set(apps.get_model(app_label, self.__perm_dict[code_key].content_type.name).objects.all().values_list("pk", flat=True))
         elif code_key in self.__obj_perms:
             # only return devices where the code_key is set
             return set(self.__obj_perms[code_key].keys())
@@ -238,18 +238,6 @@ class csw_permission(models.Model):
             )
 
 
-class content_type_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = ContentType
-
-
-class csw_permission_serializer(serializers.ModelSerializer):
-    content_type = content_type_serializer()
-
-    class Meta:
-        model = csw_permission
-
-
 class csw_object_permission(models.Model):
     """
     ClusterSoftware object permissions
@@ -265,11 +253,6 @@ class csw_object_permission(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class csw_object_permission_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = csw_object_permission
 
 
 # permission intermediate models
@@ -388,32 +371,6 @@ def user_object_permission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
-
-
-class group_permission_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = group_permission
-
-
-class group_object_permission_serializer(serializers.ModelSerializer):
-    # needed to resolve csw_permission
-    csw_object_permission = csw_object_permission_serializer()
-
-    class Meta:
-        model = group_object_permission
-
-
-class user_permission_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = user_permission
-
-
-class user_object_permission_serializer(serializers.ModelSerializer):
-    # needed to resolve csw_permission
-    csw_object_permission = csw_object_permission_serializer()
-
-    class Meta:
-        model = user_object_permission
 
 
 def get_label_codename(perm):
@@ -790,32 +747,6 @@ class user(models.Model):
         )
 
 
-class user_serializer(serializers.ModelSerializer):
-    # object_perms = csw_object_permission_serializer(many=True, read_only=True)
-    user_permission_set = user_permission_serializer(many=True, read_only=True)
-    user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
-
-    class Meta:
-        model = user
-        fields = (
-            "idx", "login", "uid", "group", "first_name", "last_name", "shell",
-            "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "secondary_groups", "user_permission_set", "user_object_permission_set",
-            "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
-            "home_dir_created",
-        )
-
-
-class user_flat_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = user
-        fields = (
-            "idx", "login", "uid", "group", "first_name", "last_name", "shell",
-            "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
-        )
-
-
 @receiver(signals.m2m_changed, sender=user.perms.through)
 def user_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
@@ -972,19 +903,6 @@ class group(models.Model):
         return u"{} (gid={:d})".format(
             self.groupname,
             self.gid)
-
-
-class group_serializer(serializers.ModelSerializer):
-    group_permission_set = group_permission_serializer(many=True, read_only=True)
-    group_object_permission_set = group_object_permission_serializer(many=True, read_only=True)
-
-    class Meta:
-        model = group
-        fields = (
-            "groupname", "active", "gid", "idx", "parent_group",
-            "homestart", "tel", "title", "email", "pager", "comment",
-            "allowed_device_groups", "group_permission_set", "group_object_permission_set",
-        )
 
 
 @receiver(signals.pre_save, sender=group)

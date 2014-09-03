@@ -1,14 +1,14 @@
 #!/usr/bin/python-init
 
+# from lxml.builder import E  # @UnresolvedImport
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, get_model
+from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
 from initat.cluster.backbone.signals import bootsettings_changed
-# from lxml.builder import E  # @UnresolvedImport
-from rest_framework import serializers
 import ipvx_tools
 import logging
 import logging_tools
@@ -16,13 +16,13 @@ import process_tools
 import re
 
 __all__ = [
-    "network", "network_serializer", "network_with_ip_serializer",
-    "network_type", "network_type_serializer",
-    "net_ip", "net_ip_serializer",
-    "network_device_type", "network_device_type_serializer",
-    "netdevice", "netdevice_serializer",
-    "netdevice_speed", "netdevice_speed_serializer",
-    "peer_information", "peer_information_serializer",
+    "network",
+    "network_type",
+    "net_ip",
+    "network_device_type",
+    "netdevice",
+    "netdevice_speed",
+    "peer_information",
     ]
 
 logger = logging.getLogger(__name__)
@@ -264,7 +264,7 @@ class net_ip(models.Model):
     @property
     def full_name(self):
         if not self.domain_tree_node_id:
-            self.domain_tree_node = get_model("backbone", "domain_tree_node").objects.get(Q(depth=0))
+            self.domain_tree_node = apps.get_model("backbone", "domain_tree_node").objects.get(Q(depth=0))
             self.save()
         if self.domain_tree_node.full_name:
             return ".".join([self.netdevice.device.name, self.domain_tree_node.full_name])
@@ -358,42 +358,6 @@ def net_ip_post_save(sender, **kwargs):
                 raise ValidationError("too many IP-adresses in a boot network defined")
             if cur_inst.netdevice.device.bootserver_id:
                 bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
-
-
-class network_device_type_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
-
-    class Meta:
-        model = network_device_type
-
-
-class network_type_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = network_type
-
-
-class network_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
-    network_type_identifier = serializers.Field(source="get_identifier")
-    num_ip = serializers.Field(0)
-
-    class Meta:
-        model = network
-
-
-class network_with_ip_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
-    network_type_identifier = serializers.Field(source="get_identifier")
-    num_ip = serializers.Field(source="num_ip")
-
-    class Meta:
-        model = network
-
-
-class net_ip_serializer(serializers.ModelSerializer):
-    # network = network_serializer()
-    class Meta:
-        model = net_ip
 
 
 class netdevice(models.Model):
@@ -521,16 +485,6 @@ def netdevice_pre_delete(sender, **kwargs):
     #        cur_dev.save(update_fields=["bootnetdevice"])
 
 
-class netdevice_serializer(serializers.ModelSerializer):
-    net_ip_set = net_ip_serializer(many=True)
-    ethtool_autoneg = serializers.Field(source="ethtool_autoneg")
-    ethtool_duplex = serializers.Field(source="ethtool_duplex")
-    ethtool_speed = serializers.Field(source="ethtool_speed")
-
-    class Meta:
-        model = netdevice
-
-
 @receiver(signals.pre_save, sender=netdevice)
 def netdevice_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -627,13 +581,6 @@ class netdevice_speed(models.Model):
             "check via ethtool" if self.check_via_ethtool else "no check")
 
 
-class netdevice_speed_serializer(serializers.ModelSerializer):
-    info_string = serializers.Field(source="info_string")
-
-    class Meta:
-        model = netdevice_speed
-
-
 @receiver(signals.pre_save, sender=network_type)
 def network_type_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -660,11 +607,6 @@ class peer_information(models.Model):
     class Meta:
         db_table = u'peer_information'
         app_label = "backbone"
-
-
-class peer_information_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = peer_information
 
 
 @receiver(signals.pre_save, sender=peer_information)

@@ -1,21 +1,20 @@
 #!/usr/bin/python-init
 
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, get_model
+from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_non_empty_string, \
     _check_float, get_related_models
-from rest_framework import serializers
-from lxml.builder import E  # @UnresolvedImport
-import re
 import process_tools
+import re
 
 __all__ = [
     "domain_name_tree", "valid_domain_re", "TOP_LOCATIONS",
-    "domain_tree_node", "domain_tree_node_serializer",
+    "domain_tree_node",
     "category_tree",
-    "category", "category_serializer",
+    "category",
     "TOP_MONITORING_CATEGORY",
 ]
 
@@ -57,8 +56,8 @@ class domain_name_tree(object):
                 self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
 
     def check_intermediate(self):
-        device = get_model("backbone", "device")
-        net_ip = get_model("backbone", "net_ip")
+        device = apps.get_model("backbone", "device")
+        net_ip = apps.get_model("backbone", "net_ip")
         used_pks = set(device.objects.all().values_list("domain_tree_node", flat=True)) | set(net_ip.objects.all().values_list("domain_tree_node", flat=True))
         for cur_tn in self.__node_dict.itervalues():
             is_im = cur_tn.pk not in used_pks
@@ -67,7 +66,7 @@ class domain_name_tree(object):
                 cur_tn.save()
 
     def add_device_references(self):
-        device = get_model("backbone", "device")
+        device = apps.get_model("backbone", "device")
         used_dtn_pks = list(device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("domain_tree_node_id", flat=True))
         used_dict = dict([(key, used_dtn_pks.count(key)) for key in set(used_dtn_pks)])
         for value in self.__node_dict.itervalues():
@@ -181,18 +180,11 @@ class domain_tree_node(models.Model):
         app_label = "backbone"
 
 
-class domain_tree_node_serializer(serializers.ModelSerializer):
-    tree_info = serializers.Field(source="__unicode__")
-
-    class Meta:
-        model = domain_tree_node
-
-
 @receiver(signals.pre_save, sender=domain_tree_node)
 def domain_tree_node_pre_save(sender, **kwargs):
     if "instance" in kwargs:
-        device = get_model("backbone", "device")
-        net_ip = get_model("backbone", "net_ip")
+        device = apps.get_model("backbone", "device")
+        net_ip = apps.get_model("backbone", "net_ip")
         cur_inst = kwargs["instance"]
         cur_inst.name = cur_inst.name.strip()
         if cur_inst.name and cur_inst.name.count("."):
@@ -271,8 +263,8 @@ def domain_tree_node_post_save(sender, **kwargs):
 
 def _migrate_mon_type(cat_tree):
     # read all monitoring_config_types
-    mon_check_command = get_model("backbone", "mon_check_command")
-    mon_check_command_type = get_model("backbone", "mon_check_command_type")
+    mon_check_command = apps.get_model("backbone", "mon_check_command")
+    mon_check_command_type = apps.get_model("backbone", "mon_check_command_type")
     cur_cats = set(mon_check_command.objects.all().values_list("categories", flat=True))
     if cur_cats == set([None]):
         all_mon_ct = dict([(pk, "{}/{}".format(
@@ -287,8 +279,8 @@ def _migrate_mon_type(cat_tree):
 
 
 def _migrate_location_type(cat_tree):
-    device_location = get_model("backbone", "device_location")
-    device = get_model("backbone", "device")
+    device_location = apps.get_model("backbone", "device_location")
+    device = apps.get_model("backbone", "device")
     # just to be sure ...
     if device_location and device:
         # read all monitoring_config_types
@@ -346,9 +338,9 @@ class category_tree(object):
                             cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
                             cur_node.save()
                         self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
-        if not TOP_MONITORING_CATEGORY in self.__category_lut:
+        if TOP_MONITORING_CATEGORY not in self.__category_lut:
             _migrate_mon_type(self)
-        if not TOP_LOCATION_CATEGORY in self.__category_lut:
+        if TOP_LOCATION_CATEGORY not in self.__category_lut:
             _migrate_location_type(self)
         for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY, TOP_MONITORING_CATEGORY, TOP_LOCATION_CATEGORY]:
             if check_name not in self.__category_lut:
@@ -488,14 +480,6 @@ class category(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class category_serializer(serializers.ModelSerializer):
-    allow_add_remove = True
-    num_refs = serializers.Field(source="get_references")
-
-    class Meta:
-        model = category
 
 
 @receiver(signals.pre_save, sender=category)

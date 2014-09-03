@@ -23,15 +23,14 @@
 """ DB definitions for background jobs """
 
 from django.db import models
-from rest_framework import serializers
 import logging
 import server_command
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "background_job", "background_job_serializer",
-    "background_job_run", "background_job_run_serializer",
+    "background_job",
+    "background_job_run",
 ]
 
 
@@ -83,14 +82,6 @@ class background_job(models.Model):
         )
 
 
-class background_job_serializer(serializers.ModelSerializer):
-    initiator_name = serializers.Field(source="initiator_name")
-    user_name = serializers.Field(source="user_name")
-
-    class Meta:
-        model = background_job
-
-
 class background_job_run(models.Model):
     idx = models.AutoField(primary_key=True)
     # background job
@@ -114,8 +105,3 @@ class background_job_run(models.Model):
     class Meta:
         ordering = ("date",)
         app_label = "backbone"
-
-
-class background_job_run_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = background_job_run

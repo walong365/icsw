@@ -7,15 +7,14 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-from rest_framework import serializers
 
 __all__ = [
-    "package_repo", "package_repo_serializer",
-    "package_search", "package_search_serializer",
-    "package_search_result", "package_search_result_serializer",
+    "package_repo",
+    "package_search",
+    "package_search_result",
     "package",  # "package_serializer",
     "package_device_connection",  # "package_device_connection_serializer",
-    "package_service", "package_service_serializer",
+    "package_service",
 ]
 
 
@@ -32,11 +31,6 @@ class package_service(models.Model):
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
-
-
-class package_service_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = package_service
 
 
 # package related models
@@ -110,13 +104,6 @@ class package_repo(models.Model):
         app_label = "backbone"
 
 
-class package_repo_serializer(serializers.ModelSerializer):
-    service_name = serializers.Field(source="get_service_name")
-
-    class Meta:
-        model = package_repo
-
-
 class package_search(models.Model):
     idx = models.AutoField(primary_key=True)
     search_string = models.CharField(max_length=128, default="")
@@ -144,11 +131,6 @@ class package_search(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class package_search_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = package_search
 
 
 @receiver(signals.pre_save, sender=package_search)
@@ -200,11 +182,6 @@ class package_search_result(models.Model):
     class Meta:
         ordering = ("name", "arch", "version",)
         app_label = "backbone"
-
-
-class package_search_result_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = package_search_result
 
 
 class package(models.Model):

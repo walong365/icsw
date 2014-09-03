@@ -25,18 +25,17 @@
 # from django.dispatch import receiver
 from django.db import models
 from initat.cluster.backbone.models.functions import cluster_timezone
-from rest_framework import serializers
 import datetime
 import time
 
 __all__ = [
-    "rms_job", "rms_job_serializer",
-    "rms_job_run", "rms_job_run_serializer",
-    "rms_pe_info", "rms_pe_info_serializer",
-    "rms_project", "rms_project_serializer",
-    "rms_department", "rms_department_serializer",
-    "rms_queue", "rms_queue_serializer",
-    "rms_pe", "rms_pe_serializer",
+    "rms_job",
+    "rms_job_run",
+    "rms_pe_info",
+    "rms_project",
+    "rms_department",
+    "rms_queue",
+    "rms_pe",
 ]
 
 
@@ -54,12 +53,6 @@ class rms_project(models.Model):
         app_label = "backbone"
 
 
-class rms_project_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = rms_project
-        fields = ("name",)
-
-
 class rms_department(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=255)
@@ -74,12 +67,6 @@ class rms_department(models.Model):
         app_label = "backbone"
 
 
-class rms_department_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = rms_department
-        fields = ("name",)
-
-
 class rms_queue(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=255)
@@ -92,12 +79,6 @@ class rms_queue(models.Model):
         app_label = "backbone"
 
 
-class rms_queue_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = rms_queue
-        fields = ("name",)
-
-
 class rms_pe(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=255)
@@ -108,12 +89,6 @@ class rms_pe(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class rms_pe_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = rms_pe
-        fields = ("name",)
 
 
 class rms_job(models.Model):
@@ -264,42 +239,3 @@ class rms_pe_info(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class rms_job_serializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = rms_job
-        fields = (
-            "name", "jobid", "taskid", "owner", "user",
-        )
-
-
-class rms_pe_info_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = rms_pe_info
-        fields = ("name",)
-
-
-class rms_job_run_serializer(serializers.ModelSerializer):
-    rms_job = rms_job_serializer()
-    rms_queue = rms_queue_serializer()
-    rms_project = rms_project_serializer()
-    rms_department = rms_department_serializer()
-    rms_pe = rms_pe_serializer()
-    # need workaround because of django restframework error :-(
-    rms_pe_info = serializers.Field(source="rms_pe_info")
-    start_time = serializers.Field(source="get_start_time")
-    end_time = serializers.Field(source="get_end_time")
-    queue_time = serializers.Field(source="get_queue_time")
-    start_time_py = serializers.Field(source="get_start_time_py")
-    end_time_py = serializers.Field(source="get_end_time_py")
-
-    class Meta:
-        model = rms_job_run
-        fields = (
-            "rms_job", "rms_queue", "rms_project", "rms_department", "rms_pe", "rms_pe_info",
-            "start_time", "end_time", "start_time_py", "end_time_py", "device", "hostname",
-            "granted_pe", "slots", "priority", "account", "failed", "exit_status", "rms_queue",
-            "queue_time",
-        )

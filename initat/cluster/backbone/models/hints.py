@@ -22,14 +22,11 @@
 """ database definitions for hints """
 
 from django.db import models
-# from django.db.models import Q, signals, get_model
-# from django.dispatch import receiver
-from rest_framework import serializers
 
 __all__ = [
-    "config_hint", "config_hint_serializer",
-    "config_var_hint", "config_var_hint_serializer",
-    "config_script_hint", "config_script_hint_serializer",
+    "config_hint",
+    "config_var_hint",
+    "config_script_hint",
 ]
 
 
@@ -89,21 +86,3 @@ class config_script_hint(models.Model):
 
     class Meta:
         app_label = "backbone"
-
-
-class config_var_hint_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = config_var_hint
-
-
-class config_script_hint_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = config_script_hint
-
-
-class config_hint_serializer(serializers.ModelSerializer):
-    config_var_hint_set = config_var_hint_serializer(many=True)
-    config_script_hint_set = config_script_hint_serializer(many=True)
-
-    class Meta:
-        model = config_hint

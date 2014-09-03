@@ -490,6 +490,8 @@ if PASSWORD_HASH_FUNCTION not in ["SHA1", "CRYPT"]:
 
 INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 
+TEST_RUNNER = 'django.test.runner.DiscoverRunner'
+
 rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []) + [
     "rest_framework.renderers.JSONRenderer",
     # "rest_framework_csv.renderers.CSVRenderer",
