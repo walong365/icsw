@@ -1514,6 +1514,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         parent in host_names,
                                     )
                                 )
+            if "possible_parents" in host:
                 del host["possible_parents"]
         self.log("end parenting run, {:d} ok, {:d} failed".format(_p_ok, _p_failed))
         if cur_gc.master and not _bc.single_build:
