@@ -20,20 +20,24 @@
 """ restore users / groups from old CSW """
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import django
+django.setup()
+
 from django.db.models import Q
 from initat.cluster.backbone.models import group, user
-from lxml import etree # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
 import codecs
 import logging_tools
+import sys
 
 OBJ_DICT = {
-    "user" : user,
-    "group" : group,
+    "user": user,
+    "group": group,
 }
+
 
 def main():
     if len(sys.argv) != 3:
@@ -55,29 +59,33 @@ def main():
     for c_type in ["group", "user"]:
         new_ot = OBJ_DICT[c_type]
         sprim_field, prim_field = {
-            "group" : ("ggroupname", "groupname"),
-            "user"  : ("login", "login")}[c_type]
+            "group": ("ggroupname", "groupname"),
+            "user": ("login", "login")}[c_type]
         copy_fields = {
-            "group" : [
+            "group": [
                 "active", "gid", "homestart", "scratchstart",
                 ("respvname", "first_name"), ("respnname", "last_name"),
                 ("resptitan", "title"), ("respemail", "email"),
                 ("resptel", "tel"), ("respcom", "comment"),
                 ("groupcom", "comment"), ("ggroupname" , "groupname"),
-                ],
-            "user" : [
+            ],
+            "user": [
                 "active", "uid", "login", "aliases", "home", "shell",
                 "password", "password_ssha",
                 ("uservname", "first_name"), ("usernname", "last_name"),
                 ("usertitan", "title"), ("useremail", "email"),
                 ("userpager", "pager"), ("usercom", "comment"),
                 "nt_password", "lm_password",
-                ],
+            ],
         }.get(c_type, [])
         def_fields = {
-            "group" : {"email" : ""},
-            "user"  : {"first_name" : "", "last_name" : "", "title" : "", "pager" : "", "tel" : "",
-                       "nt_password" : "", "lm_password" : "", "email" : "", "comment" : ""},
+            "group": {
+                "email": ""
+            },
+            "user": {
+                "first_name": "", "last_name": "", "title": "", "pager": "", "tel": "",
+                "nt_password": "", "lm_password": "", "email": "", "comment": ""
+            },
         }.get(c_type, {})
         for new_obj in _xml[c_type]:
             # print etree.tostring(new_obj, pretty_print=True)
@@ -92,13 +100,13 @@ def main():
                 else:
                     src_dict[key] = unicode(src_dict[key])
             try:
-                db_obj = new_ot.objects.get(Q(**{prim_field : prim_value}))
+                db_obj = new_ot.objects.get(Q(**{prim_field: prim_value}))
             except new_ot.DoesNotExist:
                 print("%s with %s='%s' not found, creating new" % (
                     c_type,
                     prim_field,
                     prim_value)
-                      )
+                )
                 db_obj = new_ot()
                 if c_type == "user":
                     db_obj.group = group_lut[src_dict["ggroup"]]
@@ -108,7 +116,7 @@ def main():
                     c_type,
                     prim_field,
                     prim_value)
-                      )
+                )
                 if c_type == "user":
                     if db_obj.export_id == 0:
                         db_obj.export = None
@@ -142,4 +150,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
