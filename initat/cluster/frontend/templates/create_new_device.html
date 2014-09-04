@@ -101,7 +101,7 @@
                 <div class="form-group" ng-show="any_peers()">
                     <label class="control-label col-md-5">Connect to</label>
                     <div class="controls col-md-6">
-                        <select name="peer" class="form-control" ng-model="device_data.peer" ng-options="value.idx as value.info group by value.device_group_name for value in all_peers()"></select>
+                        <select name="peer" class="form-control" ng-model="device_data.peer" ng-options="value.idx as value.info group by value.device_group_name for value in all_peers"></select>
                     </div>
                 </div>
                 <div class="form-group">
@@ -172,6 +172,10 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
                 for entry in $scope.rest_data.peers
                     entry.info = "#{entry.devname} on #{entry.device_name}"
                 $scope.peers = (entry for entry in $scope.rest_data.peers when entry.routing)
+	            r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
+	            for entry in $scope.peers 
+	                r_list.push(entry)
+	            $scope.all_peers = r_list
                 $.unblockUI()
             )
         $scope.get_image_src = () ->
@@ -205,11 +209,6 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
             return (entry.name for entry in $scope.rest_data.device_group when entry.cluster_device_group == false and entry.enabled)
         $scope.any_peers = () ->
             return if $scope.peers.length > 0 then true else false
-        $scope.all_peers = () ->
-            r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
-            for entry in $scope.peers 
-                r_list.push(entry)
-            return r_list
         $scope.build_device_dict = () ->
             return {
                 "full_name" : $scope.full_name

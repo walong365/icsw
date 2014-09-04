@@ -672,7 +672,6 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
             else
                 $scope.multi_device_mode = false
                 $scope.device_pks = [parseInt(pk_str)]
-            #$scope.device_pk = dev_pk
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
@@ -739,7 +738,7 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 url     : "{% url 'base:change_category' %}"
                 data    :
                     "obj_type" : "device"
-                    "obj_pk"   : $scope.device_pk
+                    "obj_pk"   : $scope.device_pks[0]
                     "subtree"  : "/location"
                     "cur_sel"  : angular.toJson(sel_list)
                 success : (xml) =>
