@@ -180,11 +180,23 @@ class build_process(threading_tools.process_obj):
                             # finaly, we have the device, the boot netdevice, actual production net
                             self._generate_config_step2(cur_c, b_dev, act_prod_net, boot_netdev, dev_sc)
                         elif len(net_devs_ok) > 1:
-                            cur_c.log("too many netdevices (%d) with IP in production network found" % (len(net_devs_ok)), logging_tools.LOG_LEVEL_ERROR, state="done")
+                            cur_c.log(
+                                "too many netdevices (%d) with IP in production network found" % (len(net_devs_ok)),
+                                logging_tools.LOG_LEVEL_ERROR,
+                                state="done"
+                            )
                         elif len(net_devs_warn) == 1:
-                            cur_c.log(" one netdevice with IP in production network found but not on bootnetdevice", logging_tools.LOG_LEVEL_ERROR, state="done")
+                            cur_c.log(
+                                " one netdevice with IP in production network found but not on bootnetdevice",
+                                logging_tools.LOG_LEVEL_ERROR,
+                                state="done"
+                            )
                         else:
-                            cur_c.log("too many netdevices (%d) with IP in production network found (not on bootnetdevice!)" % (len(net_devs_warn)), logging_tools.LOG_LEVEL_ERROR, state="done")
+                            cur_c.log(
+                                "too many netdevices (%d) with IP in production network found (not on bootnetdevice!)" % (len(net_devs_warn)),
+                                logging_tools.LOG_LEVEL_ERROR,
+                                state="done"
+                            )
                     else:
                         cur_c.log("no IP-address in production network", logging_tools.LOG_LEVEL_ERROR, state="done")
         cur_c.log_kwargs("after build", only_new=False)
@@ -192,7 +204,11 @@ class build_process(threading_tools.process_obj):
         # send result
         e_time = time.time()
         if dev_sc:
-            dev_sc.device.add_log(self.config_src, log_status_lookup(int(cur_c.state_level)), "built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+            dev_sc.device.add_log(
+                self.config_src,
+                log_status_lookup(int(cur_c.state_level)),
+                "built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time))
+            )
         cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
@@ -252,7 +268,12 @@ class build_process(threading_tools.process_obj):
                 if server_type not in multiple_configs:
                     routing_info, act_server, routes_found = ([66666666], None, 0)
                     for actual_server in all_servers[server_type]:
-                        act_routing_info = actual_server.get_route_to_other_device(self.router_obj, dev_sc, filter_ip=running_ip, allow_route_to_other_networks=True)
+                        act_routing_info = actual_server.get_route_to_other_device(
+                            self.router_obj,
+                            dev_sc,
+                            filter_ip=running_ip,
+                            allow_route_to_other_networks=True
+                        )
                         if act_routing_info:
                             routes_found += 1
                             # store in some dict-like structure

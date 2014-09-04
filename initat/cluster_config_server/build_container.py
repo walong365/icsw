@@ -33,6 +33,7 @@ import process_tools
 import sys
 import time
 
+
 class tree_node_g(object):
     """ tree node representation for intermediate creation of tree_node structure """
     def __init__(self, path="", c_node=None, is_dir=True, parent=None, intermediate=False):
@@ -63,11 +64,13 @@ class tree_node_g(object):
             self.content_node_valid = True
     def add_config(self, c_pk):
         self.used_config_pks.add(c_pk)
+
     def get_path(self):
         if self.parent:
             return "%s/%s" % (self.parent.get_path(), self.path)
         else:
             return "%s" % (self.path)
+
     def get_node(self, path, c_node, dir_node=False, use_existing=False):
         if self.root_node:
             # normalize path at top level
@@ -78,7 +81,7 @@ class tree_node_g(object):
                 if self.content_node_valid:
                     if self.content_node != c_node:
                         if not use_existing:
-                            raise ValueError, "content node '%s' already set, missing append=True ?" % (path)
+                            raise ValueError("content node '%s' already set, missing append=True ?" % (path))
                 else:
                     self.content_node = c_node
                 # match, return myself
@@ -87,14 +90,17 @@ class tree_node_g(object):
                 self.intermediate = False
                 return self
             else:
-                raise ValueError, "request node (%s, %s) is a %s" % (
-                    path,
-                    "dir" if dir_node else "file",
-                    "dir" if self.is_dir else "file")
+                raise ValueError(
+                    "request node ({}, {}) is a {}".format(
+                        path,
+                        "dir" if dir_node else "file",
+                        "dir" if self.is_dir else "file"
+                    )
+                )
         else:
             path_list = path.split(os.path.sep)
             if path_list[0] != self.path:
-                raise KeyError, "path mismatch: %s != %s" % (path_list[0], self.path)
+                raise KeyError("path mismatch: {} != {}".format(path_list[0], self.path))
             if path_list[1] not in self.childs:
                 if len(path_list) == 2 and not dir_node:
                     # add content node (final node)
@@ -103,23 +109,29 @@ class tree_node_g(object):
                     # add (intermediate) dir node
                     self.childs[path_list[1]] = tree_node_g(path_list[1], None, parent=self, intermediate=True)
             return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), c_node, dir_node=dir_node, use_existing=use_existing)
+
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
+
     def __unicode__(self):
         sep_str = "  " * self.nest_level
-        ret_f = ["%s%s%s (%s) %s%s    :: %d/%d/%o" % (
-            "[I]" if self.intermediate else "   ",
-            "[E]" if self.error_flag else "   ",
-            sep_str,
-            self.get_type_str(),
-            "%s -> %s" % (self.path, self.content_node.source) if self.is_link else self.path,
-            "/" if self.is_dir else "",
-        self.content_node.uid,
-        self.content_node.gid,
-        self.content_node.mode)]
+        ret_f = [
+            "%s%s%s (%s) %s%s    :: %d/%d/%o" % (
+                "[I]" if self.intermediate else "   ",
+                "[E]" if self.error_flag else "   ",
+                sep_str,
+                self.get_type_str(),
+                "%s -> %s" % (self.path, self.content_node.source) if self.is_link else self.path,
+                "/" if self.is_dir else "",
+                self.content_node.uid,
+                self.content_node.gid,
+                self.content_node.mode
+            )
+        ]
         if self.is_dir:
             ret_f.extend([unicode(cur_c) for cur_c in self.childs.itervalues()])
         return "\n".join(ret_f)
+
     def write_node(self, cur_c, cur_bc, **kwargs):
         node_list = []
         cur_tn = tree_node(
@@ -152,9 +164,11 @@ class tree_node_g(object):
             node_list.extend(sum([cur_child.write_node(cur_c, cur_bc, parent=cur_tn) for cur_child in self.childs.itervalues()], []))
         return node_list
 
+
 class generated_tree(tree_node_g):
     def __init__(self):
         tree_node_g.__init__(self, "")
+
     def write_config(self, cur_c, cur_bc):
         cur_c.log("creating tree")
         tree_node.objects.filter(Q(device=cur_bc.conf_dict["device"])).delete()
@@ -172,10 +186,10 @@ class generated_tree(tree_node_g):
             cur_c.log("creating directory %s" % (config_dir))
             os.mkdir(config_dir)
         config_dict = {
-            "f" : os.path.join(cur_c.node_dir, "config_files_{}".format(active_identifier)),
-            "l" : os.path.join(cur_c.node_dir, "config_links_{}".format(active_identifier)),
-            "d" : os.path.join(cur_c.node_dir, "config_dirs_{}".format(active_identifier)),
-            "e" : os.path.join(cur_c.node_dir, "config_delete_{}".format(active_identifier)),
+            "f": os.path.join(cur_c.node_dir, "config_files_{}".format(active_identifier)),
+            "l": os.path.join(cur_c.node_dir, "config_links_{}".format(active_identifier)),
+            "d": os.path.join(cur_c.node_dir, "config_dirs_{}".format(active_identifier)),
+            "e": os.path.join(cur_c.node_dir, "config_delete_{}".format(active_identifier)),
         }
         _line_dict = {}
         num_dict = dict([(key, 0) for key in config_dict.iterkeys()])
@@ -201,6 +215,7 @@ class generated_tree(tree_node_g):
         # pprint.pprint(cur_bc.conf_dict)
         cur_c.log("wrote {}".format(logging_tools.get_plural("node", nodes_written)))
 
+
 class build_container(object):
     def __init__(self, b_client, config_dict, conf_dict, g_tree, router_obj):
         self.b_client = b_client
@@ -216,84 +231,115 @@ class build_container(object):
         self.log("init build continer")
     def init_uid_gid(self):
         self.uid, self.gid = (0, 0)
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, **kwargs):
         self.b_client.log("[bc] %s" % (what), level, **kwargs)
+
     def close(self):
         self.log("done in %s" % (logging_tools.get_diff_time_str(time.time() - self.__s_time)))
         del self.b_client
         del self.config_dict
         del self.g_tree
+
     def _set_dir_mode(self, mode):
         self.__dir_mode = mode
+
     def _get_dir_mode(self):
         return self.__dir_mode
     dir_mode = property(_get_dir_mode, _set_dir_mode)
+
     def _set_file_mode(self, mode):
         self.__file_mode = mode
+
     def _get_file_mode(self):
         return self.__file_mode
     file_mode = property(_get_file_mode, _set_file_mode)
+
     def _set_link_mode(self, mode):
         self.__link_mode = mode
+
     def _get_link_mode(self):
         return self.__link_mode
     link_mode = property(_get_link_mode, _set_link_mode)
+
     def _add_object(self, new_obj):
         return getattr(self, "_add_%s_object" % ({
-            "l" : "link",
-            "e" : "delete",
-            "f" : "file",
-            "c" : "copy",
-            "d" : "dir"}[new_obj.c_type]))(new_obj)
+            "l": "link",
+            "e": "delete",
+            "f": "file",
+            "c": "copy",
+            "d": "dir"
+        }[new_obj.c_type]))(new_obj)
+
     def add_copy_object(self, fon, source, **kwargs):
         return self._add_copy_object(copy_object(fon, config=self, source=source, **kwargs))
+
     def _add_copy_object(self, c_obj):
         cur_node = self.g_tree.get_node(c_obj.dest, c_obj)
-        if not cur_node in self.__touched_objects:
+        if cur_node not in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
+
     def add_file_object(self, fon, **kwargs):
         return self._add_file_object(file_object(fon, config=self, **kwargs), append=kwargs.get("append", False))
+
     def _add_file_object(self, f_obj, append=False):
         cur_node = self.g_tree.get_node(f_obj.dest, f_obj, use_existing=append)
-        if not cur_node in self.__touched_objects:
+        if cur_node not in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
         f_obj.set_config(self)
         return cur_node.content_node
+
     def add_dir_object(self, don, **kwargs):
         return self._add_dir_object(dir_object(don, config=self, **kwargs))
+
     def _add_dir_object(self, d_obj):
         cur_node = self.g_tree.get_node(d_obj.dest, d_obj, dir_node=True)
-        if not cur_node in self.__touched_objects:
+        if cur_node not in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
         d_obj.set_config(self)
         return cur_node.content_node
+
     def add_delete_object(self, don, **kwargs):
         return self._add_delete_object(delete_object(don, config=self, **kwargs))
+
     def _add_delete_object(self, d_obj):
         cur_node = self.g_tree.get_node(d_obj.dest, d_obj)
-        if not cur_node in self.__deleted_files:
+        if cur_node not in self.__deleted_files:
             self.__deleted_files.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
         return None
+
     def add_link_object(self, fon, source, **kwargs):
         return self._add_link_object(link_object(fon, config=self, source=source, **kwargs))
+
     def _add_link_object(self, l_obj):
         cur_node = self.g_tree.get_node(l_obj.dest, l_obj)
-        if not cur_node in self.__touched_links:
+        if cur_node not in self.__touched_links:
             self.__touched_links.append(cur_node)
         l_obj.set_config(self)
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
+
     def process_scripts(self, conf_pk):
         cur_conf = self.config_dict[conf_pk]
         self.cur_conf = cur_conf
         # build local variables
-        local_vars = dict(sum(
-            [[(cur_var.name, cur_var.value) for cur_var in getattr(cur_conf, "config_%s_set" % (var_type)).all()] for var_type in ["str", "int", "bool", "blob"]], []))
+        local_vars = dict(
+            sum(
+                [
+                    [
+                        (
+                            cur_var.name, cur_var.value
+                        ) for cur_var in getattr(cur_conf, "config_{}_set".format(var_type)).all()
+                    ] for var_type in ["str", "int", "bool", "blob"]
+                ],
+                []
+            )
+        )
         # copy local vars
         conf_dict = self.conf_dict
         for key, value in local_vars.iteritems():
@@ -318,11 +364,14 @@ class build_container(object):
                     "exec")
             except:
                 exc_info = process_tools.exception_info()
-                self.log("error during compile of {} ({})".format(
-                    cur_script.name,
-                    logging_tools.get_diff_time_str(time.time() - start_c_time)),
-                         logging_tools.LOG_LEVEL_ERROR,
-                         register=True)
+                self.log(
+                    "error during compile of {} ({})".format(
+                        cur_script.name,
+                        logging_tools.get_diff_time_str(time.time() - start_c_time)
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR,
+                    register=True
+                )
                 for line in exc_info.log_lines:
                     self.log("   *** {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                 conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
@@ -332,30 +381,30 @@ class build_container(object):
                 start_time = time.time()
                 stdout_c, stderr_c = (logging_tools.dummy_ios(), logging_tools.dummy_ios())
                 old_stdout, old_stderr = (sys.stdout, sys.stderr)
-                sys.stdout, sys.stderr = (stdout_c  , stderr_c)
+                sys.stdout, sys.stderr = (stdout_c, stderr_c)
                 self.__touched_objects, self.__touched_links, self.__deleted_files = ([], [], [])
                 try:
                     ret_code = eval(code_obj, {}, {
                         # old version
-                        "dev_dict"        : conf_dict,
+                        "dev_dict": conf_dict,
                         # new version
-                        "conf_dict"       : conf_dict,
-                        "router_obj"      : self.router_obj,
-                        "config"          : self,
-                        "dir_object"      : dir_object,
-                        "delete_object"   : delete_object,
-                        "copy_object"     : copy_object,
-                        "link_object"     : link_object,
-                        "file_object"     : file_object,
-                        "do_ssh"          : do_ssh,
-                        "do_etc_hosts"    : do_etc_hosts,
-                        "do_hosts_equiv"  : do_hosts_equiv,
-                        "do_nets"         : do_nets,
-                        "do_routes"       : do_routes,
-                        "do_fstab"        : do_fstab,
-                        "do_uuid"         : do_uuid,
-                        "partition_setup" : partition_setup,
-                        })
+                        "conf_dict": conf_dict,
+                        "router_obj": self.router_obj,
+                        "config": self,
+                        "dir_object": dir_object,
+                        "delete_object": delete_object,
+                        "copy_object": copy_object,
+                        "link_object": link_object,
+                        "file_object": file_object,
+                        "do_ssh": do_ssh,
+                        "do_etc_hosts": do_etc_hosts,
+                        "do_hosts_equiv": do_hosts_equiv,
+                        "do_nets": do_nets,
+                        "do_routes": do_routes,
+                        "do_fstab": do_fstab,
+                        "do_uuid": do_uuid,
+                        "partition_setup": partition_setup,
+                    })
                 except:
                     exc_info = process_tools.exception_info()
                     conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
@@ -395,7 +444,7 @@ class build_container(object):
                         self.log("no objects deleted")
                 else:
                     conf_dict["called"].setdefault(True, []).append(cur_conf.pk)
-                    if ret_code == None:
+                    if ret_code is None:
                         ret_code = 0
                     self.log("  exited after %s (%s compile time) with return code %d" % (
                         logging_tools.get_diff_time_str(time.time() - start_time),
@@ -410,6 +459,7 @@ class build_container(object):
         for key in local_vars.iterkeys():
             del conf_dict[key]
         del self.cur_conf
+
     def _show_logs(self, stdout_c, stderr_c, **kwargs):
         for log_line in [line.rstrip() for line in stdout_c.get_content().split("\n") if line.strip()]:
             self.log("out: %s" % (log_line))
@@ -417,4 +467,3 @@ class build_container(object):
             self.log("*** err: %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
             if kwargs.get("register_error", False):
                 self.log(kwargs.get("pre_str", "stderr"), logging_tools.LOG_LEVEL_ERROR, register=True)
-

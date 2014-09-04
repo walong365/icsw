@@ -25,11 +25,14 @@ import logging_tools
 from django.db.models import Q
 from initat.cluster.backbone.models import partition, sys_partition
 
+
 class partition_setup(object):
     def __init__(self, conf):
         root_dev = None
         part_valid = False
-        part_list = partition.objects.filter(Q(partition_disc__partition_table=conf.conf_dict["device"].partition_table)).select_related("partition_disc", "partition_disc__partition_table", "partition_fs")
+        part_list = partition.objects.filter(
+            Q(partition_disc__partition_table=conf.conf_dict["device"].partition_table)
+        ).select_related("partition_disc", "partition_disc__partition_table", "partition_fs")
         if len(part_list):
             part_valid = True
             disc_dict, fstab, sfdisk, parted = ({}, [], [], [])
@@ -69,18 +72,22 @@ class partition_setup(object):
                         upper_size = 0
                 else:
                     upper_size = 0
-                parted.append("mkpart %s %s %s %s" % (
-                    fs_name == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
-                    {"ext3"  : "ext2",
-                     "ext4"  : "ext2",
-                     "btrfs" : "ext2",
-                     "xfs"   : "ext2",
-                     "swap"  : "linux-swap",
-                     "lvm"   : "ext2",
-                     "ext"   : ""}.get(fs_name, fs_name),
-                    "%d" % (lower_size),
-                    fs_name == "ext" and "_" or ("%d" % (upper_size) if upper_size else "_")
-                ))
+                parted.append(
+                    "mkpart %s %s %s %s" % (
+                        fs_name == "ext" and "extended" or (act_pnum < 5 and "primary" or "logical"),
+                        {
+                            "ext3": "ext2",
+                            "ext4": "ext2",
+                            "btrfs": "ext2",
+                            "xfs": "ext2",
+                            "swap": "linux-swap",
+                            "lvm": "ext2",
+                            "ext": ""
+                        }.get(fs_name, fs_name),
+                        "%d" % (lower_size),
+                        fs_name == "ext" and "_" or ("%d" % (upper_size) if upper_size else "_")
+                    )
+                )
                 if fs_name == "lvm":
                     parted.append("set %d lvm on" % (act_pnum))
                 if upper_size:
@@ -97,7 +104,7 @@ class partition_setup(object):
                     mp = cur_part.mountpoint if cur_part.mountpoint else fs
                     if mp == "/":
                         root_part, root_part_type = (act_part, fs)
-                    if not fspart_dict.has_key(fs):
+                    if fs not in fspart_dict:
                         fspart_dict[fs] = []
                     fspart_dict[fs].append(act_part)
                     fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
@@ -126,24 +133,28 @@ class partition_setup(object):
                     sfdisk,
                     parted)
                 # logging
-                for what, name in [(fstab , "fstab "),
-                                   (sfdisk, "sfdisk"),
-                                   (parted, "parted")]:
+                for what, name in [
+                    (fstab, "fstab "),
+                    (sfdisk, "sfdisk"),
+                    (parted, "parted")
+                ]:
                     print "Content of %s (%s):" % (name, logging_tools.get_plural("line", len(what)))
                     for line_num, line in zip(xrange(len(what)), what):
                         print " - %3d %s" % (line_num + 1, line)
             else:
-                raise ValueError, "Partition-table %s is not valid" % (pt_name)
+                raise ValueError("Partition-table %s is not valid" % (pt_name))
         else:
-            raise ValueError, "Found no partition-info"
+            raise ValueError("Found no partition-info")
+
     def create_part_files(self, pinfo_dir):
         if self.fspart_dict:
             for pn, pp in self.fspart_dict.iteritems():
                 file("%s/%sparts" % (pinfo_dir, pn), "w").write("\n".join(pp + [""]))
-            for file_name, content in [("rootpart"    , self.root_part),
-                                       ("rootparttype", self.root_part_type),
-                                       ("fstab"       , "\n".join(self.fstab)),
-                                       ("sfdisk"      , "\n".join(self.sfdisk)),
-                                       ("parted"      , "\n".join(self.parted))]:
+            for file_name, content in [
+                ("rootpart", self.root_part),
+                ("rootparttype", self.root_part_type),
+                ("fstab", "\n".join(self.fstab)),
+                ("sfdisk", "\n".join(self.sfdisk)),
+                ("parted", "\n".join(self.parted))
+            ]:
                 file("%s/%s" % (pinfo_dir, file_name), "w").write("%s\n" % (content))
-

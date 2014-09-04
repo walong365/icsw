@@ -25,11 +25,13 @@ import config_tools
 import logging_tools
 import server_command
 
+
 # copy from md-config-server
 class var_cache(dict):
     def __init__(self, cdg):
         super(var_cache, self).__init__(self)
         self.__cdg = cdg
+
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
             "GLOBAL",
@@ -37,9 +39,10 @@ class var_cache(dict):
             "dev__{:d}".format(cur_dev.pk))
         if global_key not in self:
             def_dict = {
-                "SNMP_VERSION"         : 2,
-                "SNMP_READ_COMMUNITY"  : "public",
-                "SNMP_WRITE_COMMUNITY" : "private"}
+                "SNMP_VERSION": 2,
+                "SNMP_READ_COMMUNITY": "public",
+                "SNMP_WRITE_COMMUNITY": "private"
+            }
             # read global configs
             self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
             # update with def_dict
@@ -62,6 +65,7 @@ class var_cache(dict):
                     info_dict[key_n] += 1
         return ret_dict, info_dict
 
+
 class simple_request(object):
     def __init__(self, cc, zmq_id, node_text):
         self.cc = cc
@@ -77,8 +81,10 @@ class simple_request(object):
         self.command = node_text.strip().split()[0]
         self.data = " ".join(node_text.strip().split()[1:])
         self.server_ip = None
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.cc.log(what, log_level)
+
     def _find_best_server(self, conf_list):
         dev_sc = config_tools.server_check(
             short_host_name=self.cc.device.name,
@@ -98,6 +104,7 @@ class simple_request(object):
         else:
             self.log("no result in find_best_server ({})".format(logging_tools.get_plural("entry", len(conf_list))))
             return None
+
     def _get_config_str_vars(self, cs_name):
         config_pks = config.objects.filter(
             Q(device_config__device=self.cc.device) |
@@ -109,8 +116,9 @@ class simple_request(object):
         for c_var in c_vars:
             for act_val in [part.strip() for part in c_var.value.strip().split() if part.strip()]:
                 if act_val not in ent_list:
-                    ent_list.append(act_val) #
+                    ent_list.append(act_val)  #
         return ent_list
+
     def _get_valid_server_struct(self, s_list):
         # list of boot-related config names
         bsl_servers = set(["kernel_server", "image_server", "mother_server"])
@@ -159,9 +167,12 @@ class simple_request(object):
             # srv_routing = valid_server_struct.prefer_production_net(srv_routing)
             if not srv_routing:
                 # check for updated network ?
-                self.log("found valid_server_struct {} but no route".format(
-                    valid_server_struct.server_info_str),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "found valid_server_struct {} but no route".format(
+                        valid_server_struct.server_info_str
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 valid_server_struct = None
             else:
                 # print "r", srv_routing
@@ -174,22 +185,27 @@ class simple_request(object):
             self.log("no valid server_struct found (search list: {})".format(", ".join(s_list)),
                      logging_tools.LOG_LEVEL_ERROR)
         return valid_server_struct
+
     def create_config_dir(self):
         # link to build client
         self.cc.complex_config_request(self, "create_config_dir")
+
     def get_partition(self):
         # link to build client
         self.cc.complex_config_request(self, "get_partition")
+
     def create_config_dir_result(self, result):
         if result:
             return "ok created config dir"
         else:
             return "error cannot create config dir"
+
     def get_partition_result(self, result):
         if result:
             return "ok created partition info"
         else:
             return "error cannot create partition info"
+
     def build_config_result(self, result):
         xml_result = server_command.srv_command(source=result)
         res_node = xml_result.xpath(".//ns:device[@pk='{:d}']".format(self.cc.device.pk), smart_strings=False)[0]
@@ -197,4 +213,6 @@ class simple_request(object):
         for key, value in res_node.attrib.iteritems():
             self.log("   {:<10s}: {}".format(key, value))
         del self.cc.pending_config_requests[self.cc.device.name]
-        self.cc.done_config_requests[self.cc.device.name] = "ok config built" if int(res_node.attrib["state_level"]) in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN] else "error building config"
+        self.cc.done_config_requests[
+            self.cc.device.name
+        ] = "ok config built" if int(res_node.attrib["state_level"]) in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN] else "error building config"
