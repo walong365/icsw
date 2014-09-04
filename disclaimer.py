@@ -14,6 +14,7 @@ import re
 from StringIO import StringIO
 
 SENDMAIL_BIN = process_tools.find_file("sendmail")
+SPAMC_BIN = process_tools.find_file("spamc")
 
 
 class disclaimer_handler(object):
@@ -221,13 +222,22 @@ class disclaimer_handler(object):
         self.log("size of mail after processing is {}".format(logging_tools.get_size_str(len(self.dst_mail))))
         # os.unlink(_tmpfile.name)
 
-    def send_mail(self):
+    def send_via_sendmail(self):
         _sm_args = [SENDMAIL_BIN] + self.args[1:]
         self.log("calling sendmail with '{}'".format(" ".join(_sm_args)))
         sm_proc = subprocess.Popen(_sm_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         _stdout, _stderr = sm_proc.communicate(input=self.dst_mail)
         self._result = sm_proc.wait()
         self.log("sendmail process ended with {}".format(self._result))
+        self.log("stdout / stderr : '{}' / '{}'".format(_stdout, _stderr))
+
+    def send_via_spamc(self):
+        _sm_args = [SPAMC_BIN] + self.args[1:]
+        self.log("calling spamc with '{}'".format(" ".join(_sm_args)))
+        sm_proc = subprocess.Popen(_sm_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _stdout, _stderr = sm_proc.communicate(input=self.dst_mail)
+        self._result = sm_proc.wait()
+        self.log("spamc process ended with {}".format(self._result))
         self.log("stdout / stderr : '{}' / '{}'".format(_stdout, _stderr))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -246,10 +256,9 @@ def main():
         _exc_info = process_tools.exception_info()
         for _line in _exc_info.log_lines:
             my_disc.log("error processing: {}".format(_line), logging_tools.LOG_LEVEL_CRITICAL)
-    my_disc.send_mail()
+    my_disc.send_via_spamc()
     my_disc.close()
     return my_disc._result
 
 if __name__ == "__main__":
     sys.exit(main())
-
