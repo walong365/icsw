@@ -173,7 +173,7 @@ class domain_tree_node_form(ModelForm):
     )
 
     def __init__(self, *args, **kwargs):
-        super(domain_tree_node, self).__init__(*args, **kwargs)
+        super(domain_tree_node_form, self).__init__(*args, **kwargs)
         for clear_f in ["parent"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None

@@ -56,6 +56,8 @@
     {% block tab_js %}{% endblock %}
     
     {% endblock %}
+    {% block site_css %}
+    {% endblock %}
     
     <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
     
@@ -86,20 +88,21 @@
         {% compressed_js 'js_base' %}
         {% compressed_js 'js_extra1' %}
     
-    {% include "javascript/init.js" %}
-    {% include "javascript/deviceinfo.js" %}
-    {# common angular modules #}
-    {% include "angular/common_functions.cs" %}
-    {% include "angular/tree.cs" %}
-    {% include "angular/rrd.cs" %}
-    {% include "angular/device_config.cs" %}
-    {% include "angular/device_livestatus.cs" %}
-    {% include "angular/device_graph.cs" %}
-    {% include "angular/device_network.cs" %}
-    {% include "angular/device_variable.cs" %}
-    {# site-related angular modules #}
-    {% block angular %}{% endblock %}
-    
+        {% include "javascript/init.js" %}
+        {% include "javascript/deviceinfo.js" %}
+        {# common angular modules #}
+        {% include "angular/common_functions.cs" %}
+        {% include "angular/tree.cs" %}
+        {% include "angular/rrd.cs" %}
+        {% include "angular/device_config.cs" %}
+        {% include "angular/device_livestatus.cs" %}
+        {% include "angular/device_graph.cs" %}
+        {% include "angular/device_network.cs" %}
+        {% include "angular/device_variable.cs" %}
+        {# site-related javascript load blocks #}
+        {% block js_load_1 %}{% endblock %}
+        {# site-related angular modules #}
+        {% block angular %}{% endblock %}
     {% endblock %}
 
 </head>

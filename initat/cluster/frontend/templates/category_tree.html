@@ -1,8 +1,13 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n coffeescript crispy_forms_tags compressed staticfiles %}
 
 {% block title %}Category tree{% endblock %}
+
+{% block js_load_1 %}
+<script src='//maps.googleapis.com/maps/api/js?sensor=false'></script>
+{% compressed_js 'js_gmaps' %}
+{% endblock %}
 
 {% block content %}
 
@@ -26,6 +31,13 @@
     </tr>
 </script>
 
+<script type="text/ng-template" id="gmap.html">
+    {{ positions }}
+    <map style="display:block;height:800px" center="[48.1,16.3]">
+        <marker ng-repeat="p in positions" position="{{ [ p.latitude, p.longitude ] }}" title="{{p.toString()}}"></marker>
+    </map>
+</script>
+
 <script type="text/ng-template" id="cat_row.html">
     <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
     <td><span ng-show="obj.depth">{{ obj.full_name }}</span></td>
@@ -43,8 +55,12 @@
         <input type="button" value="create new" class="btn btn-success" ng-click="create_new($event, '')"/>&nbsp;
         <input type="button" value="prune tree" class="btn btn-warning" ng-click="prune_tree()"/>
     </h2>
-    <div class="panel panel-default">
-        <div class="panel-body">
+    <tabset>
+        <tab heading="Google Maps" select="activate_map()">
+            <h3>Map view</h3>
+            <gmap></gmap>
+        </tab>
+        <tab heading="Categories">
     <div class="row">
         <div class="col-sm-4">
             <div class="row">
@@ -55,7 +71,8 @@
             </div>
             <div class="row">
                 <div class="col-sm-12" ng-if="modal_active && !settings.use_modal" >
-                    <h3>Create / modify</h3>
+                    <h3 ng-show="create_mode">Create</h3>
+                    <h3 ng-show="!create_mode">Modify</h3>
                     <div edittemplate class="well well-sm">
                     </div>
                 </div>
@@ -72,20 +89,18 @@
             </table>
         </div>
     </div>
-    </div>
-    </div>
+        </tab>
+    </tabset>
 </div>
 </div>
 
 {% endverbatim %}
 
-<script src="http://maps.google.com/maps/api/js?sensor=false"></script>
-
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
-category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ngMap"])
 
 angular_module_setup([category_tree_module])
 
@@ -132,6 +147,7 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
         $scope.edit_mixin.create_rest_url = Restangular.all("{% url 'rest:category_list' %}".slice(1))
         $scope.edit_mixin.edit_template = "category.html"
         $scope.form = {}
+        $scope.positions = []
         $scope.reload = () ->
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
@@ -143,6 +159,7 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
                 $scope.rebuild_cat()
         )
         $scope.edit_obj = (cat, event) ->
+            $scope.create_mode = false
             $scope.cat.clear_active()
             $scope.cat_lut[cat.idx].active = true
             $scope.cat.show_active()
@@ -156,6 +173,7 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
                             else
                                 entry.obj.full_name = "/#{entry.obj.name}"
                     )
+                    $scope.build_markers()
                 else
                     $scope.reload()
             )
@@ -177,13 +195,32 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
                 else
                     $scope.cat.add_root_node(t_entry)
             $scope.cat_lut = cat_lut
+            $scope.build_markers()
+        $scope.build_markers = () ->
+            new_list = []
+            for _entry in $scope.entries
+                if _entry.depth > 1 and _entry.full_name.split("/")[1] == "location"
+                    if _entry.latitude and _entry.longitude
+                        new_list.push(
+                            {
+                                "latitude": _entry.latitude
+                                "longitude": _entry.longitude
+                            }
+                        )
+            $scope.positions = new_list
         $scope.new_object = () ->
             if $scope.new_top_level
                 _parent = (value for value in $scope.entries when value.depth == 1 and value.name == $scope.new_top_level)[0]
-                return {"name" : "new_#{_parent.name}", "parent" : _parent.idx}
+                _name = "new_#{_parent.name}"
+                r_struct = {"name" : _name, "parent" : _parent.idx, "depth" : 2, "full_name" : "/#{$scope.new_top_level}/#{_name}"}
+                if $scope.new_top_level == "location"
+                    r_struct["latitude"] = 48.1
+                    r_struct["longitude"] = 16.3
+                return r_struct
             else
-                return {"name" : "new_cat"}
+                return {"name" : "new_cat", "depth" : 2, "full_name" : ""}
         $scope.create_new = ($event, top_level) ->
+            $scope.create_mode = true
             $scope.new_top_level = top_level
             $scope.cat.clear_active()
             $scope.edit_mixin.create($event).then((data) ->
@@ -264,32 +301,15 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
                 else
                     return "has-error"
     }
+).directive("gmap", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("gmap.html")
+        link : (scope, element, attrs) ->
+    }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
 )
-
-#angular_add_simple_list_controller(
-#    category_tree_module,
-#    "cat_based",
-#    {
-#        new_object          : ($scope) ->
-#            parent = (entry.idx for entry in $scope.entries when entry.depth == 1)[0]
-#            return {
-#                "name" : "new"
-#                "parent" : parent
-#                "full_name" : "#{parent.full_name}/new"
-#            }
-#        object_created: (new_obj, _b, $scope) -> 
-#            new_obj.name = ""
-#            $scope.reload()
-#        post_delete: ($scope, del_obj) ->
-#            $scope.cat.prune(
-#                (entry) ->
-#                    return entry.obj.full_name != del_obj.full_name
-#            )
-#            $scope.cat.recalc()
-#    }
-#)
 
 angular.element(document).ready(() ->
     angular.bootstrap($("div[id='icsw.category_tree']"), ["icsw.category_tree"])
