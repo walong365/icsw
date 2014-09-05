@@ -22,13 +22,14 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
     package_search_result, device_variable, device, package_device_connection, \
-    package_device_connection_wp_serializer, package_repo_serializer, \
     package_service
+from initat.cluster.backbone.serializers import package_device_connection_wp_serializer, \
+    package_repo_serializer
 from initat.package_install.server.config import global_config
-from initat.package_install.server.constants import  CONFIG_NAME, \
+from initat.package_install.server.constants import CONFIG_NAME, \
     PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 from rest_framework.renderers import XMLRenderer
 import commands
 import datetime
@@ -39,12 +40,15 @@ import server_command
 import subprocess
 import time
 
+
 class repository(object):
     def __init__(self):
         pass
 
+
 class rpm_repository(repository):
     pass
+
 
 class repo_type(object):
     def __init__(self, master_process):
@@ -56,8 +60,10 @@ class repo_type(object):
                 self.REPO_SUBTYPE_STR
             )
         )
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[rt] {}".format(what), log_level)
+
     def init_search(self, s_struct):
         cur_search = s_struct.run_info["stuff"]
         cur_search.last_search_string = cur_search.search_string
@@ -66,14 +72,17 @@ class repo_type(object):
         cur_search.current_state = "run"
         cur_search.save(update_fields=["last_search_string", "current_state", "num_searches", "results"])
 
+
 class repo_type_rpm_yum(repo_type):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "yum"
     SCAN_REPOS = "yum -v repolist all --color=no"
     CLEAR_CACHE = "yum -y clean all"
     REPO_CLASS = rpm_repository
+
     def search_package(self, s_string):
         return "yum -v --showduplicates search {}".format(s_string)
+
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
         new_repos = []
@@ -89,7 +98,7 @@ class repo_type_rpm_yum(repo_type):
                 key = key.strip().lower()
                 value = value.strip()
                 if key.startswith("repo-"):
-                    key = key [5:]
+                    key = key[5:]
                     cur_repo_dict[key] = value
             else:
                 # empty line, set repo_id to zero
@@ -136,6 +145,7 @@ class repo_type_rpm_yum(repo_type):
                 "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos))),
                 server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
+
     def search_result(self, s_struct):
         cur_mode, _ln = (0, None)
         found_packs = []
@@ -157,8 +167,8 @@ class repo_type_rpm_yum(repo_type):
                         if line.lower().startswith("repo") and line.count(":"):
                             p_info.append(line.strip().split(":")[1].strip())
                             found_packs.append(p_info)
-                    #p_name = line.split()[0].strip()
-                    #if p_name and p_name != ":":
+                    # p_name = line.split()[0].strip()
+                    # if p_name and p_name != ":":
                     #    if p_name[0].isdigit() and p_name.count(":"):
                     #        p_name = p_name.split(":", 1)[1]
                     #    found_packs.append(p_name)
@@ -198,6 +208,7 @@ class repo_type_rpm_yum(repo_type):
         cur_search.save(update_fields=["results"])
         self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
 
+
 class repo_type_rpm_zypper(repo_type):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "zypper"
@@ -205,8 +216,10 @@ class repo_type_rpm_zypper(repo_type):
     SCAN_REPOS = "zypper --xml ls -r -d"
     CLEAR_CACHE = "zypper clean -a"
     REPO_CLASS = rpm_repository
+
     def search_package(self, s_string):
         return "zypper --xml search -s {}".format(s_string)
+
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
         repo_xml = etree.fromstring(s_struct.read())
@@ -290,6 +303,7 @@ class repo_type_rpm_zypper(repo_type):
                 "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos))),
                 server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
+
     def search_result(self, s_struct):
         res_xml = etree.fromstring(s_struct.read())
         cur_search = s_struct.run_info["stuff"]
@@ -319,13 +333,16 @@ class repo_type_rpm_zypper(repo_type):
                     result.attrib["name"],
                     ), logging_tools.LOG_LEVEL_ERROR)
 
+
 class subprocess_struct(object):
     run_idx = 0
+
     class Meta:
         max_usage = 2
         max_runtime = 300
         use_popen = True
         verbose = False
+
     def __init__(self, master_process, src_id, com_line, **kwargs):
         self.log_com = master_process.log
         subprocess_struct.run_idx += 1
@@ -346,14 +363,16 @@ class subprocess_struct(object):
         self._init_time = time.time()
         if kwargs.get("start", False):
             self.run()
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[ss {:d}/{:d}] {}".format(self.run_idx, self.com_num, what), log_level)
+
     def run(self):
-        run_info = {"stuff" : None}
+        run_info = {"stuff": None}
         if self.multi_command:
             if self.command_line:
                 cur_cl, add_stuff = self.command_line[self.com_num]
-                if type(cur_cl) == type(()):
+                if type(cur_cl) == tuple:
                     # in case of tuple
                     run_info["comline"] = cur_cl[0]
                 else:
@@ -374,15 +393,18 @@ class subprocess_struct(object):
             if self.pre_cb_func:
                 self.pre_cb_func(self)
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+
     def read(self):
         if self.popen:
             self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read())
             return self.current_stdout
         else:
             return None
+
     def process_result(self):
         if self.post_cb_func:
             self.post_cb_func(self)
+
     def finished(self):
         if self.run_info["comline"] is None:
             self.run_info["result"] = 0
@@ -411,9 +433,11 @@ class subprocess_struct(object):
                 self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read())
         return fin
 
+
 class client(object):
     all_clients = {}
     name_set = set()
+
     def __init__(self, c_uid, name):
         self.uid = c_uid
         self.name = name
@@ -422,6 +446,7 @@ class client(object):
         self.device = device.objects.get(Q(name=self.name))
         self.__log_template = None
         self.__last_contact = None
+
     def create_logger(self):
         if self.__log_template is None:
             self.__log_template = logging_tools.get_logger(
@@ -433,6 +458,7 @@ class client(object):
                 context=client.srv_process.zmq_context,
                 init_logger=True)
             self.log("added client")
+
     @staticmethod
     def init(srv_process):
         client.srv_process = srv_process
@@ -444,9 +470,11 @@ class client(object):
         client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())
         for client_el in client.xml.xpath(".//package_client", smart_strings=False):
             client.register(client_el.text, client_el.attrib["name"])
+
     @staticmethod
     def get(key):
         return client.lut[key]
+
     @staticmethod
     def register(uid, name):
         if uid not in client.uid_set:
@@ -481,18 +509,23 @@ class client(object):
                 if not len(cur_el):
                     client.xml.append(E.package_client(uid, name=name))
                     file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
+
     def close(self):
         if self.__log_template is not None:
             self.__log_template.close()
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.create_logger()
         self.__log_template.log(level, what)
+
     def send_reply(self, srv_com):
         self.srv_process.send_reply(self.uid, srv_com)
+
     def __unicode__(self):
         return u"{} ({})".format(
             self.name,
             self.uid)
+
     def _modify_device_variable(self, var_name, var_descr, var_type, var_value):
         try:
             cur_var = device_variable.objects.get(Q(device=self.device) & Q(name=var_name))
@@ -503,6 +536,7 @@ class client(object):
         cur_var.description = var_descr
         cur_var.set_value(var_value)
         cur_var.save()
+
     def _set_version(self, new_vers):
         if new_vers != self.__version:
             try:
@@ -523,8 +557,10 @@ class client(object):
                 "actual version of the client",
                 "s",
                 self.__version)
+
     def _expand_var(self, var):
         return var.replace("%{ROOT_IMPORT_DIR}", global_config["ROOT_IMPORT_DIR"])
+
     def _get_package_list(self, srv_com):
         cur_image = self.device.act_image
         # for testing
@@ -532,7 +568,11 @@ class client(object):
         cur_kernel = self.device.act_kernel
         # for testing
         # cur_kernel = self.device.new_kernel
-        pdc_list = package_device_connection.objects.filter(Q(device=self.device)).prefetch_related("kernel_list", "image_list").select_related("package", "package__target_repo")
+        pdc_list = package_device_connection.objects.filter(
+            Q(device=self.device)
+        ).prefetch_related(
+            "kernel_list", "image_list"
+        ).select_related("package", "package__target_repo")
         # send to client
         send_list = []
         for cur_pdc in pdc_list:
@@ -566,6 +606,7 @@ class client(object):
                 *[cur_pdc.get_xml(with_package=True) for cur_pdc in send_list]
             )
         srv_com["package_list"] = resp
+
     def _get_repo_list(self, srv_com):
         repo_list = package_repo.objects.filter(Q(publish_to_nodes=True))
         send_ok = [cur_repo for cur_repo in repo_list if cur_repo.distributable]
@@ -581,6 +622,7 @@ class client(object):
                 *[cur_repo.get_xml() for cur_repo in send_ok]
             )
         srv_com["repo_list"] = resp
+
     def _package_info(self, srv_com):
         pdc_xml = srv_com.xpath(".//package_device_connection", smart_strings=False)[0]
         info_xml = srv_com.xpath(".//result|.//main_result", smart_strings=False)
@@ -592,10 +634,15 @@ class client(object):
             cur_pdc.response_str = etree.tostring(info_xml)
             # print cur_pdc.response_str
             cur_pdc.interpret_response()
-            cur_pdc.save(update_fields=["response_type", "response_str", "installed", "install_time",
-                "installed_name", "installed_version", "installed_release"])
+            cur_pdc.save(
+                update_fields=[
+                    "response_type", "response_str", "installed", "install_time",
+                    "installed_name", "installed_version", "installed_release"
+                ]
+            )
         else:
             self.log("got package_info without result", logging_tools.LOG_LEVEL_WARN)
+
     def new_command(self, srv_com):
         s_time = time.time()
         self.__last_contact = s_time
@@ -624,4 +671,3 @@ class client(object):
         self.log("handled command {} in {}".format(
             cur_com,
             logging_tools.get_diff_time_str(e_time - s_time)))
-

@@ -23,11 +23,13 @@ import logging_tools
 import subprocess
 import time
 
+
 # copy from command_tools.py (package mother)
 class simple_command(object):
     sc_idx = 0
     com_list = []
     stream_dict = {}
+
     def __init__(self, com_str, **kwargs):
         simple_command.sc_idx += 1
         self.idx = simple_command.sc_idx
@@ -65,10 +67,12 @@ class simple_command(object):
             self.data = kwargs["data"]
         simple_command.com_list.append(self)
         # print "add", len(simple_command.com_list)
+
     @staticmethod
     def setup(process):
         simple_command.process = process
         simple_command.process.log("init simple_command metastructure")
+
     @staticmethod
     def check():
         cur_time = time.time()
@@ -86,25 +90,31 @@ class simple_command(object):
             if keep:
                 new_list.append(com)
         simple_command.com_list = new_list
+
     @staticmethod
     def idle():
         return True if not simple_command.com_list else False
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com("[sc {:d}] {}".format(self.idx, what), log_level)
         else:
             simple_command.process.log("[sc {:d}] {}".format(self.idx, what), log_level)
+
     def terminate(self):
         if self.popen:
             del self.popen
+
     def finished(self):
         self.result = self.popen.poll()
-        return self.result != None
+        return self.result is not None
+
     def read(self):
         if self.popen:
             return self.popen.stdout.read()
         else:
             return None
+
     def done(self):
         self.end_time = time.time()
         if self.done_func:
@@ -113,6 +123,7 @@ class simple_command(object):
             simple_command.process.sc_finished(self)
         if self.stream:
             self.stream.done()
+
     def call(self):
         self.start_time = time.time()
         self.popen = subprocess.Popen(self.com_str, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)

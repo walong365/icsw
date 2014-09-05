@@ -30,6 +30,7 @@ import shutil
 import sys
 import time
 
+
 def check_for_association(dc, p_idx, name, version, release, set_dict):
     dc.execute("SELECT p.*, p.package_idx, ip.inst_package_idx, ip.last_build, ip.location, ip.package FROM package p, inst_package ip WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release))
     pip_dict = {}
@@ -78,6 +79,7 @@ def check_for_association(dc, p_idx, name, version, release, set_dict):
                     dc.execute("DELETE FROM inst_package WHERE inst_package_idx=%d" % (del_idx))
     return write_entry
 
+
 def getinput(prompt=":"):
     while 1:
         ret = ""
@@ -91,6 +93,7 @@ def getinput(prompt=":"):
             pass
         break
     return ret
+
 
 def list_packages(list_arg, dc):
     all_packs = None
@@ -114,6 +117,7 @@ def list_packages(list_arg, dc):
             out_fm.add_line([pack["name"], pack["version"], pack["release"], pack["packager"], time.ctime(pack["last_build"]), pack["architecture"], str(pack["size"]), pack["summary"]])
         print str(out_fm)
 
+
 def delete_package(dc, name, version, release):
     sql_str = "SELECT p.* FROM inst_package ip, package p WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release)
     dc.execute(sql_str)
@@ -130,12 +134,14 @@ def delete_package(dc, name, version, release):
         else:
             print "Cannot delete"
 
+
 def list_groups(dc):
     sql_str = "SELECT p.pgroup,COUNT(DISTINCT p.package_idx) AS c FROM inst_package ip,package p WHERE ip.package=p.package_idx GROUP BY p.pgroup"
     dc.execute(sql_str)
     all_g = dc.fetchall()
     print "Found %s:" % (logging_tools.get_plural("distinct group", len(all_g)))
     print "\n".join(["%3d : %s" % (db_rec["c"], db_rec["pgroup"]) for db_rec in all_g])
+
 
 def check_auto_incr_release(dc, name, version):
     sql_str = "SELECT p.release FROM inst_package ip, package p WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s'" % (name, version)
@@ -150,37 +156,15 @@ def check_auto_incr_release(dc, name, version):
         release = 1
     return release
 
+
 def main():
-    # try:
-    #    opts, args = getopt.getopt(sys.argv[1:], "n:v:r:g:hl:a:D:C:P:u:g:G:Lms:d:", ["help", "del", "doc=", "exclude-dir-names="] + ["%s-script=" % (script_t) for script_t in rpm_build_tools.SCRIPT_TYPES])
-    # except:
-    #    print "Error parsing commandline %s" % (" ".join(sys.argv[:]))
-    #    sys.exit(-1)
-    # version, release = ("0.0", "AUTO_INCR")
-    # name = None
-    sql_server = True
     package_group = "System/Monitoring"
-    list_arg = None
-    # if mysql_tools:
-    #    db_con = mysql_tools.dbcon_container(with_logging=False)
-    #    try:
-    #        dc = db_con.get_connection("cluster_full_access")
-    #    except:
-    #        dc = None
-    # else:
     dc = None
     config_dict = {
-        "dist_dir"      : "",
-        "copy_to"       : "",
-        "exc_dir_names" : [],
+        "dist_dir": "",
+        "copy_to": "",
+        "exc_dir_names": [],
     }
-    if dc:
-        dc.execute("SELECT cs.name, cs.value FROM config_str cs, new_config c WHERE c.name='package_server' AND cs.new_config=c.new_config_idx")
-        for db_rec in dc.fetchall():
-            if db_rec["name"] == "ROOT_EXPORT_DIR":
-                config_dict["copy_to"] = db_rec["value"]
-            elif db_rec["name"] == "ROOT_IMPORT_DIR":
-                config_dict["dist_dir"] = db_rec["value"]
     if not (config_dict["dist_dir"] or config_dict["copy_to"]):
         if os.path.isfile("/etc/debian_version"):
             config_dict["dist_dir"] = "/packages/debian"
@@ -189,97 +173,16 @@ def main():
             config_dict["dist_dir"] = "/packages/RPMs"
             config_dict["copy_to"] = "/opt/cluster/system/packages/RPMs"
     long_package_name = None
-    delete, list_grps = (False, False)
     script_dict = {}
     # build_package entity
 
     my_arg = rpm_build_tools.package_parser()
     opts = my_arg.parse_args()
     build_p = rpm_build_tools.build_package(opts)
-    if False:
-        print opts
-        if not opts:
-            opts = [("-h", None)]
-        for opt, arg in opts:
-            if opt in ["-h", "--help"]:
-                print "Usage: %s [ OPTIONS ] FILES/DIRS" % (os.path.basename(sys.argv[0]))
-                print "where OPTIONS is one of:"
-                print "  -v VERS                  sets package version the VERS, defaults to '%s'" % (version)
-                print "  -r REL                   sets package release to REL, defaults to '%s'" % (release)
-                print "  -n NAME                  sets package name to NAME"
-                print "  -G GRP                   sets package group to GRP, defaults to '%s'" % (package_group)
-                print "  -a ARCH                  sets package architecture to ARCH, default is '%s'" % (build_p["arch"])
-                print "  -D dist_dir              sets distribution directory, default to %s" % (config_dict["dist_dir"])
-                print "  -C copy_to_dir           copy package to directory, defaults to %s" % (config_dict["copy_to"])
-                print "  -l [NAME|ALL]            lists one or all installable packages"
-                print "  -P package_name          parses package and inserts it into the database"
-                print "  -s summary               sets the package summary; defaults to '%s'" % (build_p["summary"])
-                print "  -d description           sets the package description; defaults to '%s'" % (build_p["description"])
-                print "  -u user                  user for package-files, default is %s" % (build_p["user"])
-                print "  -g group                 group for package-files, default is %s" % (build_p["group"])
-                print "  -L                       list all known groups"
-                print "  -m                       no SQL server (default: yes)"
-                print "  --doc DOC_PF             comma-separated list of path-parts to define doc-files, default is %s" % (",".join(build_p["doc_dirs"]))
-                print "  --exclude-dir-names EXC_DIRS comma-separated list of directory names to exclude (example .svn)"
-                print "  --del                    deletes all matching packages found in database"
-                for script_t in rpm_build_tools.SCRIPT_TYPES:
-                    print "  %-24s %s" % ("--%s-script FILE" % (script_t),
-                                          "reads %s-script content from file (or use FILE as value if FILE startswith a ':' [then a double-semicolon is the line-delimeter])" % (script_t))
-                print " FILES/DIRS is a space delimeted list of (SRC[:DST]|!SRC) pairs"
-                print "example:"
-                print "%s -v 2.4 -r 3 -n atlas -G System/Libraries /opt/libs/atlas-2.4.3:/opt/libs/atlas-default /tmp/bla !/tmp/bla/false_config.cnf" % (os.path.basename(sys.argv[0]))
-                print "%s -n bla -v 1.0 --del" % (os.path.basename(sys.argv[0]))
-                if dc:
-                    dc.release()
-                sys.exit(1)
-            if opt == "--exclude-dir-names":
-                config_dict["exc_dir_names"] = [part.strip() for part in arg.split(",") if part.strip()]
-            if opt == "--doc":
-                build_p["doc_dirs"] = [x.strip() for x in arg.split(",")]
-            if opt == "-m":
-                sql_server = False
-            if opt == "-L":
-                list_grps = True
-            if opt == "--del":
-                delete = True
-            # if opt == "-G":
-            #    package_group = arg
-            if opt == "-l":
-                list_arg = arg.split(",")
-            if opt == "-P":
-                long_package_name = arg
-            if opt == "-C":
-                config_dict["copy_to"] = arg
-            if opt == "-D":
-                config_dict["dist_dir"] = arg
-    # if not sql_server and dc:
-    #    dc.release()
-    #    dc = None
-    # if release == "AUTO_INCR":
-    #    print "AUTO_INCR as release specified (SQL-connection required)"
-    # if not dc and (list_arg or list_grps or delete or release == "AUTO_INCR"):
-    #    print "No (needed) SQL Server connection"
-    #    sys.exit(5)
-    # # pwd_field = pwd.getpwnam(os.getlogin())
     if not long_package_name:
-        if False:
-            build_it = False
-            if list_grps:
-                list_groups(dc)
-            elif list_arg:
-                list_packages(list_arg, dc)
-            else:
-                if not name:
-                    print "Need package name !"
-                    print "try %s -h for help" % (os.path.basename(sys.argv[0]))
-                else:
-                    if delete:
-                        delete_package(dc, name, version, release)
-                    else:
-                        build_it = True
         build_it = True
         if build_it:
-            act_cl = rpm_build_tools.file_content_list(opts.args) # , exclude_dir_names=config_dict["exc_dir_names"])
+            act_cl = rpm_build_tools.file_content_list(opts.args)  # , exclude_dir_names=config_dict["exc_dir_names"])
             if not act_cl:
                 print "Need a file and/or directory-list !"
                 if dc:
@@ -292,7 +195,7 @@ def main():
                 sql_str = "SELECT p.pgroup, COUNT(DISTINCT p.package_idx) AS c FROM inst_package ip, package p WHERE ip.package=p.package_idx GROUP BY p.pgroup"
                 dc.execute(sql_str)
                 all_g = [x["pgroup"] for x in dc.fetchall()]
-                if not package_group in all_g:
+                if package_group not in all_g:
                     print "Package Group '%s' is new (already existing: %s); continue ?" % (package_group, ", ".join(all_g) or "<none>")
                     ret = None
                     while ret not in ["yes", "no"]:
@@ -356,9 +259,11 @@ def main():
             dc.execute("SELECT p.name, p.version, p.release, p.buildhost, p.packager FROM package p WHERE p.package_idx=%d" % (p_idx))
             db_stuff = dc.fetchone()
             name, version, release = (db_stuff["name"], db_stuff["version"], db_stuff["release"])
-            set_dict = {"package"    : p_idx,
-                        "location"   : os.path.normpath("%s/%s" % (config_dict["dist_dir"], short_package_name)),
-                        "last_build" : time.time()}
+            set_dict = {
+                "package": p_idx,
+                "location": os.path.normpath("%s/%s" % (config_dict["dist_dir"], short_package_name)),
+                "last_build": time.time()
+            }
             write_entry = check_for_association(dc, p_idx, name, version, release, set_dict)
             if write_entry:
                 sql_str, sql_tuple = ("INSERT INTO inst_package SET %s" % (", ".join(["%s=%%s" % (key) for key in set_dict.keys()])),
@@ -384,7 +289,4 @@ def main():
     print "done"
 
 if __name__ == "__main__":
-    # print "not ready right now, please wait for rewrite"
-    # sys.exit(1)
     main()
-

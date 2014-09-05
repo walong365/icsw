@@ -28,27 +28,37 @@ import os
 import process_tools
 import sys
 
+
 def run_code():
     from initat.package_install.client.server import server_process
     server_process().loop()
+
 
 def main():
     global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
     global_config.add_config_entries([
-        ("PID_NAME"               , configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
-        ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG"              , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("KILL_RUNNING"           , configfile.bool_c_var(True, autoconf_exclude=True)),
-        ("COM_PORT"               , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port to bind to [%(default)d]", autoconf_exclude=True)),
-        ("SERVER_COM_PORT"        , configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]", autoconf_exclude=True)),
-        ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
-        ("LOG_NAME"               , configfile.str_c_var(prog_name, autoconf_exclude=True)),
-        ("NICE_LEVEL"             , configfile.int_c_var(15, help_string="nice level [%(default)d]")),
-        ("MODIFY_REPOS"           , configfile.bool_c_var(False, help_string="modify repository files")),
-        ("PACKAGE_SERVER_FILE"    , configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]", autoconf_exclude=True)),
-        ("PACKAGE_SERVER_ID_FILE" , configfile.str_c_var("/etc/packageserver_id", help_string="filename where packageserver ID for 0MQ communication is stored [%(default)s]", autoconf_exclude=True)),
+        ("PID_NAME", configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
+        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("KILL_RUNNING", configfile.bool_c_var(True, autoconf_exclude=True)),
+        ("COM_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port to bind to [%(default)d]", autoconf_exclude=True)),
+        ("SERVER_COM_PORT", configfile.int_c_var(P_SERVER_COM_PORT, help_string="server com port [%(default)d]", autoconf_exclude=True)),
+        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
+        ("LOG_NAME", configfile.str_c_var(prog_name, autoconf_exclude=True)),
+        ("NICE_LEVEL", configfile.int_c_var(15, help_string="nice level [%(default)d]")),
+        ("MODIFY_REPOS", configfile.bool_c_var(False, help_string="modify repository files")),
+        (
+            "PACKAGE_SERVER_FILE",
+            configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]", autoconf_exclude=True)
+        ),
+        (
+            "PACKAGE_SERVER_ID_FILE",
+            configfile.str_c_var(
+                "/etc/packageserver_id", help_string="filename where packageserver ID for 0MQ communication is stored [%(default)s]", autoconf_exclude=True
+            )
+        ),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(

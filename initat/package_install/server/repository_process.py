@@ -33,6 +33,7 @@ import server_command
 import threading_tools
 import time
 
+
 class repo_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -55,15 +56,19 @@ class repo_process(threading_tools.process_obj):
             self.repo_type = repo_type_rpm_yum(self)
         else:
             self.repo_type = repo_type_rpm_zypper(self)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         self.__log_template.close()
+
     def _correct_search_states(self):
         inv_states = package_search.objects.exclude(Q(deleted=True) & Q(current_state="done"))
         for inv_state in inv_states:
             inv_state.current_state = "done"
             inv_state.save()
+
     def _check_delayed(self):
         if len(self.__background_commands):
             self.log("%s running in background" % (logging_tools.get_plural("command", len(self.__background_commands))))
@@ -86,6 +91,7 @@ class repo_process(threading_tools.process_obj):
                     new_list.append(cur_del)
         self.__background_commands = new_list
     # commands
+
     def _clear_cache(self, *args, **kwargs):
         self.log("clearing cache")
         self.__background_commands.append(subprocess_struct(
@@ -95,6 +101,7 @@ class repo_process(threading_tools.process_obj):
             start=True,
             verbose=global_config["DEBUG"],
         ))
+
     def _rescan_repos(self, *args, **kwargs):
         if args:
             srv_com = server_command.srv_command(source=args[0])
@@ -108,9 +115,20 @@ class repo_process(threading_tools.process_obj):
             start=True,
             verbose=global_config["DEBUG"],
             post_cb_func=self.repo_type.repo_scan_result))
+
     def _search(self, s_string):
         self.log("searching for '%s'" % (s_string))
-        self.__background_commands.append(subprocess_struct(self, 0, self.repo_type.search_package(s_string), start=True, verbose=global_config["DEBUG"], post_cb_func=self.repo_type.search_result))
+        self.__background_commands.append(
+            subprocess_struct(
+                self,
+                0,
+                self.repo_type.search_package(s_string),
+                start=True,
+                verbose=global_config["DEBUG"],
+                post_cb_func=self.repo_type.search_result
+            )
+        )
+
     def _reload_searches(self, *args, **kwargs):
         self.log("reloading searches")
         search_list = []

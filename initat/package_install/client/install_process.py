@@ -22,8 +22,8 @@
 from initat.package_install.client.command import simple_command
 from initat.package_install.client.config import global_config
 from initat.package_install.client.version import VERSION_STRING
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import logging_tools
 import os
 import process_tools
@@ -31,6 +31,7 @@ import server_command
 import threading_tools
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
+
 
 def get_repo_str(_type, in_repo):
     if _type == "zypper":
@@ -68,11 +69,13 @@ def get_repo_str(_type, in_repo):
     _vf.append("")
     return "\n".join(_vf)
 
+
 def get_srv_command(**kwargs):
     return server_command.srv_command(
         package_client_version=VERSION_STRING,
         debian="1" if global_config["DEBIAN"] else "0",
         **kwargs)
+
 
 class install_process(threading_tools.process_obj):
     """ handles all install and external command stuff """
@@ -88,19 +91,23 @@ class install_process(threading_tools.process_obj):
         # list of pending package commands
         self.package_commands = []
         self.register_timer(self._check_commands, 10)
+
     @property
     def packages(self):
         return self._packages
+
     @packages.setter
     def packages(self, in_list):
         self._packages = in_list
         self.packages_valid = True
         self.handle_pending_commands()
+
     @packages.deleter
     def packages(self):
         if self.packages_valid:
             self.packages_valid = False
             del self._packages
+
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -109,23 +116,30 @@ class install_process(threading_tools.process_obj):
             zmq_debug=global_config["ZMQ_DEBUG"],
             context=self.zmq_context,
             init_logger=True)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+
     def loop_post(self):
         self.__log_template.close()
+
     def _command_batch(self, com_list, *args, **kwargs):
         com_list = [server_command.srv_command(source=cur_com) for cur_com in com_list]
         self.pending_commands.extend(com_list)
         self.handle_pending_commands()
+
     def send_to_server(self, send_xml, info_str="no info"):
         self.send_pool_message("send_to_server", send_xml["command"].text, unicode(send_xml), info_str)
+
     def package_command_done(self, t_com):
         self.package_commands.remove(t_com)
         self.handle_pending_commands()
+
     def _check_commands(self):
         simple_command.check()
         if simple_command.idle():
             self.set_loop_timer(1000)
+
     def _process_commands(self):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
@@ -161,6 +175,7 @@ class install_process(threading_tools.process_obj):
         else:
             # check for pending commands
             self.handle_pending_commands()
+
     def _command_done(self, hc_sc):
         cur_out = hc_sc.read()
         self.log("hc_com '{}' (stage {}) finished with stat {:d} ({:d} bytes)".format(
@@ -223,6 +238,7 @@ class install_process(threading_tools.process_obj):
             self.package_commands = new_list
             self._process_commands()
         del hc_sc
+
     def pdc_done(self, cur_pdc):
         self.log("pdc done")
         keep_pdc = False
@@ -262,6 +278,7 @@ class install_process(threading_tools.process_obj):
             new_list = [cur_com for cur_com in self.package_commands if cur_com != cur_pdc]
             self.package_commands = new_list
         self._process_commands()
+
     def handle_pending_commands(self):
         while self.pending_commands and not self.package_commands:
             # now the fun starts, we have a list of commands and a valid local package list
@@ -322,8 +339,10 @@ class install_process(threading_tools.process_obj):
             self.log("handle_pending_commands: {:d} pending, {:d} package".format(
                 len(self.pending_commands),
                 len(self.package_commands)))
+
     def get_always_latest(self, pack_xml):
         return int(pack_xml.attrib.get("always_latest", "0"))
+
     def package_name(self, pack_xml):
         if self.get_always_latest(pack_xml):
             return pack_xml.attrib["name"]
@@ -332,11 +351,14 @@ class install_process(threading_tools.process_obj):
                 pack_xml.attrib["name"],
                 pack_xml.attrib["version"],
             )
+
     def _clear_cache(self):
         self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
 
+
 class yum_install_process(install_process):
     response_type = "yum_flat"
+
     def build_command(self, cur_pdc):
         # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
@@ -358,6 +380,7 @@ class yum_install_process(install_process):
                 # )
                 cur_pdc.attrib["pre_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
                 cur_pdc.attrib["post_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
+
     def _pre_decide(self, hc_sc, cur_out):
         cur_pdc = hc_sc.data
         is_installed = False if cur_out.count("is not installed") else True
@@ -368,9 +391,11 @@ class yum_install_process(install_process):
                 )
             )
         pack_xml = cur_pdc[0]
-        yum_com = {"install" : "install",
-                   "upgrade" : "update",
-                   "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
+        yum_com = {
+            "install": "install",
+            "upgrade": "update",
+            "erase": "erase"
+        }.get(cur_pdc.attrib["target_state"])
         package_name = self.package_name(pack_xml)
         always_latest = self.get_always_latest(pack_xml)
         if (is_installed and yum_com in ["install", "upgrade"]) or (not is_installed and yum_com in ["erase"]):
@@ -402,6 +427,7 @@ class yum_install_process(install_process):
                 info="handle package",
                 data=cur_pdc)
             # return False, None
+
     def _handle_repo_list(self, in_com):
         # print etree.tostring(in_com.tree, pretty_print=True)
         # new code
@@ -421,7 +447,7 @@ class yum_install_process(install_process):
         # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
         new_repo_dict = dict([(in_repo.findtext("name"), get_repo_str("yum", in_repo)) for in_repo in in_repos])
         rewrite_repos = False
-        if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set (new_repo_dict.keys())]):
+        if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set(new_repo_dict.keys())]):
             self.log("repository content differs, forcing rewrite")
             rewrite_repos = True
         elif set(cur_repo_names) ^ set(new_repo_dict.keys()):
@@ -448,8 +474,10 @@ class yum_install_process(install_process):
                     self.log("created {}".format(f_name))
             self._clear_cache()
 
+
 class zypper_install_process(install_process):
     response_type = "zypper_xml"
+
     def build_command(self, cur_pdc):
         # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
@@ -465,6 +493,7 @@ class zypper_install_process(install_process):
             else:
                 cur_pdc.attrib["pre_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
                 cur_pdc.attrib["post_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
+
     def _pre_decide(self, hc_sc, cur_out):
         _stage = hc_sc.command_stage
         cur_pdc = hc_sc.data
@@ -483,14 +512,16 @@ class zypper_install_process(install_process):
                 )
             )
         zypper_com = {
-            "install" : "in",
-            "upgrade" : "up",
-            "erase"   : "rm",
+            "install": "in",
+            "upgrade": "up",
+            "erase": "rm",
         }.get(cur_pdc.attrib["target_state"])
         # o already installed and cmd == in
         # o already installed and cmd == up and always_latest flag not set
         # o not installed and cmd == rm
-        if (is_installed and zypper_com in ["in"]) or (is_installed and zypper_com in ["up"] and not always_latest) or (not is_installed and zypper_com in ["rm"]):
+        if (is_installed and zypper_com in ["in"]) or (
+            is_installed and zypper_com in ["up"] and not always_latest
+        ) or (not is_installed and zypper_com in ["rm"]):
             self.log("doing nothing")
             if is_installed:
                 cur_pdc.append(E.main_result(
@@ -545,6 +576,7 @@ class zypper_install_process(install_process):
 #             pass
 #             # flags: xml output, non-interactive
 #             # return False, None
+
     def _handle_repo_list(self, in_com):
         # print etree.tostring(in_com.tree, pretty_print=True)
         # new code
@@ -568,7 +600,7 @@ class zypper_install_process(install_process):
         # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
         new_repo_dict = dict([(in_repo.findtext("alias"), get_repo_str("zypper", in_repo)) for in_repo in in_repos])
         rewrite_repos = False
-        if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set (new_repo_dict.keys())]):
+        if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set(new_repo_dict.keys())]):
             self.log("repository content differs, forcing rewrite")
             rewrite_repos = True
         elif set(cur_repo_names) ^ set(new_repo_dict.keys()):
@@ -594,4 +626,3 @@ class zypper_install_process(install_process):
                 else:
                     self.log("created {}".format(f_name))
             self._clear_cache()
-

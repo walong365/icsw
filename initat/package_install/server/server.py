@@ -35,6 +35,7 @@ import server_command
 import threading_tools
 import zmq
 
+
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
@@ -59,6 +60,7 @@ class server_process(threading_tools.process_pool):
         self.register_timer(self._send_update, 3600, instant=True)
         self.register_func("delayed_result", self._delayed_result)
         self.send_to_process("repo", "rescan_repos")
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -66,13 +68,17 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def _init_clients(self):
         client.init(self)
+
     def _register_client(self, c_uid, srv_com):
         client.register(c_uid, srv_com["source"].attrib["host"])
+
     def _re_insert_config(self):
         self.log("re-insert config")
         cluster_location.write_config("package_server", global_config)
+
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
@@ -88,6 +94,7 @@ class server_process(threading_tools.process_pool):
         else:
             msi_block = None
         return msi_block
+
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
@@ -96,20 +103,24 @@ class server_process(threading_tools.process_pool):
         self.log("Found %d valid config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
+
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
     def _hup_error(self, err_cause):
         self.log("got SIGHUP, rescanning repositories")
         self.send_to_process("repo", "rescan_all")
+
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
+
     def loop_end(self):
         for c_name in client.name_set:
             cur_c = client.get(c_name)
@@ -120,10 +131,12 @@ class server_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+
     def loop_post(self):
         for open_sock in self.socket_dict.itervalues():
             open_sock.close()
         self.__log_template.close()
+
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
@@ -154,8 +167,9 @@ class server_process(threading_tools.process_pool):
                                 "unknown uid %s (command %s), not known" % (
                                     c_uid,
                                     cur_com,
-                                    ),
-                                        logging_tools.LOG_LEVEL_CRITICAL)
+                                ),
+                                logging_tools.LOG_LEVEL_CRITICAL
+                            )
                             srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
                         zmq_sock.send_unicode(c_uid, zmq.SNDMORE)
                         zmq_sock.send_unicode(unicode(srv_com))
@@ -164,6 +178,7 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("wrong number of data chunks (%d != 2)" % (len(data)),
                      logging_tools.LOG_LEVEL_ERROR)
+
     def _delayed_result(self, src_name, src_pid, ext_id, ret_str, ret_state, **kwargs):
         in_uid, srv_com = self.__delayed_struct[ext_id]
         del self.__delayed_struct[ext_id]
@@ -172,6 +187,7 @@ class server_process(threading_tools.process_pool):
         zmq_sock = self.socket_dict["router"]
         zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
         zmq_sock.send_unicode(unicode(srv_com))
+
     def _handle_wfe_command(self, zmq_sock, in_uid, srv_com):
         in_com = srv_com["command"].text
         self.log("got server_command %s from %s" % (
@@ -188,16 +204,20 @@ class server_process(threading_tools.process_pool):
                 valid_devs = [name for name in all_devs if name in client.name_set]
             self.log("{} requested, {} found".format(
                 logging_tools.get_plural("device", len(all_devs)),
-                logging_tools.get_plural("device" , len(valid_devs))))
+                logging_tools.get_plural("device", len(valid_devs))))
             for cur_dev in all_devs:
-                srv_com.xpath(".//ns:device_command[@name='%s']" % (cur_dev), smart_strings=False)[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
+                srv_com.xpath(
+                    ".//ns:device_command[@name='%s']" % (cur_dev), smart_strings=False
+                )[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:
                 self._send_update(command="new_config", dev_list=valid_devs)
             srv_com.set_result(
                 "send update to {:d} of {}".format(
                     len(valid_devs),
-                    logging_tools.get_plural("device", len(all_devs))),
-                    server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)
+                    logging_tools.get_plural("device", len(all_devs))
+                ),
+                server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN
+            )
         elif in_com == "reload_searches":
             self.send_to_process("repo", "reload_searches")
             srv_com.set_result("ok reloading")
@@ -212,8 +232,11 @@ class server_process(threading_tools.process_pool):
             self.log("sending sync_repos to {}".format(logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
                 self._send_update(command="sync_repos", dev_list=all_devs)
-            srv_com.set_result("send sync_repos to {}".format (
-                    logging_tools.get_plural("device", len(all_devs))))
+            srv_com.set_result(
+                "send sync_repos to {}".format(
+                    logging_tools.get_plural("device", len(all_devs))
+                )
+            )
         elif in_com == "clear_caches":
             all_devs = list(client.name_set)
             if os.getuid():
@@ -223,22 +246,26 @@ class server_process(threading_tools.process_pool):
             self.log("sending clear_cache to %s" % (logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
                 self._send_update(command="clear_cache", dev_list=all_devs)
-            srv_com.set_result("send clear_cache to {}".format(
-                    logging_tools.get_plural("device", len(all_devs))))
+            srv_com.set_result(
+                "send clear_cache to {}".format(
+                    logging_tools.get_plural("device", len(all_devs))
+                )
+            )
         else:
             srv_com.set_result("command %s not known" % (in_com), server_command.SRV_REPLY_STATE_ERROR)
         # print srv_com.pretty_print()
         if immediate_return:
             zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
             zmq_sock.send_unicode(unicode(srv_com))
+
     def _init_network_sockets(self):
         my_0mq_id = get_server_uuid("package")
         self.bind_id = my_0mq_id
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"] , self._new_com),
-            ]:
+            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"], self._new_com),
+        ]:
             client = self.zmq_context.socket(sock_type)
             client.setsockopt(zmq.IDENTITY, self.bind_id)
             client.setsockopt(zmq.LINGER, 100)
@@ -269,10 +296,12 @@ class server_process(threading_tools.process_pool):
                     ))
                 self.register_poller(client, zmq.POLLIN, target_func)
                 self.socket_dict[key] = client
+
     def send_reply(self, t_uid, srv_com):
         send_sock = self.socket_dict["router"]
         send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)
         send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+
     def _send_update(self, command="send_info", dev_list=[], **kwargs):
         send_list = dev_list or client.name_set
         self.log(

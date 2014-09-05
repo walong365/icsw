@@ -28,25 +28,28 @@ import os
 import process_tools
 import server_command
 import threading_tools
-import time
 import uuid_tools
 import zmq
+
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self, "main", zmq=True,
+        threading_tools.process_pool.__init__(
+            self,
+            "main",
+            zmq=True,
             zmq_debug=global_config["ZMQ_DEBUG"]
-            )
+        )
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # self.renice(global_config["NICE_LEVEL"])
         self.install_signal_handlers()
         # init environment
         self._init_environment()
         self._init_msi_block()
-        self.register_exception("int_error"  , self._int_error)
-        self.register_exception("term_error" , self._int_error)
+        self.register_exception("int_error", self._int_error)
+        self.register_exception("term_error", self._int_error)
         self.register_exception("alarm_error", self._alarm_error)
         # log buffer
         self._show_config()
@@ -61,6 +64,7 @@ class server_process(threading_tools.process_pool):
             self.add_process(yum_install_process("install"), start=True)
         else:
             self.add_process(zypper_install_process("install"), start=True)
+
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -69,15 +73,17 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+
     def _init_environment(self):
         # Debian fix to get full package names, sigh ...
         os.environ["COLUMNS"] = "2000"
+
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
-        if True: # not self.__options.DEBUG:
+        if True:  # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-client")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
@@ -90,6 +96,7 @@ class server_process(threading_tools.process_pool):
         else:
             msi_block = None
         self.__msi_block = msi_block
+
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -101,6 +108,7 @@ class server_process(threading_tools.process_pool):
         self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
+
     def _log_limits(self):
         # read limits
         r_dict = {}
@@ -123,9 +131,9 @@ class server_process(threading_tools.process_pool):
                 res_list = logging_tools.new_form_list()
                 for key in res_keys:
                     val = r_dict[key]
-                    if type(val) == type(""):
+                    if type(val) in [str, unicode]:
                         info_str = val
-                    elif type(val) == type(()):
+                    elif type(val) is tuple:
                         info_str = "{:8d} (hard), {:8d} (soft)".format(*val)
                     else:
                         info_str = "None (error?)"
@@ -135,6 +143,7 @@ class server_process(threading_tools.process_pool):
                     self.log(line)
             else:
                 self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
+
     def _init_network_sockets(self):
         # connect to server
         self.router_com = True if "PACKAGE_SERVER_ID" in global_config else False
@@ -182,6 +191,7 @@ class server_process(threading_tools.process_pool):
         self._register()
         self._get_repos()
         self._get_new_config()
+
     def _check_send_buffer(self):
         new_buffer = []
         _send_ok = 0
@@ -209,6 +219,7 @@ class server_process(threading_tools.process_pool):
         # print len(self.__send_buffer)
         if not self.__send_buffer:
             self._set_resend_timeout(300)
+
     def _set_resend_timeout(self, cur_to):
         if cur_to is None:
             self.__rst = 0
@@ -221,8 +232,10 @@ class server_process(threading_tools.process_pool):
                     self.log("setting check_send_buffer timeout to {:d} secs".format(cur_to))
                 self.register_timer(self._check_send_buffer, cur_to)
                 self.__rst = cur_to
+
     def _send_to_server_int(self, xml_com):
         self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
+
     def _send_to_server(self, src_proc, *args, **kwargs):
         _src_pid, com_name, send_com, send_info = args
         self.log("sending {} ({}) to server {}".format(com_name, send_info, self.conn_str))
@@ -234,13 +247,17 @@ class server_process(threading_tools.process_pool):
             self.__send_buffer.append(send_com)
             self.log("error sending message to server, buffering ({:d})".format(len(self.__send_buffer)))
             self._set_resend_timeout(10)
+
     def _register(self):
         self._send_to_server_int(get_srv_command(command="register"))
+
     def _get_new_config(self):
         self._send_to_server_int(get_srv_command(command="get_package_list"))
         # self._send_to_server_int(get_srv_command(command="get_rsync_list"))
+
     def _get_repos(self):
         self._send_to_server_int(get_srv_command(command="get_repo_list"))
+
     def _recv_client(self, zmq_sock):
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
@@ -274,6 +291,7 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("cannot receive more data, already got '{}'".format(", ".join(data)),
                      logging_tools.LOG_LEVEL_ERROR)
+
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
@@ -313,6 +331,7 @@ class server_process(threading_tools.process_pool):
             [unicode(cur_com) for cur_com in batch_list])
     # def _optimize_list(self, in_list):
     #    return in_list
+
     def _int_error(self, err_cause):
         self.__exit_cause = err_cause
         if self["exit_requested"]:
@@ -320,12 +339,15 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("got int_error, err_cause is '{}'".format(err_cause), logging_tools.LOG_LEVEL_WARN)
             self["exit_requested"] = True
+
     def _alarm_error(self, err_cause):
         self.__comsend_queue.put("reload")
+
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+
     def loop_post(self):
         self.srv_port.close()
         self.client_socket.close()
