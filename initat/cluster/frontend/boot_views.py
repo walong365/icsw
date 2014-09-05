@@ -48,16 +48,18 @@ import time
 
 logger = logging.getLogger("cluster.boot")
 
+
 class show_boot(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
             request, "boot_overview.html", {
-                "boot_form"        : boot_form(),
-                "boot_single_form" : boot_single_form(),
-                "boot_many_form"   : boot_many_form(),
+                "boot_form": boot_form(),
+                "boot_single_form": boot_single_form(),
+                "boot_many_form": boot_many_form(),
             }
         )()
+
 
 class get_boot_info_json(View):
     @method_decorator(login_required)
@@ -113,19 +115,24 @@ class get_boot_info_json(View):
             for cd_ping in result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
                 cd_result[int(cd_ping.attrib["pk"])] = True if int(cd_ping.attrib["reachable"]) else False
             request.xml_response["cd_response"] = json.dumps(cd_result)
-        ctx = {"request" : request, "fields" : ["partition_table", "act_partition_table"]}
+        ctx = {
+            "request": request,
+            "fields": ["partition_table", "act_partition_table"]
+        }
         request.xml_response["response"] = JSONRenderer().render(device_serializer_boot(dev_result, many=True, context=ctx).data)
+
 
 class update_device(APIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
+
     def put(self, request, pk):
         _change_lut = {
-            "b" : "change_dhcp_mac",
-            "t" : "change_target_state",
-            "p" : "change_partition_table",
-            "i" : "change_new_image",
-            "k" : "change_new_kernel",
+            "b": "change_dhcp_mac",
+            "t": "change_target_state",
+            "p": "change_partition_table",
+            "i": "change_new_image",
+            "k": "change_new_kernel",
         }
         dev_data = request.DATA
         # import pprint
@@ -146,10 +153,11 @@ class update_device(APIView):
                     if not dev_data.get(_change_lut[short_key], False):
                         _en[short_key] = False
         with transaction.atomic():
-            all_devs = list(device.objects.filter(Q(pk__in=pk_list)) \
-                .select_related("domain_tree_node", "device_group") \
-                .prefetch_related("categories") \
-                .order_by("device_group__name", "name"))
+            all_devs = list(device.objects.filter(Q(pk__in=pk_list)).select_related(
+                "domain_tree_node", "device_group"
+            ).prefetch_related(
+                "categories"
+            ).order_by("device_group__name", "name"))
             for cur_dev in all_devs:
                 # print "**", cur_dev
                 update_list = set()
@@ -234,10 +242,11 @@ class update_device(APIView):
             _lines.append((logging_tools.LOG_LEVEL_OK, "updated {} for '{}'".format(", ".join(_all_update_list), dev_info_str)))
         response = Response(
             {
-                "log_lines" : _lines
+                "log_lines": _lines
             }
         )
         return response
+
 
 class get_devlog_info(View):
     @method_decorator(login_required)
@@ -270,7 +279,8 @@ class get_devlog_info(View):
                     dev_log.text,
                     time.mktime(cluster_timezone.normalize(dev_log.date).timetuple()),
                 ])
-        return HttpResponse(json.dumps({"devlog_lines" : _lines}), content_type="application/json")
+        return HttpResponse(json.dumps({"devlog_lines": _lines}), content_type="application/json")
+
 
 class soft_control(View):
     @method_decorator(login_required)
@@ -289,11 +299,13 @@ class soft_control(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[
-                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk))
-                for cur_dev in cur_devs])
+                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk)) for cur_dev in cur_devs
+            ]
+        )
         result = contact_server(request, "mother", srv_com, timeout=10, log_result=False)
         if result:
             request.xml_response.info("sent {} to {}".format(soft_state, unicode(cur_dev)), logger)
+
 
 class hard_control(View):
     @method_decorator(login_required)

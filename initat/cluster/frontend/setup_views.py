@@ -87,6 +87,7 @@ class kernel_overview(View):
             "kernel_form": kernel_form(),
             })()
 
+
 class scan_for_images(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

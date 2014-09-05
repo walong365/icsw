@@ -24,14 +24,13 @@
 
 from django.conf import settings
 from django.http.response import HttpResponse
-from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.render import render_me
 import logging
 import os
 
 logger = logging.getLogger("cluster.doc")
+
 
 class doc_page(View):
     def get(self, request, page):
@@ -43,11 +42,12 @@ class doc_page(View):
         else:
             if not page.endswith(".xhtml"):
                 page = "{}.xhtml".format(page)
-            return render_me(request, "docu_root.html", {"chunk_name" : page})
+            return render_me(request, "docu_root.html", {"chunk_name": page})
             # if page.endswith(".xhtml"):
             #    page = page.split(".")[0]
             # return HttpResponse(file(settings.HANDBOOK_CHUNKS[page], "r").read())
 
+
 class test_page(View):
     def get(self, request):
-        return render_me(request, "docu_root.html", {"chunk_name" : "index.xhtml"})
+        return render_me(request, "docu_root.html", {"chunk_name": "index.xhtml"})

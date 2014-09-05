@@ -28,34 +28,39 @@
 </script>
 
 <script type="text/ng-template" id="dtn_row.html">
-    <td style="font-family:monospace;"><span ng-bind-html="fn.get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
+    <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
     <td><span ng-show="obj.depth">*{{ obj.node_postfix }}.{{ obj.full_name }}</span></td>
     <td>{{ obj.depth }}</td>
     <td>{{ obj.comment }}</td>
     <td>{{ obj.create_short_names | yesno1 }}</td>
     <td>{{ obj.always_create_ip | yesno1 }}</td>
     <td>{{ obj.write_nameserver_config | yesno1 }}</td>
-    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth"/></td>
-    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete" ng-show="obj.depth > 0"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_obj(obj, $event)" value="modify" ng-show="obj.depth"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_obj(obj)" value="delete" ng-show="obj.depth > 0"/></td>
 </script>
 
 <div ng-controller="dnt_base">
-    <h2>Domain name tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
+    <h2>Domain name tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create_new($event)"/></h2>
+    <div class="panel panel-default">
+        <div class="panel-body">
     <div class="row">
         <div class="col-sm-6">
             <div class="row">
                 <div class="col-sm-12">
+                    <h3>Tree view</h3>
                     <tree treeconfig="dnt"></tree>
                 </div>
             </div>
             <div class="row">
                 <div class="col-sm-12">
+                    <h3>Create / modify</h3>
                     <div edittemplate ng-if="modal_active && !settings.use_modal" class="well well-sm">
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-sm-6">
+            <h3>Table view</h3>
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead dtnhead></thead>
                 <tbody>
@@ -64,6 +69,8 @@
                 </tbody>
             </table>
         </div>
+    </div>
+    </div>
     </div>
 </div>
 </div>
@@ -86,7 +93,7 @@ class domain_name_tree extends tree_config
         @show_selection_buttons = false
         @show_icons = false
         @show_select = false
-        @show_descendants = false
+        @show_descendants = true
         @show_childs = false
     get_name : (t_entry) ->
         dtn = t_entry.obj
@@ -99,67 +106,43 @@ class domain_name_tree extends tree_config
         entry.active = true
         dtn = entry.obj
         if dtn.parent
-            @scope.edit(event, dtn)
+            @scope.edit_obj(dtn, event)
 
-angular_add_simple_list_controller(
-    domain_name_tree_module,
-    "dnt_base",
-    {
-        rest_url            : "{% url 'rest:domain_tree_node_list' %}"
-        delete_confirm_str  : (obj) -> return "Really delete domain tree node '#{obj.name}' ?"
-        template_cache_list : ["dtn_head.html", "dtn_row.html"]
-        edit_template       : "domain_name_tree.html"
-        use_modal           : false
-        new_object          : ($scope) ->
-            return {
-                "name" : "new"
-                "parent" : (entry.idx for entry in $scope.entries when entry.depth == 0)[0]
-                "create_short_names" : true
-            }
-        object_created: (new_obj, _b, $scope) -> 
-            new_obj.name = ""
-            $scope.reload()
-        post_delete: ($scope, del_obj) ->
-            $scope.dnt.prune(
-                (entry) ->
-                    return entry.obj.full_name != del_obj.full_name
+dnt_ctrl = domain_name_tree_module.controller("dnt_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+        $scope.dnt = new domain_name_tree($scope, {})
+        $scope.pagSettings = paginatorSettings.get_paginator("dtn_base", $scope)
+        $scope.entries = []
+        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.edit_mixin.use_modal = false
+        $scope.edit_mixin.use_promise = true
+        $scope.edit_mixin.new_object = (scope) -> return {
+            "name" : "new"
+            "parent" : (entry.idx for entry in $scope.entries when entry.depth == 0)[0]
+            "create_short_names" : true
+        }
+        $scope.edit_mixin.delete_confirm_str = (obj) -> return "Really delete domain tree node '#{obj.name}' ?"
+        $scope.edit_mixin.modify_rest_url = "{% url 'rest:domain_tree_node_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.edit_mixin.create_rest_url = Restangular.all("{% url 'rest:domain_tree_node_list' %}".slice(1))
+        $scope.edit_mixin.edit_template = "domain_name_tree.html"
+        $scope.form = {}
+        $scope.reload = () ->
+            wait_list = [
+                restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
+            ]
+            $q.all(wait_list).then((data) ->
+                $scope.entries = data[0]
+                $scope.edit_mixin.create_list = $scope.entries
+                $scope.edit_mixin.delete_list = $scope.entries
+                $scope.rebuild_dnt()
             )
-            $scope.dnt.recalc()
-        fn:
-            create_or_edit: ($scope, create_or_edit, obj) ->
-                if not create_or_edit
-                    $scope.dnt.clear_active()
-                    $scope.dnt_lut[obj.idx].active = true
-                    $scope.dnt.show_active(keep=false)
-            get_valid_parents: ($scope) ->
-                p_list = (value for value in $scope.entries)
-                if $scope.edit_obj.idx
-                    # remove all nodes below myself
-                    r_list = []
-                    add_list = [$scope.edit_obj.idx] 
-                    while add_list.length
-                        r_list = r_list.concat(add_list)
-                        add_list = (value.idx for value in p_list when (value.parent in r_list and value.idx not in r_list))
-                    p_list = (value for value in p_list when value.idx not in r_list)
-                return p_list
-            get_space: (depth) ->
-                return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
-            modal_closed: (scope) ->
-                scope.dnt.clear_active()
-            rest_data_set: ($scope) ->
-                dnt_lut = {}
-                $scope.dnt.clear_root_nodes()
-                for entry in $scope.entries
-                    t_entry = $scope.dnt.new_node({folder:false, obj:entry, expand:entry.depth == 0})
-                    dnt_lut[entry.idx] = t_entry
-                    if entry.parent
-                        #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
-                        dnt_lut[entry.parent].add_child(t_entry)
-                    else
-                        $scope.dnt.add_root_node(t_entry)
-                $scope.dnt_lut = dnt_lut
-            object_modified: (prev_obj, new_obj, $scope) ->
-                if $scope.pre_edit_obj.parent == new_obj.parent
+        $scope.edit_obj = (dtn, event) ->
+            $scope.dnt.clear_active()
+            $scope.dnt_lut[dtn.idx].active = true
+            $scope.dnt.show_active()
+            pre_parent = dtn.parent
+            $scope.edit_mixin.edit(dtn, event).then((data) ->
+                if data.parent == pre_parent
                     $scope.dnt.iter(
                         (entry) ->
                             if entry.parent and entry.parent.obj.name
@@ -169,12 +152,72 @@ angular_add_simple_list_controller(
                     )
                 else
                     $scope.reload()
-            delete_node: ($scope, del_obj) ->
-                $scope.delete(del_obj)
-                $scope.close_modal()
-        init_fn: ($scope, $timeout) ->
-            $scope.dnt = new domain_name_tree($scope, {})            
+            )
+        $scope.delete_obj = (obj) ->
+            $scope.edit_mixin.delete_obj(obj).then((data) ->
+                if data
+                    $scope.rebuild_dnt()
+                    $scope.dnt.clear_active()
+            )
+        $scope.rebuild_dnt = () ->
+            dnt_lut = {}
+            $scope.dnt.clear_root_nodes()
+            for entry in $scope.entries
+                t_entry = $scope.dnt.new_node({folder:false, obj:entry, expand:entry.depth == 0})
+                dnt_lut[entry.idx] = t_entry
+                if entry.parent
+                    #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
+                    dnt_lut[entry.parent].add_child(t_entry)
+                else
+                    $scope.dnt.add_root_node(t_entry)
+            $scope.dnt_lut = dnt_lut
+        $scope.create_new = ($event) ->
+            $scope.dnt.clear_active()
+            $scope.edit_mixin.create($event).then((data) ->
+                $scope.reload()
+            )
+        $scope.get_valid_parents = (obj) ->
+            p_list = (value for value in $scope.entries)
+            if obj.idx
+                # remove all nodes below myself
+                r_list = []
+                add_list = [obj.idx] 
+                while add_list.length
+                    r_list = r_list.concat(add_list)
+                    add_list = (value.idx for value in p_list when (value.parent in r_list and value.idx not in r_list))
+                p_list = (value for value in p_list when value.idx not in r_list)
+            return p_list
+        $scope.close_modal = () ->
+            $scope.dnt.clear_active()
+            if $scope.cur_edit
+                $scope.cur_edit.close_modal()
+        $scope.reload()
+]).directive("dtnhead", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("dtn_head.html")
     }
+).directive("dtnrow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("dtn_row.html")
+        link : (scope, el, attrs) ->
+            scope.get_space = (depth) ->
+                return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
+    }
+).directive("edittemplate", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("domain_name_tree.html")
+        link : (scope, element, attrs) ->
+            scope.form_error = (field_name) ->
+                if scope.form[field_name].$valid
+                    return ""
+                else
+                    return "has-error"
+    }
+).run(($templateCache) ->
+    $templateCache.put("simple_confirm.html", simple_modal_template)
 )
 
 angular.element(document).ready(() ->

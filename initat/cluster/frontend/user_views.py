@@ -117,6 +117,7 @@ class save_layout_state(View):
         update_session_object(request)
         request.session.save()
 
+
 class set_user_var(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-""" simple formulars for django / clustersoftware """
+""" formulars for the NOCTUA / CORVUS webfrontend """
 
-# from crispy_forms.bootstrap import FormActions
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML, MultiField
@@ -10,8 +9,8 @@ from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, ChoiceField, TextInput, TypedChoiceField, BooleanField, BooleanField
-from django.forms.widgets import TextInput, PasswordInput, SelectMultiple, Textarea
+    ModelMultipleChoiceField, ChoiceField, BooleanField
+from django.forms.widgets import TextInput, PasswordInput, Textarea
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
@@ -26,15 +25,21 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
 
 # empty query set
 
+
 class empty_query_set(object):
     def all(self):
         raise StopIteration
 
+
 class authentication_form(Form):
-    username = CharField(label=_("Username"),
-                         max_length=30)
-    password = CharField(label=_("Password"),
-                         widget=PasswordInput)
+    username = CharField(
+        label=_("Username"),
+        max_length=30
+    )
+    password = CharField(
+        label=_("Password"),
+        widget=PasswordInput
+    )
     helper = FormHelper()
     helper.form_id = "id_login_form"
     helper.form_class = 'form-horizontal'
@@ -53,11 +58,13 @@ class authentication_form(Form):
             css_class="form-horizontal",
         )
     )
+
     def __init__(self, request=None, *args, **kwargs):
         self.helper.form_action = reverse("session:login")
         self.request = request
         self.user_cache = None
         super(authentication_form, self).__init__(*args, **kwargs)
+
     def pam_conv(self, auth, query_list):
         print auth, query_list
         response = []
@@ -71,6 +78,7 @@ class authentication_form(Form):
         #        print "+", idx, cur_query, cur_type, PAM.PAM_PROMPT_ECHO_OFF, PAM.PAM_PROMPT_ECHO_ON
         #        return None
         return response
+
     def clean(self):
         username = self.cleaned_data.get("username")
         password = self.cleaned_data.get("password")
@@ -84,7 +92,11 @@ class authentication_form(Form):
         # print pam.authenticate(username, password)
         if username and password:
             # get real user
-            all_aliases = [(login_name, al_list.strip().split()) for login_name, al_list in user.objects.all().values_list("login", "aliases") if al_list is not None and al_list.strip()]
+            all_aliases = [
+                (login_name, al_list.strip().split()) for login_name, al_list in user.objects.all().values_list(
+                    "login", "aliases"
+                ) if al_list is not None and al_list.strip()
+            ]
             rev_dict = {}
             all_logins = [login_name for login_name, al_list in all_aliases]
             for pk, al_list in all_aliases:
@@ -113,27 +125,31 @@ class authentication_form(Form):
             if not self.request.session.test_cookie_worked():
                 raise ValidationError(_("Your Web browser doesn't appear to have cookies enabled. Cookies are required for logging in."))
         return self.cleaned_data
+
     def get_user(self):
         return self.user_cache
+
     def get_login_name(self):
         # FIXME
         return self.login_name
 
+
 class domain_tree_node_form(ModelForm):
     helper = FormHelper()
-    helper.form_id = "id_dtn_detail_form"
+    helper.form_id = "form"
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
-    helper.ng_model = "edit_obj"
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Domain tree node details for {% verbatim %}{{ edit_obj.full_name }}{% endverbatim %}</h2>"),
+            HTML("<h2>Domain tree node details for {% verbatim %}{{ _edit_obj.full_name }}{% endverbatim %}</h2>"),
             Fieldset(
                 "Basic settings",
                 Field("name"),
-                Field("parent", ng_options="value.idx as value.tree_info for value in fn.get_valid_parents(this)", chosen=True),
+                Field("parent", ng_options="value.idx as value.tree_info for value in get_valid_parents(_edit_obj)", chosen=True),
             ),
             Fieldset(
                 "Additional settings",
@@ -151,18 +167,21 @@ class domain_tree_node_form(ModelForm):
                 HTML("&nbsp;"),
                 Button("close", "close", css_class="btn-warning", ng_click="close_modal()"),
                 HTML("&nbsp;"),
-                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)"),
+                Button("delete", "delete", css_class="btn-danger", ng_click="delete_obj(_edit_obj)"),
             ),
         )
     )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(domain_tree_node, self).__init__(*args, **kwargs)
         for clear_f in ["parent"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = domain_tree_node
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment", "parent", ]
+
 
 class device_boot_form(ModelForm):
     helper = FormHelper()
@@ -188,9 +207,11 @@ class device_boot_form(ModelForm):
             )
         )
     )
+
     class Meta:
         model = device
         fields = ["dhcp_mac", "dhcp_write"]
+
 
 class device_info_form(ModelForm):
     domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None)
@@ -203,7 +224,10 @@ class device_info_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"),
+            HTML(
+                "<h2>Details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;"
+                "<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"
+            ),
             Fieldset(
                 "Basic settings",
                 Field("name"),
@@ -211,8 +235,7 @@ class device_info_form(ModelForm):
                 # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select2=True),
                 Field("comment"),
                 Field("curl", wrapper_ng_show="is_device()"),
-                HTML(
-"""
+                HTML("""
 <div class='form-group' ng-show="is_device()">
     <label class='control-label col-sm-3'>
         IP Info
@@ -221,14 +244,18 @@ class device_info_form(ModelForm):
         {% verbatim %}{{ get_ip_info() }}{% endverbatim %}
     </div>
 </div>
-"""),
+                """),
             ),
             # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
             Fieldset(
                 "Monitor settings",
-                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True, wrapper_ng_show="mon_device_templ_list"),
-                HTML(
-"""
+                Field(
+                    "mon_device_templ",
+                    ng_options="value.idx as value.name for value in mon_device_templ_list",
+                    chosen=True,
+                    wrapper_ng_show="mon_device_templ_list"
+                ),
+                HTML("""
 <div class='form-group' ng-show="is_device()">
     <label class='control-label col-sm-3'>
         Monitoring hints
@@ -237,8 +264,7 @@ class device_info_form(ModelForm):
         {% verbatim %}{{ get_monitoring_hint_info() }}{% endverbatim %}
     </div>
 </div>
-"""
-                ),
+                """),
                 Div(
                     Div(
                         Field("monitor_checks"),
@@ -276,6 +302,7 @@ class device_info_form(ModelForm):
             ),
         )
     )
+
     def __init__(self, *args, **kwargs):
         super(device_info_form, self).__init__(*args, **kwargs)
         for clear_f in ["domain_tree_node"]:
@@ -284,12 +311,15 @@ class device_info_form(ModelForm):
         for clear_f in ["mon_device_templ"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "---"
+
     class Meta:
         model = device
-        fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
-                  "enable_perfdata", "flap_detection_enabled", "mon_resolve_name", "curl",
-                  "store_rrd_data",
-                  ]
+        fields = [
+            "name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
+            "enable_perfdata", "flap_detection_enabled", "mon_resolve_name", "curl",
+            "store_rrd_data",
+        ]
+
 
 class dummy_password_form(Form):
     helper = FormHelper()
@@ -307,26 +337,32 @@ class dummy_password_form(Form):
             ),
         )
     )
-    password1 = CharField(label=_("New Password"),
-                         widget=PasswordInput)
-    password2 = CharField(label=_("Confirm Password"),
-                         widget=PasswordInput)
+    password1 = CharField(
+        label=_("New Password"),
+        widget=PasswordInput
+    )
+    password2 = CharField(
+        label=_("Confirm Password"),
+        widget=PasswordInput
+    )
+
 
 class category_form(ModelForm):
     helper = FormHelper()
-    helper.form_id = "id_partition_form"
+    helper.form_id = "form"
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "edit_obj"
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Category details for '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
+            HTML("<h2>Category details for '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
                 Field("name", wrapper_class="ng-class:form_error('name')"),
-                Field("parent", ng_options="value.idx as value.full_name for value in fn.get_valid_parents(this)", chosen=True),
+                Field("parent", ng_options="value.idx as value.full_name for value in get_valid_parents(_edit_obj)", chosen=True),
             ),
             Fieldset(
                 "Additional fields",
@@ -336,29 +372,33 @@ class category_form(ModelForm):
                 "Positional data",
                 Field("latitude", ng_pattern="/^\d+\.\d+$/"),
                 Field("longitude", ng_pattern="/^\d+\.\d+$/"),
-                ng_if="fn.is_location(edit_obj)",
+                ng_if="is_location(_edit_obj)",
             ),
             FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                Submit("submit", "", css_class="btn-sm primaryAction", ng_value="get_action_string()"),
                 HTML("&nbsp;"),
-                Button("close", "close", css_class="btn-warning", ng_click="close_modal()"),
+                Button("close", "close", css_class="btn-sm btn-warning", ng_click="close_modal()"),
                 HTML("&nbsp;"),
-                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)", ng_show="!create_mode && !edit_obj.num_refs"),
+                Button("delete", "delete", css_class="btn-sm btn-danger", ng_click="delete_obj(_edit_obj)", ng_show="!create_mode && !_edit_obj.num_refs"),
             ),
         )
     )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(category_form, self).__init__(*args, **kwargs)
         for clear_f in ["parent"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = category
         fields = ["name", "comment", "parent", "longitude", "latitude"]
 
+
 class device_fqdn(ModelMultipleChoiceField):
     def label_from_instance(self, obj):
         return (obj.device_group.name, obj.full_name)
+
 
 class device_fqdn_comment(ModelMultipleChoiceField):
     def label_from_instance(self, obj):
@@ -368,9 +408,11 @@ class device_fqdn_comment(ModelMultipleChoiceField):
             dev_str = obj.full_name
         return (obj.device_group.name, dev_str)
 
+
 class event_handler_list(ModelChoiceField):
     def label_from_instance(self, obj):
         return u"%s on %s" % (obj.name, obj.config.name)
+
 
 class group_detail_form(ModelForm):
     helper = FormHelper()
@@ -415,12 +457,39 @@ class group_detail_form(ModelForm):
             "Permissions",
             Field("parent_group", ng_options="value.idx as value.groupname for value in get_parent_group_list(_edit_obj)", chosen=True),
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
-            Field("permission", wrapper_ng_show="!create_mode", ng_options="value.idx as value.info group by value.content_type.model for value in valid_group_csw_perms(_edit_obj)", chosen=True),
-            Field("object", wrapper_ng_show="!create_mode && _edit_obj.permission", ng_options="value.idx as value.name group by value.group for value in object_list()", chosen=True),
-            Field("permission_level", wrapper_ng_show="!create_mode", ng_options="value.level as value.info for value in ac_levels", chosen=True),
-            Button("", "create global permission", css_class="btn btn-sm btn-success", ng_show="!create_mode && _edit_obj.permission", ng_click="create_permission()"),
+            Field(
+                "permission",
+                wrapper_ng_show="!create_mode",
+                ng_options="value.idx as value.info group by value.content_type.model for value in valid_group_csw_perms(_edit_obj)",
+                chosen=True
+            ),
+            Field(
+                "object",
+                wrapper_ng_show="!create_mode && _edit_obj.permission",
+                ng_options="value.idx as value.name group by value.group for value in object_list()",
+                chosen=True
+            ),
+            Field(
+                "permission_level",
+                wrapper_ng_show="!create_mode",
+                ng_options="value.level as value.info for value in ac_levels",
+                chosen=True
+            ),
+            Button(
+                "",
+                "create global permission",
+                css_class="btn btn-sm btn-success",
+                ng_show="!create_mode && _edit_obj.permission",
+                ng_click="create_permission()"
+            ),
             HTML("&nbsp;"),
-            Button("", "create object permission", css_class="btn btn-sm btn-primary", ng_show="!create_mode && _edit_obj.permission && _edit_obj.object", ng_click="create_object_permission()"),
+            Button(
+                "",
+                "create object permission",
+                css_class="btn btn-sm btn-primary",
+                ng_show="!create_mode && _edit_obj.permission && _edit_obj.object",
+                ng_click="create_object_permission()"
+            ),
             HTML("<div permissions ng_if='!create_mode'></div>"),
         ),
         FormActions(
@@ -433,8 +502,9 @@ class group_detail_form(ModelForm):
         ),
     )
     homestart = CharField(widget=TextInput())
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(group_detail_form, self).__init__(*args, **kwargs)
         self.fields["permission"].empty_label = "---"
         for clear_f in ["allowed_device_groups", "permission_level", "object"]:
             self.fields[clear_f].queryset = empty_query_set()
@@ -442,17 +512,23 @@ class group_detail_form(ModelForm):
         for clear_f in ["parent_group"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "---"
+
     class Meta:
         model = group
-        fields = ["groupname", "gid", "active", "homestart",
-                  "email", "pager", "tel", "comment",
-                  "allowed_device_groups", "parent_group"]
+        fields = [
+            "groupname", "gid", "active", "homestart",
+            "email", "pager", "tel", "comment",
+            "allowed_device_groups", "parent_group"
+        ]
+
 
 class export_choice_field(ModelChoiceField):
     def reload(self):
         self.queryset = home_export_list()
+
     def label_from_instance(self, obj):
         return self.queryset.exp_dict[obj.pk]["info"]
+
 
 class user_detail_form(ModelForm):
     password = CharField(widget=PasswordInput)
@@ -514,26 +590,24 @@ class user_detail_form(ModelForm):
             Field("group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             # do not use chosen here (will not refresh on export_list change)
-            Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"), # , chosen=True),
-            HTML(
-"""
-        <div class='form-group'>
-            <label class='control-label col-sm-2'>
-                Homedir status
-            </label>
-            <div class='col-sm-8'>
-                {% verbatim %}<input
-                    type="button"
-                    ng-disabled="!_edit_obj.home_dir_created"
-                    ng-class="get_home_dir_created_class(_edit_obj)"
-                    ng-value="get_home_dir_created_value(_edit_obj)"
-                    ng-click="clear_home_dir_created(_edit_obj)"
-                    ></input>
-                {% endverbatim %}
-            </div>
-        </div>
-"""
-            ),
+            Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),  # , chosen=True),
+            HTML("""
+<div class='form-group'>
+    <label class='control-label col-sm-2'>
+        Homedir status
+    </label>
+    <div class='col-sm-8'>
+        {% verbatim %}<input
+            type="button"
+            ng-disabled="!_edit_obj.home_dir_created"
+            ng-class="get_home_dir_created_class(_edit_obj)"
+            ng-value="get_home_dir_created_value(_edit_obj)"
+            ng-click="clear_home_dir_created(_edit_obj)"
+            ></input>
+        {% endverbatim %}
+    </div>
+</div>
+            """),
         ),
         Fieldset(
             "Aliases",
@@ -542,12 +616,34 @@ class user_detail_form(ModelForm):
         Fieldset(
             "Permissions",
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
-            Field("permission", wrapper_ng_show="!create_mode", ng_options="value.idx as value.info group by value.content_type.model for value in valid_user_csw_perms()", chosen=True),
-            Field("object", wrapper_ng_show="!create_mode && _edit_obj.permission", ng_options="value.idx as value.name group by value.group for value in object_list()", chosen=True),
+            Field(
+                "permission",
+                wrapper_ng_show="!create_mode",
+                ng_options="value.idx as value.info group by value.content_type.model for value in valid_user_csw_perms()",
+                chosen=True
+            ),
+            Field(
+                "object",
+                wrapper_ng_show="!create_mode && _edit_obj.permission",
+                ng_options="value.idx as value.name group by value.group for value in object_list()",
+                chosen=True
+            ),
             Field("permission_level", wrapper_ng_show="!create_mode", ng_options="value.level as value.info for value in ac_levels", chosen=True),
-            Button("", "create global permission", css_class="btn btn-sm btn-success", ng_show="!create_mode && _edit_obj.permission", ng_click="create_permission()"),
+            Button(
+                "",
+                "create global permission",
+                css_class="btn btn-sm btn-success",
+                ng_show="!create_mode && _edit_obj.permission",
+                ng_click="create_permission()"
+            ),
             HTML("&nbsp;"),
-            Button("", "create object permission", css_class="btn btn-sm btn-primary", ng_show="!create_mode && _edit_obj.permission && _edit_obj.object", ng_click="create_object_permission()"),
+            Button(
+                "",
+                "create object permission",
+                css_class="btn btn-sm btn-primary",
+                ng_show="!create_mode && _edit_obj.permission && _edit_obj.object",
+                ng_click="create_object_permission()"
+            ),
             HTML("<div permissions ng_if='!create_mode'></div>"),
         ),
         FormActions(
@@ -563,6 +659,7 @@ class user_detail_form(ModelForm):
             Button("change password", "change password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode && _edit_obj.password"),
         ),
     )
+
     def __init__(self, *args, **kwargs):
         # request = kwargs.pop("request")
         super(user_detail_form, self).__init__(*args, **kwargs)
@@ -590,12 +687,16 @@ class user_detail_form(ModelForm):
             if clear_perms:
                 self.fields["group"].queryset = group.objects.none()
                 self.fields["is_superuser"].widget.attrs["disabled"] = True
+
     class Meta:
         model = user
-        fields = ["login", "uid", "shell", "first_name", "last_name", "active",
-                  "title", "email", "pager", "tel", "comment", "is_superuser",
-                  "allowed_device_groups", "secondary_groups",
-                  "aliases", "db_is_auth_for_password", "export", "group"]
+        fields = [
+            "login", "uid", "shell", "first_name", "last_name", "active",
+            "title", "email", "pager", "tel", "comment", "is_superuser",
+            "allowed_device_groups", "secondary_groups",
+            "aliases", "db_is_auth_for_password", "export", "group"
+        ]
+
 
 class global_settings_form(ModelForm):
     helper = FormHelper()
@@ -615,9 +716,11 @@ class global_settings_form(ModelForm):
             Submit("submit", "Modify", css_class="primaryAction"),
         ),
     )
+
     class Meta:
         model = cluster_setting
         fields = ["login_screen_type", ]
+
 
 class account_detail_form(ModelForm):
     password = CharField(widget=PasswordInput)
@@ -661,10 +764,13 @@ class account_detail_form(ModelForm):
             Button("change password", "change password", ng_click="change_password()", css_class="btn-warning")
         ),
     )
+
     class Meta:
         model = user
-        fields = ["shell", "first_name", "last_name",
-            "title", "email", "pager", "tel", "comment", ]
+        fields = [
+            "shell", "first_name", "last_name",
+            "title", "email", "pager", "tel", "comment",
+        ]
 
 
 class kernel_form(ModelForm):
@@ -757,10 +863,14 @@ class kernel_form(ModelForm):
             Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
         ),
     )
+
     class Meta:
         model = kernel
-        fields = ["name", "comment", "enabled",
-            "module_list", "target_module_list"]
+        fields = [
+            "name", "comment", "enabled",
+            "module_list", "target_module_list"
+        ]
+
 
 class image_form(ModelForm):
     helper = FormHelper()
@@ -772,18 +882,21 @@ class image_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Image details</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name", readonly=True),
-                ),
-            FormActions(
-                Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
+        Fieldset(
+            "Base data",
+            Field("name", readonly=True),
             ),
-        )
+        FormActions(
+            Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
+        ),
+    )
+
     class Meta:
         model = image
-        fields = ["name", "enabled",
-            ]
+        fields = [
+            "name", "enabled",
+        ]
+
 
 class network_form(ModelForm):
     helper = FormHelper()
@@ -799,33 +912,51 @@ class network_form(ModelForm):
     network_device_type = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Network</h2>"),
-            Fieldset(
-                "Base data",
-                Field("identifier", wrapper_class="ng-class:edit_mixin.form_error('identifier')", placeholder="Identifier"),
-                Field("network"   , wrapper_class="ng-class:edit_mixin.form_error('network')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
-                Field("netmask"   , wrapper_class="ng-class:edit_mixin.form_error('netmask')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
-                Field("broadcast" , wrapper_class="ng-class:edit_mixin.form_error('broadcast')" , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
-                Field("gateway"   , wrapper_class="ng-class:edit_mixin.form_error('gateway')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
+        Fieldset(
+            "Base data",
+            Field("identifier", wrapper_class="ng-class:edit_mixin.form_error('identifier')", placeholder="Identifier"),
+            Field("network", wrapper_class="ng-class:edit_mixin.form_error('network')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
+            Field("netmask", wrapper_class="ng-class:edit_mixin.form_error('netmask')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
+            Field("broadcast", wrapper_class="ng-class:edit_mixin.form_error('broadcast')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
+            Field("gateway", wrapper_class="ng-class:edit_mixin.form_error('gateway')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
+        ),
+        Fieldset(
+            "Additional settings",
+            Field(
+                "network_type",
+                ng_options="value.idx as value.description for value in rest_data.network_types",
+                ng_disabled="has_master_network(_edit_obj)",
+                chosen=True
             ),
-            Fieldset(
-                "Additional settings",
-                Field("network_type", ng_options="value.idx as value.description for value in rest_data.network_types", ng_disabled="has_master_network(_edit_obj)", chosen=True),
-                Field("master_network", ng_options="value.idx as value.identifier for value in get_production_networks(this)", wrapper_ng_show="is_slave_network(this, _edit_obj.network_type)", chosen=True),
-                Field("network_device_type", ng_options="value.idx as value.identifier for value in rest_data.network_device_types", chosen=True),
+            Field(
+                "master_network",
+                ng_options="value.idx as value.identifier for value in get_production_networks(this)",
+                wrapper_ng_show="is_slave_network(this, _edit_obj.network_type)",
+                chosen=True
             ),
-            Fieldset(
-                "Flags and priority", # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
-                Field("enforce_unique_ips"),
-                Field("gw_pri"),
+            Field(
+                "network_device_type",
+                ng_options="value.idx as value.identifier for value in rest_data.network_device_types",
+                chosen=True
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            ),
-        )
+        ),
+        Fieldset(
+            "Flags and priority",  # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
+            Field("enforce_unique_ips"),
+            Field("gw_pri"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+        ),
+    )
+
     class Meta:
         model = network
-        fields = ("identifier", "network", "netmask", "broadcast", "gateway", "master_network", \
-            "network_type", "network_device_type", "enforce_unique_ips", "gw_pri",)
+        fields = (
+            "identifier", "network", "netmask", "broadcast", "gateway", "master_network",
+            "network_type", "network_device_type", "enforce_unique_ips", "gw_pri",
+        )
+
 
 class network_type_form(ModelForm):
     helper = FormHelper()
@@ -838,18 +969,20 @@ class network_type_form(ModelForm):
     identifier = ModelChoiceField(queryset=empty_query_set(), empty_label=None)
     helper.layout = Layout(
         HTML("<h2>Network type</h2>"),
-            Fieldset(
-                "Base data",
-                Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
-                Field("identifier", ng_options="key as value for (key, value) in settings.network_types", chosen=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
+            Field("identifier", ng_options="key as value for (key, value) in settings.network_types", chosen=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     class Meta:
         model = network_type
         fields = ["identifier", "description"]
+
 
 class network_device_type_form(ModelForm):
     helper = FormHelper()
@@ -861,24 +994,26 @@ class network_device_type_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Network device type</h2>"),
-            Fieldset(
-                "Base data",
-                Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
-                Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
-                Field("name_re", wrapper_class="ng-class:form_error('name_re')", placeholder="Regular expression"),
-                Field("mac_bytes", placeholder="MAC bytes", min=6, max=24),
-            ),
-            Fieldset(
-                "Flags",
-                Field("allow_virtual_interfaces"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
+            Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
+            Field("name_re", wrapper_class="ng-class:form_error('name_re')", placeholder="Regular expression"),
+            Field("mac_bytes", placeholder="MAC bytes", min=6, max=24),
+        ),
+        Fieldset(
+            "Flags",
+            Field("allow_virtual_interfaces"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     class Meta:
         model = network_device_type
         fields = ("identifier", "description", "mac_bytes", "name_re", "allow_virtual_interfaces",)
+
 
 class partition_table_form(ModelForm):
     helper = FormHelper()
@@ -925,9 +1060,11 @@ class partition_table_form(ModelForm):
             ),
         )
     )
+
     class Meta:
         model = partition_table
         fields = ["name", "description", "enabled", "nodeboot", ]
+
 
 class partition_disc_form(ModelForm):
     helper = FormHelper()
@@ -954,9 +1091,11 @@ class partition_disc_form(ModelForm):
             ),
         )
     )
+
     class Meta:
         model = partition_disc
         fields = ["disc", "label_type"]
+
 
 class partition_form(ModelForm):
     helper = FormHelper()
@@ -972,7 +1111,12 @@ class partition_form(ModelForm):
             HTML("<h2>Partition '{% verbatim %}{{ _edit_obj.pnum }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Base data",
-                Field("partition_disc", ng_options="value.idx as value.disc for value in edit_obj.partition_disc_set | orderBy:'disc'", chosen=True, readonly=True),
+                Field(
+                    "partition_disc",
+                    ng_options="value.idx as value.disc for value in edit_obj.partition_disc_set | orderBy:'disc'",
+                    chosen=True,
+                    readonly=True
+                ),
                 Field("pnum", placeholder="partition", min=1, max=16),
                 Field("partition_fs", ng_options="value.idx as value.full_info for value in this.get_partition_fs() | orderBy:'name'", chosen=True),
                 Field("size", min=0, max=1000000000000),
@@ -999,15 +1143,20 @@ class partition_form(ModelForm):
             ),
         )
     )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(partition_form, self).__init__(*args, **kwargs)
         for clear_f in ["partition_fs", "partition_disc"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = partition
-        fields = ["mountpoint", "partition_hex", "partition_disc", "size", "mount_options", "pnum",
-            "bootable", "fs_freq", "fs_passno", "warn_threshold", "crit_threshold", "partition_fs"]
+        fields = [
+            "mountpoint", "partition_hex", "partition_disc", "size", "mount_options", "pnum",
+            "bootable", "fs_freq", "fs_passno", "warn_threshold", "crit_threshold", "partition_fs"
+        ]
+
 
 class partition_sys_form(ModelForm):
     helper = FormHelper()
@@ -1035,11 +1184,14 @@ class partition_sys_form(ModelForm):
             ),
         )
     )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(partition_sys_form, self).__init__(*args, **kwargs)
+
     class Meta:
         model = sys_partition
         fields = ["name", "mountpoint", "mount_options"]
+
 
 class mon_period_form(ModelForm):
     helper = FormHelper()
@@ -1051,29 +1203,33 @@ class mon_period_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Monitoring period</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
-                Field("alias", wrapper_class="ng-class:form_error('alias')", placeholder="Alias"),
-            ),
-            Fieldset(
-                "Time ranges",
-                Field("sun_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-                Field("mon_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-                Field("tue_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-                Field("wed_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-                Field("thu_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-                Field("fri_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-                Field("sat_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
+            Field("alias", wrapper_class="ng-class:form_error('alias')", placeholder="Alias"),
+        ),
+        Fieldset(
+            "Time ranges",
+            Field("sun_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+            Field("mon_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+            Field("tue_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+            Field("wed_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+            Field("thu_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+            Field("fri_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+            Field("sat_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     class Meta:
         model = mon_period
-        fields = ["name", "alias", "sun_range", "mon_range", "tue_range", "wed_range", "thu_range",
-            "fri_range", "sat_range"]
+        fields = [
+            "name", "alias", "sun_range", "mon_range", "tue_range", "wed_range", "thu_range",
+            "fri_range", "sat_range"
+        ]
+
 
 class mon_notification_form(ModelForm):
     helper = FormHelper()
@@ -1083,30 +1239,32 @@ class mon_notification_form(ModelForm):
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
-    channel = ChoiceField([("mail", "E-Mail"), ("sms" , "SMS")])
+    channel = ChoiceField([("mail", "E-Mail"), ("sms", "SMS")])
     not_type = ChoiceField([("host", "Host"), ("service", "Service")])
     content = CharField(widget=Textarea)
     helper.layout = Layout(
         HTML("<h2>Monitoring Notification</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
-                Field("channel"),
-                Field("not_type"),
-            ),
-            Fieldset(
-                "Flags and text",
-                Field("enabled"),
-                Field("subject", wrapper_ng_show="edit_obj.channel == 'mail'"),
-                Field("content", required=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
+            Field("channel"),
+            Field("not_type"),
+        ),
+        Fieldset(
+            "Flags and text",
+            Field("enabled"),
+            Field("subject", wrapper_ng_show="edit_obj.channel == 'mail'"),
+            Field("content", required=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     class Meta:
         model = mon_notification
         fields = ["name", "channel", "not_type", "subject", "content", "enabled", ]
+
 
 class mon_contact_form(ModelForm):
     helper = FormHelper()
@@ -1118,71 +1276,79 @@ class mon_contact_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Monitoring Contact</h2>"),
-            Fieldset(
-                "Base data",
-                Field("user", ng_options="value.idx as value.login + ' (' + value.first_name + ' ' + value.last_name + ')' for value in rest_data.user | orderBy:'login'"),
-                Field("notifications", ng_options="value.idx as value.name for value in rest_data.mon_notification | orderBy:'name'", chosen=True),
-                Field("mon_alias"),
+        Fieldset(
+            "Base data",
+            Field(
+                "user",
+                ng_options="value.idx as value.login + ' (' + value.first_name + ' ' + value.last_name + ')' for value in rest_data.user | orderBy:'login'"
             ),
-            Fieldset(
-                "Service settings",
-                Field("snperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field("notifications", ng_options="value.idx as value.name for value in rest_data.mon_notification | orderBy:'name'", chosen=True),
+            Field("mon_alias"),
+        ),
+        Fieldset(
+            "Service settings",
+            Field("snperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+        ),
+        Div(
+            Div(
+                FormActions(
+                    Field("snrecovery"),
+                    Field("sncritical"),
+                    Field("snwarning"),
+                ),
+                css_class="col-md-6",
             ),
             Div(
-                Div(
-                    FormActions(
-                        Field("snrecovery"),
-                        Field("sncritical"),
-                        Field("snwarning"),
-                    ),
-                    css_class="col-md-6",
+                FormActions(
+                    Field("snunknown"),
+                    Field("sflapping"),
+                    Field("splanned_downtime"),
                 ),
-                Div(
-                    FormActions(
-                        Field("snunknown"),
-                        Field("sflapping"),
-                        Field("splanned_downtime"),
-                    ),
-                    css_class="col-md-6",
-                ),
-                css_class="row",
+                css_class="col-md-6",
             ),
-            Fieldset(
-                "Host settings",
-                Field("hnperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            css_class="row",
+        ),
+        Fieldset(
+            "Host settings",
+            Field("hnperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+        ),
+        Div(
+            Div(
+                FormActions(
+                    Field("hnrecovery"),
+                    Field("hndown"),
+                    Field("hnunreachable"),
+                ),
+                css_class="col-md-6",
             ),
             Div(
-                Div(
-                    FormActions(
-                        Field("hnrecovery"),
-                        Field("hndown"),
-                        Field("hnunreachable"),
-                    ),
-                    css_class="col-md-6",
+                FormActions(
+                    Field("hflapping"),
+                    Field("hplanned_downtime"),
                 ),
-                Div(
-                    FormActions(
-                        Field("hflapping"),
-                        Field("hplanned_downtime"),
-                    ),
-                    css_class="col-md-6",
-                ),
-                css_class="row",
+                css_class="col-md-6",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+            css_class="row",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_contact_form, self).__init__(*args, **kwargs)
         for clear_f in ["user", "snperiod", "hnperiod", "notifications"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_contact
-        fields = ["user", "snperiod", "hnperiod", "notifications", "mon_alias",
+        fields = [
+            "user", "snperiod", "hnperiod", "notifications", "mon_alias",
             "snrecovery", "sncritical", "snwarning", "snunknown", "sflapping", "splanned_downtime",
-            "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime", ]
+            "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime",
+        ]
+
 
 class mon_service_templ_form(ModelForm):
     helper = FormHelper()
@@ -1194,80 +1360,83 @@ class mon_service_templ_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Service template</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("volatile"),
-            ),
-            Fieldset(
-                "Check",
-                Field("nsc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-            ),
-            FormActions(
-                Field("max_attempts", min=1, max=10),
-                Field("check_interval", min=1, max=60),
-                Field("retry_interval", min=1, max=60),
-            ),
-            Fieldset(
-                "Notification",
-                Field("nsn_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-                Field("ninterval", min=0, max=60),
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("volatile"),
+        ),
+        Fieldset(
+            "Check",
+            Field("nsc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+        ),
+        FormActions(
+            Field("max_attempts", min=1, max=10),
+            Field("check_interval", min=1, max=60),
+            Field("retry_interval", min=1, max=60),
+        ),
+        Fieldset(
+            "Notification",
+            Field("nsn_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field("ninterval", min=0, max=60),
+        ),
+        Div(
+            Div(
+                Field("nrecovery"),
+                Field("ncritical"),
+                css_class="col-md-4",
             ),
             Div(
-                Div(
-                    Field("nrecovery"),
-                    Field("ncritical"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nwarning"),
-                    Field("nunknown"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nflapping"),
-                    Field("nplanned_downtime"),
-                    css_class="col-md-4",
-                ),
-                css_class="row",
-            ),
-            Fieldset(
-                "Freshness settings",
-                Field("check_freshness"),
-                Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
-            ),
-            Fieldset(
-                "Flap settings",
-                Field("flap_detection_enabled"),
-            ),
-            FormActions(
-                Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("nwarning"),
+                Field("nunknown"),
+                css_class="col-md-4",
             ),
             Div(
-                Div(
-                    Field("flap_detect_ok", wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                    Field("flap_detect_warn", wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                    css_class="col-md-6",
-                ),
-                Div(
-                    Field("flap_detect_critical", wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                    Field("flap_detect_unknown", wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                    css_class="col-md-6",
-                ),
-                css_class="row",
+                Field("nflapping"),
+                Field("nplanned_downtime"),
+                css_class="col-md-4",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            css_class="row",
+        ),
+        Fieldset(
+            "Freshness settings",
+            Field("check_freshness"),
+            Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
+        ),
+        Fieldset(
+            "Flap settings",
+            Field("flap_detection_enabled"),
+        ),
+        FormActions(
+            Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+            Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+        ),
+        Div(
+            Div(
+                Field("flap_detect_ok", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("flap_detect_warn", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                css_class="col-md-6",
             ),
-        )
+            Div(
+                Field("flap_detect_critical", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("flap_detect_unknown", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                css_class="col-md-6",
+            ),
+            css_class="row",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_service_templ_form, self).__init__(*args, **kwargs)
         for clear_f in ["nsc_period", "nsn_period"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_service_templ
+
 
 class mon_service_esc_templ_form(ModelForm):
     helper = FormHelper()
@@ -1279,46 +1448,49 @@ class mon_service_esc_templ_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Service Escalation template</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-            ),
-            Fieldset(
-                "Notifications",
-                Field("first_notification", min=1, max=10),
-                Field("last_notification", min=1, max=10),
-                Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-                Field("ninterval", min=0, max=60),
+        Fieldset(
+            "Base data",
+            Field("name"),
+        ),
+        Fieldset(
+            "Notifications",
+            Field("first_notification", min=1, max=10),
+            Field("last_notification", min=1, max=10),
+            Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field("ninterval", min=0, max=60),
+        ),
+        Div(
+            Div(
+                Field("nrecovery"),
+                Field("ncritical"),
+                css_class="col-md-4",
             ),
             Div(
-                Div(
-                    Field("nrecovery"),
-                    Field("ncritical"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nwarning"),
-                    Field("nunknown"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nflapping"),
-                    Field("nplanned_downtime"),
-                    css_class="col-md-4",
-                ),
-                css_class="row",
+                Field("nwarning"),
+                Field("nunknown"),
+                css_class="col-md-4",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            Div(
+                Field("nflapping"),
+                Field("nplanned_downtime"),
+                css_class="col-md-4",
             ),
-        )
+            css_class="row",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_service_esc_templ_form, self).__init__(*args, **kwargs)
         for clear_f in ["esc_period"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_service_esc_templ
+
 
 class host_check_command_form(ModelForm):
     helper = FormHelper()
@@ -1330,19 +1502,19 @@ class host_check_command_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Host check command</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("command_line"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
-    def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("command_line"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     class Meta:
         model = host_check_command
+
 
 class mon_contactgroup_form(ModelForm):
     helper = FormHelper()
@@ -1354,28 +1526,31 @@ class mon_contactgroup_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Contactgroup</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("alias"),
-            ),
-            Fieldset(
-                "settings",
-                Field("members", ng_options="value.idx as value.user_name for value in rest_data.mon_contact | orderBy:'user_name'", chosen=True),
-                Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
-                Field("service_templates", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("alias"),
+        ),
+        Fieldset(
+            "settings",
+            Field("members", ng_options="value.idx as value.user_name for value in rest_data.mon_contact | orderBy:'user_name'", chosen=True),
+            Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+            Field("service_templates", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_contactgroup_form, self).__init__(*args, **kwargs)
         for clear_f in ["device_groups", "members", "service_templates"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_contactgroup
+
 
 class mon_device_templ_form(ModelForm):
     helper = FormHelper()
@@ -1387,79 +1562,82 @@ class mon_device_templ_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Device template</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Check",
-                Field("host_check_command", ng_options="value.idx as value.name for value in rest_data.host_check_command | orderBy:'name'", chosen=True),
-                Field("mon_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-            ),
-            FormActions(
-                Field("check_interval", min=1, max=60),
-                Field("retry_interval", min=1, max=60),
-                Field("max_attempts", min=1, max=10),
-            ),
-            Fieldset(
-                "Notification",
-                Field("not_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-                Field("ninterval", min=0, max=60),
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Check",
+            Field("host_check_command", ng_options="value.idx as value.name for value in rest_data.host_check_command | orderBy:'name'", chosen=True),
+            Field("mon_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+        ),
+        FormActions(
+            Field("check_interval", min=1, max=60),
+            Field("retry_interval", min=1, max=60),
+            Field("max_attempts", min=1, max=10),
+        ),
+        Fieldset(
+            "Notification",
+            Field("not_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field("ninterval", min=0, max=60),
+        ),
+        Div(
+            Div(
+                Field("nrecovery"),
+                Field("ndown"),
+                css_class="col-md-4",
             ),
             Div(
-                Div(
-                    Field("nrecovery"),
-                    Field("ndown"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nunreachable"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nflapping"),
-                    Field("nplanned_downtime"),
-                    css_class="col-md-4",
-                ),
-                css_class="row",
-            ),
-            Fieldset(
-                "Freshness settings",
-                Field("check_freshness"),
-                Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
-            ),
-            Fieldset(
-                "Flap settings",
-                Field("flap_detection_enabled"),
-            ),
-            FormActions(
-                Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("nunreachable"),
+                css_class="col-md-4",
             ),
             Div(
-                Div(
-                    Field("flap_detect_up", wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                    Field("flap_detect_down", wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                    css_class="col-md-6",
-                ),
-                Div(
-                    Field("flap_detect_unreachable", wrapper_ng_show="edit_obj.flap_detection_enabled"),
-                    css_class="col-md-6",
-                ),
-                css_class="row",
+                Field("nflapping"),
+                Field("nplanned_downtime"),
+                css_class="col-md-4",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            css_class="row",
+        ),
+        Fieldset(
+            "Freshness settings",
+            Field("check_freshness"),
+            Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
+        ),
+        Fieldset(
+            "Flap settings",
+            Field("flap_detection_enabled"),
+        ),
+        FormActions(
+            Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+            Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+        ),
+        Div(
+            Div(
+                Field("flap_detect_up", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("flap_detect_down", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                css_class="col-md-6",
             ),
-        )
+            Div(
+                Field("flap_detect_unreachable", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                css_class="col-md-6",
+            ),
+            css_class="row",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_device_templ_form, self).__init__(*args, **kwargs)
         for clear_f in ["mon_service_templ", "host_check_command", "mon_period", "not_period"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_device_templ
+
 
 class mon_device_esc_templ_form(ModelForm):
     helper = FormHelper()
@@ -1471,49 +1649,52 @@ class mon_device_esc_templ_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Device Escalation template</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("mon_service_esc_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_esc_templ | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Notifications",
-                Field("first_notification", min=1, max=10),
-                Field("last_notification", min=1, max=10),
-                Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-                Field("ninterval", min=0, max=60),
-            ),
-            Fieldset(
-                "Notification",
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("mon_service_esc_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_esc_templ | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Notifications",
+            Field("first_notification", min=1, max=10),
+            Field("last_notification", min=1, max=10),
+            Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field("ninterval", min=0, max=60),
+        ),
+        Fieldset(
+            "Notification",
+        ),
+        Div(
+            Div(
+                Field("nrecovery"),
+                Field("ndown"),
+                css_class="col-md-4",
             ),
             Div(
-                Div(
-                    Field("nrecovery"),
-                    Field("ndown"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nunreachable"),
-                    css_class="col-md-4",
-                ),
-                Div(
-                    Field("nflapping"),
-                    Field("nplanned_downtime"),
-                    css_class="col-md-4",
-                ),
-                css_class="row",
+                Field("nunreachable"),
+                css_class="col-md-4",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            Div(
+                Field("nflapping"),
+                Field("nplanned_downtime"),
+                css_class="col-md-4",
             ),
-        )
+            css_class="row",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_device_esc_templ_form, self).__init__(*args, **kwargs)
         for clear_f in ["mon_service_esc_templ", "esc_period"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_device_esc_templ
+
 
 class mon_host_cluster_form(ModelForm):
     helper = FormHelper()
@@ -1525,34 +1706,37 @@ class mon_host_cluster_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Host Cluster</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("description"),
-            ),
-            Fieldset(
-                "Devices",
-                Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-                # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Service",
-                Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
-                Field("warn_value", min=0, max=128),
-                Field("error_value", min=0, max=128),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("description"),
+        ),
+        Fieldset(
+            "Devices",
+            Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Service",
+            Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+            Field("warn_value", min=0, max=128),
+            Field("error_value", min=0, max=128),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_host_cluster_form, self).__init__(*args, **kwargs)
         for clear_f in ["mon_service_templ", "devices", "main_device"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_host_cluster
+
 
 class mon_service_cluster_form(ModelForm):
     helper = FormHelper()
@@ -1564,35 +1748,38 @@ class mon_service_cluster_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Service Cluster</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("description"),
-            ),
-            Fieldset(
-                "Devices",
-                Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-                # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Service",
-                Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
-                Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
-                Field("warn_value", min=0, max=128),
-                Field("error_value", min=0, max=128),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("description"),
+        ),
+        Fieldset(
+            "Devices",
+            Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Service",
+            Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+            Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+            Field("warn_value", min=0, max=128),
+            Field("error_value", min=0, max=128),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_service_cluster_form, self).__init__(*args, **kwargs)
         for clear_f in ["mon_service_templ", "devices", "main_device", "mon_check_command"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_service_cluster
+
 
 class mon_host_dependency_templ_form(ModelForm):
     helper = FormHelper()
@@ -1604,56 +1791,59 @@ class mon_host_dependency_templ_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Host dependency template</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
-                Field("priority", min= -128, max=128),
-                Field("inherits_parent"),
-            ),
-            Fieldset(
-                "Execution failure criteria",
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
+            Field("priority", min=-128, max=128),
+            Field("inherits_parent"),
+        ),
+        Fieldset(
+            "Execution failure criteria",
+            Div(
                 Div(
-                    Div(
-                        Field("efc_up"),
-                        Field("efc_down"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("efc_unreachable"),
-                        Field("efc_pending"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    Field("efc_up"),
+                    Field("efc_down"),
+                    css_class="col-md-6",
                 ),
-            ),
-            Fieldset(
-                "Notification failure criteria",
                 Div(
-                    Div(
-                        Field("nfc_up"),
-                        Field("nfc_down"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("nfc_unreachable"),
-                        Field("nfc_pending"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    Field("efc_unreachable"),
+                    Field("efc_pending"),
+                    css_class="col-md-6",
                 ),
+                css_class="row",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+        Fieldset(
+            "Notification failure criteria",
+            Div(
+                Div(
+                    Field("nfc_up"),
+                    Field("nfc_down"),
+                    css_class="col-md-6",
+                ),
+                Div(
+                    Field("nfc_unreachable"),
+                    Field("nfc_pending"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-        )
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_host_dependency_templ_form, self).__init__(*args, **kwargs)
         for clear_f in ["dependency_period"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_host_dependency_templ
+
 
 class mon_host_dependency_form(ModelForm):
     helper = FormHelper()
@@ -1665,33 +1855,40 @@ class mon_host_dependency_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Host dependency</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("mon_host_dependency_templ", ng_options="value.idx as value.name for value in rest_data.mon_host_dependency_templ | orderBy:'name'", chosen=True),
+        Fieldset(
+            "Basic settings",
+            Field(
+                "mon_host_dependency_templ",
+                ng_options="value.idx as value.name for value in rest_data.mon_host_dependency_templ | orderBy:'name'",
+                chosen=True
             ),
-            Fieldset(
-                "Parent",
-                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Child",
-                Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Cluster",
-                Field("mon_host_cluster", ng_options="value.idx as value.name for value in rest_data.mon_host_cluster | orderBy:'name'", chosen=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        ),
+        Fieldset(
+            "Parent",
+            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Child",
+            Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Cluster",
+            Field("mon_host_cluster", ng_options="value.idx as value.name for value in rest_data.mon_host_cluster | orderBy:'name'", chosen=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_host_dependency_form, self).__init__(*args, **kwargs)
         for clear_f in ["devices", "dependent_devices", "mon_host_dependency_templ", "mon_host_cluster"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_host_dependency
+
 
 class mon_service_dependency_templ_form(ModelForm):
     helper = FormHelper()
@@ -1703,58 +1900,61 @@ class mon_service_dependency_templ_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Service dependence template</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name"),
-                Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
-                Field("priority", min= -128, max=128),
-                Field("inherits_parent"),
-            ),
-            Fieldset(
-                "Execution failure criteria",
+        Fieldset(
+            "Base data",
+            Field("name"),
+            Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
+            Field("priority", min=-128, max=128),
+            Field("inherits_parent"),
+        ),
+        Fieldset(
+            "Execution failure criteria",
+            Div(
                 Div(
-                    Div(
-                        Field("efc_ok"),
-                        Field("efc_warn"),
-                        Field("efc_unknown"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("efc_critical"),
-                        Field("efc_pending"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    Field("efc_ok"),
+                    Field("efc_warn"),
+                    Field("efc_unknown"),
+                    css_class="col-md-6",
                 ),
-            ),
-            Fieldset(
-                "Notification failure criteria",
                 Div(
-                    Div(
-                        Field("nfc_ok"),
-                        Field("nfc_warn"),
-                        Field("nfc_unknown"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("nfc_critical"),
-                        Field("nfc_pending"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    Field("efc_critical"),
+                    Field("efc_pending"),
+                    css_class="col-md-6",
                 ),
+                css_class="row",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+        Fieldset(
+            "Notification failure criteria",
+            Div(
+                Div(
+                    Field("nfc_ok"),
+                    Field("nfc_warn"),
+                    Field("nfc_unknown"),
+                    css_class="col-md-6",
+                ),
+                Div(
+                    Field("nfc_critical"),
+                    Field("nfc_pending"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-        )
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_service_dependency_templ_form, self).__init__(*args, **kwargs)
         for clear_f in ["dependency_period"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_service_dependency_templ
+
 
 class mon_service_dependency_form(ModelForm):
     helper = FormHelper()
@@ -1766,35 +1966,44 @@ class mon_service_dependency_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Service dependency</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("mon_service_dependency_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_dependency_templ | orderBy:'name'", chosen=True),
+        Fieldset(
+            "Basic settings",
+            Field(
+                "mon_service_dependency_templ",
+                ng_options="value.idx as value.name for value in rest_data.mon_service_dependency_templ | orderBy:'name'",
+                chosen=True
             ),
-            Fieldset(
-                "Parent",
-                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-                Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Child",
-                Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-                Field("dependent_mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
-            ),
-            Fieldset(
-                "Cluster",
-                Field("mon_service_cluster", ng_options="value.idx as value.name for value in rest_data.mon_service_cluster | orderBy:'name'", chosen=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        ),
+        Fieldset(
+            "Parent",
+            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Child",
+            Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            Field("dependent_mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+        ),
+        Fieldset(
+            "Cluster",
+            Field("mon_service_cluster", ng_options="value.idx as value.name for value in rest_data.mon_service_cluster | orderBy:'name'", chosen=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["devices", "dependent_devices", "mon_service_dependency_templ", "mon_service_cluster", "mon_check_command", "dependent_mon_check_command"]:
+        super(mon_service_dependency_form, self).__init__(*args, **kwargs)
+        for clear_f in [
+            "devices", "dependent_devices", "mon_service_dependency_templ", "mon_service_cluster", "mon_check_command", "dependent_mon_check_command"
+        ]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = mon_service_dependency
+
 
 class package_search_form(ModelForm):
     helper = FormHelper()
@@ -1806,20 +2015,23 @@ class package_search_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Package search</h2>"),
-            Fieldset(
-                "Base data",
-                Field("search_string"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("search_string"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
         request = kwargs.pop("request")
-        ModelForm.__init__(self, *args, **kwargs)
+        super(package_search_form, self).__init__(*args, **kwargs)
         self.fields["user"].initial = request.user
+
     class Meta:
         model = package_search
+
 
 class package_action_form(Form):
     helper = FormHelper()
@@ -1840,31 +2052,44 @@ class package_action_form(Form):
     kernel_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>PDC action</h2>"),
-            Fieldset(
-                "Base data",
-                Field("target_state", ng_options="key as value for (key, value) in target_states", initial="keep", chosen=True),
+        Fieldset(
+            "Base data",
+            Field("target_state", ng_options="key as value for (key, value) in target_states", initial="keep", chosen=True),
+        ),
+        Fieldset(
+            "Flags",
+            Field("nodeps_flag", ng_options="key as value for (key, value) in flag_states", initital="keep", chosen=True),
+            Field("force_flag", ng_options="key as value for (key, value) in flag_states", initial="keep", chosen=True),
+        ),
+        Fieldset(
+            "Image Dependency",
+            Field("image_dep", ng_options="key as value for (key, value) in dep_states", initital="keep", chosen=True),
+            Field("image_change"),
+            Field(
+                "image_list",
+                ng_options="img.idx as img.name for img in image_list",
+                initital="keep",
+                chosen=True,
+                wrapper_ng_show="edit_obj.image_change"
             ),
-            Fieldset(
-                "Flags",
-                Field("nodeps_flag", ng_options="key as value for (key, value) in flag_states", initital="keep", chosen=True),
-                Field("force_flag", ng_options="key as value for (key, value) in flag_states", initial="keep", chosen=True),
+        ),
+        Fieldset(
+            "Kernel Dependency",
+            Field("kernel_dep", ng_options="key as value for (key, value) in dep_states", initial="keep", chosen=True),
+            Field("kernel_change"),
+            Field(
+                "kernel_list",
+                ng_options="val.idx as val.name for val in kernel_list",
+                initital="keep",
+                chosen=True,
+                wrapper_ng_show="edit_obj.kernel_change"
             ),
-            Fieldset(
-                "Image Dependency",
-                Field("image_dep", ng_options="key as value for (key, value) in dep_states", initital="keep", chosen=True),
-                Field("image_change"),
-                Field("image_list", ng_options="img.idx as img.name for img in image_list", initital="keep", chosen=True, wrapper_ng_show="edit_obj.image_change"),
-            ),
-            Fieldset(
-                "Kernel Dependency",
-                Field("kernel_dep", ng_options="key as value for (key, value) in dep_states", initial="keep", chosen=True),
-                Field("kernel_change"),
-                Field("kernel_list", ng_options="val.idx as val.name for val in kernel_list", initital="keep", chosen=True, wrapper_ng_show="edit_obj.kernel_change"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="submit"),
-            ),
-        )
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="submit"),
+        ),
+    )
+
 
 class device_monitoring_form(ModelForm):
     helper = FormHelper()
@@ -1878,46 +2103,53 @@ class device_monitoring_form(ModelForm):
     nagvis_parent = ModelChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Monitoring settings for {% verbatim %}{{ edit_obj.full_name }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("md_cache_mode", ng_options="value.idx as value.name for value in settings.md_cache_modes", initial=1),
-                Field("mon_device_templ", ng_options="value.idx as value.name for value in rest_data.mon_device_templ", initial=None),
-                Field("mon_ext_host", ng_options="value.idx as value.name for value in rest_data.mon_ext_host", initial=None, chosen=True),
-                Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.mon_server", initial=None, chosen=True),
-            ),
-            Fieldset(
-                "Flags",
+        Fieldset(
+            "Basic settings",
+            Field("md_cache_mode", ng_options="value.idx as value.name for value in settings.md_cache_modes", initial=1),
+            Field("mon_device_templ", ng_options="value.idx as value.name for value in rest_data.mon_device_templ", initial=None),
+            Field("mon_ext_host", ng_options="value.idx as value.name for value in rest_data.mon_ext_host", initial=None, chosen=True),
+            Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.mon_server", initial=None, chosen=True),
+        ),
+        Fieldset(
+            "Flags",
+            Div(
                 Div(
-                    Div(
-                        Field("enable_perfdata"),
-                        Field("flap_detection_enabled"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("monitor_checks"),
-                        Field("mon_resolve_name"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    Field("enable_perfdata"),
+                    Field("flap_detection_enabled"),
+                    css_class="col-md-6",
                 ),
+                Div(
+                    Field("monitor_checks"),
+                    Field("mon_resolve_name"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-            Fieldset(
-                "NagVis settings",
-                Field("automap_root_nagvis"),
-                Field("nagvis_parent", ng_options="value.idx as value.name for value in entries | filter:{'automap_root_nagvis' : true} | orderBy:'name'", initial=None),
+        ),
+        Fieldset(
+            "NagVis settings",
+            Field("automap_root_nagvis"),
+            Field(
+                "nagvis_parent",
+                ng_options="value.idx as value.name for value in entries | filter:{'automap_root_nagvis' : true} | orderBy:'name'",
+                initial=None
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-                Button("fetch", "Fetch disk layout", css_class="btn-warning", ng_click="settings.fn.fetch(this.edit_obj)"),
-            ),
-        )
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            Button("fetch", "Fetch disk layout", css_class="btn-warning", ng_click="settings.fn.fetch(this.edit_obj)"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(device_monitoring_form, self).__init__(*args, **kwargs)
         for clear_f in ["mon_device_templ", "nagvis_parent", "mon_ext_host", "monitor_server"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "---"
+
     class Meta:
         model = device
+
 
 class device_tree_form(ModelForm):
     helper = FormHelper()
@@ -1930,49 +2162,52 @@ class device_tree_form(ModelForm):
     root_passwd = CharField(widget=PasswordInput, required=False)
     helper.layout = Layout(
         HTML("<h2>Device settings for {% verbatim %}{{ edit_obj.name }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name"),
-                Field("comment"),
-                Field("device_type", ng_options="value.idx as value.description for value in rest_data.device_type | filter:ignore_md", chosen=True),
-                Field("device_group", ng_options="value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", chosen=True),
-            ),
-            Fieldset(
-                "Additional settings",
-                Field("curl"),
-                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
-                Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
-                Field("monitor_server", ng_options="value.idx as value.full_name_wt for value in rest_data.monitor_server", chosen=True),
-            ),
-            Fieldset(
-                "Security",
-                Field("root_passwd"),
-            ),
-            Fieldset(
-                "Flags",
+        Fieldset(
+            "Basic settings",
+            Field("name"),
+            Field("comment"),
+            Field("device_type", ng_options="value.idx as value.description for value in rest_data.device_type | filter:ignore_md", chosen=True),
+            Field("device_group", ng_options="value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", chosen=True),
+        ),
+        Fieldset(
+            "Additional settings",
+            Field("curl"),
+            Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
+            Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
+            Field("monitor_server", ng_options="value.idx as value.full_name_wt for value in rest_data.monitor_server", chosen=True),
+        ),
+        Fieldset(
+            "Security",
+            Field("root_passwd"),
+        ),
+        Fieldset(
+            "Flags",
+            Div(
                 Div(
-                    Div(
-                        Field("enabled"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("store_rrd_data"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    Field("enabled"),
+                    css_class="col-md-6",
                 ),
+                Div(
+                    Field("store_rrd_data"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(device_tree_form, self).__init__(*args, **kwargs)
         for clear_f in ["device_type", "device_group", "domain_tree_node"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = device
+
 
 class device_tree_many_form(ModelForm):
     helper = FormHelper()
@@ -2000,16 +2235,16 @@ class device_tree_many_form(ModelForm):
     for fs_string, el_list in [
         (
             "Basic settings", [
-                ("device_type", "value.idx as value.description for value in rest_data.device_type | filter:ignore_md", {"chosen" : True}),
-                ("device_group", "value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", {"chosen" : True}),
+                ("device_type", "value.idx as value.description for value in rest_data.device_type | filter:ignore_md", {"chosen": True}),
+                ("device_group", "value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", {"chosen": True}),
             ]
         ),
         (
             "Additional settings", [
                 ("curl", None, {}),
-                ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen" : True}),
-                ("bootserver", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen" : True}),
-                ("monitor_server", "value.idx as value.full_name_wt for value in rest_data.monitor_server", {"chosen" : True}),
+                ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen": True}),
+                ("bootserver", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen": True}),
+                ("monitor_server", "value.idx as value.full_name_wt for value in rest_data.monitor_server", {"chosen": True}),
             ]
         ),
         (
@@ -2023,7 +2258,7 @@ class device_tree_many_form(ModelForm):
                 ("store_rrd_data", None, {}),
             ]
         ),
-        ]:
+    ]:
         helper.layout.append(
             Fieldset(
                 fs_string,
@@ -2047,14 +2282,17 @@ class device_tree_many_form(ModelForm):
             Submit("submit", "Modify many", css_class="primaryAction"),
         ),
     )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(device_tree_many_form, self).__init__(*args, **kwargs)
         for clear_f in ["device_type", "device_group", "domain_tree_node"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
             self.fields[clear_f].required = False
+
     class Meta:
         model = device
+
 
 class device_group_tree_form(ModelForm):
     helper = FormHelper()
@@ -2066,40 +2304,43 @@ class device_group_tree_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Settings for devicegroup {% verbatim %}{{ edit_obj.name }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name"),
-                Field("description"),
-            ),
-            Fieldset(
-                "Additional settings",
-                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
-            ),
-            Fieldset(
-                "Flags",
+        Fieldset(
+            "Basic settings",
+            Field("name"),
+            Field("description"),
+        ),
+        Fieldset(
+            "Additional settings",
+            Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
+        ),
+        Fieldset(
+            "Flags",
+            Div(
                 Div(
-                    Div(
-                        # disable enabled-flag for clusterdevicegroup
-                        Field("enabled", ng_show="!edit_obj.cluster_device_group"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    # disable enabled-flag for clusterdevicegroup
+                    Field("enabled", ng_show="!edit_obj.cluster_device_group"),
+                    css_class="col-md-6",
                 ),
+                Div(
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            ),
-        )
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(device_group_tree_form, self).__init__(*args, **kwargs)
         for clear_f in ["domain_tree_node"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = device_group
+
 
 class device_variable_form(ModelForm):
     helper = FormHelper()
@@ -2112,21 +2353,23 @@ class device_variable_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Device variable {% verbatim %}'{{ _edit_obj.name }}'{% endverbatim %}</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name"),
-                Field("val_str", wrapper_ng_show="_edit_obj.var_type == 's'"),
-                Field("val_int", wrapper_ng_show="_edit_obj.var_type == 'i'"),
-                Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),
-                Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
-                Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            ),
-        )
+        Fieldset(
+            "Basic settings",
+            Field("name"),
+            Field("val_str", wrapper_ng_show="_edit_obj.var_type == 's'"),
+            Field("val_int", wrapper_ng_show="_edit_obj.var_type == 'i'"),
+            Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),
+            Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
+            Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+        ),
+    )
+
     class Meta:
         model = device_variable
+
 
 class device_variable_new_form(ModelForm):
     helper = FormHelper()
@@ -2137,38 +2380,40 @@ class device_variable_new_form(ModelForm):
     helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
-    #var_type = ChoiceField(choices=[("i", "integer"), ("s", "string")])
+    # var_type = ChoiceField(choices=[("i", "integer"), ("s", "string")])
     var_type = ChoiceField()
     helper.layout = Layout(
         HTML("<h2>New device variable {% verbatim %}'{{ _edit_obj.name }}'{% endverbatim %}</h2>"),
-            Fieldset(
-                "Monitoring variables",
-                HTML("""
+        Fieldset(
+            "Monitoring variables",
+            HTML("""
 <div class='form-group'>
     <label class='control-label col-sm-3'>Copy</label>
     <div class='controls col-sm-8'>
         <select chosen="1" ng-model="_edit_obj._mon_copy" ng-options="entry.idx as entry.info for entry in mon_vars" ng-change="take_mon_var()"></select>
     </div>
 </div>
-"""),
-                ng_show="_edit_obj.device && mon_vars.length",
-            ),
-            Fieldset(
-                "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
-                Field("var_type", chosen=True, ng_options="value.short as value.long for value in valid_var_types"),
-                Field("val_str", wrapper_ng_show="_edit_obj.var_type == 's'"),
-                Field("val_int", wrapper_ng_show="_edit_obj.var_type == 'i'"),
-                Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),
-                Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
-                Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            ),
-        )
+            """),
+            ng_show="_edit_obj.device && mon_vars.length",
+        ),
+        Fieldset(
+            "Basic settings",
+            Field("name", wrapper_class="ng-class:form_error('name')"),
+            Field("var_type", chosen=True, ng_options="value.short as value.long for value in valid_var_types"),
+            Field("val_str", wrapper_ng_show="_edit_obj.var_type == 's'"),
+            Field("val_int", wrapper_ng_show="_edit_obj.var_type == 'i'"),
+            Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),
+            Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
+            Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+        ),
+    )
+
     class Meta:
         model = device_variable
+
 
 class config_form(ModelForm):
     helper = FormHelper()
@@ -2181,43 +2426,52 @@ class config_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Configuration '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name",
-                    wrapper_class="ng-class:form_error('name')",
-                    typeahead="hint for hint in get_config_hints() | filter:$viewValue",
-                    typeahead_on_select="config_selected_vt($item, $model, $label)",
-                    typeahead_min_length=1,
-                ),
-                Field("description"),
-                Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True, wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config"),
+        Fieldset(
+            "Basic settings",
+            Field(
+                "name",
+                wrapper_class="ng-class:form_error('name')",
+                typeahead="hint for hint in get_config_hints() | filter:$viewValue",
+                typeahead_on_select="config_selected_vt($item, $model, $label)",
+                typeahead_min_length=1,
             ),
-            HTML(
-                "<div ng-bind-html='show_config_help()'></div>",
+            Field("description"),
+            Field(
+                "parent_config",
+                ng_options="value.idx as value.name for value in this.get_valid_parents()",
+                chosen=True,
+                wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config"
             ),
-            Fieldset(
-                "other settings",
-                Field("enabled"),
-                Field("priority"),
-                Field("server_config", wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.parent_config"),
-            ),
-            Fieldset(
-                "Categories",
-                Field("config_catalog", ng_options="value.idx as value.name for value in this.config_catalogs", chosen=True),
-                HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            ),
-        )
+        ),
+        HTML(
+            "<div ng-bind-html='show_config_help()'></div>",
+        ),
+        Fieldset(
+            "other settings",
+            Field("enabled"),
+            Field("priority"),
+            Field("server_config", wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.parent_config"),
+        ),
+        Fieldset(
+            "Categories",
+            Field("config_catalog", ng_options="value.idx as value.name for value in this.config_catalogs", chosen=True),
+            HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+        ),
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(config_form, self).__init__(*args, **kwargs)
         for clear_f in ["config_catalog"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = config
         fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog", "server_config",)
+
 
 class config_catalog_form(ModelForm):
     helper = FormHelper()
@@ -2230,19 +2484,21 @@ class config_catalog_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Config catalog '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
-                Field("author"),
-                Field("url"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            ),
-        )
+        Fieldset(
+            "Basic settings",
+            Field("name", wrapper_class="ng-class:form_error('name')"),
+            Field("author"),
+            Field("url"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+        ),
+    )
+
     class Meta:
         model = config_catalog
         fields = ("name", "author", "url",)
+
 
 class config_str_form(ModelForm):
     helper = FormHelper()
@@ -2255,22 +2511,24 @@ class config_str_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>String var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
-                Field("description"),
-                Field("value"),
-            ),
-            HTML(
-                "<div ng-bind-html='show_config_var_help()'></div>",
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        Fieldset(
+            "Basic settings",
+            Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
+            Field("description"),
+            Field("value"),
+        ),
+        HTML(
+            "<div ng-bind-html='show_config_var_help()'></div>",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     class Meta:
         model = config_str
         fields = ("name", "description", "value",)
+
 
 class config_int_form(ModelForm):
     helper = FormHelper()
@@ -2283,22 +2541,24 @@ class config_int_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Integer var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
-                Field("description"),
-                Field("value"),
-            ),
-            HTML(
-                "<div ng-bind-html='show_config_var_help()'></div>",
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        Fieldset(
+            "Basic settings",
+            Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
+            Field("description"),
+            Field("value"),
+        ),
+        HTML(
+            "<div ng-bind-html='show_config_var_help()'></div>",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     class Meta:
         model = config_int
         fields = ("name", "description", "value",)
+
 
 class config_bool_form(ModelForm):
     helper = FormHelper()
@@ -2311,31 +2571,35 @@ class config_bool_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Bool var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
-                Field("description"),
-                HTML("""
+        Fieldset(
+            "Basic settings",
+            Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
+            Field("description"),
+            HTML("""
 <div class='form-group'>
     <label class='control-label col-sm-3'>Value</label>
     <div class='controls col-sm-7'>
-        <input type='button' ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"' ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'>
+        <input type='button'
+            ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"'
+            ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'>
         </input>
     </div>
 </div>
-"""),
-                # Field("value", min=0, max=1),
-            ),
-            HTML(
-                "<div ng-bind-html='show_config_var_help()'></div>",
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+            """),
+            # Field("value", min=0, max=1),
+        ),
+        HTML(
+            "<div ng-bind-html='show_config_var_help()'></div>",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     class Meta:
         model = config_bool
         fields = ("name", "description",)
+
 
 class config_script_form(ModelForm):
     helper = FormHelper()
@@ -2348,37 +2612,39 @@ class config_script_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Config script '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
-                Field("description"),
-            ),
-            Fieldset(
-                "Script",
-                HTML("<textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea>"), # Field("value"),
-            ),
-            Fieldset(
-                "Flags",
+        Fieldset(
+            "Basic settings",
+            Field("name", wrapper_class="ng-class:form_error('name')"),
+            Field("description"),
+        ),
+        Fieldset(
+            "Script",
+            HTML("<textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea>"),  # Field("value"),
+        ),
+        Fieldset(
+            "Flags",
+            Div(
                 Div(
-                    Div(
-                        # disable enabled-flag for clusterdevicegroup
-                        Field("priority"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("enabled"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    # disable enabled-flag for clusterdevicegroup
+                    Field("priority"),
+                    css_class="col-md-6",
                 ),
+                Div(
+                    Field("enabled"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     class Meta:
         model = config_script
         fields = ("name", "description", "priority", "enabled",)
+
 
 class mon_check_command_form(ModelForm):
     helper = FormHelper()
@@ -2391,13 +2657,13 @@ class mon_check_command_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Check command '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
-                Field("description"),
-                Field("mon_check_command_special", ng_options="value.idx as value.name for value in mccs_list", chosen=True),
-                Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special"),
-                HTML("""
+        Fieldset(
+            "Basic settings",
+            Field("name", wrapper_class="ng-class:form_error('name')"),
+            Field("description"),
+            Field("mon_check_command_special", ng_options="value.idx as value.name for value in mccs_list", chosen=True),
+            Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special"),
+            HTML("""
 <div class='form-group' ng-show="_edit_obj.mon_check_command_special">
     <label class="control-label col-sm-2">Info</label>
     <div class="col-sm-9 list-group">
@@ -2409,8 +2675,8 @@ class mon_check_command_form(ModelForm):
         {% endverbatim %}
     </div>
 </div>
-                """),
-                HTML("""
+            """),
+            HTML("""
 <div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
     <label class='control-label col-sm-2'>Tools</label>
     <div class='controls col-sm-9'>
@@ -2424,8 +2690,8 @@ class mon_check_command_form(ModelForm):
         </div>
     </div>
 </div>
-                """),
-                HTML("""
+            """),
+            HTML("""
 <div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
     <label class="control-label col-sm-2">Info</label>
     <div class="col-sm-9 list-group">
@@ -2434,51 +2700,59 @@ class mon_check_command_form(ModelForm):
         </ul>
     </div>
 </div>
-                """),
+            """),
+        ),
+        Fieldset(
+            "Additional settings",
+            Field("mon_service_templ", ng_options="value.idx as value.name for value in mon_service_templ", chosen=True),
+            Field(
+                "event_handler",
+                ng_options="value.idx as value.name for value in get_event_handlers(_edit_obj)", chosen=True,
+                wrapper_ng_show="!_edit_obj.is_event_handler"
             ),
-            Fieldset(
-                "Additional settings",
-                Field("mon_service_templ", ng_options="value.idx as value.name for value in mon_service_templ", chosen=True),
-                Field("event_handler", ng_options="value.idx as value.name for value in get_event_handlers(_edit_obj)", chosen=True, wrapper_ng_show="!_edit_obj.is_event_handler"),
-            ),
-            Fieldset(
-                "Flags",
+        ),
+        Fieldset(
+            "Flags",
+            Div(
                 Div(
-                    Div(
-                        # disable enabled-flag for clusterdevicegroup
-                        Field("volatile"),
-                        Field("enable_perfdata"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("event_handler_enabled"),
-                        Field("is_event_handler", wrapper_ng_show="_edit_obj.event_handler == undefined"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    # disable enabled-flag for clusterdevicegroup
+                    Field("volatile"),
+                    Field("enable_perfdata"),
+                    css_class="col-md-6",
                 ),
+                Div(
+                    Field("event_handler_enabled"),
+                    Field("is_event_handler", wrapper_ng_show="_edit_obj.event_handler == undefined"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-            Fieldset(
-                "Categories",
-                HTML("""
+        ),
+        Fieldset(
+            "Categories",
+            HTML("""
 <div ng-mouseenter='show_cat_tree()' ng-mouseleave='hide_cat_tree()' category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
 </div>
-                """),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+            """),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(mon_check_command_form, self).__init__(*args, **kwargs)
         for clear_f in ["mon_service_templ", "event_handler"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "----"
+
     class Meta:
         model = mon_check_command
-        fields = ("name", "mon_service_templ", "command_line",
+        fields = (
+            "name", "mon_service_templ", "command_line",
             "description", "enable_perfdata", "volatile", "is_event_handler",
-            "event_handler", "event_handler_enabled", "mon_check_command_special")
+            "event_handler", "event_handler_enabled", "mon_check_command_special"
+        )
 
 
 class netdevice_form(ModelForm):
@@ -2503,97 +2777,106 @@ class netdevice_form(ModelForm):
     enabled = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
-                Field("description"),
-                Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
-                Field("enabled"),
-                Field(
-                    "is_bridge",
-                    wrapper_ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device",
-                    ng_disabled="has_bridge_slaves(_edit_obj)",
-                ),
-                Field("bridge_device",
-                    ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)",
-                    chosen=True,
-                    wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length",
-                ),
+        Fieldset(
+            "Basic settings",
+            Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
+            Field("description"),
+            Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
+            Field("enabled"),
+            Field(
+                "is_bridge",
+                wrapper_ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device",
+                ng_disabled="has_bridge_slaves(_edit_obj)",
             ),
-            Fieldset(
-                "Routing settings",
-                Field("penalty", min=1, max=128),
-                Field("routing"),
-                Field("inter_device_routing"),
+            Field(
+                "bridge_device",
+                ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)",
+                chosen=True,
+                wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length",
             ),
-            Fieldset(
-                "",
-                Button("show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool",
-                    ng_class="_edit_obj.show_ethtool && 'btn btn-sm btn-success' || 'btn btn-sm'",
-                ),
-                Button("show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware",
-                    ng_class="_edit_obj.show_hardware && 'btn btn-sm btn-success' || 'btn btn-sm'",
-                ),
-                Button("show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan",
-                    ng_class="_edit_obj.show_vlan && 'btn btn-sm btn-success' || 'btn btn-sm'",
-                ),
-                Button("show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac",
-                    ng_class="_edit_obj.show_mac && 'btn btn-sm btn-success' || 'btn btn-sm'",
-                ),
+        ),
+        Fieldset(
+            "Routing settings",
+            Field("penalty", min=1, max=128),
+            Field("routing"),
+            Field("inter_device_routing"),
+        ),
+        Fieldset(
+            "",
+            Button(
+                "show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool",
+                ng_class="_edit_obj.show_ethtool && 'btn btn-sm btn-success' || 'btn btn-sm'",
             ),
-            Fieldset(
-                "hardware settings",
-                Field("driver"),
-                Field("driver_options"),
-                ng_show="_edit_obj.show_hardware",
+            Button(
+                "show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware",
+                ng_class="_edit_obj.show_hardware && 'btn btn-sm btn-success' || 'btn btn-sm'",
             ),
-            Fieldset(
-                "ethtool settings (for cluster boot)",
-                Field("ethtool_autoneg", ng_change="update_ethtool(_edit_obj)"),
-                Field("ethtool_duplex", ng_change="update_ethtool(_edit_obj)"),
-                Field("ethtool_speed", ng_change="update_ethtool(_edit_obj)"),
-                ng_show="_edit_obj.show_ethtool",
+            Button(
+                "show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan",
+                ng_class="_edit_obj.show_vlan && 'btn btn-sm btn-success' || 'btn btn-sm'",
             ),
-            Fieldset(
-                "MAC Address settings",
+            Button(
+                "show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac",
+                ng_class="_edit_obj.show_mac && 'btn btn-sm btn-success' || 'btn btn-sm'",
+            ),
+        ),
+        Fieldset(
+            "hardware settings",
+            Field("driver"),
+            Field("driver_options"),
+            ng_show="_edit_obj.show_hardware",
+        ),
+        Fieldset(
+            "ethtool settings (for cluster boot)",
+            Field("ethtool_autoneg", ng_change="update_ethtool(_edit_obj)"),
+            Field("ethtool_duplex", ng_change="update_ethtool(_edit_obj)"),
+            Field("ethtool_speed", ng_change="update_ethtool(_edit_obj)"),
+            ng_show="_edit_obj.show_ethtool",
+        ),
+        Fieldset(
+            "MAC Address settings",
+            Div(
                 Div(
-                    Div(
-                        # disable enabled-flag for clusterdevicegroup
-                        Field("macaddr"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("fake_macaddr"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
+                    # disable enabled-flag for clusterdevicegroup
+                    Field("macaddr"),
+                    css_class="col-md-6",
                 ),
-                Field("dhcp_device"),
-                ng_show="_edit_obj.show_mac",
+                Div(
+                    Field("fake_macaddr"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
             ),
-            Fieldset(
-                "VLAN settings",
-                Field("master_device", ng_options="value.idx as value.devname for value in get_vlan_masters(_edit_obj)", chosen=True),
-                Field("vlan_id", min=0, max=255),
-                ng_show="_edit_obj.show_vlan && !_edit_obj.is_bridge",
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+            Field("dhcp_device"),
+            ng_show="_edit_obj.show_mac",
+        ),
+        Fieldset(
+            "VLAN settings",
+            Field("master_device", ng_options="value.idx as value.devname for value in get_vlan_masters(_edit_obj)", chosen=True),
+            Field("vlan_id", min=0, max=255),
+            ng_show="_edit_obj.show_vlan && !_edit_obj.is_bridge",
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(netdevice_form, self).__init__(*args, **kwargs)
         for clear_f in ["netdevice_speed"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
         for clear_f in ["master_device"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "---"
+
     class Meta:
         model = netdevice
-        fields = ("devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
+        fields = (
+            "devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
             "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
             "bridge_device", "inter_device_routing", "enabled")
+
 
 class net_ip_form(ModelForm):
     helper = FormHelper()
@@ -2607,30 +2890,33 @@ class net_ip_form(ModelForm):
     alias_excl = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>IP Address '{% verbatim %}{{ _edit_obj.ip }}{% endverbatim %}'</h2>"),
-            Fieldset(
-                "Basic settings",
-                Field("netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
-                Field("ip", wrapper_class="ng-class:form_error('devname')", placeholder="IP address"),
-                Field("network", ng_options="value.idx as value.info_string for value in networks", chosen=True),
-                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
-            ),
-            Fieldset(
-                "Alias settings (will be written without node postfixes)",
-                Field("alias"),
-                Field("alias_excl"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        Fieldset(
+            "Basic settings",
+            Field("netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
+            Field("ip", wrapper_class="ng-class:form_error('devname')", placeholder="IP address"),
+            Field("network", ng_options="value.idx as value.info_string for value in networks", chosen=True),
+            Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
+        ),
+        Fieldset(
+            "Alias settings (will be written without node postfixes)",
+            Field("alias"),
+            Field("alias_excl"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(net_ip_form, self).__init__(*args, **kwargs)
         for clear_f in ["network", "domain_tree_node", "netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+
     class Meta:
         model = net_ip
         fields = ("ip", "network", "domain_tree_node", "alias", "alias_excl", "netdevice",)
+
 
 class peer_information_s_form(ModelForm):
     helper = FormHelper()
@@ -2643,26 +2929,29 @@ class peer_information_s_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Peer information from {% verbatim %}{{ get_peer_src_info() }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "Settings",
-                Field("penalty", min=1, max=128),
-                Field("d_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
-                Field("s_netdevice", ng_options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()", chosen=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        Fieldset(
+            "Settings",
+            Field("penalty", min=1, max=128),
+            Field("d_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
+            Field("s_netdevice", ng_options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()", chosen=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(peer_information_s_form, self).__init__(*args, **kwargs)
         for clear_f in ["s_netdevice", "d_netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
         self.fields["s_netdevice"].label = "Source"
         self.fields["d_netdevice"].label = "Destination"
+
     class Meta:
         model = peer_information
         fields = ("penalty", "s_netdevice", "d_netdevice")
+
 
 class peer_information_d_form(ModelForm):
     helper = FormHelper()
@@ -2675,26 +2964,29 @@ class peer_information_d_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Peer information from {% verbatim %}{{ get_peer_src_info() }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "Settings",
-                Field("penalty", min=1, max=128),
-                Field("s_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
-                Field("d_netdevice", ng_options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()", chosen=True),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        Fieldset(
+            "Settings",
+            Field("penalty", min=1, max=128),
+            Field("s_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
+            Field("d_netdevice", ng_options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()", chosen=True),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
+        super(peer_information_d_form, self).__init__(*args, **kwargs)
         for clear_f in ["s_netdevice", "d_netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
         self.fields["s_netdevice"].label = "Source"
         self.fields["d_netdevice"].label = "Destination"
+
     class Meta:
         model = peer_information
         fields = ("penalty", "s_netdevice", "d_netdevice",)
+
 
 class cd_connection_form(ModelForm):
     helper = FormHelper()
@@ -2707,29 +2999,26 @@ class cd_connection_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Connection {% verbatim %}{{ get_cd_info() }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "Settings",
-                Field("connection_info"),
-                Field("parameter_i1", min=0, max=256),
-                Field("parameter_i2", min=0, max=256),
-                Field("parameter_i3", min=0, max=256),
-                Field("parameter_i4", min=0, max=256),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        Fieldset(
+            "Settings",
+            Field("connection_info"),
+            Field("parameter_i1", min=0, max=256),
+            Field("parameter_i2", min=0, max=256),
+            Field("parameter_i3", min=0, max=256),
+            Field("parameter_i4", min=0, max=256),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
-    def __init__(self, *args, **kwargs):
-        ModelForm.__init__(self, *args, **kwargs)
-        # for clear_f in ["s_netdevice", "d_netdevice"]:
-        #    self.fields[clear_f].queryset = empty_query_set()
-        #    self.fields[clear_f].empty_label = None
-        # self.fields["s_netdevice"].label = "Source"
-        # self.fields["d_netdevice"].label = "Destination"
+    )
+
     class Meta:
         model = cd_connection
-        fields = ("connection_info", "parameter_i1", "parameter_i2", "parameter_i3",
-            "parameter_i4",)
+        fields = (
+            "connection_info", "parameter_i1", "parameter_i2", "parameter_i3",
+            "parameter_i4",
+        )
+
 
 class boot_form(Form):
     helper = FormHelper()
@@ -2742,14 +3031,15 @@ class boot_form(Form):
     image = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Connection {% verbatim %}{{ get_cd_info() }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "Settings",
-                Field("image"),
-            ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+        Fieldset(
+            "Settings",
+            Field("image"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
 
 class boot_single_form(Form):
     helper = FormHelper()
@@ -2772,10 +3062,9 @@ class boot_single_form(Form):
     dhcp_write = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>{% verbatim %}Device setting for {{ device_info_str }}{% endverbatim %}</h2>"),
-            Fieldset(
-                "basic settings",
-                HTML(
-"""
+        Fieldset(
+            "basic settings",
+            HTML("""
 {% verbatim %}
 <div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t']">
     <label class='control-label col-sm-4'>
@@ -2794,40 +3083,41 @@ class boot_single_form(Form):
     </div>
 </div>
 {% endverbatim %}
-"""
-                ),
-                Field("new_kernel", ng_options="value.idx as value.name for value in kernels", chosen=True, wrapper_ng_show="bo_enabled['k']"),
-                Field("stage1_flavour", ng_options="value.val as value.name for value in stage1_flavours", chosen=True, wrapper_ng_show="bo_enabled['k']"),
-                Field("kernel_append", wrapper_ng_show="bo_enabled['k']"),
-                Field("new_image", ng_options="value.idx as value.name for value in images", chosen=True, wrapper_ng_show="bo_enabled['i']"),
-                Field("partition_table", ng_options="value.idx as value.name for value in partitions", chosen=True, wrapper_ng_show="bo_enabled['p']"),
-            ),
-            Fieldset(
-                "bootdevice settings",
+            """),
+            Field("new_kernel", ng_options="value.idx as value.name for value in kernels", chosen=True, wrapper_ng_show="bo_enabled['k']"),
+            Field("stage1_flavour", ng_options="value.val as value.name for value in stage1_flavours", chosen=True, wrapper_ng_show="bo_enabled['k']"),
+            Field("kernel_append", wrapper_ng_show="bo_enabled['k']"),
+            Field("new_image", ng_options="value.idx as value.name for value in images", chosen=True, wrapper_ng_show="bo_enabled['i']"),
+            Field("partition_table", ng_options="value.idx as value.name for value in partitions", chosen=True, wrapper_ng_show="bo_enabled['p']"),
+        ),
+        Fieldset(
+            "bootdevice settings",
+            Div(
                 Div(
-                    Div(
-                        # disable enabled-flag for clusterdevicegroup
-                        Field("dhcp_mac", wrapper_ng_show="bo_enabled['b']"),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("dhcp_write", wrapper_ng_show="bo_enabled['b']"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row"
+                    # disable enabled-flag for clusterdevicegroup
+                    Field("dhcp_mac", wrapper_ng_show="bo_enabled['b']"),
+                    css_class="col-md-6",
                 ),
-                Field("macaddr", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
-                Field("driver", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
+                Div(
+                    Field("dhcp_write", wrapper_ng_show="bo_enabled['b']"),
+                    css_class="col-md-6",
+                ),
+                css_class="row"
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
-            )
+            Field("macaddr", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
+            Field("driver", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
+    )
+
     def __init__(self, *args, **kwargs):
-        Form.__init__(self, *args, **kwargs)
+        super(boot_single_form, self).__init__(*args, **kwargs)
         for clear_f in ["target_state", "partition_table", "new_image", "new_kernel", "stage1_flavour"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "not set"
+
 
 class boot_many_form(Form):
     helper = FormHelper()
@@ -2861,13 +3151,12 @@ class boot_many_form(Form):
             "target state",
             Div(
                 Field(
-                   "change_target_state",
-                   wrapper_ng_show="bo_enabled['t']",
+                    "change_target_state",
+                    wrapper_ng_show="bo_enabled['t']",
                 ),
                 css_class="col-md-3",
             ),
-            HTML(
-"""
+            HTML("""
 {% verbatim %}
 <div class="col-md-9">
 <div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
@@ -2888,27 +3177,26 @@ class boot_many_form(Form):
 </div>
 </div>
 {% endverbatim %}
-"""
-            ),
+            """),
             css_class="row",
         )
     )
     for fs_string, el_list in [
         (
             "settings", [
-                # ("target_state", "value.idx as value.info for value in valid_states", {"chosen" : True}, "t", "target_state"),
-                ("new_kernel", "value.idx as value.name for value in kernels", {"chosen" : True}, "k", "new_kernel"),
-                ("stage1_flavour", "value.val as value.name for value in stage1_flavours", {"chosen" : True}, "k", ""),
+                # ("target_state", "value.idx as value.info for value in valid_states", {"chosen": True}, "t", "target_state"),
+                ("new_kernel", "value.idx as value.name for value in kernels", {"chosen": True}, "k", "new_kernel"),
+                ("stage1_flavour", "value.val as value.name for value in stage1_flavours", {"chosen": True}, "k", ""),
                 ("kernel_append", None, {}, "k", ""),
-                ("new_image", "value.idx as value.name for value in images", {"chosen" : True}, "i", "new_image"),
-                ("partition_table", "value.idx as value.name for value in partitions", {"chosen" : True}, "p", "partition_table"),
+                ("new_image", "value.idx as value.name for value in images", {"chosen": True}, "i", "new_image"),
+                ("partition_table", "value.idx as value.name for value in partitions", {"chosen": True}, "p", "partition_table"),
                 ("dhcp_mac", None, {}, "b", "dhcp_mac"),
                 ("dhcp_write", None, {}, "b", ""),
                 ("macaddr", None, {}, "b", ""),
                 ("driver", None, {}, "b", ""),
             ]
         ),
-        ]:
+    ]:
         helper.layout.append(
             Fieldset(
                 fs_string,
@@ -2916,8 +3204,8 @@ class boot_many_form(Form):
                     Div(
                         Div(
                             Field(
-                               "change_{}".format(en_field),
-                               wrapper_ng_show="bo_enabled['{}']".format(en_flag),
+                                "change_{}".format(en_field),
+                                wrapper_ng_show="bo_enabled['{}']".format(en_flag),
                             ) if en_field else HTML(""),
                             css_class="col-md-3",
                         ),
@@ -2926,11 +3214,11 @@ class boot_many_form(Form):
                                 f_name,
                                 wrapper_ng_show="_edit_obj.change_{} && bo_enabled['{}']".format(
                                     {
-                                        "k" : "new_kernel",
-                                        "i" : "new_image",
-                                        "p" : "partition_table",
-                                        "b" : "dhcp_mac",
-                                        "t" : "target_state",
+                                        "k": "new_kernel",
+                                        "i": "new_image",
+                                        "p": "partition_table",
+                                        "b": "dhcp_mac",
+                                        "t": "target_state",
                                     }[en_flag],
                                     en_flag,
                                 ),
@@ -2948,12 +3236,14 @@ class boot_many_form(Form):
             Submit("submit", "Modify many", css_class="primaryAction"),
         ),
     )
+
     def __init__(self, *args, **kwargs):
-        Form.__init__(self, *args, **kwargs)
+        super(boot_many_form, self).__init__(*args, **kwargs)
         for clear_f in ["target_state", "partition_table", "new_image", "new_kernel", "stage1_flavour"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "not set"
             self.fields[clear_f].required = False
+
 
 class device_network_scan_form(Form):
     helper = FormHelper()
@@ -2968,19 +3258,20 @@ class device_network_scan_form(Form):
     strict_mode = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Scan device</h2>"),
-            Fieldset(
-                "Base data",
-                Field("scan_address"),
-            ),
-            Fieldset(
-                "Flags",
-                Field("strict_mode"),
-            ),
-            FormActions(
-                Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
-                Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("scan_address"),
+        ),
+        Fieldset(
+            "Flags",
+            Field("strict_mode"),
+        ),
+        FormActions(
+            Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
+            Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
+        ),
+    )
+
 
 class create_device_form(Form):
     helper = FormHelper()
@@ -2995,16 +3286,16 @@ class create_device_form(Form):
     strict_mode = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Create new device</h2>"),
-            Fieldset(
-                "Base data",
-                Field("scan_address"),
-            ),
-            Fieldset(
-                "Flags",
-                Field("strict_mode"),
-            ),
-            FormActions(
-                Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
-                Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
-            ),
-        )
+        Fieldset(
+            "Base data",
+            Field("scan_address"),
+        ),
+        Fieldset(
+            "Flags",
+            Field("strict_mode"),
+        ),
+        FormActions(
+            Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
+            Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
+        ),
+    )

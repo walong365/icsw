@@ -312,8 +312,7 @@ angular_module_setup = (module_list, url_list=[]) ->
                     scope.acl_any = func_dict["acl_any"]
                     scope.acl_all = func_dict["acl_all"]
            }
-        )
-        cur_mod.config(['$httpProvider', 
+        ).config(['$httpProvider', 
             ($httpProvider) ->
                 $httpProvider.defaults.xsrfCookieName = 'csrftoken'
                 $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
@@ -884,7 +883,7 @@ class angular_edit_mixin
             @scope.new_obj = @new_object(@scope)
         else
             @scope.new_obj = {}
-        @create_or_edit(event, true, @scope.new_obj)
+        return @create_or_edit(event, true, @scope.new_obj)
     send_change_signal : () =>
         if @change_signal
             @scope.$emit(@change_signal)
