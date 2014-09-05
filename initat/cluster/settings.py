@@ -394,6 +394,14 @@ PIPELINE_JS = {
             # "js/libs/angular-strap.tpl.min.js",
         },
         "output_filename": "pipeline/js/extra1.js"
+    },
+    "js_gmaps": {
+        "source_filenames": {
+            # google maps
+            # "js/angular-google-maps.min.js",
+            "js/ng-map.min.js",
+        },
+        "output_filename": "pipeline/js/gmaps.js"
     }
 }
 
