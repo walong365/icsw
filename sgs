@@ -1,10 +1,10 @@
-#!/usr/bin/python-init -Ot
-# -*- coding: iso-8859-1 -*-
+#!/usr/bin/python-init -Otu
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007 Andreas Lang, init.at
+# Copyright (C) 2005,2007,2014 Andreas Lang-Nevyjel, init.at
 #
-# Send feedback to: <lang@init.at>
-# 
+# Send feedback to: <lang-nevyjel@init.at>
+#
 # This file is part of rms-tools
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,27 +21,27 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+
 import sys
-import time
 import os
 import commands
-import re
 import sge_license_tools
 import logging_tools
 
+
 def main():
     # change IO-descriptors
-    sge_stdout, sge_stderr = (sys.stdout, sys.stderr)
     base_dir = "/etc/sysconfig/licenses"
-    my_pid = os.getpid()
-    if not os.environ.has_key("SGE_ROOT"):
+    if "SGE_ROOT" not in os.environ:
         print "Error, no SGE_ROOT environment variable set"
         sys.exit(1)
-    if not os.environ.has_key("SGE_CELL"):
+    if "SGE_CELL" not in os.environ:
         print "Error, no SGE_CELL environment variable set"
         sys.exit(1)
-    sge_root, sge_cell = (os.environ["SGE_ROOT"],
-                          os.environ["SGE_CELL"])
+    sge_root, _sge_cell = (
+        os.environ["SGE_ROOT"],
+        os.environ["SGE_CELL"]
+    )
     arch_util = "%s/util/arch" % (sge_root)
     if not os.path.isfile(arch_util):
         print "No arch-utility found in %s/util" % (sge_root)
@@ -61,7 +61,7 @@ def main():
         sys.exit(1)
     gc_lines = [tuple(x.strip()[3:].split("=", 1)) for x in out.split("\n") if x.strip().startswith("gc:")]
     for gc_name, gc_uc in gc_lines:
-        if actual_licenses.has_key(gc_name):
+        if gc_name in actual_licenses:
             act_lic = actual_licenses[gc_name]
             act_lic.set_used_num(act_lic.get_total_num() - int(gc_uc))
     lic_names = actual_licenses.keys()
@@ -75,4 +75,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

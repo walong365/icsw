@@ -31,11 +31,9 @@ import datetime
 import logging_tools
 import os
 import pprint
-import process_tools
 import server_command
 import threading_tools
 import time
-import uuid
 
 _OBJ_DICT = {
     "rms_queue": rms_queue,
@@ -94,7 +92,7 @@ class accounting_process(threading_tools.process_obj):
         self._check_accounting()
         # check the last week
         _stime = datetime.datetime.now() - datetime.timedelta(days=7)
-        self._check_accounting({"start_time" : _stime.strftime("%Y%m%d%H%M")})
+        self._check_accounting({"start_time": _stime.strftime("%Y%m%d%H%M")})
 
     def _init_environ(self):
         os.environ["SGE_ROOT"] = global_config["SGE_ROOT"]

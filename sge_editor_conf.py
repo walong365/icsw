@@ -19,9 +19,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" simple wrapper script for editing sge configs """
 
+import os
 import sys
 import logging_tools
+
 
 def main():
     fname = sys.argv[1]
@@ -49,7 +52,7 @@ def main():
     else:
         k_new, k_change = (set(), set())
         for key, value in new_keys.iteritems():
-            if content.has_key(key):
+            if key in content:
                 old_val = ",".join([_line.strip() for _line in content.get(key, "").split(",")])
                 new_val = ",".join([_line.strip() for _line in value.split(",")])
                 if old_val != new_val:
@@ -78,7 +81,6 @@ def main():
             os.unlink("/tmp/.qconf_config")
         except:
             pass
-    
+
 if __name__ == "__main__":
     main()
-    

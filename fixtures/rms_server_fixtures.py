@@ -23,7 +23,11 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="rms_server", description="device hosts the RMS-server (Jobsystem)",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="rms_server",
+        description="device hosts the RMS-server (Jobsystem)",
+        server_config=True,
+        system_config=True,
+    )
