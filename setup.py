@@ -9,4 +9,3 @@ setup(name="meta-server",
       py_modules=[],
       packages=["initat.meta_server"],
 )
-
