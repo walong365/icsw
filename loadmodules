@@ -51,7 +51,6 @@ case "$1" in
             done
             true
         fi
-        #/usr/local/sbin/generate-ethtool-config.py
         rc_status -v
         ;;
     stop)
