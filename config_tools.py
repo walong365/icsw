@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
 from django.db.models import Q
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     config_str, config_blob, config_int, config_bool, netdevice, peer_information
+    netdevice, peer_information, config_int, config_blob, config_str, config_bool
 import array
 import configfile
 import logging_tools
@@ -38,21 +38,26 @@ import process_tools
 import sys
 import time
 
+
 class router_object(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.__cur_gen = 0
         self.nx = None
         self._update()
+
     def add_nodes(self):
         self.nx.add_nodes_from(self.nd_dict.keys())
+
     def add_edges(self):
         for node_pair, penalty in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
             self.nx.add_edge(src_node, dst_node, weight=penalty)
+
     @property
     def latest_update(self):
         return self.__latest_update
+
     def _update(self):
         self.__latest_update = time.time()
         # the concept of marking the current route setup dirty is flawed (too many dependencies)
@@ -120,18 +125,23 @@ class router_object(object):
                     logging_tools.get_diff_time_str(time.time() - s_time),
                 ))
             self.__cur_gen = latest_gen
+
     def check_for_update(self):
         self._update()
+
     def get_penalty(self, in_path):
         return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)]) + \
             sum([self.nd_dict[entry][3] for entry in in_path])
+
     def add_penalty(self, in_path):
         return (self.get_penalty(in_path), in_path)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if hasattr(self.__log_com, "log"):
             self.__log_com.log(log_level, "[router] {}".format(what))
         else:
             self.__log_com("[router] {}".format(what), log_level)
+
     def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
         """
         returns all pathes between s_list and d_list (:: net_device)
@@ -151,8 +161,10 @@ class router_object(object):
         elif kwargs.get("only_endpoints", False):
             all_paths = [(cur_path[0], cur_path[-1]) for cur_path in all_paths]
         return all_paths
+
     def map_path_to_device(self, in_path):
         return [self.nd_lut[value] for value in in_path]
+
     def get_clusters(self):
         clusters = []
         for _cce in networkx.connected_components(self.nx):
@@ -160,10 +172,10 @@ class router_object(object):
             _dev_pks = set([self.nd_lut[_val] for _val in _cce])
             clusters.append(
                 {
-                    "with_netdevices" : True,
-                    "net_devices" : _num_nds,
-                    "devices"     : len(_dev_pks),
-                    "device_pks"  : list(_dev_pks),
+                    "with_netdevices": True,
+                    "net_devices": _num_nds,
+                    "devices": len(_dev_pks),
+                    "device_pks": list(_dev_pks),
                 }
             )
         # add devices withoutnetdevices
@@ -176,14 +188,15 @@ class router_object(object):
         ).values_list("pk", flat=True):
             clusters.append(
                 {
-                    "with_netdevices" : False,
-                    "net_devices" : 0,
-                    "devices"     : 1,
-                    "device_pks"  : [_wnd],
+                    "with_netdevices": False,
+                    "net_devices": 0,
+                    "devices": 1,
+                    "device_pks": [_wnd],
                 }
             )
         # biggest clusters first
         return sorted(clusters, key=lambda _c: _c["devices"], reverse=True)
+
 
 class topology_object(object):
     def __init__(self, log_com, graph_mode="all", **kwargs):
@@ -195,8 +208,10 @@ class topology_object(object):
         if self.__graph_mode.startswith("sel"):
             self.__dev_pks = kwargs["dev_list"]
         self._update()
+
     def add_nodes(self):
         self.nx.add_nodes_from(self.dev_dict.keys())
+
     def add_edges(self):
         # for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
         for node_pair, penalty_list in self.simple_peer_dict.iteritems():
@@ -207,41 +222,70 @@ class topology_object(object):
                 # print src_node, dst_node, penalty_list
                 # self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
                 self.nx.add_edge(src_node, dst_node, min_penalty=min(penalty_list), num_connections=len(penalty_list))
+
     def _update(self):
         s_time = time.time()
-        dev_sel = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True)).select_related("domain_tree_node")
+        dev_sel = device.objects.exclude(
+            Q(device_type__identifier="MD")
+        ).filter(
+            Q(enabled=True) & Q(device_group__enabled=True)
+        ).select_related("domain_tree_node")
         if self.__graph_mode.startswith("sel"):
             dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
         if self.__graph_mode == "none":
             self.dev_dict = {}
         else:
-            self.dev_dict = {cur_dev.pk : cur_dev for cur_dev in dev_sel}
+            self.dev_dict = {cur_dev.pk: cur_dev for cur_dev in dev_sel}
             if self.__graph_mode.startswith("selp"):
                 # add further rings
                 for _idx in range(int(self.__graph_mode[-1])):
-                    new_dev_pks = set(device.objects.filter(Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True)) | \
-                        set(device.objects.filter(Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True))
+                    new_dev_pks = set(
+                        device.objects.filter(
+                            Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())
+                        ).values_list("idx", flat=True)) | set(device.objects.filter(
+                            Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())
+                        ).values_list("idx", flat=True)
+                    )
                     if new_dev_pks:
-                        self.dev_dict.update({value.pk : value for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).select_related("domain_tree_node")})
+                        self.dev_dict.update(
+                            {
+                                value.pk: value for value in device.objects.filter(
+                                    Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)
+                                ).select_related(
+                                    "domain_tree_node"
+                                )
+                            }
+                        )
                     else:
                         break
             elif self.__graph_mode == "core":
-                p_list = set(sum([[(s_val, d_val), (d_val, s_val)] for s_val, d_val in peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id") if s_val != d_val], []))
-                nd_dict = {value[0] : value[1] for value in netdevice.objects.all().values_list("pk", "device")}
+                p_list = set(
+                    sum(
+                        [
+                            [
+                                (s_val, d_val), (d_val, s_val)
+                            ] for s_val, d_val in peer_information.objects.all().values_list(
+                                "s_netdevice_id", "d_netdevice_id"
+                            ) if s_val != d_val
+                        ],
+                        []
+                    )
+                )
+                nd_dict = {value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device")}
                 # remove all devices which have only a single selection to the current dev_dict
                 while True:
                     dev_list = [nd_dict[s_val] for s_val, d_val in p_list]
                     rem_devs = set([key for key in dev_list if dev_list.count(key) == 1])
                     rem_nds = set([key for key, value in nd_dict.iteritems() if value in rem_devs])
                     p_list = [(s_val, d_val) for s_val, d_val in p_list if s_val not in rem_nds and d_val not in rem_nds]
-                    self.dev_dict = {key : value for key, value in self.dev_dict.iteritems() if key not in rem_devs}
+                    self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key not in rem_devs}
                     if not rem_devs:
                         break
-        nd_dict = {value[0] : value[1] for value in netdevice.objects.all().values_list("pk", "device")}
-        ip_dict = {value[0] : (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")}
+        nd_dict = {value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device")}
+        ip_dict = {value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")}
         # reorder ip_dict
         nd_lut = {}
-        for net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
+        for _net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
             nd_lut.setdefault(nd_pk, []).append(nw_pk)
         self.log(
             "init topology helper object, {} / {}".format(
@@ -265,9 +309,7 @@ class topology_object(object):
                 if src_device_id != dst_device_id:
                     foreign_devs.add(src_device_id)
                     foreign_devs.add(dst_device_id)
-                # print (src_device_id, dst_device_id), penalty
-                # self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
-                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), []).append(penalty) # set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
+                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), []).append(penalty)
         if self.nx:
             del self.nx
         self.nx = networkx.Graph()
@@ -282,40 +324,52 @@ class topology_object(object):
             self.nx.node[dev_pk]["num_nds"] = self.dev_dict[dev_pk].num_nds
         e_time = time.time()
         self.log("creation took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+
     def add_num_nds(self):
         # init counters
-        for dev_pk, cur_dev in self.dev_dict.iteritems():
+        for _dev_pk, cur_dev in self.dev_dict.iteritems():
             cur_dev.num_nds = 0
         # add nd num, exclude lo
         for used_pk in netdevice.objects.exclude(devname='lo').values_list("device", flat=True):
             if used_pk in self.dev_dict:
                 self.dev_dict[used_pk].num_nds += 1
+
     def add_full_names(self):
         for dev_pk in self.nx.nodes():
             self.nx.node[dev_pk]["name"] = unicode(self.dev_dict[dev_pk].full_name)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[topology] {}".format(what), log_level)
 
+
 _VAR_LUT = {
-    "int" : config_int,
-    "str" : config_str,
-    "blob" : config_blob,
-    "bool" : config_bool,
+    "int": config_int,
+    "str": config_str,
+    "blob": config_blob,
+    "bool": config_bool,
 }
+
 
 def get_config_var_list(config_obj, config_dev):
     r_dict = {}
     # dict of local vars without specified host
     # l_var_wo_host = {}
-    for short in ["str",
-                  "int",
-                  "blob",
-                  "bool"]:
+    for short in [
+        "str",
+        "int",
+        "blob",
+        "bool"
+    ]:
         src_sql_obj = _VAR_LUT[short].objects
         for db_rec in src_sql_obj.filter(
-            (Q(device=0) | Q(device=None) | Q(device=config_dev.pk)) &
-            (Q(config=config_obj)) &
-            (Q(config__device_config__device=config_dev))):
+            (
+                Q(device=0) | Q(device=None) | Q(device=config_dev.pk)
+            ) & (
+                Q(config=config_obj)
+            ) & (
+                Q(config__device_config__device=config_dev)
+            )
+        ):
             if db_rec.name.count(":"):
                 var_global = False
                 _local_host_name, var_name = db_rec.name.split(":", 1)
@@ -334,13 +388,14 @@ def get_config_var_list(config_obj, config_dev):
             r_dict[var_name.upper()] = new_val
     return r_dict
 
+
 class server_check(object):
     """ is called server_check, but can also be used for nodes """
     def __init__(self, **kwargs):
         # server_type: name of server, no wildcards supported (!)
         self.__server_type = kwargs["server_type"]
         if self.__server_type.count("%"):
-            raise SyntaxError, "no wildcards supported in server_check, use device_with_config"
+            raise SyntaxError("no wildcards supported in server_check, use device_with_config")
         if "host_name" in kwargs:
             self.host_name = kwargs["host_name"]
             self.short_host_name = self.host_name.split(".")[0]
@@ -356,6 +411,7 @@ class server_check(object):
         self._check(**kwargs)
     # def set_hopcount_cache(self, in_cache=[]):
         # self.__hc_cache = in_cache
+
     def _check(self, **kwargs):
         # device from database or None
         self.device = None
@@ -391,6 +447,7 @@ class server_check(object):
         # config variable dict
         self.__config_vars = {}
         self._db_check(**kwargs)
+
     def _db_check(self, **kwargs):
         if "device" in kwargs:
             # got device, no need to query
@@ -402,44 +459,45 @@ class server_check(object):
                 if self.host_name:
                     # search with full host name
                     self.device = device.objects.prefetch_related(
-                        # intermediate sets not needed
-                        # "netdevice_set",
-                        # "netdevice_set__net_ip_set",
-                        # "netdevice_set__net_ip_set__network",
-                        "netdevice_set__net_ip_set__network__network_type").get(
-                            Q(name=self.short_host_name) &
-                            Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1]))
+                        "netdevice_set__net_ip_set__network__network_type"
+                    ).get(
+                        Q(name=self.short_host_name) & Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1])
+                    )
                 else:
                     # search with short host name
                     self.device = device.objects.prefetch_related(
-                        # intermediate sets not needed
-                        # "netdevice_set",
-                        # "netdevice_set__net_ip_set",
-                        # "netdevice_set__net_ip_set__network",
-                        "netdevice_set__net_ip_set__network__network_type").get(
-                            Q(name=self.short_host_name))
+                        "netdevice_set__net_ip_set__network__network_type"
+                    ).get(
+                        Q(name=self.short_host_name)
+                    )
             except device.DoesNotExist:
                 self.device = None
             else:
                 try:
                     self.config = config.objects.get(
-                        Q(name=self.__server_type) & Q(device_config__device=self.device))
+                        Q(name=self.__server_type) & Q(device_config__device=self.device)
+                    )
                 except config.DoesNotExist:
                     try:
                         self.config = config.objects.get(
                             Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") &
-                            Q(device_config__device__device_group=self.device.device_group_id))
+                            Q(device_config__device__device_group=self.device.device_group_id)
+                        )
                     except config.DoesNotExist:
                         self.config = None
                     else:
-                        self.effective_device = device.objects.get(Q(device_group=self.device.device_group_id) & Q(device_type__identifier="MD"))
+                        self.effective_device = device.objects.get(
+                            Q(device_group=self.device.device_group_id) & Q(device_type__identifier="MD")
+                        )
                 else:
                     self.effective_device = self.device
         # self.num_servers = len(all_servers)
         if self.config:
             # name matches ->
-            self._set_srv_info("real" if self.device.pk == self.effective_device.pk else "meta",
-                               "hostname '{}'".format(self.short_host_name))
+            self._set_srv_info(
+                "real" if self.device.pk == self.effective_device.pk else "meta",
+                "hostname '{}'".format(self.short_host_name)
+            )
             if self.__fetch_network_info:
                 # fetch ip_info only if needed
                 self._fetch_network_info()
@@ -448,61 +506,34 @@ class server_check(object):
             # fetch ip_info
             self._fetch_network_info()
             self._db_check_ip()
+
     def fetch_config_vars(self):
         self.__config_vars.update(get_config_var_list(self.config, self.effective_device))
-    # FIXME, deprecated due to circular import problem
-# #    def fetch_config_vars(self, dc):
-# #        if self.config_idx:
-# #            # dict of local vars without specified host
-# #            l_var_wo_host = {}
-# #            # code from configfile.py
-# #            for short, what_value in [("str" , configfile_old.str_c_var),
-# #                                      ("int" , configfile_old.int_c_var),
-# #                                      ("blob", configfile_old.str_c_var)]:
-# #                sql_str = "SELECT cv.* FROM config_%s cv WHERE cv.new_config=%d ORDER BY cv.name" % (short, self.config_idx)
-# #                dc.execute(sql_str)
-# #                for db_rec in [rec for rec in dc.fetchall() if rec["name"]]:
-# #                    if db_rec["name"].count(":"):
-# #                        var_global = False
-# #                        local_host_name, var_name = db_rec["name"].split(":", 1)
-# #                    else:
-# #                        var_global = True
-# #                        local_host_name, var_name = (self.short_host_name, db_rec["name"])
-# #                    if type(db_rec["value"]) == type(array.array("b")):
-# #                        new_val = what_value(db_rec["value"].tostring(), source="%s_table" % (short))
-# #                    elif short == "int":
-# #                        new_val = what_value(int(db_rec["value"]), source="%s_table" % (short))
-# #                    else:
-# #                        new_val = what_value(db_rec["value"], source="%s_table" % (short))
-# #                    new_val.set_is_global(var_global)
-# #                    if local_host_name == self.short_host_name:
-# #                        if var_name.upper() in self and self.is_fixed(var_name.upper()):
-# #                            # present value is fixed, keep value, only copy global / local status
-# #                            self.copy_flag(var_name.upper(), new_val)
-# #                        else:
-# #                            self[var_name.upper()] = new_val
-# #                    elif local_host_name == "":
-# #                        l_var_wo_host[var_name.upper()] = new_val
-# #            # check for vars to insert
-# #            for wo_var_name, wo_var in l_var_wo_host.iteritems():
-# #                if not wo_var_name in self or self.get_source(wo_var_name) == "default":
-# #                    self[wo_var_name] = wo_var
+
     def has_key(self, var_name):
         return var_name in self.__config_vars
+
     def __contains__(self, var_name):
         return var_name in self.__config_vars
+
     def keys(self):
         return self.__config_vars.keys()
+
     def is_fixed(self, var_name):
         return self.__config_vars[var_name].fixed
+
     def copy_flag(self, var_name, new_var):
         self.__config_vars[var_name].set_is_global(new_var.is_global())
+
     def get_source(self, var_name):
         return self.__config_vars[var_name].source
+
     def __setitem__(self, var_name, var_value):
         self.__config_vars[var_name] = var_value
+
     def __getitem__(self, var_name):
         return self.__config_vars[var_name].value
+
     def _set_srv_info(self, sdsc, s_info_str):
         self.server_origin = sdsc
         self.server_info_str = "{} '{}'-server via {}".format(
@@ -511,9 +542,11 @@ class server_check(object):
             s_info_str
         )
     # utility funcitions
+
     @property
     def simple_ip_list(self):
         return [cur_ip.ip for cur_ip in self.ip_list]
+
     def _fetch_network_info(self, **kwargs):
         # commented force_flag, FIXME
         if not self.__network_info_fetched or kwargs.get("force", False):
@@ -529,12 +562,16 @@ class server_check(object):
                         self.ip_identifier_lut[net_ip.ip] = net_ip.network.network_type.identifier
                         self.identifier_ip_lut.setdefault(net_ip.network.network_type.identifier, []).append(net_ip)
             self.__network_info_fetched = True
+
     def _db_check_ip(self):
         # get local ip-addresses
         my_ips = set(net_ip.objects.exclude(
             Q(network__network_type__identifier='l')
-            ).filter(
-                Q(netdevice__device=self.device)).select_related("netdevice", "network", "network__network_type").values_list("ip", flat=True))
+        ).filter(
+            Q(netdevice__device=self.device)
+        ).select_related(
+            "netdevice", "network", "network__network_type"
+        ).values_list("ip", flat=True))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
         dev_list = device.objects.filter(Q(device_config__config__name=self.__server_type))
@@ -545,8 +582,9 @@ class server_check(object):
         for cur_dev in dev_list:
             dev_ips = set(net_ip.objects.exclude(
                 Q(network__network_type__identifier='l')
-                ).filter(
-                    Q(netdevice__device=cur_dev)).values_list("ip", flat=True))
+            ).filter(
+                Q(netdevice__device=cur_dev)
+            ).values_list("ip", flat=True))
             match_ips = my_ips & dev_ips
             if match_ips:
                 self.device = cur_dev
@@ -556,6 +594,7 @@ class server_check(object):
                 self.short_host_name = cur_dev.name
                 self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
                 break
+
     def get_route_to_other_device(self, router_obj, other, **kwargs):
         filter_ip = kwargs.get("filter_ip", None)
         # at first fetch the network info if necessary
@@ -617,9 +656,11 @@ class server_check(object):
         if kwargs.get("prefer_production_net", False):
             r_list = self.prefer_production_net(r_list)
         return r_list
+
     def prefer_production_net(self, r_list):
         # puts production routes in front of the rest
         return [entry for entry in r_list if entry[1] in ["p"]] + [entry for entry in r_list if entry[1] not in ["p"]]
+
     def report(self):
         # print self.effective_device
         if self.effective_device:
@@ -637,6 +678,7 @@ class server_check(object):
                 self.server_origin,
                 self.server_info_str)
 
+
 class device_with_config(dict):
     def __init__(self, config_name, **kwargs):
         dict.__init__(self)
@@ -648,26 +690,31 @@ class device_with_config(dict):
             self.__match_str = "name"
             self.__m_config_name = self.__config_name
         self._check(**kwargs)
+
     def _check(self, **kwargs):
         # locates devices with the given config_name
         # right now we are fetching a little bit too much ...
         # print "*** %s=%s" % (self.__match_str, self.__m_config_name)
-        exp_group = set()
         direct_list = device_config.objects.filter(
-            Q(**{"config__%s" % (self.__match_str) : self.__m_config_name,
-                "device__enabled" : True,
-                "device__device_group__enabled" : True,
-                })).select_related(
-                "device",
-                "config",
-                "device__device_group",
-                "device__device_type").values_list(
-                    "config__name",
-                    "config",
-                    "device__name",
-                    "device",
-                    "device__device_group",
-                    "device__device_type__identifier", "device__device_type__identifier")
+            Q(**{
+                "config__%s" % (self.__match_str): self.__m_config_name,
+                "device__enabled": True,
+                "device__device_group__enabled": True,
+            })
+        ).select_related(
+            "device",
+            "config",
+            "device__device_group",
+            "device__device_type"
+        ).values_list(
+            "config__name",
+            "config",
+            "device__name",
+            "device",
+            "device__device_group",
+            "device__device_type__identifier",
+            "device__device_type__identifier"
+        )
         exp_group = set([cur_entry[4] for cur_entry in direct_list if cur_entry[5] == "MD"])
         conf_pks = set([cur_entry[1] for cur_entry in direct_list])
         # expand device groups
@@ -692,15 +739,16 @@ class device_with_config(dict):
         dev_conf_dict = {}
         for cur_entry in all_list:
             dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[6]))
-        dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))).prefetch_related(
-            # intermediates not needed
-            # "netdevice_set",
-            # "netdevice_set__net_ip_set",
-            # "netdevice_set__net_ip_set__network",
-            "netdevice_set__net_ip_set__network__network_type")])
+        dev_dict = {
+            cur_dev.pk: cur_dev for cur_dev in device.objects.filter(
+                Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))
+            ).prefetch_related(
+                "netdevice_set__net_ip_set__network__network_type"
+            )
+        }
         conf_dict = dict([(cur_conf.pk, cur_conf) for cur_conf in config.objects.filter(Q(pk__in=conf_pks))])
         for dev_key, conf_list in dev_conf_dict.iteritems():
-            dev_name, dev_pk, devg_pk, dev_type = dev_key
+            dev_name, dev_pk, devg_pk, _dev_type = dev_key
             for conf_name, conf_pk, m_type, src_type in conf_list:
                 # print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
                 cur_struct = server_check(
@@ -711,15 +759,17 @@ class device_with_config(dict):
                     effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
                 )
                 self.setdefault(conf_name, []).append(cur_struct)
+
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)
 
+
 def _log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
     print "[{:2d}] {}".format(log_level, what)
 
+
 if __name__ == "__main__":
     ro = router_object(_log_com)
-    import pprint
     # pprint.pprint(ro.get_clusters())
     print len(ro.get_clusters())

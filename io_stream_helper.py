@@ -23,6 +23,7 @@ import atexit
 import os
 import pickle
 import zmq
+# import syslog
 
 
 def zmq_socket_name(sock_name, **kwargs):
@@ -37,6 +38,7 @@ def zmq_socket_name(sock_name, **kwargs):
 class io_stream(object):
     def __init__(self, sock_name="/var/lib/logging_server/py_err_zmq", **kwargs):
         self.__sock_name = zmq_socket_name(sock_name, check_ipc_prefix=True)
+        self.__buffered = kwargs.get("buffered", False)
         zmq_context = kwargs.get("zmq_context", None)
         if zmq_context is None:
             zmq_context = zmq.Context()
@@ -53,7 +55,8 @@ class io_stream(object):
 
     def write(self, err_str):
         self.__buffer = u"{}{}".format(self.__buffer, err_str)
-        if len(self.__buffer) > 1024:
+        if len(self.__buffer) > 1024 or not self.__buffered:
+            # syslog.syslog(syslog.LOG_INFO, "****")
             self.flush()
         return len(err_str)
 
