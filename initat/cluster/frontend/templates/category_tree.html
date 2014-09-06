@@ -5,7 +5,7 @@
 {% block title %}Category tree{% endblock %}
 
 {% block js_load_1 %}
-<script src='//maps.googleapis.com/maps/api/js?sensor=false&key=AIzaSyCgymUklFh3P2ZKBJ-Br8dfRhHUq8E8eZM'></script>
+<script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
 {% compressed_js 'js_gmaps' %}
 {% endblock %}
 
