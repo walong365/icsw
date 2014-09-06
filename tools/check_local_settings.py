@@ -28,20 +28,26 @@ from django.utils.crypto import get_random_string
 
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 
+
 # a similar routine exists in setup_cluster.py
 def check_local_settings():
     LS_DIR = os.path.dirname(LS_FILE)
     sys.path.append(LS_DIR)
     changed = False
     try:
-        from local_settings import SECRET_KEY # @UnresolvedImports
+        from local_settings import SECRET_KEY  # @UnresolvedImports
     except:
         SECRET_KEY = None
     try:
-        from local_settings import PASSWORD_HASH_FUNCTION # @UnresolvedImports
+        from local_settings import PASSWORD_HASH_FUNCTION  # @UnresolvedImports
     except:
         PASSWORD_HASH_FUNCTION = "SHA1"
         changed = True
+    try:
+        from local_settings import GOOGLE_MAPS_KEY  # @UnresolvedImports
+    except:
+        changed = True
+        GOOGLE_MAPS_KEY = ""
     if SECRET_KEY in [None, "None"]:
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
@@ -51,6 +57,7 @@ def check_local_settings():
             [
                 "SECRET_KEY = \"{}\"".format(SECRET_KEY),
                 "PASSWORD_HASH_FUNCTION = \"{}\"".format(PASSWORD_HASH_FUNCTION),
+                "GOOGLE_MAPS_KEY = \"{}\"".format(GOOGLE_MAPS_KEY),
                 "",
             ]
         ))

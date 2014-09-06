@@ -460,14 +460,22 @@ PASSWORD_HASH_FUNCTION = "SHA1"
 LOGIN_SCREEN_TYPE = "big"
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
+
+_config_ok = False
 if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
-    from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION  # @UnresolvedImport
+    try:
+        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY  # @UnresolvedImport
+    except:
+        pass
+    else:
+        _config_ok = True
     sys.path.remove(local_dir)
-else:
+if not _config_ok:
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
     SECRET_KEY = get_random_string(50, chars)
+    GOOGLE_MAPS_KEY = ""
 
 # validate settings
 if PASSWORD_HASH_FUNCTION not in ["SHA1", "CRYPT"]:

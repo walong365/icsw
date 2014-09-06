@@ -174,7 +174,7 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
                 c_list.append((_f.verbose_name, "changed from '{!s}' to '{!s}'".format(s_val, d_val)))
         # elif cur_t in ["ForeignKey"]:
         #    print "**", _f.name, s_val, d_val
-        elif cur_t in ["DateTimeField", "AutoField"]:
+        elif cur_t in ["DateTimeField", "AutoField", "FloatField"]:
             # ignore
             pass
         else:
