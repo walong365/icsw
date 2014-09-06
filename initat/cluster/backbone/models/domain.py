@@ -436,9 +436,11 @@ class category(models.Model):
     created = models.DateTimeField(auto_now_add=True, auto_now=True)
     # immutable
     immutable = models.BooleanField(default=False)
-    # location field for location nodes, defaults to Vienna
+    # location field for location nodes, defaults to Vienna (approx)
     latitude = models.FloatField(default=48.1)
     longitude = models.FloatField(default=16.3)
+    # locked field, only valid (right now) for locations
+    locked = models.BooeanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
 
