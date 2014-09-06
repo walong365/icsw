@@ -440,7 +440,7 @@ class category(models.Model):
     latitude = models.FloatField(default=48.1)
     longitude = models.FloatField(default=16.3)
     # locked field, only valid (right now) for locations
-    locked = models.BooeanField(default=False)
+    locked = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
 
