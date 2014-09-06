@@ -5,13 +5,19 @@
 {% block title %}Category tree{% endblock %}
 
 {% block js_load_1 %}
-<script src='//maps.googleapis.com/maps/api/js?sensor=false'></script>
+<script src='//maps.googleapis.com/maps/api/js?sensor=false&key=AIzaSyCgymUklFh3P2ZKBJ-Br8dfRhHUq8E8eZM'></script>
 {% compressed_js 'js_gmaps' %}
+{% endblock %}
+
+{% block site_css %}
+<style type="text/css">
+.angular-google-map-container { height: 480px; }
+</style>
 {% endblock %}
 
 {% block content %}
 
-<div id="icsw.category_tree" ng-cloack>
+<div id="icsw.category_tree" >
 
 <script type="text/ng-template" id="category.html">
     {% crispy category_form category_form.helper %}
@@ -29,13 +35,6 @@
         <th>long</th>
         <th colspan="2">Action</th>
     </tr>
-</script>
-
-<script type="text/ng-template" id="gmap.html">
-    {{ positions }}
-    <map style="display:block;height:800px" center="[48.1,16.3]">
-        <marker ng-repeat="p in positions" position="{{ [ p.latitude, p.longitude ] }}" title="{{p.toString()}}"></marker>
-    </map>
 </script>
 
 <script type="text/ng-template" id="cat_row.html">
@@ -57,8 +56,16 @@
     </h2>
     <tabset>
         <tab heading="Google Maps" select="activate_map()">
-            <h3>Map view</h3>
-            <gmap></gmap>
+            <h3>Map view, {{ locations.length }} locations</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <div id="map_canvas">
+                    <google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true">
+                        <marker ng-repeat="loc in locations" idKey="loc.key" coords="loc"></marker>
+                    </google-map>
+                    </div>
+                </div>
+            </div>
         </tab>
         <tab heading="Categories">
     <div class="row">
@@ -100,7 +107,7 @@
 
 {% inlinecoffeescript %}
 
-category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ngMap"])
+category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "google-maps"]) #"ngMap"])
 
 angular_module_setup([category_tree_module])
 
@@ -147,7 +154,14 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
         $scope.edit_mixin.create_rest_url = Restangular.all("{% url 'rest:category_list' %}".slice(1))
         $scope.edit_mixin.edit_template = "category.html"
         $scope.form = {}
-        $scope.positions = []
+        $scope.locations = []
+        $scope.map = {
+            center: {
+                latitude: 4
+                longitude: 7
+            }
+            zoom: 2
+        }
         $scope.reload = () ->
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
@@ -205,9 +219,10 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
                             {
                                 "latitude": _entry.latitude
                                 "longitude": _entry.longitude
+                                "key": _entry.idx
                             }
                         )
-            $scope.positions = new_list
+            $scope.locations = new_list
         $scope.new_object = () ->
             if $scope.new_top_level
                 _parent = (value for value in $scope.entries when value.depth == 1 and value.name == $scope.new_top_level)[0]
@@ -300,12 +315,6 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
                     return ""
                 else
                     return "has-error"
-    }
-).directive("gmap", ($compile, $templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("gmap.html")
-        link : (scope, element, attrs) ->
     }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
