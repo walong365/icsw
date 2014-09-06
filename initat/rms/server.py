@@ -25,6 +25,7 @@ from initat.rms.accounting import accounting_process
 from initat.rms.config import global_config
 from initat.rms.license import license_process
 from initat.rms.rmsmon import rms_mon_process
+from django.db import connection
 import cluster_location
 import configfile
 import logging_tools
@@ -46,6 +47,7 @@ class server_process(threading_tools.process_pool):
         )
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
+        connection.close()
         # re-insert config
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)
@@ -59,11 +61,6 @@ class server_process(threading_tools.process_pool):
         self.add_process(accounting_process("accounting"), start=True)
         self.add_process(license_process("license"), start=True)
         self.register_func("command_result", self._com_result)
-        # self._init_em()
-        # self.register_timer(self._check_db, 3600, instant=True)
-        # self.register_timer(self._update, 30, instant=True)
-        # self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
-        # self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -109,7 +106,7 @@ class server_process(threading_tools.process_pool):
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("rms_server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
             msi_block.start_command = "/etc/init.d/rms-server start"
             msi_block.stop_command = "/etc/init.d/rms-server force-stop"

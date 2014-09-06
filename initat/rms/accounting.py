@@ -25,6 +25,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
     rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone
 from initat.rms.config import global_config
+from initat.rms.functions import call_command
 from lxml import etree  # @UnresolvedImport @UnusedImport
 import commands
 import datetime

@@ -19,25 +19,32 @@
 #
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import django
 django.setup()
 
-from initat.rms.config import global_config, COM_PORT
+from initat.rms.config_static import COM_PORT
+from initat.rms.functions import call_command
 from initat.rms.rms_server_version import VERSION_STRING
-from initat.rms.rmsmon import call_command
-from initat.rms.server import server_process
+from io_stream_helper import io_stream
 import cluster_location
 import config_tools
 import configfile
+import daemon
 import process_tools
 import sge_license_tools
+import sys
+
+
+def run_code():
+    from initat.rms.server import server_process
+    server_process().loop()
 
 
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -87,7 +94,7 @@ def main():
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_s_info.effective_device.pk, database=False))])
         # FIXME
     if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     sge_dict = {}
     for v_name, v_src, v_default in [
         ("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
@@ -137,16 +144,18 @@ def main():
     pid_dir = "/var/run/{}".format(os.path.dirname(global_config["PID_NAME"]))
     if pid_dir not in ["/var/run", "/var/run/"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
-        process_tools.become_daemon()
-        process_tools.set_handles(
-            {
-                "out": (1, "sge-server.out"),
-                "err": (0, "/var/lib/logging-server/py_err")
-            }
-        )
+        with daemon.DaemonContext():
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            # process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
+            run_code()
+            configfile.terminate_manager()
+        # exit
+        os._exit(0)
     else:
-        print "Debugging RMS-server"
-    ret_state = server_process().loop()
-    return ret_state
+        print("Debugging rms-server")
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        run_code()
+    return 0

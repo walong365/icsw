@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,10 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" rms-server, config and constants """
-
-import configfile
-import process_tools
+""" rms-server, static constants """
 
 # communication port
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+COM_PORT = 8009
