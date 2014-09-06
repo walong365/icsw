@@ -398,8 +398,8 @@ PIPELINE_JS = {
     "js_gmaps": {
         "source_filenames": {
             # google maps
-            # "js/angular-google-maps.min.js",
-            "js/ng-map.min.js",
+            "js/angular-google-maps.min.js",
+            # "js/ng-map.min.js",
         },
         "output_filename": "pipeline/js/gmaps.js"
     }
