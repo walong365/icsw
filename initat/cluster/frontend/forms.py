@@ -370,8 +370,9 @@ class category_form(ModelForm):
             ),
             Fieldset(
                 "Positional data",
-                Field("latitude", ng_pattern="/^\d+\.\d+$/"),
-                Field("longitude", ng_pattern="/^\d+\.\d+$/"),
+                Field("latitude", ng_pattern="/^\d+(\.\d+)*$/", wrapper_class="ng-class:form_error('latitude')"),
+                Field("longitude", ng_pattern="/^\d+(\.\d+)*$/", wrapper_class="ng-class:form_error('longitude')"),
+                Field("locked"),
                 ng_if="is_location(_edit_obj)",
             ),
             FormActions(
@@ -392,7 +393,7 @@ class category_form(ModelForm):
 
     class Meta:
         model = category
-        fields = ["name", "comment", "parent", "longitude", "latitude"]
+        fields = ["name", "comment", "parent", "longitude", "latitude", "locked"]
 
 
 class device_fqdn(ModelMultipleChoiceField):
