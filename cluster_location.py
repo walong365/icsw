@@ -237,10 +237,10 @@ def write_config(server_type, g_config, **kwargs):
                     for other_var_obj in other_types:
                         try:
                             other_var = other_var_obj.objects.get(
-                                Q(name=real_k_name) &
-                                Q(config=srv_info.config) &
-                                (Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk))
+                                Q(name=real_k_name) & Q(config=srv_info.config) & (
+                                    Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk)
                                 )
+                            )
                         except other_var_obj.DoesNotExist:
                             pass
                         else:
