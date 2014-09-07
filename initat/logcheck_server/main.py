@@ -22,25 +22,31 @@
 """ logcheck-server (to be run on a syslog_server) """
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import django
 django.setup()
 
-from initat.logcheck_server.config import global_config
-from initat.logcheck_server.server import server_process
 from initat.logcheck_server.version import VERSION_STRING
+from io_stream_helper import io_stream
 import cluster_location
 import config_tools
 import configfile
+import daemon
 import process_tools
+import sys
 
 SERVER_PORT = 8014
 
 
+def run_code(options):
+    from initat.logcheck_server.server import server_process
+    server_process(options).loop()
+
+
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -88,20 +94,21 @@ def main():
         ("INITIAL_LOGCHECK", configfile.bool_c_var(False)),
         ("LOGSCAN_TIME", configfile.int_c_var(60, info="time in minutes between two logscan iterations"))
     ])
+    if global_config["KILL_RUNNING"]:
+        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     process_tools.renice()
     # need root rights to change syslog and log rotation
     # global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     # process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
-        # become daemon and wait 2 seconds
-        process_tools.become_daemon(wait=2)
-        process_tools.set_handles(
-            {
-                "out": (1, "logcheck"),
-                "err": (0, "/var/lib/logging-server/py_err")
-            }
-        )
+        with daemon.DaemonContext():
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            run_code(options)
+            configfile.terminate_manager()
     else:
-        print "Debugging logcheck_server"
-    ret_state = server_process(options).loop()
-    sys.exit(ret_state)
+        print("Debugging logcheck_server")
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        run_code(options)
+    sys.exit(0)
