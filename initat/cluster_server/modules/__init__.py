@@ -16,15 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import os
-import sys
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
 from initat.cluster_server.modules import cs_base_class
-import imp
-import pkgutil
-import pprint
+import os
 import process_tools
 
 imp_dir = os.path.dirname(__file__)

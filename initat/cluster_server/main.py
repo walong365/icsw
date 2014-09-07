@@ -18,7 +18,6 @@
 """ cluster-server """
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -27,13 +26,13 @@ django.setup()
 
 from django.conf import settings
 from initat.cluster.backbone.models import log_source
-from initat.cluster_server.config import global_config
-from initat.cluster_server.server import server_process
+from io_stream_helper import io_stream
 import cluster_location
 import config_tools
 import configfile
-import initat.cluster_server.modules
+import daemon
 import process_tools
+import sys
 
 try:
     from initat.cluster_server.version import VERSION_STRING
@@ -43,7 +42,21 @@ except ImportError:
 SERVER_PORT = 8004
 
 
+def run_code(options):
+    from initat.cluster_server.server import server_process
+    server_process(options).loop()
+
+
+def show_commands():
+    import initat.cluster_server.modules
+    _coms = initat.cluster_server.modules.command_names
+    print("possible commands ({:d}):".format(len(_coms)))
+    for _com in sorted(_coms):
+        print("  {}".format(_com))
+
+
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -60,8 +73,14 @@ def main():
         ("CONTACT", configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
         (
             "COMMAND", configfile.str_c_var(
-                "", short_options="c", choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True,
-                help_string="command to execute [%(default)s]"
+                "", short_options="c",  # choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True,
+                help_string="command to execute, for list of all commands use --show-commands"
+            )
+        ),
+        (
+            "SHOW_COMMANDS",
+            configfile.bool_c_var(
+                False, only_commandline=True, help_string="show all possible commands",
             )
         ),
         (
@@ -91,6 +110,9 @@ def main():
     # enable connection debugging
     settings.DEBUG = global_config["DATABASE_DEBUG"]
     global_config.write_file()
+    if global_config["SHOW_COMMANDS"]:
+        show_commands()
+        sys.exit(0)
     sql_info = config_tools.server_check(server_type="server")
     if not sql_info.effective_device:
         print "not a server"
@@ -117,7 +139,7 @@ def main():
         print "Too many log_source with my id present, exiting..."
         sys.exit(5)
     if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     cluster_location.read_config_from_db(global_config, "server", [
         ("COM_PORT", configfile.int_c_var(SERVER_PORT)),
         ("IMAGE_SOURCE_DIR", configfile.str_c_var("/opt/cluster/system/images")),
@@ -138,18 +160,19 @@ def main():
     ])
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     if not global_config["DEBUG"] and not global_config["COMMAND"]:
-        process_tools.become_daemon()
-        process_tools.set_handles(
-            {
-                "out": (1, "cluster-server.out"),
-                "err": (0, "/var/lib/logging-server/py_err")
-            }
-        )
+        with daemon.DaemonContext():
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            run_code(options)
+            configfile.terminate_manager()
+        # exit
+        os._exit(0)
     else:
-        if global_config["DEBUG"]:
-            print "Debugging cluster-server on %s" % (long_host_name)
-    ret_state = server_process(options).loop()
+        print("Debugging cluster-server on {}".format(long_host_name))
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        run_code(options)
     if global_config["DATABASE_DEBUG"]:
         from initat.cluster.backbone.middleware import show_database_calls
         show_database_calls()
-    return ret_state
+    return 0

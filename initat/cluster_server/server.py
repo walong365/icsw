@@ -45,6 +45,8 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__run_command = True if global_config["COMMAND"].strip() else False
+        # close DB conncetion (daemonize)
+        connection.close()
         if self.__run_command:
             # rewrite LOG_NAME and PID_NAME
             global_config["PID_NAME"] = "{}-direct-{}-{:d}".format(
@@ -67,7 +69,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self._init_capabilities()
         self.__options = options
         self._set_next_backup_time(True)
-        connection.close()
         if self.__run_command:
             self.register_timer(self._run_command, 3600, instant=True)
         else:
@@ -168,7 +169,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         if not global_config["COMMAND"]:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info(self.__pid_name)
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
             msi_block.start_command = "/etc/init.d/cluster-server start"
             msi_block.stop_command = "/etc/init.d/cluster-server force-stop"

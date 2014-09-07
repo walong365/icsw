@@ -38,7 +38,10 @@ class bg_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context
+        )
         self.register_func("set_option_dict", self._set_option_dict)
         self.register_func("set_srv_com", self._set_srv_com)
         self.register_func("start_command", self._start_command)
