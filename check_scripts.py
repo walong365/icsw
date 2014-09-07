@@ -263,6 +263,7 @@ def check_system(opt_ns):
             else:
                 act_state, act_str = (5, "not installed")
             entry.append(E.state_info(act_str, state="{:d}".format(act_state)))
+            entry.attrib["check_source"] = "simple"
         elif entry.attrib["check_type"] == "threads_by_pid_file":
             pid_file_name = entry.attrib["pid_file_name"]
             if pid_file_name == "":
@@ -296,12 +297,14 @@ def check_system(opt_ns):
                         num_found = num_started
                         num_diff = 0
                     # print ms_block.pids, ms_block.pid_check_string
+                    entry.attrib["check_source"] = "meta"
                 else:
                     pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
                     act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
                     act_state, num_started, num_found = check_processes(name, act_pids, pid_thread_dict, True if int(entry.attrib["any_threads_ok"]) else False)
                     num_diff = 0
                     diff_dict = {}
+                    entry.attrib["check_source"] = "pid"
                 entry.append(
                     E.state_info(
                         *[
@@ -315,7 +318,7 @@ def check_system(opt_ns):
                         num_diff="{:d}".format(num_diff),
                         pid_time="{:d}".format(pid_time),
                         state="{:d}".format(act_state)
-                    )
+                    ),
                 )
             else:
                 if os.path.isfile(init_script_name):
@@ -335,17 +338,23 @@ def check_system(opt_ns):
                                 num_started="{:d}".format(threads_found),
                                 num_found="{:d}".format(threads_found),
                                 num_diff="0",
-                                state="0"))
+                                state="0",
+                            )
+                        )
                     else:
                         entry.append(
                             E.state_info(
                                 "no threads",
-                                state="7"))
+                                state="7",
+                            )
+                        )
                 else:
                     entry.append(
                         E.state_info(
                             "not installed",
-                            state="5"))
+                            state="5",
+                        )
+                    )
         else:
             entry.append(E.state_info("unknown check_type '{}'".format(entry.attrib["check_type"]), state="1"))
         entry.append(
@@ -421,6 +430,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
     for act_struct in _list:
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
         cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
+        cur_line.append(logging_tools.form_entry(act_struct.attrib.get("check_source", "N/A"), header="source"))
         if opt_ns.time or opt_ns.thread:
             s_info = act_struct.find("state_info")
             if "num_started" not in s_info.attrib:
