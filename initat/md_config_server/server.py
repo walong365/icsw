@@ -56,14 +56,6 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        if not global_config["DEBUG"]:
-            process_tools.set_handles(
-                {
-                    "out": (1, "md-config-server.out"),
-                    "err": (0, "/var/lib/logging-server/py_err_zmq")
-                },
-                zmq_context=self.zmq_context
-            )
         self._init_msi_block()
         connection.close()
         # re-insert config
@@ -359,7 +351,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("md-config-server")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
         msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6, process_name="manager")
         msi_block.start_command = "/etc/init.d/md-config-server start"
         msi_block.stop_command = "/etc/init.d/md-config-server force-stop"

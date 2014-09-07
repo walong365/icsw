@@ -24,24 +24,13 @@ from initat.cluster.backbone.models import partition, netdevice, lvm_lv, monitor
     cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
+from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from lxml.builder import E  # @UnresolvedImport
 import datetime
 import logging_tools
 import process_tools
 import re
 import time
-
-"""
-cache_modes, how to handle to cache for special commands
-in case of connection problems always use the cache (if set, of course)
-ALWAYS   : always use value from cache, even if empty
-DYNAMIC  : use cache only when set and not too old, otherwise try to connect to device
-REFRESH  : always try to contact device
-"""
-
-CACHE_MODES = ["ALWAYS", "DYNAMIC", "REFRESH"]
-DEFAULT_CACHE_MODE = "ALWAYS"
-
 
 class special_base(object):
     class Meta:

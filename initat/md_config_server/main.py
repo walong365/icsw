@@ -21,7 +21,6 @@
 #
 """ main process for md-config-server """
 
-import sys
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
@@ -31,20 +30,26 @@ django.setup()
 
 from django.conf import settings
 from initat.cluster.backbone.models import log_source
-from initat.md_config_server.config import global_config
 from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
-    BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS
-from initat.md_config_server.server import server_process
+    BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
 from initat.md_config_server.version import VERSION_STRING
-from initat.md_config_server.special_commands import CACHE_MODES
+from io_stream_helper import io_stream
 import cluster_location
 import config_tools
 import configfile
+import daemon
 import process_tools
+import sys
+
+
+def run_code():
+    from initat.md_config_server.server import server_process
+    server_process().loop()
 
 
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -99,7 +104,7 @@ def main():
         _log_lines = process_tools.kill_running_processes(
             "%s.py" % (prog_name),
             ignore_names=["nagios", "icinga"],
-            exclude=configfile.get_manager_pid())
+        )
 
     global_config.add_config_entries(
         [
@@ -161,7 +166,6 @@ def main():
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
-    global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     if global_config["ENABLE_NAGVIS"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [
             {
@@ -178,10 +182,20 @@ def main():
             os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php"),
             os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php"),
         ])
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
-        process_tools.become_daemon()
+        with daemon.DaemonContext(
+            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
+            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
+        ):
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            run_code()
+            configfile.terminate_manager()
+        # exit
+        os._exit(0)
     else:
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
         print "Debugging md-config-server on %s" % (long_host_name)
-    ret_state = server_process().loop()
-    sys.exit(ret_state)
+        run_code()
+    sys.exit(0)
