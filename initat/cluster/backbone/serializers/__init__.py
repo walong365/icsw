@@ -50,14 +50,12 @@ import server_command
 import time
 import uuid
 
-from initat.cluster.backbone.models import device, config, config_int, config_str, config_blob, \
-    architecture, config_catalog, device_selection, device_config, device_variable, partition, \
-    partition_fs, lvm_lv, lvm_vg, partition_disc, partition_table, sys_partition, log_source, \
-    log_status, device_group, cluster_license, image, device_type, cluster_setting, mac_ignore, \
-    macbootlog, status, wc_files, package, package_repo, package_device_connection, mon_dist_slave, \
-    mon_dist_master, config_bool, config_script, config_script_hint, cd_connection
+from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
+    log_source, log_status, device_group, cluster_license, device_type, cluster_setting, mac_ignore, \
+    macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection
 
 from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.monitoring import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.network import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.package import *  # @UnusedWildImport
@@ -65,16 +63,8 @@ from initat.cluster.backbone.serializers.user import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.background import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.hints import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.rms import *  # @UnusedWildImport
-
-
-class architecture_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = architecture
-
-
-class config_catalog_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = config_catalog
+from initat.cluster.backbone.serializers.setup import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.partition import *  # @UnusedWildImport
 
 
 class device_variable_serializer(serializers.ModelSerializer):
@@ -109,78 +99,6 @@ class device_config_help_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_config
         fields = ("idx", "info_string", "homeexport", "createdir", "name", "full_name")
-
-
-class partition_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = partition
-
-
-class partition_fs_serializer(serializers.ModelSerializer):
-    need_mountpoint = serializers.Field(source="need_mountpoint")
-
-    class Meta:
-        model = partition_fs
-
-
-class sys_partition_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = sys_partition
-
-
-class lvm_lv_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = lvm_lv
-
-
-class lvm_vg_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = lvm_vg
-
-
-class partition_disc_serializer_save(serializers.ModelSerializer):
-    class Meta:
-        model = partition_disc
-        fields = ("disc", "label_type",)
-
-
-class partition_disc_serializer_create(serializers.ModelSerializer):
-    # partition_set = partition_serializer(many=True)
-    class Meta:
-        model = partition_disc
-        # fields = ("disc", "partition_table")
-
-
-class partition_disc_serializer(serializers.ModelSerializer):
-    partition_set = partition_serializer(many=True)
-
-    class Meta:
-        model = partition_disc
-
-
-class partition_table_serializer(serializers.ModelSerializer):
-    partition_disc_set = partition_disc_serializer(many=True)
-    sys_partition_set = sys_partition_serializer(many=True)
-    lvm_lv_set = lvm_lv_serializer(many=True)
-    lvm_vg_set = lvm_vg_serializer(many=True)
-
-    class Meta:
-        model = partition_table
-        fields = (
-            "partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
-            "enabled", "nodeboot", "act_partition_table", "new_partition_table", "sys_partition_set",
-        )
-        # otherwise the REST framework would try to store lvm_lv and lvm_vg
-        # read_only_fields = ("lvm_lv_set", "lvm_vg_set",) # "partition_disc_set",)
-
-
-class partition_table_serializer_save(serializers.ModelSerializer):
-    class Meta:
-        model = partition_table
-        fields = (
-            "name", "idx", "description", "valid",
-            "enabled", "nodeboot",
-        )
 
 
 class device_selection_serializer(serializers.Serializer):
@@ -218,16 +136,6 @@ class device_type_serializer(serializers.ModelSerializer):
         model = device_type
 
 
-class image_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = image
-        fields = (
-            "idx", "name", "enabled", "version", "release",
-            "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
-            "new_image", "act_image",
-        )
-
-
 class log_source_serializer(serializers.ModelSerializer):
     class Meta:
         model = log_source
@@ -261,108 +169,6 @@ class status_serializer(serializers.ModelSerializer):
 class wc_files_serializer(serializers.ModelSerializer):
     class Meta:
         model = wc_files
-
-
-class config_str_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
-
-    class Meta:
-        model = config_str
-
-
-class config_int_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
-
-    class Meta:
-        model = config_int
-
-
-class config_blob_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
-
-    class Meta:
-        model = config_blob
-
-
-class config_bool_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
-
-    class Meta:
-        model = config_bool
-
-
-class config_script_serializer(serializers.ModelSerializer):
-    object_type = serializers.Field(source="get_object_type")
-
-    class Meta:
-        model = config_script
-
-
-class config_serializer(serializers.ModelSerializer):
-    config_str_set = config_str_serializer(many=True, read_only=True)
-    config_int_set = config_int_serializer(many=True, read_only=True)
-    config_blob_set = config_blob_serializer(many=True, read_only=True)
-    config_bool_set = config_bool_serializer(many=True, read_only=True)
-    config_script_set = config_script_serializer(many=True, read_only=True)
-    mon_check_command_set = mon_check_command_serializer(many=True, read_only=True)
-    usecount = serializers.Field(source="get_use_count")
-    # categories only as flat list, no nesting
-
-    class Meta:
-        model = config
-
-
-class config_str_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
-
-    class Meta:
-        model = config_str
-
-
-class config_int_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
-
-    class Meta:
-        model = config_int
-
-
-class config_bool_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
-
-    class Meta:
-        model = config_bool
-
-
-class config_blob_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
-
-    class Meta:
-        model = config_blob
-
-
-class config_script_nat_serializer(serializers.ModelSerializer):
-    config = serializers.SlugRelatedField(slug_field="name")
-
-    class Meta:
-        model = config_script
-
-
-class config_dump_serializer(serializers.ModelSerializer):
-    config_str_set = config_str_nat_serializer(many=True)
-    config_int_set = config_int_nat_serializer(many=True)
-    config_blob_set = config_blob_nat_serializer(many=True)
-    config_bool_set = config_bool_nat_serializer(many=True)
-    config_script_set = config_script_nat_serializer(many=True)
-    mon_check_command_set = mon_check_command_nat_serializer(many=True)
-    # categories only as flat list, no nesting
-
-    class Meta:
-        model = config
-        fields = (
-            "idx", "name", "description", "priority", "enabled", "categories",
-            "config_str_set", "config_int_set", "config_blob_set", "config_bool_set",
-            "config_script_set", "mon_check_command_set",
-        )
 
 
 class mon_dist_slave_serializer(serializers.ModelSerializer):
@@ -399,7 +205,7 @@ class device_serializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
-        serializers.ModelSerializer.__init__(self, *args, **kwargs)
+        super(device_serializer, self).__init__(*args, **kwargs)
         _optional_fields = set(
             [
                 "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
