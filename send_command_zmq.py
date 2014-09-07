@@ -177,6 +177,7 @@ class send_com(object):
         for arg_index, arg in enumerate(self.other_args):
             self.verbose(" arg {:2d}: {}".format(arg_index, arg))
             srv_com["arguments:arg{:d}".format(arg_index)] = arg
+
     def send(self, srv_com):
         self.s_time = time.time()
         self.send_sock.send_unicode(unicode(srv_com))
@@ -196,7 +197,12 @@ class send_com(object):
                 recv_id = None
             timeout = False
         else:
-            print("error timeout")
+            print(
+                "error timeout in receive() from {} after {}".format(
+                    self.recv_conn_str or self.conn_str,
+                    logging_tools.get_plural("second", self.args.timeout)
+                )
+            )
             timeout = True
             recv_id, recv_str = (None, None)
         self.e_time = time.time()
