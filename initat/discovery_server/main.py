@@ -20,24 +20,31 @@
 """ discovery-server, main part """
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import django
 django.setup()
 
-from initat.discovery_server.version import VERSION_STRING
-from initat.discovery_server.config import global_config, SERVER_PORT
-from initat.discovery_server.server import server_process
 from initat.cluster.backbone.models import log_source
+from initat.discovery_server.config_static import SERVER_PORT
+from initat.discovery_server.version import VERSION_STRING
+from io_stream_helper import io_stream
 import cluster_location
 import config_tools
 import configfile
+import daemon
 import process_tools
+import sys
+
+
+def run_code():
+    from initat.discovery_server.server import server_process
+    server_process().loop()
 
 
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -74,22 +81,26 @@ def main():
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     cluster_location.read_config_from_db(global_config, "discovery_server", [
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/discovery-server"])
-    global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
-        process_tools.become_daemon()
-        process_tools.set_handles(
-            {
-                "out": (1, "discovery-server.out"),
-                "err": (0, "/var/lib/logging-server/py_err")
-            }
-        )
+        with daemon.DaemonContext(
+            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
+            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
+        ):
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            run_code()
+            configfile.terminate_manager()
+        # exit
+        os._exit(0)
     else:
         print "Debugging discovery-server on %s" % (long_host_name)
-    ret_code = server_process().loop()
-    sys.exit(ret_code)
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        run_code()
+    sys.exit(0)

@@ -17,18 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" discovery-server, configuration and constants """
+""" discovery-server, static configuration and constants """
 
-import os
+SERVER_PORT = 8006
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-import configfile
-import process_tools
-
-try:
-    from initat.discovery_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
