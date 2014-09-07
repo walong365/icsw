@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" setup cluster """
+""" database setup for NOCTUA / CORVUS """
 
 from django.utils.crypto import get_random_string
 import argparse

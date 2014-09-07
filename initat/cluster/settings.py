@@ -248,8 +248,6 @@ INSTALLED_APPS = (
     # "django.contrib.admindocs",
     "django_extensions",
     "reversion",
-    # removed as of django 1.7
-    # "south",
     "pipeline",
     "static_precompiler",
     "crispy_forms",
@@ -258,6 +256,12 @@ INSTALLED_APPS = (
 )
 if SLAVE_MODE:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
+
+if os.environ.get("LAST_SOUTH_MIGRATION", False):
+    INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["south"]])
+    # SOUTH config
+    SOUTH_LOGGING_ON = True
+    SOUTH_LOGGING_FILE = "/var/log/cluster/south.log"
 
 # needed by some modules
 # ZMQ_LOGGING = True
@@ -504,10 +508,6 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "initat.cluster.frontend.rest_views.csw_exception_handler",
     "ID_FIELD_NAME": "idx",
 }
-
-# SOUTH config
-# SOUTH_LOGGING_ON = True
-# SOUTH_LOGGING_FILE = "/var/log/cluster/south.log"
 
 LOGGING = {
     'version': 1,
