@@ -25,6 +25,7 @@
 from django.utils.crypto import get_random_string
 import argparse
 import commands
+import datetime
 import logging_tools
 import os
 import process_tools
@@ -364,12 +365,22 @@ def get_pw(size=10):
     return "".join([string.ascii_letters[random.randint(0, len(string.ascii_letters) - 1)] for _idx in xrange(size)])
 
 
+def final_south_migration():
+    os.environ["FINAL_SOUTH_MIGRATION"] = "yes"
+    for _app in ["django.contrib.auth", "backbone", "reversion", "static_precompiler"]:
+        call_manage(["schemamigration", _app, "--auto"])
+        call_manage(["migrate", _app, "--auto"])
+    del os.environ["FINAL_SOUTH_MIGRATION"]
+
+
 def remove_south(opts):
     s_paths = [
         "/opt/python-init/lib/python/site-packages/initat/cluster",
         "/opt/python-init/lib/python/site-packages",
     ]
+    _south_found = False
     _south_removed = False
+    _south_dirs = []
     for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler", "django_extensions"] + SYNC_APPS:
         found = [_entry for _entry in [os.path.join(_path, _app.replace(".", "/")) for _path in s_paths] if os.path.isdir(_entry)]
         if len(found):
@@ -382,16 +393,28 @@ def remove_south(opts):
                     _south = [file(os.path.join(_mig_dir, _entry), "r").read(1000).count("south") for _entry in _entries]
                     if any(_south):
                         print("South migrations found in {} for app {}".format(_mig_dir, _app))
-                        for _entry in os.listdir(_mig_dir):
-                            if _entry[0].isdigit() and _entry.count("py"):
-                                _full_path = os.path.join(_mig_dir, _entry)
-                                print("   removing file {}".format(_full_path))
-                                _south_removed = True
-                                os.unlink(_full_path)
+                        _south_found = True
+                        _south_dirs.append(_mig_dir)
             else:
                 print("no migration dir found for app {} beneath {}".format(_app, found))
         else:
             print("no path found for app {}".format(_app))
+    if _south_found:
+        _backup_dir = ".south_{}".format(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+        # final south migration
+        final_south_migration()
+        # remove south files
+        for _mig_dir in _south_dirs:
+            for _entry in os.listdir(_mig_dir):
+                _new_dir = os.path.join(_mig_dir, _backup_dir)
+                print("  creating backup dir {}".format(_new_dir))
+                if _entry[0].isdigit() and _entry.count("py"):
+                    _full_path = os.path.join(_mig_dir, _entry)
+                    # backup file
+                    file(os.path.join(_new_dir, _entry), "w").write(file(_full_path, "r").read())
+                    print("    removing file {}".format(_full_path))
+                    _south_removed = True
+                    os.unlink(_full_path)
     return _south_removed
 
 

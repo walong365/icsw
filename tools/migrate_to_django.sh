@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "dangerous script, uncomment the first few lines here to enable it"
+exit -1
+
 if [ -f /etc/sysconfig/cluster/db_access ] ; then
     file_list=$(cat /etc/sysconfig/cluster/db_access  | grep "=" | cut -d "=" -f 2 | grep "^/" | tr ";" "\n")
 else
