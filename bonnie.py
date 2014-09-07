@@ -3,7 +3,7 @@
 # Copyright (C) 2007-2008,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" parallel bonnie runs """
+""" parallel bonnie runs, deprecated """
 
 import commands
 import configfile
@@ -31,6 +31,7 @@ import server_command
 import sys
 import threading_tools
 import time
+
 
 class slave_thread(threading_tools.thread_obj):
     def __init__(self, loc_config, num, max_num, logger):
@@ -240,13 +241,15 @@ def main():
                                       loc_config["LOG_DESTINATION"],
                                       init_logger=True)
     if loc_config["DAEMONIZE"]:
-        process_tools.become_daemon()
-        hc_ok = process_tools.set_handles({"out"    : (1, "bonnie.out"),
+        process_tools.become_daemon()  # deprecated call
+        hc_ok = process_tools.set_handles({"out"    : (1, "bonnie.out"),  # deprecated code
                                            "err"    : (0, "/var/lib/logging-server/py_err"),
                                            "strict" : 0})
     thread_pool = server_thread_pool(logger, loc_config)
     thread_pool.thread_loop()
     logger.info("CLOSE")
 
+
 if __name__ == "__main__":
-    main()
+    print("code is currently deprecated, needs refacturing")
+    # main()
