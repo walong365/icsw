@@ -1105,93 +1105,6 @@ def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
     return
 
 
-def set_handles(pfix, error_only=False, **kwargs):
-    zmq_context = kwargs.get("zmq_context", None)
-    ext_return = kwargs.get("ext_return", False)
-    pf_dict = {}
-    if type(pfix) in [str, unicode]:
-        pf_dict = {
-            "out": (1, "{}.out".format(pfix)),
-            "err": (1, "{}.err".format(pfix))
-        }
-    else:
-        pf_dict = pfix
-    if "strict" not in pf_dict:
-        pf_dict["strict"] = True
-    dirs = ["/var/log/cluster", "/tmp", "."]
-    h_changed = 0
-    for act_dir in dirs:
-        if error_only:
-            cvs = ["err"]
-            close_num = [2]
-        else:
-            cvs = [x for x in ["out", "err"] if x in pf_dict.keys()]
-            close_num = [0, 1, 2]
-        h_names = {}
-        new_h_struct = {}
-        for cv in cvs:
-            create_new, f_name = pf_dict[cv]
-            new_name = f_name.startswith("/") and f_name or os.path.normpath(os.path.join(act_dir, f_name))
-            h_names[cv] = (create_new, new_name)
-        for name, (c_new, f_name) in h_names.items():
-            act_h = None
-            if os.path.exists(f_name):
-                n_stat = os.stat(f_name)
-                if stat.S_ISSOCK(n_stat[stat.ST_MODE]):
-                    if zmq_context is not None:
-                        act_h, acth_t = (io_stream(f_name, zmq_context=zmq_context), "s")
-                    else:
-                        act_h, acth_t = (io_stream(f_name), "s")
-            else:
-                if not c_new:
-                    break
-            if not act_h:
-                try:
-                    act_h = open(f_name, "a", 0)
-                except:
-                    act_h = None
-                    break
-                else:
-                    acth_t = "f"
-                    try:
-                        os.chmod(f_name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
-                    except:
-                        logging_tools.my_syslog("cannot chmod() '{}' to 0640".format(f_name))
-            if act_h:
-                new_h_struct[name] = {
-                    "handle": act_h,
-                    "type": acth_t
-                }
-        if len(new_h_struct.keys()) < len(h_names.keys()):
-            for act_h in new_h_struct.keys():
-                new_h_struct[act_h]["handle"].close()
-            new_h_struct = {}
-        else:
-            act_time = time.ctime(time.time())
-            sys.stderr.close()
-            if not error_only:
-                sys.stdin.close()
-                sys.stdout.close()
-            for c_handle in close_num:
-                os.close(c_handle)
-            if not error_only:
-                sys.stdin = open("/dev/null", "r")
-                sys.stdout = new_h_struct["out"]["handle"]
-                if new_h_struct["out"]["type"] == "f":
-                    sys.stdout.write("starting at {}\n".format(act_time))
-            sys.stderr = new_h_struct["err"]["handle"]
-            if new_h_struct["err"]["type"] == "f":
-                sys.stderr.write("starting at {}\n".format(act_time))
-            h_changed = 1
-            break
-    if not h_changed and not pf_dict["strict"]:
-        h_changed = 2
-    if ext_return:
-        return h_changed, new_h_struct
-    else:
-        return h_changed
-
-
 def renice(nice=16):
     try:
         os.nice(nice)
@@ -1212,7 +1125,7 @@ def resolve_user(user):
     return uid_stuff
 
 
-def change_user_group(user, group, groups=[], **kwargs):
+def get_uid_from_name(user):
     try:
         if type(user) in [int, long]:
             uid_stuff = pwd.getpwuid(user)
@@ -1222,6 +1135,10 @@ def change_user_group(user, group, groups=[], **kwargs):
     except KeyError:
         new_uid, new_uid_name = (0, "root")
         logging_tools.my_syslog("Cannot find user '{}', using {} ({:d})".format(user, new_uid_name, new_uid))
+    return new_uid, new_uid_name
+
+
+def get_gid_from_name(group):
     try:
         if type(group) in [int, long]:
             gid_stuff = grp.getgrgid(group)
@@ -1231,6 +1148,12 @@ def change_user_group(user, group, groups=[], **kwargs):
     except KeyError:
         new_gid, new_gid_name = (0, "root")
         logging_tools.my_syslog("Cannot find group '{}', using {} ({:d})".format(group, new_gid_name, new_gid))
+    return new_gid, new_gid_name
+
+
+def change_user_group(user, group, groups=[], **kwargs):
+    new_uid, new_uid_name = get_uid_from_name(user)
+    new_gid, new_gid_name = get_gid_from_name(group)
     add_groups, add_group_names = ([], [])
     for add_grp in groups:
         try:
@@ -1345,39 +1268,6 @@ def change_user_group_path(path, user, group, **kwargs):
     else:
         log_com("  ... path '{}' does not exist".format(path))
     return ok
-
-
-def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, **kwargs):
-    os.chdir("/")
-    debug_f = None
-    if debug:
-        try:
-            debug_f = open(debug, "A")
-        except:
-            pass
-    npid = os.fork()
-    if debug_f:
-        debug_f.write("First fork returned {:d}\n".format(npid))
-    if npid:
-        if wait:
-            time.sleep(wait)
-        if mother_hook:
-            if mother_hook_args:
-                mother_hook(*mother_hook_args)
-            else:
-                mother_hook()
-        os._exit(0)
-    os.setsid()
-    os.umask(0)
-    os.chdir("/")
-    signal.signal(signal.SIGHUP, signal.SIG_IGN)
-    npid = os.fork()
-    if debug_f:
-        debug_f.write("Second fork returned {:d}\n".format(npid))
-    if npid:
-        time.sleep(wait)
-        os._exit(0)
-    return True
 
 
 def get_process_id_list(with_threadcount=True, with_dotprocs=False):

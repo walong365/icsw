@@ -51,8 +51,8 @@ EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
 def check_processes(name, pids, pid_thread_dict, any_ok):
     ret_state = 7
-    unique_pids = dict([(key, pids.count(key)) for key in set(pids)])
-    pids_found = dict([(key, pid_thread_dict.get(key, 1)) for key in set(pids)])
+    unique_pids = {key: pids.count(key) for key in set(pids)}
+    pids_found = {key: pid_thread_dict.get(key, 1) for key in set(pids)}
     num_started = sum(unique_pids.values()) if unique_pids else 0
     num_found = sum(pids_found.values()) if pids_found else 0
     # check for extra Nagios2.x thread
@@ -66,7 +66,7 @@ INSTANCE_XML = """
 <instances>
     <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node">
     </instance>
-    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid"  has_force_stop="1" meta_server_name="logserver">
+    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver">
     </instance>
     <instance name="meta-server" runs_on="node"  has_force_stop="1">
     </instance>
@@ -76,7 +76,7 @@ INSTANCE_XML = """
     </instance>
     <instance name="gmond" runs_on="node" pid_file_name="">
     </instance>
-    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1">
+    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck">
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
@@ -412,8 +412,9 @@ def show_xml(opt_ns, res_xml, iteration=0):
         6: (1, "not install"),
         7: (2, "dead")
     }
-    rc_strs = dict([(key, "{}{}{}".format(col_str_dict[wc], value, col_str_dict[3]))
-                    for key, (wc, value) in rc_dict.iteritems()])
+    rc_strs = {
+        key: "{}{}{}".format(col_str_dict[wc], value, col_str_dict[3]) for key, (wc, value) in rc_dict.iteritems()
+    }
     out_bl = logging_tools.new_form_list()
     types = ["node", "server", "system"]
     _list = sum([res_xml.xpath("instance[@checked='1' and @runs_on='{}']".format(_type)) for _type in types], [])
@@ -430,7 +431,8 @@ def show_xml(opt_ns, res_xml, iteration=0):
                     int(s_info.get("num_found")),
                     int(s_info.get("num_diff")),
                     int(s_info.get("pid_time", "0")),
-                    True if int(act_struct.attrib["any_threads_ok"]) else False)
+                    True if int(act_struct.attrib["any_threads_ok"]) else False
+                )
                 # print etree.tostring(act_struct, pretty_print=True)
                 if any_ok:
                     ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))

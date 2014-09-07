@@ -32,7 +32,8 @@ import time
 
 MS_DIR = "/var/lib/meta-server"
 
-def check_threads(pid_file, options): # overview_mode, full_status):
+
+def check_threads(pid_file, options):  # overview_mode, full_status):
     ret_state, ret_str = (7, "")
     if pid_file:
         if os.path.isfile(pid_file):
@@ -54,18 +55,19 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                 pid_time = os.stat(pid_file)[stat.ST_CTIME]
                 pids = [int(pid_int) for pid_int in [pid_part.strip() for pid_part in file(pid_file, "r").read().split()] if pid_int and pid_int.isdigit()]
                 unique_pids, pids_found = (
-                    dict([(pid, pids.count(pid)) for pid in pids]),
-                    dict([(pid, 0) for pid in pids]))
+                    {pid: pids.count(pid) for pid in pids},
+                    {pid: 0 for pid in pids}
+                )
                 for pid in unique_pids.keys():
                     stat_f = "/proc/{:d}/status".format(pid)
                     if os.path.isfile(stat_f):
-                        stat_dict = dict([
-                            (part[0].lower(), part[1].strip()) for part in [
+                        stat_dict = {
+                            part[0].lower(): part[1].strip() for part in [
                                 line.split(":", 1) for line in [
                                     s_line.strip() for s_line in file(stat_f, "r").read().replace("\t", " ").split("\n") if s_line.count(":")
                                 ]
                             ]
-                        ])
+                        }
                         if "threads" in stat_dict:
                             pids_found[pid] = int(stat_dict["threads"])
                         else:
@@ -73,8 +75,8 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                 bound_dict = {}
                 for key in set(unique_pids):
                     bound_dict[key] = unique_pids[key] - pids_found[key]
-                num_started = unique_pids and reduce(lambda x, y : x + y, unique_pids.values()) or 0
-                num_found = pids_found and reduce(lambda x, y : x + y, pids_found.values()) or 0
+                num_started = unique_pids and reduce(lambda x, y: x + y, unique_pids.values()) or 0
+                num_found = pids_found and reduce(lambda x, y: x + y, pids_found.values()) or 0
                 num_miss = num_started - num_found
             if num_miss:
                 if not options.overview_mode:
@@ -100,7 +102,8 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                         ret_str += " for {}{:02d}:{:02d}:{:02d} ({})".format(
                             diff_days and "{}, ".format(logging_tools.get_plural("day", diff_days)) or "",
                             diff_hours, diff_mins, diff_secs,
-                            time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
+                            time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time))
+                        )
                 ret_state = 0
         else:
             if not options.overview_mode:
@@ -109,6 +112,7 @@ def check_threads(pid_file, options): # overview_mode, full_status):
         if not options.overview_mode:
             ret_str = "no PID-file given and $SERVER_PID unset"
     return ret_state, ret_str
+
 
 def main():
     my_parser = argparse.ArgumentParser()
