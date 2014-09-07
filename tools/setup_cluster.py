@@ -365,14 +365,6 @@ def get_pw(size=10):
     return "".join([string.ascii_letters[random.randint(0, len(string.ascii_letters) - 1)] for _idx in xrange(size)])
 
 
-def final_south_migration():
-    os.environ["FINAL_SOUTH_MIGRATION"] = "yes"
-    for _app in ["django.contrib.auth", "backbone", "reversion", "static_precompiler"]:
-        call_manage(["schemamigration", _app, "--auto"])
-        call_manage(["migrate", _app, "--auto"])
-    del os.environ["FINAL_SOUTH_MIGRATION"]
-
-
 def remove_south(opts):
     s_paths = [
         "/opt/python-init/lib/python/site-packages/initat/cluster",
@@ -402,12 +394,12 @@ def remove_south(opts):
     if _south_found:
         _backup_dir = ".south_{}".format(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
         # final south migration
-        final_south_migration()
         # remove south files
         for _mig_dir in _south_dirs:
+            _new_dir = os.path.join(_mig_dir, _backup_dir)
+            os.mkdir(_new_dir)
+            print("  creating backup dir {}".format(_new_dir))
             for _entry in os.listdir(_mig_dir):
-                _new_dir = os.path.join(_mig_dir, _backup_dir)
-                print("  creating backup dir {}".format(_new_dir))
                 if _entry[0].isdigit() and _entry.count("py"):
                     _full_path = os.path.join(_mig_dir, _entry)
                     # backup file

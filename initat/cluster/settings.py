@@ -257,13 +257,6 @@ INSTALLED_APPS = (
 if SLAVE_MODE:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
 
-if os.environ.get("FINAL_SOUTH_MIGRATION", False):
-    # add south
-    INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["south"])
-    # SOUTH config
-    SOUTH_LOGGING_ON = True
-    SOUTH_LOGGING_FILE = "/var/log/cluster/south.log"
-
 # needed by some modules
 # ZMQ_LOGGING = True
 
