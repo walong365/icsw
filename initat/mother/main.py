@@ -21,19 +21,31 @@
 #
 """ mother daemon, main part """
 
+import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import django
+django.setup()
+
 from initat.cluster.backbone.models import log_source
-from initat.mother.config import global_config
 from initat.mother.version import VERSION_STRING
+from io_stream_helper import io_stream
 import cluster_location
 import config_tools
 import configfile
-import initat.mother.server
-import os
+import daemon
 import process_tools
 import sys
 
 
+def run_code():
+    import initat.mother.server
+    initat.mother.server.server_process().loop()
+
+
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     _long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -69,7 +81,7 @@ def main():
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     cluster_location.read_config_from_db(global_config, "mother_server", [
         ("TFTP_LINK", configfile.str_c_var("/tftpboot")),
         ("TFTP_DIR", configfile.str_c_var("/opt/cluster/system/tftpboot")),
@@ -91,16 +103,17 @@ def main():
     ])
     process_tools.renice()
     if not global_config["DEBUG"]:
-        # become daemon and wait 2 seconds
-        process_tools.become_daemon(wait=2)
-        process_tools.set_handles(
-            {
-                "out": (1, "mother.out"),
-                "err": (0, "/var/lib/logging-server/py_err")
-            }
-        )
+        with daemon.DaemonContext(
+            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
+            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
+        ):
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            run_code()
+            configfile.terminate_manager()
     else:
         print "Debugging mother"
-    ret_state = initat.mother.server.server_process().loop()
-    sys.exit(ret_state)
-
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        run_code()
+    sys.exit(0)
