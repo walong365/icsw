@@ -24,7 +24,8 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.rrd_grapher.config import global_config, CD_COM_PORT
+from initat.rrd_grapher.config import global_config
+from initat.rrd_grapher.config_static import CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.resize import resize_process
 from initat.rrd_grapher.struct import data_store, var_cache
@@ -54,12 +55,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.__verbose = global_config["VERBOSE"]
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        if not global_config["DEBUG"]:
-            process_tools.set_handles({
-                "out": (1, "rrd-grapher.out"),
-                "err": (0, "/var/lib/logging-server/py_err_zmq")},
-                zmq_context=self.zmq_context
-            )
+        # close connection (daemonizing)
+        connection.close()
         self.__msi_block = self._init_msi_block()
         # re-insert config
         self._re_insert_config()

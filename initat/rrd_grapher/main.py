@@ -28,11 +28,12 @@ django.setup()
 
 from django.conf import settings
 from initat.cluster.backbone.models import log_source
-from initat.rrd_grapher.config import global_config, SERVER_COM_PORT
-from initat.rrd_grapher.server import server_process
+from initat.rrd_grapher.config_static import SERVER_COM_PORT
+from io_stream_helper import io_stream
 import cluster_location
 import config_tools
 import configfile
+import daemon
 import process_tools
 import sys
 
@@ -42,7 +43,12 @@ except ImportError:
     VERSION_STRING = "?.?"
 
 
-def _create_dirs():
+def run_code():
+    from initat.rrd_grapher.server import server_process
+    server_process().loop()
+
+
+def _create_dirs(global_config):
     graph_root = global_config["GRAPH_ROOT"]
     if not os.path.isdir(graph_root):
         try:
@@ -54,6 +60,7 @@ def _create_dirs():
 
 
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -99,7 +106,7 @@ def main():
         _log_lines = process_tools.kill_running_processes(
             "{}.py".format(prog_name),
             ignore_names=[],
-            exclude=configfile.get_manager_pid())
+        )
 
     global_config.add_config_entries(
         [
@@ -133,7 +140,7 @@ def main():
         ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
         ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
     ])
-    _create_dirs()
+    _create_dirs(global_config)
 
     process_tools.renice()
     process_tools.fix_directories(
@@ -143,11 +150,19 @@ def main():
             "/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["RRD_DIR"]
         ]
     )
-    global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
-        process_tools.become_daemon()
+        with daemon.DaemonContext(
+            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
+            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
+        ):
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            run_code()
+            configfile.terminate_manager()
     else:
-        print "Debugging rrd-grapher on {}".format(long_host_name)
-    ret_state = server_process().loop()
-    sys.exit(ret_state)
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        print("Debugging rrd-grapher on {}".format(long_host_name))
+        run_code()
+    sys.exit(0)
