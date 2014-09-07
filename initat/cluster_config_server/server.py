@@ -45,6 +45,8 @@ class server_process(threading_tools.process_pool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        # close DB connection (daemonize)
+        connection.close()
         self._re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
@@ -100,7 +102,7 @@ class server_process(threading_tools.process_pool):
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("cluster-config-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/cluster-config-server start"
             msi_block.stop_command = "/etc/init.d/cluster-config-server force-stop"

@@ -21,7 +21,8 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
-from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
+from initat.cluster_config_server.config import global_config
+from initat.cluster_config_server.config_static import GATEWAY_THRESHOLD
 from initat.cluster_config_server.partition_setup import partition_setup
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport

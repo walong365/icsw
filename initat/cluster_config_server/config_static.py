@@ -17,13 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" cluster-config-server, configuration and constants """
+""" cluster-config-server, static constants """
 
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-import configfile
-import process_tools
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+SERVER_PORT = 8005
+NCS_PORT = 8010
+GATEWAY_THRESHOLD = 1000
