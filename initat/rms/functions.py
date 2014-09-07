@@ -18,9 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" rms-server, accounting process """
+""" rms-server, helper functions """
 
-from lxml import etree  # @UnresolvedImport @UnusedImport
 import commands
 import logging_tools
 import time

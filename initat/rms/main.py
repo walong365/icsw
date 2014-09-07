@@ -145,11 +145,13 @@ def main():
     if pid_dir not in ["/var/run", "/var/run/"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
     if not global_config["DEBUG"]:
-        with daemon.DaemonContext():
+        with daemon.DaemonContext(
+            uid=process_tools.get_uid_from_name(global_config["USER"])[0],
+            gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
+        ):
             global_config = configfile.get_global_config(prog_name, parent_object=global_config)
             sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
             sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-            # process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
             run_code()
             configfile.terminate_manager()
         # exit
