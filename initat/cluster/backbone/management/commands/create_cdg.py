@@ -25,6 +25,7 @@ from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_group
 from optparse import make_option
 
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('--name', action='store', dest='name',

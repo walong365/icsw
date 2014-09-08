@@ -15,6 +15,7 @@ import logging_tools
 import pprint
 import time
 
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
         make_option('--database', action='store', dest='database',
@@ -28,7 +29,7 @@ class Command(BaseCommand):
     args = '[appname appname.ModelName ...]'
 
     def handle(self, *app_labels, **options):
-        from django.db.models import get_app, get_apps, get_model, get_models
+        from django.db.models import get_app, get_apps, get_model, get_models  # @UnresolvedImport
 
         excludes = options.get('exclude')
         verbosity = int(options.get("verbosity"))
@@ -131,8 +132,13 @@ class Command(BaseCommand):
                         pprint.pprint(errors)
         dup_keys = set([key for key in found_perms if found_perms_list.count(key) > 1])
         if dup_keys:
-            print "{} found, please fix models: {}".format(logging_tools.get_plural("duplicate key", len(dup_keys)), ", ".join(sorted([str(_v) for _v in dup_keys])))
-            raise ImproperlyConfigured("CSW permissions not unique")
+            print(
+                "{} found, please fix models: {}".format(
+                    logging_tools.get_plural("duplicate key", len(dup_keys)),
+                    ", ".join(sorted([str(_v) for _v in dup_keys]))
+                )
+            )
+            raise(ImproperlyConfigured("CSW permissions not unique"))
         # find old permissions
         old_perms = set(p_dict.keys()) - found_perms
         if old_perms:
@@ -142,4 +148,3 @@ class Command(BaseCommand):
                 )
             for app_label, code_name in old_perms:
                 csw_permission.objects.get(Q(codename=code_name)).delete()
-

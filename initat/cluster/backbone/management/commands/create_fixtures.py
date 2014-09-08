@@ -26,7 +26,7 @@ from initat.cluster.backbone import factories
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, log_source, \
     get_related_models
-from lxml import etree # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
 # from lxml.builder import E # @UnresolvedImport
 import os
 import sys
@@ -35,9 +35,11 @@ import sys
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list
     help = ("Creates the cluster fixtures.")
+
     def handle(self, **options):
         print("creating fixtures...")
         # global settings
@@ -50,14 +52,14 @@ class Command(BaseCommand):
             # try to read from LOCAL_CONFIG
             local_dir = os.path.dirname(LOCAL_CONFIG)
             sys.path.append(local_dir)
-            from local_settings import SECRET_KEY # @UnresolvedImport
+            from local_settings import SECRET_KEY  # @UnresolvedImport
             sys.path.remove(local_dir)
         cur_gs = factories.ClusterSetting(name="GLOBAL", secret_key=SECRET_KEY, login_screen_type=LOGIN_SCREEN_TYPE)
         LICENSE_FILE = "/etc/sysconfig/cluster/cluster_license"
         # default: disable all
-        _lic_dict = {name : False for name in ALL_LICENSES}
+        _lic_dict = {name: False for name in ALL_LICENSES}
         try:
-            cur_lic = etree.fromstring(file(LICENSE_FILE, "r").read())
+            cur_lic = etree.fromstring(file(LICENSE_FILE, "r").read())  # @UndefinedVariable
         except:
             pass
         else:
@@ -80,11 +82,11 @@ class Command(BaseCommand):
         factories.DeviceType(identifier="H", description="Host", priority=0)
         factories.DeviceType(identifier="AM", description="APC Masterswitch", priority=10)
         factories.DeviceType(identifier="NB", description="Netbotz", priority=20)
-        factories.DeviceType(identifier="S", description="Manageable Switch", priority= -10)
-        factories.DeviceType(identifier="R", description="RAID box", priority= -20)
-        factories.DeviceType(identifier="P", description="Printer", priority= -30)
+        factories.DeviceType(identifier="S", description="Manageable Switch", priority=-10)
+        factories.DeviceType(identifier="R", description="RAID box", priority=-20)
+        factories.DeviceType(identifier="P", description="Printer", priority=-30)
         factories.DeviceType(identifier="MD", description="Meta device", priority=128)
-        factories.DeviceType(identifier="IBC", description="IBM Blade center", priority= -40)
+        factories.DeviceType(identifier="IBC", description="IBM Blade center", priority=-40)
         factories.DeviceType(identifier="CD", description="Controlling Device", priority=30)
         # partition fs
         factories.PartitionFS(name="reiserfs", identifier="f", descr="ReiserFS Filesystem", hexid="83", kernel_module="reiserfs")
@@ -103,15 +105,15 @@ class Command(BaseCommand):
         factories.LogStatus(identifier="e", log_level=100, name="error")
         factories.LogStatus(identifier="w", log_level=50, name="warning")
         factories.LogStatus(identifier="i", log_level=0, name="info")
-        factories.LogStatus(identifier="n", log_level= -50, name="notice")
+        factories.LogStatus(identifier="n", log_level=-50, name="notice")
         # status
         factories.Status(status="memtest", memory_test=True)
         factories.Status(status="boot_local", boot_local=True)
         factories.Status(status="boot_iso", boot_iso=True)
         factories.Status(status="boot_clean", prod_link=True, is_clean=True)
         factories.Status(status="installation_clean", prod_link=True, do_install=True, is_clean=True)
-        factories.Status(status="boot", prod_link=True) # # FIXME ?
-        factories.Status(status="installation", prod_link=True, do_install=True) # # FIXME ?
+        factories.Status(status="boot", prod_link=True)  # # FIXME ?
+        factories.Status(status="installation", prod_link=True, do_install=True)  # # FIXME ?
         # network device type
         factories.NetworkDeviceType(identifier="lo", name_re="^lo\d*$", description="loopback devices", mac_bytes=6)
         factories.NetworkDeviceType(identifier="eth", name_re="^eth\d+$", description="ethernet devices", mac_bytes=6)
@@ -143,7 +145,7 @@ class Command(BaseCommand):
         factories.HostCheckCommand(name="check-host-down", command_line="$USER1$/check_dummy 2 down")
         # hints
 
-        server_cfg = factories.ConfigHint(
+        _server_cfg = factories.ConfigHint(
             config_name="server",
             valid_for_meta=False,
             config_description="server device",

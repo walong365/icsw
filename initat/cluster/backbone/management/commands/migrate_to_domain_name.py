@@ -26,6 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import domain_tree_node, network, net_ip, domain_name_tree, device
 import logging_tools
 
+
 class tree_node(object):
     def __init__(self, name="", depth=0):
         self.name = name
@@ -36,6 +37,7 @@ class tree_node(object):
             self.top_node = True
         else:
             self.top_node = False
+
     def feed_name(self, name, cur_net):
         if not name.strip():
             self.cur_net = cur_net
@@ -48,8 +50,10 @@ class tree_node(object):
                 # create new sub_node
                 self.sub_nodes[last_part] = tree_node(last_part, depth=self.depth + 1)
             return self.sub_nodes[last_part].feed_name(".".join(name_parts[:-1]), cur_net)
+
     def show_tree(self):
         return "\n".join(["{}{}".format("    " * self.depth, unicode(self))] + [value.show_tree() for _key, value in self.sub_nodes.iteritems()])
+
     def create_db_entries(self, top_node=None):
         full_name = self.name
         if top_node and top_node.name:
@@ -75,8 +79,10 @@ class tree_node(object):
         cur_db.save()
         self.db_obj = cur_db
         [value.create_db_entries(top_node=self) for value in self.sub_nodes.itervalues()]
+
     def __unicode__(self):
         return "{} (PF '{}', {:d})".format(self.name or "TOP NODE", self.postfix, self.depth)
+
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list
@@ -86,6 +92,7 @@ class Command(BaseCommand):
     def handle(self, **options):
         main()
 
+
 def main():
     cur_dns = domain_tree_node.objects.all()
     if len(cur_dns):
@@ -93,7 +100,7 @@ def main():
     else:
         print "Migrating to domain_tree_node system"
         net_tree = tree_node()
-        for cur_net in network.objects.all():
+        for cur_net in network.objects.all():  # @UndefinedVariable
             _dns_node = net_tree.feed_name(cur_net.name, cur_net)
         net_tree.create_db_entries()
     cur_dnt = domain_name_tree()
@@ -112,14 +119,16 @@ def main():
         if cur_node == cur_dnt._root_node:
             im_state = False
         else:
-            im_state = True if (net_ip.objects.filter(Q(domain_tree_node=cur_node)).count() + device.objects.filter(Q(domain_tree_node=cur_node)).count() == 0) else False
+            im_state = True if (
+                net_ip.objects.filter(Q(domain_tree_node=cur_node)).count() + device.objects.filter(Q(domain_tree_node=cur_node)).count() == 0
+            ) else False
         if cur_node.intermediate != im_state:
             cur_node.intermediate = im_state
             cur_node.save()
             # pprint.pprint(net_dict)
     # read network dict
     net_dict = {}
-    for nw_obj in network.objects.all():
+    for nw_obj in network.objects.all():  # @UndefinedVariable
         net_dict[nw_obj.pk] = nw_obj
         try:
             nw_obj.dns_node = domain_tree_node.objects.get(Q(full_name=nw_obj.name))
