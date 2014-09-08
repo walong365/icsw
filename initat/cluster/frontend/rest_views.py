@@ -66,10 +66,11 @@ for key in _ser_keys:
 init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
 
 if "initat.cluster.liebherr" in init_apps:
-    from initat.cluster.liebherr import models as liebherr_models
-    for key in dir(liebherr_models):
+    # from initat.cluster.liebherr import models as liebherr_models
+    from initat.cluster.liebherr import serializers as liebherr_serializers
+    for key in dir(liebherr_serializers):
         if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
-            REST_LIST.append((liebherr_models, "_".join(key.split("_")[:-1])))
+            REST_LIST.append((liebherr_serializers, "_".join(key.split("_")[:-1])))
 
 # @api_view(('GET',))
 # def api_root(request, format=None):
