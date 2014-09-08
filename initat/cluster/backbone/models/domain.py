@@ -279,20 +279,24 @@ def _migrate_mon_type(cat_tree):
 
 
 def _migrate_location_type(cat_tree):
-    device_location = apps.get_model("backbone", "device_location")
-    device = apps.get_model("backbone", "device")
-    # just to be sure ...
-    if device_location and device:
-        # read all monitoring_config_types
-        all_loc_ct = dict([(pk, "{}/{}".format(
-            TOP_LOCATION_CATEGORY,
-            cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
-        mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_loc_ct.iteritems()])
-        for cur_dev in device.objects.all():
-            if cur_dev.device_location_id:
-                cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
-                cur_dev.device_location = None
-                cur_dev.save()
+    try:
+        device_location = apps.get_model("backbone", "device_location")
+    except LookupError:
+        pass
+    else:
+        device = apps.get_model("backbone", "device")
+        # just to be sure ...
+        if device_location and device:
+            # read all monitoring_config_types
+            all_loc_ct = dict([(pk, "{}/{}".format(
+                TOP_LOCATION_CATEGORY,
+                cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
+            mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_loc_ct.iteritems()])
+            for cur_dev in device.objects.all():
+                if cur_dev.device_location_id:
+                    cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
+                    cur_dev.device_location = None
+                    cur_dev.save()
 
 
 class category_tree(object):
