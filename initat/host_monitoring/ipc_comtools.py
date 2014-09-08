@@ -27,11 +27,11 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     identity_str = process_tools.zmq_identity_str(kwargs.pop("identity_string", "ipc_com"))
     zmq_context = kwargs.pop("zmq_context")
     cur_timeout = kwargs.pop("timeout", 20)
-    client_send = zmq_context.socket(zmq.PUSH)
-    client_recv = zmq_context.socket(zmq.SUB)
+    client_send = zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+    client_recv = zmq_context.socket(zmq.SUB)  # @UndefinedVariable
     # client_send.setsockopt(zmq.IDENTITY, identity_str)
-    client_send.setsockopt(zmq.LINGER, cur_timeout * 2)
-    client_recv.setsockopt(zmq.SUBSCRIBE, identity_str)
+    client_send.setsockopt(zmq.LINGER, cur_timeout * 2)  # @UndefinedVariable
+    client_recv.setsockopt(zmq.SUBSCRIBE, identity_str)  # @UndefinedVariable
     # kwargs["server"] : collrelay or snmprelay
     server_name = kwargs.pop("server")
     send_conn_str = "{}".format(
@@ -64,7 +64,7 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
         id_str = client_recv.recv()
     else:
         id_str = None
-    if id_str and client_recv.getsockopt(zmq.RCVMORE):
+    if id_str and client_recv.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
         e_time = time.time()
         if client_recv.poll((cur_timeout - (e_time - s_time)) * 1000):
             recv_str = client_recv.recv()
@@ -82,5 +82,5 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
             raise
     else:
         srv_reply = None
-        raise SystemError, "timeout ({:d} seconds) exceeded".format(int(cur_timeout))
+        raise SystemError("timeout ({:d} seconds) exceeded".format(int(cur_timeout)))
     return srv_reply

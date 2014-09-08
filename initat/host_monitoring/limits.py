@@ -20,7 +20,7 @@
 
 import logging_tools
 
-# nagios exit codes
+# nagios / icinga exit codes
 nag_STATE_CRITICAL = 2
 nag_STATE_WARNING = 1
 nag_STATE_OK = 0

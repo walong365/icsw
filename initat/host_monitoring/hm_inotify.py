@@ -259,7 +259,8 @@ class file_watcher(object):
         if self.__use_inotify:
             if new_file not in self.__act_files:
                 self.__act_files.add(new_file)
-                reg_mask = inotify_tools.IN_MODIFY | inotify_tools.IN_CLOSE_WRITE | inotify_tools.IN_DELETE | inotify_tools.IN_DELETE_SELF | inotify_tools.IN_CREATE
+                reg_mask = inotify_tools.IN_MODIFY | inotify_tools.IN_CLOSE_WRITE | \
+                    inotify_tools.IN_DELETE | inotify_tools.IN_DELETE_SELF | inotify_tools.IN_CREATE
                 self.log(
                     "adding file {} to inotify_watcher (mask {:d} [{}])".format(
                         new_file,
@@ -363,17 +364,18 @@ class file_watcher(object):
                     try:
                         file_stat = os.stat(f_name)
                         send_com = server_command.srv_command(
-                                command="file_watch_content",
-                                name=f_name,
-                                uid="{:d}".format(file_stat[stat.ST_UID]),
-                                gid="{:d}".format(file_stat[stat.ST_GID]),
-                                mode="{:d}".format(file_stat[stat.ST_MODE]),
-                                comment=self.comment,
-                                content=self.content.get(f_name, ""),
-                                last_change="{:d}".format(int(file_stat[stat.ST_MTIME])),
-                                id=self.fw_id,
-                                send_id=self.send_id,
-                                update=self.__content_update)
+                            command="file_watch_content",
+                            name=f_name,
+                            uid="{:d}".format(file_stat[stat.ST_UID]),
+                            gid="{:d}".format(file_stat[stat.ST_GID]),
+                            mode="{:d}".format(file_stat[stat.ST_MODE]),
+                            comment=self.comment,
+                            content=self.content.get(f_name, ""),
+                            last_change="{:d}".format(int(file_stat[stat.ST_MTIME])),
+                            id=self.fw_id,
+                            send_id=self.send_id,
+                            update=self.__content_update
+                        )
                     except:
                         self.log(
                             "cannot init file_content: {}".format(
@@ -465,7 +467,7 @@ class inotify_process(threading_tools.process_obj):
             logging_tools.get_plural("argument", len(args)),
             ", ".join(["{}='{}' ({})".format(key, value, type(value)) for key, value in args.iteritems()])
             ))
-        args = {key.replace("-", "_") : value for key, value in args.iteritems()}
+        args = {key.replace("-", "_"): value for key, value in args.iteritems()}
         found_keys = set(args.keys())
         needed_keys = {
             "register_file_watch": set(["send_id", "mode", "target_server", "target_port", "dir", "match"]),
@@ -528,16 +530,16 @@ class inotify_process(threading_tools.process_obj):
     def send_to_server(self, target_server, target_port, srv_com):
         targ_str = "tcp://{}:{:d}".format(target_server, target_port)
         if targ_str not in self.__target_dict:
-            send_socket = self.zmq_context.socket(zmq.DEALER)
-            send_socket.setsockopt(zmq.LINGER, 0)
-            send_socket.setsockopt(zmq.IDENTITY, "{}_csin".format(uuid_tools.get_uuid().get_urn()))
+            send_socket = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.IDENTITY, "{}_csin".format(uuid_tools.get_uuid().get_urn()))  # @UndefinedVariable
             send_socket.connect(targ_str)
-            send_socket.setsockopt(zmq.SNDHWM, 16)
-            send_socket.setsockopt(zmq.RCVHWM, 16)
-            send_socket.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-            send_socket.setsockopt(zmq.RECONNECT_IVL, 200)
-            send_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            send_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            send_socket.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.RCVHWM, 16)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+            send_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
             self.log("init connection to {}".format(targ_str))
             self.__target_dict[targ_str] = send_socket
         self.__target_dict[targ_str].send_unicode(unicode(srv_com))

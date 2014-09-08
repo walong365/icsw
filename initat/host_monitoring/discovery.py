@@ -59,19 +59,19 @@ class id_discovery(object):
             self.send_return("last 0MQ discovery less than 60 seconds ago")
         else:
             id_discovery.pending[self.conn_str] = self
-            new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)
+            new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
             id_str = "relayer_dlr_%s_%s" % (
                 process_tools.get_machine_name(),
                 self.src_id)
-            new_sock.setsockopt(zmq.IDENTITY, id_str)
-            new_sock.setsockopt(zmq.LINGER, 0)
-            new_sock.setsockopt(zmq.SNDHWM, id_discovery.backlog_size)
-            new_sock.setsockopt(zmq.RCVHWM, id_discovery.backlog_size)
-            new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
-            new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            new_sock.setsockopt(zmq.IDENTITY, id_str)  # @UndefinedVariable
+            new_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+            new_sock.setsockopt(zmq.SNDHWM, id_discovery.backlog_size)  # @UndefinedVariable
+            new_sock.setsockopt(zmq.RCVHWM, id_discovery.backlog_size)  # @UndefinedVariable
+            new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)  # @UndefinedVariable
+            new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+            new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
             self.socket = new_sock
-            id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
+            id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)  # @UndefinedVariable
             # id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
             self.socket.connect(self.conn_str)
             if self.raw_connect:
@@ -90,7 +90,7 @@ class id_discovery(object):
         self.send_result(dummy_mes)
 
     def send_result(self, host_mes, result=None):
-        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
+        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)  # @UndefinedVariable
         id_discovery.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         self.close()
 
@@ -104,7 +104,7 @@ class id_discovery(object):
         try:
             if self.raw_connect:
                 # only valid for hoststatus, FIXME
-                zmq_id = etree.fromstring(zmq_sock.recv()).findtext("nodestatus")
+                zmq_id = etree.fromstring(zmq_sock.recv()).findtext("nodestatus")  # @UndefinedVariable
             else:
                 cur_reply = server_command.srv_command(source=zmq_sock.recv())
                 zmq_id = cur_reply["zmq_id"].text
@@ -142,13 +142,13 @@ class id_discovery(object):
     def save_mapping():
         if id_discovery.save_file:
             id_discovery.relayer_process.log("saving mapping file")
-            file(MAPPING_FILE_IDS, "w").write(etree.tostring(id_discovery.mapping_xml, pretty_print=True))
+            file(MAPPING_FILE_IDS, "w").write(etree.tostring(id_discovery.mapping_xml, pretty_print=True))  # @UndefinedVariable
 
     def close(self):
         del self.srv_com
         if self.socket:
             self.socket.close()
-            id_discovery.relayer_process.unregister_poller(self.socket, zmq.POLLIN)
+            id_discovery.relayer_process.unregister_poller(self.socket, zmq.POLLIN)  # @UndefinedVariable
             del self.socket
         if self.conn_str in id_discovery.pending:
             # remove from pending dict
@@ -169,7 +169,7 @@ class id_discovery(object):
             if map_content.startswith("<"):
                 # new format
                 id_discovery.mapping = {}
-                id_discovery.mapping_xml = etree.fromstring(map_content)
+                id_discovery.mapping_xml = etree.fromstring(map_content)  # @UndefinedVariable
                 for host_el in id_discovery.mapping_xml.findall(".//host"):
                     for uuid_el in host_el.findall(".//uuid"):
                         conn_str = "{}://{}:{}".format(
