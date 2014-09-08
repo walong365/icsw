@@ -3,9 +3,10 @@
 
 """ base views """
 
+from PIL import Image
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_variable, category, \
@@ -18,7 +19,6 @@ import initat.cluster.backbone.models
 import json
 import logging
 import logging_tools
-from PIL import Image
 
 logger = logging.getLogger("cluster.base")
 
@@ -91,6 +91,7 @@ class upload_location_gfx(View):
                         _w,
                         _h,
                     ))
+                    print settings.WEBCACHE_DIR
             else:
                 request.xml_response.error("wrong content_type '{}'".format(_file.content_type))
         else:

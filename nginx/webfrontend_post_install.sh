@@ -5,7 +5,11 @@ rm -rf /opt/cluster/lib/node_modules/yuglify/node_modules
 
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static
+WEBCACHE_DIR=/opt/cluster/share/webcache
 [ ! -d ${STATIC_DIR} ] && mkdir -p ${STATIC_DIR}
+[ ! -d ${WEBCACHE_DIR} ] && mkdir -p ${WEBCACHE_DIR}
+
+chmod a+rwx ${WEBCACHE_DIR}
 
 if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     # already configured; run collectstatic
