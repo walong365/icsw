@@ -1,12 +1,19 @@
 #!/usr/bin/python-init
 
+
+from PIL import Image
 from django.apps import apps
+from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_non_empty_string, \
     _check_float, get_related_models
+import StringIO
+import os
 import process_tools
 import re
 import uuid
@@ -573,17 +580,64 @@ class location_gfx(models.Model):
     name = models.CharField(max_length=64, default="", unique=True)
     # uuid of graph
     uuid = models.CharField(max_length=64, blank=True)
+    # image stored ?
+    image_stored = models.BooleanField(default=False)
     # size
     width = models.IntegerField(default=0)
     height = models.IntegerField(default=0)
     # content type
-    content_type = models.CharField(default="", max_length=128)
+    content_type = models.CharField(default="", max_length=128, blank=True)
     # creation date
     created = models.DateTimeField(auto_now_add=True)
     # location node
     location = models.ForeignKey("backbone.category")
+    # locked (as soon as a graphic is set)
+    locked = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=1024, default="", blank=True)
+
+    def get_icon_url(self):
+        if self.image_stored:
+            return reverse("base:location_gfx_icon", args=[self.idx])
+        else:
+            return ""
+
+    def get_icon(self):
+        _icon_key = "lgfx_icon_{}".format(self.uuid)
+        _content = cache.get(_icon_key)
+        if _content is None:
+            _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
+            if os.path.isfile(_entry):
+                _img = Image.open(file(_entry, "rb"))
+                _img.thumbnail((24, 24))
+                _content = StringIO.StringIO()
+                _img.save(_content, format="JPEG")
+                _content = _content.getvalue()
+                cache.set(_icon_key, _content)
+                return _content
+            else:
+                return location_gfx.default_icon()
+        else:
+            return _content
+
+    @staticmethod
+    def default_icon():
+        _content = StringIO.StringIO()
+        Image.new("RGB", (24, 24), color="red").save(_content, format="JPEG")
+        return _content.getvalue()
+
+    def store_graphic(self, img, content_type):
+        _gfx_dir = os.path.join(settings.ICSW_WEBCACHE, "lgfx")
+        if not os.path.isdir(_gfx_dir):
+            os.mkdir(_gfx_dir)
+        _entry = os.path.join(_gfx_dir, self.uuid)
+        img.save(file(_entry, "wb"), format="PNG")
+        self.width = img.size[0]
+        self.height = img.size[1]
+        self.content_type = content_type
+        self.image_stored = True
+        self.locked = True
+        self.save(update_fields=["width", "height", "content_type", "locked", "image_stored"])
 
     class Meta:
         app_label = "backbone"
@@ -594,5 +648,4 @@ def location_gfx_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if not cur_inst.uuid:
-            print "*", uuid.uuid4()
             cur_inst.uuid = uuid.uuid4()
