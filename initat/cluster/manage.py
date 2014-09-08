@@ -6,10 +6,10 @@ import sys
 abs_path = os.path.abspath(__file__)
 if not abs_path.startswith("/opt/python-init"):
     abs_path = os.path.split(os.path.split(os.path.split(abs_path)[0])[0])[0]
-    if not abs_path in sys.path:
+    if abs_path not in sys.path:
         sys.path.insert(0, abs_path)
 
-import warnings
+import warnings  # @UnusedImport
 
 # warnings.filterwarnings("ignore", "No data .*")
 # warnings.filterwarnings("ignore", "Data truncated.*")

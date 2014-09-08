@@ -83,7 +83,7 @@ def show_database_calls(**kwargs):
     else:
         DB_DEBUG = settings.DEBUG
     if DB_DEBUG:
-        from django.db import connection
+        from django.db import connection  # @
         full = kwargs.get("full", False)
         tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
         try:
@@ -124,7 +124,7 @@ def show_database_calls(**kwargs):
                     out_str = sql_str[0:cur_width - 8]
                 print u"{:6.2f} {}".format(float(act_sql["time"]), out_str)
     else:
-        print "django.db.connection not loaded in backbone.middleware.py"
+        print("django.db.connection not loaded in backbone.middleware.py")
 
 
 class database_debug(object):

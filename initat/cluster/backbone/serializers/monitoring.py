@@ -140,6 +140,7 @@ class mon_ext_host_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_ext_host
 
+
 class mon_period_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_period
