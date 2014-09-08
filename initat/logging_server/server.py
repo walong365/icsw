@@ -156,32 +156,34 @@ class main_process(threading_tools.process_pool):
         self.__open_handles = [io_stream_helper.zmq_socket_name(global_config[h_name]) for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]] + \
             [global_config[h_name] for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]]
         self._remove_handles()
-        client = self.zmq_context.socket(zmq.PULL)
+        client = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
         for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]:
             client.bind(io_stream_helper.zmq_socket_name(global_config[h_name], check_ipc_prefix=True))
             os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-        self.net_receiver = self.zmq_context.socket(zmq.PULL)
+        self.net_receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
         my_0mq_id = uuid_tools.get_uuid().get_urn()
         for flag, value in [
-            (zmq.IDENTITY, my_0mq_id),
-            (zmq.SNDHWM, 256),
-            (zmq.RCVHWM, 256),
-            (zmq.TCP_KEEPALIVE, 1),
-            (zmq.TCP_KEEPALIVE_IDLE, 300)]:
+            (zmq.IDENTITY, my_0mq_id),  # @UndefinedVariable
+            (zmq.SNDHWM, 256),  # @UndefinedVariable
+            (zmq.RCVHWM, 256),  # @UndefinedVariable
+            (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
+            (zmq.TCP_KEEPALIVE_IDLE, 300),  # @UndefinedVariable
+        ]:
             self.net_receiver.setsockopt(flag, value)
         _bind_str = "tcp://*:{:d}".format(global_config["LISTEN_PORT"])
         self.net_receiver.bind(_bind_str)
         _fwd_string = global_config["FORWARDER"].strip()
         self.__only_forward = global_config["ONLY_FORWARD"]
         if _fwd_string:
-            _forward = self.zmq_context.socket(zmq.PUSH)
+            _forward = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
             for flag, value in [
-                (zmq.IDENTITY, my_0mq_id),
-                (zmq.SNDHWM, 256),
-                (zmq.RCVHWM, 256),
-                (zmq.LINGER, 10),
-                (zmq.TCP_KEEPALIVE, 1),
-                (zmq.TCP_KEEPALIVE_IDLE, 300)]:
+                (zmq.IDENTITY, my_0mq_id),  # @UndefinedVariable
+                (zmq.SNDHWM, 256),  # @UndefinedVariable
+                (zmq.RCVHWM, 256),  # @UndefinedVariable
+                (zmq.LINGER, 10),  # @UndefinedVariable
+                (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
+                (zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+            ]:
                 _forward.setsockopt(flag, value)
             self.log("connecting forward to {}".format(_fwd_string))
             try:
@@ -192,8 +194,8 @@ class main_process(threading_tools.process_pool):
         else:
             _forward = None
         self.net_forwarder = _forward
-        self.register_poller(client, zmq.POLLIN, self._recv_data)
-        self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)
+        self.register_poller(client, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
+        self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
         self.std_client = client
 
     def process_start(self, src_process, src_pid):
@@ -536,7 +538,7 @@ class main_process(threading_tools.process_pool):
         if self.net_forwarder:
             # hooray for 0MQ
             try:
-                self.net_forwarder.send(in_str, zmq.DONTWAIT)
+                self.net_forwarder.send(in_str, zmq.DONTWAIT)  # @UndefinedVariable
             except:
                 self.__num_forward_error += 1
             else:
