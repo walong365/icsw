@@ -21,12 +21,13 @@
 #
 """ parses and improves VASP xml files """
 
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport
 import os
 
 outcar_name = "OUTCAR"
 vasprun_name = "vasprun.xml"
+
 
 class target_file(object):
     def get_file_name(self, base_name):
@@ -41,6 +42,7 @@ class target_file(object):
                 break
             add_iter += 1
         return c_file
+
 
 class outcar(target_file):
     def __init__(self, f_name):
@@ -67,6 +69,7 @@ class outcar(target_file):
         print "saving to %s" % (t_name)
         file(t_name, "w").write(etree.tostring(res, pretty_print=True))
 
+
 class vasprun(target_file):
     def __init__(self, f_name):
         src_xml = etree.fromstring(file(f_name, "r").read())
@@ -74,6 +77,7 @@ class vasprun(target_file):
         t_name = self.get_file_name("vasp_run")
         print "saving to %s" % (t_name)
         file(t_name, "w").write(etree.tostring(src_xml, pretty_print=True))
+
     def _transform(self, in_xml):
         split_to_xyz = set(["v", "r"])
         for node in in_xml.xpath(".//*"):
@@ -87,6 +91,7 @@ class vasprun(target_file):
                         for val in node.text.split():
                             node.append(E.val(val))
                     node.text = ""
+
 
 def main():
     if os.path.isfile(outcar_name):

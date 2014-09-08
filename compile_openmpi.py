@@ -23,7 +23,7 @@ to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
 
  o rename all OMPI_DATATYPE_INIT_UNAVAILABLE_BASIC_TYPE to OMPI_DATATYPE_INIT_PREDEFINED_BASIC_TYPE in ompi/datatype/ompi_datatype_module.c
  o add #include <stdlib.h> to include/mpi.h (to define size_t)
- 
+
 """
 import argparse
 import commands
@@ -40,9 +40,10 @@ import tempfile
 import time
 
 MPI_VERSION_FD = {
-    "openmpi" : "/opt/cluster/share/openmpi_versions",
-    "mpich" : "/opt/cluster/share/mpich_versions",
+    "openmpi": "/opt/cluster/share/openmpi_versions",
+    "mpich": "/opt/cluster/share/mpich_versions",
 }
+
 
 class my_opt_parser(argparse.ArgumentParser):
     def __init__(self):
@@ -68,7 +69,7 @@ class my_opt_parser(argparse.ArgumentParser):
         self.add_argument("-d", type=str, dest="target_dir", help="Sets target directory [%(default)s]", default=target_dir, action="store")
         self.add_argument("--extra", type=str, dest="extra_settings", help="Sets extra options for configure, i.e. installation directory and package name [%(default)s]", action="store", default="")
         self.add_argument("--extra-filename", type=str, dest="extra_filename", help="Sets extra filename string [%(default)s]", action="store", default="")
-        self.add_argument("--arch", type=str, dest="arch", help="Set package architecture [%(default)s]", default={"i686" : "i586"}.get(os.uname()[4], os.uname()[4]))
+        self.add_argument("--arch", type=str, dest="arch", help="Set package architecture [%(default)s]", default={"i686": "i586"}.get(os.uname()[4], os.uname()[4]))
         self.add_argument("--log", dest="include_log", help="Include log of make-command in README [%(default)s]", action="store_true", default=False)
         self.add_argument("-v", dest="verbose", help="Set verbose level [%(default)s]", action="store_true", default=False)
         self.add_argument("--release", dest="release", type=str, help="Set release [%(default)s]", default="1")
@@ -82,6 +83,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--32", dest="use_64_bit", help="Set 32-Bit build [%(default)s]", action="store_false", default=True)
         else:
             self.add_argument("--64", dest="use_64_bit", help="Set 64-Bit build [%(default)s]", action="store_true", default=False)
+
     def parse(self):
         self.options = self.parse_args()
         self._check_compiler_settings()
@@ -95,94 +97,122 @@ class my_opt_parser(argparse.ArgumentParser):
         self.mpi_dir = os.path.join(
             self.options.target_dir,
             self.package_name)
+
     def _check_compiler_settings(self):
         self.add_path_dict = {}
         if self.options.fcompiler == "GNU":
             if os.path.isdir(self.options.fcompiler_path):
-                self.add_path_dict = {"LD_LIBRARY_PATH": ["%s/lib" % (self.options.fcompiler_path),
-                                                          "%s/lib64" % (self.options.fcompiler_path)],
-                                      "PATH"           : ["%s/bin" % (self.options.fcompiler_path)]}
-                self.compiler_dict = {"CC"  : "%s/bin/gcc" % (self.options.fcompiler_path),
-                                      "CXX" : "%s/bin/g++" % (self.options.fcompiler_path),
-                                      "F77" : "%s/bin/gfortran" % (self.options.fcompiler_path),
-
-                                      "FC"  : "%s/bin/gfortran" % (self.options.fcompiler_path)}
+                self.add_path_dict = {
+                    "LD_LIBRARY_PATH": [
+                        "%s/lib" % (self.options.fcompiler_path),
+                        "%s/lib64" % (self.options.fcompiler_path)
+                    ],
+                    "PATH": [
+                        "%s/bin" % (self.options.fcompiler_path)
+                    ]
+                }
+                self.compiler_dict = {
+                    "CC": "%s/bin/gcc" % (self.options.fcompiler_path),
+                    "CXX": "%s/bin/g++" % (self.options.fcompiler_path),
+                    "F77": "%s/bin/gfortran" % (self.options.fcompiler_path),
+                    "FC": "%s/bin/gfortran" % (self.options.fcompiler_path)
+                }
             else:
-                self.compiler_dict = {"CC"  : "gcc",
-                                      "CXX" : "g++",
-                                      "F77" : "gfortran",
-                                      "FC"  : "gfortran"}
+                self.compiler_dict = {
+                    "CC": "gcc",
+                    "CXX": "g++",
+                    "F77": "gfortran",
+                    "FC": "gfortran"
+                }
             stat, out = commands.getstatusoutput("%s --version" % self.compiler_dict['CC'])
             if stat:
-                raise ValueError, "Cannot get Version from gcc (%d): %s" % (stat, out)
+                raise ValueError("Cannot get Version from gcc (%d): %s" % (stat, out))
             self.small_version = out.split(")")[1].split()[0]
-            self.compiler_version_dict = {"GCC" : out}
+            self.compiler_version_dict = {"GCC": out}
         elif self.options.fcompiler == "INTEL":
             if os.path.isdir(self.options.fcompiler_path):
-                bin_path = compile_tools.get_intel_path(self.options.fcompiler_path)
+                # bin_path = compile_tools.get_intel_path(self.options.fcompiler_path)
                 self.add_path_dict = compile_tools.get_add_paths_for_intel(self.options.fcompiler_path)
-                self.compiler_dict = {"CC"  : "icc",
-                                      "CXX" : "icpc",
-                                      "F77" : "ifort",
-                                      "FC"  : "ifort"}
+                self.compiler_dict = {
+                    "CC": "icc",
+                    "CXX": "icpc",
+                    "F77": "ifort",
+                    "FC": "ifort"
+                }
                 ifort_out_lines, small_version = compile_tools.get_short_version_for_intel(self.options.fcompiler_path, "ifort")
                 if not small_version:
                     sys.exit(-1)
                 self.small_version = small_version
                 ifort_out = "\n".join(ifort_out_lines)
-                self.compiler_version_dict = {"ifort" : ifort_out}
-                icc_out_lines, short_icc_version = compile_tools.get_short_version_for_intel(self.options.fcompiler_path, "icc")
+                self.compiler_version_dict = {"ifort": ifort_out}
+                icc_out_lines, _short_icc_version = compile_tools.get_short_version_for_intel(self.options.fcompiler_path, "icc")
                 icc_out = "\n".join(icc_out_lines)
-                self.compiler_version_dict = {"ifort" : ifort_out,
-                                              "icc"   : icc_out}
+                self.compiler_version_dict = {
+                    "ifort": ifort_out,
+                    "icc": icc_out
+                }
             else:
-                raise IOError, "Compiler base path '%s' for compiler setting %s is not a directory" % (self.options.fcompiler_path,
-                                                                                                       self.options.fcompiler)
+                raise IOError(
+                    "Compiler base path '%s' for compiler setting %s is not a directory" % (
+                        self.options.fcompiler_path,
+                        self.options.fcompiler
+                    )
+                )
         elif self.options.fcompiler == "PATHSCALE":
             if os.path.isdir(self.options.fcompiler_path):
-                self.add_path_dict = {"LD_LIBRARY_PATH": ["%s/lib" % (self.options.fcompiler_path)],
-                                      "PATH"           : ["%s/bin" % (self.options.fcompiler_path)]}
-                self.compiler_dict = {"CC"  : "pathcc",
-                                      "CXX" : "pathCC",
-                                      "F77" : "pathf95",
-                                      "FC"  : "pathf95"}
+                self.add_path_dict = {
+                    "LD_LIBRARY_PATH": ["%s/lib" % (self.options.fcompiler_path)],
+                    "PATH": ["%s/bin" % (self.options.fcompiler_path)]
+                }
+                self.compiler_dict = {
+                    "CC": "pathcc",
+                    "CXX": "pathCC",
+                    "F77": "pathf95",
+                    "FC": "pathf95"
+                }
                 _stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
                 if _stat:
-                    raise ValueError, "Cannot get Version from pathf95 (%d): %s" % (_stat, pathf95_out)
+                    raise ValueError("Cannot get Version from pathf95 (%d): %s" % (_stat, pathf95_out))
                 self.small_version = pathf95_out.split("\n")[0]
-                self.compiler_version_dict = {"pathf95" : pathf95_out}
+                self.compiler_version_dict = {"pathf95": pathf95_out}
                 _stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
                 if _stat:
-                    raise ValueError, "Cannot get Version from pathcc (%d): %s" % (_stat, pathcc_out)
-                self.compiler_version_dict = {"pathf95" : pathf95_out,
-                                              "pathcc"   : pathcc_out}
+                    raise ValueError("Cannot get Version from pathcc (%d): %s" % (_stat, pathcc_out))
+                self.compiler_version_dict = {
+                    "pathf95": pathf95_out,
+                    "pathcc": pathcc_out
+                }
             else:
-                raise IOError, "Compiler base path '%s' for compiler setting %s is not a directory" % (
-                    self.options.fcompiler_path,
-                    self.options.fcompiler)
+                raise IOError(
+                    "Compiler base path '%s' for compiler setting %s is not a directory" % (
+                        self.options.fcompiler_path,
+                        self.options.fcompiler
+                    )
+                )
         elif self.options.fcompiler == "PGI":
             # for PGI / mpich: unset F90 / F90FLAGS
             # portlan group compiler
             self.compiler_dict = {
-                "CC"  : "pgcc",
-                "FC"  : {"openmpi" : "pgf90", "mpich" : "pgfortran"}[self.mode],
-                "F77" : "pgf77",
-                "CXX" : "pgCC",
-                "CPP" : "cpp",
+                "CC": "pgcc",
+                "FC": {"openmpi": "pgf90", "mpich": "pgfortran"}[self.mode],
+                "F77": "pgf77",
+                "CXX": "pgCC",
+                "CPP": "cpp",
                 # for mpich
-                "LD"  : "ld",
-                "CFLAGS"   : "-fast",
-                "CXXFLAGS" : "-fast",
-                "FFFLAGS"  : "-fast",
+                "LD": "ld",
+                "CFLAGS": "-fast",
+                "CXXFLAGS": "-fast",
+                "FFFLAGS": "-fast",
                 # "CPPFLAGS" : "-DNO_PGI_OFFSET",
-                "FCFLAGS"  : "-fast",
+                "FCFLAGS": "-fast",
             }
             _stat, _out = commands.getstatusoutput("pgf90 -V")
             self.small_version = _out.strip().split()[1]
-            self.compiler_version_dict = {"pgf90" : _out}
+            self.compiler_version_dict = {"pgf90": _out}
             print _stat, _out
         else:
-            raise ValueError, "Compiler settings %s unknown" % (self.options.fcompiler)
+            raise ValueError("Compiler settings %s unknown" % (self.options.fcompiler))
+
     def _read_mpi_versions(self):
         if os.path.isfile(self.MPI_VERSION_FILE):
             version_lines = [line.strip().split() for line in file(self.MPI_VERSION_FILE, "r").read().split("\n") if line.strip()]
@@ -191,30 +221,40 @@ class my_opt_parser(argparse.ArgumentParser):
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
-            raise IOError, "No {} found".format(self.MPI_VERSION_FILE)
+            raise IOError("No {} found".format(self.MPI_VERSION_FILE))
+
     def get_compile_options(self):
         return "\n".join(
             [
                 " - build_date is %s" % (time.ctime()),
                 " - implementation is {}".format(self.mode),
-                " - mpi Version is %s, cpuid is %s" % (self.options.mpi_version,
-                                                           self.cpu_id),
-                " - Compiler is %s, Compiler Base path is %s" % (self.options.fcompiler,
-                                                                 self.options.fcompiler_path),
+                " - mpi Version is %s, cpuid is %s" % (
+                    self.options.mpi_version,
+                    self.cpu_id
+                ),
+                " - Compiler is %s, Compiler Base path is %s" % (
+                    self.options.fcompiler,
+                    self.options.fcompiler_path
+                ),
                 " - small_version is %s" % (self.small_version),
-                " - source package is %s, target directory is %s" % (self.version_dict[self.options.mpi_version],
-                                                                     self.mpi_dir),
+                " - source package is %s, target directory is %s" % (
+                    self.version_dict[self.options.mpi_version],
+                    self.mpi_dir
+                ),
                 " - extra_settings for configure: %s" % (self.options.extra_settings),
                 "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.iteritems()]),
                 "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.iteritems()]),
-                "version info:"] + \
-                         ["%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.iteritems()
+                "version info:"
+            ] + [
+                "%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.iteritems()
             ]
         )
+
 
 class mpi_builder(object):
     def __init__(self, parser):
         self.parser = parser
+
     def build_it(self):
         self.compile_ok = False
         self._init_tempdir()
@@ -225,8 +265,10 @@ class mpi_builder(object):
                     self._remove_tempdir()
         if not self.compile_ok:
             print "Not removing temporary directory %s" % (self.tempdir)
+
     def _init_tempdir(self):
         self.tempdir = tempfile.mkdtemp("_mpi")
+
     def _remove_tempdir(self):
         print "Removing temporary directory"
         shutil.rmtree(self.tempdir)
@@ -234,6 +276,7 @@ class mpi_builder(object):
             os.rmdir(self.tempdir)
         except:
             pass
+
     def _untar_source(self):
         tar_source = self.parser.version_dict[self.parser.options.mpi_version]
         if not os.path.isfile(tar_source):
@@ -247,6 +290,7 @@ class mpi_builder(object):
             print "done"
             success = True
         return success
+
     def _compile_it(self):
         num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2 if self.parser.options.pmake else 1
         act_dir = os.getcwd()
@@ -267,12 +311,18 @@ class mpi_builder(object):
             config_list.append(("--with-hwloc", "/opt/cluster"))
         if self.parser.mode == "mpich":
             config_list.append(("--with-device", "ch3:nemesis"))
-        for command, time_name in [("./configure {} {}".format(
-            " ".join(["{}={}".format(key, value) for key, value in config_list]),
-            self.parser.options.extra_settings), "configure"),
-                                   ("make -j %d" % (num_cores), "make"),
-                                   ("make install", "install")]:
-            self.time_dict[time_name] = {"start" : time.time()}
+        for command, time_name in [
+            (
+                "./configure {} {}".format(
+                    " ".join(["{}={}".format(key, value) for key, value in config_list]),
+                    self.parser.options.extra_settings
+                ),
+                "configure"
+            ),
+            ("make -j %d" % (num_cores), "make"),
+            ("make install", "install")
+        ]:
+            self.time_dict[time_name] = {"start": time.time()}
             print "Doing command {}".format(command)
             sp_obj = subprocess.Popen(command.split(), 0, None, None, subprocess.PIPE, subprocess.STDOUT)
             out_lines = []
@@ -286,7 +336,7 @@ class mpi_builder(object):
                     else:
                         if self.parser.options.verbose:
                             print new_lines,
-                        if type(new_lines) == type([]):
+                        if type(new_lines) == list:
                             out_lines.extend(new_lines)
                         else:
                             out_lines.append(new_lines)
@@ -305,6 +355,7 @@ class mpi_builder(object):
                 print "done, took {}".format(logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"]))
         os.chdir(act_dir)
         return success
+
     def _create_module_file(self):
         self.modulefile_name = self.parser.package_name.replace("-", "_").replace("__", "_")
         dir_list = os.listdir(self.parser.mpi_dir)
@@ -323,6 +374,7 @@ class mpi_builder(object):
         if not os.path.isdir(targ_dir):
             os.makedirs(targ_dir)
         file(os.path.join(targ_dir, self.modulefile_name), "w").write("\n".join(mod_lines))
+
     def _create_mpi_selector_file(self):
         self.mpi_selector_sh_name = "%s.sh" % (self.parser.package_name)
         self.mpi_selector_csh_name = "%s.csh" % (self.parser.package_name)
@@ -378,16 +430,22 @@ class mpi_builder(object):
             os.makedirs(targ_dir)
         file("%s/%s" % (targ_dir, self.mpi_selector_sh_name), "w").write("\n".join(sh_lines))
         file("%s/%s" % (targ_dir, self.mpi_selector_csh_name), "w").write("\n".join(csh_lines))
+
     def package_it(self):
         print "Packaging ..."
         info_name = "README.%s" % (self.parser.package_name)
         sep_str = "-" * 50
-        readme_lines = [sep_str] + \
-            self.parser.get_compile_options().split("\n") + \
-            ["Compile times: %s" % (", ".join(["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in self.time_dict.keys()])), sep_str, ""]
+        readme_lines = [sep_str] + self.parser.get_compile_options().split("\n") + [
+            "Compile times: %s" % (", ".join(
+                ["%s: %s" % (key, logging_tools.get_diff_time_str(self.time_dict[key]["diff"])) for key in self.time_dict.keys()]
+            )),
+            sep_str,
+            ""
+        ]
         if self.parser.options.include_log:
-            readme_lines.extend(["Compile logs:"] + \
-                                sum([self.log_dict[key].split("\n") + [sep_str] for key in self.log_dict.keys()], []))
+            readme_lines.extend(
+                ["Compile logs:"] + sum([self.log_dict[key].split("\n") + [sep_str] for key in self.log_dict.keys()], [])
+            )
         file("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
         package_name, package_version, package_release = (
             self.parser.package_name,
@@ -467,6 +525,7 @@ class mpi_builder(object):
             os.unlink(mca_local_file)
         return success
 
+
 def main():
     my_parser = my_opt_parser()
     my_parser.parse()
@@ -476,4 +535,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    # print "update to use ***FLAGS=-O{1,2}!"

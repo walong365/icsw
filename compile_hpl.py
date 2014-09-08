@@ -21,7 +21,6 @@
 import optparse
 import sys
 import os
-import os.path
 import tempfile
 import tarfile
 import commands
@@ -34,6 +33,7 @@ import subprocess
 import compile_tools
 
 HPL_VERSION_FILE = "/opt/cluster/share/hpl_versions"
+
 
 class my_opt_parser(optparse.OptionParser):
     def __init__(self):

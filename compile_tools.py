@@ -22,6 +22,7 @@
 import commands
 import os
 
+
 def get_intel_path(src_path, **args):
     for rel_path in ["intel64", "."]:
         if os.path.isdir("%s/%s" % (src_path,
@@ -30,10 +31,14 @@ def get_intel_path(src_path, **args):
     return os.path.normpath("%s/%s" % (src_path,
                                        rel_path))
 
+
 def get_add_paths_for_intel(intel_path):
-    add_path_dict = {"LD_LIBRARY_PATH": [get_intel_path("%s/lib" % (intel_path))],
-                     "PATH"           : [get_intel_path("%s/bin" % (intel_path))]}
+    add_path_dict = {
+        "LD_LIBRARY_PATH": [get_intel_path("%s/lib" % (intel_path))],
+        "PATH": [get_intel_path("%s/bin" % (intel_path))]
+    }
     return add_path_dict
+
 
 def get_short_version_for_intel(intel_path, command):
     stat, icom_out = commands.getstatusoutput("%s/%s -V" % (
@@ -41,10 +46,12 @@ def get_short_version_for_intel(intel_path, command):
         command,
     ))
     if stat:
-        raise ValueError, "Cannot get Version from %s (%d): %s" % (
-            command,
-            stat,
-            icom_out,
+        raise ValueError(
+            "Cannot get Version from %s (%d): %s" % (
+                command,
+                stat,
+                icom_out,
+            )
         )
     icom_out_lines = icom_out.split("\n")
     first_line = icom_out_lines[0]
@@ -75,8 +82,10 @@ def get_short_version_for_intel(intel_path, command):
             for path_part in intel_path.split("/"):
                 if take_part:
                     take_part = False
-                    small_version = "%s.%s" % (small_version,
-                                              path_part)
+                    small_version = "%s.%s" % (
+                        small_version,
+                        path_part
+                    )
                 elif path_part == small_version:
                     take_part = True
     return icom_out_lines, small_version

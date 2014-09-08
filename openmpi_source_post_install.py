@@ -2,7 +2,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file is part of cbc_tools
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -24,9 +24,10 @@ import pprint
 import sys
 
 VERS_FILES = {
-    "openmpi" : "/opt/cluster/share/openmpi_versions",
-    "mpich"   : "/opt/cluster/share/mpich_versions",
+    "openmpi": "/opt/cluster/share/openmpi_versions",
+    "mpich": "/opt/cluster/share/mpich_versions",
 }
+
 
 def main():
     mode = os.path.basename(sys.argv[0]).split("_")[0]
