@@ -244,12 +244,12 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 )
                 raise
             else:
-                self.register_poller(client, zmq.POLLIN, self._recv_command)
+                self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
         self.com_socket = client
         # connection to local collserver socket
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)
-        vector_socket.setsockopt(zmq.LINGER, 0)
+        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
         self.log("connected vector_socket to {}".format(conn_str))
@@ -258,12 +258,12 @@ class server_process(threading_tools.process_pool, notify_mixin):
         data = []
         while True:
             data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):
+            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 break
         if len(data) == 2:
             srv_com = server_command.srv_command(source=data[1])
             if self._process_command(srv_com):
-                zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                 zmq_sock.send_unicode(unicode(srv_com))
         else:
             self.log(
@@ -407,7 +407,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 self.__other_server_dict = srv_uuid
                 self.com_socket.connect(conn_str)
             try:
-                self.com_socket.send_unicode(srv_uuid, zmq.SNDMORE)
+                self.com_socket.send_unicode(srv_uuid, zmq.SNDMORE)  # @UndefinedVariable
                 self.com_socket.send_unicode(unicode(srv_com))
             except:
                 self.log("cannot send to {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
@@ -427,7 +427,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
             bc_com))
         self.__connection_dict[conn_str] = t_0mq_id
         self.log("closing discovery socket for {}".format(conn_str))
-        self.unregister_poller(self.__discovery_dict[discovery_id], zmq.POLLIN)
+        self.unregister_poller(self.__discovery_dict[discovery_id], zmq.POLLIN)  # @UndefinedVariable
         self.__discovery_dict[discovery_id].close()
         del self.__discovery_dict[discovery_id]
         try:
