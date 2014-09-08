@@ -126,8 +126,8 @@ class xml_response(object):
                 ret_val.append(self._get_value_xml(key, sub_val))
         else:
             ret_val = E.value(
-                value if isinstance(value, etree._Element) else unicode(value),
-                **{
+                value if isinstance(value, etree._Element) else unicode(value),  # @UndefinedVariable
+                ** {
                     "name": key,
                     "type": {
                         int: "integer",
@@ -135,7 +135,7 @@ class xml_response(object):
                         str: "string",
                         unicode: "string",
                         float: "float",
-                        etree._Element: "xml",
+                        etree._Element: "xml",  # @UndefinedVariable
                     }.get(type(value), "unknown")
                 }
             )
@@ -167,7 +167,7 @@ class xml_response(object):
         """
         :returns: the unicode representation of xml response
         """
-        return etree.tostring(self.build_response(), encoding=unicode)
+        return etree.tostring(self.build_response(), encoding=unicode)  # @UndefinedVariable
 
     def create_response(self):
         """

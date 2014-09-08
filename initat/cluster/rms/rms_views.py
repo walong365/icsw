@@ -35,12 +35,12 @@ from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
     update_session_object
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
-from lxml import etree  # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport
 import json
 import logging
 import logging_tools
-import pprint
+import pprint  # @UnusedImport
 import server_command
 import sys
 import threading
@@ -110,6 +110,7 @@ def rms_overview(request, template):
     return render_me(request, template, {
         "RMS_HEADERS": json.dumps(header_dict)
     })()
+
 
 class overview(View):
     @method_decorator(login_required)
