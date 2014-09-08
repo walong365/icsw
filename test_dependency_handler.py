@@ -1,4 +1,5 @@
 #!/usr/bin/python-init -Otu
+#
 # Copyright (C) 2014 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
@@ -22,11 +23,13 @@
 
 import module_dependency_tools
 import sys
-import pprint
+import pprint  # @UnusedImport
 import logging_tools
+
 
 def log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
     print("[{:2d}] {}".format(log_level, what))
+
 
 def main():
     k_dir = module_dependency_tools.dependency_handler(sys.argv[1], log_com=log_com, linux_native=True)

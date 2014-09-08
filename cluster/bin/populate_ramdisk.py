@@ -1285,10 +1285,13 @@ def main_normal():
                     my_kernel.master_server = kernel_server_idx
                     my_kernel.save()
                 else:
-                    print "server_device_idx ({:d}) for kernel_server differs from master_server from DB ({}), exiting (override with --set-master-server)".format(
-                        kernel_server_idx,
-                        my_kernel.master_server,
+                    print(
+                        "server_device_idx ({:d}) for kernel_server differs from "
+                        "master_server from DB ({}), exiting (override with --set-master-server)".format(
+                            kernel_server_idx,
+                            my_kernel.master_server,
                         )
+                    )
                     sys.exit(0)
     # build list of modules
     act_mods = []
