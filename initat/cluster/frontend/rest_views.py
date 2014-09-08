@@ -29,13 +29,13 @@ from django.apps import apps
 from initat.core.render import render_string
 from initat.cluster.backbone import models, serializers as model_serializers
 from initat.cluster.backbone.models import user , group, \
-     get_related_models, get_change_reset_list, device, domain_name_tree, \
-     category_tree, device_selection, device_config, home_export_list, \
-     csw_permission, peer_information, netdevice, \
-     csw_object_permission, cd_connection
+    get_related_models, get_change_reset_list, device, domain_name_tree, \
+    category_tree, device_selection, device_config, home_export_list, \
+    csw_permission, peer_information, netdevice, \
+    csw_object_permission, cd_connection
 from initat.cluster.backbone.serializers import device_serializer, device_serializer_package_state, \
-     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
+    device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
+    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
 
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
@@ -684,10 +684,12 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
         _q = _q.select_related("domain_tree_node", "device_type", "device_group")
         if package_state:
-            _q = _q.prefetch_related("package_device_connection_set", "device_variable_set",
+            _q = _q.prefetch_related(
+                "package_device_connection_set",
+                "device_variable_set",
                 "package_device_connection_set__kernel_list",
                 "package_device_connection_set__image_list",
-                )
+            )
         if self._get_post_boolean("with_categories", False):
             _q = _q.prefetch_related("categories")
         if self._get_post_boolean("with_variables", False):

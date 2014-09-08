@@ -52,6 +52,7 @@
                         <tr>
                             <th>Instance</th>
                             <th>Type</th>
+                            <th>Check</th>
                             <th ng-repeat="srv_info in server_info_list">
                                 {{ srv_info.get_name() }}, {{ srv_info.max_mem | get_size:1:1024 }} max Memory
                              </th>
@@ -61,6 +62,7 @@
                         <tr ng-repeat="instance in instance_list">
                             <td>{{ instance }}</td>
                             <td>{{ get_runs_on(instance) }}</td>
+                            <td>{{ server_info_list[0].get_check_source(instance) }}</td>
                             <td ng-repeat="srv_info in server_info_list">
                                 <instanceinfo></instanceinfo>
                             </td>
@@ -204,6 +206,8 @@ class server_info
     get_mem_value: (instance) ->
         _mem = @xml.find("instance[name='#{instance}'] memory_info").text()
         return parseInt((parseInt(_mem) * 100) / @max_mem)
+    get_check_source: (instance) ->
+        return @xml.find("instance[name='#{instance}']").attr("check_source")
         
 info_module.controller("info_ctrl", ["$scope", "$timeout", "access_level_service"
     ($scope, $timeout, access_level_service) ->

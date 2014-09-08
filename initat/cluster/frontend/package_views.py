@@ -38,7 +38,7 @@ from initat.cluster.backbone.serializers import package_device_connection_serial
 from initat.cluster.frontend.forms import package_search_form, package_action_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.renderers import JSONRenderer
-from lxml.builder import E  # @UnresolvedImports
+from lxml.builder import E  # @UnresolvedImports @UnusedImport
 import logging
 import logging_tools
 import json
@@ -125,8 +125,8 @@ class unuse_package(View):
     def post(self, request):
         _post = request.POST
         try:
-            cur_p = package.objects.get(Q(pk=_post["pk"]))
-        except package.DoesNotExist:
+            cur_p = package.objects.get(Q(pk=_post["pk"]))  # @UndefinedVariable
+        except package.DoesNotExist:  # @UndefinedVariable
             request.xml_response.error("package not found", logger)
         else:
             num_ref = get_related_models(cur_p)
@@ -153,7 +153,7 @@ class add_package(View):
             except package_device_connection.DoesNotExist:
                 new_pdc = package_device_connection(
                     device=device.objects.get(Q(pk=dev_pk)),
-                    package=package.objects.get(Q(pk=pack_pk)))
+                    package=package.objects.get(Q(pk=pack_pk)))  # @UndefinedVariable
                 new_pdc.save()
                 new_pdcs.append(new_pdc)
                 num_ok += 1
