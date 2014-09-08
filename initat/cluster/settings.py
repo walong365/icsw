@@ -257,8 +257,8 @@ INSTALLED_APPS = (
 if SLAVE_MODE:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
 
-# needed by some modules
-# ZMQ_LOGGING = True
+
+ICSW_WEBCACHE = "/opt/cluster/share/webcache"
 
 # crispy settings, bootstrap3 is angularized via a patch
 CRISPY_ALLOWED_TEMPLATE_PACKS = ('bootstrap3')
