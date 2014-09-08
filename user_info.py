@@ -38,7 +38,7 @@ import termios
 
 
 def list_mode():
-    all_users = user.objects.all().select_related("group").order_by("login")
+    all_users = user.objects.all().select_related("group").order_by("login")  # @UndefinedVariable
     out_list = logging_tools.new_form_list()
     for _user in all_users:
         out_list.append(
@@ -55,8 +55,8 @@ def list_mode():
 
 def info_mode(user_name):
     try:
-        _user = user.objects.select_related("group").get(Q(login=user_name))
-    except user.DoesNotExist:
+        _user = user.objects.select_related("group").get(Q(login=user_name))  # @UndefinedVariable
+    except user.DoesNotExist:  # @UndefinedVariable
         print("Unknown user '{}'".format(user_name))
         return 1
     else:
