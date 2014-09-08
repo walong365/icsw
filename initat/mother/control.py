@@ -24,7 +24,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
-     cluster_timezone, log_source_lookup, log_status_lookup, log_source, devicelog, user
+    cluster_timezone, log_source_lookup, log_status_lookup, log_source, devicelog, user
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 import config_tools
@@ -35,7 +35,7 @@ import icmp_class
 import ipvx_tools
 import logging_tools
 import os
-import pprint
+import pprint  # @UnusedImport
 import process_tools
 import re
 import select
@@ -1012,7 +1012,7 @@ class host(machine):
             logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
             ", ".join(om_shell_coms),
             ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
-        simple_command.process.set_check_freq(200)
+        simple_command.process.set_check_freq(200)  # @UndefinedVariable
         for om_shell_com in om_shell_coms:
             om_array = ['server 127.0.0.1',
                         'port 7911',
@@ -1339,7 +1339,7 @@ class controlling_device(machine):
             ", ".join(om_shell_coms),
             ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip")
         )
-        simple_command.process.set_check_freq(200)
+        simple_command.process.set_check_freq(200)  # @UndefinedVariable
         for om_shell_com in om_shell_coms:
             om_array = ['server 127.0.0.1',
                         'port 7911',
@@ -1730,7 +1730,7 @@ class node_control_process(threading_tools.process_obj):
         in_com["command"].attrib["zmq_id"] = zmq_id
         # log soft control
         if "user_id" in in_com:
-            log_user = user.objects.get(Q(pk=in_com["user_id"].text))
+            log_user = user.objects.get(Q(pk=in_com["user_id"].text))  # @UndefinedVariable
         else:
             log_user = None
         for xml_dev in in_com.xpath(".//ns:devices/ns:device"):

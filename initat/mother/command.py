@@ -23,7 +23,7 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import network, cd_connection, device_variable, \
+from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, devicelog, user
 from initat.mother.command_tools import simple_command
 from initat.snmp_relay.snmp_process import simple_snmp_oid
@@ -84,7 +84,7 @@ class hc_command(object):
         cur_cd = cd_connection.objects.select_related("child", "parent").prefetch_related("parent__device_variable_set").get(Q(pk=xml_struct.get("cd_con")))
         self.cd_obj = cur_cd
         command = xml_struct.get("command")
-        self.user = user.objects.get(Q(pk=user_id)) if user_id else None
+        self.user = user.objects.get(Q(pk=user_id)) if user_id else None  # @UndefinedVariable
         self.curl_base = self.cd_obj.parent.curl.split(":")[0]
         self.log("got command %s for %s (curl is '%s', target: %s)" % (
             command,
@@ -161,6 +161,7 @@ class hc_command(object):
                     self.curl_base,
                     unicode(self.cd_obj.parent),
                 ), logging_tools.LOG_LEVEL_CRITICAL, dev=self.cd_obj.child)
+
     def _build_com_str(self, var_dict, com_ip, command):
         if self.curl_base == "ipmi":
             com_str = "%s %s -H %s -U %s -P %s chassis power %s" % (

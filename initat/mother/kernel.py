@@ -28,7 +28,7 @@ from kernel_sync_tools import kernel_helper
 import config_tools
 import logging_tools
 import os
-import pprint
+import pprint  # @UnusedImport
 import process_tools
 import server_command
 import threading_tools
@@ -102,10 +102,10 @@ class kernel_sync_process(threading_tools.process_obj):
                 ", ".join(["%s (%s, %s)" % (key, str(type(value)), str(value)) for key, value in opt_dict.iteritems()])
             )
         )
-        kernels_found, problems = ({}, [])
+        # kernels_found, problems = ({}, [])
         srv_com.update_source()
         # send reply now or do we need more data ?
-        reply_now = (opt_dict["insert_all_found"] == True)
+        reply_now = (opt_dict["insert_all_found"] is True)
         # problems are global problems, not kernel local
         kernels_found = []
         problems = []
@@ -205,7 +205,7 @@ class kernel_sync_process(threading_tools.process_obj):
     def _kernel_sync_data(self, srv_com):
         dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
         sync_dict = srv_com.get_option_dict()
-        srv_reply = server_command.server_reply()
+        srv_reply = server_command.server_reply()  # @UndefinedVariable
         self.log("got kernel_sync_data for kernel %s" % (sync_dict["name"]))
         self.__ks_check._check(dc)
         start_copy = False
@@ -243,7 +243,16 @@ class kernel_sync_process(threading_tools.process_obj):
                              logging_tools.LOG_LEVEL_ERROR)
             if os.path.isdir(kern_dir):
                 try:
-                    act_kernel = kernel(sync_dict["name"], kern_dir, self.log, dc, self.__config, master_server=self.__ks_check.server_device_idx, sync_kernel=True, sync_dict=sync_dict)
+                    act_kernel = kernel(
+                        sync_dict["name"],
+                        kern_dir,
+                        self.log,
+                        dc,
+                        self.__config,
+                        master_server=self.__ks_check.server_device_idx,
+                        sync_kernel=True,
+                        sync_dict=sync_dict
+                    )
                 except:
                     self.log("error initialising kernel %s: %s" % (sync_dict["name"],
                                                                    process_tools.get_except_info()),
@@ -260,7 +269,7 @@ class kernel_sync_process(threading_tools.process_obj):
     def _sync_kernels(self, srv_com):
         dc = self.__db_con.get_connection(self.__config["SQL_ACCESS"])
         sync_dict = srv_com.get_option_dict()
-        srv_reply = server_command.server_reply()
+        srv_reply = server_command.server_reply()  # @UndefinedVariable
         self.log("got sync_kernels request for %s: %s" % (
             logging_tools.get_plural("kernel", len(sync_dict.keys())),
             ", ".join(["%s (to %s)" % (key, ",".join(["%s:%s" % (s_name, s_role) for s_name, s_role in sync_dict[key]])) for key in sorted(sync_dict.keys())])))
@@ -307,12 +316,12 @@ class kernel_sync_process(threading_tools.process_obj):
                 else:
                     act_kernel.db_kernel = db_rec
                     act_kernel.check_md5_sums()
-                    send_com = server_command.server_command(command="kernel_sync_data",
+                    send_com = server_command.server_command(command="kernel_sync_data",  # @UndefinedVariable
                                                              option_dict=act_kernel.get_sync_dict())
                     self.log("send_com for %s has %s" % (act_kernel.name,
                                                          logging_tools.get_size_str(len(str(send_com)), long_format=True)))
                     unreach_list, reach_list = ([], [])
-                    self.__sync_dict[db_rec["name"]] = {"start_time" : time.time()}
+                    self.__sync_dict[db_rec["name"]] = {"start_time": time.time()}
                     # build reach_list
                     for targ_srv, targ_role in sync_dict[db_rec["name"]]:
                         if k_target_dict[targ_srv]:
@@ -335,7 +344,7 @@ class kernel_sync_process(threading_tools.process_obj):
                                                                                      targ_role,
                                                                                      k_target_dict[targ_srv]))
                             self.__net_server.add_object(
-                                net_tools.tcp_con_object(
+                                net_tools.tcp_con_object(# @UndefinedVariable
                                     self._new_tcp_con,
                                     connect_state_call=self._connect_state_call,
                                     connect_timeout_call=self._connect_timeout,
@@ -344,10 +353,13 @@ class kernel_sync_process(threading_tools.process_obj):
                                     timeout=20,
                                     bind_retries=1,
                                     rebind_wait_time=1, add_data={
-                                        "server_name" : targ_srv,
-                                        "server_role" : targ_role,
-                                        "kernel"      : act_kernel,
-                                        "send_com"    : send_com}))
+                                        "server_name": targ_srv,
+                                        "server_role": targ_role,
+                                        "kernel": act_kernel,
+                                        "send_com": send_com
+                                    }
+                                )
+                            )
                     del act_kernel
         dc.release()
 
@@ -367,7 +379,7 @@ class kernel_sync_process(threading_tools.process_obj):
 
     def _srv_ok(self, (in_dict, recv_str)):
         try:
-            srv_reply = server_command.server_reply(recv_str)
+            srv_reply = server_command.server_reply(recv_str)  # @UndefinedVariable
         except:
             in_dict["kernel"].log("error reconstructing srv_reply for %s:%s" % (in_dict["server_name"],
                                                                                 in_dict["server_role"]),

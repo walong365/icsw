@@ -190,25 +190,28 @@ class server_process(threading_tools.process_pool):
             try:
                 client.bind(conn_str)
             except zmq.ZMQError:
-                self.log("error binding to {}{{{}}}: {}".format(
-                    conn_str,
-                    sock_type,
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "error binding to {}{{{}}}: {}".format(
+                        conn_str,
+                        sock_type,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
                 client.close()
                 success = False
             else:
                 self.log("bind to port {}{{{}}}".format(
                     conn_str,
                     sock_type))
-                self.register_poller(client, zmq.POLLIN, target_func)
+                self.register_poller(client, zmq.POLLIN, target_func)  # @UndefinedVariable
                 self.socket_dict[key] = client
         self.connection_set = set()
         return success
 
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):
+        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
             # print "UUID", data[0]
@@ -219,7 +222,7 @@ class server_process(threading_tools.process_pool):
                     srv_com = server_command.srv_command(source=data[1])
                 except:
                     self.log("cannot interpret '{}': {}".format(data[1][:40], process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                    zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                     zmq_sock.send_unicode("error interpreting")
                 else:
                     try:
@@ -240,7 +243,7 @@ class server_process(threading_tools.process_pool):
                         if cur_com is None:
                             self.log(
                                 "got command '{}' from {}, ignoring".format(
-                                    etree.tostring(srv_com.tree),
+                                    etree.tostring(srv_com.tree),  # @UndefinedVariable
                                     data[0]
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
@@ -258,11 +261,11 @@ class server_process(threading_tools.process_pool):
                         elif cur_com == "get_0mq_id":
                             srv_com["zmq_id"] = self.bind_id
                             srv_com.set_result("0MQ_ID is {}".format(self.bind_id), server_command.SRV_REPLY_STATE_OK)
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode(unicode(srv_com))
                         elif cur_com == "server_status":
                             srv_com.set_result("up and running", server_command.SRV_REPLY_STATE_OK)
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode(unicode(srv_com))
                         elif cur_com in ["hard_control"]:
                             srv_com.set_result("ok handled hc command", server_command.SRV_REPLY_STATE_OK)
@@ -273,7 +276,7 @@ class server_process(threading_tools.process_pool):
                                 cur_com,
                                 data[0],
                                 unicode(srv_com))
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode(unicode(srv_com))
                         elif cur_com in ["rescan_kernels"]:
                             t_proc = "kernel"
@@ -288,7 +291,7 @@ class server_process(threading_tools.process_pool):
                             # zmq_sock.send_unicode(unicode(srv_com))
                         else:
                             srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode(unicode(srv_com))
         else:
             self.log("wrong number of data chunks ({:d} != 2), data is '{}'".format(len(data), data[:20]),
@@ -300,7 +303,7 @@ class server_process(threading_tools.process_pool):
             self.log("refuse to send return to {}".format(zmq_id), logging_tools.LOG_LEVEL_ERROR)
         else:
             try:
-                self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
+                self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
                 self.socket_dict["router"].send_unicode(unicode(srv_com))
             except:
                 self.log(
@@ -320,7 +323,7 @@ class server_process(threading_tools.process_pool):
         # print "done"
         zmq_id = "{}:hoststatus:".format(zmq_id)
         try:
-            self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
+            self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
             self.socket_dict["router"].send_unicode(unicode(com_str))
         except:
             self.log(
@@ -407,7 +410,6 @@ class server_process(threading_tools.process_pool):
                 self.log("unknown status '{}' ({})".format(mod_status.status, cur_uc), logging_tools.LOG_LEVEL_ERROR)
 
     def _check_nfs_exports(self):
-        log_lines = []
         if global_config["MODIFY_NFS_CONFIG"]:
             exp_file = "/etc/exports"
             if os.path.isfile(exp_file):
@@ -429,7 +431,7 @@ class server_process(threading_tools.process_pool):
                 self.log("found no /etc/exports file, creating new one ...")
                 act_exports = {}
             valid_nt_ids = ["p", "b"]
-            valid_nets = network.objects.filter(Q(network_type__identifier__in=valid_nt_ids))
+            valid_nets = network.objects.filter(Q(network_type__identifier__in=valid_nt_ids))  # @UndefinedVariable
             exp_dict = {
                 "etherboot": "ro",
                 "kernels": "ro",
@@ -479,7 +481,7 @@ class server_process(threading_tools.process_pool):
         rsyslog_lines = [
             "$ModLoad omprog",
             "$RepeatedMsgReduction off",
-            "$actionomprogbinary {}".format(initat.mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),
+            "$actionomprogbinary {}".format(initat.mother.syslog_scan.__file__.replace(".pyc", ".py ").replace(".pyo", ".py")),  # @UndefinedVariable
             "",
             "if $programname contains_i 'dhcp' then :omprog:",
             ""]
