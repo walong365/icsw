@@ -9,6 +9,7 @@ from initat.cluster.backbone.models.functions import _check_empty_string, _check
     _check_float, get_related_models
 import process_tools
 import re
+import uuid
 
 __all__ = [
     "domain_name_tree", "valid_domain_re",
@@ -571,10 +572,12 @@ class location_gfx(models.Model):
     # the top node has no name
     name = models.CharField(max_length=64, default="", unique=True)
     # uuid of graph
-    uuid = models.CharField(max_length=64)
+    uuid = models.CharField(max_length=64, blank=True)
     # size
     width = models.IntegerField(default=0)
     height = models.IntegerField(default=0)
+    # content type
+    content_type = models.CharField(default="")
     # creation date
     created = models.DateTimeField(auto_now_add=True)
     # location node
@@ -584,3 +587,12 @@ class location_gfx(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+
+@receiver(signals.pre_save, sender=location_gfx)
+def location_gfx_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.uuid:
+            print "*", uuid.uuid4()
+            cur_inst.uuid = uuid.uuid4()
