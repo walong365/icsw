@@ -124,7 +124,7 @@ def _lic_fetch(opts, act_conf):
             current_lics[_al_key] = _lic_to_add
         for _cmp_key in sorted(set(new_lics) & set(current_lics)):
             current_lics[_cmp_key].update(new_lics[_cmp_key])
-        current_lics_file.write(etree.tostring(sge_license_tools.build_license_xml(opts.site, current_lics), pretty_print=True))
+        current_lics_file.write(etree.tostring(sge_license_tools.build_license_xml(opts.site, current_lics), pretty_print=True))  # @UndefinedVariable
 
 
 def _lic_addc(opts, act_conf):
@@ -146,7 +146,7 @@ def _lic_addc(opts, act_conf):
         added=time.ctime()
     )
     current_lics[new_lic.name] = new_lic
-    current_lics_file.write(etree.tostring(sge_license_tools.build_license_xml(opts.site, current_lics), pretty_print=True))
+    current_lics_file.write(etree.tostring(sge_license_tools.build_license_xml(opts.site, current_lics), pretty_print=True))  # @UndefinedVariable
 
 
 def _lic_config(opts, act_conf):

@@ -20,7 +20,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from sge_license_tools import sge_license
 import sge_license_tools
 
 """ ask license server and return an XML-represenation of license situation """
@@ -233,7 +232,7 @@ def main():
     xml_res = my_lc.check()
     ret_code = 0
     if opts.mode == "xml":
-        print etree.tostring(xml_res, pretty_print=True)
+        print etree.tostring(xml_res, pretty_print=True)  # @UndefinedVariable
     elif opts.mode == "check":
         glob_dict = {}
         for cur_lic in xml_res.findall(".//license"):

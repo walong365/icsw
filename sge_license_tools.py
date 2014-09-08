@@ -89,7 +89,7 @@ class sge_license(object):
         self.expires = None
         self.site = kwargs.get("site", "unknown")
         self.used = 0
-        if etree.iselement(attribute):
+        if etree.iselement(attribute):  # @UndefinedVariable
             # init from xml
             _xml = attribute
             # print etree.tostring(_xml, pretty_print=True)
@@ -436,7 +436,7 @@ def parse_license_lines(lines, act_site, **kwargs):
     clic_re = re.compile("^clic_{}_(?P<name>\S+)\s+(?P<attribute>\S+)\s+(?P<eval_str>\S+)\s*$".format(act_site))
     if lines and lines[0].startswith("<"):
         # XML format
-        _tree = etree.fromstring("\n".join(lines))
+        _tree = etree.fromstring("\n".join(lines))  # @UndefinedVariable
         _site = _tree.attrib["site"]
         # todo, compare _site with act_site
         # print _site, act_site
@@ -514,7 +514,7 @@ def parse_sge_used(sge_dict):
     c_stat, out = call_command(act_com)
     _used = {}
     if not c_stat:
-        _tree = etree.fromstring(out)
+        _tree = etree.fromstring(out)  # @UndefinedVariable
         for _job in _tree.findall(".//job_list[@state='running']"):
             _slots_el = _job.find("slots")
             if _slots_el is not None:
