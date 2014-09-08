@@ -4,13 +4,13 @@
 """ base views """
 
 from PIL import Image
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_variable, category, \
-    category_tree
+    category_tree, location_gfx
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import category_form, location_gfx_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
@@ -19,6 +19,7 @@ import initat.cluster.backbone.models
 import json
 import logging
 import logging_tools
+import process_tools
 
 logger = logging.getLogger("cluster.base")
 
@@ -66,36 +67,55 @@ class prune_category_tree(permission_required_mixin, View):
 
 
 MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT = (
-    400, 1920, 200, 1600,
+    400, 3840, 200, 1920,
 )
 
 
 class upload_location_gfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
-        if len(request.FILES) == 1:
-            _file = request.FILES[request.FILES.keys()[0]]
-            if _file.content_type in ["image/png", "image/jpeg"]:
-                _img = Image.open(_file)
-                _w, _h = _img.size
-                if _w < MIN_WIDTH or _w > MAX_WIDTH or _h < MIN_HEIGHT or _h > MAX_HEIGHT:
-                    request.xml_response.error("wrong size ({:d}, {:d}) not in [({:d}, {:d}), ({:d}, {:d})]".format(
-                        _w, _h,
-                        MIN_WIDTH, MIN_HEIGHT,
-                        MAX_WIDTH, MAX_HEIGHT,
-                    ))
-                else:
-                    request.xml_response.info("uploaded {} (type {}, size {:d} x {:d})".format(
-                        _file.name,
-                        _file.content_type,
-                        _w,
-                        _h,
-                    ))
-                    print settings.WEBCACHE_DIR
-            else:
-                request.xml_response.error("wrong content_type '{}'".format(_file.content_type))
+        _location = location_gfx.objects.get(Q(pk=request.POST["location_id"]))
+        if _location.locked:
+            request.xml_response.warn("location_gfx is locked")
         else:
-            request.xml_response.error("need exactly one file")
+            if len(request.FILES) == 1:
+                _file = request.FILES[request.FILES.keys()[0]]
+                if _file.content_type in ["image/png", "image/jpeg"]:
+                    _img = Image.open(_file)
+                    _w, _h = _img.size
+                    if _w < MIN_WIDTH or _w > MAX_WIDTH or _h < MIN_HEIGHT or _h > MAX_HEIGHT:
+                        request.xml_response.error("wrong size ({:d}, {:d}) not in [({:d}, {:d}), ({:d}, {:d})]".format(
+                            _w, _h,
+                            MIN_WIDTH, MIN_HEIGHT,
+                            MAX_WIDTH, MAX_HEIGHT,
+                        ))
+                    else:
+                        try:
+                            _location.store_graphic(_img, _file.content_type)
+                        except:
+                            request.xml_response.critical("error storing image: {}".format(process_tools.get_except_info()), logger=logger)
+                        else:
+                            request.xml_response.info("uploaded {} (type {}, size {:d} x {:d})".format(
+                                _file.name,
+                                _file.content_type,
+                                _w,
+                                _h,
+                            ))
+                else:
+                    request.xml_response.error("wrong content_type '{}'".format(_file.content_type))
+            else:
+                request.xml_response.error("need exactly one file")
+
+
+class location_gfx_icon(View):
+    def get(self, request, **kwargs):
+        try:
+            _loc = location_gfx.objects.get(Q(pk=kwargs["id"]))
+        except location_gfx.DoesNotExist:
+            _content = location_gfx.default_icon()
+        else:
+            _content = _loc.get_icon()
+        return HttpResponse(_content, content_type="image/jpeg")
 
 
 class change_category(View):

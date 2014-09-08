@@ -418,7 +418,7 @@ class location_gfx_form(ModelForm):
                 HTML("""
 <div class='form-group'>
     <label class='control-label col-sm-3'>
-        Monitoring hints
+        Current Graphic
     </label>
     <div class='col-sm-6'>
         <input type="file" nv-file-select="" class="form-control" uploader="uploader"></input>

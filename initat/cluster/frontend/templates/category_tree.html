@@ -86,6 +86,9 @@
                                     <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></input>
                                     {{ loc_gfx.name }}
                                     <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+                                    <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+                                    <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                                    </span>
                                     <span class="pull-right">
                                         <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
                                     </span>
@@ -208,21 +211,26 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             queueLimit : 1
             alias : "gfx"
             formData : [
+                 "location_id" : 0
                  "csrfmiddlewaretoken" : '{{ csrf_token }}'
             ]
             removeAfterUpload : true
         )
         $scope.upload_list = []
         $scope.uploader.onBeforeUploadItem = (item) ->
-            item.formData.location_id = $scope.location_gfx_id
+            item.formData[0].location_id = $scope.cur_location_gfx.idx
             $.blockUI()
         $scope.uploader.onCompleteAll = () ->
             $.unblockUI()
             $scope.uploader.clearQueue()
             return null
         $scope.uploader.onCompleteItem = (item, response, status, headers) ->
-            parse_xml_response($.parseXML(response))
-            $scope.$apply()
+            xml = $.parseXML(response)
+            if parse_xml_response(xml)
+                Restangular.one("{% url 'rest:location_gfx_detail' 1 %}".slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
+                    for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url"]
+                        $scope.cur_location_gfx[_copy] = data[_copy]
+                )
         $scope.map = {
             center: {
                 latitude: 4
@@ -305,7 +313,6 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                 if $scope.is_location(entry)
                     entry.location_gfxs = (_gfx for _gfx in $scope.location_gfxs when _gfx.location == entry.idx)
                 if entry.parent
-                    #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
                     cat_lut[entry.parent].add_child(t_entry)
                 else
                     $scope.cat.add_root_node(t_entry)
@@ -413,7 +420,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                 loc.location_gfxs.push(data)
             )
         $scope.modify_location_gfx = ($event, loc) ->
-            $scope.location_gfx_id = loc.idx
+            $scope.cur_location_gfx = loc
             $scope.gfx_mixin.edit(loc, $event).then((data) ->
             )
         $scope.delete_location_gfx = ($event, obj) ->
