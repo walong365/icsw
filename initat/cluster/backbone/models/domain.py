@@ -577,7 +577,7 @@ class location_gfx(models.Model):
     width = models.IntegerField(default=0)
     height = models.IntegerField(default=0)
     # content type
-    content_type = models.CharField(default="")
+    content_type = models.CharField(default="", max_length=128)
     # creation date
     created = models.DateTimeField(auto_now_add=True)
     # location node
