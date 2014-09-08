@@ -54,7 +54,7 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         self.rrd_coverage = [global_config[_key] for _key in cov_keys]
         self.log("RRD coverage: {}".format(", ".join(self.rrd_coverage)))
         self.register_timer(self.check_size, 6 * 3600, first_timeout=1)
-        self.__verbose = not global_config["DEBUG"]
+        self.__verbose = global_config["DEBUG"]
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
