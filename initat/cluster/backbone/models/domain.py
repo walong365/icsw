@@ -11,11 +11,13 @@ import process_tools
 import re
 
 __all__ = [
-    "domain_name_tree", "valid_domain_re", "TOP_LOCATIONS",
+    "domain_name_tree", "valid_domain_re",
     "domain_tree_node",
     "category_tree",
     "category",
+    "TOP_LOCATIONS",
     "TOP_MONITORING_CATEGORY",
+    "location_gfx",
 ]
 
 # top monitoring category
@@ -136,7 +138,7 @@ class domain_tree_node(models.Model):
     # intermediate node (no IPs allowed)
     intermediate = models.BooleanField(default=False)
     # creation timestamp
-    created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
     # create short_names entry for /etc/hosts
     create_short_names = models.BooleanField(default=True)
     # create entry for clusternodes even when network not in list
@@ -446,7 +448,7 @@ class category(models.Model):
     # depth information, top_node has idx=0
     depth = models.IntegerField(default=0)
     # creation timestamp
-    created = models.DateTimeField(auto_now_add=True, auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
     # immutable
     immutable = models.BooleanField(default=False)
     # location field for location nodes, defaults to Vienna (approx)
@@ -561,3 +563,24 @@ def category_post_save(sender, **kwargs):
         if getattr(cur_inst, "full_name_changed", False):
             for sub_node in category.objects.filter(Q(parent=cur_inst)):
                 sub_node.save()
+
+
+# category
+class location_gfx(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # the top node has no name
+    name = models.CharField(max_length=64, default="", unique=True)
+    # uuid of graph
+    uuid = models.CharField(max_length=64)
+    # size
+    width = models.IntegerField(default=0)
+    height = models.IntegerField(default=0)
+    # creation date
+    created = models.DateTimeField(auto_now_add=True)
+    # location node
+    location = models.ForeignKey("backbone.category")
+    # comment
+    comment = models.CharField(max_length=1024, default="", blank=True)
+
+    class Meta:
+        app_label = "backbone"

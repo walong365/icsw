@@ -1,11 +1,12 @@
 #!/usr/bin/python-init
 
 from rest_framework import serializers
-from initat.cluster.backbone.models import domain_tree_node, category
+from initat.cluster.backbone.models import domain_tree_node, category, location_gfx
 
 __all__ = [
     "domain_tree_node_serializer",
     "category_serializer",
+    "location_gfx_serializer",
 ]
 
 
@@ -22,3 +23,9 @@ class category_serializer(serializers.ModelSerializer):
 
     class Meta:
         model = category
+
+
+class location_gfx_serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = location_gfx
