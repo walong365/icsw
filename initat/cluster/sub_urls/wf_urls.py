@@ -40,6 +40,7 @@ base_patterns = patterns(
     "initat.cluster.setup",
     url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
     url("^get_cat_tree$", base_views.get_category_tree.as_view(), name="category_tree"),
+    url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
     url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
 )

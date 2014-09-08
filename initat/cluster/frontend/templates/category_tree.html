@@ -23,6 +23,10 @@
     {% crispy category_form category_form.helper %}
 </script>
 
+<script type="text/ng-template" id="location_gfx.html">
+    {% crispy location_gfx_form location_gfx_form.helper %}
+</script>
+
 {% verbatim %}
 
 <script type="text/ng-template" id="cat_head.html">
@@ -70,10 +74,23 @@
                 <div class="col-md-6">
                     <ul class="list-group">
                         <li class="list-group-item" ng-repeat="loc in get_valid_locations()">
-                            <input type="button" class="btn btn-xs btn-primary" value="locate" ng-click="locate(loc)"></input>&nbsp;
+                            <input type="button" class="btn btn-sm btn-success" value="add location gfx" ng-click="add_location_gfx($event, loc)"></input>
+                            <input type="button" class="btn btn-sm btn-primary" value="locate" ng-click="locate(loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></input>&nbsp;
                             <span class="glyphicon glyphicon-ban-circle" ng-show="loc.locked"></span>&nbsp;
                             {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
-                            <span class="pull-right">({{ loc.latitude }}, {{ loc.longitude }})</span>
+                            <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
+                            <span class="pull-right">
+                            </span>
+                            <ul ng-show="loc.location_gfxs.length" class="list-group">
+                                <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
+                                    <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></input>
+                                    {{ loc_gfx.name }}
+                                    <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+                                    <span class="pull-right">
+                                        <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
+                                    </span>
+                                </li>
+                            </ul>
                         </li>
                     </ul>
                 </div>
@@ -93,7 +110,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-sm-12" ng-if="modal_active && !settings.use_modal" >
+                <div class="col-sm-12" ng-if="modal_active && !settings.use_modal && active_aem == 'cat'" >
                     <h3 ng-show="create_mode">Create</h3>
                     <h3 ng-show="!create_mode">Modify</h3>
                     <div edittemplate class="well well-sm">
@@ -123,7 +140,7 @@
 
 {% inlinecoffeescript %}
 
-category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "google-maps"]) #"ngMap"])
+category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "google-maps", "angularFileUpload"]) #"ngMap"])
 
 angular_module_setup([category_tree_module])
 
@@ -156,12 +173,16 @@ class category_tree_edit extends tree_config
         else if cat.depth == 1
             @scope.create_new(event, cat.full_name.split("/")[1])
 
-cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+cat_ctrl = category_tree_module.controller("cat_base", [
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
+    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, FileUploader) ->
         $scope.cat = new category_tree_edit($scope, {})            
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
-        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        # mixins
+        # edit mixin for cateogries
+        $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "cat")
         $scope.edit_mixin.use_modal = false
         $scope.edit_mixin.use_promise = true
         $scope.edit_mixin.new_object = (scope) -> return scope.new_object()
@@ -169,8 +190,39 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
         $scope.edit_mixin.modify_rest_url = "{% url 'rest:category_detail' 1 %}".slice(1).slice(0, -2)
         $scope.edit_mixin.create_rest_url = Restangular.all("{% url 'rest:category_list' %}".slice(1))
         $scope.edit_mixin.edit_template = "category.html"
+        # edit mixin for location gfxs
+        $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "gfx")
+        $scope.gfx_mixin.use_modal = true
+        $scope.gfx_mixin.use_promise = true
+        $scope.gfx_mixin.new_object = (scope) -> return scope.new_location_gfx()
+        $scope.gfx_mixin.delete_confirm_str = (obj) -> return "Really delete location graphic '#{obj.name}' ?"
+        $scope.gfx_mixin.modify_rest_url = "{% url 'rest:location_gfx_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.gfx_mixin.create_rest_url = Restangular.all("{% url 'rest:location_gfx_list' %}".slice(1))
+        $scope.gfx_mixin.create_template = "location_gfx.html"
+        $scope.gfx_mixin.edit_template = "location_gfx.html"
         $scope.form = {}
         $scope.locations = []
+        $scope.uploader = new FileUploader(
+            scope : $scope
+            url : "{% url 'base:upload_location_gfx' %}"
+            queueLimit : 1
+            alias : "gfx"
+            formData : [
+                 "csrfmiddlewaretoken" : '{{ csrf_token }}'
+            ]
+            removeAfterUpload : true
+        )
+        $scope.upload_list = []
+        $scope.uploader.onBeforeUploadItem = (item) ->
+            item.formData.location_id = $scope.location_gfx_id
+            $.blockUI()
+        $scope.uploader.onCompleteAll = () ->
+            $.unblockUI()
+            $scope.uploader.clearQueue()
+            return null
+        $scope.uploader.onCompleteItem = (item, response, status, headers) ->
+            parse_xml_response($.parseXML(response))
+            $scope.$apply()
         $scope.map = {
             center: {
                 latitude: 4
@@ -210,9 +262,11 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
         $scope.reload = () ->
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
+                restDataSource.reload(["{% url 'rest:location_gfx_list' %}", {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.entries = data[0]
+                $scope.location_gfxs = data[1]
                 $scope.edit_mixin.create_list = $scope.entries
                 $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_cat()
@@ -248,6 +302,8 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
             for entry in $scope.entries
                 t_entry = $scope.cat.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.immutable})
                 cat_lut[entry.idx] = t_entry
+                if $scope.is_location(entry)
+                    entry.location_gfxs = (_gfx for _gfx in $scope.location_gfxs when _gfx.location == entry.idx)
                 if entry.parent
                     #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
                     cat_lut[entry.parent].add_child(t_entry)
@@ -279,7 +335,6 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
         $scope.locate = (loc) ->
             $scope.map.control.refresh({"latitude":loc.latitude, "longitude":loc.longitude})
             $scope.map.control.getGMap().setZoom(11)
-            console.log loc, $scope.map 
         $scope.new_object = () ->
             if $scope.new_top_level
                 _parent = (value for value in $scope.entries when value.depth == 1 and value.name == $scope.new_top_level)[0]
@@ -345,6 +400,28 @@ cat_ctrl = category_tree_module.controller("cat_base", ["$scope", "$compile", "$
                             parse_xml_response(xml)
                             $scope.reload()
                             $.unblockUI()
+            )
+        $scope.new_location_gfx = () ->
+            # return empty location_gfx for current location
+            return {
+                "location" : $scope.loc_gfx_mother.idx
+            }
+            
+        $scope.add_location_gfx = ($event, loc) ->
+            $scope.loc_gfx_mother = loc
+            $scope.gfx_mixin.create($event).then((data) ->
+                loc.location_gfxs.push(data)
+            )
+        $scope.modify_location_gfx = ($event, loc) ->
+            $scope.location_gfx_id = loc.idx
+            $scope.gfx_mixin.edit(loc, $event).then((data) ->
+            )
+        $scope.delete_location_gfx = ($event, obj) ->
+            # find location object via cat_lut
+            loc = $scope.cat_lut[obj.location].obj
+            $scope.gfx_mixin.delete_obj(obj).then((data) ->
+                if data
+                    loc.location_gfxs = (entry for entry in loc.location_gfxs when entry.idx != obj.idx)
             )
         $scope.reload()
 ]).directive("cathead", ($templateCache) ->

@@ -5,18 +5,20 @@
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_variable, category, \
     category_tree
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import category_form
+from initat.cluster.frontend.forms import category_form, location_gfx_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 import initat.cluster.backbone.models
 import json
 import logging
 import logging_tools
+from PIL import Image
 
 logger = logging.getLogger("cluster.base")
 
@@ -49,6 +51,7 @@ class get_category_tree(permission_required_mixin, View):
             "category_tree.html",
             {
                 "category_form": category_form(),
+                "location_gfx_form": location_gfx_form(),
             }
         )()
 
@@ -60,6 +63,38 @@ class prune_category_tree(permission_required_mixin, View):
     def post(self, request):
         category_tree().prune()
         request.xml_response.info("tree pruned")
+
+
+MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT = (
+    400, 1920, 200, 1600,
+)
+
+
+class upload_location_gfx(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        if len(request.FILES) == 1:
+            _file = request.FILES[request.FILES.keys()[0]]
+            if _file.content_type in ["image/png", "image/jpeg"]:
+                _img = Image.open(_file)
+                _w, _h = _img.size
+                if _w < MIN_WIDTH or _w > MAX_WIDTH or _h < MIN_HEIGHT or _h > MAX_HEIGHT:
+                    request.xml_response.error("wrong size ({:d}, {:d}) not in [({:d}, {:d}), ({:d}, {:d})]".format(
+                        _w, _h,
+                        MIN_WIDTH, MIN_HEIGHT,
+                        MAX_WIDTH, MAX_HEIGHT,
+                    ))
+                else:
+                    request.xml_response.info("uploaded {} (type {}, size {:d} x {:d})".format(
+                        _file.name,
+                        _file.content_type,
+                        _w,
+                        _h,
+                    ))
+            else:
+                request.xml_response.error("wrong content_type '{}'".format(_file.content_type))
+        else:
+            request.xml_response.error("need exactly one file")
 
 
 class change_category(View):

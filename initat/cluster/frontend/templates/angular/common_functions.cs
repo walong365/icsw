@@ -872,7 +872,7 @@ angular.module(
 )
 
 class angular_edit_mixin
-    constructor : (@scope, @templateCache, @compile, @modal, @Restangular, @q) ->
+    constructor : (@scope, @templateCache, @compile, @modal, @Restangular, @q, @name) ->
         @use_modal = true
         @new_object_at_tail = true
         @use_promise = false
@@ -905,6 +905,9 @@ class angular_edit_mixin
             @_prom = @q.defer()
         if @use_modal
             @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@scope)
+            @edit_div.on("$destroy", () ->
+                return null
+            )
             @edit_div.simplemodal
                 #opacity      : 50
                 position     : [event.pageY, event.pageX]
@@ -916,10 +919,13 @@ class angular_edit_mixin
                     $("#simplemodal-container").css("height", "auto")
                     @_modal_close_ok = false
                     @scope.modal_active = true
+                    # set active angular edit mixin to @name to distinguish between different mixins
+                    @scope.active_aem = @name
                 onClose: (dialog) =>
                     @close_modal()
         else
             @scope.modal_active = true
+            @scope.active_aem = @name
         if @use_promise
             return @_prom.promise
     close_modal : () =>
@@ -936,8 +942,10 @@ class angular_edit_mixin
                 #@scope._edit_obj.pnum = 99
                 #console.log @scope._edit_obj, @scope.pre_edit_obj
         @scope.modal_active = false
+        @scope.active_aem = undefined
         if @edit_div
             @edit_div.remove()
+        return null
     form_error : (field_name) =>
         # hm, hack. needed in partition_table.cs / part_overview.html
         if field_name of @scope.form
