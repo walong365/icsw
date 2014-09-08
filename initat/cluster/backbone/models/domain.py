@@ -68,7 +68,7 @@ class domain_name_tree(object):
     def add_device_references(self):
         device = apps.get_model("backbone", "device")
         used_dtn_pks = list(device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).values_list("domain_tree_node_id", flat=True))
-        used_dict = dict([(key, used_dtn_pks.count(key)) for key in set(used_dtn_pks)])
+        used_dict = {key: used_dtn_pks.count(key) for key in set(used_dtn_pks)}
         for value in self.__node_dict.itervalues():
             value.local_refcount = used_dict.get(value.pk, 0)
         for value in self.__node_dict.itervalues():
@@ -267,10 +267,14 @@ def _migrate_mon_type(cat_tree):
     mon_check_command_type = apps.get_model("backbone", "mon_check_command_type")
     cur_cats = set(mon_check_command.objects.all().values_list("categories", flat=True))
     if cur_cats == set([None]):
-        all_mon_ct = dict([(pk, "{}/{}".format(
-            TOP_MONITORING_CATEGORY,
-            cur_name)) for pk, cur_name in mon_check_command_type.objects.all().values_list("pk", "name")])
-        mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_mon_ct.iteritems()])
+        all_mon_ct = {
+            pk: "{}/{}".format(
+                TOP_MONITORING_CATEGORY,
+                cur_name
+            ) for pk, cur_name in mon_check_command_type.objects.all().values_list("pk", "name")}
+        mig_dict = {
+            key: cat_tree.add_category(value) for key, value in all_mon_ct.iteritems()
+        }
         for cur_mon_cc in mon_check_command.objects.all().prefetch_related("categories"):
             if cur_mon_cc.mon_check_command_type_id:
                 cur_mon_cc.categories.add(mig_dict[cur_mon_cc.mon_check_command_type_id])
@@ -288,10 +292,15 @@ def _migrate_location_type(cat_tree):
         # just to be sure ...
         if device_location and device:
             # read all monitoring_config_types
-            all_loc_ct = dict([(pk, "{}/{}".format(
-                TOP_LOCATION_CATEGORY,
-                cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
-            mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_loc_ct.iteritems()])
+            all_loc_ct = {
+                pk: "{}/{}".format(
+                    TOP_LOCATION_CATEGORY,
+                    cur_name
+                ) for pk, cur_name in device_location.objects.all().values_list("pk", "location")
+            }
+            mig_dict = {
+                key: cat_tree.add_category(value) for key, value in all_loc_ct.iteritems()
+            }
             for cur_dev in device.objects.all():
                 if cur_dev.device_location_id:
                     cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
