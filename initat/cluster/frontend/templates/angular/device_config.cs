@@ -654,6 +654,9 @@ class location_tree extends tree_config
                 r_info = "#{r_info}, #{num_sel} of #{@scope.num_devices}"
             if cat.num_refs
                 r_info = "#{r_info} (refs=#{cat.num_refs})"
+            num_locs = cat.location_gfxs.length
+            if num_locs
+                r_info = "#{r_info}, #{num_locs} location gfx"
             return r_info
         else if cat.depth
             return cat.full_name
@@ -675,9 +678,11 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
+                restDataSource.reload(["{% url 'rest:location_gfx_list' %}", {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = data[1]
+                $scope.location_gfxs = data[2]
                 $scope.num_devices = $scope.devices.length
                 $scope.loc_tree.change_select = true
                 for dev in $scope.devices
@@ -691,10 +696,11 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 for entry in data[0]
                     if entry.full_name.match(/^\/location/)
                         sel_dict[entry.idx] = []
+                        entry.location_gfxs = (loc_gfx.idx for loc_gfx in $scope.location_gfxs when loc_gfx.location == entry.idx)
                 for dev in $scope.devices
                     for _sel in dev.categories
                         if _sel of sel_dict
-                            sel_dict[_sel].push(entry.idx)
+                            sel_dict[_sel].push(dev.idx)
                 $scope.sel_dict = sel_dict     
                 for entry in data[0]
                     if entry.full_name.match(/^\/location/)
@@ -723,14 +729,7 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 success : (xml) =>
                     parse_xml_response(xml)
                     $scope.$apply(
-                        if entry.selected
-                            $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
-                            # deselect all other cats
-                            for _other_cat of $scope.sel_dict
-                                if _other_cat != cat.idx
-                                    $scope.sel_dict[_other_cat] = []
-                        else
-                            $scope.sel_dict[cat.idx] = []
+                        $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
                         reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
                     )
         $scope.new_selection = (sel_list) =>
@@ -744,7 +743,21 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 success : (xml) =>
                     parse_xml_response(xml)
                     # selectively reload sidebar tree
-                    reload_sidebar_tree([$scope.devices[0].idx])
+                    $scope.$apply(
+                        $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
+                        reload_sidebar_tree([$scope.devices[0].idx])
+                   )
+        $scope.update_tree = (changes) ->
+            for add in changes.added
+                _dev = add[0]
+                _cat = add[1]
+                $scope.sel_dict[_cat].push(_dev)
+                $scope.loc_tree_lut[_cat].obj.num_refs++
+            for rem in changes.removed
+                _dev = rem[0]
+                _cat = rem[1]
+                _.remove($scope.sel_dict[_cat], (num) -> return num == _dev)
+                $scope.loc_tree_lut[_cat].obj.num_refs--
 ]).directive("devicelocation", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"

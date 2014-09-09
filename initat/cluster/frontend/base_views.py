@@ -92,7 +92,7 @@ class upload_location_gfx(View):
                         ))
                     else:
                         try:
-                            _location.store_graphic(_img, _file.content_type)
+                            _location.store_graphic(_img, _file.content_type, _file.name)
                         except:
                             request.xml_response.critical("error storing image: {}".format(process_tools.get_except_info()), logger=logger)
                         else:
@@ -125,6 +125,8 @@ class change_category(View):
     def post(self, request):
         _post = request.POST
         multi_mode = True if _post.get("multi", "False").lower()[0] in ["1", "t", "y"] else False
+        # format: [(device_idx, cat_idx), ...]
+        _added, _removed = ([], [])
         if multi_mode:
             set_mode = True if int(_post["set"]) else False
             sc_cat = category.objects.get(Q(pk=_post["cat_pk"]))
@@ -137,9 +139,13 @@ class change_category(View):
                 if set_mode and sc_cat not in _obj.categories.all():
                     devs_added.append(_obj)
                     _obj.categories.add(sc_cat)
-                    _obj.categories.remove(*[_cat for _cat in _obj.categories.all() if _cat != sc_cat and _cat.single_select()])
+                    _remcats = [_cat for _cat in _obj.categories.all() if _cat != sc_cat and _cat.single_select()]
+                    _obj.categories.remove(*_remcats)
+                    _added.append((_obj.idx, sc_cat.idx))
+                    _removed.extend([(_obj.idx, _remcat.idx) for _remcat in _remcats])
                 elif not set_mode and sc_cat in _obj.categories.all():
                     devs_removed.append(_obj)
+                    _removed.append((_obj.idx, sc_cat.idx))
                     _obj.categories.remove(sc_cat)
             request.xml_response.info(
                 u"{}: added to {}, removed from {}".format(
@@ -157,11 +163,14 @@ class change_category(View):
             to_add = [_entry for _entry in new_sel - cur_sel]
             if to_del:
                 cur_obj.categories.remove(*category.objects.filter(Q(pk__in=to_del)))
+                _removed.extend([(cur_obj.idx, _to_del) for _to_del in to_del])
             if to_add:
                 cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
+                _added.extend([(cur_obj.idx, _to_add) for _to_add in to_add])
             request.xml_response.info(
                 "added {:d}, removed {:d}".format(
                     len(to_add),
                     len(to_del)
                 )
             )
+        request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})

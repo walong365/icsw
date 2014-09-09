@@ -86,8 +86,8 @@
                                     <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></input>
                                     {{ loc_gfx.name }}
                                     <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
-                                    <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
-                                    <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image> {{ loc_gfx.icon_url }}
+                                    <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+                                    <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
                                     </span>
                                     <span class="pull-right">
                                         <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
@@ -228,7 +228,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             xml = $.parseXML(response)
             if parse_xml_response(xml)
                 Restangular.one("{% url 'rest:location_gfx_detail' 1 %}".slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
-                    for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url"]
+                    for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name"]
                         $scope.cur_location_gfx[_copy] = data[_copy]
                 )
         $scope.map = {

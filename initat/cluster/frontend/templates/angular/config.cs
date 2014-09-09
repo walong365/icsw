@@ -304,15 +304,15 @@ cached_upload_template = """
 """
 
 cached_config_template = """
-    {{ config.name }} ({{ config.description }})
-    <span class="label label-primary" title="number of config vars">{{ get_num_vars() }}</span>
-    <span class="label label-primary" title="number of config script">{{ get_num_scripts() }}</span>
-    <span class="label label-primary" title="number of monitoring check commands">{{ get_num_check_commands() }}</span>
-    <span class="pull-right">
-        <input type="button" ng-show="!config._taken" class="btn btn-xs btn-success" value="take" ng-click="take_config()"></input>
-        <input type="button" ng-show="!config._taken" class="btn btn-xs btn-danger" value="delete" ng-click="delete_config()"></input>
-        <span class="label label-warning" ng-show="config._taken">already taken</span>
-    </span>
+{{ config.name }} ({{ config.description }})
+<span class="label label-primary" title="number of config vars">{{ get_num_vars() }}</span>
+<span class="label label-primary" title="number of config script">{{ get_num_scripts() }}</span>
+<span class="label label-primary" title="number of monitoring check commands">{{ get_num_check_commands() }}</span>
+<span class="pull-right">
+    <input type="button" ng-show="!config._taken" class="btn btn-xs btn-success" value="take" ng-click="take_config()"></input>
+    <input type="button" ng-show="!config._taken" class="btn btn-xs btn-danger" value="delete" ng-click="delete_config()"></input>
+    <span class="label label-warning" ng-show="config._taken">already taken</span>
+</span>
 """
 
 {% endverbatim %}
