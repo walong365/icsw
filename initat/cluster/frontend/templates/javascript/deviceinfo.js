@@ -135,7 +135,6 @@ urn:uuid:{{ _edit_obj.uuid }}
     <div id="icsw.device.config">
         <div ng-controller="location_ctrl">
             <devicelocation devicepk='#{pk_list_nmd}'>
-                <tree treeconfig="loc_tree"></tree>
             </devicelocation>
         </div>
     </div>
