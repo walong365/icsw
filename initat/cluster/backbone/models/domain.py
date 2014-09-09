@@ -599,6 +599,12 @@ class location_gfx(models.Model):
         else:
             return ""
 
+    def get_image_url(self):
+        if self.image_stored:
+            return reverse("base:location_gfx_image", args=[self.idx, self.image_count])
+        else:
+            return ""
+
     @property
     def icon_cache_key(self):
         return "lgfx_icon_{}".format(self.uuid)
@@ -620,11 +626,30 @@ class location_gfx(models.Model):
         else:
             return _content
 
+    def get_image(self):
+        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
+        if os.path.isfile(_entry):
+            return file(_entry, "rb").read()
+        else:
+            return location_gfx.default_image()
+
     @staticmethod
     def default_icon():
         _content = StringIO.StringIO()
         Image.new("RGB", (24, 24), color="red").save(_content, format="JPEG")
         return _content.getvalue()
+
+    @staticmethod
+    def default_image():
+        _content = StringIO.StringIO()
+        Image.new("RGB", (640, 400), color="red").save(_content, format="JPEG")
+        return _content.getvalue()
+
+    def rotate(self, degrees):
+        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
+        _img = Image.open(file(_entry, "rb"))
+        _img = _img.rotate(degrees)
+        self.store_graphic(_img, self.content_type, self.image_name)
 
     def store_graphic(self, img, content_type, file_name):
         _gfx_dir = os.path.join(settings.ICSW_WEBCACHE, "lgfx")
