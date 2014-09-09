@@ -1282,7 +1282,7 @@ def zmq_main_code():
             len(options.arguments))
         _exit = True
     if not _exit:
-        cf_time = time.localtime(os.stat(configfile.__file__.replace(".pyc", ".py").replace(".pyo", ".py"))[stat.ST_MTIME])
+        cf_time = time.localtime(os.stat(configfile.__file__.replace(".pyc", ".py").replace(".pyo", ".py"))[stat.ST_MTIME])  # @UndefinedVariable
         if (cf_time.tm_year, cf_time.tm_mon, cf_time.tm_mday) < (2012, 5, 1):
             print "your python-modules-base are too old, please upgrade ({:d}, {:d}, {:d})".format(cf_time.tm_year, cf_time.tm_mon, cf_time.tm_mday)
             return 0
