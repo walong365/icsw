@@ -308,7 +308,7 @@ class sge_info(object):
             if _c_stat:
                 job_xml = E.call_error(c_out, stat="{:d}".format(_c_stat))
             else:
-                job_xml = etree.fromstring(c_out)
+                job_xml = etree.fromstring(c_out)  # @UndefinedVariable
             job_name = job_xml.findtext(".//JB_job_name")
             # check for non-standard path
             # get home
@@ -342,9 +342,9 @@ class sge_info(object):
                 )
             else:
                 ext_xml.append(E.stderr(os.path.join(cur_pwd, "{}.e{}".format(job_name, job_id))))
-            self.set_cache(job_key, etree.tostring(ext_xml))
+            self.set_cache(job_key, etree.tostring(ext_xml))  # @UndefinedVariable
         else:
-            ext_xml = etree.fromstring(_cache)
+            ext_xml = etree.fromstring(_cache)  # @UndefinedVariable
         self.__job_dict[job_id] = ext_xml
 
     def get_job_info(self, job_id):
@@ -433,9 +433,9 @@ class sge_info(object):
             if self.__persistent_socket:
                 if not self.__0mq_context:
                     self.__0mq_context = zmq.Context(1)
-                    client = self.__0mq_context.socket(zmq.DEALER)
-                    client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
-                    client.setsockopt(zmq.LINGER, 100)
+                    client = self.__0mq_context.socket(zmq.DEALER)  # @UndefinedVariable
+                    client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))  # @UndefinedVariable
+                    client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
                     _conn_str = "tcp://{}:{:d}".format(srv_name, self.__server_port)
                     try:
                         client.connect(_conn_str)
@@ -446,16 +446,16 @@ class sge_info(object):
                 client = self.__0mq_socket
             else:
                 zmq_context = zmq.Context(1)
-                client = zmq_context.socket(zmq.DEALER)
-                client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
-                client.setsockopt(zmq.LINGER, 100)
+                client = zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
+                client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))  # @UndefinedVariable
+                client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
                 client.connect("tcp://{}:{:d}".format(srv_name, self.__server_port))
             if client is not None:
                 srv_com = server_command.srv_command(command="get_config")
                 srv_com["needed_dicts"] = list(server_update)
                 # print srv_com.pretty_print()
                 my_poller = zmq.Poller()
-                my_poller.register(client, zmq.POLLIN)
+                my_poller.register(client, zmq.POLLIN)  # @UndefinedVariable
                 client.send_unicode(unicode(srv_com))
                 _sc = True
             else:
@@ -489,7 +489,7 @@ class sge_info(object):
                     pass
                 else:
                     if "sge" in srv_reply:
-                        self.__tree = etree.fromstring(etree.tostring(srv_reply["sge"][0]))
+                        self.__tree = etree.fromstring(etree.tostring(srv_reply["sge"][0]))  # @UndefinedVariable
                         # valid return
                     dicts_to_update -= server_update
             e_time = time.time()
@@ -502,7 +502,7 @@ class sge_info(object):
         if self.__verbose:
             self.log(
                 "before merge: tree size {:d}, memory usage {}".format(
-                    len(etree.tostring(self.__tree)),
+                    len(etree.tostring(self.__tree)),  # @UndefinedVariable
                     logging_tools.get_size_str(process_tools.get_mem_info()),
                 )
             )
@@ -514,7 +514,7 @@ class sge_info(object):
         if self.__verbose:
             self.log(
                 "after merge : tree size {:d}, memory usage {}".format(
-                    len(etree.tostring(self.__tree)),
+                    len(etree.tostring(self.__tree)),  # @UndefinedVariable
                     logging_tools.get_size_str(process_tools.get_mem_info()),
                 )
             )
@@ -524,7 +524,7 @@ class sge_info(object):
         # print self.__counter
         # s_time = time.time()
         # hm, fixes the memory issue but not very beautifull ...
-        self.__tree = etree.fromstring(etree.tostring(self.__tree))
+        self.__tree = etree.fromstring(etree.tostring(self.__tree))  # @UndefinedVariable
         # e_time = time.time()
         # print e_time - s_time
 
@@ -708,7 +708,7 @@ class sge_info(object):
         if _c_stat:
             all_qhosts = E.call_error(c_out, stat="{:d}".format(_c_stat))
         else:
-            all_qhosts = etree.fromstring(c_out)
+            all_qhosts = etree.fromstring(c_out)  # @UndefinedVariable
         for cur_host in all_qhosts.xpath(".//host", smart_strings=False):  # [not(@name='global')]"):
             cur_host.attrib["short_name"] = cur_host.attrib["name"].split(".")[0]
         for cur_job in all_qhosts.xpath(".//job", smart_strings=False):
@@ -755,7 +755,7 @@ class sge_info(object):
         if _c_stat:
             all_jobs = E.call_error(c_out, stat="{:d}".format(_c_stat))
         else:
-            all_jobs = etree.fromstring(c_out)
+            all_jobs = etree.fromstring(c_out)  # @UndefinedVariable
         all_jobs.tag = "qstat"
         # modify job_ids
         for cur_job in all_jobs.findall(".//job_list"):
