@@ -139,7 +139,7 @@ class server_process(threading_tools.process_pool):
 
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):
+        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
             c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
@@ -171,7 +171,7 @@ class server_process(threading_tools.process_pool):
                                 logging_tools.LOG_LEVEL_CRITICAL
                             )
                             srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                        zmq_sock.send_unicode(c_uid, zmq.SNDMORE)
+                        zmq_sock.send_unicode(c_uid, zmq.SNDMORE)  # @UndefinedVariable
                         zmq_sock.send_unicode(unicode(srv_com))
                     else:
                         cur_client.new_command(srv_com)
@@ -185,7 +185,7 @@ class server_process(threading_tools.process_pool):
         self.log("sending delayed return for %s" % (unicode(srv_com)))
         srv_com.set_result(ret_str, ret_state)
         zmq_sock = self.socket_dict["router"]
-        zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
+        zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)  # @UndefinedVariable
         zmq_sock.send_unicode(unicode(srv_com))
 
     def _handle_wfe_command(self, zmq_sock, in_uid, srv_com):
@@ -255,7 +255,7 @@ class server_process(threading_tools.process_pool):
             srv_com.set_result("command %s not known" % (in_com), server_command.SRV_REPLY_STATE_ERROR)
         # print srv_com.pretty_print()
         if immediate_return:
-            zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
+            zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)  # @UndefinedVariable
             zmq_sock.send_unicode(unicode(srv_com))
 
     def _init_network_sockets(self):
@@ -264,16 +264,16 @@ class server_process(threading_tools.process_pool):
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"], self._new_com),
+            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"], self._new_com),  # @UndefinedVariable
         ]:
             client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, self.bind_id)
-            client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.RCVHWM, 256)
-            client.setsockopt(zmq.SNDHWM, 256)
-            client.setsockopt(zmq.BACKLOG, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            client.setsockopt(zmq.IDENTITY, self.bind_id)  # @UndefinedVariable
+            client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
+            client.setsockopt(zmq.RCVHWM, 256)  # @UndefinedVariable
+            client.setsockopt(zmq.SNDHWM, 256)  # @UndefinedVariable
+            client.setsockopt(zmq.BACKLOG, 1)  # @UndefinedVariable
+            client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
             # hm, this can be dangerous
             # client.setsockopt(zmq.ROUTER_MANDATORY, 1)
             conn_str = "tcp://*:%d" % (bind_port)
@@ -294,13 +294,13 @@ class server_process(threading_tools.process_pool):
                     sock_type,
                     self.bind_id,
                     ))
-                self.register_poller(client, zmq.POLLIN, target_func)
+                self.register_poller(client, zmq.POLLIN, target_func)  # @UndefinedVariable
                 self.socket_dict[key] = client
 
     def send_reply(self, t_uid, srv_com):
         send_sock = self.socket_dict["router"]
-        send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)
-        send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+        send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
+        send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
 
     def _send_update(self, command="send_info", dev_list=[], **kwargs):
         send_list = dev_list or client.name_set

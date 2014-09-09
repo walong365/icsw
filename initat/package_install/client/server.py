@@ -150,16 +150,16 @@ class server_process(threading_tools.process_pool):
         if self.router_com:
             self.__package_server_id = global_config["PACKAGE_SERVER_ID"]
             self.log("using a ROUTER socket to communicate with the package server {}".format(self.__package_server_id))
-            srv_port = self.zmq_context.socket(zmq.ROUTER)
-            srv_port.setsockopt(zmq.ROUTER_MANDATORY, 1)
+            srv_port = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+            srv_port.setsockopt(zmq.ROUTER_MANDATORY, 1)  # @UndefinedVariable
         else:
             self.__package_server_id = None
             self.log("using a DEALER socket to communicate with the package server", logging_tools.LOG_LEVEL_WARN)
-            srv_port = self.zmq_context.socket(zmq.DEALER)
-        srv_port.setsockopt(zmq.LINGER, 1000)
-        srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
-        srv_port.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        srv_port.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            srv_port = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
+        srv_port.setsockopt(zmq.LINGER, 1000)  # @UndefinedVariable
+        srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())  # @UndefinedVariable
+        srv_port.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+        srv_port.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
         # srv_port.setsockopt(zmq.SUBSCRIBE, "")
         self.conn_str = "tcp://{}:{:d}".format(
             global_config["PACKAGE_SERVER"],
@@ -167,26 +167,27 @@ class server_process(threading_tools.process_pool):
         srv_port.connect(self.conn_str)
         # pull_port = self.zmq_context.socket(zmq.PUSH)
         # pull_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
-        self.register_poller(srv_port, zmq.POLLIN, self._recv)
+        self.register_poller(srv_port, zmq.POLLIN, self._recv)  # @UndefinedVariable
         self.log("connected to {}".format(self.conn_str))
         self.srv_port = srv_port
         # client socket
         self.bind_id = "{}:pclient:".format(uuid_tools.get_uuid().get_urn())
-        client_sock = self.zmq_context.socket(zmq.ROUTER)
-        client_sock.setsockopt(zmq.LINGER, 1000)
-        client_sock.setsockopt(zmq.IDENTITY, self.bind_id)
-        client_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        client_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        client_sock.setsockopt(zmq.SNDHWM, 16)
-        client_sock.setsockopt(zmq.RCVHWM, 16)
-        client_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-        client_sock.setsockopt(zmq.RECONNECT_IVL, 200)
+        client_sock = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.LINGER, 1000)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.IDENTITY, self.bind_id)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.RCVHWM, 16)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
+        client_sock.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
         bind_str = "tcp://0.0.0.0:{:d}".format(
-                    global_config["COM_PORT"])
+            global_config["COM_PORT"]
+        )
         client_sock.bind(bind_str)
         self.log("bound to {} (ID {})".format(bind_str, self.bind_id))
         self.client_socket = client_sock
-        self.register_poller(client_sock, zmq.POLLIN, self._recv_client)
+        self.register_poller(client_sock, zmq.POLLIN, self._recv_client)  # @UndefinedVariable
         # send commands
         self._register()
         self._get_repos()
@@ -200,7 +201,7 @@ class server_process(threading_tools.process_pool):
             if _success:
                 try:
                     if self.__package_server_id:
-                        self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)
+                        self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
                     self.srv_port.send_unicode(_msg)
                 except zmq.error.ZMQError:
                     _success = False
@@ -241,7 +242,7 @@ class server_process(threading_tools.process_pool):
         self.log("sending {} ({}) to server {}".format(com_name, send_info, self.conn_str))
         try:
             if self.__package_server_id:
-                self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)
+                self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
             self.srv_port.send_unicode(send_com)
         except zmq.error.ZMQError:
             self.__send_buffer.append(send_com)
@@ -260,7 +261,7 @@ class server_process(threading_tools.process_pool):
 
     def _recv_client(self, zmq_sock):
         data = [zmq_sock.recv()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):
+        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             data.append(zmq_sock.recv())
         if len(data) == 2:
             src_id = data.pop(0)
@@ -285,7 +286,7 @@ class server_process(threading_tools.process_pool):
                     "unknown command '{}'".format(cur_com),
                     server_command.SRV_REPLY_STATE_ERROR
                 )
-            zmq_sock.send_unicode(src_id, zmq.SNDMORE)
+            zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
             zmq_sock.send_unicode(unicode(srv_com))
             del srv_com
         else:
@@ -298,7 +299,7 @@ class server_process(threading_tools.process_pool):
             raw_data = []
             while True:
                 raw_data.append(zmq_sock.recv_unicode())
-                if not zmq_sock.getsockopt(zmq.RCVMORE):
+                if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                     break
             # rewrite to srv_coms
             data = []
@@ -319,10 +320,10 @@ class server_process(threading_tools.process_pool):
                         self._get_repos()
                     else:
                         data.append(in_com)
-                if not zmq_sock.getsockopt(zmq.RCVMORE):
+                if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                     break
             batch_list.extend(data)
-            if not zmq_sock.poll(zmq.POLLIN):
+            if not zmq_sock.poll(zmq.POLLIN):  # @UndefinedVariable
                 break
         # batch_list = self._optimize_list(batch_list)
         self.send_to_process(

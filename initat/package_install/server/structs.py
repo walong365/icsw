@@ -181,7 +181,7 @@ class repo_type_rpm_yum(repo_type):
         # delete previous search results
         cur_search.package_search_result_set.all().delete()
         self.log("parsing results... ({:d} found)".format(len(found_packs)))
-        repo_dict = {_repo.name : _repo for _repo in package_repo.objects.all()}
+        repo_dict = {_repo.name: _repo for _repo in package_repo.objects.all()}
         for p_name, repo_name in found_packs:
             if repo_name == "installed":
                 continue
@@ -222,7 +222,7 @@ class repo_type_rpm_zypper(repo_type):
 
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
-        repo_xml = etree.fromstring(s_struct.read())
+        repo_xml = etree.fromstring(s_struct.read())  # @UndefinedVariable
         new_repos = []
         found_repos = []
         old_repos = set(package_repo.objects.all().values_list("name", flat=True))
@@ -305,7 +305,7 @@ class repo_type_rpm_zypper(repo_type):
         self.master_process._reload_searches()
 
     def search_result(self, s_struct):
-        res_xml = etree.fromstring(s_struct.read())
+        res_xml = etree.fromstring(s_struct.read())  # @UndefinedVariable
         cur_search = s_struct.run_info["stuff"]
         cur_search.current_state = "done"
         cur_search.results = len(res_xml.xpath(".//solvable", smart_strings=False))
@@ -466,8 +466,8 @@ class client(object):
         client.name_set = set()
         client.lut = {}
         if not os.path.exists(CONFIG_NAME):
-            file(CONFIG_NAME, "w").write(etree.tostring(E.package_clients(), pretty_print=True))
-        client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())
+            file(CONFIG_NAME, "w").write(etree.tostring(E.package_clients(), pretty_print=True))  # @UndefinedVariable
+        client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())  # @UndefinedVariable
         for client_el in client.xml.xpath(".//package_client", smart_strings=False):
             client.register(client_el.text, client_el.attrib["name"])
 
@@ -508,7 +508,7 @@ class client(object):
                 cur_el = client.xml.xpath(".//package_client[@name='{}']".format(name), smart_strings=False)
                 if not len(cur_el):
                     client.xml.append(E.package_client(uid, name=name))
-                    file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
+                    file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))  # @UndefinedVariable
 
     def close(self):
         if self.__log_template is not None:
@@ -599,7 +599,7 @@ class client(object):
             logging_tools.get_plural("package", len(pdc_list)),
             logging_tools.get_plural("package", len(send_list)),))
         if self.__client_gen == 1:
-            resp = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(send_list, many=True).data))
+            resp = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(send_list, many=True).data))  # @UndefinedVariable
         else:
             resp = srv_com.builder(
                 "packages",
@@ -615,7 +615,7 @@ class client(object):
             len(send_ok),
             ))
         if self.__client_gen == 1:
-            resp = etree.fromstring(XMLRenderer().render(package_repo_serializer(send_ok, many=True).data))
+            resp = etree.fromstring(XMLRenderer().render(package_repo_serializer(send_ok, many=True).data))  # @UndefinedVariable
         else:
             resp = srv_com.builder(
                 "repos",
@@ -631,7 +631,7 @@ class client(object):
             cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
             cur_pdc.response_type = pdc_xml.attrib["response_type"]
             self.log("got package_info for {} (type is {})".format(unicode(cur_pdc.package), cur_pdc.response_type))
-            cur_pdc.response_str = etree.tostring(info_xml)
+            cur_pdc.response_str = etree.tostring(info_xml)  # @UndefinedVariable
             # print cur_pdc.response_str
             cur_pdc.interpret_response()
             cur_pdc.save(
