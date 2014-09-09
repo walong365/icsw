@@ -571,8 +571,8 @@ def category_post_save(sender, **kwargs):
 # category
 class location_gfx(models.Model):
     idx = models.AutoField(primary_key=True)
-    # the top node has no name
     name = models.CharField(max_length=64, default="", unique=True)
+    image_name = models.CharField(max_length=64, default="", blank=True)
     # uuid of graph
     uuid = models.CharField(max_length=64, blank=True)
     # image stored ?
@@ -626,12 +626,13 @@ class location_gfx(models.Model):
         Image.new("RGB", (24, 24), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
-    def store_graphic(self, img, content_type):
+    def store_graphic(self, img, content_type, file_name):
         _gfx_dir = os.path.join(settings.ICSW_WEBCACHE, "lgfx")
         if not os.path.isdir(_gfx_dir):
             os.mkdir(_gfx_dir)
         _entry = os.path.join(_gfx_dir, self.uuid)
         img.save(file(_entry, "wb"), format="PNG")
+        self.image_name = file_name
         self.width = img.size[0]
         self.height = img.size[1]
         self.image_count += 1
@@ -640,7 +641,7 @@ class location_gfx(models.Model):
         self.locked = True
         if cache.get(self.icon_cache_key):
             cache.delete(self.icon_cache_key)
-        self.save(update_fields=["width", "height", "content_type", "locked", "image_stored", "image_count"])
+        self.save(update_fields=["width", "height", "content_type", "locked", "image_stored", "image_count", "image_name"])
 
     class Meta:
         app_label = "backbone"
