@@ -42,6 +42,8 @@ base_patterns = patterns(
     url("^get_cat_tree$", base_views.get_category_tree.as_view(), name="category_tree"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(), name="location_gfx_icon"),
+    url("^loc_gfx_image/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_image.as_view(), name="location_gfx_image"),
+    url("^modify_loc_gfx$", base_views.modify_location_gfx.as_view(), name="modify_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
     url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
 )

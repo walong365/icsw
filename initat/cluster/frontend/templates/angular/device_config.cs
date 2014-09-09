@@ -37,6 +37,40 @@ devconftable_template = """
 </table>
 """
 
+device_location_template = """
+<h2>Device location for <ng-pluralize count="device_pks.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize></h2>
+<div class="row">
+    <div class="col-md-6">
+        <h3>Tree</h3>
+        <tree treeconfig="loc_tree"></tree>
+    </div>
+    <div class="col-md-6" ng-show="gfx_cat">
+        <locationlist></locationlist>
+    </div>
+    <div class="row" ng-show="gfx_cat && active_loc_gfx">
+        <locationmap></locationmap>
+    </div>
+</div>
+"""
+
+location_map_template = """
+<div class="col-md-12">
+    <image ng-src="{{ active_loc_gfx.image_url }}" width="1024" height="768"></image>
+</div>
+"""
+
+location_list_template = """
+<h3>Location maps for {{ gfx_cat.full_name }} ({{ gfx_cat.location_gfxs.length }})</h3>
+<ul class="list-group">
+    <li class="list-group-item" ng-repeat="loc_gfx in get_location_gfxs(gfx_cat)">
+        <input type="button" ng-class="loc_gfx.idx == active_loc_gfx.idx && 'btn btn-sm btn-success' || 'btn btn-sm btn-default'" value="show" ng-click="activate_loc_gfx(loc_gfx)"></input>
+        {{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+        , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+        <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+    </li>
+</ul>
+"""
+
 device_config_template = """
 <h2>
     Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ active_configs.length }} shown)
@@ -662,12 +696,26 @@ class location_tree extends tree_config
             return cat.full_name
         else
             return "TOP"
-
+    handle_click: (t_entry) ->
+        cat = t_entry.obj
+        @clear_active()
+        if cat.depth > 1 and cat.location_gfxs.length
+            if cat != @scope.gfx_cat    
+                @scope.active_loc_gfx = undefined
+            @scope.gfx_cat = cat
+            t_entry.active = true
+        else
+            @scope.active_loc_gfx = undefined
+            @scope.gfx_cat = undefined    
+        @show_active()
 
 loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restDataSource", "$q", "access_level_service",
     ($scope, restDataSource, $q, access_level_service) ->
         access_level_service.install($scope)
         $scope.loc_tree = new location_tree($scope, {})
+        # category with gfx 
+        $scope.gfx_cat = undefined
+        $scope.active_loc_gfx = undefined
         $scope.reload = (pk_str) ->
             if pk_str.match(/,/)
                 $scope.multi_device_mode = true
@@ -758,12 +806,36 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 _cat = rem[1]
                 _.remove($scope.sel_dict[_cat], (num) -> return num == _dev)
                 $scope.loc_tree_lut[_cat].obj.num_refs--
-]).directive("devicelocation", ($templateCache, $compile, $modal, Restangular) ->
+        $scope.get_location_gfxs = (cat) ->
+            if cat
+                return (entry for entry in $scope.location_gfxs when entry.idx in cat.location_gfxs and entry.image_stored)
+            else
+                return []
+]).run(($templateCache) ->
+    $templateCache.put("device_location.html", device_location_template)
+    $templateCache.put("location_list.html", location_list_template)
+    $templateCache.put("location_map.html", location_map_template)
+).directive("devicelocation", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
+        template: $templateCache.get("device_location.html")
         link : (scope, el, attrs) ->
             if attrs["devicepk"]?
                 scope.reload(attrs["devicepk"])
+    }
+).directive("locationlist", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("location_list.html")
+        link : (scope, el, attrs) ->
+            scope.activate_loc_gfx = (loc_gfx) ->
+                scope.active_loc_gfx = loc_gfx
+    }
+).directive("locationmap", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("location_map.html")
+        link : (scope, el, attrs) ->
     }
 )
 

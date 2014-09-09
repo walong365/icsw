@@ -119,6 +119,34 @@ class location_gfx_icon(View):
         return HttpResponse(_content, content_type="image/jpeg")
 
 
+class location_gfx_image(View):
+    def get(self, request, **kwargs):
+        try:
+            _loc = location_gfx.objects.get(Q(pk=kwargs["id"]))
+        except location_gfx.DoesNotExist:
+            _content = location_gfx.default_image()
+        else:
+            _content = _loc.get_image()
+        return HttpResponse(_content, content_type="image/jpeg")
+
+
+class modify_location_gfx(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        try:
+            _loc = location_gfx.objects.get(Q(pk=_post["id"]))
+        except location_gfx.DoesNotExist:
+            request.xml_response.error("location_gfx does not exist")
+        else:
+            if _post["mode"] == "rotate":
+                _loc.rotate(int(_post["degrees"]))
+                request.xml_response["image_url"] = _loc.get_image_url()
+                request.xml_response["icon_url"] = _loc.get_icon_url()
+            else:
+                request.xml_response.error("unknown mode '{}'".format(_post["mode"]))
+
+
 class change_category(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

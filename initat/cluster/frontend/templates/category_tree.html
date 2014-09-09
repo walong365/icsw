@@ -64,7 +64,7 @@
             <div class="row">
                 <div class="col-md-6">
                     <div id="map_canvas">
-                    <google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control">
+                    <google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
                         <marker ng-repeat="loc in locations" idKey="loc.key" coords="loc" options="loc.options" events="map.marker.events">
                             <!-- <marker-label content="loc.comment" anchor="2 0"></marker-label>-->
                         </marker>
@@ -72,6 +72,8 @@
                     </div>
                 </div>
                 <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-md-12">
                     <ul class="list-group">
                         <li class="list-group-item" ng-repeat="loc in get_valid_locations()">
                             <input type="button" class="btn btn-sm btn-success" value="add location gfx" ng-click="add_location_gfx($event, loc)"></input>
@@ -83,19 +85,37 @@
                             </span>
                             <ul ng-show="loc.location_gfxs.length" class="list-group">
                                 <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
-                                    <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></input>
+                                    <div class="btn-group">
+                                        <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></input>
+                                        <input type="button" ng-class="preview_gfx.idx != loc_gfx.idx && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-show="loc_gfx.image_stored" value="preview" ng-click="show_preview(loc_gfx)"></input>
+                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="rotate(loc_gfx, 90)" title="rotate left">
+                                            <span class="glyphicon glyphicon-arrow-left"></span>
+                                        </button>
+                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="rotate(loc_gfx, -90)" title="rotate right">
+                                            <span class="glyphicon glyphicon-arrow-right"></span>
+                                        </button>
+                                    </div>
                                     {{ loc_gfx.name }}
                                     <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
                                     <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
                                     <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
                                     </span>
                                     <span class="pull-right">
-                                        <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
+                                        <div class="btn-group">
+                                            <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
+                                        </div>
                                     </span>
                                 </li>
                             </ul>
                         </li>
                     </ul>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12" ng-show="preview_gfx">
+                            <image ng-src="{{ preview_gfx.image_url }}" width="100%"></image>
+                        </div>
+                    </div>
                 </div>
             </div>
         </tab>
@@ -228,7 +248,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             xml = $.parseXML(response)
             if parse_xml_response(xml)
                 Restangular.one("{% url 'rest:location_gfx_detail' 1 %}".slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
-                    for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name"]
+                    for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
                         $scope.cur_location_gfx[_copy] = data[_copy]
                 )
         $scope.map = {
@@ -238,6 +258,11 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             }
             zoom: 2
             control: {}
+            options: {
+                "streetViewControl": false
+                "minZoom" : 1
+                "maxZoom" : 20
+            }
             marker: {
                 events:{
                     dragend: (marker, event_name, args) ->
@@ -415,21 +440,41 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             }
             
         $scope.add_location_gfx = ($event, loc) ->
+            $scope.preview_gfx = undefined
             $scope.loc_gfx_mother = loc
             $scope.gfx_mixin.create($event).then((data) ->
                 loc.location_gfxs.push(data)
             )
         $scope.modify_location_gfx = ($event, loc) ->
+            $scope.preview_gfx = undefined
             $scope.cur_location_gfx = loc
             $scope.gfx_mixin.edit(loc, $event).then((data) ->
             )
         $scope.delete_location_gfx = ($event, obj) ->
             # find location object via cat_lut
             loc = $scope.cat_lut[obj.location].obj
+            $scope.preview_gfx = undefined
             $scope.gfx_mixin.delete_obj(obj).then((data) ->
                 if data
                     loc.location_gfxs = (entry for entry in loc.location_gfxs when entry.idx != obj.idx)
             )
+        $scope.show_preview = (obj) ->
+            $scope.preview_gfx = obj
+        $scope.rotate = (obj, degrees) ->
+            $.blockUI()
+            call_ajax
+                url : "{% url 'base:modify_location_gfx' %}"
+                data:
+                    "id": obj.idx
+                    "mode": "rotate"
+                    "degrees" : degrees
+                success: (xml) ->
+                    $.unblockUI()
+                    if parse_xml_response(xml)
+                        $scope.$apply(() ->
+                            obj.image_url = $(xml).find("value[name='image_url']").text()
+                            obj.icon_url = $(xml).find("value[name='icon_url']").text()
+                        )
         $scope.reload()
 ]).directive("cathead", ($templateCache) ->
     return {
