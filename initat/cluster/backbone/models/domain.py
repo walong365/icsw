@@ -234,7 +234,6 @@ def domain_tree_node_pre_save(sender, **kwargs):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.intermediate:
             if net_ip.objects.filter(Q(domain_tree_node=cur_inst)).count() + device.objects.filter(Q(domain_tree_node=cur_inst)).count():
-                # print "***", unicode(cur_inst)
                 raise ValidationError("cannot set used domain_tree_node as intermediate")
         cur_inst.node_postfix = cur_inst.node_postfix.strip()
         if not cur_inst.node_postfix and valid_domain_re.match(cur_inst.node_postfix):
@@ -494,12 +493,8 @@ class category(models.Model):
         return True if self.full_name.startswith("/location/") else False
 
     def get_references(self):
-        # print "*", self, dir(self._meta)
         num_refs = 0
         for rel in self._meta.get_all_related_many_to_many_objects():
-            # print dir(rel), rel.name
-            # for entry in getattr(self, rel.get_accessor_name()).all():
-            #    print entry
             num_refs += getattr(self, rel.get_accessor_name()).count()
         return num_refs
 
@@ -582,6 +577,8 @@ class location_gfx(models.Model):
     uuid = models.CharField(max_length=64, blank=True)
     # image stored ?
     image_stored = models.BooleanField(default=False)
+    # image count
+    image_count = models.IntegerField(default=1)
     # size
     width = models.IntegerField(default=0)
     height = models.IntegerField(default=0)
@@ -598,13 +595,16 @@ class location_gfx(models.Model):
 
     def get_icon_url(self):
         if self.image_stored:
-            return reverse("base:location_gfx_icon", args=[self.idx])
+            return reverse("base:location_gfx_icon", args=[self.idx, self.image_count])
         else:
             return ""
 
+    @property
+    def icon_cache_key(self):
+        return "lgfx_icon_{}".format(self.uuid)
+
     def get_icon(self):
-        _icon_key = "lgfx_icon_{}".format(self.uuid)
-        _content = cache.get(_icon_key)
+        _content = cache.get(self.icon_cache_key)
         if _content is None:
             _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
             if os.path.isfile(_entry):
@@ -613,7 +613,7 @@ class location_gfx(models.Model):
                 _content = StringIO.StringIO()
                 _img.save(_content, format="JPEG")
                 _content = _content.getvalue()
-                cache.set(_icon_key, _content)
+                cache.set(self.icon_cache_key, _content)
                 return _content
             else:
                 return location_gfx.default_icon()
@@ -634,10 +634,13 @@ class location_gfx(models.Model):
         img.save(file(_entry, "wb"), format="PNG")
         self.width = img.size[0]
         self.height = img.size[1]
+        self.image_count += 1
         self.content_type = content_type
         self.image_stored = True
         self.locked = True
-        self.save(update_fields=["width", "height", "content_type", "locked", "image_stored"])
+        if cache.get(self.icon_cache_key):
+            cache.delete(self.icon_cache_key)
+        self.save(update_fields=["width", "height", "content_type", "locked", "image_stored", "image_count"])
 
     class Meta:
         app_label = "backbone"
