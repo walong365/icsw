@@ -130,7 +130,6 @@
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Session" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
                 <li><a href="{% url 'user:account_info' %}"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;{% trans "Account Info" %}</a></li>
-                <li><a href="{% url 'session:logout' %}"><span class="glyphicon glyphicon-arrow-left"></span>&nbsp;{% trans "Logout" %}</a></li>
                 {% if csw_perms.backbone.user.admin %}
                     <li><a href="{% url 'admin:index' %}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;{% trans "Admin" %}</a></li>
                 {% endif %}
@@ -140,6 +139,7 @@
                 <li ng-show="check_perm('background_job.show_background')">
                     <a href="{% url 'user:background_job_info' %}"><span class="glyphicon glyphicon-list"></span>&nbsp;{% trans "Background Job Info" %}</a>
                 </li>
+                <li><a href="{% url 'session:logout' %}"><span class="glyphicon glyphicon-arrow-left"></span>&nbsp;{% trans "Logout" %}</a></li>
             </ul>
         </li>
         <li>
