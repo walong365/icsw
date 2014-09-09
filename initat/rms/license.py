@@ -24,7 +24,7 @@ from django.db import connection
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import commands
 import logging_tools
 import os
@@ -131,10 +131,11 @@ class license_process(threading_tools.process_obj):
             create=True,
         ).dict
         self._parse_actual_license_usage(actual_licenses, act_conf)
-        sge_license_tools.set_sge_used(actual_licenses, self._sge_dict)
+        sge_license_tools.set_sge_used(actual_licenses, sge_license_tools.parse_sge_used(self._sge_dict))
         for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
             if log_level > logging_tools.LOG_LEVEL_WARN:
                 self.log(log_line, log_level)
+        sge_license_tools.calculate_usage(actual_licenses)
         configured_lics = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
         self.write_ext_data(actual_licenses)
         if self._modify_sge:
