@@ -87,7 +87,7 @@
                                     {{ loc_gfx.name }}
                                     <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
                                     <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
-                                    <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                                    <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image> {{ loc_gfx.icon_url }}
                                     </span>
                                     <span class="pull-right">
                                         <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>

@@ -22,11 +22,10 @@
 
 """ REST views """
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
-from django.apps import apps
-from initat.core.render import render_string
 from initat.cluster.backbone import models, serializers as model_serializers
 from initat.cluster.backbone.models import user , group, \
     get_related_models, get_change_reset_list, device, domain_name_tree, \
@@ -36,9 +35,8 @@ from initat.cluster.backbone.models import user , group, \
 from initat.cluster.backbone.serializers import device_serializer, device_serializer_package_state, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
-
-# from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
+from initat.core.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -50,6 +48,7 @@ import json
 import logging
 import logging_tools
 import operator
+import pprint
 import process_tools
 import time
 import types
@@ -216,6 +215,16 @@ class db_prefetch_mixin(object):
     def _macbootlog_related(self):
         return ["device__domain_tree_node"]
 
+    def _location_gfx_put(self, req_changes, prev_model):
+        print req_changes
+        req_changes.update(
+            {
+                key: getattr(prev_model, key) for key in ["image_count"]
+            }
+        )
+        print req_changes
+        return req_changes
+
 
 class detail_view(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
@@ -247,8 +256,9 @@ class detail_view(mixins.RetrieveModelMixin,
 
     @rest_logging
     def put(self, request, *args, **kwargs):
-        req_changes = request.DATA
+        model_name = self.model._meta.model_name
         prev_model = self.model.objects.get(Q(pk=kwargs["pk"]))
+        req_changes = getattr(self, "_{}_put".format(model_name), lambda changed, prev: changed)(request.DATA, prev_model)
         # try:
         resp = self.update(request, *args, **kwargs)
         # except ValidationError as cur_exc:

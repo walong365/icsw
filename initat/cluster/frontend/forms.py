@@ -415,6 +415,7 @@ class location_gfx_form(ModelForm):
             ),
             Fieldset(
                 "Graphic",
+                Field("locked"),
                 HTML("""
 <div class='form-group'>
     <label class='control-label col-sm-3'>
@@ -440,7 +441,7 @@ class location_gfx_form(ModelForm):
 
     class Meta:
         model = location_gfx
-        fields = ["name", "comment"]
+        fields = ["name", "comment", "locked"]
 
 
 class device_fqdn(ModelMultipleChoiceField):

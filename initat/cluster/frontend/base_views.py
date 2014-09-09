@@ -6,6 +6,7 @@
 from PIL import Image
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from django.db import transaction
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
@@ -67,7 +68,7 @@ class prune_category_tree(permission_required_mixin, View):
 
 
 MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT = (
-    400, 3840, 200, 1920,
+    400, 3840, 200, 3840,
 )
 
 
