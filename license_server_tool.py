@@ -134,7 +134,7 @@ class license_object(object):
     def get_pid(self):
         # try to extract the pid of the (running ?) license server
         exe_lut = {}
-        for value in psutil.proces_iter():
+        for value in psutil.process_iter():
             if value.exe():
                 exe_lut.setdefault(value.exe(), []).append(value.pid)
         pid = exe_lut.get(self["LMGRD_BINARY"], [0])[0]
