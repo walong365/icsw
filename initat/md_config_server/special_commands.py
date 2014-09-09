@@ -24,13 +24,14 @@ from initat.cluster.backbone.models import partition, netdevice, lvm_lv, monitor
     cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
-from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
-from lxml.builder import E  # @UnresolvedImport
+from initat.md_config_server.constants import DEFAULT_CACHE_MODE
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import datetime
 import logging_tools
 import process_tools
 import re
 import time
+
 
 class special_base(object):
     class Meta:
@@ -478,13 +479,14 @@ class special_disc(special_base):
         part_list = []
         for part_p in partition.objects.filter(
             Q(partition_disc__partition_table=self.host.act_partition_table)
-            ).select_related(
-                "partition_fs"
-            ).prefetch_related(
-                "partition_disc"
-            ).order_by(
-                "partition_disc__disc",
-                "pnum"):
+        ).select_related(
+            "partition_fs"
+        ).prefetch_related(
+            "partition_disc"
+        ).order_by(
+            "partition_disc__disc",
+            "pnum"
+        ):
             act_disc, act_pnum = (part_p.partition_disc.disc, part_p.pnum)
             if not first_disc:
                 first_disc = act_disc

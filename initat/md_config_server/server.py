@@ -23,7 +23,7 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-from django.db import connection, connections
+from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
     mon_check_command_special, mon_check_command
@@ -111,19 +111,6 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 del cur_s
             else:
                 self.log("no MD_TYPE set, skipping livecheck", logging_tools.LOG_LEVEL_WARN)
-        else:
-            # old code, ask SQL Server
-            sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (
-                global_config["MD_TYPE"],
-                global_config["MD_TYPE"])
-            cursor = connections["monitor"].cursor()
-            _nag_suc = cursor.execute(sql_str)
-            nag_dict = dict([(db_rec[1], db_rec[0]) for db_rec in cursor.fetchall()])
-            res_dict = {"tot": len(nag_dict.keys()),
-                        "up": nag_dict.values().count(constants.NAG_HOST_UP),
-                        "down": nag_dict.values().count(constants.NAG_HOST_DOWN)}
-            res_dict["unknown"] = res_dict["tot"] - (res_dict["up"] + res_dict["down"])
-            cursor.close()
         if res_dict:
             self.log("{} status is: {:d} up, {:d} down, {:d} unknown ({:d} total)".format(
                 global_config["MD_TYPE"],
@@ -418,7 +405,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
-        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
+        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
         self.com_socket.send_unicode(srv_com)
 
     def _set_external_cmd_file(self, *args, **kwargs):
@@ -427,13 +414,13 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.__external_cmd_file = ext_name
 
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))
-        client.setsockopt(zmq.SNDHWM, 1024)
-        client.setsockopt(zmq.RCVHWM, 1024)
-        client.setsockopt(zmq.LINGER, 0)
-        client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+        client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))  # @UndefinedVariable
+        client.setsockopt(zmq.SNDHWM, 1024)  # @UndefinedVariable
+        client.setsockopt(zmq.RCVHWM, 1024)  # @UndefinedVariable
+        client.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
         try:
             client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
         except zmq.ZMQError:
@@ -444,12 +431,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
             self.com_socket = client
             self.__slaves = {}
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)
-        vector_socket.setsockopt(zmq.LINGER, 0)
+        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
 
@@ -457,17 +444,19 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         in_data = []
         while True:
             in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):
+            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 break
         if len(in_data) == 2:
             src_id, data = in_data
             try:
                 srv_com = server_command.srv_command(source=data)
             except:
-                self.log("error interpreting command: {}".format(process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error interpreting command: {}".format(process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 # send something back
-                self.com_socket.send_unicode(src_id, zmq.SNDMORE)
+                self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
                 self.com_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
@@ -500,7 +489,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
                     srv_com.set_result("ok processed command {}".format(cur_com))
-                    self.com_socket.send_unicode(src_id, zmq.SNDMORE)
+                    self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
                     self.com_socket.send_unicode(unicode(srv_com))
                 else:
                     del cur_com
