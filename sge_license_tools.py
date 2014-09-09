@@ -176,6 +176,10 @@ class sge_license(object):
         self.used = 0
         # used from sge
         self.sge_used = 0
+        # via qstat
+        self.sge_used_qstat = 0
+        # via match from lmutil / lmstat
+        self.sge_used_match = 0
         self.external_used = 0
 
     def num_sge_specific(self, lic_xml):
@@ -273,6 +277,8 @@ class sge_license(object):
             logging_tools.form_entry_right(self.used, header="used"),
             logging_tools.form_entry_right(self.total - self.limit, header="avail"),
             logging_tools.form_entry_right(self.sge_used, header="cluster"),
+            logging_tools.form_entry_right(self.sge_used_qstat, header="cluster(qstat)"),
+            logging_tools.form_entry_right(self.sge_used_match, header="cluster(match)"),
             logging_tools.form_entry_right(self.external_used, header="external"),
             logging_tools.form_entry_right(self.free, header="free"),
             logging_tools.form_entry(self.expires.strftime(EXPIRY_DT) if self.expires else "---", header="expires"),
@@ -303,9 +309,9 @@ class sge_license(object):
         log_lines = []
         _simple_keys = [_key for _key, _value in lic_dict.iteritems() if _value.license_type == "simple"]
         # return log_lines
-        for _type in ["total", "used", "limit"]:
-            if self.license_type == "complex" and _type in ["used", "limit"]:
-                continue
+        for _type in ["total", "used", "limit", "sge_used_qstat", "sge_used_match"]:
+            # if self.license_type == "complex" and _type in ["used", "limit"]:
+            #    continue
             t_attr = "{}".format(_type)
             _glob = {_key: getattr(lic_dict[_key], t_attr) for _key in _simple_keys}
             try:
@@ -502,11 +508,13 @@ def parse_license_lines(lines, act_site, **kwargs):
 def set_sge_used(lic_dict, used_dict):
     for _key, _lic in lic_dict.iteritems():
         if _key in used_dict:
-            _lic.sge_used = used_dict[_key]
-            if _lic.license_type == "complex":
-                _lic.used += _lic.sge_used
-            else:
-                _lic.external_used -= _lic.sge_used
+            _lic.sge_used_qstat += used_dict[_key]
+            # now handled in calculate_usage
+            # _lic.sge_used = max(_lic.sge_used_qstat, _lic.sge_used_match)
+            # if _lic.license_type == "complex":
+            #    _lic.used += abs(_lic.sge_used_qstat - _lic.sge_used_match)  # _lic.sge_used
+            # else:
+            #    _lic.external_used -= abs(_lic.sge_used_qstat - _lic.sge_used_match)
 
 
 def parse_sge_used(sge_dict):
@@ -540,10 +548,24 @@ def update_usage(lic_dict, srv_xml):
             if act_lic.license_type == "simple":
                 # decide if this license is external or sge local
                 _num_sge = act_lic.num_sge_specific(cur_lic)
-                act_lic.sge_used += _num_sge
+                act_lic.sge_used_match += _num_sge
+                # now handled in calculate_usage
+                # act_lic.sge_used += abs(act_lic.sge_used_qstat - act_lic.sge_used_match)
                 act_lic.external_used += act_lic.used - _num_sge
             else:
+                print "*", act_lic.used
                 act_lic.external_used += act_lic.used
+
+
+def calculate_usage(actual_licenses):
+    # set external_used / used according to the varous sge_used* fields
+    for act_lic in actual_licenses.itervalues():
+        if act_lic.is_used:
+            act_lic.sge_used = max(act_lic.sge_used_match, act_lic.sge_used_qstat)
+            if act_lic.license_type == "simple":
+                pass
+            else:
+                act_lic.external = act_lic.used - act_lic.sge_used
 
 
 def call_command(command, exit_on_fail=0, show_output=False, log_com=None):

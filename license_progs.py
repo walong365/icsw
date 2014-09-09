@@ -72,6 +72,7 @@ def _lic_show(opts, act_conf):
     sge_license_tools.update_usage(current_lics, _xml)
     sge_license_tools.set_sge_used(current_lics, sge_license_tools.parse_sge_used(sge_dict))
     sge_license_tools.handle_complex_licenses(current_lics)
+    sge_license_tools.calculate_usage(current_lics)
     out_list = logging_tools.new_form_list()
     for _t_type in ["simple", "complex"]:
         for _name in sorted(current_lics.keys()):
