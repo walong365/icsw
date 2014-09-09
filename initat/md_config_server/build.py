@@ -25,6 +25,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
     mon_contactgroup, netdevice, network_type, user, config, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special
+from initat.md_config_server.constants import CACHE_MODES
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
@@ -332,7 +333,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 hdep_from_topo = False
         h_list = list(args)
         cache_mode = kwargs.get("cache_mode", "???")
-        if cache_mode not in special_commands.CACHE_MODES:
+        if cache_mode not in CACHE_MODES:
             # take first cache mode
             cache_mode = special_commands.DEFAULT_CACHE_MODE
         self.log(
@@ -1342,7 +1343,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         # dictionary with all parent / slave relations
         ps_dict = {}
-        for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
+        for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):  # @UndefinedVariable
             ps_dict[ps_config.name] = ps_config.parent_config.name
         _bc.set_host_list(device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).values_list("pk", flat=True))
         meta_devices = {
@@ -1378,7 +1379,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ct_group = ct_groups.prefetch_related("device_groups", "device_groups__device")
         for ct_group in ct_groups:
             if ct_group.pk in cur_gc["contactgroup"]:
-                cg_name = cur_gc["contactgroup"][ct_group.pk].name
+                pass  # cg_name = cur_gc["contactgroup"][ct_group.pk].name
             else:
                 self.log(
                     "contagroup_idx {} for device {} not found, using first from contactgroups ({})".format(
@@ -1388,7 +1389,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
-                cg_name = first_contactgroup_name
+                # cg_name = first_contactgroup_name
             for g_devg in ct_group.device_groups.all().prefetch_related("device_group", "device_group__domain_tree_node"):
                 for g_dev in g_devg.device_group.all():
                     contact_group_dict.setdefault(g_dev.full_name, []).append(ct_group.name)
