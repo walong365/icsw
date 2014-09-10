@@ -24,7 +24,9 @@
 # from django.db.models import Q, signals, get_model
 # from django.dispatch import receiver
 from initat.cluster.backbone.models import rms_project, rms_department, rms_queue, \
-    rms_pe, rms_job, rms_job_run, rms_pe_info
+    rms_pe, rms_job, rms_job_run, rms_pe_info, ext_license, ext_license_check, \
+    ext_license_client, ext_license_state, ext_license_usage, ext_license_user, \
+    ext_license_version, ext_license_version_state, ext_license_vendor
 from rest_framework import serializers
 
 __all__ = [
@@ -35,6 +37,15 @@ __all__ = [
     "rms_department_serializer",
     "rms_queue_serializer",
     "rms_pe_serializer",
+    "ext_license_serializer",
+    "ext_license_version_serializer",
+    "ext_license_vendor_serializer",
+    "ext_license_user_serializer",
+    "ext_license_client_serializer",
+    "ext_license_check_serializer",
+    "ext_license_state_serializer",
+    "ext_license_version_state_serializer",
+    "ext_license_usage_serializer",
 ]
 
 
@@ -99,3 +110,48 @@ class rms_job_run_serializer(serializers.ModelSerializer):
             "granted_pe", "slots", "priority", "account", "failed", "exit_status", "rms_queue",
             "queue_time",
         )
+
+
+class ext_license_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license
+
+
+class ext_license_version_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_version
+
+
+class ext_license_vendor_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_vendor
+
+
+class ext_license_user_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_user
+
+
+class ext_license_client_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_client
+
+
+class ext_license_check_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_check
+
+
+class ext_license_state_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_state
+
+
+class ext_license_version_state_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_version_state
+
+
+class ext_license_usage_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ext_license_usage
