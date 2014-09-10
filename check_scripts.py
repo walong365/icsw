@@ -27,9 +27,6 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import django
-django.setup()
-
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import argparse
@@ -42,9 +39,15 @@ import stat
 import subprocess
 import time
 try:
-    import config_tools
+    import django
+    django.setup()
 except:
     config_tools = None
+else:
+    try:
+        import config_tools
+    except:
+        config_tools = None
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
@@ -172,13 +175,13 @@ INSTANCE_XML = """
 
 
 def get_instance_xml():
-    instance_xml = etree.fromstring(INSTANCE_XML)
+    instance_xml = etree.fromstring(INSTANCE_XML)  # @UndefinedVariable
     # check for additional instances
     if os.path.isdir(EXTRA_SERVER_DIR):
         for entry in os.listdir(EXTRA_SERVER_DIR):
             if entry.endswith(".xml"):
                 try:
-                    add_inst_list = etree.fromstring(open(os.path.join(EXTRA_SERVER_DIR, entry), "r").read())
+                    add_inst_list = etree.fromstring(open(os.path.join(EXTRA_SERVER_DIR, entry), "r").read())  # @UndefinedVariable
                 except:
                     print(
                         "cannot read entry '{}' from {}: {}".format(
