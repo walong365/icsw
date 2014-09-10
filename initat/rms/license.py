@@ -98,8 +98,8 @@ class license_process(threading_tools.process_obj):
 
     def _init_network(self):
         _v_conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)
-        vector_socket.setsockopt(zmq.LINGER, 0)
+        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
         vector_socket.connect(_v_conn_str)
         self.vector_socket = vector_socket
 

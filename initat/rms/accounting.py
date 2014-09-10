@@ -31,7 +31,7 @@ import commands
 import datetime
 import logging_tools
 import os
-import pprint
+import pprint  # @UnusedImport
 import server_command
 import threading_tools
 import time
@@ -381,8 +381,8 @@ class accounting_process(threading_tools.process_obj):
             )
         if not cur_job.user_id and "owner" in kwargs:
             try:
-                _user = user.objects.get(Q(login=kwargs["owner"]))
-            except user.DoesNotExist:
+                _user = user.objects.get(Q(login=kwargs["owner"]))  # @UndefinedVariable
+            except user.DoesNotExist:  # @UndefinedVariable
                 self.log(
                     "no user with name {} found, check aliases ?".format(kwargs["owner"]),
                     logging_tools.LOG_LEVEL_ERROR,
