@@ -531,8 +531,13 @@ def parse_sge_used(sge_dict):
                 _slots = 1
             _req_list = []
             for _req in _job.findall("hard_request"):
-                _val = int(float(_req.text) * _slots + 0.5)
-                _used.setdefault(_req.attrib["name"], []).append(_val)
+                try:
+                    _val = int(float(_req.text) * _slots + 0.5)
+                except:
+                    # TODO: log exception
+                    pass
+                else:
+                    _used.setdefault(_req.attrib["name"], []).append(_val)
     _used = {_key: sum(_value) for _key, _value in _used.iteritems()}
     return _used
 
@@ -553,7 +558,6 @@ def update_usage(lic_dict, srv_xml):
                 # act_lic.sge_used += abs(act_lic.sge_used_qstat - act_lic.sge_used_match)
                 act_lic.external_used += act_lic.used - _num_sge
             else:
-                print "*", act_lic.used
                 act_lic.external_used += act_lic.used
 
 
