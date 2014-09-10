@@ -36,6 +36,7 @@ __all__ = [
     "rms_department",
     "rms_queue",
     "rms_pe",
+    "ext_license_site",
     "ext_license",
     "ext_license_version",
     "ext_license_vendor",
@@ -251,6 +252,7 @@ class rms_pe_info(models.Model):
 
 
 # license models
+# TODO: track cluster / external license usage
 class ext_license_base(models.Model):
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -260,8 +262,13 @@ class ext_license_base(models.Model):
         app_label = "backbone"
 
 
+class ext_license_site(ext_license_base):
+    name = models.CharField(max_length=128, unique=True)
+
+
 class ext_license(ext_license_base):
-    name = models.CharField(max_length="128", unique=True)
+    name = models.CharField(max_length=128, unique=True)
+    ext_license_site = models.ForeignKey("backbone.ext_license_site")
 
 
 class ext_license_version(ext_license_base):
