@@ -25,7 +25,6 @@
 from django.utils.crypto import get_random_string
 import argparse
 import commands
-import datetime
 import logging_tools
 import os
 import process_tools
@@ -50,6 +49,9 @@ AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 SYNC_APPS = ["liebherr"]
 
 NEEDED_DIRS = ["/var/log/cluster"]
+
+BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
+PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models16")
 
 try:
     import psycopg2  # @UnresolvedImport
@@ -365,49 +367,27 @@ def get_pw(size=10):
     return "".join([string.ascii_letters[random.randint(0, len(string.ascii_letters) - 1)] for _idx in xrange(size)])
 
 
-def remove_south(opts):
-    s_paths = [
-        "/opt/python-init/lib/python/site-packages/initat/cluster",
-        "/opt/python-init/lib/python/site-packages",
-    ]
-    _south_found = False
-    _south_removed = False
-    _south_dirs = []
-    for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler", "django_extensions"] + SYNC_APPS:
-        found = [_entry for _entry in [os.path.join(_path, _app.replace(".", "/")) for _path in s_paths] if os.path.isdir(_entry)]
-        if len(found):
-            found = found[0]
-            _mig_dir = os.path.join(found, "migrations")
-            if os.path.isdir(_mig_dir):
-                _entries = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py") and _entry[0].isdigit()]
-                if _entries:
-                    # migration dir is not empty
-                    _south = [file(os.path.join(_mig_dir, _entry), "r").read(1000).count("south") for _entry in _entries]
-                    if any(_south):
-                        print("South migrations found in {} for app {}".format(_mig_dir, _app))
-                        _south_found = True
-                        _south_dirs.append(_mig_dir)
-            else:
-                print("no migration dir found for app {} beneath {}".format(_app, found))
-        else:
-            print("no path found for app {}".format(_app))
-    if _south_found:
-        _backup_dir = ".south_{}".format(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
-        # final south migration
-        # remove south files
-        for _mig_dir in _south_dirs:
-            _new_dir = os.path.join(_mig_dir, _backup_dir)
-            os.mkdir(_new_dir)
-            print("  creating backup dir {}".format(_new_dir))
-            for _entry in os.listdir(_mig_dir):
-                if _entry[0].isdigit() and _entry.count("py"):
-                    _full_path = os.path.join(_mig_dir, _entry)
-                    # backup file
-                    file(os.path.join(_new_dir, _entry), "w").write(file(_full_path, "r").read())
-                    print("    removing file {}".format(_full_path))
-                    _south_removed = True
-                    os.unlink(_full_path)
-    return _south_removed
+def check_for_pre17(opts):
+    # BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
+    if os.path.isfile(PRE_MODELES_DIR):
+        print("pre-1.6 models dir {} found".format(PRE_MODELES_DIR))
+        # first step: move 1.7 models / serializers away
+        for _dir in ["models", "migrations"]:
+            os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
+        # second step: move pre-models to current models
+        os.rename(PRE_MODELES_DIR, os.path.join(BACKBONE_DIR, "models"))
+        # third step: delete south models
+        _mig_dir = os.path.join(BACKBONE_DIR, "migrations")
+        for _entry in os.listdir(_mig_dir):
+            if _entry[0].isdigit() and _entry.count("py"):
+                _full_path = os.path.join(_mig_dir, _entry)
+                print("    removing file {}".format(_full_path))
+                os.unlink(_full_path)
+        # fourth step: migrate backbone
+        migrate_app("backbone")
+        # last step: move 1.7 models back in place
+        for _dir in ["models", "migrations"]:
+            os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
 
 
 def migrate_app(_app, **kwargs):
@@ -423,7 +403,6 @@ def create_db(opts):
     if os.getuid():
         print("need to be root to create database")
         sys.exit(0)
-    remove_south(opts)
     if opts.clear_migrations:
         clear_migrations()
     check_migrations()
@@ -447,9 +426,7 @@ def create_db(opts):
 
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
-        if remove_south(opts):
-            # some south migrations found -> migrate complete app
-            migrate_app("")
+        check_for_pre17(opts)
         print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
             _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
