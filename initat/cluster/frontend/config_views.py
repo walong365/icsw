@@ -30,6 +30,7 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone import models
+from initat.cluster.backbone import serializers
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
     get_related_models, mon_check_command, category, config_str, \
     config_script, config_bool, config_blob, config_int, config_catalog
@@ -583,7 +584,7 @@ class handle_cached_config(View):
                             if not entry.get("description", None):
                                 # fix simple structure errors
                                 entry["description"] = "dummy description"
-                            _sub_ent = getattr(models, "{}_nat_serializer".format(key[:-4]))(data=entry)
+                            _sub_ent = getattr(serializers, "{}_nat_serializer".format(key[:-4]))(data=entry)
                             if _sub_ent.is_valid():
                                 try:
                                     _sub_ent.object.save()
