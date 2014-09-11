@@ -75,15 +75,20 @@ class server_control(cs_base_class.server_com):
             cur_inst.srv_com.set_result(
                 "instance {} not found".format(instance),
                 server_command.SRV_REPLY_STATE_ERROR,
-                )
+            )
         else:
             if "init_script_name" in inst_xml.attrib:
-                _at_cmd = "/etc/init.d/{} {}".format(inst_xml.get("init_script_name"), cmd)
-                cur_inst.log("at command is '{}'".format(_at_cmd))
-                process_tools.submit_at_command(_at_cmd)
-                cur_inst.srv_com.set_result(
-                    "sent {} to instance {}".format(cmd, instance)
-                )
+                cur_com = "/etc/init.d/{} {}".format(inst_xml.get("init_script_name"), cmd)
+                ret_stat, _stdout, _stderr = process_tools.call_command(cur_com, cur_inst.log)
+                if ret_stat:
+                    cur_inst.srv_com.set_result(
+                        "error calling '{}': {}".format(cur_com, "{} {}".format(_stdout, _stderr)),
+                        server_command.SRV_REPLY_STATE_ERROR,
+                    )
+                else:
+                    cur_inst.srv_com.set_result(
+                        "ok called '{}': {}".format(cur_com, "{} {}".format(_stdout, _stderr).strip()),
+                    )
             else:
                 cur_inst.srv_com.set_result(
                     "instance {} has not init script".format(instance),
