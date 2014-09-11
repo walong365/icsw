@@ -22,8 +22,10 @@
 from django.db import connection
 from initat.rrd_grapher.config import global_config
 import logging_tools
+import net_tools
 import os
-import pprint
+import server_command
+import pprint  # @UnusedImport
 import process_tools
 import rrd_tools
 import stat
@@ -69,6 +71,21 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
                 self.log(" {:2d} :: {} -> {}".format(_idx, _key, _dict[_key]["name"]))
         return self.tc_dict[step]
 
+    def _stop_rrd_cached(self):
+        self.__rrd_cached_running = False
+        self._call_command("/etc/init.d/rrdcached", "stop")
+
+    def _start_rrd_cached(self):
+        self._call_command("/etc/init.d/rrdcached", "start")
+
+    def _call_command(self, service, mode):
+        _conn = net_tools.zmq_connection(
+            "rrd_grapher_resize",
+            timeout=10,
+        )
+        _result = _conn.add_connection("tcp://localhost:8004", server_command.srv_command(command="server_control", control=mode, instance=service), multi=False)
+        self.log(_result.get_log_tuple())
+
     def check_size(self):
         # init target coverage dict
         self.tc_dict = {}
@@ -79,6 +96,7 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         elif not global_config["MODIFY_RRD_COVERAGE"]:
             self.log("rrd_coverage modification is disabled", logging_tools.LOG_LEVEL_WARN)
         else:
+            self.__rrd_cached_running = True
             s_time = time.time()
             _found, _changed = (0, 0)
             self.log("checking sizes of RRD-graphs in {}".format(self.rrd_root))
@@ -100,6 +118,8 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
                 logging_tools.get_diff_time_str(e_time - s_time),
                 logging_tools.get_diff_time_str((e_time - s_time) / max(1, _found)),
             ))
+            if not self.__rrd_cached_running:
+                self._start_rrd_cached()
 
     def find_best_tc(self, rra_name, tc_dict):
         _tw = rrd_tools.RRA.total_width(rra_name)
@@ -154,10 +174,12 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         if _rrd_short_names != _target_short_names:
             _rrd.build_rras()
             self.log("RRAs for {} differ from target".format(f_name))
-            try:
-                rrdtool.flushcached("--daemon", self.rrd_cache_socket, f_name)
-            except:
-                self.log("error flushing {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            if self.__rrd_cached_running:
+                self._stop_rrd_cached()
+            # try:
+            #    rrdtool.flushcached("--daemon", self.rrd_cache_socket, f_name)
+            # except:
+            #    self.log("error flushing {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             # pprint.pprint(info)
             _prev_names = set([_entry for _entry in _rrd["rra_names"]])
             _prev_popcount = {_key: _rrd["rra_dict"][_key].popcount[1] for _key in _prev_names}
