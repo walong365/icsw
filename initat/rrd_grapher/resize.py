@@ -73,10 +73,10 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
 
     def _stop_rrd_cached(self):
         self.__rrd_cached_running = False
-        self._call_command("/etc/init.d/rrdcached", "stop")
+        self._call_command("rrdcached", "stop")
 
     def _start_rrd_cached(self):
-        self._call_command("/etc/init.d/rrdcached", "start")
+        self._call_command("rrdcached", "start")
 
     def _call_command(self, service, mode):
         _conn = net_tools.zmq_connection(
@@ -84,7 +84,7 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
             timeout=10,
         )
         _result = _conn.add_connection("tcp://localhost:8004", server_command.srv_command(command="server_control", control=mode, instance=service), multi=False)
-        self.log(_result.get_log_tuple())
+        self.log(*_result.get_log_tuple())
 
     def check_size(self):
         # init target coverage dict
