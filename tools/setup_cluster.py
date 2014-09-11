@@ -51,7 +51,7 @@ SYNC_APPS = ["liebherr"]
 NEEDED_DIRS = ["/var/log/cluster"]
 
 BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models16")
+PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models17")
 
 try:
     import psycopg2  # @UnresolvedImport
@@ -369,24 +369,46 @@ def get_pw(size=10):
 
 def check_for_pre17(opts):
     # BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-    if os.path.isfile(PRE_MODELES_DIR):
-        print("pre-1.6 models dir {} found".format(PRE_MODELES_DIR))
+    if os.path.isdir(PRE_MODELES_DIR):
+        print("pre-1.7 models dir {} found".format(PRE_MODELES_DIR))
         # first step: move 1.7 models / serializers away
-        for _dir in ["models", "migrations"]:
+        _move_dirs = ["models", "serializers"]
+        for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, _dir), os.path.join(BACKBONE_DIR, ".{}".format(_dir)))
-        # second step: move pre-models to current models
+        # next step: move pre-models to current models
         os.rename(PRE_MODELES_DIR, os.path.join(BACKBONE_DIR, "models"))
-        # third step: delete south models
+        # next step: remove all serializer relations from model files
+        for _entry in os.listdir(os.path.join(BACKBONE_DIR, "models")):
+            if _entry.endswith(".py"):
+                _path = os.path.join(BACKBONE_DIR, "models", _entry)
+                new_lines = []
+                _add = True
+                for _line in file(_path, "r").readlines():
+                    _line = _line.rstrip()
+                    empty_line = True if not _line.strip() else False
+                    _ser_line = _line.strip().startswith("class") and (_line.count("serializers.ModelSerializer") or _line.strip().endswith("serializer):"))
+                    if not empty_line:
+                        if _ser_line:
+                            _add = False
+                            new_lines.append("{} = True".format(_line.split()[1].split("(")[0]))
+                        elif _line[0] != " ":
+                            _add = True
+                    if _add:
+                        new_lines.append(_line)
+                file(_path, "w").write("\n".join(new_lines))
+        # next step: delete south models
         _mig_dir = os.path.join(BACKBONE_DIR, "migrations")
         for _entry in os.listdir(_mig_dir):
             if _entry[0].isdigit() and _entry.count("py"):
                 _full_path = os.path.join(_mig_dir, _entry)
                 print("    removing file {}".format(_full_path))
                 os.unlink(_full_path)
-        # fourth step: migrate backbone
-        migrate_app("backbone")
-        # last step: move 1.7 models back in place
-        for _dir in ["models", "migrations"]:
+        # next step: migrate backbone
+        migrate_app("backbone", migrate_args=["--fake"])
+        # next step: move pre-1.7 models dir away
+        os.rename(os.path.join(BACKBONE_DIR, "models"), os.path.join(BACKBONE_DIR, ".models_pre17"))
+        # next step: move 1.7 models back in place
+        for _dir in _move_dirs:
             os.rename(os.path.join(BACKBONE_DIR, ".{}".format(_dir)), os.path.join(BACKBONE_DIR, _dir))
 
 
