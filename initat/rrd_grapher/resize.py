@@ -96,6 +96,8 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
         elif not global_config["MODIFY_RRD_COVERAGE"]:
             self.log("rrd_coverage modification is disabled", logging_tools.LOG_LEVEL_WARN)
         else:
+            # improvement: create new files in a separate directory, move them (in batch mode, every
+            # 20 RRDs or so) back to the main directory while rrdcached is stopped
             self.__rrd_cached_running = True
             s_time = time.time()
             _found, _changed = (0, 0)
