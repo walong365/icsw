@@ -134,12 +134,12 @@ class main_process(threading_tools.process_pool):
                 logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
         self.network_socket = client
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         if hm_classes and global_config["TRACK_CSW_MEMORY"]:
-            vector_socket = self.zmq_context.socket(zmq.PUSH)
-            vector_socket.setsockopt(zmq.LINGER, 0)
+            vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+            vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
             vector_socket.connect(conn_str)
         else:
             vector_socket = None
@@ -168,10 +168,10 @@ class main_process(threading_tools.process_pool):
 
     def _recv_command(self, zmq_sock):
         src_id = zmq_sock.recv()
-        more = zmq_sock.getsockopt(zmq.RCVMORE)
+        more = zmq_sock.getsockopt(zmq.RCVMORE)  # @UndefinedVariable
         if more:
             data = zmq_sock.recv()
-            more = zmq_sock.getsockopt(zmq.RCVMORE)
+            more = zmq_sock.getsockopt(zmq.RCVMORE)  # @UndefinedVariable
             srv_com = server_command.srv_command(source=data)
             self.log("got command '{}' from '{}'".format(
                 srv_com["command"].text,
@@ -192,8 +192,8 @@ class main_process(threading_tools.process_pool):
                     server_command.SRV_REPLY_STATE_ERROR
                 )
             try:
-                zmq_sock.send_unicode(src_id, zmq.SNDMORE | zmq.NOBLOCK)
-                zmq_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+                zmq_sock.send_unicode(src_id, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
+                zmq_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
             except:
                 self.log(
                     "error sending reply to {}: {}".format(
@@ -261,24 +261,7 @@ class main_process(threading_tools.process_pool):
 
     def _call_command(self, act_command, srv_com=None, merge_reply=False):
         # call command directly
-        self.log("calling command '{}'".format(act_command))
-        s_time = time.time()
-        _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=False, cwd="/")
-        ret_code = _sub.wait()
-        _stdout, _stderr = _sub.communicate()
-        e_time = time.time()
-        self.log("execution took {}, return code was {:d}".format(
-            logging_tools.get_diff_time_str(e_time - s_time),
-            ret_code,
-            ))
-        for _val, _name, _lev in [(_stdout, "stdout", logging_tools.LOG_LEVEL_OK), (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)]:
-            if _val.strip():
-                _lines = _val.split("\n")
-                self.log("{} has {} ({})".format(_name, logging_tools.get_plural("byte", len(_val)), logging_tools.get_plural("line", len(_lines))))
-                for _line_num, _line in enumerate(_lines):
-                    self.log(" {:3d} : {}".format(_line_num + 1, _line), _lev)
-            else:
-                self.log("{} is empty".format(_name))
+        ret_code, _stdout, _stderr = process_tools.call_command(act_command, self.log)
         if srv_com is not None:
             _r_str, _r_state = (
                 "returncode is {:d} for '{}'".format(ret_code, act_command),
@@ -291,7 +274,7 @@ class main_process(threading_tools.process_pool):
             srv_com.set_result(
                 _r_str,
                 _r_state,
-                )
+            )
 
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
