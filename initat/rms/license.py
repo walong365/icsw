@@ -31,7 +31,6 @@ import os
 import process_tools
 import server_command
 import sge_license_tools
-import license_tool
 import threading_tools
 import time
 import zmq
@@ -74,6 +73,7 @@ class license_process(threading_tools.process_obj):
         self._init_sge_info()
         self._init_network()
         # job stop/start info
+        self.__elo_obj = None
         self.register_timer(self._update, 30, instant=True)
 
     def _init_sge_info(self):
@@ -111,35 +111,31 @@ class license_process(threading_tools.process_obj):
             ignore_missing=True,
         )
         if _act_site_file.lines:
-            self._update_lic(_act_site_file.lines[0])
+            if not self.__elo_obj:
+                self.__elo_obj = sge_license_tools.ExternalLicenses(
+                    sge_license_tools.BASE_DIR,
+                    _act_site_file.lines[0],
+                    self.log,
+                    verbose=True,
+                )
+            self._update_lic(self.__elo_obj)
         else:
             self.log("no actual site defined, no license tracking". logging_tools.LOG_LEVEL_ERROR)
 
-    def _update_lic(self, act_site):
-        actual_licenses = sge_license_tools.parse_license_lines(
-            sge_license_tools.text_file(
-                sge_license_tools.get_site_license_file_name(self._license_base, act_site),
-                ignore_missing=True,
-                strip_empty=False,
-                strip_hash=False,
-            ).lines,
-            act_site
-        )
-        act_conf = sge_license_tools.text_file(
-            sge_license_tools.get_site_config_file_name(self._license_base, act_site),
-            content=sge_license_tools.DEFAULT_CONFIG,
-            create=True,
-        ).dict
-        self._parse_actual_license_usage(actual_licenses, act_conf)
-        sge_license_tools.set_sge_used(actual_licenses, sge_license_tools.parse_sge_used(self._sge_dict))
-        for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
-            if log_level > logging_tools.LOG_LEVEL_WARN:
-                self.log(log_line, log_level)
-        sge_license_tools.calculate_usage(actual_licenses)
-        configured_lics = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
-        self.write_ext_data(actual_licenses)
+    def _update_lic(self, elo_obj):
+        elo_obj.read()
+        srv_result = self._parse_actual_license_usage(elo_obj.licenses, elo_obj.config)
+        elo_obj.feed_xml_result(srv_result)
+        # sge_license_tools.update_usage(actual_licenses, srv_result)
+        # sge_license_tools.set_sge_used(actual_licenses, sge_license_tools.parse_sge_used(self._sge_dict))
+        # for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
+        #    if log_level > logging_tools.LOG_LEVEL_WARN:
+        #        self.log(log_line, log_level)
+        # sge_license_tools.calculate_usage(actual_licenses)
+        configured_lics = [_key for _key, _value in elo_obj.licenses.iteritems() if _value.is_used]
+        self.write_ext_data(elo_obj.licenses)
         if self._modify_sge:
-            self._set_sge_global_limits(actual_licenses, configured_lics)
+            self._set_sge_global_limits(elo_obj.licenses, configured_lics)
 
     def _set_sge_global_limits(self, actual_licenses, configured_lics):
         _new_dict = {}
@@ -175,38 +171,37 @@ class license_process(threading_tools.process_obj):
             )
 
     def _parse_actual_license_usage(self, actual_licenses, act_conf):
-        if not os.path.isfile(act_conf["LMUTIL_PATH"]):
-            self.log("Error: LMUTIL_PATH '{}' is not a file".format(act_conf["LMUTIL_PATH"]))
-        else:
-            # build different license-server calls
-            all_server_addrs = set(
-                [
-                    "{:d}@{}".format(act_lic.get_port(), act_lic.get_host()) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
-                ]
-            )
-            # print "asa:", all_server_addrs
-            q_s_time = time.time()
-            for server_addr in all_server_addrs:
-                if server_addr not in self.__lc_dict:
-                    self.log("init new license_check object for server {}".format(server_addr))
-                    self.__lc_dict[server_addr] = license_tool.license_check(
-                        lmutil_path=os.path.join(
-                            act_conf["LMUTIL_PATH"]
-                        ),
-                        port=int(server_addr.split("@")[0]),
-                        server=server_addr.split("@")[1],
-                        log_com=self.log
-                    )
-                srv_result = self.__lc_dict[server_addr].check(license_names=actual_licenses)
-            q_e_time = time.time()
-            self.log(
-                "{} to query, took {}: {}".format(
-                    logging_tools.get_plural("license server", len(all_server_addrs)),
-                    logging_tools.get_diff_time_str(q_e_time - q_s_time),
-                    ", ".join(all_server_addrs)
+        # build different license-server calls
+        # see loadsensor.py
+        all_server_addrs = set(
+            [
+                "{:d}@{}".format(act_lic.get_port(), act_lic.get_host()) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
+            ]
+        )
+        # print "asa:", all_server_addrs
+        q_s_time = time.time()
+        for server_addr in all_server_addrs:
+            if server_addr not in self.__lc_dict:
+                self.log("init new license_check object for server {}".format(server_addr))
+                self.__lc_dict[server_addr] = sge_license_tools.license_check(
+                    lmutil_path=os.path.join(
+                        act_conf["LMUTIL_PATH"]
+                    ),
+                    port=int(server_addr.split("@")[0]),
+                    server=server_addr.split("@")[1],
+                    log_com=self.log
                 )
+            srv_result = self.__lc_dict[server_addr].check(license_names=actual_licenses)
+            # FIXME, srv_result should be stored in a list and merged
+        q_e_time = time.time()
+        self.log(
+            "{} to query, took {}: {}".format(
+                logging_tools.get_plural("license server", len(all_server_addrs)),
+                logging_tools.get_diff_time_str(q_e_time - q_s_time),
+                ", ".join(all_server_addrs)
             )
-            sge_license_tools.update_usage(actual_licenses, srv_result)
+        )
+        return srv_result
 
     def write_ext_data(self, actual_licenses):
         drop_com = server_command.srv_command(command="set_vector")
