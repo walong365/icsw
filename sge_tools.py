@@ -326,22 +326,17 @@ class sge_info(object):
                 # dummy pwd, FIXME
                 cur_pwd = "/tmp/"
             ext_xml = E.job_ext_info(E.file_info())
-            if job_xml.find(".//JB_stdout_path_list") is not None:
-                ext_xml.append(
-                    E.stdout(
-                        job_xml.findtext(".//JB_stdout_path_list/path_list/PN_path").replace("$HOME", home_dir).replace("$JOB_ID", job_id)
-                    )
-                )
-            else:
-                ext_xml.append(E.stdout(os.path.join(cur_pwd, "{}.o{}".format(job_name, job_id))))
-            if job_xml.find(".//JB_stderr_path_list") is not None:
-                ext_xml.append(
-                    E.stderr(
-                        job_xml.findtext(".//JB_stderr_path_list/path_list/PN_path").replace("$HOME", home_dir).replace("$JOB_ID", job_id)
-                    )
-                )
-            else:
-                ext_xml.append(E.stderr(os.path.join(cur_pwd, "{}.e{}".format(job_name, job_id))))
+            for _std_type, _short in [("stdout", "o"), ("stderr", "e")]:
+                if job_xml.find(".//JB_{}_path_list".format(_std_type)) is not None:
+                    _pn_path = job_xml.findtext(".//JB_{}_path_list/path_list/PN_path".format(_std_type))
+                    if _pn_path is not None:
+                        ext_xml.append(
+                            getattr(E, _std_type)(
+                                _pn_path.replace("$HOME", home_dir).replace("$JOB_ID", job_id)
+                            )
+                        )
+                else:
+                    ext_xml.append(getattr(E, _std_type)(os.path.join(cur_pwd, "{}.{}{}".format(job_name, _short, job_id))))
             self.set_cache(job_key, etree.tostring(ext_xml))  # @UndefinedVariable
         else:
             ext_xml = etree.fromstring(_cache)  # @UndefinedVariable
