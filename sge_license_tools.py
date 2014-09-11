@@ -29,7 +29,9 @@ import logging_tools
 import os
 import process_tools
 import re
+import subprocess
 import sys
+import time
 
 SITE_CONF_NAME = "lic_SITES.conf"
 ACT_SITE_NAME = "actual_SITE"
@@ -44,7 +46,15 @@ DEFAULT_CONFIG = {
 EXPIRY_DT = "%d-%b-%Y"
 
 
-def get_sge_environment():
+# dummy logger
+def _log(log_com, what, log_level=logging_tools.LOG_LEVEL_OK):
+    if log_com:
+        log_com(what, log_level)
+    else:
+        print(what)
+
+
+def get_sge_environment(log_com=None):
     _sge_dict = {}
     for _key in ["sge_root", "sge_cell"]:
         if _key.upper() not in os.environ:
@@ -52,20 +62,22 @@ def get_sge_environment():
             if os.path.isfile(_file):
                 _sge_dict[_key.upper()] = file(_file, "r").read().strip()
             else:
-                print("Error, no {} environment variable set or defined in {}".format(_key.upper(), _file))
+                _log(log_com, "Error, no {} environment variable set or defined in {}".format(_key.upper(), _file))
         else:
             _sge_dict[_key.upper()] = os.environ[_key.upper()]
     arch_util = "{}/util/arch".format(_sge_dict["SGE_ROOT"])
     if not os.path.isfile(arch_util):
-        print("No arch-utility found in {}/util".format(_sge_dict["SGE_ROOT"]))
-        sys.exit(1)
-    _sge_stat, sge_arch = call_command(arch_util)
+        _log(log_com, "No arch-utility found in {}/util".format(_sge_dict["SGE_ROOT"]))
+        if log_com is None:
+            sys.exit(1)
+    _sge_stat, sge_arch = call_command(arch_util, log_com=log_com)
     sge_arch = sge_arch.strip()
     for _bn in ["qconf", "qstat"]:
         _bin = "{}/bin/{}/{}".format(_sge_dict["SGE_ROOT"], sge_arch, _bn)
         if not os.path.isfile(_bin):
-            print("No {} command found under {}".format(_bn, _sge_dict["SGE_ROOT"]))
-            sys.exit(1)
+            _log(log_com, "No {} command found under {}".format(_bn, _sge_dict["SGE_ROOT"]))
+            if log_com is None:
+                sys.exit(1)
         _sge_dict["{}_BIN".format(_bn.upper())] = _bin
     _sge_dict["SGE_ARCH"] = sge_arch
     return _sge_dict
@@ -517,9 +529,9 @@ def set_sge_used(lic_dict, used_dict):
             #    _lic.external_used -= abs(_lic.sge_used_qstat - _lic.sge_used_match)
 
 
-def parse_sge_used(sge_dict):
+def parse_sge_used(sge_dict, log_com=None):
     act_com = "{} -ne -r -xml".format(sge_dict["QSTAT_BIN"])
-    c_stat, out = call_command(act_com)
+    c_stat, out = call_command(act_com, log_com=log_com)
     _used = {}
     if not c_stat:
         _tree = etree.fromstring(out)  # @UndefinedVariable
@@ -573,26 +585,273 @@ def calculate_usage(actual_licenses):
 
 
 def call_command(command, exit_on_fail=0, show_output=False, log_com=None):
-    def _log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        if log_com:
-            log_com(what, log_level)
-        else:
-            print(what)
     _stat, _out = process_tools.getstatusoutput(command)
     if _stat:
-        _log("Something went wrong while calling '{}' (code {:d}):".format(command, _stat), logging_tools.LOG_LEVEL_ERROR)
+        _log(log_com, "Something went wrong while calling '{}' (code {:d}):".format(command, _stat), logging_tools.LOG_LEVEL_ERROR)
         for _line in _out.split("\n"):
-            _log(" * {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+            _log(log_com, " * {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
         if exit_on_fail:
             sys.exit(exit_on_fail)
     else:
         if show_output:
             _log(
+                log_com,
                 "Output of '{}': {}".format(
                     command,
                     _out and "{}".format(logging_tools.get_plural("line", len(_out.split("\n")))) or "<no output>"
                 )
             )
             for _line in _out.split("\n"):
-                _log(" - {}".format(_line))
+                _log(
+                    log_com,
+                    " - {}".format(_line)
+                )
     return _stat, _out
+
+
+class license_check(object):
+    def __init__(self, **kwargs):
+        self.log_com = kwargs.get("log_com", None)
+        self.verbose = kwargs.get("verbose", True)
+        self.lmutil_path = kwargs.get("lmutil_path", "/opt/cluster/bin/lmutil")
+        if "license_file" in kwargs:
+            _lic_file = kwargs["license_file"]
+            if _lic_file.count("@"):
+                _port, self.server_addr = _lic_file.split("@")
+                self.server_port = int(_port)
+            else:
+                print("unknown license_file '{}'".format(_lic_file))
+                sys.exit(-1)
+        else:
+            self.server_addr = kwargs.get("server", "localhost")
+            if self.server_addr.startswith("/"):
+                self.server_addr = file(self.server_addr, "r").read().strip().split()[0]
+            self.server_port = kwargs.get("port", "1055")
+            if type(self.server_port) not in [int, long]:
+                if self.server_port.startswith("/"):
+                    self.server_port = file(self.server_port, "r").read().strip().split()[0]
+                self.server_port = int(self.server_port)
+        self.log("license server {} (port {:d})".format(self.server_addr, self.server_port))
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if log_level == logging_tools.LOG_LEVEL_OK and not self.verbose:
+            return
+        what = u"[lc] {}".format(what)
+        if self.log_com:
+            self.log_com(what, log_level)
+        else:
+            logging_tools.my_syslog("[{:d}] {}".format(log_level, what))
+
+    def call_external(self, com_line):
+        popen = subprocess.Popen(com_line, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        ret_code = popen.wait()
+        return ret_code, popen.stdout.read()
+
+    def _strip_string(self, in_str):
+        if in_str.endswith(","):
+            return in_str[:-1]
+        else:
+            return in_str
+
+    def check(self, license_names=None):
+        s_time = time.time()
+        self.log("starting check")
+        ret_struct = E.license_info(
+            server_address=self.server_addr,
+            server_port="{:d}".format(self.server_port)
+        )
+        if not os.path.isfile(self.lmutil_path):
+            _error_str = "LMUTIL_PATH '{}' is not a file".format(self.lmutil_path)
+            self.log(_error_str, logging_tools.LOG_LEVEL_ERROR)
+            ret_struct.attrib.update({
+                "state": "{:d}".format(logging_tools.LOG_LEVEL_ERROR),
+                "info": "{}".format(_error_str)}
+            )
+            line_num = 0
+        else:
+
+            ext_code, ext_lines = self.call_external(
+                "{} lmstat -a -c {:d}@{}".format(
+                    self.lmutil_path,
+                    self.server_port,
+                    self.server_addr
+                )
+            )
+            if ext_code:
+                ret_struct.attrib.update({
+                    "state": "{:d}".format(logging_tools.LOG_LEVEL_ERROR),
+                    "info": "{}".format(ext_lines)}
+                )
+                line_num = 0
+            else:
+                ret_struct.attrib.update(
+                    {
+                        "state": "{:d}".format(logging_tools.LOG_LEVEL_OK),
+                        "info": "call successfull"
+                    }
+                )
+                line_num = self._interpret_result(ret_struct, ext_lines, license_names)
+        e_time = time.time()
+        ret_struct.attrib["run_time"] = "{:.3f}".format(e_time - s_time)
+        self.log(
+            "done, {:d} lines in {}".format(
+                line_num,
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
+        return ret_struct
+
+    def _interpret_result(self, ret_struct, ext_lines, license_names):
+        ret_struct.append(E.license_servers())
+        ret_struct.append(E.licenses())
+        found_server = set()
+        cur_lic, cur_srv = (None, None)
+        # populate structure
+        for line_num, line in enumerate(ext_lines.split("\n")):
+            if not line.strip():
+                continue
+            lline = line.lower()
+            lparts = lline.strip().split()
+            # print lline  # , lparts
+            if lline.count("license server status"):
+                server_info = lparts[-1]
+                server_port, server_addr = server_info.split("@")
+                found_server.add(server_addr)
+                cur_srv = E.server(info=server_info, address=server_addr, port=server_port)
+                ret_struct.find("license_servers").append(cur_srv)
+            if cur_srv is not None:
+                if lline.count("license file"):
+                    cur_srv.append(E.license_file(" ".join(lparts[4:])))
+            if lline.strip().startswith("users of"):
+                cur_srv = None
+                cur_lic_version = None
+                lic_stat = lparts[3].strip("(:)")
+                if lic_stat == "error":
+                    pass
+                else:
+                    _lic_name = lparts[2][:-1]
+                    if license_names is None or _lic_name in license_names:
+                        cur_lic = E.license(
+                            name=_lic_name,
+                            issued=lparts[5],
+                            used=lparts[10],
+                            reserved="0",
+                            free="{:d}".format(int(lparts[5]) - int(lparts[10])),
+                            source="server",
+                        )
+                        ret_struct.find("licenses").append(cur_lic)
+            if cur_lic is not None:
+                if "\"{}\"".format(cur_lic.attrib["name"]) == lparts[0]:
+                    cur_lic_version = E.version(
+                        version=self._strip_string(lparts[1]),
+                        # vendor=lparts[-1],
+                        floating="false",
+                    )
+                    if "vendor:" in lparts and "expiry:" in lparts:
+                        _v_idx = lparts.index("vendor:")
+                        _e_idx = lparts.index("expiry:")
+                        _exp = lparts[_e_idx + 1]
+                        if _exp not in ["1-jan-0"]:
+                            cur_lic_version.attrib["expiry"] = datetime.datetime.strptime(_exp, "%d-%b-%Y").strftime(EXPIRY_DT)
+                        cur_lic_version.attrib["vendor"] = self._strip_string(lparts[_v_idx + 1])
+                    else:
+                        cur_lic_version.attrib["vendor"] = self._strip_string(lparts[-1])
+                        cur_lic_version.attrib["expiry"] = ""
+                    cur_lic.append(cur_lic_version)
+                else:
+                    if cur_lic_version is not None:
+                        self._feed_license_version(cur_lic, cur_lic_version, lparts)
+        return line_num
+
+    def _feed_license_version(self, cur_lic, cur_lic_version, lparts):
+        cur_year = datetime.datetime.now().year
+        if lparts[0] == "floating":
+            cur_lic_version.attrib["floating"] = "true"
+        elif lparts[1].count("reservation"):
+            if cur_lic_version.find("reservations") is None:
+                cur_lic_version.append(E.reservations())
+            cur_lic_version.find("reservations").append(E.reservation(
+                num=lparts[0],
+                target=" ".join(lparts[3:])
+            ))
+            cur_lic.attrib["reserved"] = "{:d}".format(int(cur_lic.attrib["reserved"]) + int(lparts[0]))
+        else:
+            if cur_lic_version.find("usages") is None:
+                cur_lic_version.append(E.usages())
+            # add usage
+            if lparts[-1].count("license"):
+                num_lics = int(lparts[-2])
+                lparts.pop(-1)
+                lparts.pop(-1)
+                lparts[-1] = lparts[-1][:-1]
+            else:
+                num_lics = 1
+            start_data = " ".join(lparts[7:])
+            # remove linger info (if present)
+            start_data = (start_data.split("(")[0]).strip()
+            co_datetime = datetime.datetime.strptime(
+                "{:d} {}".format(
+                    cur_year,
+                    start_data.title()
+                ), "%Y %a %m/%d %H:%M"
+            )
+            cur_lic_version.find("usages").append(
+                E.usage(
+                    num="{:d}".format(num_lics),
+                    user=lparts[0],
+                    client_long=lparts[1],
+                    client_short=lparts[2].split(".")[0],
+                    client_version=lparts[3][1:-1],
+                    checkout_time="{:.2f}".format(time.mktime(co_datetime.timetuple())),
+                )
+            )
+
+
+class ExternalLicenses(object):
+    def __init__(self, act_base, act_site, log_com, **kwargs):
+        self.__verbose = kwargs.get("verbose", False)
+        self.__log_com = log_com
+        self.__base = act_base
+        self.__site = act_site
+        self.__lic_file_name = get_site_license_file_name(self.__base, self.__site)
+        self.__conf = text_file(
+            get_site_config_file_name(self.__base, self.__site),
+            content=DEFAULT_CONFIG,
+            create=True,
+        ).dict
+        self.__sge_dict = get_sge_environment(log_com=self.log)
+        if self.__verbose:
+            self.log("init ExternalLicenses object with site '{}' in {}".format(self.__site, self.__base))
+            self.log(get_sge_log_line(self.__sge_dict))
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com(u"[el] {}".format(what), log_level)
+
+    def read(self):
+        self.__license_dict = parse_license_lines(
+            text_file(
+                self.__lic_file_name,
+                ignore_missing=True,
+                strip_empty=False,
+                strip_hash=False,
+            ).lines,
+            self.__site,
+        )
+
+    def feed_xml_result(self, srv_result):
+        # srv_result is an XML snippet
+        update_usage(self.__license_dict, srv_result)
+        set_sge_used(self.__license_dict, parse_sge_used(self.__sge_dict, log_com=self.log))
+        for log_line, log_level in handle_complex_licenses(self.__license_dict):
+            if log_level > logging_tools.LOG_LEVEL_WARN:
+                self.log(log_line, log_level)
+        calculate_usage(self.__license_dict)
+
+    @property
+    def config(self):
+        # return basic path config (LMUTIL_PATH)
+        return self.__conf
+
+    @property
+    def licenses(self):
+        return self.__license_dict

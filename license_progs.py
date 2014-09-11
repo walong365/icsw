@@ -36,7 +36,7 @@ import time
 
 
 # dummy logger
-def _log(level, what):
+def _log(what, level):
     print("[{:2d}] {}".format(level, what))
 
 
@@ -52,31 +52,19 @@ def _create_base_dir(opts):
 
 
 def _lic_show(opts, act_conf):
-    sge_dict = sge_license_tools.get_sge_environment()
-    _cur_lic = license_tool.license_check(
+    elo = sge_license_tools.ExternalLicenses(opts.base, opts.site, log_com=_log)
+    _xml = sge_license_tools.license_check(
         log_com=_log,
         lmutil_path=act_conf["LMUTIL_PATH"],
         license_file=act_conf["LICENSE_FILE"],
         verbose=False,
-    )
-    _xml = _cur_lic.check()
-    current_lics = sge_license_tools.parse_license_lines(
-        sge_license_tools.text_file(
-            sge_license_tools.get_site_license_file_name(opts.base, opts.site),
-            ignore_missing=True,
-            strip_empty=False,
-            strip_hash=False,
-        ).lines,
-        opts.site
-    )
-    sge_license_tools.update_usage(current_lics, _xml)
-    sge_license_tools.set_sge_used(current_lics, sge_license_tools.parse_sge_used(sge_dict))
-    sge_license_tools.handle_complex_licenses(current_lics)
-    sge_license_tools.calculate_usage(current_lics)
+    ).check()
+    elo.read()
+    elo.feed_xml_result(_xml)
     out_list = logging_tools.new_form_list()
     for _t_type in ["simple", "complex"]:
-        for _name in sorted(current_lics.keys()):
-            _lic = current_lics[_name]
+        for _name in sorted(elo.licenses.keys()):
+            _lic = elo.licenses[_name]
             if _lic.license_type == _t_type:
                 out_list.append(_lic.get_info_line())
     print unicode(out_list)

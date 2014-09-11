@@ -23,7 +23,6 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
-import license_tool  # @UnresolvedImport
 import logging_tools
 import os
 import sge_license_tools
@@ -73,39 +72,34 @@ def raw_read(fd):
 
 
 def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict):
-    configured_lics = []
-    if not os.path.isfile(act_conf["LMUTIL_PATH"]):
-        log_template.error("Error: LMUTIL_PATH '{}' is not a file".format(act_conf["LMUTIL_PATH"]))
-    else:
-        # build different license-server calls
-        all_server_addrs = set(
-            [
-                "{:d}@{}".format(act_lic.get_port(), act_lic.get_host()) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
-            ]
+    # build different license-server calls
+    # see license.py in rms-server
+    all_server_addrs = set(
+        [
+            "{:d}@{}".format(act_lic.get_port(), act_lic.get_host()) for act_lic in actual_licenses.values() if act_lic.license_type == "simple"
+        ]
+    )
+    # print "asa:", all_server_addrs
+    q_s_time = time.time()
+    for server_addr in all_server_addrs:
+        if server_addr not in lc_dict:
+            lc_dict[server_addr] = sge_license_tools.license_check(
+                lmutil_path=os.path.join(
+                    act_conf["LMUTIL_PATH"]
+                ),
+                port=int(server_addr.split("@")[0]),
+                server=server_addr.split("@")[1],
+                log_com=log_template.log)
+        srv_result = lc_dict[server_addr].check()
+    q_e_time = time.time()
+    log_template.info(
+        "{} to query, took {}: {}".format(
+            logging_tools.get_plural("license server", len(all_server_addrs)),
+            logging_tools.get_diff_time_str(q_e_time - q_s_time),
+            ", ".join(all_server_addrs)
         )
-        # print "asa:", all_server_addrs
-        q_s_time = time.time()
-        for server_addr in all_server_addrs:
-            if server_addr not in lc_dict:
-                lc_dict[server_addr] = license_tool.license_check(
-                    lmutil_path=os.path.join(
-                        act_conf["LMUTIL_PATH"]
-                    ),
-                    port=int(server_addr.split("@")[0]),
-                    server=server_addr.split("@")[1],
-                    log_com=log_template.log)
-            srv_result = lc_dict[server_addr].check()
-        q_e_time = time.time()
-        log_template.info(
-            "{} to query, took {}: {}".format(
-                logging_tools.get_plural("license server", len(all_server_addrs)),
-                logging_tools.get_diff_time_str(q_e_time - q_s_time),
-                ", ".join(all_server_addrs)
-            )
-        )
-        sge_license_tools.update_usage(actual_licenses, srv_result)
-        configured_lics = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
-    return configured_lics
+    )
+    return srv_result
 
 
 def build_sge_report_lines(log_template, configured_lics, actual_lics, cur_used):
@@ -204,10 +198,13 @@ def main():
                         lic_read_time = file_time
                     if not sge_license_tools.handle_license_policy(base_dir):
                         cur_used = {_key: _value.used for _key, _value in actual_licenses.iteritems()}
-                        configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
+                        srv_result = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
+                        sge_license_tools.update_usage(actual_licenses, srv_result)
                         # [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
                         for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
                             log_template.log(log_line, log_level)
+                        sge_license_tools.calculate_usage(actual_licenses)
+                        configured_licenses = [_key for _key, _value in actual_licenses.iteritems() if _value.is_used]
                         sge_lines, rep_dict = build_sge_report_lines(log_template, configured_licenses, actual_licenses, cur_used)
                     else:
                         log_template.log("licenses are controlled via rms-server, reporting nothing to SGE", logging_tools.LOG_LEVEL_WARN)
