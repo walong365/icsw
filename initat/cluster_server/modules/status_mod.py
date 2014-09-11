@@ -100,16 +100,17 @@ class modify_service(cs_base_class.server_com):
         full_service_name = "/etc/init.d/{}".format(self.option_dict["service"])
         if self.option_dict["mode"] in ["start", "stop", "restart"]:
             if os.path.isfile(full_service_name):
-                at_com = "{} {}".format(full_service_name, self.option_dict["mode"])
-                cstat, _c_logs = process_tools.submit_at_command(at_com, self.option_dict.get("timediff", 0))
-                if cstat:
+                cur_com = "{} {}".format(full_service_name, self.option_dict["mode"])
+                ret_stat, _stdout, _stderr = process_tools.call_command(cur_com, cur_inst.log)
+                # cstat, _c_logs = process_tools.submit_at_command(at_com, self.option_dict.get("timediff", 0))
+                if ret_stat:
                     cur_inst.srv_com.set_result(
-                        "error unable to submit '{}' to at-daemon".format(at_com),
+                        "error calling '{}': {}".format(cur_com, "{} {}".format(_stdout, _stderr).strip()),
                         server_command.SRV_REPLY_STATE_ERROR
                     )
                 else:
                     cur_inst.srv_com.set_result(
-                        "ok submitted {} to at-daemon".format(at_com),
+                        "ok called '{}': {}".format(cur_com, "{} {}".format(_stdout, _stderr).strip()),
                     )
             else:
                 cur_inst.srv_com.set_result(
