@@ -31,7 +31,7 @@ import platform
 import psutil
 import random
 import re
-import signal
+import signal  # @UnusedImport
 import socket
 import stat
 import subprocess
@@ -42,13 +42,13 @@ import traceback
 import uuid_tools
 import zmq
 if sys.version_info[0] == 3:
-    unicode = str
-    long = int
+    unicode = str  # @ReservedAssignment
+    long = int  # @ReservedAssignment
 
 
 if sys.platform in ["linux2", "linux3", "linux"]:
     # helper function for proepilogue
-    from io_stream_helper import io_stream
+    from io_stream_helper import io_stream  # @UnusedImport
     from lxml import etree  # @UnresolvedImports
     from lxml.builder import E  # @UnresolvedImports
     import grp
@@ -67,7 +67,7 @@ except IOError:
 
 def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
-        return subprocess.getstatusoutput(cmd)
+        return subprocess.getstatusoutput(cmd)  # @UndefinedVariable
     else:
         import commands
         return commands.getstatusoutput(cmd)
@@ -149,6 +149,28 @@ _CLIENT_TYPE_UUID_MAPPING = {
 }
 
 
+def call_command(act_command, log_com, close_fds=False):
+    log_com("calling command '{}'".format(act_command))
+    s_time = time.time()
+    _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=close_fds, cwd="/")
+    ret_code = _sub.wait()
+    _stdout, _stderr = _sub.communicate()
+    e_time = time.time()
+    log_com("execution took {}, return code was {:d}".format(
+        logging_tools.get_diff_time_str(e_time - s_time),
+        ret_code,
+        ))
+    for _val, _name, _lev in [(_stdout, "stdout", logging_tools.LOG_LEVEL_OK), (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)]:
+        if _val.strip():
+            _lines = _val.split("\n")
+            log_com("{} has {} ({})".format(_name, logging_tools.get_plural("byte", len(_val)), logging_tools.get_plural("line", len(_lines))))
+            for _line_num, _line in enumerate(_lines):
+                log_com(" {:3d} : {}".format(_line_num + 1, _line), _lev)
+        else:
+            log_com("{} is empty".format(_name))
+    return ret_code, _stdout, _stderr
+
+
 def get_client_uuid(client_type, uuid=None):
     if uuid is None:
         uuid = uuid_tools.get_uuid().get_urn()
@@ -164,9 +186,9 @@ def get_socket(context, r_type, **kwargs):
     _sock = context.socket(getattr(zmq, r_type))
     # DEALER from grapher/server.py
     if r_type in ["ROUTER", "DEALER"]:
-        _sock.setsockopt(zmq.IDENTITY, kwargs["identity"])
+        _sock.setsockopt(zmq.IDENTITY, kwargs["identity"])  # @UndefinedVariable
     if r_type in ["ROUTER"]:
-        _sock.setsockopt(zmq.ROUTER_MANDATORY, 1)
+        _sock.setsockopt(zmq.ROUTER_MANDATORY, 1)  # @UndefinedVariable
     for _opt, _value in [
         ("LINGER", 100),
         ("SNDHWM", 256),
@@ -480,7 +502,7 @@ class meta_server_info(object):
             xml_struct = None
             if etree:
                 try:
-                    xml_struct = etree.fromstring(open(name, "r").read())
+                    xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
                 except:
                     logging_tools.my_syslog("error parsing XML file {} (meta_server_info): {}".format(
                         name, get_except_info()))
@@ -744,7 +766,7 @@ class meta_server_info(object):
                             }
                         )
                     )
-            file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)
+            file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)  # @UndefinedVariable
         else:
             file_content = ["NAME = {}".format(self.__name),
                             "PIDS = {}".format(" ".join(["{:d}".format(x) for x in self.__pids]))]
