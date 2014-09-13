@@ -67,9 +67,9 @@ class receiver(log_base):
             IPC_SOCK,
             )
         )
-        self.recv_sock = self.zmq_context.socket(zmq.ROUTER)
-        self.recv_sock.setsockopt(zmq.ROUTER_MANDATORY, True)
-        self.recv_sock.setsockopt(zmq.IDENTITY, "main")
+        self.recv_sock = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        self.recv_sock.setsockopt(zmq.ROUTER_MANDATORY, True)  # @UndefinedVariable
+        self.recv_sock.setsockopt(zmq.IDENTITY, "main")  # @UndefinedVariable
         sock_dir = os.path.dirname(IPC_SOCK[6:])
         if not os.path.isdir(sock_dir):
             self.log("creating directory {}".format(sock_dir))
@@ -92,7 +92,7 @@ class receiver(log_base):
         if self.recv_sock:
             while True:
                 try:
-                    sender = self.recv_sock.recv_unicode(zmq.DONTWAIT)
+                    sender = self.recv_sock.recv_unicode(zmq.DONTWAIT)  # @UndefinedVariable
                 except:
                     break
                 else:

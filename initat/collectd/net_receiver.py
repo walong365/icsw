@@ -69,18 +69,18 @@ class net_receiver(multiprocessing.Process, log_base):
         self.__pd_re_list = re_list
 
     def _init_sockets(self):
-        self.receiver = self.zmq_context.socket(zmq.PULL)
-        self.com = self.zmq_context.socket(zmq.ROUTER)
-        self.com.setsockopt(zmq.IDENTITY, "net")
-        self.grapher = self.zmq_context.socket(zmq.ROUTER)
-        self.command = self.zmq_context.socket(zmq.ROUTER)
+        self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
+        self.com = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        self.com.setsockopt(zmq.IDENTITY, "net")  # @UndefinedVariable
+        self.grapher = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        self.command = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         # set grapher flags
         for flag, value in [
-            (zmq.IDENTITY, self.zmq_id),
-            (zmq.SNDHWM, 256),
-            (zmq.RCVHWM, 256),
-            (zmq.TCP_KEEPALIVE, 1),
-            (zmq.TCP_KEEPALIVE_IDLE, 300)
+            (zmq.IDENTITY, self.zmq_id),  # @UndefinedVariable
+            (zmq.SNDHWM, 256),  # @UndefinedVariable
+            (zmq.RCVHWM, 256),  # @UndefinedVariable
+            (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
+            (zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
         ]:
             self.grapher.setsockopt(flag, value)
             self.command.setsockopt(flag, value)
@@ -103,9 +103,9 @@ class net_receiver(multiprocessing.Process, log_base):
             self.com: self._recv_com,
             }
         self.__disabled_uuids = set()
-        self.poller.register(self.receiver, zmq.POLLIN)
-        self.poller.register(self.command, zmq.POLLIN)
-        self.poller.register(self.com, zmq.POLLIN)
+        self.poller.register(self.receiver, zmq.POLLIN)  # @UndefinedVariable
+        self.poller.register(self.command, zmq.POLLIN)  # @UndefinedVariable
+        self.poller.register(self.com, zmq.POLLIN)  # @UndefinedVariable
 
     def _init_hosts(self):
         # init host and perfdata structs
@@ -172,11 +172,11 @@ class net_receiver(multiprocessing.Process, log_base):
         self._init_vars()
 
     def _send_to_grapher(self, send_xml):
-        self.grapher.send_unicode(self.grapher_id, zmq.SNDMORE)
+        self.grapher.send_unicode(self.grapher_id, zmq.SNDMORE)  # @UndefinedVariable
         self.grapher.send_unicode(unicode(send_xml))
 
     def _send_to_main(self, send_obj):
-        self.com.send_unicode("main", zmq.SNDMORE)
+        self.com.send_unicode("main", zmq.SNDMORE)  # @UndefinedVariable
         self.com.send_pyobj(send_obj)
 
     def _loop(self):
@@ -232,7 +232,7 @@ class net_receiver(multiprocessing.Process, log_base):
                     "unknown command {}".format(com_text),
                     server_command.SRV_REPLY_STATE_ERROR
                     )
-            in_sock.send_unicode(in_uuid, zmq.SNDMORE)
+            in_sock.send_unicode(in_uuid, zmq.SNDMORE)  # @UndefinedVariable
             in_sock.send_unicode(unicode(in_com))
 
     def _handle_disabled_hosts(self, in_com, com_text):
@@ -327,7 +327,7 @@ class net_receiver(multiprocessing.Process, log_base):
     def _process_data(self, in_tree):
         # adopt tree format for faster handling in collectd loop
         try:
-            _xml = etree.fromstring(in_tree)
+            _xml = etree.fromstring(in_tree)  # @UndefinedVariable
         except:
             self.log("cannot parse tree: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
