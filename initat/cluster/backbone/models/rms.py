@@ -42,6 +42,7 @@ __all__ = [
     "ext_license_vendor",
     "ext_license_user",
     "ext_license_client",
+    "ext_license_client_version",
     "ext_license_check",
     "ext_license_state",
     "ext_license_version_state",
@@ -292,6 +293,7 @@ class ext_license_user(ext_license_base):
 
 
 class ext_license_check(ext_license_base):
+    ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
     check_time = models.DateTimeField(auto_now_add=True)
     run_time = models.FloatField(default=0.0)
 
@@ -313,9 +315,15 @@ class ext_license_version_state(ext_license_base):
     vendor = models.ForeignKey("backbone.ext_license_vendor")
 
 
+class ext_license_client_version(ext_license_base):
+    ext_license = models.ForeignKey("backbone.ext_license")
+    client_version = models.CharField(default="", max_length=64)
+
+
 class ext_license_usage(ext_license_base):
     ext_license_version_state = models.ForeignKey("backbone.ext_license_version_state")
     ext_license_client = models.ForeignKey("backbone.ext_license_client")
     ext_license_user = models.ForeignKey("backbone.ext_license_user")
+    ext_license_client_version = models.ForeignKey("backbone.ext_license_client_version", null=True)
     checkout_time = models.IntegerField(default=0)
     num = models.IntegerField(default=0)
