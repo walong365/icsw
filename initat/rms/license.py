@@ -25,7 +25,12 @@ from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
+from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
+    ext_license_version, ext_license_state, ext_license_version_state, ext_license_vendor, \
+    ext_license_usage, ext_license_client_version, ext_license_client, ext_license_user
+# from initat.cluster.backbone.models.functions import cluster_timezone
 import commands
+import datetime
 import logging_tools
 import os
 import process_tools
@@ -34,6 +39,17 @@ import sge_license_tools
 import threading_tools
 import time
 import zmq
+
+
+EL_LUT = {
+    "ext_license_site": ext_license_site,
+    "ext_license": ext_license,
+    "ext_license_version": ext_license_version,
+    "ext_license_vendor": ext_license_vendor,
+    "ext_license_client_version": ext_license_client_version,
+    "ext_license_client": ext_license_client,
+    "ext_license_user": ext_license_user,
+}
 
 
 def call_command(command, log_com=None):
@@ -79,14 +95,18 @@ class license_process(threading_tools.process_obj):
     def _init_sge_info(self):
         self._license_base = global_config["LICENSE_BASE"]
         self._track = global_config["TRACK_LICENSES"]
+        self._track_in_db = global_config["TRACK_LICENSES_IN_DB"]
         self._modify_sge = global_config["MODIFY_SGE_GLOBAL"]
+        # license tracking cache
+        self.__lt_cache = {}
         # store currently configured values, used for logging
         self._sge_lic_set = {}
         self.__lc_dict = {}
         self.log(
-            "init sge environment for license tracking in {} ({})".format(
+            "init sge environment for license tracking in {} ({}, database tracing is {})".format(
                 self._license_base,
                 "enabled" if self._track else "disabled",
+                "enabled" if self._track_in_db else "disabled",
             )
         )
         # set environment
@@ -103,6 +123,86 @@ class license_process(threading_tools.process_obj):
         vector_socket.connect(_v_conn_str)
         self.vector_socket = vector_socket
 
+    def get_lt_cache_entry(self, obj_type, **kwargs):
+        _obj_cache = self.__lt_cache.setdefault(obj_type, {})
+        full_key = ",".join(
+            [
+                "{}={}".format(
+                    _key,
+                    unicode(_value) if type(_value) in [str, unicode, int, long] else str(_value.pk)
+                ) for _key, _value in kwargs.iteritems()
+            ]
+        )
+        if full_key not in _obj_cache:
+            db_obj = EL_LUT[obj_type]
+            try:
+                _obj = db_obj.objects.get(**kwargs)
+            except db_obj.DoesNotExist:
+                self.log("creating new '{}' (key: {})".format(obj_type, full_key))
+                _obj = db_obj.objects.create(**kwargs)
+            _obj_cache[full_key] = _obj
+        return _obj_cache[full_key]
+
+    def _write_db_entries(self, act_site, elo_obj, lic_xml):
+        # print etree.tostring(lic_xml, pretty_print=True)  # @UndefinedVariable
+        # site object
+        license_site = self.get_lt_cache_entry("ext_license_site", name=act_site)
+        _now = datetime.datetime.now()
+        # check object
+        cur_lc = ext_license_check.objects.create(
+            ext_license_site=license_site,
+            run_time=float(lic_xml.get("run_time")),
+        )
+        for _lic in lic_xml.findall(".//license"):
+            ext_license = self.get_lt_cache_entry("ext_license", ext_license_site=license_site, name=_lic.get("name"))
+            # save license usage
+            _lic_state = ext_license_state.objects.create(
+                ext_license=ext_license,
+                ext_license_check=cur_lc,
+                used=int(_lic.get("used", "0")),
+                free=int(_lic.get("free", "0")),
+                issued=int(_lic.get("issued", "0")),
+                reserved=int(_lic.get("reserved", "0")),
+            )
+            # build local version dict
+            # vers_dict = {}
+            for _lic_vers in _lic.findall("version"):
+                _cur_vers = self.get_lt_cache_entry(
+                    "ext_license_version",
+                    version=_lic_vers.get("version"),
+                    ext_license=ext_license,
+                )
+                # vers_dict[_lic_vers.get("version")] = _cur_vers
+                _lv_state = ext_license_version_state.objects.create(
+                    ext_license_check=cur_lc,
+                    ext_license_version=_cur_vers,
+                    ext_license_state=_lic_state,
+                    is_floating=True if _lic_vers.get("floating", "true").lower()[0] in ["1", "y", "t"] else False,
+                    vendor=self.get_lt_cache_entry("ext_license_vendor", name=_lic_vers.get("vendor"))
+                )
+                for _usage in _lic_vers.findall("usages/usage"):
+                    _vers = self.get_lt_cache_entry(
+                        "ext_license_client_version",
+                        client_version=_usage.get("client_version", "N/A"),
+                        ext_license=ext_license,
+                    )
+                    # print etree.tostring(_usage, pretty_print=True)
+                    ext_license_usage.objects.create(
+                        ext_license_version_state=_lv_state,
+                        ext_license_client=self.get_lt_cache_entry(
+                            "ext_license_client",
+                            long_name=_usage.get("client_long", ""),
+                            short_name=_usage.get("client_short", "N/A")
+                        ),
+                        ext_license_user=self.get_lt_cache_entry(
+                            "ext_license_user",
+                            name=_usage.get("user", "N/A")
+                        ),
+                        ext_license_client_version=_vers,
+                        checkout_time=int(float(_usage.get("checkout_time", "0"))),
+                        num=int(_usage.get("num", "1")),
+                    )
+
     def _update(self):
         if not self._track:
             return
@@ -111,21 +211,24 @@ class license_process(threading_tools.process_obj):
             ignore_missing=True,
         )
         if _act_site_file.lines:
+            act_site = _act_site_file.lines[0]
             if not self.__elo_obj:
                 self.__elo_obj = sge_license_tools.ExternalLicenses(
                     sge_license_tools.BASE_DIR,
-                    _act_site_file.lines[0],
+                    act_site,
                     self.log,
                     verbose=True,
                 )
-            self._update_lic(self.__elo_obj)
+            lic_xml = self._update_lic(self.__elo_obj)
+            if self._track_in_db:
+                self._write_db_entries(act_site, self.__elo_obj, lic_xml)
         else:
             self.log("no actual site defined, no license tracking". logging_tools.LOG_LEVEL_ERROR)
 
     def _update_lic(self, elo_obj):
         elo_obj.read()
-        srv_result = self._parse_actual_license_usage(elo_obj.licenses, elo_obj.config)
-        elo_obj.feed_xml_result(srv_result)
+        lic_xml = self._parse_actual_license_usage(elo_obj.licenses, elo_obj.config)
+        elo_obj.feed_xml_result(lic_xml)
         # sge_license_tools.update_usage(actual_licenses, srv_result)
         # sge_license_tools.set_sge_used(actual_licenses, sge_license_tools.parse_sge_used(self._sge_dict))
         # for log_line, log_level in sge_license_tools.handle_complex_licenses(actual_licenses):
@@ -136,6 +239,7 @@ class license_process(threading_tools.process_obj):
         self.write_ext_data(elo_obj.licenses)
         if self._modify_sge:
             self._set_sge_global_limits(elo_obj.licenses, configured_lics)
+        return lic_xml
 
     def _set_sge_global_limits(self, actual_licenses, configured_lics):
         _new_dict = {}
@@ -191,7 +295,7 @@ class license_process(threading_tools.process_obj):
                     server=server_addr.split("@")[1],
                     log_com=self.log
                 )
-            srv_result = self.__lc_dict[server_addr].check(license_names=actual_licenses)
+            lic_xml = self.__lc_dict[server_addr].check(license_names=actual_licenses)
             # FIXME, srv_result should be stored in a list and merged
         q_e_time = time.time()
         self.log(
@@ -201,7 +305,7 @@ class license_process(threading_tools.process_obj):
                 ", ".join(all_server_addrs)
             )
         )
-        return srv_result
+        return lic_xml
 
     def write_ext_data(self, actual_licenses):
         drop_com = server_command.srv_command(command="set_vector")
