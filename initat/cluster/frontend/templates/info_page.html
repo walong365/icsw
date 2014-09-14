@@ -54,7 +54,9 @@
                             <th>Type</th>
                             <th>Check</th>
                             <th ng-repeat="srv_info in server_info_list">
-                                {{ srv_info.get_name() }}, {{ srv_info.max_mem | get_size:1:1024 }} max Memory
+                                {{ srv_info.get_name() }},
+                                {{ srv_info.max_mem | get_size:1:1024 }} max / 
+                                {{ srv_info.sum_mem | get_size:1:1024 }} total Memory
                              </th>
                         </tr>
                     </thead>
@@ -142,8 +144,12 @@ angular_module_setup([info_module])
 class server_info
     constructor: (@xml) ->
         _round = 8 * 1024 * 1024
-        @max_mem = _.max(parseInt($(mem_info).text()) for mem_info in @xml.find("instance memory_info") when $(mem_info).text())
+        _mem_vector = (parseInt($(mem_info).text()) for mem_info in @xml.find("instance memory_info") when $(mem_info).text())
+        @max_mem = _.max(_mem_vector)
+        @sum_mem = _.reduce(_mem_vector, (sum, _val) -> return sum + _val)
+        #console.log @max_mem, @sum_mem
         @max_mem = _round * parseInt((@max_mem + _round - 1) / _round)
+        @sum_mem = _round * parseInt((@sum_mem + _round - 1) / _round)
     get_name: () ->
         return @xml.find("command").attr("server_name")
     get_server_id: () ->
