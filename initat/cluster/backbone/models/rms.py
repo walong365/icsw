@@ -294,11 +294,11 @@ class ext_license_user(ext_license_base):
 
 class ext_license_check(ext_license_base):
     ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
-    check_time = models.DateTimeField(auto_now_add=True)
     run_time = models.FloatField(default=0.0)
 
 
-class ext_license_state(ext_license_base):
+class ext_license_state(models.Model):
+    idx = models.AutoField(primary_key=True)
     ext_license_check = models.ForeignKey("backbone.ext_license_check")
     ext_license = models.ForeignKey("backbone.ext_license")
     used = models.IntegerField(default=0)
@@ -306,13 +306,20 @@ class ext_license_state(ext_license_base):
     free = models.IntegerField(default=0)
     issued = models.IntegerField(default=0)
 
+    class Meta:
+        app_label = "backbone"
 
-class ext_license_version_state(ext_license_base):
+
+class ext_license_version_state(models.Model):
+    idx = models.AutoField(primary_key=True)
     ext_license_check = models.ForeignKey("backbone.ext_license_check")
     ext_license_version = models.ForeignKey("backbone.ext_license_version")
     ext_license_state = models.ForeignKey("backbone.ext_license_state")
     is_floating = models.BooleanField(default=False)
     vendor = models.ForeignKey("backbone.ext_license_vendor")
+
+    class Meta:
+        app_label = "backbone"
 
 
 class ext_license_client_version(ext_license_base):
@@ -320,10 +327,14 @@ class ext_license_client_version(ext_license_base):
     client_version = models.CharField(default="", max_length=64)
 
 
-class ext_license_usage(ext_license_base):
+class ext_license_usage(models.Model):
+    idx = models.AutoField(primary_key=True)
     ext_license_version_state = models.ForeignKey("backbone.ext_license_version_state")
     ext_license_client = models.ForeignKey("backbone.ext_license_client")
     ext_license_user = models.ForeignKey("backbone.ext_license_user")
     ext_license_client_version = models.ForeignKey("backbone.ext_license_client_version", null=True)
     checkout_time = models.IntegerField(default=0)
     num = models.IntegerField(default=0)
+
+    class Meta:
+        app_label = "backbone"
