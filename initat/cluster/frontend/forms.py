@@ -93,7 +93,10 @@ class authentication_form(Form):
         if username and password:
             # get real user
             all_aliases = [
-                (login_name, al_list.strip().split()) for login_name, al_list in user.objects.all().values_list(
+                (
+                    login_name,
+                    [_entry for _entry in al_list.strip().split() if _entry not in [None, "None"]]
+                ) for login_name, al_list in user.objects.all().values_list(
                     "login", "aliases"
                 ) if al_list is not None and al_list.strip()
             ]
