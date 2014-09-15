@@ -131,6 +131,8 @@ class Command(BaseCommand):
         factories.NetworkType(identifier="o", description="other network")
         factories.NetworkType(identifier="l", description="local network")
         # netdevice speed
+        factories.NetDeviceSpeed(speed_bps=10000000, check_via_ethtool=False, full_duplex=True)
+        factories.NetDeviceSpeed(speed_bps=10000000, check_via_ethtool=True, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=100000000, check_via_ethtool=True, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=100000000, check_via_ethtool=True, full_duplex=False)
         factories.NetDeviceSpeed(speed_bps=1000000000, check_via_ethtool=False, full_duplex=True)
