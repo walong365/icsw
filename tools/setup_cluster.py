@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+import pdb
 
 """ database setup for NOCTUA / CORVUS """
 
@@ -27,6 +28,8 @@ import argparse
 import commands
 import logging_tools
 import os
+import pwd
+import grp
 import process_tools
 import random
 import shutil
@@ -76,7 +79,6 @@ else:
 
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
-
 
 # copy from check_local_settings.py
 def check_local_settings():
@@ -274,17 +276,19 @@ class test_sqlite(test_db):
         print("")
 
 
-def enter_data(c_dict, db_choices):
+def enter_data(c_dict, db_choices, engine_selected, database_selected):
     print("-" * 20)
     print("enter exit to exit installation")
-    c_dict["_engine"] = _input("DB engine", c_dict["_engine"], choices=db_choices)
+    if not engine_selected:
+        c_dict["_engine"] = _input("DB engine", c_dict["_engine"], choices=db_choices)
     if c_dict["_engine"] == "sqlite":
         c_dict["host"] = ""
         c_dict["user"] = ""
     else:
         c_dict["host"] = _input("DB host", c_dict["host"])
         c_dict["user"] = _input("DB user", c_dict["user"])
-    c_dict["database"] = _input("DB name", c_dict["database"])
+    if not database_selected:
+        c_dict["database"] = _input("DB name", c_dict["database"])
     if c_dict["_engine"] == "sqlite":
         c_dict["passwd"] = ""
         c_dict["port"] = 0
@@ -299,21 +303,56 @@ def enter_data(c_dict, db_choices):
         }[c_dict["_engine"]]
 
 
-def create_db_cf(opts):
+def create_db_cf(opts, default_engine, default_database):
     db_choices = [_key for _key in ["psql", "mysql", "sqlite"] if DB_PRESENT[_key]]
     c_dict = {
         "host": opts.host,
         "user": opts.user,
-        "database": opts.database,
+        "database": opts.database if opts.database is not None else default_database,
         "passwd": opts.passwd,
-        "_engine": opts.engine,  # "psql" if "psql" in db_choices else db_choices[0],
+        "_engine": opts.engine if opts.engine is not None else default_engine,  # "psql" if "psql" in db_choices else db_choices[0],
     }
     while True:
         # enter all relevant data
-        enter_data(c_dict, db_choices)
+        enter_data(c_dict, db_choices, opts.engine is not None, opts.database is not None)
+
+        if c_dict["_engine"] == "sqlite":
+
+            if opts.db_path is None or opts.db_file_owner is None or opts.db_file_group is None:
+                print("please set path to the sqlite file directory via --db-path and owner and group " +
+                      "for the database file via --db-file-owner and --db-file-group")
+                return False
+
+            file_path = os.path.join(opts.db_path, opts.database)
+
+            # try numeric
+            try:
+                uid = int(opts.db_file_owner)
+            except ValueError:
+                try:
+                    uid = pwd.getpwnam(opts.db_file_owner).pw_uid
+                except KeyError:
+                    print("invalid user name {}".format(opts.db_file_owner))
+                    return False
+
+            try:
+                gid = int(opts.db_file_group)
+            except ValueError:
+                try:
+                    gid = grp.getgrnam(opts.db_file_group).gr_gid
+                except KeyError:
+                    print("invalid group {}".format(opts.db_file_group))
+                    return False
+
+            open(file_path, 'a').close()
+            os.chown(file_path, uid, gid)
+            os.chmod(file_path, int(opts.db_file_mode, 8))
+
+            c_dict["database"] = file_path
+
         test_obj = {"psql": test_psql, "mysql": test_mysql, "sqlite": test_sqlite}[c_dict["_engine"]](c_dict)
         if test_obj.test_connection():
-            print("connection successfull")
+            print("connection successful")
             break
         else:
             print("cannot connect, please check your settings and / or the setup of your database:")
@@ -515,16 +554,17 @@ def main():
     my_p = argparse.ArgumentParser()
     db_choices = [_key for _key in ["psql", "mysql", "sqlite"] if DB_PRESENT[_key]]
     if db_choices:
-        _def_engine = "psql" if "psql" in db_choices else db_choices[0]
+        default_engine = "psql" if "psql" in db_choices else db_choices[0]
     else:
-        _def_engine = ""
+        default_engine = ""
+    default_database = "cdbase"
     db_flags = my_p.add_argument_group("database options")
     db_flags.add_argument("--ignore-existing", default=False, action="store_true", help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE))
-    db_flags.add_argument("--engine", default=_def_engine, type=str, help="choose database engine [%(default)s]", choices=db_choices)
+    db_flags.add_argument("--engine", type=str, help="choose database engine [%(default)s]", choices=db_choices)
     db_flags.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
     db_flags.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
     db_flags.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
-    db_flags.add_argument("--database", type=str, default="cdbase", help="set name of cluster database")
+    db_flags.add_argument("--database", type=str, help="set name of cluster database")
     db_flags.add_argument("--host", type=str, default="localhost", help="set database host")
     mig_opts = my_p.add_argument_group("migration options")
     mig_opts.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
@@ -545,6 +585,11 @@ def main():
     auc_flags = my_p.add_argument_group("automatic update options")
     auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
     auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
+    sqlite_db_opts = my_p.add_argument_group("sqlite database file options")
+    sqlite_db_opts.add_argument("--db-path", type=str, help="path to sqlite database file directory")
+    sqlite_db_opts.add_argument("--db-file-owner", type=str, help="owner of the database file")
+    sqlite_db_opts.add_argument("--db-file-group", type=str, help="group of the database file")
+    sqlite_db_opts.add_argument("--db-file-mode", type=str, default="660", help="database file access mode")
     opts = my_p.parse_args()
     _check_dirs()
     DB_MAPPINGS = {
@@ -558,7 +603,7 @@ def main():
             if not DB_PRESENT[_key]:
                 print(" {:6s} : {}".format(_key, DB_MAPPINGS[_key]))
     if not any(DB_PRESENT.values()):
-        print("No Database access libraries installed, please install some of them")
+        print("No database access libraries installed, please install some of them")
         sys.exit(1)
     # flag: setup db_cf data
     if opts.enable_auto_update:
@@ -614,7 +659,7 @@ def main():
             if opts.use_existing:
                 print("DB access file {} does not exist ...".format(DB_FILE))
         if setup_db_cf:
-            if not create_db_cf(opts):
+            if not create_db_cf(opts, default_engine, default_database):
                 print("Creation of {} not successfull, exiting".format(DB_FILE))
                 sys.exit(3)
         check_db_rights()
