@@ -51,7 +51,7 @@ SYNC_APPS = ["liebherr"]
 NEEDED_DIRS = ["/var/log/cluster"]
 
 BACKBONE_DIR = "/opt/python-init/lib/python/site-packages/initat/cluster/backbone"
-PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models17")
+PRE_MODELES_DIR = os.path.join(BACKBONE_DIR, "models16")
 
 try:
     import psycopg2  # @UnresolvedImport

@@ -772,10 +772,11 @@ def user_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_integer(cur_inst, "uid", min_val=100, max_val=65535)
-        _check_empty_string(cur_inst, "login")
+        _check_empty_string(cur_inst, "login", strip=True)
         _check_empty_string(cur_inst, "password")
         if not cur_inst.home:
             cur_inst.home = cur_inst.login
+        _check_empty_string(cur_inst, "home", strip=True)
         cur_pw = cur_inst.password
         if cur_pw.count(":"):
             cur_method, passwd = cur_pw.split(":", 1)

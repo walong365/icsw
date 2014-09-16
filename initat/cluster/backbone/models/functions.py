@@ -77,13 +77,16 @@ def _check_float(inst, attr_name):
     setattr(inst, attr_name, cur_val)
 
 
-def _check_empty_string(inst, attr_name):
+def _check_empty_string(inst, attr_name, **kwargs):
+    _strip = kwargs.get("strip", False)
     cur_val = getattr(inst, attr_name)
     if cur_val is None:
         # cast to string
         cur_val = ""
     if not cur_val.strip():
         raise ValidationError("{} can not be empty".format(attr_name))
+    if _strip:
+        setattr(inst, attr_name, cur_val.strip())
 
 
 def _check_non_empty_string(inst, attr_name):
