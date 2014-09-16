@@ -83,7 +83,7 @@ def show_database_calls(**kwargs):
     else:
         DB_DEBUG = settings.DEBUG
     if DB_DEBUG:
-        from django.db import connection  # @
+        from django.db import connection  # @Reimport
         full = kwargs.get("full", False)
         tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
         try:
