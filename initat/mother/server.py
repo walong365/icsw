@@ -496,10 +496,10 @@ class server_process(threading_tools.process_pool):
         self._reload_syslog()
 
     def _enable_syslog_ng(self):
-        print "no longer supported"
+        self.log("syslog-ng is no longer supported", logging_tools.LOG_LEVEL_ERROR)
 
     def _disable_syslog_ng(self):
-        print "no longer supported"
+        self.log("syslog-ng is no longer supported", logging_tools.LOG_LEVEL_ERROR)
 
     def _reload_syslog(self):
         syslog_rc = None
