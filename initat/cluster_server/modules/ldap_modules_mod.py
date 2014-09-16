@@ -206,7 +206,7 @@ class ldap_mixin(object):
         _lut = self._get_base_lut()
         _lut.update({
             "GROUPNAME": c_group.groupname if c_group else "",
-            "USERNAME": c_user.login if c_user else "",
+            "USERNAME": c_user.login.strip() if c_user else "",
         })
         # obj_type is one of user, group
         try:
@@ -606,7 +606,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 devlog_dict = {}
                 # luts
                 group_lut = dict([(cur_g.groupname, cur_g.pk) for cur_g in all_groups.itervalues()])
-                user_lut = dict([(cur_u.login, cur_u.pk) for cur_u in all_users.itervalues()])
+                user_lut = dict([(cur_u.login.strip(), cur_u.pk) for cur_u in all_users.itervalues()])
                 if "sambadomain" in par_dict:
                     dom_node = ld_read.search_s(
                         "{}".format(
@@ -625,9 +625,9 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 # build ldap structures
                 for g_idx, g_stuff in all_groups.iteritems():
                     g_stuff.dn = self._expand_dn("group", None, g_stuff)
-                    primary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id == g_idx]
+                    primary_users = [cur_u.login.strip() for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id == g_idx]
                     secondary_users = [
-                        cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id != g_idx and any(
+                        cur_u.login.strip() for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id != g_idx and any(
                             [
                                 sec_g.pk == g_idx for sec_g in cur_u.secondary_groups.all()
                             ]
@@ -661,8 +661,8 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     u_stuff.attributes = {
                         "objectClass": [_entry for _entry in par_dict["user_object_classes"]],
                         # "structuralObjectClass" : ["namedObject"],
-                        "cn": [u_stuff.login],
-                        "userid": [u_stuff.login],
+                        "cn": [u_stuff.login.strip()],
+                        "userid": [u_stuff.login.strip()],
                         "gecos": [
                             u"{} {} {} ({})".format(
                                 u_stuff.title,
@@ -673,7 +673,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         "uidNumber": [str(u_stuff.uid)],
                         # "memberOf"         : [self._expand_dn("group", None, g_stuff)],
                         "userPassword": [u_password],
-                        "homeDirectory": [os.path.normpath(u"{}/{}".format(g_stuff.homestart, u_stuff.home or u_stuff.login))],
+                        "homeDirectory": [os.path.normpath(u"{}/{}".format(g_stuff.homestart, u_stuff.home.strip() or u_stuff.login.strip()))],
                         "loginShell": [u_stuff.shell],
                         "shadowLastChange": ["11192"],
                         "shadowMin": ["-1"],
@@ -699,10 +699,37 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         u_stuff.attributes["sambaBadPasswordCount"] = ["0"]
                 # fetch all groups from ldap
                 groups_ok, groups_to_change, groups_to_remove = ([], [], [])
-                for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(&(objectClass=posixGroup)(objectClass=clusterGroup))"):
+                # get pure posixGroups (for WU Cluster)
+                self.log("checking for groups with posixGroup")
+                for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, "(objectClass=posixGroup)"):
                     dn_parts = ldap.explode_dn(dn, True)
+                    group_name = dn_parts[0]
+                    if self._is_valid_dn(dn, "group") and group_name in group_lut:
+                        group_struct = all_groups[group_lut[group_name]]
+                        change_list = ldap.modlist.modifyModlist(attrs, group_struct.attributes)
+                        if change_list:
+                            self.log("found group {} with missing attributes: {}".format(group_name, ", ".join(change_list)))
+                            ok, err_str = self._modify_entry(
+                                ld_write,
+                                dn,
+                                change_list)
+                            if ok:
+                                self.log(u"modified group {}".format(group_name))
+                            else:
+                                errors.append(err_str)
+                                self.log(
+                                    u"cannot modify group {}: {}".format(
+                                        group_name,
+                                        err_str
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
+                s_str = "(&{})".format("".join(["(objectClass={})".format(_class) for _class in par_dict["group_object_classes"]]))
+                self.log("checking for groups with {}".format(s_str))
+                for dn, attrs in ld_read.search_s(par_dict["base_dn"], ldap.SCOPE_SUBTREE, s_str):
+                    dn_parts = ldap.explode_dn(dn, True)
+                    group_name = dn_parts[0]
                     if self._is_valid_dn(dn, "group"):
-                        group_name = dn_parts[0]
                         if group_name in group_lut.keys():
                             group_struct = all_groups[group_lut[group_name]]
                             if group_struct.active:
@@ -913,11 +940,11 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         if group_stuff.homestart and group_stuff.homestart not in ["/None", "/none"] and user_stuff.home:
                             export_dict[
                                 os.path.normpath(
-                                    os.path.join(group_stuff.homestart, user_stuff.home)
+                                    os.path.join(group_stuff.homestart, user_stuff.home.strip())
                                 )
                             ] = (
                                 home_stuff["options"],
-                                "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home)
+                                "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home.strip())
                             )
                         else:
                             self.log("ignoring export for user {} because of empty or invalid homestart in group {}".format(
