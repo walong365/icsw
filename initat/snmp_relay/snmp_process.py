@@ -73,7 +73,7 @@ class snmp_process_container(object):
             self.log("  {}={}".format(_key, self.conf_dict[_key]))
 
     def create_ipc_socket(self, zmq_context, socket_addr, socket_name=DEFAULT_RETURN_NAME):
-        self._socket = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        self._socket = zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         self._socket.setsockopt(zmq.IDENTITY, socket_name)  # @UndefinedVariable
         self._socket.bind(socket_addr)
         return self._socket
@@ -151,7 +151,8 @@ class snmp_process_container(object):
         else:
             self.log("no event with name {}".format(ev_name), logging_tools.LOG_LEVEL_ERROR)
 
-    def handle_snmp(self):
+    def handle(self):
+        # handle results
         src_proc = self._socket.recv_unicode()
         snmp_idx = int(src_proc.split("_")[1])
         data = self._socket.recv_pyobj()
