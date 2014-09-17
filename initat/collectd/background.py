@@ -25,7 +25,7 @@ from initat.collectd.collectd_structs import ext_com
 from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.config import IPC_SOCK, log_base, global_config, LOG_DESTINATION, \
     IPC_SOCK_SNMP, MD_SERVER_UUID
-from initat.snmp_relay.snmp_process import snmp_process, simple_snmp_oid
+from initat.snmp_relay.snmp_process import simple_snmp_oid, snmp_process_container
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
 import logging_tools
@@ -310,7 +310,7 @@ class snmp_job(object):
             self.last_start = time.time()
             self.running = True
             self.waiting_for = "{}_{:d}".format(self.uuid, self.counter)
-            self.bg_proc.start_snmp_batch(
+            self.bg_proc.start_batch(
                 self.waiting_for,
                 self.ip,
                 self.snmp_version,
@@ -328,7 +328,7 @@ class snmp_job(object):
         else:
             _tree, _mon_info = self.snmp_scheme_object.build(self, res_dict)
             # graphing
-            self.bg_proc.send_to_net(etree.tostring(_tree))
+            self.bg_proc.send_to_net(etree.tostring(_tree))  # @UndefinedVariable
 
     def check_for_timeout(self):
         diff_time = int(abs(time.time() - self.last_start))
@@ -345,30 +345,6 @@ class snmp_job(object):
                 if self.check_for_timeout():
                     self.waiting_for = None
                     self.running = False
-            # else:
-            #    self.running = False
-            #    print "done"
-            #    stdout, stderr = self.__ec.communicate()
-            #    self.log(
-            #        "done (RC={:d}) in {} (stdout: {}, stderr: {})".format(
-            #            self.result,
-            #            logging_tools.get_diff_time_str(self.__ec.end_time - self.__ec.start_time),
-            #            logging_tools.get_plural("byte", len(stdout)),
-            #            logging_tools.get_plural("byte", len(stderr)),
-            #        )
-            #    )
-            #    if stdout and self.result == 0:
-            #        if self.builder is not None:
-            #            _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
-            #            # graphing
-            #            bg_job.bg_proc.send_to_net(etree.tostring(_tree))
-            #            # monitoring
-            #            bg_job.bg_proc.send_to_md(unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info)))
-            #        else:
-            #            bg_job.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
-            #    if stderr:
-            #        for line_num, line in enumerate(stderr.strip().split("\n")):
-            #            self.log("  {:3d} {}".format(line_num + 1 , line), logging_tools.LOG_LEVEL_ERROR)
         else:
             if self.last_start is None or abs(int(time.time() - self.last_start)) >= self.run_every and not self.to_remove:
                 self._start_snmp_batch()
@@ -568,7 +544,7 @@ class bg_job(object):
                     if self.builder is not None:
                         _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
                         # graphing
-                        bg_job.bg_proc.send_to_net(etree.tostring(_tree))
+                        bg_job.bg_proc.send_to_net(etree.tostring(_tree))  # @UndefinedVariable
                         # monitoring
                         bg_job.bg_proc.send_to_md(unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info)))
                     else:
@@ -661,36 +637,31 @@ class background(multiprocessing.Process, log_base):
         self.log("reading MSI-block")
         self.__msi_block = process_tools.meta_server_info("/var/lib/meta-server/collectd")
         # add SNMP Processes
-        self._check_snmp_procs()
+        self.spc.check()
 
     def _init_sockets(self):
         self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
-        self.com = self.zmq_context.socket(zmq.ROUTER)
-        self.snmp = self.zmq_context.socket(zmq.ROUTER)
+        self.com = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         self.poller = zmq.Poller()
-        self.com.setsockopt(zmq.IDENTITY, "bg")
-        self.snmp.setsockopt(zmq.IDENTITY, "main")
+        self.com.setsockopt(zmq.IDENTITY, "bg")  # @UndefinedVariable
         self.com.connect(IPC_SOCK)
-        self.snmp.bind(IPC_SOCK_SNMP)
-        self.net_target = self.zmq_context.socket(zmq.PUSH)
+        self.net_target = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
         listener_url = "tcp://127.0.0.1:{:d}".format(global_config["RECV_PORT"])
         self.net_target.connect(listener_url)
-        self.poller.register(self.com, zmq.POLLIN)
-        self.poller.register(self.snmp, zmq.POLLIN)
+        self.poller.register(self.com, zmq.POLLIN)  # @UndefinedVariable
         self.__hdict = {
             self.com: self._handle_com,
-            self.snmp: self._handle_snmp
         }
-        self.md_target = self.zmq_context.socket(zmq.DEALER)
+        self.md_target = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
         # clear send error timestamp
         self.__last_md_send_error = None
         for flag, value in [
-            (zmq.IDENTITY, self.zmq_id),
-            (zmq.SNDHWM, 4),
-            (zmq.RCVHWM, 4),
-            (zmq.TCP_KEEPALIVE, 1),
-            (zmq.IMMEDIATE, 1),
-            (zmq.TCP_KEEPALIVE_IDLE, 300),
+            (zmq.IDENTITY, self.zmq_id),  # @UndefinedVariable
+            (zmq.SNDHWM, 4),  # @UndefinedVariable
+            (zmq.RCVHWM, 4),  # @UndefinedVariable
+            (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
+            (zmq.IMMEDIATE, 1),  # @UndefinedVariable
+            (zmq.TCP_KEEPALIVE_IDLE, 300),  # @UndefinedVariable
         ]:
             self.md_target.setsockopt(flag, value)
         self.md_target_addr = "tcp://{}:{:d}".format(
@@ -706,65 +677,52 @@ class background(multiprocessing.Process, log_base):
         self.log("connection to md-config-server at {} (id {})".format(self.md_target_addr, self.md_target_id))
 
     def _init_snmp(self):
-        self.queue_name = IPC_SOCK_SNMP
-        self.__snmp_dict = {}
-        self.__used_proc_ids = set()
-
-    def _check_snmp_procs(self):
-        cur_running = self.__snmp_dict.keys()
-        to_start = global_config["SNMP_PROCS"] - len(cur_running)
-        if to_start:
-            conf_dict = {
+        self.spc = snmp_process_container(
+            self,
+            self.log,
+            global_config["SNMP_PROCS"],
+            global_config["MAX_SNMP_JOBS"],
+            {
                 "VERBOSE": True,
                 "LOG_NAME": global_config["LOG_NAME"],
                 "LOG_DESTINATION": LOG_DESTINATION
+            },
+            {
+                "process_start": self._snmp_process_start,
+                "process_exit": self._snmp_process_exit,
+                "all_stopped": self._snmp_all_stopped,
+                "finished": self._snmp_finished,
             }
-            min_idx = 1 if not self.__snmp_dict else max(self.__snmp_dict.keys()) + 1
-            self.log("starting {} (starting at {:d})".format(
-                logging_tools.get_plural("SNMP process", to_start),
-                min_idx,
-                ))
-            _npid = 1
-            for new_idx in xrange(min_idx, min_idx + to_start):
-                while _npid in self.__used_proc_ids:
-                    _npid += 1
-                self.__used_proc_ids.add(_npid)
-                cur_struct = {
-                    "npid": _npid,
-                    "name": "snmp_{:d}".format(new_idx),
-                    "msi_name": "snmp_{:d}".format(_npid),
-                    "proc": snmp_process("snmp_{:d}".format(new_idx), conf_dict, ignore_signals=True),
-                    "running": False,
-                    "stopped": False,
-                    "jobs": 0,
-                    "pending": 0,
-                }
-                cur_struct["proc"].process_pool = self
-                cur_struct["proc"].start()
-                self.__snmp_dict[new_idx] = cur_struct
+        )
+        _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
+        self.poller.register(_snmp_sock, zmq.POLLIN)  # @UndefinedVariable
+        self.__hdict[_snmp_sock] = self._handle_snmp
 
-    def _send_to_snmp(self, target, m_type, *args, **kwargs):
-        self.snmp.send_unicode(target, zmq.SNDMORE)
-        self.snmp.send_pyobj({
-            "pid": self.pid,
-            "type": m_type,
-            "args": args,
-            "kwargs": kwargs,
-        })
+    def _snmp_process_start(self, **kwargs):
+        self.__msi_block.add_actual_pid(
+            kwargs["pid"],
+            mult=kwargs.get("mult", 3),
+            process_name=kwargs["process_name"],
+            fuzzy_ceiling=kwargs.get("fuzzy_ceiling", 3)
+        )
+        self.__msi_block.save_block()
 
-    def _stop_snmp_procs(self):
-        for key, value in self.__snmp_dict.iteritems():
-            if value["running"] and not value["stopped"]:
-                self._send_to_snmp(value["name"], "exit")
-        if not self.__snmp_dict:
-            self.__exit_ok = True
+    def _snmp_process_exit(self, **kwargs):
+        self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
+        self.__msi_block.save_block()
+
+    def _snmp_all_stopped(self):
+        self.__exit_ok = True
+
+    def _snmp_finished(self, data):
+        snmp_job.feed_result(data["args"])
 
     def _close(self):
         self._close_sockets()
 
     def _close_sockets(self):
         self.com.close()
-        self.snmp.close()
+        self.spc.close()
         self.net_target.close()
         self.md_target.close()
         self.log("background finished")
@@ -781,7 +739,7 @@ class background(multiprocessing.Process, log_base):
             pass
         else:
             try:
-                self.md_target.send_unicode(_send_str, zmq.DONTWAIT)
+                self.md_target.send_unicode(_send_str, zmq.DONTWAIT)  # @UndefinedVariable
             except zmq.error.ZMQError:
                 # this will never happen because we are using a REQ socket
                 self.log("cannot send to md: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
@@ -813,7 +771,7 @@ class background(multiprocessing.Process, log_base):
                     for line in exc_info.log_lines:
                         self.log(line, logging_tools.LOG_LEVEL_ERROR)
                 os.kill(self.main_pid, 15)
-                self._stop_snmp_procs()
+                self.spc.stop()
             else:
                 if len(_rcv_list):
                     for _rcv_part in _rcv_list:
@@ -830,7 +788,7 @@ class background(multiprocessing.Process, log_base):
         if data == "exit":
             self.log("got exit from {}".format(src_id))
             self.__run = False
-            self._stop_snmp_procs()
+            self.spc.stop()
         elif data == "read_msi_block":
             self._read_msi_block()
         elif data.startswith("<"):
@@ -838,44 +796,6 @@ class background(multiprocessing.Process, log_base):
             self._handle_xml(_in_xml)
         else:
             self.log("got unknown data {} from {}".format(str(data), src_id), logging_tools.LOG_LEVEL_WARN)
-
-    def _handle_snmp(self):
-        src_proc = self.snmp.recv_unicode()
-        snmp_idx = int(src_proc.split("_")[1])
-        data = self.snmp.recv_pyobj()
-        if data["type"] == "process_start":
-            self.__snmp_dict[snmp_idx]["running"] = True
-            # print data
-            self.__msi_block.add_actual_pid(data["pid"], mult=3, process_name=self.__snmp_dict[snmp_idx]["msi_name"], fuzzy_ceiling=3)
-            self.__msi_block.save_block()
-        elif data["type"] == "process_exit":
-            self.log("SNMP process {:d} stopped (PID={:d})".format(snmp_idx, data["pid"]), logging_tools.LOG_LEVEL_WARN)
-            self.__snmp_dict[snmp_idx]["stopped"] = True
-            self.__used_proc_ids.remove(self.__snmp_dict[snmp_idx]["npid"])
-            # self.log(str(self.__used_proc_ids))
-            self.__snmp_dict[snmp_idx]["proc"].join()
-            del self.__snmp_dict[snmp_idx]
-            self.__msi_block.remove_actual_pid(data["pid"], mult=3)
-            self.__msi_block.save_block()
-            if self.__run:
-                # spawn new processes
-                self._check_snmp_procs()
-            else:
-                if not self.__snmp_dict:
-                    self.log("all SNMP processes stopped")
-                    self.__exit_ok = True
-        elif data["type"] == "snmp_finished":
-            self.__snmp_dict[snmp_idx]["pending"] -= 1
-            snmp_job.feed_result(data["args"])
-            if self.__snmp_dict[snmp_idx]["jobs"] > global_config["MAX_SNMP_JOBS"]:
-                self.log("stopping SNMP process {:d} ({:d} > {:d})".format(
-                    snmp_idx,
-                    self.__snmp_dict[snmp_idx]["jobs"],
-                    global_config["MAX_SNMP_JOBS"],
-                    ))
-                self._send_to_snmp("snmp_{:d}".format(snmp_idx), "exit")
-        else:
-            self.log("unknown type {} from {}".format(data["type"], src_proc), logging_tools.LOG_LEVEL_ERROR)
 
     def _handle_xml(self, in_com):
         com_text = in_com["*command"]
@@ -930,18 +850,3 @@ class background(multiprocessing.Process, log_base):
                         _job.update_attribute(attr_name, attr_value)
         else:
             self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
-
-    def _get_free_snmp_id(self):
-        idle_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and not value["pending"]])
-        running_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and value["pending"]])
-        if idle_procs:
-            proc_id = idle_procs[0][1]
-        else:
-            proc_id = running_procs[0][1]
-        return proc_id
-
-    def start_snmp_batch(self, batch_id, ip, vers, com, oid_list):
-        snmp_id = self._get_free_snmp_id()
-        self.__snmp_dict[snmp_id]["jobs"] += 1
-        self.__snmp_dict[snmp_id]["pending"] += 1
-        self._send_to_snmp("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, True, 10, *oid_list, VERBOSE=0)
