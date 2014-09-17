@@ -678,7 +678,7 @@ class background(multiprocessing.Process, log_base):
 
     def _init_snmp(self):
         self.spc = snmp_process_container(
-            self.main_queue_name,
+            IPC_SOCK,
             self.log,
             global_config["SNMP_PROCS"],
             global_config["MAX_SNMP_JOBS"],
