@@ -413,9 +413,10 @@ class RRD(dict):
                 self.log("Reading RRA-file from {}".format(self.file_name))
             self._parse_raw()
         else:
-            if _verbose:
-                self.log("Reading Dump-file from {}".format(self.file_name))
-            self._parse_dump()
+            self.log("parsing of non-RRD-files not implemented", logging_tools.LOG_LEVEL_ERROR)
+            # if _verbose:
+            #    self.log("Reading Dump-file from {}".format(self.file_name))
+            # self._parse_dump()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.log_com:
