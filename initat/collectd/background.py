@@ -696,7 +696,7 @@ class background(multiprocessing.Process, log_base):
         )
         _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
         self.poller.register(_snmp_sock, zmq.POLLIN)  # @UndefinedVariable
-        self.__hdict[_snmp_sock] = self._handle_snmp
+        self.__hdict[_snmp_sock] = self.spc.handle
 
     def _snmp_process_start(self, **kwargs):
         self.__msi_block.add_actual_pid(
