@@ -23,7 +23,7 @@ from initat.cluster_server.config import global_config
 import config_tools
 import io_stream_helper
 import logging_tools
-import pprint
+import pprint  # @UnusedImport
 import process_tools
 import server_command
 import threading_tools
@@ -108,17 +108,16 @@ class com_instance(object):
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
                 new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, com_instance.bg_idx)
-                # new_bgt = self.sc_obj.process_pool.add_process(bg_process(new_bg_name), start=True)
-                self.sc_obj.process_pool.send_to_process(
+                self.sc_obj.main_proc.send_to_process(
                     new_bg_name,
                     "set_option_dict",
                     self.option_dict)
-                self.sc_obj.process_pool.send_to_process(
+                self.sc_obj.main_proc.send_to_process(
                     new_bg_name,
                     "set_srv_com",
                     unicode(self.srv_com),
                 )
-                self.sc_obj.process_pool.send_to_process(
+                self.sc_obj.main_proc.send_to_process(
                     new_bg_name,
                     "start_command",
                     self.sc_obj.name,
@@ -210,11 +209,11 @@ class server_com(object):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(server_com.Meta, key))
 
-    def link(self, process_pool):
-        self.process_pool = process_pool
+    def link(self, main_proc):
+        self.main_proc = main_proc
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.process_pool.log(u"[com] {}".format(what), log_level)
+        self.main_proc.log(u"[com] {}".format(what), log_level)
 
     def check_config(self, loc_config, force=False):
         self.server_idx, self.act_config_name = (0, "")
@@ -246,4 +245,4 @@ class server_com(object):
         return (doit, srv_origin, err_str)
 
     def __call__(self, srv_com, option_dict):
-        return com_instance(self, srv_com, option_dict, self.Meta, self.process_pool.zmq_context)
+        return com_instance(self, srv_com, option_dict, self.Meta, self.main_proc.zmq_context)
