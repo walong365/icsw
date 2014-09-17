@@ -1556,18 +1556,28 @@ def build_node_list(s_info, options):
                     cur_node.append(getattr(E, header_name)(acl_str))
             type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
             cur_dict = {job_id: s_info.get_job(job_id) for job_id in sorted(type_dict.keys())}
-            qstat_info = ", ".join(["{}{} {} ({:d}) {}{}".format(
-                "[" if "s" in cur_dict[key].findtext("state").lower() else "",
-                key,
-                cur_dict[key].findtext("JB_owner"),
-                int(cur_dict[key].findtext("granted_pe") or "1"),
-                (", ".join([
-                    "{}{}".format(
-                        ("{:d} x ".format(type_dict[key].count(s_key)) if type_dict[key].count(s_key) > 1 else ""),
-                        s_key) for
-                    s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
-                "]" if "s" in cur_dict[key].findtext("state").lower() else "",
-            ) for key in sorted(type_dict.keys())])
+            qstat_info = ", ".join(
+                [
+                    "{}{} {} ({:d}) {}{}".format(
+                        "[" if "s" in cur_dict[key].findtext("state").lower() else "",
+                        key,
+                        cur_dict[key].findtext("JB_owner"),
+                        int(cur_dict[key].findtext("granted_pe") or "1"),
+                        (
+                            ", ".join(
+                                [
+                                    "{}{}".format(
+                                        ("{:d} x ".format(type_dict[key].count(s_key)) if type_dict[key].count(s_key) > 1 else ""),
+                                        s_key
+                                    ) for
+                                    s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]
+                                ]
+                            ) + "."
+                        ).replace("MASTER.", "SINGLE.")[:-1],
+                        "]" if "s" in cur_dict[key].findtext("state").lower() else "",
+                    ) for key in sorted(type_dict.keys())
+                ]
+            )
             cur_node.append(E.jobs(qstat_info))
             node_list.append(cur_node)
     return node_list
