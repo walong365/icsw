@@ -310,7 +310,7 @@ class snmp_job(object):
             self.last_start = time.time()
             self.running = True
             self.waiting_for = "{}_{:d}".format(self.uuid, self.counter)
-            self.bg_proc.start_batch(
+            self.bg_proc.spc.start_batch(
                 self.waiting_for,
                 self.ip,
                 self.snmp_version,
