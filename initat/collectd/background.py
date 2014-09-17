@@ -678,7 +678,7 @@ class background(multiprocessing.Process, log_base):
 
     def _init_snmp(self):
         self.spc = snmp_process_container(
-            IPC_SOCK,
+            IPC_SOCK_SNMP,
             self.log,
             global_config["SNMP_PROCS"],
             global_config["MAX_SNMP_JOBS"],
@@ -767,9 +767,9 @@ class background(multiprocessing.Process, log_base):
                 exc_info = process_tools.exception_info()
                 if exc_info.except_info[1].strerror.lower().count("interrupted"):
                     self.__run = False
-                else:
-                    for line in exc_info.log_lines:
-                        self.log(line, logging_tools.LOG_LEVEL_ERROR)
+                # else:
+                for line in exc_info.log_lines:
+                    self.log(line, logging_tools.LOG_LEVEL_ERROR)
                 os.kill(self.main_pid, 15)
                 self.spc.stop()
             else:
