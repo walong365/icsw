@@ -615,6 +615,8 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                     raise
                 time.sleep(0.1)
             else:
+                if _iter > 1:
+                    logging_tools.my_syslog("sent to 'main' ({:d} after {:d} iterations)".format(os.getpid(), _iter))
                 _debug("sent pool message {}".format(str(args)))
                 break
 
