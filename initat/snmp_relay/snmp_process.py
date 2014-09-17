@@ -56,8 +56,9 @@ DEFAULT_RETURN_NAME = "main"
 
 
 class snmp_process_container(object):
-    def __init__(self, process_pool, log_com, max_procs, max_snmp_jobs, conf_dict, event_dict):
-        self.process_pool = process_pool
+    def __init__(self, mq_name, log_com, max_procs, max_snmp_jobs, conf_dict, event_dict):
+        # name of return queue
+        self.mq_name = mq_name
         self.log_com = log_com
         self.max_procs = max_procs
         self.max_snmp_jobs = max_snmp_jobs
@@ -108,7 +109,7 @@ class snmp_process_container(object):
                     "jobs": 0,
                     "pending": 0,
                 }
-                cur_struct["proc"].process_pool = self.process_pool
+                cur_struct["proc"].main_queue_name = self.mq_name
                 cur_struct["proc"].start()
                 self.__snmp_dict[new_idx] = cur_struct
 

@@ -196,8 +196,8 @@ class hm_module(object):
     def commands(self):
         return self.__commands
 
-    def register_server(self, proc_pool):
-        self.process_pool = proc_pool
+    def register_server(self, main_proc):
+        self.main_proc = main_proc
 
     def base_init(self):
         # called directly after init (usefull for collclient)
@@ -210,7 +210,7 @@ class hm_module(object):
         pass
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.process_pool.log("[{}] {}".format(self.name, what), log_level)
+        self.main_proc.log("[{}] {}".format(self.name, what), log_level)
 
     def __unicode__(self):
         return u"module {}, priority {:d}".format(self.name, self.Meta.priority)
@@ -244,7 +244,7 @@ class hm_command(object):
         self.parser.error = self._parser_error
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.module.process_pool.log("[{}] {}".format(self.name, what), log_level)
+        self.module.main_proc.log("[{}] {}".format(self.name, what), log_level)
 
     def _parser_exit(self, status=0, message=None):
         raise ValueError, (status, message)

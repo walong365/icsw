@@ -81,10 +81,10 @@ class _general(hm_classes.hm_module):
         self.ipmi_result, self.ipmi_update = (None, None)
         self.it_command = False
         self.registered_mvs = set()
-        if hasattr(self.process_pool, "register_vector_receiver") and global_config["TRACK_IPMI"]:
+        if hasattr(self.main_proc, "register_vector_receiver") and global_config["TRACK_IPMI"]:
             self.check_ipmi_settings()
             self.popen = None
-            self.process_pool.register_timer(self._update_ipmi, 20, instant=True)
+            self.main_proc.register_timer(self._update_ipmi, 20, instant=True)
 
     def _update_ipmi(self):
         if self.it_command:

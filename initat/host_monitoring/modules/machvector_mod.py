@@ -53,16 +53,16 @@ class _general(hm_classes.hm_module):
         hm_classes.hm_module.__init__(self, *args, **kwargs)
 
     def init_module(self):
-        if hasattr(self.process_pool, "register_vector_receiver"):
+        if hasattr(self.main_proc, "register_vector_receiver"):
             # at first init the machine_vector
             self._init_machine_vector()
             # then start the polling loop, 30 seconds default timeout (defined in main.py) poll time
             _mpc = global_config["MACHVECTOR_POLL_COUNTER"]
             self.log("machvector poll_counter is {:d} seconds".format(_mpc))
-            self.process_pool.register_timer(self._update_machine_vector, _mpc, instant=True)
+            self.main_proc.register_timer(self._update_machine_vector, _mpc, instant=True)
 
     def close_module(self):
-        if hasattr(self.process_pool, "register_vector_receiver"):
+        if hasattr(self.main_proc, "register_vector_receiver"):
             self.machine_vector.close()
 
     def _init_machine_vector(self):
@@ -90,7 +90,7 @@ class get_mvector_command(hm_classes.hm_command):
             re_list = []
         cur_vector = srv_com["data:machine_vector"]
         if cur_ns.raw:
-            return limits.nag_STATE_OK, etree.tostring(cur_vector)
+            return limits.nag_STATE_OK, etree.tostring(cur_vector)  # @UndefinedVariable
         else:
             vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
@@ -170,7 +170,7 @@ class machine_vector(object):
         # self.__alert_dict, self.__alert_dict_time = ({}, time.time())
         # key is in fact the timestamp
         self.__act_key, self.__changed = (0, True)
-        self.__verbosity = module.process_pool.global_config["VERBOSE"]
+        self.__verbosity = module.main_proc.global_config["VERBOSE"]
         # socket dict for mv-sending
         self.__socket_dict = {}
         # read machine vector config
@@ -178,7 +178,7 @@ class machine_vector(object):
         if not os.path.isfile(self.conf_name):
             self._create_default_config()
         try:
-            xml_struct = etree.fromstring(file(self.conf_name, "r").read())
+            xml_struct = etree.fromstring(file(self.conf_name, "r").read())  # @UndefinedVariable
         except:
             self.log(
                 "cannot read {}: {}".format(
@@ -190,7 +190,7 @@ class machine_vector(object):
             xml_struct = None
         else:
             send_id = 0
-            p_pool = self.module.process_pool
+            p_pool = self.module.main_proc
             for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']", smart_strings=False):
                 send_id += 1
                 mv_target.attrib["send_id"] = "{:d}".format(send_id)
@@ -203,14 +203,14 @@ class machine_vector(object):
                 )
                 # zmq sending, to collectd
                 if True:
-                    t_sock = p_pool.zmq_context.socket(zmq.PUSH)
-                    t_sock.setsockopt(zmq.LINGER, 0)
-                    t_sock.setsockopt(zmq.SNDHWM, 16)
-                    t_sock.setsockopt(zmq.BACKLOG, 4)
-                    t_sock.setsockopt(zmq.SNDTIMEO, 1000)
+                    t_sock = p_pool.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+                    t_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+                    t_sock.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
+                    t_sock.setsockopt(zmq.BACKLOG, 4)  # @UndefinedVariable
+                    t_sock.setsockopt(zmq.SNDTIMEO, 1000)  # @UndefinedVariable
                     # to stop 0MQ trashing the target socket
-                    t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)
-                    t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)
+                    t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)  # @UndefinedVariable
+                    t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)  # @UndefinedVariable
                     target_str = "tcp://{}:{:d}".format(
                         mv_target.get("target", "127.0.0.1"),
                         int(mv_target.get("port", "8002")))
@@ -221,9 +221,9 @@ class machine_vector(object):
                 self.__socket_dict[send_id] = t_sock
         self.__xml_struct = xml_struct
         self.vector_flags = {}
-        module.process_pool.register_vector_receiver(self._recv_vector)
+        module.main_proc.register_vector_receiver(self._recv_vector)
         # check flags
-        for module in module.process_pool.module_list:
+        for module in module.main_proc.module_list:
             if hasattr(module, "set_machine_vector_flags"):
                 if self.__verbosity:
                     self.log("calling set_machine_vector_flags for module '{}'".format(module.name))
@@ -257,7 +257,7 @@ class machine_vector(object):
                     ", changed" if self.vector_flags[key] != def_value else "",
                     ))
         # init MV
-        for module in module.process_pool.module_list:
+        for module in module.main_proc.module_list:
             if hasattr(module, "init_machine_vector"):
                 if self.__verbosity:
                     self.log("calling init_machine_vector for module '{}'".format(module.name))
@@ -359,12 +359,12 @@ class machine_vector(object):
             send_vector = self.build_xml(E, simple=not full)
             send_vector.attrib["name"] = (cur_xml.get("send_name", fqdn) or fqdn)
             send_vector.attrib["interval"] = cur_xml.get("send_every")
-            send_vector.attrib["uuid"] = self.module.process_pool.zeromq_id
+            send_vector.attrib["uuid"] = self.module.main_proc.zeromq_id
         else:
             send_vector = self.build_json(simple=not full)
             send_vector[1]["name"] = cur_xml.get("send_name", fqdn) or fqdn
             send_vector[1]["interval"] = int(cur_xml.get("send_every"))
-            send_vector[1]["uuid"] = self.module.process_pool.zeromq_id
+            send_vector[1]["uuid"] = self.module.main_proc.zeromq_id
         # send to server
         t_host, t_port = (
             cur_xml.get("target", "127.0.0.1"),
@@ -373,7 +373,7 @@ class machine_vector(object):
         try:
             send_id = int(cur_xml.attrib["send_id"])
             if send_format == "xml":
-                self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))
+                self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))  # @UndefinedVariable
             else:
                 # print json.dumps(send_vector)
                 self.__socket_dict[send_id].send_unicode(json.dumps(send_vector))
@@ -400,7 +400,7 @@ class machine_vector(object):
             t_sock.close()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.module.process_pool.log("[mvect] {}".format(what), log_level)
+        self.module.main_proc.log("[mvect] {}".format(what), log_level)
 
     def _recv_vector(self, zmq_sock):
         try:
@@ -442,7 +442,7 @@ class machine_vector(object):
         return self.__act_dict[key]
 
     def has_key(self, key):
-        return self.__act_dict.has_key(key)
+        return key in self.__act_dict
 
     def keys(self):
         return self.__act_dict.keys()
@@ -582,7 +582,7 @@ class machine_vector(object):
         # if esd:
         #    self.check_external_sources(log_t, esd)
         # self.check_for_alert_file_change(log_t)
-        for module in self.module.process_pool.module_list:
+        for module in self.module.main_proc.module_list:
             if hasattr(module, "update_machine_vector"):
                 module.update_machine_vector(self)
         self.check_changed()
