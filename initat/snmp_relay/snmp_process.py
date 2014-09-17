@@ -90,10 +90,12 @@ class snmp_process_container(object):
         to_start = self.max_procs - len(cur_running)
         if to_start:
             min_idx = 1 if not self.__snmp_dict else max(self.__snmp_dict.keys()) + 1
-            self.log("starting {} (starting at {:d})".format(
-                logging_tools.get_plural("SNMP process", to_start),
-                min_idx,
-                ))
+            self.log(
+                "starting {} (starting at {:d})".format(
+                    logging_tools.get_plural("SNMP process", to_start),
+                    min_idx,
+                )
+            )
             _npid = 1
             for new_idx in xrange(min_idx, min_idx + to_start):
                 while _npid in self.__used_proc_ids:
