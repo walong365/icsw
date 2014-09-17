@@ -162,7 +162,7 @@ class debug_zmq_sock(object):
         return self._sock.getsockopt(*args)
 
     def fileno(self):
-        return self._sock.getsockopt(zmq.FD)
+        return self._sock.getsockopt(zmq.FD)  # @UndefinedVariable
 
     def poll(self, **kwargs):
         return self._sock.poll(**kwargs)
@@ -398,7 +398,7 @@ class poller_obj(object):
             if sock in self._socket_lut:
                 sock = self._socket_lut[sock]
             if sock in self.poller_handler:
-                for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):
+                for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):  # @UndefinedVariable
                     if c_type & r_type:
                         # the socket could vanish
                         if r_type in self.poller_handler.get(sock, []):
@@ -576,12 +576,12 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         return self.__signals
 
     @property
-    def process_pool(self):
-        return self.__process_pool
+    def main_queue_name(self):
+        return self.__main_queue_name
 
-    @process_pool.setter
-    def process_pool(self, p_pool):
-        self.__process_pool = p_pool
+    @main_queue_name.setter
+    def main_queue_name(self, m_q_name):
+        self.__main_queue_name = m_q_name
 
     def getName(self):
         return self.name
@@ -603,7 +603,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         while True:
             _iter += 1
             try:
-                self.__com_socket.send_unicode("main", zmq.SNDMORE)
+                self.__com_socket.send_unicode("main", zmq.SNDMORE)  # @UndefinedVariable
                 self.__com_socket.send_pyobj({
                     "pid": self.pid,
                     "target": target,
@@ -623,13 +623,13 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
             self.zmq_context = debug_zmq_ctx()
         else:
             self.zmq_context = zmq.Context()
-        com_socket = self.zmq_context.socket(zmq.ROUTER)
+        com_socket = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         # cast to str, no unicode allowed
-        com_socket.setsockopt(zmq.IDENTITY, str(self.name))
-        com_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
-        com_socket.setsockopt(zmq.IMMEDIATE, True)
-        self.register_poller(com_socket, zmq.POLLIN, self._handle_message)
-        com_socket.connect(self.__process_pool.queue_name)
+        com_socket.setsockopt(zmq.IDENTITY, str(self.name))  # @UndefinedVariable
+        com_socket.setsockopt(zmq.ROUTER_MANDATORY, True)  # @UndefinedVariable
+        com_socket.setsockopt(zmq.IMMEDIATE, True)  # @UndefinedVariable
+        self.register_poller(com_socket, zmq.POLLIN, self._handle_message)  # @UndefinedVariable
+        com_socket.connect(self.__main_queue_name)
         self.__com_socket = com_socket
         # flush pool
         self.send_pool_message("process_start")
@@ -946,12 +946,12 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         self.__flags[fn] = state
 
     def _add_com_socket(self):
-        zmq_socket = self.zmq_context.socket(zmq.ROUTER)
-        zmq_socket.setsockopt(zmq.IDENTITY, "main")
-        zmq_socket.setsockopt(zmq.IMMEDIATE, True)
-        zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
+        zmq_socket = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        zmq_socket.setsockopt(zmq.IDENTITY, "main")  # @UndefinedVariable
+        zmq_socket.setsockopt(zmq.IMMEDIATE, True)  # @UndefinedVariable
+        zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)  # @UndefinedVariable
         process_tools.bind_zmq_socket(zmq_socket, self.queue_name)
-        self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)
+        self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)  # @UndefinedVariable
         self.__com_socket = zmq_socket
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -990,7 +990,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             )
             return None
         else:
-            t_obj.process_pool = self
+            t_obj.main_queue_name = self.queue_name
             self.__processes[t_obj.getName()] = t_obj
             for key in [sub_key for sub_key in sorted(kwargs.keys()) if sub_key not in ["start"]]:
                 self.log("setting attribute '{}' for {}".format(key, t_obj.getName()))
@@ -1011,7 +1011,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         sent = False
         if self._flush_process_buffers(t_process):
             try:
-                self.__com_socket.send_unicode(t_process, zmq.SNDMORE)
+                self.__com_socket.send_unicode(t_process, zmq.SNDMORE)  # @UndefinedVariable
                 self.__com_socket.send_pyobj(
                     {
                         "pid": self.pid,
@@ -1036,7 +1036,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             while send_list:
                 b_m_type, b_args, b_kwargs = send_list[0]
                 try:
-                    self.__com_socket.send_unicode(t_process, zmq.SNDMORE)
+                    self.__com_socket.send_unicode(t_process, zmq.SNDMORE)  # @UndefinedVariable
                     self.__com_socket.send_pyobj(
                         {
                             "pid": self.pid,
