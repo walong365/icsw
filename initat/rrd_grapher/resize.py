@@ -83,7 +83,11 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
             "rrd_grapher_resize",
             timeout=10,
         )
-        _result = _conn.add_connection("tcp://localhost:8004", server_command.srv_command(command="server_control", control=mode, instance=service), multi=False)
+        _result = _conn.add_connection(
+            "tcp://localhost:8004",
+            server_command.srv_command(command="server_control", control=mode, instance=service),
+            multi=False
+        )
         self.log(*_result.get_log_tuple())
 
     def check_size(self):
