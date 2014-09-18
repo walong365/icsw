@@ -920,7 +920,7 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
             $scope.show_uuid = !$scope.show_uuid
         $scope.modify = () ->
             if not $scope.form.$invalid
-                if scope.acl_modify(scope._edit_obj, "backbone.device.change_basic")
+                if $scope.acl_modify($scope._edit_obj, "backbone.device.change_basic")
                     if $scope._edit_obj.device_type_identifier == "MD"
                         $scope._edit_obj.name = "METADEV_" + $scope._edit_obj.name
                     $scope._edit_obj.put().then(() ->
