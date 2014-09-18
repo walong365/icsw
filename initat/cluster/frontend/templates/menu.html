@@ -7,7 +7,12 @@
             <a href="{% url 'main:index' %}"><span class="glyphicon glyphicon-home"></span></a>
         </li>
         {% endif %}
-        <li>
+        <li ng-show="
+        		check_perm('user.modify_tree') || check_perm('user.modify_domain_name_tree') ||
+        		check_perm('user.modify_category_tree') || check_perm('config.modify_config') ||
+        		check_perm('config.modify_network') || check_perm('device.change_network') || 
+        		check_perm('device.change_connection') || check_perm('device.change_variables') || check_perm('device.change_config')
+        		">
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Base" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
                 <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'mon:create_device' %}">{% trans "Create new device" %}</a></li>
@@ -25,7 +30,10 @@
                 <li ng-show="check_perm('device.change_config')"><a href="{% url 'device:show_configs' %}">{% trans "Device configurations" %}</a></li>
             </ul>
         </li>
-        <li ng-show="CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled">
+        <li ng-show="
+        		(CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled) && (check_perm('device.change_boot') || check_perm('package.package_install') || 
+        		check_perm('partition_fs.modify_partitions') || check_perm('kernel.modify_kernels') || check_perm('image.modify_images'))
+        		">
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
                 <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled && check_perm('device.change_boot')"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
@@ -33,9 +41,9 @@
                 {% if DJANGO_SERVICE_TYPES.mother or DJANGO_SERVICE_TYPES.package %}
                 <li ng-show="CLUSTER_LICENSE.boot.enabled" class="divider"></li>
                 {% endif %}
-                <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
-                <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
-                <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
+                <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('image.modify_images')"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
+                <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('kernel.modify_kernels')"><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
+                <li ng-show="CLUSTER_LICENSE.boot.enabled && check_perm('partition_fs.modify_partitions')"><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
             </ul>
         </li>
         <li ng-show="check_perm('group.group_admin')">

@@ -255,12 +255,6 @@ angular_module_setup = (module_list, url_list=[]) ->
     $(module_list).each (idx, cur_mod) ->
         cur_mod.factory("access_level_service", () ->
             # see lines 205 ff in backbone/models/user.py
-            to_list = (in_str) ->
-                r_dict = {}
-                for part in in_str.split(",")
-                    kv = part.split("=")
-                    r_dict[kv[0]] = parseInt(kv[1])
-                return r_dict
             check_level = (obj, ac_name, mask, any) ->
                 if ac_name.split(".").length != 3
                     alert("illegal ac specifier '#{ac_name}'")
@@ -270,7 +264,7 @@ angular_module_setup = (module_list, url_list=[]) ->
                     # no need to check for global permissions because those are mirrored down
                     # to the object_level permission on the server
                     if not obj._all
-                        obj._all = to_list(obj.access_levels)
+                        obj._all = obj.access_levels
                     if ac_name of obj._all
                         if any
                             return if obj._all[ac_name] & mask then true else false

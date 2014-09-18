@@ -177,7 +177,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 return "btn btn-sm"
         $scope.new_devsel = (dev_pks, group_pks) ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson(dev_pks), "with_variables" : true, "with_meta_devices" : true, "ignore_cdg" : false, "olp" : "backbone.change_variables"}])
+                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson(dev_pks), "with_variables" : true, "with_meta_devices" : true, "ignore_cdg" : false, "olp" : "backbone.device.change_variables"}])
                 restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_variable_form", "device_variable_new_form"])}])
             ]
             $q.all(wait_list).then((data) ->

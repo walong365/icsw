@@ -26,29 +26,25 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
-from initat.cluster.backbone import models, serializers as model_serializers
-from initat.cluster.backbone.models import user , group, \
-    get_related_models, get_change_reset_list, device, domain_name_tree, \
-    category_tree, device_selection, device_config, home_export_list, \
-    csw_permission, peer_information, netdevice, \
-    csw_object_permission, cd_connection
-from initat.cluster.backbone.serializers import device_serializer, device_serializer_package_state, \
+from initat.cluster.backbone import serializers as model_serializers
+from initat.cluster.backbone.models import get_related_models, get_change_reset_list, device, \
+    domain_name_tree, category_tree, device_selection, device_config, home_export_list, \
+    csw_permission, netdevice, cd_connection
+from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
 from initat.cluster.frontend import forms
 from initat.core.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
-from rest_framework.authentication import BasicAuthentication, SessionAuthentication
-from rest_framework.decorators import api_view
+from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.reverse import reverse
 from rest_framework.views import exception_handler, APIView
 import json
 import logging
 import logging_tools
 import operator
-import pprint
+import pprint  # @UnusedImport
 import process_tools
 import time
 import types
@@ -490,6 +486,24 @@ class csw_object(object):
         self.tr_class = tr_class
 
 
+class min_access_levels(viewsets.ViewSet):
+    # returns minimum levels of access for a given object type / object list
+    display_name = "min_access_levels"
+
+    @rest_logging
+    def list(self, request):
+        obj_list = json.loads(request.QUERY_PARAMS["obj_list"])
+        min_dict = None
+        for _dev in apps.get_model("backbone", request.QUERY_PARAMS["obj_type"]).objects.filter(Q(pk__in=obj_list)):
+            _cur_dict = request.user.get_object_access_levels(_dev)
+            if min_dict is None:
+                min_dict = _cur_dict
+            else:
+                for key, value in _cur_dict.iteritems():
+                    min_dict[key] = min(min_dict[key], value)
+        return Response(min_dict)
+
+
 class csw_object_list(viewsets.ViewSet):
     display_name = "csw_object_groups"
 
@@ -742,10 +756,10 @@ class device_selection_list(APIView):
         return Response(ser.data)
 
 for src_mod, obj_name in REST_LIST:
-    ser_name = "%s_serializer" % (obj_name)
+    ser_name = "{}_serializer".format(obj_name)
     ser_class = getattr(src_mod, ser_name)
     for mode in ["list", "detail"]:
-        class_name = "%s_%s" % (obj_name, mode)
+        class_name = "{}_{}".format(obj_name, mode)
         globals()[class_name] = type(
             class_name,
             (detail_view,) if mode == "detail" else (list_view,),
