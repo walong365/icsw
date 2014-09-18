@@ -172,7 +172,9 @@ class auth_cache(object):
             else:
                 local_perms = {key: max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms}
             # merge to result permissions
-            result_perms = {key: max(global_perms.get(key, 0), local_perms.get(key, 0)) for key in set(global_perms.keys()) | set(local_perms.keys())}
+            result_perms = {key: max(global_perms.get(key, -1), local_perms.get(key, -1)) for key in set(global_perms.keys()) | set(local_perms.keys())}
+            # only use values with at least level 0
+            result_perms = {_key: _value for _key, _value in result_perms.iteritems() if _value >= 0}
             return result_perms
 
     def get_object_access_levels(self, obj, is_superuser):
@@ -192,7 +194,9 @@ class auth_cache(object):
                 meta_dict = {key: self.__obj_perms.get(key, {}).get(self.__dg_lut[obj.pk], self.__perms.get(key, -1)) for key in obj_perms}
                 # copy to device permdict
                 for key, value in meta_dict.iteritems():
-                    ac_dict[key] = max(ac_dict.get(key, 0), value)
+                    # only use values with at least level 0
+                    if value >= 0 or key in ac_dict:
+                        ac_dict[key] = max(ac_dict.get(key, 0), value)
         return ac_dict
 
     def _fill_dg_lut(self, dev):

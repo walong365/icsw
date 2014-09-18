@@ -689,6 +689,7 @@ class device(models.Model):
             ("change_network", "Change network", True),
             ("change_config", "Change configuration", True),
             ("change_boot", "Change boot settings", True),
+            ("change_disk", "Change Disk setup", True),
             ("change_variables", "Change variables", True),
             ("change_connection", "Change device connection", True),
             ("change_monitoring", "Change device monitoring config", True),
