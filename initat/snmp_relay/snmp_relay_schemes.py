@@ -33,6 +33,7 @@ MAX_CACHE_TIME = 15 * 60
 # timeout of Eonstor
 EONSTOR_TIMEOUT = 5 * 60
 
+
 class net_object(object):
     def __init__(self, log_com, verb_level, host, snmp_community, snmp_version):
         self.__verbose_level = verb_level
@@ -51,6 +52,7 @@ class net_object(object):
                 self.snmp_version
             )
         )
+
     def register_oids(self, log_com, oid_list):
         # to get a sense for the required cache-timing, not used right now
         return
@@ -82,40 +84,51 @@ class net_object(object):
         #                self.__oid_cache_defaults[oid]["timeout"],
         #                self.__time_steps[oid] + 10))
         #            self.__oid_cache_defaults[oid]["timeout"] = self.__time_steps[oid] + 10
+
     def log(self, log_com, what, log_level=logging_tools.LOG_LEVEL_OK):
         log_com("[%s] %s" % (self.name, what), log_level)
+
     def get_pending_requests(self, in_set, log_com):
         pend_reqs = self.__pending_requests & in_set
         if self.__verbose_level > 1:
             self.log(log_com, "%s pending" % (logging_tools.get_plural("request", len(pend_reqs))))
         return pend_reqs
+
     def add_to_pending_requests(self, in_set):
         # print "add", threading.currentThread().getName(), in_set
         self.__pending_requests |= in_set
         # print "after", threading.currentThread().getName(), self.__pending_requests
+
     def remove_from_pending_requests(self, in_set):
         # print "remove", threading.currentThread().getName(), in_set
         self.__pending_requests -= in_set
         # print "after", threading.currentThread().getName(), self.__pending_requests
+
     def cache_still_hot_enough(self, oid_set, log_com):
         he_reqs = set([key for key in oid_set if key in self.__cache_tree and self.__cache_tree[key]["refresh"] > time.time()])
         if self.__verbose_level > 1:
             self.log(log_com, "%s hot enough" % (logging_tools.get_plural("request", len(he_reqs))))
         return he_reqs
+
     def save_snmp_tree(self, oid, tree):
         oid_t = tuple(oid)
         if oid_t not in self.__oid_cache_defaults:
             self.__oid_cache_defaults[oid_t] = {
-                "timeout" : oid.cache_timeout,
-                "refresh" : oid.refresh_timeout}
+                "timeout": oid.cache_timeout,
+                "refresh": oid.refresh_timeout
+            }
         self.__cache_tree[oid_t] = {
-            "expires" : time.time() + self.__oid_cache_defaults[oid_t]["timeout"],
-            "refresh" : time.time() + self.__oid_cache_defaults[oid_t]["refresh"],
-            "tree"    : tree}
+            "expires": time.time() + self.__oid_cache_defaults[oid_t]["timeout"],
+            "refresh": time.time() + self.__oid_cache_defaults[oid_t]["refresh"],
+            "tree": tree
+        }
+
     def snmp_tree_valid(self, oid):
         return (oid in self.__cache_tree and self.__cache_tree[oid]["expires"] > time.time())
+
     def get_snmp_tree(self, oid):
         return self.__cache_tree[oid]["tree"]
+
 
 class snmp_oid(simple_snmp_oid):
     def __init__(self, *oid, **kwargs):
@@ -134,10 +147,13 @@ class snmp_oid(simple_snmp_oid):
             self.cache_timeout = kwargs.get("cache_timeout", 60)
             # timer after which cache should be refreshed
             self.refresh_timeout = kwargs.get("refresh_timeout", self.cache_timeout / 2)
+
     def has_max_oid(self):
         return True if self._max_oid else False
+
     def get_max_oid(self):
         return self._str_max_oid
+
 
 class snmp_scheme(object):
     def __init__(self, name, **kwargs):
@@ -158,11 +174,21 @@ class snmp_scheme(object):
         self.__req_list = []
         self.transform_single_key = False
         self.__info_tuple = ()
+
     def __del__(self):
         pass
+
     @property
     def proc_data(self):
-        return [self.net_obj.snmp_version, self.net_obj.name, self.net_obj.snmp_community, self.envelope, self.transform_single_key, self.timeout] + self.snmp_start()
+        return [
+            self.net_obj.snmp_version,
+            self.net_obj.name,
+            self.net_obj.snmp_community,
+            self.envelope,
+            self.transform_single_key,
+            self.timeout
+        ] + self.snmp_start()
+
     def parse_options(self, options, **kwargs):
         old_stdout, old_stderr = (sys.stdout, sys.stderr)
         act_io = cStringIO.StringIO()

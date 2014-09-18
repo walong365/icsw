@@ -68,6 +68,7 @@ class snmp_process_container(object):
         self.__run_flag = True
         self.__snmp_dict = {}
         self.__used_proc_ids = set()
+        self._socket = None
         self.log("init with a maximum of {:d} processes ({:d} jobs per process)".format(self.max_procs, self.max_snmp_jobs))
         self.log("{} in default config dict:".format(logging_tools.get_plural("key", len(self.conf_dict))))
         for _key in sorted(self.conf_dict):
@@ -110,12 +111,15 @@ class snmp_process_container(object):
                     "stopped": False,
                     "jobs": 0,
                     "pending": 0,
+                    "done": 0,
                 }
                 cur_struct["proc"].main_queue_name = self.mq_name
                 cur_struct["proc"].start()
                 self.__snmp_dict[new_idx] = cur_struct
 
     def get_free_snmp_id(self):
+        # code from old snmp-relay:
+        # free_processes = sorted([(value["calls_init"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
         idle_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and not value["pending"]])
         running_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and value["pending"]])
         if idle_procs:
@@ -133,11 +137,12 @@ class snmp_process_container(object):
         if not self.__snmp_dict:
             self._event("all_stopped")
 
-    def start_batch(self, batch_id, ip, vers, com, oid_list):
+    def start_batch(self, vers, ip, com, batch_id, single_key_transform, timeout, *oid_list):
+        # see proc_data in snmp_relay_schemes
         snmp_id = self.get_free_snmp_id()
         self.__snmp_dict[snmp_id]["jobs"] += 1
         self.__snmp_dict[snmp_id]["pending"] += 1
-        self.send("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, True, 10, *oid_list, VERBOSE=0)
+        self.send("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, VERBOSE=0)
 
     def send(self, target, m_type, *args, **kwargs):
         self._socket.send_unicode(target, zmq.SNDMORE)  # @UndefinedVariable
@@ -153,6 +158,9 @@ class snmp_process_container(object):
             self.__event_dict[ev_name](*args, **kwargs)
         else:
             self.log("no event with name {}".format(ev_name), logging_tools.LOG_LEVEL_ERROR)
+
+    def handle_with_socket(self, _sock):
+        self.handle()
 
     def handle(self):
         # handle results
@@ -190,6 +198,7 @@ class snmp_process_container(object):
                     self._event("all_stopped")
         elif data["type"] == "snmp_finished":
             self.__snmp_dict[snmp_idx]["pending"] -= 1
+            self.__snmp_dict[snmp_idx]["done"] += 1
             self._event("finished", data)
             if self.__snmp_dict[snmp_idx]["jobs"] > self.max_snmp_jobs:
                 self.log(
