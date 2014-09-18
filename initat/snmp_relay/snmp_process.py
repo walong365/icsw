@@ -137,6 +137,18 @@ class snmp_process_container(object):
         if not self.__snmp_dict:
             self._event("all_stopped")
 
+    def get_usage(self):
+        return "process usage (init/done): {}".format(
+            ", ".join(
+                [
+                    "{:d}/{:d}".format(
+                        self.__snmp_dict[key]["jobs"],
+                        self.__snmp_dict[key]["done"],
+                    ) for key in sorted(self.__process_dict.iterkeys())
+                ]
+            )
+        )
+
     def start_batch(self, vers, ip, com, batch_id, single_key_transform, timeout, *oid_list):
         # see proc_data in snmp_relay_schemes
         snmp_id = self.get_free_snmp_id()

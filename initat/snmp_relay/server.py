@@ -501,10 +501,7 @@ class server_process(threading_tools.process_pool):
                 logging_tools.get_plural("message", self.__num_messages)))
         if not self.__num_messages % 50:
             # log process usage
-            self.log("process usage (init/done): {}".format(", ".join(["{:d}/{:d}".format(
-                self.__process_dict[key]["calls_init"],
-                self.__process_dict[key]["calls_done"],
-                ) for key in sorted(self.__process_dict.iterkeys())])))
+            self.log(self.spc.get_usage())
 
     def _send_return(self, envelope, ret_state, ret_str):
         if self.__verbose > 3:
