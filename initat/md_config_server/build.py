@@ -60,7 +60,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             init_logger=True
         )
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
-        self.__nagios_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
+        self.__icinga_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
         connection.close()
         self.__mach_loggers = {}
         self.__num_mach_logs = {}
@@ -216,27 +216,27 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 if line.strip().lower().startswith("error"):
                     self.log(" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
         else:
-            if os.path.isfile(self.__nagios_lock_file_name):
+            if os.path.isfile(self.__icinga_lock_file_name):
                 try:
-                    pid = file(self.__nagios_lock_file_name, "r").read().strip()
+                    pid = file(self.__icinga_lock_file_name, "r").read().strip()
                 except:
                     self.log(
                         "Cannot read {} LockFile named '{}', trying to start {}".format(
                             global_config["MD_TYPE"],
-                            self.__nagios_lock_file_name,
+                            self.__icinga_lock_file_name,
                             global_config["MD_TYPE"],
                         ),
                         logging_tools.LOG_LEVEL_WARN
                     )
                     start_daemon = True
                 else:
-                    pid = file(self.__nagios_lock_file_name).read().strip()
+                    pid = file(self.__icinga_lock_file_name).read().strip()
                     try:
                         pid = int(pid)
                     except:
                         self.log(
                             "PID read from '{}' is not an integer ({}, {}), trying to restart {}".format(
-                                self.__nagios_lock_file_name,
+                                self.__icinga_lock_file_name,
                                 str(pid),
                                 process_tools.get_except_info(),
                                 global_config["MD_TYPE"],
@@ -264,7 +264,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 self.log(
                     "{} LockFile '{}' not found, trying to start {}".format(
                         global_config["MD_TYPE"],
-                        self.__nagios_lock_file_name,
+                        self.__icinga_lock_file_name,
                         global_config["MD_TYPE"]),
                     logging_tools.LOG_LEVEL_WARN)
                 start_daemon = True
@@ -799,9 +799,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
                     # action url
-                    if self.gc["ENABLE_PNP"] or self.gc["ENABLE_COLLECTD"]:
+                    if self.gc["ENABLE_COLLECTD"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                         if host.enable_perfdata:
+                            # TODO: fix url, pnp is not supported any more
                             act_host["action_url"] = "{}/index.php/graph?host=$HOSTNAME$&srv=_HOST_".format(self.gc["PNP_URL"])
                     act_host["_device_pk"] = host.pk
                     if global_config["USE_ONLY_ALIAS_FOR_ALIAS"]:
@@ -936,7 +937,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         act_host["notification_options"] = not_a
                         # check for hostextinfo
                         if host.mon_ext_host_id and host.mon_ext_host_id in ng_ext_hosts:
-                            if (self.gc["MD_TYPE"] == "nagios" and self.gc["MD_VERSION"] > 1) or (self.gc["MD_TYPE"] == "icinga"):
+                            if self.gc["MD_TYPE"] == "icinga":
                                 # handle for nagios 2, icinga
                                 # act_hostext_info = mon_config("hostextinfo", host.full_name)
                                 # act_hostext_info["host_name"] = host.full_name
@@ -1654,9 +1655,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 if not n_field:
                     n_field.append("o")
                 act_serv["flap_detection_options"] = n_field
-            if self.gc["ENABLE_PNP"] or self.gc["ENABLE_COLLECTD"]:
+            if self.gc["ENABLE_COLLECTD"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
+                    # TODO: fix url, pnp is not supported any more
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (self.gc["PNP_URL"])
             if s_check.check_command_pk:
                 act_serv["_check_command_pk"] = s_check.check_command_pk

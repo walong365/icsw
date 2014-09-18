@@ -666,9 +666,7 @@ class main_config(object):
             what), level)
 
     def get_command_name(self):
-        return os.path.join(
-            self.__r_dir_dict["var"],
-            "ext_com" if global_config["MD_TYPE"] == "nagios" else "icinga.cmd")
+        return os.path.join(self.__r_dir_dict["var"], "icinga.cmd")
 
     def _create_directories(self):
         dir_names = [
@@ -1022,7 +1020,6 @@ class main_config(object):
                     ("debug_verbosity"        , 1),
                     ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
                     ("max_debug_file_size"    , 1000000)])
-        enable_perf = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
         main_values = [
             ("log_file"                         , "{}/{}.log".format(
                 self.__r_dir_dict["var"],
@@ -1065,7 +1062,7 @@ class main_config(object):
             ("accept_passive_service_checks"    , 1),
             ("enable_notifications"             , 1 if self.master else 0),
             ("enable_event_handlers"            , 1),
-            ("process_performance_data"         , (1 if enable_perf else 0) if self.master else 0),
+            ("process_performance_data"         , (1 if global_config["ENABLE_COLLECTD"] else 0) if self.master else 0),
             ("obsess_over_services"             , 1 if not self.master else 0),
             ("obsess_over_hosts"                , 1 if not self.master else 0),
             ("check_for_orphaned_services"      , 0),
@@ -1108,21 +1105,16 @@ class main_config(object):
                         self.__r_dir_dict[lib_dir_name],
                         self.__r_dir_dict["var"]))
                 ])
-            if enable_perf:
-                if global_config["ENABLE_COLLECTD"]:
-                    main_values.extend([
+            if global_config["ENABLE_COLLECTD"]:
+                # setup perf
+                # collectd data:
+                main_values.extend([
                         ("service_perfdata_file"         , os.path.join(self.__r_dir_dict["var"], "service-perfdata")),
                         ("host_perfdata_file"            , os.path.join(self.__r_dir_dict["var"], "host-perfdata")),
                         ("service_perfdata_file_template", "<rec type='service' time='$TIMET$' host='$HOSTNAME$' sdesc='$SERVICEDESC$' perfdata='$SERVICEPERFDATA$' com='$SERVICECHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$' ss='$SERVICESTATE$' sstype='$SERVICESTATETYPE$'/>"),
                         ("host_perfdata_file_template"   , "<rec type='host' time='$TIMET$' host='$HOSTNAME$' perfdata='$HOSTPERFDATA$' com='$HOSTCHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$'/>"),
                     ])
-                else:
-                    main_values.extend([
-                        ("service_perfdata_file"         , os.path.join(global_config["PNP_DIR"], "var/service-perfdata")),
-                        ("host_perfdata_file"            , os.path.join(global_config["PNP_DIR"], "var/host-perfdata")),
-                        ("service_perfdata_file_template", "DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$"),
-                        ("host_perfdata_file_template"   , "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
-                    ])
+                # general data:
                 main_values.extend([
                     # ("host_perfdata_command"   , "process-host-perfdata"),
                     # ("service_perfdata_command", "process-service-perfdata"),
@@ -1134,25 +1126,18 @@ class main_config(object):
                     ("host_perfdata_file_processing_command"    , "process-host-perfdata-file"),
                 ])
             if global_config["ENABLE_NDO"]:
-                if global_config["MD_TYPE"] == "nagios":
-                    main_values.append(("*broker_module", "%s/ndomod-%dx.o config_file=%s/%s.cfg" % (
-                        self.__r_dir_dict["bin"],
-                        global_config["MD_VERSION"],
-                        self.__r_dir_dict["etc"],
-                        NDOMOD_NAME)))
+                if os.path.exists(os.path.join(self.__r_dir_dict[lib_dir_name], "idomod.so")):
+                    main_values.append(
+                        ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
+                            self.__r_dir_dict[lib_dir_name],
+                            self.__r_dir_dict["etc"],
+                            NDOMOD_NAME)))
                 else:
-                    if os.path.exists(os.path.join(self.__r_dir_dict[lib_dir_name], "idomod.so")):
-                        main_values.append(
-                            ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
-                                self.__r_dir_dict[lib_dir_name],
-                                self.__r_dir_dict["etc"],
-                                NDOMOD_NAME)))
-                    else:
-                        main_values.append(
-                            ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
-                                self.__r_dir_dict["lib"],
-                                self.__r_dir_dict["etc"],
-                                NDOMOD_NAME)))
+                    main_values.append(
+                        ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
+                            self.__r_dir_dict["lib"],
+                            self.__r_dir_dict["etc"],
+                            NDOMOD_NAME)))
             main_values.append(
                 ("event_broker_options"             , -1 if global_config["ENABLE_LIVESTATUS"] else global_config["EVENT_BROKER_OPTIONS"])
             )
@@ -1165,19 +1150,14 @@ class main_config(object):
                 ("stalking_event_handlers_for_hosts"   , 1),
                 ("stalking_event_handlers_for_services", 1),
             ])
-        if global_config["MD_VERSION"] >= 3 or global_config["MD_TYPE"] == "icinga":
-            main_values.extend(
-                [
-                    ("object_cache_file"            , "%s/object.cache" % (self.__r_dir_dict["var"])),
-                    ("use_large_installation_tweaks", "1"),
-                    ("enable_environment_macros"    , "0"),
-                    ("max_service_check_spread"     , global_config["MAX_SERVICE_CHECK_SPREAD"]),
-                    ("max_host_check_spread"        , global_config["MAX_HOST_CHECK_SPREAD"]),
-                ])
-        else:
-            # values for Nagios 1.x, 2.x
-            main_values.extend([("comment_file"                     , "%s/comment.log" % (self.__r_dir_dict["var"])),
-                                ("downtime_file"                    , "%s/downtime.log" % (self.__r_dir_dict["var"]))])
+        main_values.extend(
+            [
+                ("object_cache_file"            , "%s/object.cache" % (self.__r_dir_dict["var"])),
+                ("use_large_installation_tweaks", "1"),
+                ("enable_environment_macros"    , "0"),
+                ("max_service_check_spread"     , global_config["MAX_SERVICE_CHECK_SPREAD"]),
+                ("max_host_check_spread"        , global_config["MAX_HOST_CHECK_SPREAD"]),
+            ])
         main_cfg = base_config(global_config["MAIN_CONFIG_NAME"],
                                is_host_file=True,
                                values=main_values)
@@ -1230,7 +1210,7 @@ class main_config(object):
                     ("authorized_for_all_hosts"                , def_user),
                     ("authorized_for_all_host_commands"        , def_user),
                     ("authorized_for_all_services"             , def_user),
-                    ("authorized_for_all_service_commands"     , def_user)] +
+                    ("authorized_for_all_service_commands"     , def_user)] + 
             [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
         if sql_suc:
             pass
@@ -2020,44 +2000,24 @@ class all_commands(host_type_config):
             .prefetch_related("categories", "exclude_devices")
             .select_related("mon_service_templ", "config", "event_handler").order_by("name")
         )
-        enable_perfd = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
+        enable_perfd = global_config["ENABLE_COLLECTD"]
         if enable_perfd and gen_conf.master:
-            if global_config["ENABLE_COLLECTD"]:
-                check_coms += [
-                    mon_check_command(
-                        name="process-service-perfdata-file",
-                        command_line="/opt/cluster/sbin/send_collectd_zmq %s/service-perfdata" % (
-                            gen_conf.var_dir
-                            ),
-                        description="Process service performance data",
+            check_coms += [
+                mon_check_command(
+                    name="process-service-perfdata-file",
+                    command_line="/opt/cluster/sbin/send_collectd_zmq %s/service-perfdata" % (
+                        gen_conf.var_dir
                         ),
-                    mon_check_command(
-                        name="process-host-perfdata-file",
-                        command_line="/opt/cluster/sbin/send_collectd_zmq %s/host-perfdata" % (
-                            gen_conf.var_dir
-                            ),
-                        description="Process host performance data",
+                    description="Process service performance data",
+                    ),
+                mon_check_command(
+                    name="process-host-perfdata-file",
+                    command_line="/opt/cluster/sbin/send_collectd_zmq %s/host-perfdata" % (
+                        gen_conf.var_dir
                         ),
-                ]
-            else:
-                check_coms += [
-                    mon_check_command(
-                        name="process-service-perfdata-file",
-                        command_line="/usr/bin/perl %s/lib/process_perfdata.pl --bulk=%s/var/service-perfdata" % (
-                            global_config["PNP_DIR"],
-                            global_config["PNP_DIR"]
-                            ),
-                        description="Process service performance data",
-                        ),
-                    mon_check_command(
-                        name="process-host-perfdata-file",
-                        command_line="/usr/bin/perl %s/lib/process_perfdata.pl  --bulk=%s/var/host-perfdata" % (
-                            global_config["PNP_DIR"],
-                            global_config["PNP_DIR"]
-                            ),
-                        description="Process host performance data",
-                        ),
-                ]
+                    description="Process host performance data",
+                    ),
+            ]
         all_mccs = mon_check_command_special.objects.all()
         check_coms += [
             mon_check_command(
@@ -2116,7 +2076,7 @@ class all_commands(host_type_config):
                 ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
                 build_safe_name(ngc.description) if safe_names else ngc.description,
                 exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
-                nagios_name=_nag_name,
+                icinga_name=_nag_name,
                 mccs_id=ngc.mon_check_command_special_id,
                 servicegroup_names=cats,
                 servicegroup_pks=cat_pks,
@@ -2509,7 +2469,7 @@ class all_services(host_type_config):
 class check_command(object):
     def __init__(self, name, com_line, config, template, descr, exclude_devices=None, **kwargs):
         self.__name = name
-        self.__nag_name = kwargs.pop("nagios_name", self.__name)
+        self.__nag_name = kwargs.pop("icinga_name", self.__name)
         # print self.__name, self.__nag_name
         self.__com_line = com_line
         self.config = config

@@ -34,7 +34,7 @@ class version_check_mixin(object):
         start_time = time.time()
         self.log("checking type and version of installed monitoring daemon")
         md_version, md_type = ("unknown", "unknown")
-        for t_daemon in ["icinga", "icinga-init", "nagios", "nagios-init"]:
+        for t_daemon in ["icinga", "icinga-init"]:
             if os.path.isfile("/etc/debian_version"):
                 cstat, cout = commands.getstatusoutput("dpkg -s {}".format(t_daemon))
                 if not cstat:
@@ -132,7 +132,7 @@ class version_check_mixin(object):
                 has_snmp_relayer = True
             if has_snmp_relayer:
                 global_config.add_config_entries([("HAS_SNMP_RELAYER", configfile.bool_c_var(True))])
-                self.log("host-relay package has snmp-relayer, rewriting database entries for nagios")
+                self.log("host-relay package has snmp-relayer, rewriting database entries for icinga")
         # device_variable local to the server
         if relay_version == "unknown":
             self.log("No installed host-relay found", logging_tools.LOG_LEVEL_WARN)

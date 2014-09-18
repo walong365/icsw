@@ -103,7 +103,7 @@ def main():
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(
             "%s.py" % (prog_name),
-            ignore_names=["nagios", "icinga"],
+            ignore_names=["icinga"],
         )
 
     global_config.add_config_entries(
@@ -119,14 +119,11 @@ def main():
         ("NETSPEED_DEFAULT_VALUE", configfile.int_c_var(10000000)),
         ("CHECK_HOST_ALIVE_PINGS", configfile.int_c_var(5)),
         ("CHECK_HOST_ALIVE_TIMEOUT", configfile.float_c_var(5.0)),
-        ("ENABLE_PNP", configfile.bool_c_var(False)),
         ("ENABLE_COLLECTD", configfile.bool_c_var(False)),
         ("ENABLE_LIVESTATUS", configfile.bool_c_var(True)),
         ("ENABLE_NDO", configfile.bool_c_var(False)),
         ("ENABLE_NAGVIS", configfile.bool_c_var(False)),
         ("ENABLE_FLAP_DETECTION", configfile.bool_c_var(False)),
-        ("PNP_DIR", configfile.str_c_var("/opt/pnp4nagios")),
-        ("PNP_URL", configfile.str_c_var("/pnp4nagios")),
         ("NAGVIS_DIR", configfile.str_c_var("/opt/nagvis4icinga")),
         ("NAGVIS_URL", configfile.str_c_var("/nagvis")),
         ("NONE_CONTACT_GROUP", configfile.str_c_var("none_group")),
