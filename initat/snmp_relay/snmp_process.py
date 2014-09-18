@@ -144,7 +144,7 @@ class snmp_process_container(object):
                     "{:d}/{:d}".format(
                         self.__snmp_dict[key]["jobs"],
                         self.__snmp_dict[key]["done"],
-                    ) for key in sorted(self.__process_dict.iterkeys())
+                    ) for key in sorted(self.__smmp_dict.iterkeys())
                 ]
             )
         )
