@@ -80,7 +80,7 @@ class image(models.Model):
 
     class CSW_Meta:
         permissions = (
-            ("modify", "modify images", False),
+            ("modify_iamges", "modify images", False),
         )
 
     class Meta:
@@ -146,7 +146,7 @@ class kernel(models.Model):
 
     class CSW_Meta:
         permissions = (
-            ("modify", "modify kernels", False),
+            ("modify_kernels", "modify kernels", False),
         )
         fk_ignore_list = ["initrd_build", "kernel_build"]
 

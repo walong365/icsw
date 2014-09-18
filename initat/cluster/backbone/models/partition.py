@@ -60,7 +60,7 @@ class partition_fs(models.Model):
 
     class CSW_Meta:
         permissions = (
-            ("modify", "modify partitions", False),
+            ("modify_paritions", "modify partitions", False),
         )
         fk_ignore_list = ["initrd_build", "kernel_build"]
 
