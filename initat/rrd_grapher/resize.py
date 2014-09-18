@@ -227,7 +227,13 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
             self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _prev_popcount[_name]) for _name in sorted(list(_prev_names))])))
             self.log("to")
             self.log("  {}".format(", ".join(["{} ({:d})".format(_name, _new_popcount[_name]) for _name in sorted(list(_new_names))])))
-            file(f_name, "wb").write(_rrd.content())
+            try:
+                file(f_name, "wb").write(_rrd.content())
+            except:
+                self.log(
+                    "error writing RRA to {}: {}".format(f_name, process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             _changed = True
         else:
             _changed = False
