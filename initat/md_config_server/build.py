@@ -801,9 +801,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     # action url
                     if self.gc["ENABLE_COLLECTD"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
-                        if host.enable_perfdata:
-                            # TODO: fix url, pnp is not supported any more
-                            act_host["action_url"] = "{}/index.php/graph?host=$HOSTNAME$&srv=_HOST_".format(self.gc["PNP_URL"])
                     act_host["_device_pk"] = host.pk
                     if global_config["USE_ONLY_ALIAS_FOR_ALIAS"]:
                         act_host["alias"] = host.alias or host.name
@@ -1657,9 +1654,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["flap_detection_options"] = n_field
             if self.gc["ENABLE_COLLECTD"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
-                if host.enable_perfdata and s_check.enable_perfdata:
-                    # TODO: fix url, pnp is not supported any more
-                    act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (self.gc["PNP_URL"])
             if s_check.check_command_pk:
                 act_serv["_check_command_pk"] = s_check.check_command_pk
             act_serv["_device_pk"] = host.pk
