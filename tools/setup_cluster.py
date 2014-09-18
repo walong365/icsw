@@ -345,9 +345,13 @@ def create_db_cf(opts, default_engine, default_database):
                     print("invalid group {}".format(opts.db_file_group))
                     return False
 
+            # create db file
             open(file_path, 'a').close()
+            # set owner/mode
             os.chown(file_path, uid, gid)
             os.chmod(file_path, int(opts.db_file_mode, 8))
+            # sqlite also requires the directory to be writable, probably for temporary files
+            os.chown(opts.db_path, uid, gid)
 
             c_dict["database"] = file_path
 
@@ -468,11 +472,13 @@ def create_db(opts):
     if opts.clear_migrations:
         clear_migrations()
     check_migrations()
-    # useless
-    # migrate_app("")
+    # NOTE: This does not create migrations for e.g. backbone since migrations/__init__.py does not exist.
+    #       it does however create migrations which are needed by the apps migrated explicitly below
+    migrate_app("")
     # schemamigrations
-    for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler"]:
+    for _app in ["django.contrib.contenttypes", "django.contrib.sites", "django.contrib.auth", "reversion", "static_precompiler", "backbone"]:
         migrate_app(_app)
+
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
