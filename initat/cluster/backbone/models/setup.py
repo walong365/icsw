@@ -80,7 +80,7 @@ class image(models.Model):
 
     class CSW_Meta:
         permissions = (
-            ("modify_iamges", "modify images", False),
+            ("modify_images", "modify images", False),
         )
 
     class Meta:

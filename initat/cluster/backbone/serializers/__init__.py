@@ -223,7 +223,7 @@ class device_serializer(serializers.ModelSerializer):
         return -1
 
     def get_access_levels(self, obj):
-        return ",".join(["{}={:d}".format(key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
+        return {key: value for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()}
 
     class Meta:
         model = device

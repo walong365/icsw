@@ -186,6 +186,7 @@ class auth_cache(object):
             # filter values
             ac_dict = {key: value for key, value in ac_dict.iteritems() if value >= 0}
             if obj_type == "device":
+                # for devices we assume that the minimum access level is 0 (pre-filtered by the access_to_devicegroup feature)
                 self._fill_dg_lut(obj)
                 # get permissions dict for meta device
                 meta_dict = {key: self.__obj_perms.get(key, {}).get(self.__dg_lut[obj.pk], self.__perms.get(key, -1)) for key in obj_perms}

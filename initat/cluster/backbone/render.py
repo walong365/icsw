@@ -32,6 +32,7 @@ from initat.cluster.backbone.models import cluster_license_cache, background_job
 import django.template
 import json
 import logging
+import pprint  # @UnusedImport
 import routing
 
 logger = logging.getLogger("cluster.render")
@@ -83,8 +84,8 @@ class render_me(object):
             _service_types = {}
         # license cache
         cur_clc = cluster_license_cache()
-        # import pprint
         # pprint.pprint(gp_dict)
+        # pprint.pprint(op_dict)
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
