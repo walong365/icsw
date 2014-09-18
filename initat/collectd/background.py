@@ -295,11 +295,13 @@ class snmp_job(object):
 
     def update_attribute(self, attr_name, attr_value):
         if getattr(self, attr_name) != attr_value:
-            self.log("changed attribute {} from '{}' to '{}'".format(
-                attr_name,
-                getattr(self, attr_name),
-                attr_value,
-                ))
+            self.log(
+                "changed attribute {} from '{}' to '{}'".format(
+                    attr_name,
+                    getattr(self, attr_name),
+                    attr_value,
+                )
+            )
             setattr(self, attr_name, attr_value)
             if attr_name == "snmp_scheme":
                 self._init_scheme_object()
@@ -310,14 +312,23 @@ class snmp_job(object):
             self.last_start = time.time()
             self.running = True
             self.waiting_for = "{}_{:d}".format(self.uuid, self.counter)
+            # see proc_data in snmp_relay_schemes
             self.bg_proc.spc.start_batch(
-                self.waiting_for,
-                self.ip,
                 self.snmp_version,
+                self.ip,
                 self.snmp_read_community,
-                self.snmp_scheme_object.get_oid_list()
-                # [("V", [simple_snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.1")])]
-                )
+                self.waiting_for,
+                True,
+                10,
+                *self.snmp_scheme_object.get_oid_list()
+            )
+            # self.bg_proc.spc.start_batch(
+            #    self.waiting_for,
+            #    self.ip,
+            #    self.snmp_version,
+            #    self.snmp_read_community,
+            #    self.snmp_scheme_object.get_oid_list()
+            # )
 
     def feed(self, *res_list):
         self.waiting_for = None
