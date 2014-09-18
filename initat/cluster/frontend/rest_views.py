@@ -111,10 +111,14 @@ class rest_logging(object):
         return types.MethodType(self, obj)
 
     def log(self, what="", log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, "[%s%s] %s" % (
-            self.__name__,
-            " %s" % (self.__obj_name) if self.__obj_name else "",
-            what))
+        logger.log(
+            log_level,
+            u"[{}{}] {}".format(
+                self.__name__,
+                u" {}".format(self.__obj_name) if self.__obj_name else "",
+                what
+            )
+        )
 
     def __call__(self, *args, **kwargs):
         s_time = time.time()
@@ -500,7 +504,8 @@ class min_access_levels(viewsets.ViewSet):
                 min_dict = _cur_dict
             else:
                 for key, value in _cur_dict.iteritems():
-                    min_dict[key] = min(min_dict[key], value)
+                    min_dict[key] = min(min_dict.get(key, -1), value)
+        min_dict = {_key: _value for _key, _value in min_dict.iteritems() if _value >= 0}
         return Response(min_dict)
 
 

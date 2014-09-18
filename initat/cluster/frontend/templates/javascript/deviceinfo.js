@@ -168,7 +168,7 @@ urn:uuid:{{ _edit_obj.uuid }}
 </div>
 """
             main_part += "</div></div>"
-        if pk_list_nmd.length
+        if pk_list_nmd.length and @has_perm("backbone.device.change_disk", 0)
             dev_div_txt += "<li><a href='#disk'>Disk#{addon_text_nmd}</a></li>"
             main_part += """
 <div class="tab-pane" id="disk">
