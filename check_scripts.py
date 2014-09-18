@@ -235,11 +235,11 @@ def check_system(opt_ns):
                 key, level_list = line.split(None, 1)
                 level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
                 stat_dict[key.lower()] = level_list
-    if config_tools and not opt_ns.no_database:
-        dev_config = config_tools.device_with_config("server")
-    else:
-        dev_config = None
     for entry in instance_xml.findall("instance[@to_check='1']"):
+        if config_tools and not opt_ns.no_database and entry.find(".//config_names/config_name") is not None:
+            dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
+        else:
+            dev_config = None
         name = entry.attrib["name"]
         entry.attrib["checked"] = "1"
         if entry.attrib["init_script_name"] in stat_dict:
