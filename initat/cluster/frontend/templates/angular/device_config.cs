@@ -920,14 +920,15 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
             $scope.show_uuid = !$scope.show_uuid
         $scope.modify = () ->
             if not $scope.form.$invalid
-                if $scope._edit_obj.device_type_identifier == "MD"
-                    $scope._edit_obj.name = "METADEV_" + $scope._edit_obj.name
-                $scope._edit_obj.put().then(() ->
+                if scope.acl_modify(scope._edit_obj, "backbone.device.change_basic")
                     if $scope._edit_obj.device_type_identifier == "MD"
-                        $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
-                    # selectively reload sidebar tree
-                    reload_sidebar_tree([$scope._edit_obj.idx])
-                )
+                        $scope._edit_obj.name = "METADEV_" + $scope._edit_obj.name
+                    $scope._edit_obj.put().then(() ->
+                        if $scope._edit_obj.device_type_identifier == "MD"
+                            $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
+                        # selectively reload sidebar tree
+                        reload_sidebar_tree([$scope._edit_obj.idx])
+                    )
             else
                 noty
                     text : "form validation problem"
@@ -954,8 +955,6 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                     scope.mon_device_templ_list = data[2]
                     scope.mon_ext_host_list = data[3]
                     scope._edit_obj = data[4][0]
-                    #console.log scope._edit_obj.device_type_identifier
-                    #Restangular.restangularizeElement(null, scope._edit_obj, "{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2))
                     if scope._edit_obj.device_type_identifier == "MD"
                         scope._edit_obj.name = scope._edit_obj.name.substr(8)
                     element.append($compile(form)(scope))

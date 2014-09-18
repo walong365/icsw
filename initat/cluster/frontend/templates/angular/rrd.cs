@@ -292,10 +292,10 @@ add_rrd_directive = (mod) ->
             $scope.all_timeranges = [
                 new pd_timerange("last 24 hours", 24, undefined)
                 new pd_timerange("last day", moment().subtract(1, "days").startOf("day"), moment().subtract(1, "days").endOf("day"))
-                new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
-                new pd_timerange("last month", moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month"))
                 new pd_timerange("current week", moment().startOf("week"), moment().endOf("week"))
                 new pd_timerange("last week", moment().subtract(1, "week").startOf("week"), moment().subtract(1, "week").endOf("week"))
+                new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
+                new pd_timerange("last month", moment().subtract(1, "month").startOf("month"), moment().subtract(1, "month").endOf("month"))
                 new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
                 new pd_timerange("last year", moment().subtract(1, "year").startOf("year"), moment().subtract(1, "year").endOf("year"))
             ]
