@@ -58,6 +58,12 @@ class partition_fs(models.Model):
     def __unicode__(self):
         return self.descr
 
+    class CSW_Meta:
+        permissions = (
+            ("modify", "modify partitions", False),
+        )
+        fk_ignore_list = ["initrd_build", "kernel_build"]
+
     class Meta:
         db_table = u'partition_fs'
         ordering = ("name",)

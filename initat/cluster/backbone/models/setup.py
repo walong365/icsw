@@ -78,6 +78,11 @@ class image(models.Model):
             self.name,
             unicode(self.architecture))
 
+    class CSW_Meta:
+        permissions = (
+            ("modify", "modify images", False),
+        )
+
     class Meta:
         db_table = u'image'
         ordering = ("name",)
@@ -140,6 +145,9 @@ class kernel(models.Model):
         db_table = u'kernel'
 
     class CSW_Meta:
+        permissions = (
+            ("modify", "modify kernels", False),
+        )
         fk_ignore_list = ["initrd_build", "kernel_build"]
 
 
