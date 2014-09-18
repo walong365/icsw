@@ -80,6 +80,7 @@ else:
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 
+
 # copy from check_local_settings.py
 def check_local_settings():
     LS_DIR = os.path.dirname(LS_FILE)
@@ -467,9 +468,10 @@ def create_db(opts):
     if opts.clear_migrations:
         clear_migrations()
     check_migrations()
-    migrate_app("")
+    # useless
+    # migrate_app("")
     # schemamigrations
-    for _app in ["django.contrib.auth", "reversion", "static_precompiler"]:
+    for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler"]:
         migrate_app(_app)
     if opts.no_initial_data:
         print("")
