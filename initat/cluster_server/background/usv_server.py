@@ -21,10 +21,12 @@ from initat.cluster_server.background.base import bg_stuff
 import commands
 import logging_tools
 
+
 class usv_server_stuff(bg_stuff):
     class Meta:
         creates_machvector = True
         name = "usv_server"
+
     def do_apc_call(self):
         stat, out = commands.getstatusoutput("apcaccess")
         if stat:
@@ -32,8 +34,11 @@ class usv_server_stuff(bg_stuff):
                      logging_tools.LOG_LEVEL_ERROR)
             apc_dict = {}
         else:
-            apc_dict = dict([(l_part[0].lower().strip(), l_part[1].strip()) for l_part in [line.strip().split(":", 1) for line in out.split("\n")] if len(l_part) == 2])
+            apc_dict = {
+                l_part[0].lower().strip(): l_part[1].strip() for l_part in [line.strip().split(":", 1) for line in out.split("\n")] if len(l_part) == 2
+            }
         return apc_dict
+
     def init_machvector(self):
         ret_list = []
         apc_dict = self.do_apc_call()
@@ -50,6 +55,7 @@ class usv_server_stuff(bg_stuff):
                 elif key == "itemp":
                     ret_list.append("usv.temp.int:0.:Internal Temperature:C:1:1")
         return ret_list
+
     def get_machvector(self):
         ret_list = []
         apc_dict = self.do_apc_call()

@@ -21,10 +21,12 @@ from initat.cluster_server.config import global_config
 import logging_tools
 import mail_tools
 
+
 class bg_stuff(object):
     class Meta:
         min_time_between_runs = 30
         creates_machvector = False
+
     def __init__(self, srv_process):
         # copy Meta keys
         for key in dir(bg_stuff.Meta):
@@ -34,10 +36,13 @@ class bg_stuff(object):
         self.server_process = srv_process
         self.init_bg_stuff()
         self.__last_call = None
+
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.server_process.log("[bg %s] %s" % (self.Meta.name, what), level)
+
     def init_bg_stuff(self):
         pass
+
     def __call__(self, cur_time, drop_com):
         if self.__last_call and abs(self.__last_call - cur_time) < self.Meta.min_time_between_runs:
             # self.log("last call only %d seconds ago, skipping" % (abs(self.__last_call - cur_time)),
@@ -49,11 +54,12 @@ class bg_stuff(object):
             if add_obj is not None:
                 drop_com["vector_{}".format(self.Meta.name)] = add_obj
                 drop_com["vector_{}".format(self.Meta.name)].attrib["type"] = "vector"
+
     def _call(self, cur_time, drop_com):
         self.log("dummy __call__()")
+
     def send_mail(self, to_addr, subject, msg_body):
         new_mail = mail_tools.mail(subject, "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
         new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
         _stat, log_lines = new_mail.send_mail()
         return log_lines
-

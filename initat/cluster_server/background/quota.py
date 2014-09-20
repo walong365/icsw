@@ -29,6 +29,7 @@ import process_tools
 import pwd
 import time
 
+
 class quota_line(object):
     def __init__(self, line_p):
         self.__uid = int(line_p.pop(0)[1:])
@@ -49,25 +50,37 @@ class quota_line(object):
             self.__files_grace = ""
         else:
             self.__files_frace = line_p.pop(0)
+
     def get_block_dict(self):
-        return {"used"  : self.__blocks_used,
-                "soft"  : self.__blocks_soft,
-                "hard"  : self.__blocks_hard,
-                "grace" : self.__blocks_grace}
+        return {
+            "used": self.__blocks_used,
+            "soft": self.__blocks_soft,
+            "hard": self.__blocks_hard,
+            "grace": self.__blocks_grace
+        }
+
     def get_file_dict(self):
-        return {"used"  : self.__files_used,
-                "soft"  : self.__files_soft,
-                "hard"  : self.__files_hard,
-                "grace" : self.__files_grace}
+        return {
+            "used": self.__files_used,
+            "soft": self.__files_soft,
+            "hard": self.__files_hard,
+            "grace": self.__files_grace
+        }
+
     def get_info_str(self, in_dict):
-        return "%d / %d / %d%s" % (in_dict["used"],
-                                   in_dict["soft"],
-                                   in_dict["hard"],
-                                   in_dict["grace"] and " / %s" % (in_dict["grace"]) or "")
+        return "%d / %d / %d%s" % (
+            in_dict["used"],
+            in_dict["soft"],
+            in_dict["hard"],
+            in_dict["grace"] and " / %s" % (in_dict["grace"]) or ""
+        )
+
     def quotas_defined(self):
         return self.__blocks_soft or self.__blocks_hard
+
     def get_uid(self):
         return self.__uid
+
     def __repr__(self):
         return "quota info, uid %d, flags %s, block_info: %s, file_info: %s" % (
             self.__uid,
@@ -75,6 +88,7 @@ class quota_line(object):
             self.get_info_str(self.get_block_dict()),
             self.get_info_str(self.get_file_dict()),
         )
+
     def check_dict(self, in_dict):
         is_ok = True
         if in_dict["soft"] and in_dict["used"] >= in_dict["soft"]:
@@ -82,21 +96,34 @@ class quota_line(object):
         if in_dict["hard"] and in_dict["used"] >= in_dict["hard"]:
             is_ok = False
         return is_ok
+
     def check_for_blocks(self):
         return self.check_dict(self.get_block_dict())
+
     def check_for_files(self):
         return self.check_dict(self.get_file_dict())
+
     def everything_ok(self):
         return self.check_for_blocks() and self.check_for_files()
+
     def create_prob_str(self, name, in_dict, block_s):
         p_f = []
         if in_dict["soft"] and in_dict["used"] >= in_dict["soft"]:
-            p_f.append("soft quota (%s > %s)" % (logging_tools.get_size_str(in_dict["used"] * block_s, False, 1000),
-                                                 logging_tools.get_size_str(in_dict["soft"] * block_s, False, 1000)))
+            p_f.append(
+                "soft quota ({} > {})".format(
+                    logging_tools.get_size_str(in_dict["used"] * block_s, False, 1000),
+                    logging_tools.get_size_str(in_dict["soft"] * block_s, False, 1000)
+                )
+            )
         if in_dict["hard"] and in_dict["used"] >= in_dict["hard"]:
-            p_f.append("hard quota (%s > %s)" % (logging_tools.get_size_str(in_dict["used"] * block_s, False, 1000),
-                                                 logging_tools.get_size_str(in_dict["hard"] * block_s, False, 1000)))
-        return "%s for %ss" % (" and ".join(p_f), name)
+            p_f.append(
+                "hard quota ({} > {})".format(
+                    logging_tools.get_size_str(in_dict["used"] * block_s, False, 1000),
+                    logging_tools.get_size_str(in_dict["hard"] * block_s, False, 1000)
+                )
+            )
+        return "{} for {}s".format(" and ".join(p_f), name)
+
     def get_prob_str(self, block_s):
         p_f = []
         if not self.check_for_blocks():
@@ -105,9 +132,11 @@ class quota_line(object):
             p_f.append(self.create_prob_str("file", self.get_file_dict(), 1))
         return "; ".join(p_f)
 
+
 class quota_stuff(bg_stuff):
     class Meta:
         name = "quota"
+
     def init_bg_stuff(self):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
@@ -118,69 +147,90 @@ class quota_stuff(bg_stuff):
         self.__admin_mail_sent = None
         # load value cache
         self.__load_values = {}
+
     def _resolve_uids(self, uid_list):
         if uid_list:
-            for db_rec in user.objects.filter(Q(uid__in=uid_list)):
-                if self.__user_dict.has_key(db_rec.uid):
+            for db_rec in user.objects.filter(Q(uid__in=uid_list)):  # @UndefinedVariable
+                if db_rec.uid in self.__user_dict:
                     # check for new settings
-                    for key, value in [("source"    , "SQL"),
-                                       ("uid"       , db_rec.uid),
-                                       ("login"     , db_rec.login),
-                                       ("email"     , db_rec.email),
-                                       ("firstname" , db_rec.first_name),
-                                       ("lastname"  , db_rec.last_name)]:
+                    for key, value in [
+                        ("source", "SQL"),
+                        ("uid", db_rec.uid),
+                        ("login", db_rec.login),
+                        ("email", db_rec.email),
+                        ("firstname", db_rec.first_name),
+                        ("lastname", db_rec.last_name)
+                    ]:
                         self.__user_dict[db_rec.uid][key] = value
                 else:
                     # new record
                     self.__user_dict[db_rec.uid] = {
-                        "source"    : "SQL",
-                        "uid"       : db_rec.uid,
-                        "login"     : db_rec.login,
-                        "email"     : db_rec.email,
-                        "firstname" : db_rec.first_name,
-                        "lastname"  : db_rec.last_name}
+                        "source": "SQL",
+                        "uid": db_rec.uid,
+                        "login": db_rec.login,
+                        "email": db_rec.email,
+                        "firstname": db_rec.first_name,
+                        "lastname": db_rec.last_name
+                    }
                 act_dict = self.__user_dict[db_rec.uid]
                 act_dict["info"] = u"uid {:d}, login {} (from SQL), ({} {}, {})".format(
                     act_dict["uid"],
                     act_dict["login"],
                     act_dict["firstname"] or "<vname not set>",
                     act_dict["lastname"] or "<nname not set>",
-                    act_dict["email"] or "<email not set>")
-        missing_uids = [key for key in uid_list if not self.__user_dict.has_key(key)]
+                    act_dict["email"] or "<email not set>"
+                )
+        missing_uids = [key for key in uid_list if key not in self.__user_dict]
         for missing_uid in missing_uids:
             try:
                 pw_stuff = pwd.getpwuid(missing_uid)
             except:
                 self.log("Cannot get information for uid %d" % (missing_uid),
                          logging_tools.LOG_LEVEL_ERROR)
-                self.__user_dict[missing_uid] = {"info" : "user not found in SQL or pwd"}
+                self.__user_dict[missing_uid] = {
+                    "info": "user not found in SQL or pwd"
+                }
             else:
-                self.__user_dict[missing_uid] = {"source" : "pwd",
-                                                 "login"  : pw_stuff[0],
-                                                 "info"   : "uid %d, login %s (from pwd)" % (missing_uid, pw_stuff[0])}
+                self.__user_dict[missing_uid] = {
+                    "source": "pwd",
+                    "login": pw_stuff[0],
+                    "info": "uid %d, login %s (from pwd)" % (missing_uid, pw_stuff[0])
+                }
         # add missing keys
         for _uid, u_stuff in self.__user_dict.iteritems():
             u_stuff.setdefault("last_mail_sent", None)
+
     def _get_uid_info(self, uid, default=None):
         return self.__user_dict.get(uid, None)
+
     def init_machvector(self):
         self.wakeup()
         ret_list = []
         for dev_name, uid, _u_stuff in self.__quota_cache:
             u_name = self._get_uid_info(uid, {}).get("login", "unknown")
-            ret_list.extend(["quota.%s.%s.soft:0:Soft Limit for user $3 on $2:B:1000:1000" % (dev_name, u_name),
-                             "quota.%s.%s.hard:0:Hard Limit for user $3 on $2:B:1000:1000" % (dev_name, u_name),
-                             "quota.%s.%s.used:0:Used quota for user $3 on $2:B:1000:1000" % (dev_name, u_name)])
+            ret_list.extend(
+                [
+                    "quota.%s.%s.soft:0:Soft Limit for user $3 on $2:B:1000:1000" % (dev_name, u_name),
+                    "quota.%s.%s.hard:0:Hard Limit for user $3 on $2:B:1000:1000" % (dev_name, u_name),
+                    "quota.%s.%s.used:0:Used quota for user $3 on $2:B:1000:1000" % (dev_name, u_name)
+                ]
+            )
         return ret_list
+
     def get_machvector(self):
         ret_list = []
         for dev_name, uid, u_stuff in self.__quota_cache:
             u_name = self._get_uid_info(uid, {}).get("login", "unknown")
             block_dict = u_stuff.get_block_dict()
-            ret_list.extend(["quota.%s.%s.soft:i:%d" % (dev_name, u_name, block_dict["soft"]),
-                             "quota.%s.%s.hard:i:%d" % (dev_name, u_name, block_dict["hard"]),
-                             "quota.%s.%s.used:i:%d" % (dev_name, u_name, block_dict["used"])])
+            ret_list.extend(
+                [
+                    "quota.%s.%s.soft:i:%d" % (dev_name, u_name, block_dict["soft"]),
+                    "quota.%s.%s.hard:i:%d" % (dev_name, u_name, block_dict["hard"]),
+                    "quota.%s.%s.used:i:%d" % (dev_name, u_name, block_dict["used"])
+                ]
+            )
         return ret_list
+
     def _call(self, cur_time, builder):
         # dc = self.server_process.get_dc()
         sep_str = "-" * 64
@@ -246,10 +296,14 @@ class quota_stuff(bg_stuff):
                                                                           "unknown flags")))
             self._resolve_uids(list(set(prob_users.keys() + list(missing_uids))))
             if prob_devs:
-                mail_lines, email_users = ({"admins" : []},
-                                           ["admins"])
-                log_line = "%s violated the quota policies on %s" % (logging_tools.get_plural("user", len(prob_users.keys())),
-                                                                     logging_tools.get_plural("device", len(prob_devs.keys())))
+                mail_lines, email_users = (
+                    {"admins": []},
+                    ["admins"]
+                )
+                log_line = "%s violated the quota policies on %s" % (
+                    logging_tools.get_plural("user", len(prob_users.keys())),
+                    logging_tools.get_plural("device", len(prob_devs.keys()))
+                )
                 self.log(log_line)
                 mail_lines["admins"].extend([
                     "Servername: %s" % (global_config["SERVER_FULL_NAME"]),
@@ -277,7 +331,8 @@ class quota_stuff(bg_stuff):
                         "This is an informal mail to notify you that",
                         "you have violated one or more quota-policies",
                         "on %s, user info: %s" % (global_config["SERVER_FULL_NAME"], user_info["info"]),
-                        ""]
+                        ""
+                    ]
                     if user_info.get("email", ""):
                         if uid not in email_users:
                             # only send mail if at least USER_MAIL_SEND_TIME seconds
@@ -350,4 +405,3 @@ class quota_stuff(bg_stuff):
         self.log("quotacheck took {}".format(logging_tools.get_diff_time_str(qc_etime - cur_time)))
         self.log(sep_str)
         return my_vector
-

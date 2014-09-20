@@ -31,9 +31,11 @@ import shutil
 import sys
 import tempfile
 
+
 class create_user_home(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["username"]
+
     def _call(self, cur_inst):
         def change_own(arg, act_dir, entries):
             uid, gid = arg
@@ -46,7 +48,7 @@ class create_user_home(cs_base_class.server_com):
         # when using NFSv4 createdir can be different from homeexport (homeexport is for instance relative to nfsv4root)
         try:
             cur_user = user.objects.select_related("group").get(Q(login=cur_inst.option_dict["username"]))
-        except user.DoesNotExist:
+        except user.DoesNotExist:  # @UndefinedVariable
             cur_inst.srv_com.set_result(
                 "cannot find user '{}'".format(cur_inst.option_dict["username"]),
                 server_command.SRV_REPLY_STATE_ERROR
