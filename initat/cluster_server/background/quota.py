@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -18,7 +20,8 @@
 """ cluster-server, quota handling """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import user, group
+from initat.cluster.backbone.models import user, group, quota_capable_blockdevice, \
+    user_quota_setting, group_quota_setting, device, partition_fs
 from initat.cluster_server.background.base import bg_stuff
 from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
@@ -138,6 +141,19 @@ class quota_line(object):
             p_f.append(self.create_prob_str("file", self.get_file_dict(), 1))
         return "; ".join(p_f) or "nothing"
 
+    def feed_qs(self, cur_qs):
+        # copy current settings to cur_qs
+        for _pf, _dict, _fact in [
+            ("files", self.get_file_dict(), 1),
+            ("bytes", self.get_block_dict(), 1024),
+        ]:
+            for _key in ["used", "soft", "hard", "grace"]:
+                _val = _dict[_key]
+                if type(_val) in [int, long]:
+                    _val *= _fact
+                setattr(cur_qs, "{}_{}".format(_pf, _key), _val)
+        cur_qs.quota_flags = self.__quota_flags
+
 
 class quota_stuff(bg_stuff):
     class Meta:
@@ -147,6 +163,8 @@ class quota_stuff(bg_stuff):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
         self.__track_all_quotas = global_config["TRACK_ALL_QUOTAS"]
+        self.__effective_device = device.objects.get(Q(pk=global_config["EFFECTIVE_DEVICE_IDX"]))
+        self.log(u"effective device for quota tracking is {}".format(unicode(self.__effective_device)))
         # user/group cache
         self.__user_dict = {}
         self.__group_dict = {}
@@ -166,7 +184,8 @@ class quota_stuff(bg_stuff):
                         ("login", db_rec.login),
                         ("email", db_rec.email),
                         ("firstname", db_rec.first_name),
-                        ("lastname", db_rec.last_name)
+                        ("lastname", db_rec.last_name),
+                        ("db_rec", db_rec),
                     ]:
                         self.__user_dict[db_rec.uid][key] = value
                 else:
@@ -177,7 +196,8 @@ class quota_stuff(bg_stuff):
                         "login": db_rec.login,
                         "email": db_rec.email,
                         "firstname": db_rec.first_name,
-                        "lastname": db_rec.last_name
+                        "lastname": db_rec.last_name,
+                        "db_rec": db_rec,
                     }
                 act_dict = self.__user_dict[db_rec.uid]
                 act_dict["info"] = u"uid {:d}, login {} (from SQL), ({} {}, {})".format(
@@ -218,7 +238,8 @@ class quota_stuff(bg_stuff):
                         ("groupname", db_rec.groupname),
                         ("email", db_rec.email),
                         ("firstname", db_rec.first_name),
-                        ("lastname", db_rec.last_name)
+                        ("lastname", db_rec.last_name),
+                        ("db_rec", db_rec),
                     ]:
                         self.__group_dict[db_rec.gid][key] = value
                 else:
@@ -229,7 +250,8 @@ class quota_stuff(bg_stuff):
                         "groupname": db_rec.groupname,
                         "email": db_rec.email,
                         "firstname": db_rec.first_name,
-                        "lastname": db_rec.last_name
+                        "lastname": db_rec.last_name,
+                        "db_rec": db_rec,
                     }
                 act_dict = self.__group_dict[db_rec.gid]
                 act_dict["info"] = u"gid {:d}, groupname {} (from SQL), ({} {}, {})".format(
@@ -311,10 +333,12 @@ class quota_stuff(bg_stuff):
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                q_dict = self._scan_repquota_output(q_out)
+                q_dict, dev_dict = self._scan_repquota_output(q_out)
+                qcb_dict = self._create_base_db_entries(dev_dict)
                 prob_devs, prob_objs, quota_cache = self._check_for_violations(q_dict)
+                self._write_quota_usage(qcb_dict, quota_cache)
                 if prob_devs:
-                    self._send_quota_mails(prob_devs, prob_objs)
+                    self._send_quota_mails(prob_devs, prob_objs, dev_dict)
                 if self.Meta.creates_machvector:
                     my_vector = self._create_machvector(builder, cur_time, quota_cache)
             qc_etime = time.time()
@@ -322,34 +346,80 @@ class quota_stuff(bg_stuff):
             self.log(sep_str)
         return my_vector
 
+    def _create_base_db_entries(self, dev_dict):
+        # create quota capable device dict entries
+        cur_qcb = {
+            _qcb.block_device_path: _qcb for _qcb in quota_capable_blockdevice.objects.filter(
+                Q(device=self.__effective_device)
+            ).select_related("fs_type")
+        }
+        for _dev, _stuff in dev_dict.iteritems():
+            try:
+                _part_fs = partition_fs.objects.get(Q(name=_stuff.fstype))
+            except partition_fs.DoesNotExist:
+                self.log("no filesystem with name '{}' found".format(_stuff.fstype), logging_tools.LOG_LEVEL_CRITICAL)
+            else:
+                _size = int(psutil.disk_usage(_stuff.mountpoint).total)
+                if _dev in cur_qcb:
+                    _qcb = cur_qcb[_dev]
+                    # check values
+                    _changed = False
+                    for attr_name, new_val in [
+                        ("size", _size),
+                        ("block_device_path", _dev),
+                        ("fs_type", _part_fs),
+                        ("mount_path", str(_stuff.mountpoint)),
+                    ]:
+                        if getattr(_qcb, attr_name) != new_val:
+                            setattr(_qcb, attr_name, new_val)
+                            _changed = True
+                    if _changed:
+                        self.log("qcb {} changed".format(unicode(_qcb)))
+                        _qcb.save()
+                else:
+                    # create new entry
+                    new_qcb = quota_capable_blockdevice.objects.create(
+                        device=self.__effective_device,
+                        fs_type=_part_fs,
+                        block_device_path=_dev,
+                        mount_path=str(_stuff.mountpoint),
+                        size=_size,
+                    )
+                    self.log("created new qcb_entry {}".format(unicode(new_qcb)))
+                    cur_qcb[new_qcb.block_device_path] = new_qcb
+        return cur_qcb
+
     def _scan_repquota_output(self, q_out):
         q_dict = {}
         act_dev, q_mode = (None, None)
-        for line in [c_line.strip() for c_line in q_out.split("\n") if c_line.strip()]:
-            if line.startswith("***"):
-                act_dev = line.split()[-1]
-                q_mode = line.split()[3]
-            elif line.startswith("#"):
-                line_p = line.split()
-                try:
-                    q_line = quota_line(q_mode, line_p)
-                except:
-                    self.log(
-                        u"cannot parse quota_line '{}': {}".format(
-                            line,
-                            process_tools.get_except_info()
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-                else:
-                    if act_dev and q_mode:
-                        q_dict.setdefault(act_dev, {}).setdefault(q_mode, {})[q_line.object_id] = q_line
-                    else:
+        for line in q_out.split("\n"):
+            line = line.strip()
+            _parts = line.split()
+            if line:
+                if line.startswith("***") and len(_parts) > 4:
+                    act_dev = line.split()[-1]
+                    q_mode = line.split()[3]
+                elif line.startswith("#"):
+                    try:
+                        q_line = quota_line(q_mode, _parts)
+                    except:
                         self.log(
-                            "No device known for line '{}'" % (q_line),
-                            logging_tools.LOG_LEVEL_WARN
+                            u"cannot parse quota_line '{}': {}".format(
+                                line,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
                         )
-        return q_dict
+                    else:
+                        if act_dev and q_mode:
+                            q_dict.setdefault(act_dev, {}).setdefault(q_mode, {})[q_line.object_id] = q_line
+                        else:
+                            self.log(
+                                "No device known for line '{}'".format(q_line),
+                                logging_tools.LOG_LEVEL_WARN
+                            )
+        dev_dict = {_part.device: _part for _part in psutil.disk_partitions() if _part.device in q_dict}
+        return q_dict, dev_dict
 
     def _check_for_violations(self, q_dict):
         prob_objs, prob_devs = ({"user": {}, "group": {}}, set())
@@ -380,7 +450,7 @@ class quota_stuff(bg_stuff):
                                 quota_cache.append(
                                     (dev, obj_name, num_id, stuff)
                                 )
-                        if not stuff.everything_ok() or True:
+                        if not stuff.everything_ok():
                             prob_objs[obj_name].setdefault(
                                 num_id,
                                 {}
@@ -390,7 +460,7 @@ class quota_stuff(bg_stuff):
         self._resolve_gids(list(set(prob_objs["group"].keys() + list(missing_ids["group"]))))
         return prob_devs, prob_objs, quota_cache
 
-    def _send_quota_mails(self, prob_devs, prob_objs):
+    def _send_quota_mails(self, prob_devs, prob_objs, dev_dict):
         _admin_key = ("admin", "admins")
         email_targets = [_admin_key]
         mail_lines = {_key: [] for _key in email_targets}
@@ -407,7 +477,6 @@ class quota_stuff(bg_stuff):
             "device info:",
             ""])
         # device overview
-        dev_dict = {_part.device: _part for _part in psutil.disk_partitions()}
         for prob_dev in sorted(list(prob_devs)):
             if prob_dev in dev_dict:
                 _info = dev_dict[prob_dev]
@@ -503,6 +572,45 @@ class quota_stuff(bg_stuff):
                 )
                 for log_line in log_lines:
                     self.log(log_line)
+
+    def _write_quota_usage(self, qcb_dict, quota_cache):
+        qcb_ids = [_value.pk for _value in qcb_dict.itervalues()]
+        qs_dict = {
+            "user": {
+                (uqs.user_id, uqs.quota_capable_blockdevice_id): uqs for uqs in user_quota_setting.objects.filter(Q(quota_capable_blockdevice__in=qcb_ids))
+                },
+            "group": {
+                (gqs.group_id, gqs.quota_capable_blockdevice_id): gqs for gqs in group_quota_setting.objects.filter(Q(quota_capable_blockdevice__in=qcb_ids))
+            }
+        }
+        # pprint.pprint(qs_dict)
+        for dev_name, obj_type, num_id, stuff in quota_cache:
+            if dev_name in qcb_dict:
+                cur_qcb = qcb_dict[dev_name]
+                qcb_pk = cur_qcb.pk
+                if obj_type == "group":
+                    _idict = self._get_gid_info(num_id, {})
+                else:
+                    _idict = self._get_uid_info(num_id, {})
+                if _idict["source"] == "SQL":
+                    # only tracke usage of users from DB
+                    _key = (_idict["db_rec"].pk, qcb_pk)
+                    _loc_dict = qs_dict[obj_type]
+                    if _key not in _loc_dict:
+                        # create new quota_settings
+                        if obj_type == "group":
+                            _loc_dict[_key] = group_quota_setting.objects.create(
+                                quota_capable_blockdevice=cur_qcb,
+                                group=_idict["db_rec"]
+                            )
+                        else:
+                            _loc_dict[_key] = user_quota_setting.objects.create(
+                                quota_capable_blockdevice=cur_qcb,
+                                user=_idict["db_rec"]
+                            )
+                    cur_qs = _loc_dict[_key]
+                    stuff.feed_qs(cur_qs)
+                    cur_qs.save()
 
     def _create_machvector(self, builder, cur_time, quota_cache):
         my_vector = builder("values")
