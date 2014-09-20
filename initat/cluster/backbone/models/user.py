@@ -51,6 +51,8 @@ __all__ = [
     "group_object_permission",
     "user_permission",
     "user_object_permission",
+    "user_quota_setting",
+    "group_quota_setting",
     "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
     "AC_MASK_DICT",
 ]
@@ -1030,3 +1032,36 @@ def user_variable_post_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.from_db_format()
+
+
+class quota_setting(models.Model):
+    idx = models.AutoField(primary_key=True)
+    quota_capable_blockdevice = models.ForeignKey("backbone.quota_capable_blockdevice")
+    date = models.DateTimeField(auto_now_add=True)
+    # in Bytes
+    bytes_used = models.IntegerField(default=0)
+    bytes_soft = models.IntegerField(default=0)
+    bytes_hard = models.IntegerField(default=0)
+    # simple count
+    files_used = models.IntegerField(default=0)
+    files_soft = models.IntegerField(default=0)
+    files_hard = models.IntegerField(default=0)
+    # flags, 2 character field
+    quota_flags = models.CharField(max_length=4, default="--")
+
+    class Meta:
+        abstract = True
+
+
+class user_quota_setting(quota_setting):
+    user = models.ForeignKey("backbone.user")
+
+    class Meta:
+        app_label = "backbone"
+
+
+class group_quota_setting(quota_setting):
+    group = models.ForeignKey("backbone.group")
+
+    class Meta:
+        app_label = "backbone"

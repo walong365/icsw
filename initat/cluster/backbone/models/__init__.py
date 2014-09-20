@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" models for NOCTUA and CORVUS """
+""" models for NOCTUA and CORVUS, master file """
 
 from django.apps import apps
 from django.conf import settings
@@ -696,7 +696,7 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
         )
-        fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config"]
+        fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice"]
 
     class Meta:
         db_table = u'device'
@@ -1272,3 +1272,20 @@ class wc_files(models.Model):
 
     class Meta:
         db_table = u'wc_files'
+        app_label = "backbone"
+
+
+class quota_capable_blockdevice(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device")
+    block_device_path = models.CharField(max_length=256, default="")
+    # mount path, empty for not mounted
+    mount_path = models.CharField(max_length=512, default="")
+    # filesystemtype, link to partition_fs
+    fs_type = models.ForeignKey("backbone.partition_fs")
+    # size in Bytes
+    size = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "backbone"
