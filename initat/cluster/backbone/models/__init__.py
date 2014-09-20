@@ -1284,8 +1284,11 @@ class quota_capable_blockdevice(models.Model):
     # filesystemtype, link to partition_fs
     fs_type = models.ForeignKey("backbone.partition_fs")
     # size in Bytes
-    size = models.IntegerField(default=0)
+    size = models.BigIntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "qcb {} ({})".format(self.block_device_path, self.mount_path)
 
     class Meta:
         app_label = "backbone"

@@ -1039,13 +1039,15 @@ class quota_setting(models.Model):
     quota_capable_blockdevice = models.ForeignKey("backbone.quota_capable_blockdevice")
     date = models.DateTimeField(auto_now_add=True)
     # in Bytes
-    bytes_used = models.IntegerField(default=0)
-    bytes_soft = models.IntegerField(default=0)
-    bytes_hard = models.IntegerField(default=0)
+    bytes_used = models.BigIntegerField(default=0)
+    bytes_soft = models.BigIntegerField(default=0)
+    bytes_hard = models.BigIntegerField(default=0)
+    bytes_grace = models.CharField(max_length=128, default="")
     # simple count
-    files_used = models.IntegerField(default=0)
-    files_soft = models.IntegerField(default=0)
-    files_hard = models.IntegerField(default=0)
+    files_used = models.BigIntegerField(default=0)
+    files_soft = models.BigIntegerField(default=0)
+    files_hard = models.BigIntegerField(default=0)
+    files_grace = models.CharField(max_length=128, default="")
     # flags, 2 character field
     quota_flags = models.CharField(max_length=4, default="--")
 
