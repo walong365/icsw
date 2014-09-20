@@ -111,7 +111,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.log("init server capabilities")
         self.__server_cap_dict = {
             "usv_server": usv_server.usv_server_stuff(self),
-            "quota": quota.quota_stuff(self),
+            "quota_scan": quota.quota_stuff(self),
             # "dummy"      : dummy_stuff(self),
             }
         self.__cap_list = []

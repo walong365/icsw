@@ -23,7 +23,23 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="server", description="sets device as a cluster-server",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="server",
+        description="sets device as a cluster-server",
+        server_config=True,
+        system_config=True,
+    )
+    factories.Config(
+        name="quota_scan",
+        description="device has quotas enabled",
+        server_config=True,
+        system_config=True,
+    )
+    factories.Config(
+        name="usv_server",
+        description="device has an USV from APC directly attached",
+        server_config=True,
+        system_config=True,
+    )
