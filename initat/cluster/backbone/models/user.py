@@ -1043,11 +1043,15 @@ class quota_setting(models.Model):
     bytes_soft = models.BigIntegerField(default=0)
     bytes_hard = models.BigIntegerField(default=0)
     bytes_grace = models.CharField(max_length=128, default="")
+    bytes_soft_target = models.BigIntegerField(default=0)
+    bytes_hard_target = models.BigIntegerField(default=0)
     # simple count
     files_used = models.BigIntegerField(default=0)
     files_soft = models.BigIntegerField(default=0)
     files_hard = models.BigIntegerField(default=0)
     files_grace = models.CharField(max_length=128, default="")
+    files_soft_target = models.BigIntegerField(default=0)
+    files_hard_target = models.BigIntegerField(default=0)
     # flags, 2 character field
     quota_flags = models.CharField(max_length=4, default="--")
 
