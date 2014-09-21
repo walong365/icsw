@@ -4,7 +4,7 @@
 
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
+from crispy_forms.layout import Submit, Layout, Field, Fieldset, Div, HTML
 from django.forms import ModelForm
 from initat.cluster.backbone.models import partition_table, partition, partition_disc, sys_partition
 

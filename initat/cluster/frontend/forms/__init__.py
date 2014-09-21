@@ -16,19 +16,16 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
     domain_name_tree, device_group, home_export_list, device_config, TOP_LOCATIONS, \
     csw_permission, kernel, network, network_type, network_device_type, image, partition_table, \
     mon_period, mon_notification, mon_contact, host_check_command, \
-    mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, \
-    mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
-    mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
-    partition_disc, sys_partition, device_variable, config, config_str, config_int, config_bool, \
+    device_variable, config, config_str, config_int, config_bool, \
     config_script, netdevice, net_ip, peer_information, config_catalog, cd_connection, \
     cluster_setting, location_gfx
 
-
 from initat.cluster.frontend.forms.boot import *
 from initat.cluster.frontend.forms.config import *
-from initat.cluster.frontend.forms.user import *
 from initat.cluster.frontend.forms.monitoring import *
+from initat.cluster.frontend.forms.package import *
 from initat.cluster.frontend.forms.partition import *
+from initat.cluster.frontend.forms.user import *
 
 
 # empty query set
@@ -582,92 +579,6 @@ class network_device_type_form(ModelForm):
     class Meta:
         model = network_device_type
         fields = ("identifier", "description", "mac_bytes", "name_re", "allow_virtual_interfaces",)
-
-
-class package_search_form(ModelForm):
-    helper = FormHelper()
-    helper.form_id = "form"
-    helper.form_name = "form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-3'
-    helper.field_class = 'col-sm-7'
-    helper.ng_model = "edit_obj"
-    helper.layout = Layout(
-        HTML("<h2>Package search</h2>"),
-        Fieldset(
-            "Base data",
-            Field("search_string"),
-        ),
-        FormActions(
-            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-        ),
-    )
-
-    def __init__(self, *args, **kwargs):
-        request = kwargs.pop("request")
-        super(package_search_form, self).__init__(*args, **kwargs)
-        self.fields["user"].initial = request.user
-
-    class Meta:
-        model = package_search
-
-
-class package_action_form(Form):
-    helper = FormHelper()
-    helper.form_id = "form"
-    helper.form_name = "form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-3'
-    helper.field_class = 'col-sm-7'
-    helper.ng_model = "edit_obj"
-    target_state = ChoiceField(required=False)
-    nodeps_flag = ChoiceField(required=False)
-    force_flag = ChoiceField(required=False)
-    image_dep = ChoiceField(required=False)
-    image_change = BooleanField(label="change image list", required=False)
-    image_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
-    kernel_dep = ChoiceField(required=False)
-    kernel_change = BooleanField(label="change kernel list", required=False)
-    kernel_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
-    helper.layout = Layout(
-        HTML("<h2>PDC action</h2>"),
-        Fieldset(
-            "Base data",
-            Field("target_state", ng_options="key as value for (key, value) in target_states", initial="keep", chosen=True),
-        ),
-        Fieldset(
-            "Flags",
-            Field("nodeps_flag", ng_options="key as value for (key, value) in flag_states", initital="keep", chosen=True),
-            Field("force_flag", ng_options="key as value for (key, value) in flag_states", initial="keep", chosen=True),
-        ),
-        Fieldset(
-            "Image Dependency",
-            Field("image_dep", ng_options="key as value for (key, value) in dep_states", initital="keep", chosen=True),
-            Field("image_change"),
-            Field(
-                "image_list",
-                ng_options="img.idx as img.name for img in image_list",
-                initital="keep",
-                chosen=True,
-                wrapper_ng_show="edit_obj.image_change"
-            ),
-        ),
-        Fieldset(
-            "Kernel Dependency",
-            Field("kernel_dep", ng_options="key as value for (key, value) in dep_states", initial="keep", chosen=True),
-            Field("kernel_change"),
-            Field(
-                "kernel_list",
-                ng_options="val.idx as val.name for val in kernel_list",
-                initital="keep",
-                chosen=True,
-                wrapper_ng_show="edit_obj.kernel_change"
-            ),
-        ),
-        FormActions(
-            Submit("submit", "", css_class="primaryAction", ng_value="submit"),
-        ),
-    )
 
 
 class device_tree_form(ModelForm):

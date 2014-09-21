@@ -5,7 +5,6 @@
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Fieldset, Div, HTML
-from django.db.models import Q
 from django.forms import Form, ModelForm, CharField, ModelChoiceField, \
     ModelMultipleChoiceField, BooleanField
 from initat.cluster.backbone.models import device
