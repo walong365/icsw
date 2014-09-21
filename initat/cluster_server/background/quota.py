@@ -142,6 +142,8 @@ class quota_line(object):
         return "; ".join(p_f) or "nothing"
 
     def feed_qs(self, cur_qs):
+        _keys = ["quota_flags"]
+        cur_qs.quota_flags = self.__quota_flags
         # copy current settings to cur_qs
         for _pf, _dict, _fact in [
             ("files", self.get_file_dict(), 1),
@@ -151,8 +153,10 @@ class quota_line(object):
                 _val = _dict[_key]
                 if type(_val) in [int, long]:
                     _val *= _fact
-                setattr(cur_qs, "{}_{}".format(_pf, _key), _val)
-        cur_qs.quota_flags = self.__quota_flags
+                _f_key = "{}_{}".format(_pf, _key)
+                setattr(cur_qs, _f_key, _val)
+                _keys.append(_f_key)
+        return _keys
 
 
 class quota_stuff(bg_stuff):
@@ -597,6 +601,7 @@ class quota_stuff(bg_stuff):
                     _key = (_idict["db_rec"].pk, qcb_pk)
                     _loc_dict = qs_dict[obj_type]
                     if _key not in _loc_dict:
+                        _update = False
                         # create new quota_settings
                         if obj_type == "group":
                             _loc_dict[_key] = group_quota_setting.objects.create(
@@ -608,9 +613,14 @@ class quota_stuff(bg_stuff):
                                 quota_capable_blockdevice=cur_qcb,
                                 user=_idict["db_rec"]
                             )
+                    else:
+                        _update = True
                     cur_qs = _loc_dict[_key]
-                    stuff.feed_qs(cur_qs)
-                    cur_qs.save()
+                    _upd_fields = stuff.feed_qs(cur_qs)
+                    if _update:
+                        cur_qs.save(update_fields=_upd_fields)
+                    else:
+                        cur_qs.save()
 
     def _create_machvector(self, builder, cur_time, quota_cache):
         my_vector = builder("values")
