@@ -102,7 +102,7 @@ class device_info_form(ModelForm):
                 "Basic settings",
                 Field("name"),
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
-                # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select2=True),
+                # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select=True),
                 Field("comment"),
                 Field("curl", wrapper_ng_show="is_device()"),
                 HTML("""

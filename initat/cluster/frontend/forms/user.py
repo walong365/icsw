@@ -149,6 +149,8 @@ class group_detail_form(ModelForm):
     permission_level = ModelChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Details for group {% verbatim %}'{{ _edit_obj.groupname }}'{% endverbatim %}</h2>"),
+        # tabset not implemented because of limitations in angular-chosen (replace with ui-select)
+        # HTML("<tabset><tab heading='base data'>"),
         Div(
             Div(
                 Fieldset(
@@ -174,10 +176,12 @@ class group_detail_form(ModelForm):
             ),
             css_class="row",
         ),
+        # HTML("</tab><tab heading='permissions'>"),
         Fieldset(
             "Permissions",
             Field("parent_group", ng_options="value.idx as value.groupname for value in get_parent_group_list(_edit_obj)", chosen=True),
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
+            # HTML("{% verbatim %}{{ valid_device_groups() }}{% endverbatim %}"),
             Field(
                 "permission",
                 wrapper_ng_show="!create_mode",
@@ -213,6 +217,7 @@ class group_detail_form(ModelForm):
             ),
             HTML("<div permissions ng_if='!create_mode'></div>"),
         ),
+        # HTML("</tab></tabset>"),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
             Submit("create", "Create", css_class="btn-success", ng_show="create_mode"),
@@ -308,7 +313,7 @@ class user_detail_form(ModelForm):
         ),
         Fieldset(
             "Groups / export entry",
-            Field("group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
+            Field("group", ng_options="value.idx as value.groupname for value in group_list"),
             Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             # do not use chosen here (will not refresh on export_list change)
             Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),  # , chosen=True),

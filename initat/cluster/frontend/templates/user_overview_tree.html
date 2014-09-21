@@ -20,7 +20,7 @@
 
 {% verbatim %}
 
-    <script type="text/ng-template" id="permissions.html">
+<script type="text/ng-template" id="permissions.html">
 <div class="col-sm-12">
     <table class="table table-condensed table-hover" style="width:100%;">
         <thead>
@@ -174,7 +174,6 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 "perms" : []
             }
             return r_obj
-        #$scope.group_edit.edit_template = "group_edit.html"
         wait_list = restDataSource.add_sources([
             ["{% url 'rest:group_list' %}", {}]
             ["{% url 'rest:user_list' %}", {}]
@@ -459,6 +458,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 return $scope._edit_obj.user_object_permission_set
             else
                 return $scope._edit_obj.group_object_permission_set
+                
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"

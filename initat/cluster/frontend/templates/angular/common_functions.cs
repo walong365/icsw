@@ -435,6 +435,10 @@ angular_module_setup = (module_list, url_list=[]) ->
                 template : icsw_paginator
                 link     : link
             }
+        #).config((blockUIConfigProvider) ->
+        #    console.log blockUIConfigProvider
+        #    blockUIConfigProvider.message("oh no...")
+        #    blockUIConfigProvider.delay(0)
         )
         
 handle_reset = (data, e_list, idx) ->

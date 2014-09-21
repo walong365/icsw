@@ -203,7 +203,6 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 $q.all(wait_list).then((data) ->
                     for value, idx in data
                         $scope.rest_data[$scope.rest_map[idx].short] = value
-                    $.unblockUI()
                     $scope.rest_data_set()
                 )
         # load from server

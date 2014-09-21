@@ -937,7 +937,7 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
     return {
         restrict : "EA"
         # bugfix for ui-select2, not working ...
-        priority : 2
+        #priority : 2
         link : (scope, element, attrs) ->
             scope._edit_obj = null
             if attrs["devicepk"]?
