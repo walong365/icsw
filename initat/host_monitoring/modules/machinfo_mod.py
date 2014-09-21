@@ -21,7 +21,7 @@
 
 from initat.host_monitoring import hm_classes, limits
 from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import commands
 import cpu_database
 import logging_tools
@@ -29,7 +29,7 @@ import os
 import partition_tools
 import pci_database
 import platform
-import pprint
+import pprint  # @UnusedImport
 import process_tools
 import re
 import server_command
@@ -229,31 +229,31 @@ class _general(hm_classes.hm_module):
             # delete old keys
             for key in self.disk_dict:
                 if key not in n_dict:
-                    mvect.unregister_entry("df.%s.f" % (key))
-                    mvect.unregister_entry("df.%s.u" % (key))
-                    mvect.unregister_entry("df.%s.t" % (key))
+                    mvect.unregister_entry("df.{}.f".format(key))
+                    mvect.unregister_entry("df.{}.u".format(key))
+                    mvect.unregister_entry("df.{}.t".format(key))
             for key in n_dict:
                 if key not in self.disk_dict:
                     mvect.register_entry(
-                        "df.%s.f" % (key),
+                        "df.{}.f".format(key),
                         0.,
-                        "free space on $2 (%s, %s)" % (n_dict[key]["mountpoint"], n_dict[key]["fs"]),
+                        "free space on $2 ({}, {})".format(n_dict[key]["mountpoint"], n_dict[key]["fs"]),
                         "Byte", 1000, 1000)
                     mvect.register_entry(
-                        "df.%s.u" % (key),
+                        "df.{}.u".format(key),
                         0.,
-                        "used space on $2 (%s, %s)" % (n_dict[key]["mountpoint"], n_dict[key]["fs"]),
+                        "used space on $2 ({}, {})".format(n_dict[key]["mountpoint"], n_dict[key]["fs"]),
                         "Byte", 1000, 1000)
                     mvect.register_entry(
-                        "df.%s.t" % (key),
+                        "df.{}.t".format(key),
                         0.,
-                        "size of $2 (%s, %s)" % (n_dict[key]["mountpoint"], n_dict[key]["fs"]),
+                        "size of $2 ({}, {})".format(n_dict[key]["mountpoint"], n_dict[key]["fs"]),
                         "Byte", 1000, 1000)
             self.disk_dict = n_dict
             for key in self.disk_dict:
-                mvect["df.%s.f" % (key)] = self.disk_dict[key]["b_free"]
-                mvect["df.%s.u" % (key)] = self.disk_dict[key]["b_used"]
-                mvect["df.%s.t" % (key)] = self.disk_dict[key]["b_size"]
+                mvect["df.{}.f".format(key)] = self.disk_dict[key]["b_free"]
+                mvect["df.{}.u".format(key)] = self.disk_dict[key]["b_used"]
+                mvect["df.{}.t".format(key)] = self.disk_dict[key]["b_size"]
         else:
             return n_dict
 
@@ -288,7 +288,12 @@ class _general(hm_classes.hm_module):
             stat_dict["pages"] = [_vm_dict.get("pgpgin", 0), _vm_dict.get("pgpgout", 0)]
         if os.path.isfile("/proc/diskstats"):
             try:
-                ds_dict = dict([(parts[2].strip(), [int(parts[0]), int(parts[1])] + [long(cur_val) for cur_val in parts[3:]]) for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14])  # and y[2].strip() in self.valid_block_devs.keys()])
+                ds_dict = {
+                    parts[2].strip(): [
+                        int(parts[0]), int(parts[1])
+                    ] + [
+                        long(cur_val) for cur_val in parts[3:]
+                    ] for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14}
             except:
                 pass
             else:
@@ -580,7 +585,7 @@ class _general(hm_classes.hm_module):
                 stuff = file_dict.get("devices", []).pop(0)
                 if stuff[0].lower().startswith("block"):
                     break
-            devices_dict = dict([(int(key), value) for key, value in file_dict.get("devices", [])])
+            # devices_dict = dict([(int(key), value) for key, value in file_dict.get("devices", [])])
             # print devices_dict
             # build partition-dict
             part_dict, real_root_dev_name = ({}, None)
@@ -630,7 +635,7 @@ class _general(hm_classes.hm_module):
                     real_root_dev_name = _real_root_dev_name
             if not ret_str:
                 # build blkid dict
-                uls_obj = partition_tools.uuid_label_struct()
+                # uls_obj = partition_tools.uuid_label_struct()
                 # partition lookup dict
                 part_lut = {}
                 part_bin = self.parted_path
@@ -737,7 +742,7 @@ class _general(hm_classes.hm_module):
                             }
                             part_lut[part] = (dev, part_num)
                 # kick empty devices
-                dev_dict = dict([(key, value) for key, value in dev_dict.iteritems() if value])
+                dev_dict = {key: value for key, value in dev_dict.iteritems() if value}
                 if not ret_str:
                     if not dev_dict:
                         # no device_dict up to now, maybe xen-machine, check part_dict
@@ -988,7 +993,7 @@ class df_command(hm_classes.hm_command):
                                     l_type, l_data = (l_type.split(","), l_data.split(","))
                                     l_type = [entry.strip() for entry in l_type if entry.strip()]
                                     l_data = [entry.strip().split("=") for entry in l_data if entry.strip()]
-                                    l_data = dict([(key, logging_tools.interpret_size_str(value)) for key, value in l_data])
+                                    l_data = {key: logging_tools.interpret_size_str(value) for key, value in l_data}
                                     btrfs_info[":".join(l_type)] = l_data
                                 res_dict["btrfs_info"] = btrfs_info
                         srv_com["df_result"] = res_dict
@@ -1063,7 +1068,8 @@ class df_command(hm_classes.hm_command):
         else:
             if result:
                 # all-partition result
-                max_stuff = {"perc":-1}
+                max_stuff = {}
+                max_stuff["perc"] = -1
                 all_parts = sorted(result.keys())
                 for part_name in all_parts:
                     d_stuff = result[part_name]
@@ -1131,7 +1137,7 @@ class get_0mq_id_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
         if os.path.isfile(zmq_id_name):
-            zmq_id_xml = etree.fromstring(file(zmq_id_name, "r").read())
+            zmq_id_xml = etree.fromstring(file(zmq_id_name, "r").read())  # @UndefinedVariable
             id_node = None
             if "target_ip" in srv_com:
                 target_ip = srv_com["target_ip"].text
@@ -1522,7 +1528,12 @@ class macinfo_command(hm_classes.hm_command):
                     net_match = re.compile("(?P<devname>\S+)\s+.*addr\s+(?P<macadr>\S+)\s*$")
                     c_stat, out = commands.getstatusoutput("/sbin/ifconfig -a")
                     if not c_stat:
-                        for act_name, act_mac in [(entry.group("devname").lower(), entry.group("macadr").lower()) for entry in [net_match.match(line.strip()) for line in out.split("\n")] if entry]:
+                        for act_name, act_mac in [
+                            (
+                                entry.group("devname").lower(),
+                                entry.group("macadr").lower()
+                            ) for entry in [net_match.match(line.strip()) for line in out.split("\n")] if entry
+                        ]:
                             if [True for postfix in valid_devs if act_name.startswith(postfix)] and len(act_name.split(":")) == 1:
                                 net_dict[act_name] = act_mac
         except:
@@ -1597,7 +1608,7 @@ class ksminfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         ksm_dir = "/sys/kernel/mm/ksm"
         if os.path.isdir(ksm_dir):
-            srv_com["ksm"] = dict([(entry, file(os.path.join(ksm_dir, entry), "r").read().strip()) for entry in os.listdir(ksm_dir)])
+            srv_com["ksm"] = {entry: file(os.path.join(ksm_dir, entry), "r").read().strip() for entry in os.listdir(ksm_dir)}
         else:
             srv_com["ksm"] = "not found"
 
@@ -1605,7 +1616,7 @@ class ksminfo_command(hm_classes.hm_command):
         ksm_info = srv_com["ksm"]
         if type(ksm_info) == dict:
             page_size = 4096
-            ksm_info = dict([(key, int(value) * page_size if value.isdigit() else value) for key, value in ksm_info.iteritems()])
+            ksm_info = {key: int(value) * page_size if value.isdigit() else value for key, value in ksm_info.iteritems()}
             if ksm_info["run"]:
                 info_field = [
                     "%s shared" % (logging_tools.get_size_str(ksm_info["pages_shared"], strip_spaces=True)),
@@ -1650,7 +1661,7 @@ class hugepageinfo_command(hm_classes.hm_command):
                     info_field.append("cannot interpret %s" % (local_size))
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                 if local_size is not None:
-                    hpage_info = dict([(key, int(value) * local_size if value.isdigit() else value) for key, value in page_dict.iteritems()])
+                    hpage_info = {key: int(value) * local_size if value.isdigit() else value for key, value in page_dict.iteritems()}
                     info_field.append("%s: %s reserved, %s used" % (
                         logging_tools.get_size_str(local_size, strip_spaces=True),
                         logging_tools.get_size_str(hpage_info["nr_hugepages"], strip_spaces=True),
@@ -1713,13 +1724,15 @@ class pciinfo_command(hm_classes.hm_command):
             for bus in domain:
                 for slot in bus:
                     for func in slot:
-                        s_dict = dict([(_short(cur_el.tag), cur_el.text) for cur_el in func])
-                        out_str = "%04x:%02x:%02x.%x %s: %s %s" % (_short_tag(domain), _short_tag(bus), _short_tag(slot), _short_tag(func),
-                                                                   s_dict["subclassname"],
-                                                                   s_dict["vendorname"],
-                                                                   s_dict["devicename"])
+                        s_dict = {_short(cur_el.tag): cur_el.text for cur_el in func}
+                        out_str = "{:04x}:{:02x}:{:02x}.{:x} {}: {} {}".format(
+                            _short_tag(domain), _short_tag(bus), _short_tag(slot), _short_tag(func),
+                            s_dict["subclassname"],
+                            s_dict["vendorname"],
+                            s_dict["devicename"]
+                        )
                         if s_dict["revision"] != "00":
-                            out_str = "%s (rev %s)" % (out_str, s_dict["revision"])
+                            out_str = u"{} (rev {})".format(out_str, s_dict["revision"])
                         cmr_b.append(out_str)
         return limits.nag_STATE_OK, "\n".join(cmr_b)
 
@@ -1729,37 +1742,64 @@ class cpuflags_command(hm_classes.hm_command):
         srv_com["proclines"] = server_command.compress(file("/proc/cpuinfo", "r").read())
 
     def interpret(self, srv_com, cur_ns):
-        # most likely source: http://www.softeng.rl.ac.uk/st/archive/SoftEng/SESP/html/SoftwareTools/vtune/users_guide/mergedProjects/analyzer_ec/mergedProjects/reference_olh/mergedProjects/instructions/instruct32_hh/vc46.htm
+        # most likely source: http://www.softeng.rl.ac.uk/st/archive/SoftEng/SESP/html/SoftwareTools/vtune/
+        # users_guide/mergedProjects/analyzer_ec/mergedProjects/reference_olh/mergedProjects/instructions/instruct32_hh/vc46.htm
         flag_lut = {
             "FPU": "Floating Point Unit On-Chip. The processor contains an x87 FPU.",
-            "VME": "Virtual 8086 Mode Enhancements. Virtual 8086 mode enhancements, including CR4.VME for controlling the feature, CR4.PVI for protected mode virtual interrupts, software interrupt indirection, expansion of the TSS with the software indirection bitmap, and EFLAGS.VIF and EFLAGS.VIP flags.",
-            "DE": "Debugging Extensions. Support for I/O breakpoints, including CR4.DE for controlling the feature, and optional trapping of accesses to DR4 and DR5.",
-            "PSE": "Page Size Extension. Large pages of size 4Mbyte are supported, including CR4.PSE for controlling the feature, the defined dirty bit in PDE (Page Directory Entries), optional reserved bit trapping in CR3, PDEs, and PTEs.",
+            "VME": "Virtual 8086 Mode Enhancements. Virtual 8086 mode enhancements, including CR4.VME for controlling the feature, "
+            "CR4.PVI for protected mode virtual interrupts, software interrupt indirection, expansion of the TSS with the software indirection bitmap, "
+            "and EFLAGS.VIF and EFLAGS.VIP flags.",
+            "DE": "Debugging Extensions. Support for I/O breakpoints, including CR4.DE for controlling the feature, and optional trapping of "
+            "accesses to DR4 and DR5.",
+            "PSE": "Page Size Extension. Large pages of size 4Mbyte are supported, including CR4.PSE for controlling the feature, the defined "
+            "dirty bit in PDE (Page Directory Entries), optional reserved bit trapping in CR3, PDEs, and PTEs.",
             "TSC": "Time Stamp Counter. The RDTSC instruction is supported, including CR4.TSD for controlling privilege.",
-            "MSR": "Model Specific Registers RDMSR and WRMSR Instructions. The RDMSR and WRMSR instructions are supported. Some of the MSRs are implementation dependent.",
-            "PAE": "Physical Address Extension. Physical addresses greater than 32 bits are supported: extended page table entry formats, an extra level in the page translation tables is defined, 2 Mbyte pages are supported instead of 4 Mbyte pages if PAE bit is 1. The actual number of address bits beyond 32 is not defined, and is implementation specific.",
-            "MCE": "Machine Check Exception. Exception 18 is defined for Machine Checks, including CR4.MCE for controlling the feature. This feature does not define the model-specific implementations of machine-check error logging, reporting, and processor shutdowns. Machine Check exception handlers may have to depend on processor version to do model specific processing of the exception, or test for the presence of the Machine Check feature.",
+            "MSR": "Model Specific Registers RDMSR and WRMSR Instructions. The RDMSR and WRMSR instructions are supported. Some of the MSRs "
+            "are implementation dependent.",
+            "PAE": "Physical Address Extension. Physical addresses greater than 32 bits are supported: extended page table entry formats, an "
+            "extra level in the page translation tables is defined, 2 Mbyte pages are supported instead of 4 Mbyte pages if PAE bit is 1. "
+            "The actual number of address bits beyond 32 is not defined, and is implementation specific.",
+            "MCE": "Machine Check Exception. Exception 18 is defined for Machine Checks, including CR4.MCE for controlling the feature. This "
+            "feature does not define the model-specific implementations of machine-check error logging, reporting, and processor shutdowns. Machine "
+            "Check exception handlers may have to depend on processor version to do model specific processing of the exception, or test for the presence "
+            "of the Machine Check feature.",
             "CX8": "CMPXCHG8B Instruction. The compare-and-exchange 8 bytes (64 bits) instruction is supported (implicitly locked and atomic).",
-            "APIC": "APIC On-Chip. The processor contains an Advanced Programmable Interrupt Controller (APIC), responding to memory mapped commands in the physical address range FFFE0000H to FFFE0FFFH (by default - some processors permit the APIC to be relocated).",
+            "APIC": "APIC On-Chip. The processor contains an Advanced Programmable Interrupt Controller (APIC), responding to memory mapped commands in "
+            "the physical address range FFFE0000H to FFFE0FFFH (by default - some processors permit the APIC to be relocated).",
             "SEP": "SYSENTER and SYSEXIT Instructions. The SYSENTER and SYSEXIT and associated MSRs are supported.",
-            "MTRR": "Memory Type Range Registers. MTRRs are supported. The MTRRcap MSR contains feature bits that describe what memory types are supported, how many variable MTRRs are supported, and whether fixed MTRRs are supported.",
-            "PGE": "PTE Global Bit. The global bit in page directory entries (PDEs) and page table entries (PTEs) is supported, indicating TLB entries that are common to different processes and need not be flushed. The CR4.PGE bit controls this feature.",
-            "MCA": "Machine Check Architecture. The Machine Check Architecture, which provides a compatible mechanism for error reporting in P6 family, Pentium 4, and Intel Xeon processors is supported. The MCG_CAP MSR contains feature bits describing how many banks of error reporting MSRs are supported.",
-            "CMOV": "Conditional Move Instructions. The conditional move instruction CMOV is supported. In addition, if x87 FPU is present as indicated by the CPUID.FPU feature bit, then the FCOMI and FCMOV instructions are supported.",
-            "PAT": "Page Attribute Table. Page Attribute Table is supported. This feature augments the Memory Type Range Registers (MTRRs), allowing an operating system to specify attributes of memory on a 4K granularity through a linear address.",
-            "PSE-36": "32-Bit Page Size Extension. Extended 4-MByte pages that are capable of addressing physical memory beyond 4 GBytes are supported. This feature indicates that the upper four bits of the physical address of the 4-MByte page is encoded by bits 13-16 of the page directory entry.",
+            "MTRR": "Memory Type Range Registers. MTRRs are supported. The MTRRcap MSR contains feature bits that describe what memory types are supported, "
+            "how many variable MTRRs are supported, and whether fixed MTRRs are supported.",
+            "PGE": "PTE Global Bit. The global bit in page directory entries (PDEs) and page table entries (PTEs) is supported, indicating TLB entries that "
+            "are common to different processes and need not be flushed. The CR4.PGE bit controls this feature.",
+            "MCA": "Machine Check Architecture. The Machine Check Architecture, which provides a compatible mechanism for error reporting in P6 family, "
+            "Pentium 4, and Intel Xeon processors is supported. The MCG_CAP MSR contains feature bits describing how many banks of error reporting MSRs "
+            "are supported.",
+            "CMOV": "Conditional Move Instructions. The conditional move instruction CMOV is supported. In addition, if x87 FPU is present as indicated by "
+            "the CPUID.FPU feature bit, then the FCOMI and FCMOV instructions are supported.",
+            "PAT": "Page Attribute Table. Page Attribute Table is supported. This feature augments the Memory Type Range Registers (MTRRs), allowing an "
+            "operating system to specify attributes of memory on a 4K granularity through a linear address.",
+            "PSE-36": "32-Bit Page Size Extension. Extended 4-MByte pages that are capable of addressing physical memory beyond 4 GBytes are supported. This "
+            "feature indicates that the upper four bits of the physical address of the 4-MByte page is encoded by bits 13-16 of the page directory entry.",
             "PSN": "Processor Serial Number. The processor supports the 96-bit processor identification number feature and the feature is enabled.",
             "CLFLSH": "CLFLUSH Instruction. CLFLUSH Instruction is supported.",
-            "DS": "Debug Store. The processor supports the ability to write debug information into a memory resident buffer. This feature is used by the branch trace store (BTS) and precise event-based sampling (PEBS) facilities (see Chapter 15, Debugging and Performance Monitoring, in the IA-32 Intel Architecture Software Developer's Manual, Volume 3).",
-            "ACPI": "Thermal Monitor and Software Controlled Clock Facilities. The processor implements internal MSRs that allow processor temperature to be monitored and processor performance to be modulated in predefined duty cycles under software control.",
+            "DS": "Debug Store. The processor supports the ability to write debug information into a memory resident buffer. This feature is used by the "
+            "branch trace store (BTS) and precise event-based sampling (PEBS) facilities (see Chapter 15, Debugging and Performance Monitoring, in the "
+            "IA-32 Intel Architecture Software Developer's Manual, Volume 3).",
+            "ACPI": "Thermal Monitor and Software Controlled Clock Facilities. The processor implements internal MSRs that allow processor temperature to "
+            "be monitored and processor performance to be modulated in predefined duty cycles under software control.",
             "MMX": "Intel MMX Technology. The processor supports the Intel MMX technology.",
-            "FXSR": "FXSAVE and FXRSTOR Instructions. The FXSAVE and FXRSTOR instructions are supported for fast save and restore of the floating point context. Presence of this bit also indicates that CR4.OSFXSR is available for an operating system to indicate that it supports the FXSAVE and FXRSTOR instructions.",
+            "FXSR": "FXSAVE and FXRSTOR Instructions. The FXSAVE and FXRSTOR instructions are supported for fast save and restore of the floating point "
+            "context. Presence of this bit also indicates that CR4.OSFXSR is available for an operating system to indicate that it supports the FXSAVE "
+            "and FXRSTOR instructions.",
             "SSE": "SSE. The processor supports the SSE extensions.",
             "SSE2": "SSE2. The processor supports the SSE2 extensions.",
-            "SS": "Self Snoop. The processor supports the management of conflicting memory types by performing a snoop of its own cache structure for transactions issued to the bus.",
+            "SS": "Self Snoop. The processor supports the management of conflicting memory types by performing a snoop of its own cache structure for "
+            "transactions issued to the bus.",
             "HTT": "Hyper-Threading Technology. The processor implements Hyper-Threading technology.",
             "TM": "Thermal Monitor. The processor implements the thermal monitor automatic thermal control circuitry (TCC).",
-            "PBE": "Pending Break Enable. The processor supports the use of the FERR#/PBE# pin when the processor is in the stop-clock state (STPCLK# is asserted) to signal the processor that an interrupt is pending and that the processor should return to normal operation to handle the interrupt. Bit 10 (PBE enable) in the IA32_MISC_ENABLE MSR enables this capability.",
+            "PBE": "Pending Break Enable. The processor supports the use of the FERR#/PBE# pin when the processor is in the stop-clock state (STPCLK# is "
+            "asserted) to signal the processor that an interrupt is pending and that the processor should return to normal operation to handle the interrupt. "
+            "Bit 10 (PBE enable) in the IA32_MISC_ENABLE MSR enables this capability.",
         }
         flag_dict = {}
         for line in server_command.decompress(srv_com["proclines"].text).split("\n"):
