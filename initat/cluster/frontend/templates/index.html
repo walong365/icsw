@@ -4,96 +4,108 @@
 
 {% block title %}{% trans "Indexpage" %}{% endblock %}
 
+{% block angular %}{% include "angular/user.cs" %}{% endblock %}
+
 {% block content %}
+
+{% verbatim %}
 
 <div id="icsw.index_app" ng-controller="index_base" ng-cloack ng-show="show_index">
     <h2 class="center">Please select a device from the tree on the left side</h2>
-    <div class="well">
-        <h3>Quicklinks</h3>
-        <ul class="list-group">
-            <li class="list-group-item">
-                <div class="row">
-                    <div class="col-md-4">
-                        Change account settings (password, contact data)
+    <accordion close-others="no">
+        <accordion-group is-open="quick_open">
+            <accordion-heading>
+                Quicklinks
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quick_open, 'glyphicon-chevron-right': !quick_open}"></i>
+            </accordion-heading>
+            {% endverbatim %}
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Change account settings (password, contact data)
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a>
+                </li>
+                <li class="list-group-item" ng-show="check_perm('backbone.user.modify_tree')">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Add a new device
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{% url 'mon:create_device' %}">{% trans "Create device" %}</a>
+                        </div>
                     </div>
-                </div>
-            </li>
-            <li class="list-group-item" ng-show="check_perm('backbone.user.modify_tree')">
-                <div class="row">
-                    <div class="col-md-4">
-                        Add a new device
+                </li>
+            </ul>
+            {% verbatim %}
+        </accordion-group>
+        <accordion-group is-open="ext_open">
+            <accordion-heading>
+                External links
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': ext_open, 'glyphicon-chevron-right': !ext_open}"></i>
+            </accordion-heading>
+            {% endverbatim %}
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Changelog of the current development master
+                        </div>
+                        <div class="col-md-4">
+                            <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >{% trans "Changelog" %}</a>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <a href="{% url 'mon:create_device' %}">{% trans "Create device" %}</a>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Software support forum (register, discuss and ask questions)
+                        </div>
+                        <div class="col-md-4">
+                            <a href="http://www.initat.org/phpBB3/index.php" target="_blank">{% trans "Forum" %}</a>
+                        </div>
                     </div>
-                </div>
-            </li>
-        </ul>
-        <h3>External links</h3>
-        <ul class="list-group">
-            <li class="list-group-item">
-                <div class="row">
-                    <div class="col-md-4">
-                        Changelog of the current development master
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Mailing list (subscribe)
+                        </div>
+                        <div class="col-md-4">
+                            <a href="http://www.initat.org/mailman/listinfo" target="_blank">{% trans "Mailman" %}</a>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >{% trans "Changelog" %}</a>
-                    </div>
-                </div>
-            </li>
-            <li class="list-group-item">
-                <div class="row">
-                    <div class="col-md-4">
-                        Software support forum (register, discuss and ask questions)
-                    </div>
-                    <div class="col-md-4">
-                        <a href="http://www.initat.org/phpBB3/index.php" target="_blank">{% trans "Forum" %}</a>
-                    </div>
-                </div>
-            </li>
-            <li class="list-group-item">
-                <div class="row">
-                    <div class="col-md-4">
-                        Mailing list (subscribe)
-                    </div>
-                    <div class="col-md-4">
-                        <a href="http://www.initat.org/mailman/listinfo" target="_blank">{% trans "Mailman" %}</a>
-                    </div>
-                </div>
-            </li>
-        </ul>
-    </div>
+                </li>
+            </ul>
+            {% verbatim %}
+        </accordion-group>
+        <accordion-group is-open="quota_open">
+            <accordion-heading>
+                Quota info
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quota_open, 'glyphicon-chevron-right': !quota_open}"></i>
+            </accordion-heading>
+            <div ng-controller="account_ctrl">
+                <quotasettings object='edit_obj' type='user'>
+                </quotasettings>
+            </div>
+        </accordion-group>
+    </accordion>
 </div>
 <div id="center_deviceinfo">
 </div>
+
+
+{% endverbatim %}
 
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
 root = exports ? this
-
-index_module = angular.module("icsw.index_app", ["ngSanitize", "ui.bootstrap"])
-
-index_controller = index_module.controller("index_base", ["$scope", "$timeout", "$window",
-    ($scope, $timeout, $window) ->
-        $scope.show_index = true
-        $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
-        $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
-        $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
-        $scope.check_perm = (p_name) ->
-            if p_name of GLOBAL_PERMISSIONS
-                return true
-            else if p_name of OBJECT_PERMISSIONS
-                return true
-            else
-                return false
-        $scope.set_visibility = (flag) ->
-            $scope.show_index = flag
-])
 
 use_devs = (dev_list, devg_list, md_list) ->
     if dev_list.length
@@ -111,7 +123,7 @@ use_devs = (dev_list, devg_list, md_list) ->
 
 add_config_handlers = ->
     install_devsel_link(use_devs, true)
-    angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.index_app"])
+    angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.user"])
 
 root.show_device_on_index = use_devs
 

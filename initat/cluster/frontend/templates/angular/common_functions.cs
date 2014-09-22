@@ -306,6 +306,16 @@ angular_module_setup = (module_list, url_list=[]) ->
                     scope.acl_any = func_dict["acl_any"]
                     scope.acl_all = func_dict["acl_all"]
            }
+        ).factory("icswTools", () ->
+            return {
+                "get_size_str" : (size, factor, postfix) ->
+                    f_idx = 0
+                    while size > factor
+                        size = parseInt(size/factor)
+                        f_idx += 1
+                    factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
+                    return "#{size} #{factor}#{postfix}"
+            }
         ).config(['$httpProvider', 
             ($httpProvider) ->
                 $httpProvider.defaults.xsrfCookieName = 'csrftoken'
@@ -859,14 +869,16 @@ angular.module(
     return (cur_dt) ->
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()
 ).filter("get_size", () ->
-    return (size, base_factor, factor) ->
+    return (size, base_factor, factor, postfix) ->
         size = size * base_factor
         f_idx = 0
         while size > factor
             size = parseInt(size/factor)
             f_idx += 1
         factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
-        return "#{size} #{factor}B"
+        if postfix is undefined
+            postfix = "B"
+        return "#{size} #{factor}#{postfix}"
 )
 
 class angular_edit_mixin

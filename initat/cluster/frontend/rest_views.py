@@ -186,7 +186,10 @@ class db_prefetch_mixin(object):
         return ["initiator__domain_tree_node", "user"]
 
     def _user_prefetch(self):
-        return ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]
+        return [
+            "user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups",
+            "allowed_device_groups", "user_quota_setting_set",
+        ]
 
     def _group_related(self):
         return ["parent_group"]

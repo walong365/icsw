@@ -166,8 +166,10 @@ class alter_config_cb(View):
         else:
             dev_id, conf_id = (int(_post["id"].split("__")[1]),
                                int(_post["id"].split("__")[3]))
-        cur_dev, cur_conf = (device.objects.select_related("device_type").get(Q(pk=dev_id)),
-                             config.objects.get(Q(pk=conf_id)))
+        cur_dev, cur_conf = (
+            device.objects.select_related("device_type").get(Q(pk=dev_id)),
+            config.objects.get(Q(pk=conf_id))
+        )
         # is metadevice ?
         is_meta = cur_dev.device_type.identifier == "MD"
         # all devices of device_group
@@ -316,7 +318,7 @@ class tree_struct(object):
 
     def get_dict(self):
         return {
-            "data": models.wc_files_serializer(self.wc_file).data,
+            "data": serializers.wc_files_serializer(self.wc_file).data,
             "sub_nodes": [sub_node.get_dict() for sub_node in self.childs],
             "name": self.get_name(),
             "depth": "{:d}".format(self.depth),
@@ -403,12 +405,12 @@ class download_configs(View):
             )
         for cur_conf in conf_list:
             configs.append(config_dump_serializer(cur_conf).data)
-        xml_tree = etree.fromstring(XMLRenderer().render(configs))
+        xml_tree = etree.fromstring(XMLRenderer().render(configs))  # @UndefinedVariable
         # remove all idxs and parent_configs
         for pk_el in xml_tree.xpath(".//idx|.//parent_config|.//categories|.//date", smart_strings=False):
             pk_el.getparent().remove(pk_el)
         act_resp = HttpResponse(
-            etree.tostring(xml_tree, pretty_print=True),
+            etree.tostring(xml_tree, pretty_print=True),  # @UndefinedVariable
             content_type="application/xml"
         )
         act_resp["Content-disposition"] = "attachment; filename=config_{}.xml".format(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
@@ -439,7 +441,7 @@ class upload_config(View):
         _data = StringIO.StringIO(request.FILES["config"].read())
         if _data.getvalue().startswith("<configuration>"):
             # old value
-            _tree = etree.fromstring(_data.getvalue())
+            _tree = etree.fromstring(_data.getvalue())  # @UndefinedVariable
             new_tree = E.root()
             for _config in _tree.findall(".//config"):
                 c_el = interpret_xml("list-item", _config, {})
@@ -458,7 +460,7 @@ class upload_config(View):
                     if sub_el.tag == "config_script":
                         sub_el.attrib["description"] = "config script"
                     t_list.append(interpret_xml("list-item", sub_el, mapping))
-            _data = StringIO.StringIO(etree.tostring(new_tree, pretty_print=False))
+            _data = StringIO.StringIO(etree.tostring(new_tree, pretty_print=False))  # @UndefinedVariable
             # print etree.tostring(new_tree, pretty_print=True)
             # sys.exit(-1)
             # print etree.tostring(_tree, pretty_print=True)
@@ -552,8 +554,8 @@ class handle_cached_config(View):
         added = 0
         sub_added = 0
         try:
-            _exists = config.objects.get(Q(name=conf["name"]) & Q(config_catalog=ccat))
-        except config.DoesNotExist:
+            _exists = config.objects.get(Q(name=conf["name"]) & Q(config_catalog=ccat))  # @UndefinedVariable
+        except config.DoesNotExist:  # @UndefinedVariable
             _take = True
         else:
             request.xml_response.error("config {} already exists in config catalog {}".format(conf["name"], unicode(ccat)), logger=logger)
@@ -637,7 +639,7 @@ class copy_mon(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        _config = config.objects.get(Q(pk=_post["config"]))
+        _config = config.objects.get(Q(pk=_post["config"]))  # @UndefinedVariable
         mon_source = mon_check_command.objects.get(Q(pk=_post["mon"]))
         name_re = re.compile("^(?P<pre>.*)_(?P<idx>\d+)$")
         if name_re.match(mon_source.name):

@@ -89,12 +89,13 @@ class authentication_form(Form):
         # print "-" * 20
         # print pam.authenticate(username, password)
         if username and password:
+            _all_users = user.objects.all()  # @UndefinedVariable
             # get real user
             all_aliases = [
                 (
                     login_name,
                     [_entry for _entry in al_list.strip().split() if _entry not in [None, "None"]]
-                ) for login_name, al_list in user.objects.all().values_list(
+                ) for login_name, al_list in _all_users.values_list(
                     "login", "aliases"
                 ) if al_list is not None and al_list.strip()
             ]
@@ -121,7 +122,7 @@ class authentication_form(Form):
                 raise ValidationError(_("This account is inactive."))
         else:
             raise ValidationError(_("Need username and password"))
-        # TODO: determine whether this should move to its own method.
+        # TODO: determine whether this should be moved to its own method.
         if self.request:
             if not self.request.session.test_cookie_worked():
                 raise ValidationError(_("Your Web browser doesn't appear to have cookies enabled. Cookies are required for logging in."))
@@ -215,7 +216,7 @@ class group_detail_form(ModelForm):
                 ng_show="!create_mode && _edit_obj.permission && _edit_obj.object",
                 ng_click="create_object_permission()"
             ),
-            HTML("<div permissions ng_if='!create_mode'></div>"),
+            HTML("<div class='col-sm-12'><div permissions ng_if='!create_mode' object='_edit_obj' type='group' action='true'></div></div>"),
         ),
         # HTML("</tab></tabset>"),
         FormActions(
@@ -340,6 +341,17 @@ class user_detail_form(ModelForm):
             Field("aliases", rows=3),
         ),
         Fieldset(
+            "Quota settings",
+            HTML("""
+<div class='form-group'>
+    <div class='col-sm-12'>
+        <quotasettings object='_edit_obj' type='user'></quotasettings>
+    </div>
+</div>
+            """),
+            ng_show="_edit_obj.user_quota_setting_set.length",
+        ),
+        Fieldset(
             "Permissions",
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
             Field(
@@ -370,7 +382,7 @@ class user_detail_form(ModelForm):
                 ng_show="!create_mode && _edit_obj.permission && _edit_obj.object",
                 ng_click="create_object_permission()"
             ),
-            HTML("<div permissions ng_if='!create_mode'></div>"),
+            HTML("<div class='col-sm-12'><div permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div>"),
         ),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
