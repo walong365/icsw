@@ -68,8 +68,9 @@ def do_nets(conf):
         glob_nf = conf.add_file_object("/etc/network/interfaces")
         auto_if = []
         for net_idx in write_order_list:
-            net = lu_table[net_idx]
-            auto_if.append(net["devname"])
+            cur_ip = lu_table[net_idx]
+            cur_nd = cur_ip.netdevice
+            auto_if.append(cur_nd.devname)
         glob_nf += "auto %s" % (" ".join(auto_if))
         # get default gw
         _gw_source, def_ip, boot_dev, _boot_mac = get_default_gw(conf)
@@ -165,14 +166,14 @@ def do_nets(conf):
                 new_co += act_file
         elif sys_dict["vendor"] == "debian":
             glob_nf += ""
-            if net["devname"] == "lo":
+            if cur_nd.devname == "lo":
                 glob_nf += "iface %s inet loopback" % (cur_nd.devname)
             else:
                 glob_nf += "iface %s inet static" % (cur_nd.devname)
                 glob_nf += "      address %s" % (cur_ip.ip)
                 glob_nf += "      netmask %s" % (cur_net.netmask)
                 glob_nf += "    broadcast %s" % (cur_net.broadcast)
-                if net["devname"] == boot_dev:
+                if cur_nd.devname == boot_dev:
                     glob_nf += "      gateway %s" % (def_ip)
                 if not cur_nd.fake_macaddr:
                     pass
