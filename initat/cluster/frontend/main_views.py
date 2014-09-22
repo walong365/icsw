@@ -90,7 +90,7 @@ class server_control(View):
         logger.info("got server_control '{0}' for instance {1} (server_id {2:d})".format(
             _cmd["type"],
             _cmd["instance"],
-            _cmd["server_id"],
+            int(_cmd["server_id"]),
         ))
         srv_com = server_command.srv_command(command="server_control", control=_cmd["type"], instance=_cmd["instance"])
         # cur_routing = routing.srv_type_routing()
