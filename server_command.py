@@ -92,7 +92,7 @@ class srv_command(object):
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
             if type(kwargs["source"]) in [str, unicode]:
-                self.__tree = etree.fromstring(kwargs["source"])
+                self.__tree = etree.fromstring(kwargs["source"])  # @UndefinedVariable
             else:
                 self.__tree = kwargs["source"]
         else:
@@ -235,7 +235,7 @@ class srv_command(object):
             cur_element = self._create_element(key)
         else:
             cur_element = self.__tree
-        if etree.iselement(value):
+        if etree.iselement(value):  # @UndefinedVariable
             cur_element.append(value)
         else:
             self._element(value, cur_element)
@@ -290,7 +290,7 @@ class srv_command(object):
             for sub_value in value:
                 sub_el = self._element(sub_value)
                 cur_element.append(sub_el)
-        elif etree.iselement(value):
+        elif etree.iselement(value):  # @UndefinedVariable
             cur_element = value
         else:
             raise ValueError("_element: unknown value type '{}'".format(type(value)))
@@ -304,7 +304,7 @@ class srv_command(object):
     def _create_element(self, key):
         """ creates all element(s) down to key.split(":") """
         xpath_str = "/ns:ics_batch"
-        cur_element = self.__tree.xpath(xpath_str, smart_strings=False , namespaces={"ns": XML_NS})[0]
+        cur_element = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})[0]
         for cur_key in key.split(":"):
             xpath_str = "{}/ns:{}".format(xpath_str, self._escape_key(cur_key))
             full_key = "{{{}}}{}".format(XML_NS, self._escape_key(cur_key))
@@ -370,13 +370,13 @@ class srv_command(object):
         })
 
     def pretty_print(self):
-        return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
+        return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)  # @UndefinedVariable
 
     def __unicode__(self):
-        return etree.tostring(self.__tree, encoding=unicode)
+        return etree.tostring(self.__tree, encoding=unicode)  # @UndefinedVariable
 
     def tostring(self, **kwargs):
-        return etree.tostring(self.__tree, **kwargs)
+        return etree.tostring(self.__tree, **kwargs)  # @UndefinedVariable
 
     def get_log_tuple(self, swap=False, map_to_log_level=True):
         # returns the reply / state attribute, mapped to logging_tool levels
@@ -400,7 +400,7 @@ class srv_command(object):
         # print "del", srv_command.srvc_open
 
     def __len__(self):
-        return len(etree.tostring(self.tree))
+        return len(etree.tostring(self.tree))  # @UndefinedVariable
 
     def check_msi_block(self, msi_block):
         if msi_block:
