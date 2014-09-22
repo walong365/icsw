@@ -708,7 +708,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         group_struct = all_groups[group_lut[group_name]]
                         change_list = ldap.modlist.modifyModlist(attrs, group_struct.attributes)
                         if change_list:
-                            self.log("found group {} with missing attributes: {}".format(group_name, ", ".join(change_list)))
+                            self.log("found group {} with missing attributes: {}".format(group_name, unicode(change_list)))
                             ok, err_str = self._modify_entry(
                                 ld_write,
                                 dn,
