@@ -24,7 +24,8 @@
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
-    group_object_permission, user_permission, user_object_permission
+    group_object_permission, user_permission, user_object_permission, user_quota_setting, \
+    group_quota_setting
 
 __all__ = [
     "csw_permission_serializer",
@@ -35,6 +36,8 @@ __all__ = [
     "group_object_permission_serializer",
     "user_permission_serializer",
     "user_object_permission_serializer",
+    "user_quota_setting_serializer",
+    "group_quota_setting_serializer",
 ]
 
 
@@ -81,10 +84,21 @@ class user_object_permission_serializer(serializers.ModelSerializer):
         model = user_object_permission
 
 
+class user_quota_setting_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_quota_setting
+
+
+class group_quota_setting_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = group_quota_setting
+
+
 class user_serializer(serializers.ModelSerializer):
     # object_perms = csw_object_permission_serializer(many=True, read_only=True)
     user_permission_set = user_permission_serializer(many=True, read_only=True)
     user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
+    user_quota_setting_set = user_quota_setting_serializer(many=True, read_only=True)
 
     class Meta:
         model = user
@@ -93,7 +107,7 @@ class user_serializer(serializers.ModelSerializer):
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
-            "home_dir_created",
+            "home_dir_created", "user_quota_setting_set",
         )
 
 
@@ -110,6 +124,7 @@ class user_flat_serializer(serializers.ModelSerializer):
 class group_serializer(serializers.ModelSerializer):
     group_permission_set = group_permission_serializer(many=True, read_only=True)
     group_object_permission_set = group_object_permission_serializer(many=True, read_only=True)
+    group_quota_setting_set = group_quota_setting_serializer(many=True, read_only=True)
 
     class Meta:
         model = group
@@ -117,4 +132,5 @@ class group_serializer(serializers.ModelSerializer):
             "groupname", "active", "gid", "idx", "parent_group",
             "homestart", "tel", "title", "email", "pager", "comment",
             "allowed_device_groups", "group_permission_set", "group_object_permission_set",
+            "group_quota_setting_set",
         )

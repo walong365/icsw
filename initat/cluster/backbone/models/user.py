@@ -554,7 +554,7 @@ class user(models.Model):
     login = models.CharField(unique=True, max_length=255)
     uid = models.IntegerField(unique=True)
     group = models.ForeignKey("group")
-    aliases = models.TextField(blank=True, null=True)
+    aliases = models.TextField(blank=True, null=True, default="")
     export = models.ForeignKey("device_config", null=True, related_name="export", blank=True)
     home = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
@@ -784,6 +784,10 @@ def user_pre_save(sender, **kwargs):
         if not cur_inst.home:
             cur_inst.home = cur_inst.login
         _check_empty_string(cur_inst, "home", strip=True)
+        if cur_inst.aliases is None:
+            cur_inst.aliases = ""
+        elif cur_inst.aliases in ["None"]:
+            cur_inst.aliases = ""
         cur_pw = cur_inst.password
         if cur_pw.count(":"):
             cur_method, passwd = cur_pw.split(":", 1)
