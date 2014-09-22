@@ -26,6 +26,7 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone import routing
+from lxml import etree
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 import json
@@ -70,13 +71,15 @@ class get_server_info(View):
                 # dirty stuff
                 _res["command"].attrib["server_name"] = _server[0]
                 _res["command"].attrib["server_id"] = "{:d}".format(_server[2])
-                _server_list.append(_res.tree)
-                _res.tree.tag = _res.tree.tag.split("}")[-1]
+                _tree = _res.tree
             else:
                 srv_com["command"].attrib["server_name"] = _server[0]
                 srv_com["command"].attrib["server_id"] = "{:d}".format(_server[2])
-                srv_com.tree.tag = srv_com.tree.tag.split("}")[-1]
-                _server_list.append(srv_com.tree)
+                _tree = srv_com.tree
+            for _node in _tree.iter():
+                if str(_node.tag).startswith("{"):
+                    _node.tag = _node.tag.split("}", 1)[1]
+            _server_list.append(_res.tree)
         request.xml_response["result"] = _server_list
 
 

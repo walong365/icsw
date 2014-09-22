@@ -104,7 +104,7 @@ instance_info = """
                     Action <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                    <li ng-click="action('stop')"><a href="#">Stop</a></li>
+                    <li ng-show="stop_allowed()" ng-click="action('stop')"><a href="#">Stop</a></li>
                     <li ng-show="has_force_option()" ng-click="action('force-stop')"><a href="#">Force Stop</a></li>
                     <li ng-click="action('restart')"><a href="#">Restart</a></li>
                     <li ng-show="has_force_option()" ng-click="action('force-restart')"><a href="#">Force Restart</a></li>
@@ -206,6 +206,11 @@ class server_info
     has_force_option: (instance) ->
         _xml = @xml.find("instance[name='#{instance}']")
         return parseInt(_xml.attr("has_force_stop"))
+    stop_allowed: (instance) ->
+        if instance in ["memcached", "uwsg-init"]
+            return false
+        else
+            return true
     get_mem_info: (instance) ->
         _xml = @xml.find("instance[name='#{instance}'] memory_info")
         return _xml.text()
@@ -239,7 +244,7 @@ info_module.controller("info_ctrl", ["$scope", "$timeout", "access_level_service
                             if _name not of $scope.runs_on
                                 $scope.runs_on[_name] = res_xml.find("instance[name='#{_name}']").attr("runs_on")
                         $scope.instance_list = _.union($scope.instance_list, _cur_inst)
-                    $scope.cur_to = $timeout($scope.reload_server_info, 5000)
+                    $scope.cur_to = $timeout($scope.reload_server_info, 15000)
                     $scope.$digest()
         $scope.get_runs_on = (instance) ->
             return $scope.runs_on[instance]
@@ -287,6 +292,8 @@ info_module.controller("info_ctrl", ["$scope", "$timeout", "access_level_service
                 return scope.srv_info.get_mem_value(scope.instance)
             scope.has_force_option = () ->
                 return scope.srv_info.has_force_option(scope.instance)
+            scope.stop_allowed = () ->
+                return scope.srv_info.stop_allowed(scope.instance)
             scope.action = (type) ->
                 scope.do_action(scope.srv_info, scope.instance, type)
             new_el = $compile($templateCache.get("instance_info.html"))

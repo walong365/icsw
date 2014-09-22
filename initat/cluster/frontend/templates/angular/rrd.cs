@@ -162,9 +162,12 @@ rrd_graph_template = """
                         <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
                             <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
                         </span>
-                        <div ng-show="graph.active && !graph.error">
+                        <div ng-show="graph.active && !graph.error && graph.src">
                             <img-cropped ng-src="{{ graph.src }}" graph="graph">
                             </img-cropped>
+                        </div>
+                        <div ng-show="!graph.src">
+                            <span class="text-warning">no graph created</span>
                         </div>
                     </td>
                 </tr>
@@ -180,7 +183,7 @@ class d_graph
     constructor: (@num, @xml) ->
         @active = true
         @error = false
-        @src = @xml.attr("href")
+        @src = @xml.attr("href") or ""
         @num_devices = @xml.find("devices device").length
         @value_min = parseFloat(@xml.attr("value_min"))
         @value_max = parseFloat(@xml.attr("value_max"))
@@ -216,6 +219,7 @@ class d_graph
         ts_range = @ts_end - @ts_start
         new_start = @ts_start + parseInt((sel.x - @gfx_left) * ts_range / @gfx_width)
         new_end = @ts_start + parseInt((sel.x2 - @gfx_left) * ts_range / @gfx_width)
+        @crop_width = parseInt((sel.x2 - sel.x) * ts_range / @gfx_width)
         @cts_start_mom = moment.unix(new_start)
         @cts_end_mom = moment.unix(new_end)
     clear_crop: () ->
@@ -498,9 +502,15 @@ add_rrd_directive = (mod) ->
                 )
                 $scope.num_mve_sel = $scope.cur_selected.length
             $scope.use_crop = (graph) ->
-                $scope.from_date_mom = graph.cts_start_mom
-                $scope.to_date_mom = graph.cts_end_mom
-                $scope.draw_graph()
+                if graph.crop_width > 600
+                    $scope.from_date_mom = graph.cts_start_mom
+                    $scope.to_date_mom = graph.cts_end_mom
+                    $scope.draw_graph()
+                else
+                    _mins = parseInt(graph.crop_width / 60)
+                    noty
+                        text : "selected timeframe is too narrow (#{_mins} < 10 min)"
+                        type : "warning"
             $scope.draw_graph = () =>
                 call_ajax
                     url  : "{% url 'rrd:graph_rrds' %}"
