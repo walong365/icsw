@@ -268,7 +268,7 @@ class ldap_mixin(object):
                 "base of automounts",
             ),
         }
-        ldap_config = config.objects.get(Q(name="ldap_server"))
+        ldap_config = config.objects.get(Q(name="ldap_server"))  # @UndefinedVariable
         par_dict = {cur_var.name.lower(): cur_var.value for cur_var in config_str.objects.filter(Q(config=ldap_config))}
         needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
         missed_keys = needed_keys - set(par_dict.keys())
@@ -601,7 +601,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
             if ld_read and ld_write:
                 # fetch user / group info
                 all_groups = {cur_g.pk: cur_g for cur_g in group.objects.all()}
-                all_users = {cur_u.pk: cur_u for cur_u in user.objects.all().prefetch_related("secondary_groups")}
+                all_users = {cur_u.pk: cur_u for cur_u in user.objects.all().prefetch_related("secondary_groups")}  # @UndefinedVariable
                 # not used right now
                 devlog_dict = {}
                 # luts
@@ -754,7 +754,9 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                  logging_tools.LOG_LEVEL_WARN)
                 # add groups
                 groups_to_add = [
-                    group_name for group_name in group_lut.keys() if group_name not in groups_ok and group_name not in groups_to_change and group_name not in groups_to_remove
+                    group_name for group_name in group_lut.keys() if (
+                        group_name not in groups_ok and group_name not in groups_to_change and group_name not in groups_to_remove
+                    )
                 ]
                 for group_to_add in groups_to_add:
                     group_struct = all_groups[group_lut[group_to_add]]
@@ -856,11 +858,13 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 ]
                 for user_to_add in users_to_add:
                     user_struct = all_users[user_lut[user_to_add]]
-                    group_stuct = all_groups[user_struct.group_id]
+                    # group_stuct = all_groups[user_struct.group_id]
                     if user_struct.active and group_struct.active and group_struct.homestart:
-                        ok, err_str = self._add_entry(ld_write,
-                                                      user_struct.dn,
-                                                      user_struct.attributes)
+                        ok, err_str = self._add_entry(
+                            ld_write,
+                            user_struct.dn,
+                            user_struct.attributes
+                        )
                         if ok:
                             self.log("added user %s" % (user_to_add))
                         else:
