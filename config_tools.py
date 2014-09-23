@@ -207,6 +207,14 @@ class topology_object(object):
         self.__graph_mode = graph_mode
         if self.__graph_mode.startswith("sel"):
             self.__dev_pks = kwargs["dev_list"]
+        self.__user = kwargs.get("user", None)
+        if self.__user is not None:
+            if self.__user.is_superuser:
+                self.__only_allowed_device_groups = False
+            else:
+                self.__only_allowed_device_groups = kwargs.get("only_allowed_device_groups", False)
+        else:
+            self.__only_allowed_device_groups = False
         self._update()
 
     def add_nodes(self):
@@ -281,6 +289,11 @@ class topology_object(object):
                     self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key not in rem_devs}
                     if not rem_devs:
                         break
+        if self.__only_allowed_device_groups:
+            print self.__user
+            _allowed_dev_pks = device.objects.filter(Q(device_group__in=self.__user.allowed_device_groups.all())).values_list("pk", flat=True)
+            self.dev_dict = {_key: _value for _key, _value in self.dev_dict.iteritems() if _key in _allowed_dev_pks}
+            print self.dev_dict.keys()
         nd_dict = {value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device")}
         ip_dict = {value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")}
         # reorder ip_dict
@@ -288,9 +301,10 @@ class topology_object(object):
         for _net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
             nd_lut.setdefault(nd_pk, []).append(nw_pk)
         self.log(
-            "init topology helper object, {} / {}".format(
+            "init topology helper object, {} / {}, device_groups={}".format(
                 logging_tools.get_plural("device", len(self.dev_dict)),
-                logging_tools.get_plural("peer information", peer_information.objects.count())
+                logging_tools.get_plural("peer information", peer_information.objects.count()),
+                "only allowed" if self.__only_allowed_device_groups else "all",
             )
         )
         self.add_num_nds()
