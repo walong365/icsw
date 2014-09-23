@@ -189,7 +189,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.netip_edit.use_promise = true
 
         $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.peer_edit.create_template = "peer_information_d_form.html"
+        $scope.peer_edit.create_template = "peer_information_form.html"
+        $scope.peer_edit.edit_template = "peer_information_form.html"
         #$scope.peer_edit.edit_template = "netip_template.html"
         $scope.peer_edit.create_rest_url = Restangular.all("{% url 'rest:peer_information_list'%}".slice(1))
         $scope.peer_edit.modify_rest_url = "{% url 'rest:peer_information_detail' 1 %}".slice(1).slice(0, -2)
@@ -227,8 +228,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     "forms" : angular.toJson([
                         "netdevice_form"
                         "net_ip_form"
-                        "peer_information_s_form"
-                        "peer_information_d_form"
+                        "peer_information_form"
                         "device_network_scan_form"
                         "device_boot_form"
                      ])
@@ -461,19 +461,20 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         true
                         #console.log "modip"
             )
-        $scope.get_peer_src_info = () ->
-            #console.log $scope._edit_obj
-            src_nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
-            if src_nd
-                return src_nd.devname + " on " + $scope.dev_lut[src_nd.device].name
+        $scope.get_peer_src_info = (_edit_obj) ->
+            if $scope.source_is_local
+                _nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
+            else
+                _nd = $scope.nd_lut[$scope._edit_obj.d_netdevice]
+            if _nd
+                return _nd.devname + " on " + $scope.dev_lut[_nd.device].name
             else
                 return "???"
         $scope.edit_peer_information = (peer, event) ->
             if peer.peer.s_netdevice == peer.netdevice
-                $scope.peer_edit.edit_template = "peer_information_d_form.html"
+                $scope.source_is_local = true
             else
-                $scope.peer_edit.edit_template = "peer_information_s_form.html"
-            #$scope._src_nd = $scope.nd_lut[peer.netdevice]
+                $scope.source_is_local = false
             $scope.peer_edit.edit(peer.peer, event).then(
                 (mod_peer) ->
                     if mod_peer != false
@@ -495,7 +496,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.create_peer_information = (dev, event) ->
             $scope._current_dev = dev
-            $scope.peer_edit.create_list = undefined#dev.netdevice_set
+            $scope.source_is_local = true
+            $scope.peer_edit.create_list = undefined
             $scope.peer_edit.new_object = (scope) ->
                 return {
                     "s_netdevice" : (entry.idx for entry in dev.netdevice_set)[0]

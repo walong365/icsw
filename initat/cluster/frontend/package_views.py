@@ -192,8 +192,8 @@ class change_package(View):
     def post(self, request):
         _post = request.POST
         c_dict = json.loads(_post["change_dict"])
-        import pprint
-        pprint.pprint(c_dict)
+        # import pprint
+        # pprint.pprint(c_dict)
         edit_obj = c_dict["edit_obj"]
         changed = 0
         for cur_pdc in package_device_connection.objects.filter(Q(pk__in=c_dict["pdc_list"])).prefetch_related("kernel_list", "image_list"):

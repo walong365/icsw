@@ -32,7 +32,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, peer_information
 from initat.cluster.frontend.forms import domain_tree_node_form, network_form, \
     network_type_form, network_device_type_form, netdevice_form, net_ip_form, \
-    peer_information_s_form, peer_information_d_form
+    peer_information_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from networkx.readwrite import json_graph
@@ -52,8 +52,7 @@ class device_network(View):
             request, "device_network.html", {
                 "netdevice_form": netdevice_form(),
                 "net_ip_form": net_ip_form(),
-                "peer_information_s_form": peer_information_s_form(),
-                "peer_information_d_form": peer_information_d_form(),
+                "peer_information_form": peer_information_form(),
                 "device_object_level_permission": "backbone.device.change_network",
             }
         )()
