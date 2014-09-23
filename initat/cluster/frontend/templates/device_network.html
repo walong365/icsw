@@ -27,15 +27,14 @@
 
 {% block content %}
 
-<div id="icsw.network.device">
+{% verbatim %}
 
+<div id="icsw.network.device">
     <tabset>
         <tab heading="settings">
             <div ng-controller="network_ctrl">
                 <devicenetworks></devicenetworks>
-        {% if csw_perms.backbone.device.change_network.AC_MASK_CREATE %}
-        {% verbatim %}
-                <div class="input-group-btn" ng-show="devices.length > 1">
+                <div class="input-group-btn" ng-show="devices.length > 1" ng-if="acl_create(null, 'backbone.device.change_network')">
                     <div class="btn-group">
                         <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
                             Copy network from<span class="caret"></span>
@@ -45,12 +44,9 @@
                         </ul>
                     </div>
                 </div>
-        {% endverbatim %}
-        {% endif %}
             </div>
         </tab>
         <tab heading="Network topology">
-        {% verbatim %}
             <div ng-controller="graph_ctrl">
                 <h3>
                     Network topology for {{ devices.length }} devices
@@ -60,16 +56,16 @@
                     <div class="form-group">
                         <select ng-model="graph_sel" class="form-control" ng-change="fetch_data()">
                             <option value="none">none</option>
-                            <option value="all_with_peers" title="all devices with peers">all peered</option>
+                            <option value="all_with_peers" title="all devices with peers" ng-if="acl_read(null, 'backbone.network.show_clusters')">all peered</option>
                             <option value="all" title="all devices">all</option>
                             <option value="sel">selected</option>
-                            <option value="selp1">selected + 1 (next ring)</option>
-                            <option value="selp2">selected + 2</option>
-                            <option value="selp3">selected + 3</option>
-                            <option value="core">core (non-trivial)</option>
+                            <option value="selp1" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 1 (next ring)</option>
+                            <option value="selp2" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 2</option>
+                            <option value="selp3" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 3</option>
+                            <option value="core" ng-if="acl_read(null, 'backbone.network.show_clusters')">core (non-trivial)</option>
                         </select>, mode:
                     </div>
-                    <div class="form-group"> 
+                    <div class="form-group" ng-if="acl_read(null, 'backbone.network.show_clusters')"> 
                         <select ng-model="graph_mode" class="form-control">
                             <option value="m">move</option>
                             <option value="c">connect</option>
@@ -79,13 +75,12 @@
                         <input type="button" class="btn btn-sm btn-success" value="Redraw" ng-click="fetch_data()"/>
                     </div>              
                 </form>
-                <div networkgraph></div>
+                <networkgraph></networkgraph>
             </div>
-        {% endverbatim %}
         </tab>
-        <tab heading="clusters">
-            <div ng-controller="cluster_ctrl">
-                {% verbatim %}
+        <tab heading="clusters" ng-show="acl_read(null, 'backbone.network.show_clusters') && true || false" ng-controller="cluster_ctrl">
+         <!--=""> -->
+            <div>
                 <h3>
                     Network clusters ({{ clusters.length }}), <input type="button" class="btn btn-sm btn-warning" value="reload" ng-click="reload()"></input>
                 </h3>
@@ -111,11 +106,12 @@
                         </tr>
                     </tbody>
                 </table>
-                {% endverbatim %}
             </div>
         </tab>
     </tabset>
 </div>
+
+{% endverbatim %}
 
 <script type="text/javascript">
 

@@ -727,7 +727,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         r_stack.push(
                             {
                                 "value" : _lhard
-                                "type" : "danger"
+                                "type" : if _soft then "danger" else "warning"
                                 "out": "#{_lhard}%"
                                 "title" : "#{_info1} left until hard limit is reached"
                             }

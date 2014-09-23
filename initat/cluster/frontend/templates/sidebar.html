@@ -181,8 +181,19 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             $scope.tabs[tab_short] = tab_short == $scope.active_tab
         $scope.rest_data = {}
         # olp is the object level permission
+        #console.log "{{ device_object_level_permission }}"
         $scope.rest_map = [
-            {"short" : "device_tree", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_cdg" : false, "tree_mode" : true, "all_devices" : true, "with_categories" : true, "olp" : "{{ device_object_level_permission }}"}} 
+            {
+                "short" : "device_tree",
+                "url" : "{% url 'rest:device_tree_list' %}",
+                "options" : {
+                    "ignore_cdg" : false
+                    "tree_mode" : true
+                    "all_devices" : true
+                    "with_categories" : true
+                    "olp" : "{{ device_object_level_permission }}"
+                }
+            } 
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
             {"short" : "category", "url" : "{% url 'rest:category_list' %}"}
             {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
