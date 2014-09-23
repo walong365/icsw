@@ -277,7 +277,10 @@ angular_module_setup = (module_list, url_list=[]) ->
                     obj = GLOBAL_PERMISSIONS
                     if ac_name of obj
                         if any
-                            return if obj[ac_name] & mask then true else false
+                            if mask
+                                return if obj[ac_name] & mask then true else false
+                            else
+                                return true    
                         else
                             return (obj[ac_name] & mask) == mask
                     else

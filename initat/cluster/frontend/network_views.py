@@ -83,7 +83,7 @@ class json_network(View):
             graph_mode,
             logging_tools.get_plural("device", len(dev_list)),
             ))
-        r_obj = config_tools.topology_object(self.log, graph_mode, dev_list=dev_list)
+        r_obj = config_tools.topology_object(self.log, graph_mode, dev_list=dev_list, only_allowed_device_groups=True, user=request.user)
         r_obj.add_full_names()
         json_obj = json.dumps(json_graph.node_link_data(r_obj.nx))
         # import time
