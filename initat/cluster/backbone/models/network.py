@@ -149,6 +149,7 @@ class network(models.Model):
     class CSW_Meta:
         permissions = (
             ("modify_network", "modify global network settings", False),
+            ("show_clusters", "show network clustering", False),
         )
 
     def get_identifier(self):
