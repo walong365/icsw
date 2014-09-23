@@ -70,7 +70,7 @@ def pretty_print(name, obj, offset):
 
 class network_tree(dict):
     def __init__(self):
-        all_nets = network.objects.all().select_related("network_type", "master_network")
+        all_nets = network.objects.all().select_related("network_type", "master_network")  # @UndefinedVariable
         for cur_net in all_nets:
             self[cur_net.pk] = cur_net
             self.setdefault(cur_net.network_type.identifier, {})[cur_net.pk] = cur_net
@@ -78,8 +78,9 @@ class network_tree(dict):
             cur_net.idx_list = [cur_net.pk]
         for net_pk, cur_net in self.iteritems():
             if type(net_pk) in [int, long]:
-                if cur_net.network_type.identifier == "s" and cur_net.master_network_id in self and self[cur_net.master_network_id].network_type.identifier == "p":
-                    self[cur_net.master_network_id].idx_list.append(net_pk)
+                if cur_net.network_type.identifier == "s":
+                    if cur_net.master_network_id in self and self[cur_net.master_network_id].network_type.identifier == "p":
+                        self[cur_net.master_network_id].idx_list.append(net_pk)
 
 
 class build_process(threading_tools.process_obj):
@@ -346,9 +347,9 @@ class build_process(threading_tools.process_obj):
                     parent_pks.extend(list(new_pks))
                 else:
                     break
-            pseudo_config_list = config.objects.all(). \
-                prefetch_related("config_str_set", "config_int_set", "config_bool_set", "config_blob_set", "config_script_set"). \
-                order_by("-priority", "name")
+            pseudo_config_list = config.objects.all().prefetch_related(
+                "config_str_set", "config_int_set", "config_bool_set", "config_blob_set", "config_script_set"
+            ).order_by("-priority", "name")
             config_dict = dict([(cur_pc.pk, cur_pc) for cur_pc in pseudo_config_list])
             # copy variables
             for p_config in pseudo_config_list:

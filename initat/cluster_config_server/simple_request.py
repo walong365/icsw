@@ -107,10 +107,11 @@ class simple_request(object):
 
     def _get_config_str_vars(self, cs_name):
         config_pks = config.objects.filter(
-            Q(device_config__device=self.cc.device) |
-            (Q(device_config__device__device_group=self.cc.device.device_group_id) &
-             Q(device_config__device__device_type__identifier="MD"))). \
-            order_by("-priority", "name").distinct().values_list("pk", flat=True)
+            Q(device_config__device=self.cc.device) | (
+                Q(device_config__device__device_group=self.cc.device.device_group_id) &
+                Q(device_config__device__device_type__identifier="MD")
+            )
+        ).order_by("-priority", "name").distinct().values_list("pk", flat=True)
         c_vars = config_str.objects.filter(Q(config__in=config_pks) & Q(name=cs_name))
         ent_list = []
         for c_var in c_vars:

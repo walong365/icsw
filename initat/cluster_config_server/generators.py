@@ -57,9 +57,17 @@ def do_nets(conf):
     write_order_list, macs_used, lu_table = ([], {}, {})
     for check_for_bootdevice in [False, True]:
         for cur_ip in conf_dict["node_if"]:
-            if (not check_for_bootdevice and cur_ip.netdevice_id == conf_dict["device"].bootnetdevice_id) or (check_for_bootdevice and not cur_ip.netdevice_id == conf_dict["device"].bootnetdevice_id):
+            if (
+                not check_for_bootdevice and cur_ip.netdevice_id == conf_dict["device"].bootnetdevice_id
+            ) or (
+                check_for_bootdevice and not cur_ip.netdevice_id == conf_dict["device"].bootnetdevice_id
+            ):
                 if int(cur_ip.netdevice.macaddr.replace(":", ""), 16) != 0 and cur_ip.netdevice.macaddr.lower() in macs_used.keys():
-                    print "*** error, macaddress %s on netdevice %s already used for netdevice %s" % (cur_ip.netdevice.macaddr, cur_ip.netdevice.devname, macs_used[cur_ip.netdevice.macaddr.lower()])
+                    print "*** error, macaddress %s on netdevice %s already used for netdevice %s" % (
+                        cur_ip.netdevice.macaddr,
+                        cur_ip.netdevice.devname,
+                        macs_used[cur_ip.netdevice.macaddr.lower()]
+                    )
                 else:
                     macs_used[cur_ip.netdevice.macaddr.lower()] = cur_ip.netdevice.devname
                     write_order_list.append(cur_ip.netdevice_id)
@@ -111,7 +119,11 @@ def do_nets(conf):
                         # FIXME; take netdevice even with zero macaddr
                         if int(cur_nd.macaddr.replace(":", ""), 16) != 0 or True:
                             dev_dict[cur_nd.devname] = cur_nd.macaddr
-                            if sys_dict["vendor"] == "suse" and ((sys_dict["version"] == 10 and sys_dict["release"] == 3) or sys_dict["version"] > 10 or (sys_dict["version"], sys_dict["release"]) == (10, 10)):
+                            if sys_dict["vendor"] == "suse" and (
+                                (
+                                    sys_dict["version"] == 10 and sys_dict["release"] == 3
+                                ) or sys_dict["version"] > 10 or (sys_dict["version"], sys_dict["release"]) == (10, 10)
+                            ):
                                 # openSUSE 10.3, >= 11.0
                                 if cur_nd.vlan_id:
                                     act_filename = "ifcfg-vlan%d" % (cur_nd.vlan_id)

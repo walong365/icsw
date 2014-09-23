@@ -129,18 +129,18 @@ class server_process(threading_tools.process_pool):
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PORT"] , self._new_com),
+            ("router", zmq.ROUTER, global_config["SERVER_PORT"], self._new_com),  # @UndefinedVariable
         ]:
             client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, my_0mq_id)
-            client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.RCVHWM, 256)
-            client.setsockopt(zmq.SNDHWM, 256)
-            client.setsockopt(zmq.BACKLOG, 1)
-            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-            client.setsockopt(zmq.RECONNECT_IVL, 200)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            client.setsockopt(zmq.IDENTITY, my_0mq_id)  # @UndefinedVariable
+            client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
+            client.setsockopt(zmq.RCVHWM, 256)  # @UndefinedVariable
+            client.setsockopt(zmq.SNDHWM, 256)  # @UndefinedVariable
+            client.setsockopt(zmq.BACKLOG, 1)  # @UndefinedVariable
+            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
+            client.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
+            client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
             conn_str = "tcp://*:%d" % (bind_port)
             try:
                 client.bind(conn_str)
@@ -161,12 +161,12 @@ class server_process(threading_tools.process_pool):
                         sock_type
                     )
                 )
-                self.register_poller(client, zmq.POLLIN, target_func)
+                self.register_poller(client, zmq.POLLIN, target_func)  # @UndefinedVariable
                 self.socket_dict[key] = client
 
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):
+        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
             c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
@@ -183,7 +183,7 @@ class server_process(threading_tools.process_pool):
                             self.log("no device with UUID %s found in database" % (src_id),
                                      logging_tools.LOG_LEVEL_ERROR)
                             cur_c = None
-                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)  # @UndefinedVariable
                             zmq_sock.send_unicode("error unknown UUID")
                         else:
                             cur_c = config_control.add_client(new_dev)
@@ -193,7 +193,7 @@ class server_process(threading_tools.process_pool):
                         cur_c.handle_nodeinfo(data[0], node_text)
                 else:
                     self.log(
-                        "got command '{}' from {}, ignoring".format(etree.tostring(srv_com.tree), data[0]),
+                        "got command '{}' from {}, ignoring".format(etree.tostring(srv_com.tree), data[0]),  # @UndefinedVariable
                         logging_tools.LOG_LEVEL_ERROR)
             else:
                 srv_com.update_source()
@@ -287,7 +287,7 @@ class server_process(threading_tools.process_pool):
 
     def _send_simple_return(self, zmq_id, send_str):
         send_sock = self.socket_dict["router"]
-        send_sock.send_unicode(zmq_id, zmq.SNDMORE)
+        send_sock.send_unicode(zmq_id, zmq.SNDMORE)  # @UndefinedVariable
         send_sock.send_unicode(unicode(send_str))
 
     def _client_update(self, *args, **kwargs):

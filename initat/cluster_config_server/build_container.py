@@ -62,6 +62,7 @@ class tree_node_g(object):
         else:
             self.content_node = c_node
             self.content_node_valid = True
+
     def add_config(self, c_pk):
         self.used_config_pks.add(c_pk)
 
@@ -229,6 +230,7 @@ class build_container(object):
         self.__s_time = time.time()
         self.file_mode, self.dir_mode, self.link_mode = ("0644", "0755", "0644")
         self.log("init build continer")
+
     def init_uid_gid(self):
         self.uid, self.gid = (0, 0)
 
