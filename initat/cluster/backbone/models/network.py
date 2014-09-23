@@ -594,7 +594,9 @@ def network_type_pre_save(sender, **kwargs):
 class peer_information(models.Model):
     idx = models.AutoField(db_column="peer_information_idx", primary_key=True)
     s_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_s_netdevice")
+    s_spec = models.CharField(default="", max_length=128, verbose_name="source spec", blank=True)
     d_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_d_netdevice")
+    d_spec = models.CharField(default="", max_length=128, verbose_name="dest spec", blank=True)
     penalty = models.IntegerField(default=0, verbose_name="cost")
     date = models.DateTimeField(auto_now_add=True)
 
