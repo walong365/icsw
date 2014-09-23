@@ -82,14 +82,14 @@ permissions_template = """
 <table class="table table-condensed table-hover table-striped" style="width:100%;">
     <thead>
         <tr>
-            <th>type</th>
+            <th>Type</th>
             <th>Name</th>
-            <th>code</th>
-            <th>level</th>
-            <th>object</th>
+            <th>Code</th>
+            <th>Level</th>
+            <th>Object</th>
             <th>Application</th>
-            <th>model</th>
-            <th ng-show="action">action</th>
+            <th>Model</th>
+            <th ng-show="action">Action</th>
         </tr>
     </thead>
     <tbody>

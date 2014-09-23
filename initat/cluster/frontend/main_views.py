@@ -79,7 +79,7 @@ class get_server_info(View):
             for _node in _tree.iter():
                 if str(_node.tag).startswith("{"):
                     _node.tag = _node.tag.split("}", 1)[1]
-            _server_list.append(_res.tree)
+            _server_list.append(_tree)
         request.xml_response["result"] = _server_list
 
 
