@@ -20,18 +20,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import email
-import email.mime
-from email.header import Header
+import email  # @UnusedImport
+import email.mime  # @UnusedImport
+from email.header import Header  # @UnusedImport
 try:
     import email.MIMEMultipart
     import email.MIMEImage
     import email.MIMEText
-    import email.MIMEMessage
+    import email.MIMEMessage  # @UnusedImport
 except ImportError:
     # not present for python3
     pass
-import email.utils
+import email.utils  # @UnusedImport
 import logging_tools
 import mimetypes
 import os
@@ -46,8 +46,9 @@ import smtplib
 import sys
 
 if sys.version_info[0] == 3:
-    unicode = str
-    long = int
+    unicode = str  # @ReservedAssignment
+    long = int  # @ReservedAssignment
+
 
 class mail(object):
     def __init__(self, subject=None, from_addr=None, to_addr=None, txt=None, **args):
@@ -59,23 +60,28 @@ class mail(object):
         self.add_to_address(to_addr)
         self.is_html_body = args.get("html_body", False)
         if txt:
-            if type(txt) in [type(u""), type("")]:
+            if isinstance(txt, basestring):
                 self.text = [txt]
             else:
                 self.text = txt
         else:
             self.text = []
         self.binary_objects = []
+
     def add_binary_object(self, what):
         self.binary_objects.append(what)
+
     def set_server(self, srv="localhost", srv_helo="localhost"):
         self.server, self.server_helo = (srv, srv_helo)
+
     def set_subject(self, sbj=None):
         self.subject = sbj or "not set"
+
     def set_from_addr(self, frm):
         self.from_addr = frm or "root"
+
     def add_to_address(self, trg):
-        if type(trg) in [unicode, str]:
+        if isinstance(trg, basestring):
             self.to_addrs.append(trg)
         elif type(trg) == list:
             self.to_addrs.extend(trg)
@@ -84,23 +90,34 @@ class mail(object):
                 self.to_addrs.append(add_addr)
         else:
             print("unknown type for add_to_address: %s" % (str(type(trg))))
+
     def init_text(self):
         self.text = []
+
     def add_bcc_address(self, addr):
         self.bcc_list.append(addr)
+
     def append_text(self, what=None):
-        if type(what) in [str, unicode]:
+        if isinstance(what, basestring):
             self.text.append(what)
         elif type(what) == list:
             self.text.extend(what)
-        elif what == None:
+        elif what is None:
             self.text.append("root@localhost")
+
     def send_mail(self):
-        stat, ret_f = (0, ["trying to send an email with %s to %s (%sfrom %s via %s)" % (
-            logging_tools.get_plural("line", len(self.text)),
-            ", ".join(self.to_addrs),
-            "bcc to %s, " % (", ".join(self.bcc_list)) if self.bcc_list else "",
-            self.from_addr, self.server)])
+        stat, ret_f = (
+            0,
+            [
+                "trying to send an email with %s to %s (%sfrom %s via %s)" % (
+                    logging_tools.get_plural("line", len(self.text)),
+                    ", ".join(self.to_addrs),
+                    "bcc to %s, " % (", ".join(self.bcc_list)) if self.bcc_list else "",
+                    self.from_addr,
+                    self.server
+                )
+            ]
+        )
         gen_msgs = self.generate_msg_string()
         ret_f.extend(gen_msgs)
         if gen_msgs:
@@ -130,11 +147,12 @@ class mail(object):
             else:
                 err_str = "Sending mail successfull"
             server.quit()
-        if type(err_str) == type(""):
+        if isinstance(err_str, basestring):
             ret_f.append(err_str)
-        elif type(err_str) == type([]):
+        elif type(err_str) == list:
             ret_f.extend(err_str)
         return stat, ret_f
+
     def generate_msg_string(self):
         msgs = []
         if self.is_html_body:
@@ -191,10 +209,7 @@ class mail(object):
             else:
                 msgs.append("error file '%s' not found" % (obj))
         return msgs
-        # self.msg = "Subject: %s\r\nFrom: %s\r\nTo: %s\r\n\r\n%s" % (self.subject,
-        #                                                            self.from_addr,
-        #                                                            ",".join(self.to_addrs),
-        #                                                            "\n".join(self.text + [""]))
+
 
 def expand_html_body(body_str, **args):
     # remove content-type lines
@@ -204,7 +219,7 @@ def expand_html_body(body_str, **args):
             hr_parts = [part for part in line.split() if part.startswith("href")]
             if hr_parts:
                 rel_path = hr_parts[0].split('"')[1]
-                if args.has_key("media_root") and args.has_key("media_path"):
+                if "media_root" in args and "media_path" in args:
                     abs_path = rel_path.replace(args["media_path"], args["media_root"])
                     if os.path.exists(abs_path):
                         new_lines.append("<style>")
@@ -214,6 +229,7 @@ def expand_html_body(body_str, **args):
             new_lines.append(line)
     new_text = "\n".join(new_lines)
     return new_text
+
 
 if __name__ == "__main__":
     print("Loadable module, exiting...")

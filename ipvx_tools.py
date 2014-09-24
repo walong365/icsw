@@ -24,7 +24,7 @@ class ipv4(object):
         # cast tuple to list
         if type(in_value) in [long, int]:
             in_value = list(in_value)
-        if type(in_value) in [str, unicode]:
+        if isinstance(in_value, basestring):
             # value is a string
             if len([x for x in [int(y) for y in in_value.strip().split(".") if y.isdigit()] if x >= 0 and x <= 255]) == 4:
                 self.parts = [int(y) for y in in_value.strip().split(".")]

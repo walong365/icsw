@@ -219,7 +219,7 @@ class build_package(object):
             script_key = "%s_script" % (script_type)
             if script_key in self:
                 script_content = self[script_key]
-                if type(script_content) in [str, unicode]:
+                if isinstance(script_content, basestring):
                     script_content = script_content.split("\n")
                 spec_contents.extend(["",
                                       "%%%s" % (script_type),

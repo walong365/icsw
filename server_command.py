@@ -91,7 +91,7 @@ class srv_command(object):
         srv_command.srvc_open += 1
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
-            if type(kwargs["source"]) in [str, unicode]:
+            if isinstance(kwargs["source"], basestring):
                 self.__tree = etree.fromstring(kwargs["source"])  # @UndefinedVariable
             else:
                 self.__tree = kwargs["source"]

@@ -67,7 +67,7 @@ class lvm_object(dict):
             if value.endswith("B"):
                 value = value[:-1]
             value = int(value)
-        elif type(value) in [str, unicode]:
+        elif isinstance(value, basestring):
             value = value.strip()
         dict.__setitem__(self, key, value)
 
@@ -81,7 +81,7 @@ class lvm_object(dict):
         src_obj = src_obj or self
         r_dict = {}
         for key, value in src_obj.iteritems():
-            if type(value) in [str, unicode]:
+            if isinstance(value, basestring):
                 r_dict[key] = value
             elif type(value) in [int, long]:
                 r_dict[key] = "{:d}".format(value)
@@ -404,7 +404,7 @@ class disk_lut(object):
 
     def __getitem__(self, key):
         entry_type = None
-        if type(key) in [str, unicode]:
+        if isinstance(key, basestring):
             if key.startswith("by-"):
                 return self.__lut[key]
             elif key.startswith("/dev/disk/by-"):

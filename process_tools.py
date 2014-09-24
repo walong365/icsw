@@ -968,7 +968,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     else:
         if type(pid) in [int, long]:
             actp = [pid]
-        elif type(pid) in [str, unicode]:
+        elif isinstance(pid, basestring):
             actp = [int(pid)]
         else:
             actp = pid
@@ -1012,7 +1012,7 @@ def remove_pids(name, pid=None, mult=0):
     else:
         if type(pid) in [int, long]:
             actp = [pid]
-        elif type(pid) in [str, unicode]:
+        elif isinstance(pid, basestring):
             actp = [int(pid)]
         else:
             actp = pid
@@ -1601,7 +1601,7 @@ def fix_directories(user, group, f_list):
     except KeyError:
         named_gid = 0
         logging_tools.my_syslog("Cannot find group '{}', using root (0)".format(group))
-    if type(f_list) in [str, unicode]:
+    if isinstance(f_list, basestring):
         f_list = [f_list]
     for act_dir in f_list:
         if type(act_dir) == dict:

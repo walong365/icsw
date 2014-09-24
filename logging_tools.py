@@ -24,7 +24,7 @@ import bz2
 import datetime
 import gzip
 import inspect
-import logging
+import logging  # @UnusedImport
 import logging.handlers
 import os
 import pickle
@@ -133,7 +133,7 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
 
 
 def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True):
-    if type(in_s) in [str, unicode]:
+    if isinstance(in_s, basestring):
         _len_in_s = len(in_s)
     else:
         _len_in_s = in_s
@@ -325,7 +325,7 @@ class log_adapter(logging.LoggerAdapter):
 
     def log(self, level=LOG_LEVEL_OK, what=LOG_LEVEL_OK, *args, **kwargs):
         self.__lock.acquire()
-        if type(level) in [str, unicode]:
+        if isinstance(level, basestring):
             # exchange level and what
             _lev = what
             what = level
@@ -646,7 +646,7 @@ class form_list(object):
     def add_line(self, l_p):
         if type(l_p) in [int, long]:
             l_p = str(l_p)
-        if type(l_p) in [str, unicode]:
+        if isinstance(l_p, basestring):
             l_p = [l_p]
         self.lines.append(tuple(l_p))
 
@@ -656,7 +656,7 @@ class form_list(object):
     def set_format_string(self, row_idx, r_t="s", left="-", pre_string="", post_string="", min_size=0):
         if left == "-":
             left = "<"
-        if type(row_idx) in [str, unicode]:
+        if isinstance(row_idx, basestring):
             row_idx = dict([(v, k) for k, v in self.header_dict.iteritems()])[row_idx]
         if row_idx == -1:
             act_row_idx = self.act_row_idx + 1
@@ -703,8 +703,8 @@ class form_list(object):
                 else:
                     b_f_parts.append((u"{}{{:{}{:d}{}}}{}".format(pre_str, lf_str, act_len, tp_str, post_str)))
                 h_f_parts.append((u"{}{{:{}{:d}}}{}".format(pre_str, lf_str, act_len, post_str)))
-            b_form_str_dict = {num_rows : self.col_separator.join(b_f_parts)}
-            h_form_str_dict = {num_rows : self.col_separator.join(h_f_parts)}
+            b_form_str_dict = {num_rows: self.col_separator.join(b_f_parts)}
+            h_form_str_dict = {num_rows: self.col_separator.join(h_f_parts)}
             for idx in range(1, len(b_f_parts)):
                 b_form_str_dict[idx] = self.col_separator.join(b_f_parts[0:idx - 1] + [u"{}"])
                 h_form_str_dict[idx] = self.col_separator.join(h_f_parts[0:idx - 1] + [u"{}"])

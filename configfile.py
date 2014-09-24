@@ -112,9 +112,9 @@ class config_proxy(BaseProxy):
         return self._callmethod("help_string", (key,))
 
     def set_uid_gid(self, uid, gid):
-        if type(uid) in [str, unicode]:
+        if isinstance(uid, basestring):
             uid = pwd.getpwnam(uid)[2]
-        if type(gid) in [str, unicode]:
+        if isinstance(gid, basestring):
             gid = grp.getgrnam(gid)[2]
         cur_address = self._manager.address
         addr_path = os.path.dirname(cur_address)
@@ -314,7 +314,7 @@ class str_c_var(_conf_var):
         return str(val)
 
     def check_type(self, val):
-        return type(val) in [str, unicode]
+        return isinstance(val, basestring)
 
 
 class blob_c_var(_conf_var):
@@ -344,7 +344,7 @@ class bool_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
 
     def str_to_val(self, val):
-        if type(val) in [str, unicode]:
+        if isinstance(val, basestring):
             if val.lower().startswith("t"):
                 return True
             else:

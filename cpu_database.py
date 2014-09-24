@@ -34,7 +34,7 @@ import tempfile
 # copy from process_tools
 def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
-        return subprocess.getstatusoutput(cmd)
+        return subprocess.getstatusoutput(cmd)  # @UndefinedVariable
     else:
         import commands
         return commands.getstatusoutput(cmd)
@@ -203,7 +203,7 @@ class cpu_info_part(object):
         if type(num_key) in [int, long]:
             num_key = (num_key,)
         num_key = list(num_key)
-        if type(num_key[-1]) in [str, unicode]:
+        if isinstance(num_key[-1], basestring):
             num_key.append(0)
         else:
             num_key[-1] += 1
