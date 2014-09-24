@@ -131,7 +131,7 @@ class server_process(threading_tools.process_pool):
                 res_list = logging_tools.new_form_list()
                 for key in res_keys:
                     val = r_dict[key]
-                    if type(val) in [str, unicode]:
+                    if isinstance(val, basestring):
                         info_str = val
                     elif type(val) is tuple:
                         info_str = "{:8d} (hard), {:8d} (soft)".format(*val)
