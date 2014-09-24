@@ -252,10 +252,10 @@ class job_object(object):
                                           global_config["LOG_DESTINATION"],
                                           zmq=True,
                                           context=self.p_pool.zmq_context)
-        if type(content) in [str, unicode] and content.startswith("/"):
+        if isinstance(content, basestring) and content.startswith("/"):
             # content is a filename
             content = file(content, "r").read().split("\n")
-        if type(content) in [str, unicode]:
+        if isinstance(content, basestring):
             content = content.split("\n")
         log_str = "content '%s', %s:" % (name,
                                          logging_tools.get_plural("line", len(content)))
@@ -709,7 +709,7 @@ class job_object(object):
             res_list = logging_tools.new_form_list()
             for key in res_keys:
                 val = r_dict[key]
-                if type(val) in [str, unicode]:
+                if isinstance(val, basestring):
                     info_str = val
                 elif type(val) == tuple:
                     info_str = "{:8d} (hard), {:8d} (soft)".format(val[0], val[1])
@@ -908,7 +908,7 @@ class job_object(object):
                 _added += 1
                 _value = global_config[_key]
                 _job_dict[_key.lower()] = _value
-                if type(_value) in [unicode, str] and _value.startswith("/") and os.path.isfile(_value):
+                if isinstance(_value, basestring) and _value.startswith("/") and os.path.isfile(_value):
                     _content += 1
                     _job_dict["{}_content".format(_key.lower())] = file(_value, "r").read()
         srv_com["config"] = _job_dict

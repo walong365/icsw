@@ -129,7 +129,7 @@ class license_process(threading_tools.process_obj):
             [
                 "{}={}".format(
                     _key,
-                    unicode(_value) if type(_value) in [str, unicode, int, long] else str(_value.pk)
+                    unicode(_value) if (isinstance(_value, basestring) or type(_value) in [int, long]) else str(_value.pk)
                 ) for _key, _value in kwargs.iteritems()
             ]
         )
