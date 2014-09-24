@@ -112,31 +112,9 @@ class server_process(threading_tools.process_pool):
 
         _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
         self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)  # @UndefinedVariable
-        # self.__hdict[_snmp_sock] = self.spc.handle
         # pending schemes
         self.__pending_schemes = {}
         self.spc.check()
-        # mapping: real name -> internal (MSI) name
-        # we need unique process names, otherwise 0MQ will loose messages (sigh)
-        # self.__process_mapping = {}
-        # self.__snmp_process_id = 0
-        # conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
-        # for idx in xrange(num_processes):
-        #    # msi name
-        #    proc_name = "snmp_{:d}".format(idx)
-        #    full_name = self._get_unique_process_name(proc_name)
-        #    # real process name
-        #    new_proc = snmp_process(full_name, conf_dict=conf_dict)
-        #    proc_socket = self.add_process(new_proc, start=True)
-        #    _struct = {
-        #        "socket": proc_socket,
-        #        "calls_done": 0,
-        #        "calls_init": 0,
-        #        "process_name": full_name,
-        #        "in_use": False,
-        #        "state": "waiting",
-        #    }
-        #    self.__process_dict[proc_name] = _struct
 
     def _snmp_process_start(self, **kwargs):
         self.__msi_block.add_actual_pid(

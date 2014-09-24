@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,7 +17,6 @@
 #
 """ SNMP relayer """
 
-from initat.snmp_relay.version import VERSION_STRING
 from io_stream_helper import io_stream
 import configfile
 import daemon
@@ -25,31 +24,40 @@ import os
 import process_tools
 import sys
 
+
 def run_code():
     from initat.snmp_relay.server import server_process
     server_process().loop()
+
 
 def main():
     # read global configfile
     global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
     global_config.add_config_entries([
-        ("BASEDIR_NAME"    , configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
-        ("DEBUG"           , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG"       , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("VERBOSE"         , configfile.int_c_var(0)),
-        ("DAEMONIZE"       , configfile.bool_c_var(True)),
-        ("SNMP_PROCESSES"  , configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
-        ("MAIN_TIMER"      , configfile.int_c_var(60, help_string="main timer [%(default)d]")),
-        ("KILL_RUNNING"    , configfile.bool_c_var(True)),
-        ("BACKLOG_SIZE"    , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
-        ("LOG_NAME"        , configfile.str_c_var("snmp-relay")),
-        ("LOG_DESTINATION" , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("MAX_CALLS"       , configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
-        ("VERBOSE"         , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("PID_NAME"        , configfile.str_c_var("%s/%s" % (
-            prog_name,
-            prog_name)))])
+        ("BASEDIR_NAME", configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
+        ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("VERBOSE", configfile.int_c_var(0)),
+        ("DAEMONIZE", configfile.bool_c_var(True)),
+        ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
+        ("MAIN_TIMER", configfile.int_c_var(60, help_string="main timer [%(default)d]")),
+        ("KILL_RUNNING", configfile.bool_c_var(True)),
+        ("BACKLOG_SIZE", configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
+        ("LOG_NAME", configfile.str_c_var("snmp-relay")),
+        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
+        ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        (
+            "PID_NAME",
+            configfile.str_c_var(
+                "%s/%s" % (
+                    prog_name,
+                    prog_name
+                )
+            )
+        )
+    ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
         positional_arguments=False,
