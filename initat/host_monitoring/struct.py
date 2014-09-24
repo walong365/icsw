@@ -119,19 +119,19 @@ class host_connection(object):
             )
         )
         # router socket
-        new_sock = host_connection.relayer_process.zmq_context.socket(zmq.ROUTER)
+        new_sock = host_connection.relayer_process.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         id_str = "relayer_rtr_{}".format(process_tools.get_machine_name())
-        new_sock.setsockopt(zmq.IDENTITY, id_str)
-        new_sock.setsockopt(zmq.LINGER, 0)
-        new_sock.setsockopt(zmq.SNDHWM, host_connection.backlog_size)
-        new_sock.setsockopt(zmq.RCVHWM, host_connection.backlog_size)
-        new_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-        new_sock.setsockopt(zmq.RECONNECT_IVL, 200)
-        new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+        new_sock.setsockopt(zmq.IDENTITY, id_str)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.SNDHWM, host_connection.backlog_size)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.RCVHWM, host_connection.backlog_size)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+        new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
         host_connection.zmq_socket = new_sock
-        host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
+        host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)  # @UndefinedVariable
 
     @staticmethod
     def get_hc_0mq(conn_str, target_id="ms", **kwargs):
@@ -237,9 +237,9 @@ class host_connection(object):
                         # self._close()
                     else:
                         try:
-                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)
+                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
                             send_str = unicode(host_mes.srv_com)
-                            host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)
+                            host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
                         except:
                             self.return_error(
                                 host_mes,
@@ -259,7 +259,7 @@ class host_connection(object):
                     unicode(host_mes.srv_com))
 
     def send_result(self, host_mes, result=None):
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
+        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)  # @UndefinedVariable
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
         del self.messages[host_mes.src_id]
         del host_connection.message_lut[host_mes.src_id]
@@ -430,7 +430,7 @@ class host_message(object):
             return self.com_struct.interpret(result, self.ns)
 
     def interpret_old(self, result):
-        if type(result) not in [str, unicode]:
+        if isinstance(result, basestring):
             server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
         else:
             server_error = None

@@ -230,10 +230,10 @@ class simple_snmp_oid(object):
         self._target_value = kwargs.get("target_value", None)
         if type(oid[0]) in [tuple, list] and len(oid) == 1:
             oid = oid[0]
-        if type(oid) == tuple and len(oid) == 1 and type(oid[0]) in [str, unicode]:
+        if type(oid) == tuple and len(oid) == 1 and isinstance(oid[0], basestring):
             oid = oid[0]
         # store oid in tuple-form
-        if type(oid) in [str, unicode]:
+        if isinstance(oid, basestring):
             self._oid = tuple([int(val) for val in oid.split(".")])
         else:
             self._oid = oid
@@ -260,7 +260,7 @@ class simple_snmp_oid(object):
 
     def get_value(self, p_mod):
         if self._target_value is not None:
-            if type(self._target_value) in [str, unicode]:
+            if isinstance(self._target_value, basestring):
                 return p_mod.OctetString(self._target_value)
             elif type(self._target_value) in [int, long]:
                 return p_mod.Integer(self._target_value)

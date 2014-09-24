@@ -1479,7 +1479,7 @@ class date_command(hm_classes.hm_command):
         warn_diff, err_diff = (10, 5 * 60)
         local_date = time.time()
         remote_date = hm_classes.net_to_sys(result[3:])["date"]
-        if type(remote_date) in [str, unicode]:
+        if isinstance(remote_date, basestring):
             remote_date = time.mktime(time.strptime(remote_date))
         diff_time = int(abs(remote_date - local_date))
         if diff_time > err_diff:
