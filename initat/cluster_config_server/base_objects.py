@@ -67,7 +67,7 @@ class new_config_object(object):
         self.gid = gid
 
     def _set_mode(self, mode):
-        if type(mode) in [str, unicode]:
+        if isinstance(mode, basestring):
             self.__mode = int(mode, 8)
         else:
             self.__mode = mode
@@ -80,7 +80,7 @@ class new_config_object(object):
         self +=what
 
     def __iadd__(self, line):
-        if type(line) in [str, unicode]:
+        if isinstance(line, basestring):
             self.content.append("%s\n" % (line))
         elif type(line) == list:
             self.content.extend(["%s\n" % (s_line) for s_line in line])

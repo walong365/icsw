@@ -56,7 +56,7 @@ def pretty_print(name, obj, offset):
         for value in obj:
             lines.extend(pretty_print("%d" % (idx), value, len(head_str)))
             idx += 1
-    elif type(obj) in [str, unicode]:
+    elif isinstance(obj, basestring):
         if obj:
             lines.append("%s%s(S): %s" % (off_str, name, obj))
         else:
@@ -227,7 +227,7 @@ class build_process(threading_tools.process_obj):
         return vtl
 
     def _to_unicode(self, value):
-        if type(value) in [str, unicode]:
+        if isinstance(value, basestring):
             value = u"'%s'" % (unicode(value))
         elif type(value) in [long, int]:
             value = "%d" % (value)
