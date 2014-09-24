@@ -234,3 +234,12 @@ class scan_device_network(View):
         srv_com["scan_address"] = _data["scan_address"]
         srv_com["strict_mode"] = "1" if _data["strict_mode"] else "0"
         _result = contact_server(request, "discovery", srv_com, timeout=30)
+
+
+class device_info(View):
+    @method_decorator(login_required)
+    def get(self, request, **kwargs):
+        # set selection list
+        request.session["sel_list"] = ["dev__{}".format(kwargs["device_pk"])]
+        request.session.save()
+        return render_me(request, "index.html", {"index_view": True, "doc_page": "index", "DEVICE_MODE": kwargs.get("mode", "")})()

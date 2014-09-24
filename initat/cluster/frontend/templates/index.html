@@ -95,10 +95,11 @@
         </accordion-group>
     </accordion>
 </div>
-<div id="center_deviceinfo">
-</div>
 
 {% endverbatim %}
+
+<div id="center_deviceinfo" mode="{{ DEVICE_MODE }}">
+</div>
 
 <script type="text/javascript">
 
@@ -109,7 +110,13 @@ root = exports ? this
 use_devs = (dev_list, devg_list, md_list) ->
     if dev_list.length
         # only use when at least one device is selected
-        cur_di = new device_info(undefined, dev_list[0], (entry for entry in dev_list[1..]), md_list)
+        cur_di = new device_info(
+            undefined,
+            dev_list[0],
+            (entry for entry in dev_list[1..]),
+            md_list,
+            $("div#center_deviceinfo").attr("mode")
+        )
         set_index_visibility(false)
         $("div#center_deviceinfo").show()
         cur_di.show()

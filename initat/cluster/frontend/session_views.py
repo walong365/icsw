@@ -60,8 +60,8 @@ def _get_login_screen_type():
 def _get_login_hints():
     # show login hints ?
     _hints, _valid = ([], True)
-    if user.objects.all().count() < 3:
-        for _user in user.objects.all().order_by("login"):
+    if user.objects.all().count() < 3:  # @UndefinedVariable
+        for _user in user.objects.all().order_by("login"):  # @UndefinedVariable
             user_name = _user.login
             _user_valid = False
             for ck_pwd in [user_name, "{}{}".format(user_name, user_name)]:
@@ -93,14 +93,20 @@ def login_page(request, **kwargs):
             _vers.append("{:d}".format(_v))
         else:
             break
-    return render_me(request, "login.html", {
-        "CLUSTER_NAME": _get_cluster_name(),
-        "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
-        "login_form": kwargs.get("login_form", authentication_form()),
-        "from_logout": kwargs.get("from_logout", False),
-        "login_hints": _get_login_hints(),
-        "DJANGO_VERSION": ".".join(_vers),
-        "app_path": reverse("session:login")
+    return render_me(
+        request,
+        "login.html",
+        {
+            "CLUSTER_NAME": _get_cluster_name(),
+            "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
+            "login_form": kwargs.get(
+                "login_form",
+                authentication_form(next=kwargs.get("next", ""))
+            ),
+            "from_logout": kwargs.get("from_logout", False),
+            "login_hints": _get_login_hints(),
+            "DJANGO_VERSION": ".".join(_vers),
+            "app_path": reverse("session:login"),
         }
     )()
 
@@ -128,19 +134,27 @@ def _login(request, _user_object, login_form=None):
 
 class sess_login(View):
     def get(self, request):
-        if user.objects.all().count():
-            if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:
-                first_user = authenticate(username=user.objects.all().values_list("login", flat=True)[0], password="AUTO_LOGIN")
+        print "sget", request.POST, request.GET
+        if user.objects.all().count():  # @UndefinedVariable
+            if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:  # @UndefinedVariable
+                first_user = authenticate(
+                    username=user.objects.all().values_list("login", flat=True)[0],  # @UndefinedVariable
+                    password="AUTO_LOGIN"
+                )
                 if first_user is not None:
                     _login(request, first_user)
                     return HttpResponseRedirect(reverse("user:account_info"))
-        return login_page(request)
+        return login_page(request, next=request.GET.get("next", ""))
 
     def post(self, request):
         _post = request.POST
+        _next = _post.get("next", "")
         login_form = authentication_form(data=_post)
         if login_form.is_valid():
             db_user = login_form.get_user()
             _login(request, db_user, login_form)
-            return HttpResponseRedirect(reverse("main:index"))
-        return login_page(request, login_form=login_form)
+            if _next:
+                return HttpResponseRedirect(_next)
+            else:
+                return HttpResponseRedirect(reverse("main:index"))
+        return login_page(request, login_form=login_form, next=_next)

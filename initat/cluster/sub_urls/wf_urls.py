@@ -93,6 +93,7 @@ device_patterns = patterns(
     url("variables$", device_views.variables.as_view(), name="variables"),
     url("change_devices$", device_views.change_devices.as_view(), name="change_devices"),
     url("scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
+    url("device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
 )
 
 network_patterns = patterns(

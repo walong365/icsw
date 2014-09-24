@@ -7,12 +7,15 @@
 root = exports ? this
 
 class device_info
-    constructor: (@event, @dev_key, @addon_devices=[], @md_list=[]) ->
+    constructor: (@event, @dev_key, @addon_devices=[], @md_list=[], default_mode="") ->
         if window.ICSW_DEV_INFO
             window.ICSW_DEV_INFO.close()
             @active_div = window.ICSW_DEV_INFO.active_div
         else
-            @active_div = "general"
+            if default_mode
+                @active_div = default_mode
+            else
+                @active_div = "general"
         window.ICSW_DEV_INFO = @
         @active_divs = []
     show: () =>
@@ -61,7 +64,11 @@ class device_info
                     # destroy scopes
                     @close()
                     $.simplemodal.close()
-        @dev_div.find("a[href='##{@active_div}']").trigger("click")
+        _active_div = @dev_div.find("a[href='##{@active_div}']")
+        if not _active_div.length
+            @active_div = "general"
+            _active_div = @dev_div.find("a[href='##{@active_div}']")
+        _active_div.trigger("click")
     close: () =>
         # find all scopes and close them
         for active_div in @active_divs

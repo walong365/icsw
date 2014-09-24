@@ -4,7 +4,7 @@
 
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
+from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML, Hidden
 from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -43,12 +43,14 @@ class authentication_form(Form):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
+    next = CharField()
     helper.layout = Layout(
         Div(
             Fieldset(
                 "Please enter your login credentials {% if CLUSTER_NAME %} for {{ CLUSTER_NAME }}{% endif %}",
                 Field("username", placeholder="user name"),
                 Field("password", placeholder="password"),
+                Field("next", type="hidden"),
             ),
             FormActions(
                 Submit("submit", "Submit", css_class="btn btn-primary"),
@@ -59,9 +61,11 @@ class authentication_form(Form):
 
     def __init__(self, request=None, *args, **kwargs):
         self.helper.form_action = reverse("session:login")
+        _next = kwargs.pop("next", "")
         self.request = request
         self.user_cache = None
         super(authentication_form, self).__init__(*args, **kwargs)
+        self.fields["next"].initial = _next
 
     def pam_conv(self, auth, query_list):
         print auth, query_list
