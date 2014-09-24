@@ -402,7 +402,7 @@ class text_file(object):
     def write(self, content, mode="w"):
         if type(content) == dict:
             file(self.__name, mode).write("\n".join(["{}={}".format(key, value) for key, value in content.iteritems()] + [""]))
-        elif type(content) in [str, unicode]:
+        elif isinstance(content, basestring):
             file(self.__name, mode).write(content)
         else:
             file(self.__name, mode).write("\n".join(content + [""]))
