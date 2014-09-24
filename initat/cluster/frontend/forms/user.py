@@ -43,7 +43,7 @@ class authentication_form(Form):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
-    next = CharField()
+    next = CharField(required=False)
     helper.layout = Layout(
         Div(
             Fieldset(
