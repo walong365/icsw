@@ -46,13 +46,11 @@ class server_process(threading_tools.process_pool):
         )
         self.renice()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        self.install_signal_handlers()
         self._init_msi_block()
         self._init_ipc_sockets()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        self.register_exception("term_error", self._sigint)
         self.register_func("int_error", self._int_error)
         self.register_func("snmp_finished", self._snmp_finished)
         self.__verbose = global_config["VERBOSE"]
@@ -72,12 +70,6 @@ class server_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
-
-    def _sigint(self, err_cause):
-        if self["exit_requested"]:
-            self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
-        else:
-            self["exit_requested"] = True
 
     def _check_schemes(self):
         self.__all_schemes = {}
