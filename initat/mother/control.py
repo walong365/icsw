@@ -512,7 +512,7 @@ class host(machine):
                     except:
                         self.log("  error creating {}: {}".format(ps, process_tools.get_except_info()))
             elif pt == "l":
-                if type(ps) in [str, unicode]:
+                if isinstance(ps, basestring):
                     dest = self.name
                 else:
                     ps, dest = ps
