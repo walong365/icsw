@@ -127,8 +127,10 @@ class discovery_process(threading_tools.process_obj):
 
     def fetch_partition_info(self, srv_com):
         target_pks = srv_com["device_pk"].text.split(",")
-        self.log("got %s: %s" % (logging_tools.get_plural("pk", len(target_pks)),
-                                     ", ".join(target_pks)))
+        self.log("got %s: %s" % (
+            logging_tools.get_plural("pk", len(target_pks)),
+            ", ".join(target_pks))
+        )
         src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
         target_devs = device.objects.filter(Q(pk__in=target_pks)).prefetch_related("netdevice_set")

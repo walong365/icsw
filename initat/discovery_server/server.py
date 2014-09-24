@@ -21,10 +21,10 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.discovery_server.config import global_config
+from initat.discovery_server.config import global_config, IPC_SOCK_SNMP
 from initat.discovery_server.discovery import discovery_process
+from initat.snmp_relay.snmp_process import snmp_process_container
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import cluster_location
@@ -54,6 +54,9 @@ class server_process(threading_tools.process_pool):
         self.register_func("discovery_result", self._discovery_result)
         # self.add_process(build_process("build"), start=True)
         connection.close()
+        self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
+        self.__snmp_running = True
+        self._init_processes()
         self.__run_idx = 0
         self.__pending_commands = {}
 
@@ -66,13 +69,56 @@ class server_process(threading_tools.process_pool):
             self.__log_cache.append((lev, what))
 
     def _int_error(self, err_cause):
-        if self["exit_requested"]:
+        if not self.__snmp_running:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
+            self.spc.stop()
+            self.__snmp_running = False
             self["exit_requested"] = True
 
+    def _all_snmps_stopped(self):
+        self["exit_requested"] = True
+
+    def _snmp_process_start(self, **kwargs):
+        self.__msi_block.add_actual_pid(
+            kwargs["pid"],
+            mult=kwargs.get("mult", 3),
+            process_name=kwargs["process_name"],
+            fuzzy_ceiling=kwargs.get("fuzzy_ceiling", 3)
+        )
+        self.__msi_block.save_block()
+        process_tools.append_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+
+    def _snmp_process_exit(self, **kwargs):
+        self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
+        self.__msi_block.save_block()
+        process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+
     def _re_insert_config(self):
-        cluster_location.write_config("config_server", global_config)
+        cluster_location.write_config("discovery_server", global_config)
+
+    def _init_processes(self):
+        self.spc = snmp_process_container(
+            IPC_SOCK_SNMP,
+            self.log,
+            global_config["SNMP_PROCESSES"],
+            self.__max_calls,
+            {
+                "VERBOSE": global_config["VERBOSE"],
+                "LOG_NAME": global_config["LOG_NAME"],
+                "LOG_DESTINATION": global_config["LOG_DESTINATION"],
+            },
+            {
+                "process_start": self._snmp_process_start,
+                "process_exit": self._snmp_process_exit,
+                "all_stopped": self._all_snmps_stopped,
+                "finished": self._snmp_finished,
+            }
+        )
+
+        _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
+        self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)  # @UndefinedVariable
+        self.spc.check()
 
     def _log_config(self):
         self.log("Config info:")
@@ -107,6 +153,7 @@ class server_process(threading_tools.process_pool):
         return msi_block
 
     def loop_end(self):
+        self.spc.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -165,3 +212,6 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
+
+    def _snmp_finished(self, data):  # src_proc, src_pid, *args, **kwargs):
+        print "fin", data

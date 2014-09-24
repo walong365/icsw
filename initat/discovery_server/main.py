@@ -26,7 +26,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.cluster.backbone.models import log_source
 from initat.discovery_server.config_static import SERVER_PORT
 from initat.discovery_server.version import VERSION_STRING
 from io_stream_helper import io_stream
@@ -83,6 +82,8 @@ def main():
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     cluster_location.read_config_from_db(global_config, "discovery_server", [
+        ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
+        ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/discovery-server"])
