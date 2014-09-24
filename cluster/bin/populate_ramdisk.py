@@ -371,7 +371,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     choice_dict, choice_idx, choices_found, choice_lut = ({}, 0, {}, {})
     for sev, names in in_file_dict.iteritems():
         for name in names:
-            if type(name) in [str, unicode]:
+            if isinstance(name, basestring):
                 file_dict[name] = sev
             else:
                 choice_idx += 1

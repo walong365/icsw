@@ -175,7 +175,7 @@ class db_device_variable(object):
 
     def set_value(self, value, type_ok=False):
         if not type_ok:
-            if type(value) in [str, unicode]:
+            if isinstance(value, basestring):
                 v_type = "s"
             elif type(value) in [type(0), type(0L)]:
                 v_type = "i"
