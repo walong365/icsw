@@ -1080,7 +1080,7 @@ class monitoring_hint(models.Model):
     def set_value(self, value):
         if type(value) in [int, long]:
             v_type = "int"
-        elif type(value) in [str, unicode]:
+        elif isinstance(value, basestring):
             v_type = "str"
         else:
             v_type = "float"

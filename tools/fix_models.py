@@ -239,7 +239,7 @@ def main():
                         if val == 0:
                             val = None
                         else:
-                            if type(val_obj_name) in [str, unicode]:
+                            if isinstance(val_obj_name, basestring):
                                 val = lut_table[val_obj_name].get(val, None)
                             elif val_obj_name is None:
                                 pass

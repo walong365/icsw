@@ -277,7 +277,7 @@ class device_variable(models.Model):
         if type(value) == datetime.datetime:
             self.var_type = "d"
             self.val_date = cluster_timezone.localize(value)
-        elif type(value) in [int, long] or (type(value) in [str, unicode] and value.isdigit()):
+        elif type(value) in [int, long] or (isinstance(value, basestring) and value.isdigit()):
             self.var_type = "i"
             self.val_int = int(value)
         else:
@@ -1125,7 +1125,7 @@ def short_log_source_lookup(idx):
 
 @lru_cache()
 def log_status_lookup(key):
-    if type(key) in [str, unicode]:
+    if isinstance(key, basestring):
         return log_status.objects.get(Q(identifier=key))
     else:
         return log_status.objects.get(Q(log_level={

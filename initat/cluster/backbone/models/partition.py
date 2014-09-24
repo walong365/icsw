@@ -168,7 +168,7 @@ def partition_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         p_num = cur_inst.pnum
-        if type(p_num) in [str, unicode]:
+        if isinstance(p_num, basestring):
             if not p_num.strip():
                 p_num = "0"
         try:

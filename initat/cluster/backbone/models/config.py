@@ -314,7 +314,7 @@ class config_int(models.Model):
         return "int"
 
     def __unicode__(self):
-        if type(self.value) in [str, unicode]:
+        if isinstance(self.value, basestring):
             self.value = int(self.value)
         return "{:d}".format(self.value or 0)
 

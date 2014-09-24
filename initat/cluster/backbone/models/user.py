@@ -382,7 +382,7 @@ def user_object_permission_delete(sender, **kwargs):
 
 def get_label_codename(perm):
     app_label, codename = (None, None)
-    if type(perm) in [str, unicode]:
+    if isinstance(perm, basestring):
         if perm.count(".") == 2:
             app_label, content_name, codename = perm.split(".")
         elif perm.count(".") == 1:
@@ -604,7 +604,7 @@ class user(models.Model):
 
     def __setattr__(self, key, value):
         # catch clearing of export entry via empty ("" or '') key
-        if key == "export" and type(value) in [str, unicode]:
+        if key == "export" and isinstance(value, basestring):
             value = None
         super(user, self).__setattr__(key, value)
 
@@ -986,7 +986,7 @@ class user_variable(models.Model):
 
     def to_db_format(self):
         cur_val = self.value
-        if type(cur_val) in [str, unicode]:
+        if isinstance(cur_val, basestring):
             self.var_type = "s"
         elif type(cur_val) in [int, long]:
             self.var_type = "i"
