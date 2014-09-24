@@ -1,0 +1,10 @@
+This software licensed under Mozilla Public License, version 2.0
+
+Base part of application based noVNC by Joel Martin <github@martintribe.org>
+
+Some parts of application have another licenses.
+websockify licensed under LGPL-3.
+
+For additional license information please read https://github.com/kanaka/noVNC/blob/master/LICENSE.txt
+
+© 2014 Nick Roshin <debeb808@gmail.com>
