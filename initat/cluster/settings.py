@@ -392,6 +392,7 @@ PIPELINE_JS = {
             "js/libs/angular-datetimepicker.js",
             # "js/libs/angular-strap.min.js",
             # "js/libs/angular-strap.tpl.min.js",
+            "js/angular-noVNC.js",
         },
         "output_filename": "pipeline/js/extra1.js"
     },
