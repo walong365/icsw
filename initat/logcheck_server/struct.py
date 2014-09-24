@@ -123,7 +123,7 @@ class machine(object):
                         self.log("  ...something went wrong for mkdir(): %s" % (process_tools.get_except_info()),
                                  logging_tools.LOG_LEVEL_ERROR)
             elif pt == "l":
-                if type(ps) in [str, unicode]:
+                if isinstance(ps, basestring):
                     dest = self.name
                 else:
                     ps, dest = ps
