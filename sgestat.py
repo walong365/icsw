@@ -169,7 +169,7 @@ class window(object):
         self.set_question_text(self.tree.get_cur_text())
 
     def _handler_data(self, in_char):
-        if type(in_char) in [str, unicode]:
+        if isinstance(in_char, basestring):
             if self.tree:
                 handled = self.tree.handle_input(in_char, self)
             else:
