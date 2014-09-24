@@ -420,7 +420,7 @@ class main_process(threading_tools.process_pool):
         # pprint.pprint(s_dict)
 
     def get_python_handle(self, record):
-        if type(record) in [str, unicode]:
+        if isinstance(record, basestring):
             # special type for direct handles (log, log_py, err_py)
             sub_dirs = []
             record_host = "localhost"
@@ -579,7 +579,7 @@ class main_process(threading_tools.process_pool):
         except:
             src_key = ("main", "main")
         # needed ?
-        if type(log_msg) in [str, unicode] and log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
+        if isinstance(log_msg, basestring) and log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
             log_it, is_command = (
                 self._handle_command(handle, src_key, log_com, log_msg),
                 True,
