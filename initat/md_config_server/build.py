@@ -19,18 +19,19 @@
 #
 """ build process for md-config-server """
 
+from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
     mon_contactgroup, netdevice, network_type, user, config, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special
-from initat.md_config_server.constants import CACHE_MODES
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_services, config_dir, device_templates, service_templates, mon_config, \
     all_host_dependencies, build_cache, build_safe_name
+from initat.md_config_server.constants import CACHE_MODES
 from initat.md_config_server.mixins import version_check_mixin
 from lxml.builder import E  # @UnresolvedImport
 import codecs
@@ -801,6 +802,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     # action url
                     if self.gc["ENABLE_COLLECTD"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
+                    # always set action_url
+                    act_host["action_url"] = reverse("device:device_info", kwargs={"device_pk": host.pk, "mode": "rrd"})
                     act_host["_device_pk"] = host.pk
                     if global_config["USE_ONLY_ALIAS_FOR_ALIAS"]:
                         act_host["alias"] = host.alias or host.name
