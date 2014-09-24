@@ -43,3 +43,9 @@ def add_fixtures(**kwargs):
         server_config=True,
         system_config=True,
     )
+    factories.Config(
+        name="virtual_desktop",
+        description="device can offer virtual desktops to users",
+        server_config=True,
+        system_config=True,
+    )
