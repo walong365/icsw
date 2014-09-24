@@ -37,7 +37,7 @@ enter_password_template = """
 {% verbatim %}
 
 quota_settings_template = """
-<table class="table table-condensed table-hover table-striped" style="width:100%;" ng-show="quota_settings.length">
+<table class="table table-hover table-bordered table-condensed table-striped" style="width:100%;" ng-show="quota_settings.length">
     <thead>
         <tr>
             <th>Device</th>
@@ -63,15 +63,15 @@ quota_settings_template = """
                     <bar ng-repeat="stack in qs.bytes_stacked track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
                 </progress>
             </td>
-            <td class="text-right">{{ qs.bytes_used | get_size:1:1024 }}</td>
-            <td>{{ get_bytes_limit(qs) }}</td>
+            <td class="text-center">{{ qs.bytes_used | get_size:1:1024 }}</td>
+            <td class="text-center">{{ get_bytes_limit(qs) }}</td>
             <td style="width:120px;">
                 <progress ng-show="qs.files_quota">
                     <bar ng-repeat="stack in qs.files_stacked track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
                 </progress>
             </td>
-            <td class="text-right">{{ qs.files_used | get_size:1:1000:'' }}</td>
-            <td>{{ get_files_limit(qs) }}</td>
+            <td class="text-center">{{ qs.files_used | get_size:1:1000:'' }}</td>
+            <td class="text-center">{{ get_files_limit(qs) }}</td>
         </tr>
     </tbody>
 </table>
