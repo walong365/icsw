@@ -170,7 +170,7 @@ angular_module_setup([password_test_module])
 
 angular_add_password_controller(password_test_module)
 
-user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "noVNC"])
+user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "localytics.directives"])
 
 angular_module_setup([user_module])
 
@@ -178,6 +178,9 @@ add_tree_directive(user_module)
 
 angular_add_password_controller(user_module)
 
+class suser
+    constructor: (@idx, @name, @email) ->
+    
 class user_tree extends tree_config
     constructor: (@scope, args) ->
         super(args)
@@ -757,6 +760,11 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 return false
         $scope.set_visibility = (flag) ->
             $scope.show_index = flag
+        $scope.person = {}
+        $scope.people = [
+            new suser(2, "x", "y")
+            new suser(4, "d", "ff")
+        ]
 ])
 
 root.angular_add_password_controller = angular_add_password_controller

@@ -185,7 +185,7 @@ partinfo_template = """
 
 {% endverbatim %}
 
-device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "localytics.directives"])
+device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "localytics.directives", "ui.select"])
 
 angular_module_setup([device_config_module])
 
@@ -952,7 +952,10 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                 $q.all(wait_list).then((data) ->
                     form = data[0][0].form
                     scope.domain_tree_node = data[1]
-                    scope.mon_device_templ_list = data[2]
+                    scope.mon_device_templ_list = [{"idx": null, "name": "---"}]
+                    for _entry in data[2]
+                        scope.mon_device_templ_list.push(_entry)
+                    #scope.mon_device_templ_list.insert(0, {"idx":null, "name" : "---"})
                     scope.mon_ext_host_list = data[3]
                     scope._edit_obj = data[4][0]
                     if scope._edit_obj.device_type_identifier == "MD"

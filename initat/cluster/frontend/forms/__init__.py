@@ -10,7 +10,8 @@ from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
     ModelMultipleChoiceField, ChoiceField, BooleanField
-from django.forms.widgets import TextInput, PasswordInput, Textarea
+from django.forms.widgets import TextInput, PasswordInput, Textarea, Widget
+from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
     domain_name_tree, device_group, home_export_list, device_config, TOP_LOCATIONS, \
@@ -19,6 +20,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
     device_variable, config, config_str, config_int, config_bool, \
     config_script, netdevice, net_ip, peer_information, config_catalog, cd_connection, \
     cluster_setting, location_gfx
+import pprint
 
 from initat.cluster.frontend.forms.boot import *
 from initat.cluster.frontend.forms.config import *
@@ -84,6 +86,33 @@ class domain_tree_node_form(ModelForm):
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment", "parent", ]
 
 
+class ui_select_widget(Widget):
+    def render(self, name, value, attrs=None, choices=()):
+        print "*", name, value, attrs, choices
+        print "+", list(self.choices)
+        print dir(self)
+        _fin = self.build_attrs(attrs, name=name)
+        pprint.pprint(_fin)
+        return mark_safe(
+            "\n".join(
+                [
+                    "<ui-select ng-model='{}'>".format(_fin["ng-model"]),
+                    "<ui-select-match placeholder='{}'>{{{{$select.selected.{}}}}}</ui-select-match>".format(
+                        _fin.get("placeholder", "..."),
+                        _fin["display"],
+                    ),
+                    "<ui-select-choices repeat='{}{}'>".format(
+                        _fin["repeat"],
+                        "| props_filter:{}".format(_fin["filter"]) if "filter" in _fin else "",
+                    ),
+                    "<div ng-bind-html='value.{} | highlight: $select.search'></div>".format(_fin["display"]),
+                    "</ui-select-choices>",
+                    "</ui-select>",
+                ]
+            )
+        )
+
+
 class device_info_form(ModelForm):
     domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None)
     helper = FormHelper()
@@ -102,7 +131,13 @@ class device_info_form(ModelForm):
             Fieldset(
                 "Basic settings",
                 Field("name"),
-                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
+                Field(
+                    "domain_tree_node",
+                    repeat="value.idx as value in domain_tree_node",
+                    placeholder="Select a domain tree node for this device",
+                    display="tree_info",
+                    filter="{tree_info:$select.search}",
+                ),
                 # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select=True),
                 Field("comment"),
                 Field("curl", wrapper_ng_show="is_device()"),
@@ -122,9 +157,11 @@ class device_info_form(ModelForm):
                 "Monitor settings",
                 Field(
                     "mon_device_templ",
-                    ng_options="value.idx as value.name for value in mon_device_templ_list",
-                    chosen=True,
-                    wrapper_ng_show="mon_device_templ_list"
+                    repeat="value.idx as value in mon_device_templ_list",
+                    placeholder="Select a monitoring device template for this device",
+                    display="name",
+                    filter="{name:$select.search}",
+                    wrapper_ng_show="mon_device_templ_list",
                 ),
                 HTML("""
 <div class='form-group' ng-show="is_device()">
@@ -175,7 +212,11 @@ class device_info_form(ModelForm):
     )
 
     def __init__(self, *args, **kwargs):
+        # self._meta.widgets["domain_tree_node"]
         super(device_info_form, self).__init__(*args, **kwargs)
+        self.fields["domain_tree_node"].widget = ui_select_widget()
+        self.fields["mon_device_templ"].widget = ui_select_widget()
+        # self.fields["domain_tree_node"].widget = ui_select_widget
         for clear_f in ["domain_tree_node"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None

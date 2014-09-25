@@ -882,6 +882,20 @@ angular.module(
         if postfix is undefined
             postfix = "B"
         return "#{size} #{factor}#{postfix}"
+).filter("props_filter", () ->
+    return (items, props) ->
+        if angular.isArray(items)
+            out = []
+            for item in items
+                for prop in Object.keys(props)
+                    text = props[prop].toLowerCase()
+                    if item[prop].toString().toLowerCase().indexOf(text) != -1
+                        out.push(item)
+                        break
+        else
+            # not an array, ignore filter
+            out = items
+        return out
 )
 
 class angular_edit_mixin
