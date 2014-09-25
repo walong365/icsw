@@ -54,8 +54,8 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
     echo "Compiling"
     export SGE_INPUT_CFLAGS=-Wno-error
     ./scripts/zerodepend
-    ./aimk -only-depend || exit -1
-    ./aimk -man || exit -1
+    ./aimk -only-depend -no-java -no-jni || exit -1
+    ./aimk -man -no-java -no-jni || exit -1
     # removed parallel, not working with SoG
     # -parallel $(( $(cat /proc/cpuinfo | grep processor | wc -l ) * 2))
     #./aimk -spool-classic -no-dump -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
