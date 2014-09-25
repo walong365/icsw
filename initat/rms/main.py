@@ -146,6 +146,7 @@ def main():
         with daemon.DaemonContext(
             uid=process_tools.get_uid_from_name(global_config["USER"])[0],
             gid=process_tools.get_gid_from_name(global_config["GROUP"])[0],
+            gids=[process_tools.get_gid_from_name(_gid)[0] for _gid in global_config["GROUPS"]],
         ):
             global_config = configfile.get_global_config(prog_name, parent_object=global_config)
             sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
