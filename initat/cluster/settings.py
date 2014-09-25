@@ -9,19 +9,18 @@ import sys
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
-ugettext = lambda s: s
+ugettext = lambda s: s  # @IgnorePep8
 
 # monkey-patch threading for python 2.7.x
 if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     import threading
-    threading._DummyThread._Thread__stop = lambda x: 42
+    threading._DummyThread._Thread__stop = lambda x: 42  # @IgnorePep8
 
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
-PIPELINE_ENABLED = True
+PIPELINE_ENABLED = not DEBUG
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    # ("Andreas Lang-Nevyjel", "cluster@init.at"),
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
 

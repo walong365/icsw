@@ -42,7 +42,11 @@ class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
         self.request = request
         self.template = template
-        self.my_dict = {}
+        self.my_dict = {
+            # default values
+            "NUM_BACKGROUND_JOBS": 0,
+            "NUM_QUOTA_SERVERS": 0,
+        }
         for add_dict in args:
             self.my_dict.update(add_dict)
         for key, value in kwargs.iteritems():
