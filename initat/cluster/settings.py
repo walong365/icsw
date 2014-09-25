@@ -329,7 +329,7 @@ PIPELINE_CSS = {
             # "js/libs/select2/select2.css",
             # "js/libs/select2/select2-bootstrap.css",
             # hm, not working
-            # "js/libs/ui-select/select.css",
+            "js/libs/ui-select/select.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }
@@ -384,7 +384,7 @@ PIPELINE_JS = {
             "js/libs/restangular.min.js",
             "js/libs/angular-block-ui.js",
             # hm, not working
-            # "js/libs/ui-select/select.js",
+            "js/libs/ui-select/select.js",
             "js/libs/ui-bootstrap-tpls.min.js",
             # now in common_function as coffeescript
             # "js/libs/ui-codemirror.min.js",
