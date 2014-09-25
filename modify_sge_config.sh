@@ -125,4 +125,5 @@ if [ ! -f ${CONF_FILE} ] ; then
     ${SGE_ROOT}/3rd_party/proepilogue.py > ${CONF_FILE}
 fi
 
-
+# add user sge to group idg such that it can access the sqlite database file
+usermod -a -G idg sge
