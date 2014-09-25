@@ -83,9 +83,9 @@
             </ul>
             {% verbatim %}
         </accordion-group>
-        <accordion-group is-open="quota_open">
+        <accordion-group is-open="quota_open" ng-if="NUM_QUOTA_SERVERS">
             <accordion-heading>
-                Quota info
+                Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quota_open, 'glyphicon-chevron-right': !quota_open}"></i>
             </accordion-heading>
             <div ng-controller="account_ctrl">

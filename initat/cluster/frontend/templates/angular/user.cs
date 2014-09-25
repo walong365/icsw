@@ -747,6 +747,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
         $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
+        $scope.NUM_QUOTA_SERVERS = $window.NUM_QUOTA_SERVERS
         $scope.check_perm = (p_name) ->
             if p_name of GLOBAL_PERMISSIONS
                 return true

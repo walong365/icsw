@@ -23,12 +23,14 @@
 """ main views """
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone import routing
-from lxml import etree
+from initat.cluster.backbone.models import device
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from lxml import etree  # @UnusedImport
 import json
 import logging
 import server_command
@@ -39,7 +41,15 @@ logger = logging.getLogger("cluster.main")
 class index(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "index.html", {"index_view": True, "doc_page": "index"})()
+        return render_me(
+            request,
+            "index.html",
+            {
+                "index_view": True,
+                "doc_page": "index",
+                "NUM_QUOTA_SERVERS": device.objects.filter(Q(device_config__config__name="quota_scan")).count()
+            }
+        )()
 
 
 class permissions_denied(View):
@@ -97,4 +107,11 @@ class server_control(View):
         ))
         srv_com = server_command.srv_command(command="server_control", control=_cmd["type"], instance=_cmd["instance"])
         # cur_routing = routing.srv_type_routing()
-        request.xml_response["result"] = contact_server(request, "server", srv_com, timeout=10, connection_id="server_control", target_server_id=_cmd["server_id"])
+        request.xml_response["result"] = contact_server(
+            request,
+            "server",
+            srv_com,
+            timeout=10,
+            connection_id="server_control",
+            target_server_id=_cmd["server_id"]
+        )

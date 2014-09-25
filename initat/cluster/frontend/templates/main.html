@@ -82,6 +82,7 @@
         window.CURRENT_USER = {{ CURRENT_USER | safe }}
         window.NUM_BACKGROUND_JOBS = {{ NUM_BACKGROUND_JOBS }}
         window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }}
+        window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }}
         window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
         {% endinlinecoffeescript %}
         </script>
