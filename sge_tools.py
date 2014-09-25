@@ -108,15 +108,20 @@ def compress_list(ql, queues=None, postfix=""):
             pf_m = pf_q_re.match(q_name)
         else:
             pf_m = pf_re.match(q_name)
-        pef = pf_m.group("pef")
-        if len(q_list) == 1 and pef.startswith("{}@".format(q_list[0])):
-            pef = pef[len(q_list[0]) + 1:]
-        idx = pf_m.group("num")
-        pof = pf_m.group("pof").split(".")[0]
-        if idx:
-            i_idx = int(idx)
+        if pf_m is None:
+            # no match, handle special machine names
+            i_idx, idx = (0, "")
+            pef, pof = (q_name, "")
         else:
-            i_idx = 0
+            pef = pf_m.group("pef")
+            if len(q_list) == 1 and pef.startswith("{}@".format(q_list[0])):
+                pef = pef[len(q_list[0]) + 1:]
+            idx = pf_m.group("num")
+            pof = pf_m.group("pof").split(".")[0]
+            if idx:
+                i_idx = int(idx)
+            else:
+                i_idx = 0
         nc_dict.setdefault(pef, {}).setdefault(pof, {})[i_idx] = idx
     nc_a = []
     for pef in nc_dict.keys():
