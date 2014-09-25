@@ -276,6 +276,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 $scope.csw_permission_lut = {}
                 for entry in $scope.csw_permission_list
                     $scope.csw_permission_lut[entry.idx] = entry
+                    entry.model_name = entry.content_type.model
                 #$scope.csw_object_permission_list = data[4]
                 $scope.home_export_list = data[4]
                 # beautify permission list
@@ -332,12 +333,15 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     else
                         _rest_list.push(entry)
                 rest_list = _rest_list
+            $scope.group_lut = group_lut
+            $scope.parent_groups = {}
+            for entry in $scope.group_list
+                $scope.parent_groups[entry.idx] = $scope.get_parent_group_list(entry)
             for entry in $scope.user_list
                 # set csw dummy permission list and optimise object_permission_list
                 $scope.init_csw_cache(entry, "user")
                 t_entry = $scope.tree.new_node({folder:false, obj:entry, _node_type:"u"})
                 group_lut[entry.group].add_child(t_entry)
-            $scope.group_lut = group_lut
         $scope.$on("icsw.user.groupchange", () ->
             $scope.rebuild_tree()
         )
@@ -360,9 +364,13 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         _list.push(_group)
             return _list
         $scope.valid_device_groups = () ->
-            return (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false)
+            #console.log "vd"
+            _list = (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false) 
+            #console.log _list
+            return _list
         $scope.valid_group_csw_perms = () ->
-            return (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"])
+            _list = (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"]) 
+            return _list
         $scope.valid_user_csw_perms = () ->
             return (entry for entry in $scope.csw_permission_list)
         $scope.object_list = () ->

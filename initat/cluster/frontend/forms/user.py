@@ -4,7 +4,7 @@
 
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML, Hidden
+from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
 from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -12,6 +12,7 @@ from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoic
 from django.forms.widgets import TextInput, PasswordInput
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import user, group, home_export_list
+from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
 
 
 __all__ = [
@@ -149,9 +150,9 @@ class group_detail_form(ModelForm):
     helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "group_edit.modify(this)"
-    permission = ModelChoiceField(queryset=empty_query_set(), required=False)
-    object = ModelChoiceField(queryset=empty_query_set(), required=False)
-    permission_level = ModelChoiceField(queryset=empty_query_set(), required=False)
+    permission = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    object = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    permission_level = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
     helper.layout = Layout(
         HTML("<h2>Details for group {% verbatim %}'{{ _edit_obj.groupname }}'{% endverbatim %}</h2>"),
         # tabset not implemented because of limitations in angular-chosen (replace with ui-select)
@@ -184,26 +185,50 @@ class group_detail_form(ModelForm):
         # HTML("</tab><tab heading='permissions'>"),
         Fieldset(
             "Permissions",
-            Field("parent_group", ng_options="value.idx as value.groupname for value in get_parent_group_list(_edit_obj)", chosen=True),
-            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
+            Field(
+                "parent_group",
+                repeat="value.idx as value in parent_groups[_edit_obj.idx]",
+                placeholder="Select a parent group",
+                display="groupname",
+                filter="{groupname:$select.search}",
+                null=True,
+                wrapper_ng_show="!create_mode",
+            ),
+            Field(
+                "allowed_device_groups",
+                repeat="value.idx as value in valid_device_groups()",
+                # repeat="value.idx as value in valid_group_csw_perms(_edit_obj)",
+                placeholder="Select one or more device groups",
+                display="name",
+                filter="{name:$select.search}",
+            ),
             # HTML("{% verbatim %}{{ valid_device_groups() }}{% endverbatim %}"),
             Field(
                 "permission",
+                repeat="value.idx as value in valid_group_csw_perms(_edit_obj)",
+                placeholder="Select a permission",
+                display="info",
+                groupby="'model_name'",
+                filter="{info:$select.search}",
+                null=True,
                 wrapper_ng_show="!create_mode",
-                ng_options="value.idx as value.info group by value.content_type.model for value in valid_group_csw_perms(_edit_obj)",
-                chosen=True
             ),
             Field(
                 "object",
                 wrapper_ng_show="!create_mode && _edit_obj.permission",
-                ng_options="value.idx as value.name group by value.group for value in object_list()",
-                chosen=True
+                repeat="value.idx as value in object_list()",
+                placeholder="Select an object",
+                display="name",
+                groupby="'group'",
+                filter="{name:$select.search}",
+                null=True,
             ),
             Field(
                 "permission_level",
                 wrapper_ng_show="!create_mode",
-                ng_options="value.level as value.info for value in ac_levels",
-                chosen=True
+                repeat="value.level as value in ac_levels",
+                placeholder="Select a permission mode",
+                display="info",
             ),
             Button(
                 "",
@@ -234,16 +259,6 @@ class group_detail_form(ModelForm):
     )
     homestart = CharField(widget=TextInput())
 
-    def __init__(self, *args, **kwargs):
-        super(group_detail_form, self).__init__(*args, **kwargs)
-        self.fields["permission"].empty_label = "---"
-        for clear_f in ["allowed_device_groups", "permission_level", "object"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-        for clear_f in ["parent_group"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = "---"
-
     class Meta:
         model = group
         fields = [
@@ -251,6 +266,10 @@ class group_detail_form(ModelForm):
             "email", "pager", "tel", "comment",
             "allowed_device_groups", "parent_group"
         ]
+        widgets = {
+            "parent_group": ui_select_widget(),
+            "allowed_device_groups": ui_select_multiple_widget(),
+        }
 
 
 class export_choice_field(ModelChoiceField):
@@ -271,9 +290,9 @@ class user_detail_form(ModelForm):
     helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "user_edit.modify()"
-    permission = ModelChoiceField(queryset=empty_query_set(), required=False)
-    object = ModelChoiceField(queryset=empty_query_set(), required=False)
-    permission_level = ModelChoiceField(queryset=empty_query_set(), required=False)
+    permission = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    object = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    permission_level = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
     helper.layout = Layout(
         HTML("<h2>Details for user {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
         Div(
@@ -319,9 +338,15 @@ class user_detail_form(ModelForm):
         Fieldset(
             "Groups / export entry",
             Field("group", ng_options="value.idx as value.groupname for value in group_list"),
-            Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
-            # do not use chosen here (will not refresh on export_list change)
-            Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),  # , chosen=True),
+            Field(
+                "secondary_groups",
+                repeat="value.idx as value in group_list",
+                placeholder="Select secondary groups",
+                display="groupname",
+                filter="{groupname:$select.search}",
+            ),
+            # do not use ui-select here (will not refresh on export_list change)
+            Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),
             HTML("""
 <div class='form-group'>
     <label class='control-label col-sm-2'>
@@ -357,20 +382,51 @@ class user_detail_form(ModelForm):
         ),
         Fieldset(
             "Permissions",
-            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
+            Field(
+                "allowed_device_groups",
+                repeat="value.idx as value in valid_device_groups()",
+                # repeat="value.idx as value in valid_group_csw_perms(_edit_obj)",
+                placeholder="Select one or more device groups",
+                display="name",
+                filter="{name:$select.search}",
+            ),
             Field(
                 "permission",
+                repeat="value.idx as value in valid_user_csw_perms()",
+                placeholder="Select a permission",
+                display="info",
+                groupby="'model_name'",
+                filter="{info:$select.search}",
                 wrapper_ng_show="!create_mode",
-                ng_options="value.idx as value.info group by value.content_type.model for value in valid_user_csw_perms()",
-                chosen=True
+                null=True,
             ),
             Field(
                 "object",
                 wrapper_ng_show="!create_mode && _edit_obj.permission",
-                ng_options="value.idx as value.name group by value.group for value in object_list()",
-                chosen=True
+                repeat="value.idx as value in object_list()",
+                placeholder="Select an object",
+                display="name",
+                groupby="'group'",
+                filter="{name:$select.search}",
+                null=True,
             ),
-            Field("permission_level", wrapper_ng_show="!create_mode", ng_options="value.level as value.info for value in ac_levels", chosen=True),
+            Field(
+                "permission_level",
+                wrapper_ng_show="!create_mode",
+                repeat="value.level as value in ac_levels",
+                placeholder="Select a permission mode",
+                display="info",
+            ),
+            # Field(
+            #    "permission",
+            #    wrapper_ng_show="!create_mode",
+            #    ng_options="value.idx as value.info group by value.content_type.model for value in valid_user_csw_perms()",
+            # ),
+            # Field(
+            #    "object",
+            #    wrapper_ng_show="!create_mode && _edit_obj.permission",
+            #    ng_options="value.idx as value.name group by value.group for value in object_list()",
+            # ),
             Button(
                 "",
                 "create global permission",
@@ -438,6 +494,10 @@ class user_detail_form(ModelForm):
             "allowed_device_groups", "secondary_groups",
             "aliases", "db_is_auth_for_password", "export", "group"
         ]
+        widgets = {
+            "secondary_groups": ui_select_multiple_widget(),
+            "allowed_device_groups": ui_select_multiple_widget(),
+        }
 
 
 class account_detail_form(ModelForm):
