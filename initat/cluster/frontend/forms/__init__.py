@@ -87,7 +87,7 @@ class domain_tree_node_form(ModelForm):
 
 
 class device_info_form(ModelForm):
-    domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None)
+    domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None, widget=ui_select_widget)
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.form_name = "form"
@@ -192,7 +192,6 @@ class device_info_form(ModelForm):
             "store_rrd_data",
         ]
         widgets = {
-            "domain_tree_node": ui_select_widget(),
             "mon_device_templ": ui_select_widget(),
         }
 

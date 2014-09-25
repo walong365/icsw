@@ -11,8 +11,6 @@
 {% verbatim %}
 
 <div id="icsw.index_app" ng-controller="index_base" ng-cloack ng-show="show_index">
-<tabset>
-<tab heading="x">
     <h2 class="center">Please select a device from the tree on the left side</h2>
     <accordion close-others="no">
         <accordion-group is-open="quick_open">
@@ -97,21 +95,6 @@
         </accordion-group>
     </accordion>
     <vnc host="192.168.1.173" port="5902" is-connected="true" password="init4u" display="{width:1880,height:800,fitTo:'width',}"></vnc>
-</tab>
-<tab heading="y">
-{{person }}
-            <ui-select ng-model="person.selected" theme="bootstrap" style="max-width: 300px;">
-                <ui-select-match placeholder="Select a person in the list or search his name/age...">{{$select.selected.name}}</ui-select-match>
-                <ui-select-choices repeat="person.idx as person in people | props_filter:{name:$select.search, idx:$select.search}">
-                    <div ng-bind-html="person.name | highlight: $select.search">ddd</div>
-                    <small>
-                        email: {{person.email}}<br>
-                        idx: <span ng-bind-html="''+person.idx | highlight: $select.search"></span>
-                    </small>
-                </ui-select-choices>
-            </ui-select>
-</tab>
-</tabset>
 </div>
 
 {% endverbatim %}
