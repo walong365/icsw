@@ -745,12 +745,20 @@ class user(models.Model):
         ordering = ("login", "group__groupname")
         app_label = "backbone"
 
+    def get_info(self):
+        return unicode(self)
+
     def __unicode__(self):
-        return u"{} ({}, {} [{}])".format(
+        _add_fields = [
+            _entry for _entry in [
+                self.first_name or "",
+                self.last_name or "",
+                "[{}]".format("{:d}".format(self.pk) if type(self.pk) in [int, long] else "???"),
+            ] if _entry
+        ]
+        return u"{} ({})".format(
             self.login,
-            self.first_name or "first",
-            self.last_name or "last",
-            "{:d}".format(self.pk) if type(self.pk) in [int, long] else "???",
+            " ".join(_add_fields),
         )
 
 

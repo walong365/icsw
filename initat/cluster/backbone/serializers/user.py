@@ -99,6 +99,7 @@ class user_serializer(serializers.ModelSerializer):
     user_permission_set = user_permission_serializer(many=True, read_only=True)
     user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
     user_quota_setting_set = user_quota_setting_serializer(many=True, read_only=True)
+    info = serializers.Field(source="get_info")
 
     class Meta:
         model = user
@@ -107,17 +108,20 @@ class user_serializer(serializers.ModelSerializer):
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
-            "home_dir_created", "user_quota_setting_set",
+            "home_dir_created", "user_quota_setting_set", "info",
         )
 
 
 class user_flat_serializer(serializers.ModelSerializer):
+    info = serializers.Field(source="get_info")
+
     class Meta:
         model = user
         fields = (
             "idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
+            "info",
         )
 
 
