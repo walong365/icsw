@@ -317,7 +317,7 @@ cached_config_template = """
 
 {% endverbatim %}
 
-config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror", "angularFileUpload"])
+config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror", "angularFileUpload", "ui.select"])
 
 angular_module_setup([config_module])
 

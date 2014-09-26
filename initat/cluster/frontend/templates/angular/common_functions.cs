@@ -799,7 +799,9 @@ angular.module(
 ).filter(
     "array_lookup", () ->
         return (in_value, f_array, fk_key, null_msg) ->
-            if in_value != null
+            if in_value == null or in_value == undefined
+                return if null_msg then null_msg else "N/A"
+            else
                 if fk_key
                     if angular.isString(in_value)
                         in_value = parseInt(in_value)
@@ -807,8 +809,6 @@ angular.module(
                 else
                     res_list = (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
                 return if res_list.length then res_list[0] else "Key Error (#{in_value})"
-            else
-                return if null_msg then null_msg else "N/A"
 ).filter(
     "exclude_device_groups", () ->
         return (in_array) ->

@@ -15,6 +15,14 @@ class ui_select_widget(Widget):
             show_null = False
         # pprint.pprint(_fin)
         _style = "max-width:400px; min-width:240px;"
+        _templ = _fin.get(
+            "listtemplate",
+            "<div ng-bind-html='{}.{} | highlight: $select.search'></div>".format(
+                _fin.get("repeatvar", "value"),
+                _fin["display"]
+            ),
+        )
+        print "*", _templ
         if show_null:
             _out_list = [
                 "<div class='input-group' style='{}'>".format(_style),
@@ -40,10 +48,11 @@ class ui_select_widget(Widget):
                     "| props_filter:{}".format(_fin["filter"]) if "filter" in _fin else "",
                     " group-by='{}'".format(_fin["groupby"]) if "groupby" in _fin else "",
                 ),
-                "<div ng-bind-html='{}.{} | highlight: $select.search'></div>".format(
-                    _fin.get("repeatvar", "value"),
-                    _fin["display"]
-                ),
+                _templ,
+                # #"<div ng-bind-html='{}.{} | highlight: $select.search'></div>".format(
+                #    _fin.get("repeatvar", "value"),
+                #    _fin["display"]
+                # ),
                 "</ui-select-choices>",
                 "</ui-select>",
             ]

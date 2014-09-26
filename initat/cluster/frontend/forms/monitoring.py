@@ -7,10 +7,12 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
 from django.forms import ModelForm, CharField, ModelChoiceField, ChoiceField
 from django.forms.widgets import Textarea
+from django.utils.safestring import mark_safe
 from initat.cluster.backbone.models import device, mon_check_command, mon_service_templ, mon_period, \
     mon_notification, mon_contact, host_check_command, mon_contactgroup, mon_device_templ, \
     mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, mon_service_esc_templ, \
     mon_device_esc_templ, mon_service_dependency_templ, mon_service_dependency, mon_host_dependency
+from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
 
 
 __all__ = [
@@ -128,14 +130,29 @@ class mon_contact_form(ModelForm):
             "Base data",
             Field(
                 "user",
-                ng_options="value.idx as value.login + ' (' + value.first_name + ' ' + value.last_name + ')' for value in rest_data.user | orderBy:'login'"
+                repeat="value.idx as value in rest_data.user | orderBy:'login'",
+                display="info",
+                filter="{info:$select.search}",
+                placeholder="please select an user",
             ),
-            Field("notifications", ng_options="value.idx as value.name for value in rest_data.mon_notification | orderBy:'name'", chosen=True),
+            Field(
+                "notifications",
+                repeat="value.idx as value in rest_data.mon_notification | orderBy:'name'",
+                placeholder="Select one or more notifications",
+                display="name",
+                filter="{name:$select.search}",
+            ),
             Field("mon_alias"),
         ),
         Fieldset(
             "Service settings",
-            Field("snperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "snperiod",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
         ),
         Div(
             Div(
@@ -158,7 +175,13 @@ class mon_contact_form(ModelForm):
         ),
         Fieldset(
             "Host settings",
-            Field("hnperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "hnperiod",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
         ),
         Div(
             Div(
@@ -183,12 +206,6 @@ class mon_contact_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_contact_form, self).__init__(*args, **kwargs)
-        for clear_f in ["user", "snperiod", "hnperiod", "notifications"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_contact
         fields = [
@@ -196,6 +213,12 @@ class mon_contact_form(ModelForm):
             "snrecovery", "sncritical", "snwarning", "snunknown", "sflapping", "splanned_downtime",
             "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime",
         ]
+        widgets = {
+            "notifications": ui_select_multiple_widget(),
+            "user": ui_select_widget(),
+            "snperiod": ui_select_widget(),
+            "hnperiod": ui_select_widget(),
+        }
 
 
 class mon_service_templ_form(ModelForm):
@@ -215,7 +238,13 @@ class mon_service_templ_form(ModelForm):
         ),
         Fieldset(
             "Check",
-            Field("nsc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "nsc_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
         ),
         FormActions(
             Field("max_attempts", min=1, max=10),
@@ -224,7 +253,13 @@ class mon_service_templ_form(ModelForm):
         ),
         Fieldset(
             "Notification",
-            Field("nsn_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "nsn_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
             Field("ninterval", min=0, max=60),
         ),
         Div(
@@ -276,14 +311,12 @@ class mon_service_templ_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_service_templ_form, self).__init__(*args, **kwargs)
-        for clear_f in ["nsc_period", "nsn_period"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_service_templ
+        widgets = {
+            "nsc_period": ui_select_widget(),
+            "nsn_period": ui_select_widget(),
+        }
 
 
 class mon_service_esc_templ_form(ModelForm):
@@ -304,7 +337,13 @@ class mon_service_esc_templ_form(ModelForm):
             "Notifications",
             Field("first_notification", min=1, max=10),
             Field("last_notification", min=1, max=10),
-            Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "esc_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
             Field("ninterval", min=0, max=60),
         ),
         Div(
@@ -330,14 +369,11 @@ class mon_service_esc_templ_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_service_esc_templ_form, self).__init__(*args, **kwargs)
-        for clear_f in ["esc_period"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_service_esc_templ
+        widgets = {
+            "esc_period": ui_select_widget(),
+        }
 
 
 class host_check_command_form(ModelForm):
@@ -381,23 +417,40 @@ class mon_contactgroup_form(ModelForm):
         ),
         Fieldset(
             "settings",
-            Field("members", ng_options="value.idx as value.user_name for value in rest_data.mon_contact | orderBy:'user_name'", chosen=True),
-            Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
-            Field("service_templates", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+            Field(
+                "members",
+                repeat="value.idx as value in rest_data.mon_contact | orderBy:'user_name'",
+                display="user_name",
+                placeholder="please select one or more users",
+                filter="{user_name:$select.search}",
+            ),
+            Field(
+                "device_groups",
+                repeat="value.idx as value in rest_data.device_group | orderBy:'name'",
+                display="name",
+                placeholder="please select one or more device groups",
+                filter="{name:$select.search}",
+            ),
+            Field(
+                "service_templates",
+                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select one or more service templates",
+                filter="{name:$select.search}",
+            ),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_contactgroup_form, self).__init__(*args, **kwargs)
-        for clear_f in ["device_groups", "members", "service_templates"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_contactgroup
+        widgets = {
+            "members": ui_select_multiple_widget(),
+            "device_groups": ui_select_multiple_widget(),
+            "service_templates": ui_select_multiple_widget(),
+        }
 
 
 class mon_device_templ_form(ModelForm):
@@ -413,12 +466,30 @@ class mon_device_templ_form(ModelForm):
         Fieldset(
             "Base data",
             Field("name"),
-            Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+            Field(
+                "mon_service_templ",
+                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select a service template",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Check",
-            Field("host_check_command", ng_options="value.idx as value.name for value in rest_data.host_check_command | orderBy:'name'", chosen=True),
-            Field("mon_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "host_check_command",
+                repeat="value.idx as value in rest_data.host_check_command | orderBy:'name'",
+                display="name",
+                placeholder="please select a host check command",
+                filter="{name:$select.search}",
+            ),
+            Field(
+                "mon_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
         ),
         FormActions(
             Field("check_interval", min=1, max=60),
@@ -427,7 +498,13 @@ class mon_device_templ_form(ModelForm):
         ),
         Fieldset(
             "Notification",
-            Field("not_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "not_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
             Field("ninterval", min=0, max=60),
         ),
         Div(
@@ -477,14 +554,14 @@ class mon_device_templ_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_device_templ_form, self).__init__(*args, **kwargs)
-        for clear_f in ["mon_service_templ", "host_check_command", "mon_period", "not_period"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_device_templ
+        widgets = {
+            "mon_service_templ": ui_select_widget(),
+            "host_check_command": ui_select_widget(),
+            "mon_period": ui_select_widget(),
+            "not_period": ui_select_widget(),
+        }
 
 
 class mon_device_esc_templ_form(ModelForm):
@@ -500,13 +577,25 @@ class mon_device_esc_templ_form(ModelForm):
         Fieldset(
             "Base data",
             Field("name"),
-            Field("mon_service_esc_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_esc_templ | orderBy:'name'", chosen=True),
+            Field(
+                "mon_service_esc_templ",
+                repeat="value.idx as value in rest_data.mon_service_esc_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select a service escalation template",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Notifications",
             Field("first_notification", min=1, max=10),
             Field("last_notification", min=1, max=10),
-            Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            Field(
+                "esc_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a time period",
+                filter="{name:$select.search}",
+            ),
             Field("ninterval", min=0, max=60),
         ),
         Fieldset(
@@ -534,14 +623,12 @@ class mon_device_esc_templ_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_device_esc_templ_form, self).__init__(*args, **kwargs)
-        for clear_f in ["mon_service_esc_templ", "esc_period"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_device_esc_templ
+        widgets = {
+            "mon_service_esc_templ": ui_select_widget(),
+            "esc_period": ui_select_widget(),
+        }
 
 
 class mon_host_cluster_form(ModelForm):
@@ -561,13 +648,30 @@ class mon_host_cluster_form(ModelForm):
         ),
         Fieldset(
             "Devices",
-            Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+            Field(
+                "main_device",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select a device",
+                filter="{name:$select.search}",
+            ),
+            Field(
+                "devices",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select one ore more devices",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Service",
-            Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+            Field(
+                "mon_service_templ",
+                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select a service template",
+                filter="{name:$select.search}",
+            ),
             Field("warn_value", min=0, max=128),
             Field("error_value", min=0, max=128),
         ),
@@ -576,14 +680,13 @@ class mon_host_cluster_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_host_cluster_form, self).__init__(*args, **kwargs)
-        for clear_f in ["mon_service_templ", "devices", "main_device"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_host_cluster
+        widgets = {
+            "main_device": ui_select_widget(),
+            "mon_service_templ": ui_select_widget(),
+            "devices": ui_select_multiple_widget(),
+        }
 
 
 class mon_service_cluster_form(ModelForm):
@@ -603,14 +706,37 @@ class mon_service_cluster_form(ModelForm):
         ),
         Fieldset(
             "Devices",
-            Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+            Field(
+                "main_device",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select a device",
+                filter="{name:$select.search}",
+            ),
+            Field(
+                "devices",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select one ore more devices",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Service",
-            Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
-            Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+            Field(
+                "mon_service_templ",
+                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select a service template",
+                filter="{name:$select.search}",
+            ),
+            Field(
+                "mon_check_command",
+                repeat="value.idx as value in rest_data.mon_check_command | orderBy:'name'",
+                display="name",
+                placeholder="please select a check command",
+                filter="{name:$select.search}",
+            ),
             Field("warn_value", min=0, max=128),
             Field("error_value", min=0, max=128),
         ),
@@ -619,14 +745,14 @@ class mon_service_cluster_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_service_cluster_form, self).__init__(*args, **kwargs)
-        for clear_f in ["mon_service_templ", "devices", "main_device", "mon_check_command"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_service_cluster
+        widgets = {
+            "main_device": ui_select_widget(),
+            "mon_service_templ": ui_select_widget(),
+            "mon_check_command": ui_select_widget(),
+            "devices": ui_select_multiple_widget(),
+        }
 
 
 class mon_host_dependency_templ_form(ModelForm):
@@ -642,7 +768,13 @@ class mon_host_dependency_templ_form(ModelForm):
         Fieldset(
             "Base data",
             Field("name"),
-            Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
+            Field(
+                "dependency_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a period",
+                filter="{name:$select.search}",
+            ),
             Field("priority", min=-128, max=128),
             Field("inherits_parent"),
         ),
@@ -683,14 +815,11 @@ class mon_host_dependency_templ_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_host_dependency_templ_form, self).__init__(*args, **kwargs)
-        for clear_f in ["dependency_period"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_host_dependency_templ
+        widgets = {
+            "dependency_period": ui_select_widget(),
+        }
 
 
 class mon_host_dependency_form(ModelForm):
@@ -707,35 +836,55 @@ class mon_host_dependency_form(ModelForm):
             "Basic settings",
             Field(
                 "mon_host_dependency_templ",
-                ng_options="value.idx as value.name for value in rest_data.mon_host_dependency_templ | orderBy:'name'",
-                chosen=True
+                repeat="value.idx as value in rest_data.mon_host_dependency_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select a host dependency template",
+                filter="{name:$select.search}",
             ),
         ),
         Fieldset(
             "Parent",
-            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            Field(
+                "devices",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select one or more devices",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Child",
-            Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            Field(
+                "dependent_devices",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select one or more devices",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Cluster",
-            Field("mon_host_cluster", ng_options="value.idx as value.name for value in rest_data.mon_host_cluster | orderBy:'name'", chosen=True),
+            Field(
+                "mon_host_cluster",
+                repeat="value.idx as value in rest_data.mon_host_cluster | orderBy:'name'",
+                display="name",
+                placeholder="please select a host cluster",
+                filter="{name:$select.search}",
+            ),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_host_dependency_form, self).__init__(*args, **kwargs)
-        for clear_f in ["devices", "dependent_devices", "mon_host_dependency_templ", "mon_host_cluster"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_host_dependency
+        widgets = {
+            "mon_host_dependency_templ": ui_select_widget(),
+            "devices": ui_select_multiple_widget(),
+            "dependent_devices": ui_select_multiple_widget(),
+            "mon_host_cluster": ui_select_widget(),
+        }
 
 
 class mon_service_dependency_templ_form(ModelForm):
@@ -751,7 +900,13 @@ class mon_service_dependency_templ_form(ModelForm):
         Fieldset(
             "Base data",
             Field("name"),
-            Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
+            Field(
+                "dependency_period",
+                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                display="name",
+                placeholder="please select a period",
+                filter="{name:$select.search}",
+            ),
             Field("priority", min=-128, max=128),
             Field("inherits_parent"),
         ),
@@ -794,14 +949,11 @@ class mon_service_dependency_templ_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_service_dependency_templ_form, self).__init__(*args, **kwargs)
-        for clear_f in ["dependency_period"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_service_dependency_templ
+        widgets = {
+            "dependency_period": ui_select_widget(),
+        }
 
 
 class mon_service_dependency_form(ModelForm):
@@ -818,39 +970,71 @@ class mon_service_dependency_form(ModelForm):
             "Basic settings",
             Field(
                 "mon_service_dependency_templ",
-                ng_options="value.idx as value.name for value in rest_data.mon_service_dependency_templ | orderBy:'name'",
-                chosen=True
+                repeat="value.idx as value in rest_data.mon_service_dependency_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select a service dependency template",
+                filter="{name:$select.search}",
             ),
         ),
         Fieldset(
             "Parent",
-            Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+            Field(
+                "devices",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select one or more devices",
+                filter="{name:$select.search}",
+            ),
+            Field(
+                "mon_check_command",
+                repeat="value.idx as value in rest_data.mon_check_command | orderBy:'name'",
+                display="name",
+                placeholder="please select a check command",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Child",
-            Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
-            Field("dependent_mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+            Field(
+                "dependent_devices",
+                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                display="name",
+                placeholder="please select one or more devices",
+                filter="{name:$select.search}",
+            ),
+            Field(
+                "dependent_mon_check_command",
+                repeat="value.idx as value in rest_data.mon_check_command | orderBy:'name'",
+                display="name",
+                placeholder="please select a check command",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Cluster",
-            Field("mon_service_cluster", ng_options="value.idx as value.name for value in rest_data.mon_service_cluster | orderBy:'name'", chosen=True),
+            Field(
+                "mon_service_cluster",
+                repeat="value.idx as value in rest_data.mon_service_cluster | orderBy:'name'",
+                display="name",
+                placeholder="please select a service cluster",
+                filter="{name:$select.search}",
+            ),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_service_dependency_form, self).__init__(*args, **kwargs)
-        for clear_f in [
-            "devices", "dependent_devices", "mon_service_dependency_templ", "mon_service_cluster", "mon_check_command", "dependent_mon_check_command"
-        ]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = mon_service_dependency
+        widgets = {
+            "mon_service_dependency_templ": ui_select_widget(),
+            "devices": ui_select_multiple_widget(),
+            "dependent_devices": ui_select_multiple_widget(),
+            "mon_service_cluster": ui_select_widget(),
+            "mon_check_command": ui_select_widget(),
+            "dependent_mon_check_command": ui_select_widget(),
+        }
 
 
 class device_monitoring_form(ModelForm):
@@ -861,16 +1045,45 @@ class device_monitoring_form(ModelForm):
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
-    md_cache_mode = ChoiceField()
-    nagvis_parent = ModelChoiceField(queryset=empty_query_set(), required=False)
+    md_cache_mode = ChoiceField(widget=ui_select_widget)
+    nagvis_parent = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
     helper.layout = Layout(
         HTML("<h2>Monitoring settings for {% verbatim %}{{ edit_obj.full_name }}{% endverbatim %}</h2>"),
         Fieldset(
             "Basic settings",
-            Field("md_cache_mode", ng_options="value.idx as value.name for value in settings.md_cache_modes", initial=1),
-            Field("mon_device_templ", ng_options="value.idx as value.name for value in rest_data.mon_device_templ", initial=None),
-            Field("mon_ext_host", ng_options="value.idx as value.name for value in rest_data.mon_ext_host", initial=None, chosen=True),
-            Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.mon_server", initial=None, chosen=True),
+            Field(
+                "md_cache_mode",
+                repeat="value.idx as value in settings.md_cache_modes",
+                display="name",
+                placeholder="please select a cache mode",
+                filter="{name:$select.search}",
+                initial=1,
+            ),
+            Field(
+                "mon_device_templ",
+                repeat="value.idx as value in rest_data.mon_device_templ",
+                display="name",
+                placeholder="please select a device template",
+                filter="{name:$select.search}",
+                null=True,
+            ),
+            Field(
+                "mon_ext_host",
+                repeat="value.idx as value in rest_data.mon_ext_host",
+                display="name",
+                placeholder="please select an icon",
+                filter="{name:$select.search}",
+                listtemplate=mark_safe("<img ng-src='{{ value.data_image }}'></img><span ng-bind-html='value.name | highlight:$select.search'></span>"),
+                null=True,
+            ),
+            Field(
+                "monitor_server",
+                repeat="value.idx as value in rest_data.mon_server",
+                display="name",
+                placeholder="please select a monitoring server",
+                filter="{name:$select.search}",
+                null=True,
+            ),
         ),
         Fieldset(
             "Flags",
@@ -893,8 +1106,11 @@ class device_monitoring_form(ModelForm):
             Field("automap_root_nagvis"),
             Field(
                 "nagvis_parent",
-                ng_options="value.idx as value.name for value in entries | filter:{'automap_root_nagvis' : true} | orderBy:'name'",
-                initial=None
+                repeat="value.idx as value in entries | orderBy:'name'",
+                display="name",
+                placeholder="select a nagvis parent",
+                filter="{name:$select.search, automap_root_nagvis:true}",
+                null=True,
             ),
         ),
         FormActions(
@@ -911,6 +1127,11 @@ class device_monitoring_form(ModelForm):
 
     class Meta:
         model = device
+        widgets = {
+            "mon_device_templ": ui_select_widget(),
+            "mon_ext_host": ui_select_widget(),
+            "monitor_server": ui_select_widget(),
+        }
 
 
 class mon_check_command_form(ModelForm):
@@ -928,7 +1149,14 @@ class mon_check_command_form(ModelForm):
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')"),
             Field("description"),
-            Field("mon_check_command_special", ng_options="value.idx as value.name for value in mccs_list", chosen=True),
+            Field(
+                "mon_check_command_special",
+                repeat="value.idx as value in mccs_list",
+                display="name",
+                placeholder="please select a special command",
+                filter="{name:$select.search}",
+                null=True,
+            ),
             Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special"),
             HTML("""
 <div class='form-group' ng-show="_edit_obj.mon_check_command_special">
@@ -971,10 +1199,21 @@ class mon_check_command_form(ModelForm):
         ),
         Fieldset(
             "Additional settings",
-            Field("mon_service_templ", ng_options="value.idx as value.name for value in mon_service_templ", chosen=True),
+            Field(
+                "mon_service_templ",
+                repeat="value.idx as value in mon_service_templ | orderBy:'name'",
+                display="name",
+                placeholder="please select a service template",
+                filter="{name:$select.search}",
+                null=True,
+            ),
             Field(
                 "event_handler",
-                ng_options="value.idx as value.name for value in get_event_handlers(_edit_obj)", chosen=True,
+                repeat="value.idx as value in get_event_handlers(_edit_obj)",
+                display="name",
+                placeholder="please select an event handler",
+                filter="{name:$select.search}",
+                null=True,
                 wrapper_ng_show="!_edit_obj.is_event_handler"
             ),
         ),
@@ -1007,12 +1246,6 @@ class mon_check_command_form(ModelForm):
         )
     )
 
-    def __init__(self, *args, **kwargs):
-        super(mon_check_command_form, self).__init__(*args, **kwargs)
-        for clear_f in ["mon_service_templ", "event_handler"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = "----"
-
     class Meta:
         model = mon_check_command
         fields = (
@@ -1020,3 +1253,8 @@ class mon_check_command_form(ModelForm):
             "description", "enable_perfdata", "volatile", "is_event_handler",
             "event_handler", "event_handler_enabled", "mon_check_command_special"
         )
+        widgets = {
+            "mon_check_command_special": ui_select_widget(),
+            "mon_service_templ": ui_select_widget(),
+            "event_handler": ui_select_widget(),
+        }
