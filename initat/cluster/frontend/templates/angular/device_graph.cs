@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-device_rrd_module = angular.module("icsw.device.rrd", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.bootstrap.datetimepicker"])
+device_rrd_module = angular.module("icsw.device.rrd", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.bootstrap.datetimepicker"])
 
 angular_module_setup([device_rrd_module])
 

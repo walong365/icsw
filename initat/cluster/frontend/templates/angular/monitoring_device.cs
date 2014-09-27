@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-monitoring_device_module = angular.module("icsw.monitoring_device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.select"])
+monitoring_device_module = angular.module("icsw.monitoring_device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
 angular_module_setup([monitoring_device_module])
 

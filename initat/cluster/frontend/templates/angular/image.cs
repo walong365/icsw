@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-image_module = angular.module("icsw.image", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+image_module = angular.module("icsw.image", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
 angular_module_setup([image_module])
 

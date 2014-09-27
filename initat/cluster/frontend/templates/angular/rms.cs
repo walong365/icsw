@@ -401,7 +401,7 @@ rmsrunline = """
 
 {% endverbatim %}
 
-rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror"])
+rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror"])
 
 angular_module_setup([rms_module])
 

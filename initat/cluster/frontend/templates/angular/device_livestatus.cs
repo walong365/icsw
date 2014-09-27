@@ -185,7 +185,7 @@ serviceinfo_templ = """
 
 {% endverbatim %}
 
-device_livestatus_module = angular.module("icsw.device.livestatus", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "icsw.d3"])
+device_livestatus_module = angular.module("icsw.device.livestatus", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3"])
 
 angular_module_setup([device_livestatus_module])
 

@@ -185,7 +185,7 @@ partinfo_template = """
 
 {% endverbatim %}
 
-device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "localytics.directives", "ui.select"])
+device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
 angular_module_setup([device_config_module])
 
