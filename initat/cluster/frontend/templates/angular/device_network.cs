@@ -163,7 +163,7 @@ net_cluster_info_template = """
 
 {% endverbatim %}
 
-device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "icsw.d3"])
+device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "icsw.d3", "ui.select"])
 
 angular_module_setup([device_network_module])
 

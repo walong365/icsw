@@ -7,6 +7,7 @@ from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Fieldset, Div, HTML
 from django.forms import ModelForm
 from initat.cluster.backbone.models import partition_table, partition, partition_disc, sys_partition
+from initat.cluster.frontend.widgets import ui_select_widget
 
 
 __all__ = [
@@ -15,12 +16,6 @@ __all__ = [
     "partition_form",
     "partition_sys_form",
 ]
-
-
-# empty query set
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class partition_table_form(ModelForm):
@@ -92,7 +87,7 @@ class partition_disc_form(ModelForm):
             ),
             Fieldset(
                 "label type",
-                Field("label_type", ng_options="value.label as value.info_string for value in valid_label_types()"),
+                Field("label_type", ng_options="value.label as value.info_string for value in valid_label_types"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -121,12 +116,18 @@ class partition_form(ModelForm):
                 "Base data",
                 Field(
                     "partition_disc",
-                    ng_options="value.idx as value.disc for value in edit_obj.partition_disc_set | orderBy:'disc'",
-                    chosen=True,
-                    readonly=True
+                    repeat="value.idx as value in edit_obj.partition_disc_set | orderBy:'disc'",
+                    placeholder="select the disc",
+                    display="disc",
+                    readonly=True,
                 ),
                 Field("pnum", placeholder="partition", min=1, max=16),
-                Field("partition_fs", ng_options="value.idx as value.full_info for value in this.get_partition_fs() | orderBy:'name'", chosen=True),
+                Field(
+                    "partition_fs",
+                    repeat="value.idx as value in this.get_partition_fs() | orderBy:'name'",
+                    placeholder="partition filesystem",
+                    display="full_info",
+                ),
                 Field("size", min=0, max=1000000000000),
                 Field("partition_hex", readonly=True),
             ),
@@ -152,18 +153,16 @@ class partition_form(ModelForm):
         )
     )
 
-    def __init__(self, *args, **kwargs):
-        super(partition_form, self).__init__(*args, **kwargs)
-        for clear_f in ["partition_fs", "partition_disc"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = partition
         fields = [
             "mountpoint", "partition_hex", "partition_disc", "size", "mount_options", "pnum",
             "bootable", "fs_freq", "fs_passno", "warn_threshold", "crit_threshold", "partition_fs"
         ]
+        widgets = {
+            "partition_disc": ui_select_widget(),
+            "partition_fs": ui_select_widget(),
+        }
 
 
 class partition_sys_form(ModelForm):

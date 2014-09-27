@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-package_module = angular.module("icsw.package", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+package_module = angular.module("icsw.package", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.select"])
 
 angular_module_setup([package_module])
 
@@ -235,8 +235,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         # devices
         $scope.devices = []
         # image / kernel list
-        $scope.image_list = []
-        $scope.kernel_list = []
+        $scope.srv_image_list = []
+        $scope.srv_kernel_list = []
         $scope.package_filter = ""
         # is mode
         $scope.is_mode = "a"
@@ -253,8 +253,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.inst_rest_data = {}
         $q.all(wait_list).then((data) ->
             $scope.set_devices(data[0])
-            $scope.image_list = data[1]
-            $scope.kernel_list = data[2]
+            $scope.srv_image_list = data[1]
+            $scope.srv_kernel_list = data[2]
         )
         #$scope.load_devices = (url, options) ->
         #    return Restangular.all(url.slice(1)).getList(options)
@@ -421,23 +421,20 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     parse_xml_response(xml)
                     # just to be sure
                     $scope.update_selected_pdcs()
-        $scope.target_states = {
-            ""  : "---"
-            "keep" : "keep",
-            "install" : "install",
-            "upgrade" : "upgrade",
-            "erase" : "erase",
-        }
-        $scope.flag_states = {
-            "" : "---",
-            "1" : "set",
-            "0" : "clear",
-        }
-        $scope.dep_states = {
-            "" : "---",
-            "1" : "enable",
-            "0" : "disable",
-        }
+        $scope.target_states = [
+            {"state" : "keep", "info": "keep"}
+            {"state" : "install", "info": "install"}
+            {"state" : "upgrade", "info": "upgrade"}
+            {"state" : "erase", "info": "erase"}
+        ]
+        $scope.flag_states = [
+            {"idx": "1", "info": "set"}
+            {"idx": "0", "info": "clear"}
+        ]
+        $scope.dep_states = [
+            {"idx": "1", "info": "enable"}
+            {"idx": "0", "info": "disable"}
+        ]
         $scope.modify = () ->
             $.simplemodal.close()
             # change selected pdcs

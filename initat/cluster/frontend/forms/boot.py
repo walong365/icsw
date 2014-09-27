@@ -8,6 +8,7 @@ from crispy_forms.layout import Submit, Layout, Field, Fieldset, Div, HTML
 from django.forms import Form, ModelForm, CharField, ModelChoiceField, \
     ModelMultipleChoiceField, BooleanField
 from initat.cluster.backbone.models import device
+from initat.cluster.frontend.widgets import ui_select_widget
 
 
 __all__ = [
@@ -84,10 +85,10 @@ class boot_single_form(Form):
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
     target_state = ModelChoiceField(queryset=empty_query_set(), required=False)
-    new_kernel = ModelChoiceField(queryset=empty_query_set(), required=False)
-    new_image = ModelChoiceField(queryset=empty_query_set(), required=False)
-    stage1_flavour = ModelChoiceField(queryset=empty_query_set(), required=False)
-    partition_table = ModelChoiceField(queryset=empty_query_set(), required=False)
+    new_kernel = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    new_image = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    stage1_flavour = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    partition_table = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
     kernel_append = CharField(max_length=384, required=False)
     macaddr = CharField(max_length=177, required=False)
     driver = CharField(max_length=384, required=False)
@@ -104,7 +105,12 @@ class boot_single_form(Form):
         network {{ netstate.info }}
     </label>
     <div class='col-sm-7'>
-        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in netstate.states" chosen="1"></select>
+        <ui-select ng-model="_edit_obj.target_state">
+            <ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match>
+            <ui-select-choices repeat="value.idx as value in netstate.states">
+                <div ng-bind-html='value.info'></div>
+            </ui-select-choices>
+        </ui-select>
     </div>
 </div>
 <div class='form-group' ng-show="bo_enabled['t']">
@@ -112,16 +118,49 @@ class boot_single_form(Form):
         special state
     </label>
     <div class='col-sm-7'>
-        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in special_states" chosen="1"></select>
+        <ui-select ng-model="_edit_obj.target_state">
+            <ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match>
+            <ui-select-choices repeat="value.idx as value in special_states">
+                <div ng-bind-html='value.info'></div>
+            </ui-select-choices>
+        </ui-select>
     </div>
 </div>
 {% endverbatim %}
             """),
-            Field("new_kernel", ng_options="value.idx as value.name for value in kernels", chosen=True, wrapper_ng_show="bo_enabled['k']"),
-            Field("stage1_flavour", ng_options="value.val as value.name for value in stage1_flavours", chosen=True, wrapper_ng_show="bo_enabled['k']"),
+            Field(
+                "new_kernel",
+                repeat="value.idx as value in kernels",
+                display="name",
+                placeholder="kernel",
+                filter="{name:$select.search}",
+                wrapper_ng_show="bo_enabled['k']",
+            ),
+            Field(
+                "stage1_flavour",
+                repeat="value.idx as value in stage1_flavours",
+                display="name",
+                placeholder="stage1 flavour",
+                filter="{name:$select.search}",
+                wrapper_ng_show="bo_enabled['k']",
+            ),
             Field("kernel_append", wrapper_ng_show="bo_enabled['k']"),
-            Field("new_image", ng_options="value.idx as value.name for value in images", chosen=True, wrapper_ng_show="bo_enabled['i']"),
-            Field("partition_table", ng_options="value.idx as value.name for value in partitions", chosen=True, wrapper_ng_show="bo_enabled['p']"),
+            Field(
+                "new_image",
+                repeat="value.idx as value in images",
+                display="name",
+                placeholder="image",
+                filter="{name:$select.search}",
+                wrapper_ng_show="bo_enabled['i']",
+            ),
+            Field(
+                "partition_table",
+                repeat="value.idx as value in partition",
+                display="name",
+                placeholder="partition table",
+                filter="{name:$select.search}",
+                wrapper_ng_show="bo_enabled['p']",
+            ),
         ),
         Fieldset(
             "bootdevice settings",
@@ -145,12 +184,6 @@ class boot_single_form(Form):
         )
     )
 
-    def __init__(self, *args, **kwargs):
-        super(boot_single_form, self).__init__(*args, **kwargs)
-        for clear_f in ["target_state", "partition_table", "new_image", "new_kernel", "stage1_flavour"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = "not set"
-
 
 class boot_many_form(Form):
     helper = FormHelper()
@@ -161,11 +194,11 @@ class boot_many_form(Form):
     helper.field_class = 'col-sm-7'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
-    target_state = ModelChoiceField(queryset=empty_query_set(), required=False)
-    new_kernel = ModelChoiceField(queryset=empty_query_set(), required=False)
-    new_image = ModelChoiceField(queryset=empty_query_set(), required=False)
-    stage1_flavour = ModelChoiceField(queryset=empty_query_set(), required=False)
-    partition_table = ModelChoiceField(queryset=empty_query_set(), required=False)
+    target_state = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    new_kernel = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    new_image = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    stage1_flavour = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    partition_table = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
     kernel_append = CharField(max_length=384, required=False)
     macaddr = CharField(max_length=177, required=False)
     driver = CharField(max_length=384, required=False)
@@ -197,7 +230,12 @@ class boot_many_form(Form):
         network {{ netstate.info }}
     </label>
     <div class='col-sm-7'>
-        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in netstate.states" chosen="1"></select>
+        <ui-select ng-model="_edit_obj.target_state">
+            <ui-select-match placeholder="target state">{{$select.selected.info}}</ui-select-match>
+            <ui-select-choices repeat="value.idx as value in netstate.states">
+                <div ng-bind-html='value.info'></div>
+            </ui-select-choices>
+        </ui-select>
     </div>
 </div>
 <div class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
@@ -205,7 +243,12 @@ class boot_many_form(Form):
         special state
     </label>
     <div class='col-sm-7'>
-        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in special_states" chosen="1"></select>
+        <ui-select ng-model="_edit_obj.target_state">
+            <ui-select-match placeholder="special target state">{{$select.selected.info}}</ui-select-match>
+            <ui-select-choices repeat="value.idx as value in special_states">
+                <div ng-bind-html='value.info'></div>
+            </ui-select-choices>
+        </ui-select>
     </div>
 </div>
 </div>
@@ -217,16 +260,55 @@ class boot_many_form(Form):
     for fs_string, el_list in [
         (
             "settings", [
-                # ("target_state", "value.idx as value.info for value in valid_states", {"chosen": True}, "t", "target_state"),
-                ("new_kernel", "value.idx as value.name for value in kernels", {"chosen": True}, "k", "new_kernel"),
-                ("stage1_flavour", "value.val as value.name for value in stage1_flavours", {"chosen": True}, "k", ""),
-                ("kernel_append", None, {}, "k", ""),
-                ("new_image", "value.idx as value.name for value in images", {"chosen": True}, "i", "new_image"),
-                ("partition_table", "value.idx as value.name for value in partitions", {"chosen": True}, "p", "partition_table"),
-                ("dhcp_mac", None, {}, "b", "dhcp_mac"),
-                ("dhcp_write", None, {}, "b", ""),
-                ("macaddr", None, {}, "b", ""),
-                ("driver", None, {}, "b", ""),
+                (
+                    "new_kernel",
+                    {
+                        "repeat": "value.idx as value in kernels",
+                        "display": "name",
+                        "placeholder": "kernel",
+                        "filter": "{name:$select.search}",
+                    },
+                    "k",
+                    "new_kernel"
+                ),
+                (
+                    "stage1_flavour",
+                    {
+                        "repeat": "value.idx as value in stage1_flavours",
+                        "display": "name",
+                        "placeholder": "stage1 flavour",
+                        "filter": "{name:$select.search}",
+                    },
+                    "k",
+                    ""
+                ),
+                ("kernel_append", {}, "k", ""),
+                (
+                    "new_image",
+                    {
+                        "repeat": "value.idx as value in images",
+                        "display": "name",
+                        "placeholder": "image",
+                        "filter": "{name:$select.search}",
+                    },
+                    "i",
+                    "new_image"
+                ),
+                (
+                    "partition_table",
+                    {
+                        "repeat": "value.idx as value in partition",
+                        "display": "name",
+                        "placeholder": "partition table",
+                        "filter": "{name:$select.search}",
+                    },
+                    "p",
+                    "partition_table"
+                ),
+                ("dhcp_mac", {}, "b", "dhcp_mac"),
+                ("dhcp_write", {}, "b", ""),
+                ("macaddr", {}, "b", ""),
+                ("driver", {}, "b", ""),
             ]
         ),
     ]:
@@ -255,12 +337,11 @@ class boot_many_form(Form):
                                     }[en_flag],
                                     en_flag,
                                 ),
-                                ng_options=ng_options if ng_options else None,
                                 **f_options),
                             css_class="col-md-9",
                         ),
                         css_class="row",
-                    ) for f_name, ng_options, f_options, en_flag, en_field in el_list
+                    ) for f_name, f_options, en_flag, en_field in el_list
                 ]
             )
         )
@@ -269,11 +350,3 @@ class boot_many_form(Form):
             Submit("submit", "Modify many", css_class="primaryAction"),
         ),
     )
-
-    def __init__(self, *args, **kwargs):
-        super(boot_many_form, self).__init__(*args, **kwargs)
-        for clear_f in ["target_state", "partition_table", "new_image", "new_kernel", "stage1_flavour"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = "not set"
-            self.fields[clear_f].required = False
-

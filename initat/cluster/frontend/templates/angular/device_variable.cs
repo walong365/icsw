@@ -115,7 +115,7 @@ device_vars_template = """
 
 {% endverbatim %}
 
-device_variable_module = angular.module("icsw.device.variables", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+device_variable_module = angular.module("icsw.device.variables", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.select"])
 
 angular_module_setup([device_variable_module])
 
@@ -142,7 +142,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                     $scope.$apply(
                     	$scope.mon_vars = json
                     )
-            $scope.mon_vars = [{"idx" : 0, "info" : "please wait, fetching data from server ..."}]
+            $scope.mon_vars = []#{"idx" : 0, "info" : "please wait, fetching data from server ..."}]
             $scope.base_edit.create(event)
         $scope.take_mon_var = () ->
             if $scope._edit_obj._mon_copy

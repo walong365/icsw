@@ -6,17 +6,17 @@
 
 root = exports ? this
 
-network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.select"])
 
 angular_module_setup([network_module])
 
-nw_types_dict = {
-    "b" : "boot"
-    "p" : "prod"
-    "s" : "slave"
-    "o" : "other"
-    "l" : "local"
-}
+nw_types_dict = [
+    {"value":"b", "name":"boot"}
+    {"value":"p", "name":"prod"}
+    {"value":"s", "name":"slave"}
+    {"value":"o", "name":"other"}
+    {"value":"l", "name":"local"}
+]
 
 angular_add_simple_list_controller(
     network_module,

@@ -52,7 +52,13 @@ class domain_tree_node_form(ModelForm):
             Fieldset(
                 "Basic settings",
                 Field("name"),
-                Field("parent", ng_options="value.idx as value.tree_info for value in get_valid_parents(_edit_obj)", chosen=True),
+                Field(
+                    "parent",
+                    repeat="value.idx as value in get_valid_parents(_edit_obj)",
+                    placeholder="Select a parent node",
+                    display="tree_info",
+                    filter="{tree_info:$select.search}",
+                ),
             ),
             Fieldset(
                 "Additional settings",
@@ -75,15 +81,12 @@ class domain_tree_node_form(ModelForm):
         )
     )
 
-    def __init__(self, *args, **kwargs):
-        super(domain_tree_node_form, self).__init__(*args, **kwargs)
-        for clear_f in ["parent"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = domain_tree_node
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment", "parent", ]
+        widgets = {
+            "parent": ui_select_widget()
+        }
 
 
 class device_info_form(ModelForm):
@@ -211,7 +214,13 @@ class category_form(ModelForm):
             Fieldset(
                 "Basic settings",
                 Field("name", wrapper_class="ng-class:form_error('name')"),
-                Field("parent", ng_options="value.idx as value.full_name for value in get_valid_parents(_edit_obj)", chosen=True),
+                Field(
+                    "parent",
+                    repeat="value.idx as value in get_valid_parents(_edit_obj)",
+                    placeholder="Select a parent node",
+                    display="full_name",
+                    filter="{full_name:$select.search}",
+                ),
             ),
             Fieldset(
                 "Additional fields",
@@ -234,15 +243,12 @@ class category_form(ModelForm):
         )
     )
 
-    def __init__(self, *args, **kwargs):
-        super(category_form, self).__init__(*args, **kwargs)
-        for clear_f in ["parent"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = category
         fields = ["name", "comment", "parent", "longitude", "latitude", "locked"]
+        widgets = {
+            "parent": ui_select_widget()
+        }
 
 
 class location_gfx_form(ModelForm):
@@ -484,15 +490,47 @@ class device_tree_form(ModelForm):
             "Basic settings",
             Field("name"),
             Field("comment"),
-            Field("device_type", ng_options="value.idx as value.description for value in rest_data.device_type | filter:ignore_md", chosen=True),
-            Field("device_group", ng_options="value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", chosen=True),
+            Field(
+                "device_type",
+                repeat="value.idx as value in rest_data.device_type | filter:ignore_md",
+                placeholder="Select the device type",
+                display="description",
+                filter="{description:$select.search}",
+            ),
+            Field(
+                "device_group",
+                repeat="value.idx as value in rest_data.device_group | filter:ignore_cdg",
+                placeholder="Select the device group",
+                display="name",
+                filter="{name:$select.search}",
+            ),
         ),
         Fieldset(
             "Additional settings",
             Field("curl"),
-            Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
-            Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
-            Field("monitor_server", ng_options="value.idx as value.full_name_wt for value in rest_data.monitor_server", chosen=True),
+            Field(
+                "domain_tree_node",
+                repeat="value.idx as value in rest_data.domain_tree_node",
+                placeholder="Select the domain tree node (for FQDN)",
+                display="tree_info",
+                filter="{tree_info:$select.search}",
+            ),
+            Field(
+                "bootserver",
+                repeat="value.idx as value in rest_data.mother_server",
+                placeholder="Select the bootserver",
+                display="full_name",
+                filter="{full_name:$select.search}",
+                null=True,
+            ),
+            Field(
+                "monitor_server",
+                repeat="value.idx as value in rest_data.monitor_server",
+                placeholder="Select the monitor server",
+                display="full_name_wt",
+                filter="{full_name_wt:$select.search}",
+                null=True,
+            ),
         ),
         Fieldset(
             "Security",
@@ -517,14 +555,15 @@ class device_tree_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(device_tree_form, self).__init__(*args, **kwargs)
-        for clear_f in ["device_type", "device_group", "domain_tree_node"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = device
+        widgets = {
+            "device_type": ui_select_widget(),
+            "device_group": ui_select_widget(),
+            "domain_tree_node": ui_select_widget(),
+            "bootserver": ui_select_widget(),
+            "monitor_server": ui_select_widget(),
+        }
 
 
 class device_tree_many_form(ModelForm):
@@ -553,27 +592,69 @@ class device_tree_many_form(ModelForm):
     for fs_string, el_list in [
         (
             "Basic settings", [
-                ("device_type", "value.idx as value.description for value in rest_data.device_type | filter:ignore_md", {"chosen": True}),
-                ("device_group", "value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", {"chosen": True}),
+                (
+                    "device_type",
+                    {
+                        "repeat": "value.idx as value in rest_data.device_type | filter:ignore_md",
+                        "placeholder": "Select the device type",
+                        "display": "description",
+                        "filter": "{description:$select.search}",
+                    }
+                ),
+                (
+                    "device_group",
+                    {
+                        "repeat": "value.idx as value in rest_data.device_group | filter:ignore_cdg",
+                        "placeholder": "Select the device group",
+                        "display": "name",
+                        "filter": "{name:$select.search}",
+                    }
+                ),
             ]
         ),
         (
             "Additional settings", [
-                ("curl", None, {}),
-                ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen": True}),
-                ("bootserver", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen": True}),
-                ("monitor_server", "value.idx as value.full_name_wt for value in rest_data.monitor_server", {"chosen": True}),
+                ("curl", {}),
+                (
+                    "domain_tree_node",
+                    {
+                        "repeat": "value.idx as value in rest_data.domain_tree_node",
+                        "placeholder": "Select the domain tree node (for FQDN)",
+                        "display": "tree_info",
+                        "filter": "{tree_info:$select.search}",
+                    }
+                ),
+                (
+                    "bootserver",
+                    {
+                        "repeat": "value.idx as value in rest_data.mother_server",
+                        "placeholder": "Select the bootserver",
+                        "display": "full_name",
+                        "filter": "{full_name:$select.search}",
+                        "null": True,
+                    }
+                ),
+                (
+                    "monitor_server",
+                    {
+                        "repeat": "value.idx as value in rest_data.monitor_server",
+                        "placeholder": "Select the monitor server",
+                        "display": "full_name_wt",
+                        "filter": "{full_name_wt:$select.search}",
+                        "null": True,
+                    }
+                ),
             ]
         ),
         (
             "Security", [
-                ("root_passwd", None, {}),
+                ("root_passwd", {}),
             ]
         ),
         (
             "Flags", [
-                ("enabled", None, {}),
-                ("store_rrd_data", None, {}),
+                ("enabled", {}),
+                ("store_rrd_data", {}),
             ]
         ),
     ]:
@@ -583,15 +664,15 @@ class device_tree_many_form(ModelForm):
                 *[
                     Div(
                         Div(
-                            Field("change_%s" % (f_name)),
+                            Field("change_{}".format(f_name)),
                             css_class="col-md-2",
                         ),
                         Div(
-                            Field(f_name, wrapper_ng_show="edit_obj.change_%s" % (f_name), ng_options=ng_options if ng_options else None, **f_options),
+                            Field(f_name, wrapper_ng_show="edit_obj.change_%s" % (f_name), **f_options),
                             css_class="col-md-10",
                         ),
                         css_class="row",
-                    ) for f_name, ng_options, f_options in el_list
+                    ) for f_name, f_options in el_list
                 ]
             )
         )
@@ -601,15 +682,15 @@ class device_tree_many_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(device_tree_many_form, self).__init__(*args, **kwargs)
-        for clear_f in ["device_type", "device_group", "domain_tree_node"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-            self.fields[clear_f].required = False
-
     class Meta:
         model = device
+        widgets = {
+            "device_type": ui_select_widget(),
+            "device_group": ui_select_widget(),
+            "domain_tree_node": ui_select_widget(),
+            "bootserver": ui_select_widget(),
+            "monitor_server": ui_select_widget(),
+        }
 
 
 class device_group_tree_form(ModelForm):
@@ -629,7 +710,13 @@ class device_group_tree_form(ModelForm):
         ),
         Fieldset(
             "Additional settings",
-            Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
+            Field(
+                "domain_tree_node",
+                repeat="value.idx as value in rest_data.domain_tree_node",
+                placeholder="Select the domain tree node (for FQDN)",
+                display="tree_info",
+                filter="{tree_info:$select.search}",
+            ),
         ),
         Fieldset(
             "Flags",
@@ -650,14 +737,11 @@ class device_group_tree_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(device_group_tree_form, self).__init__(*args, **kwargs)
-        for clear_f in ["domain_tree_node"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = device_group
+        widgets = {
+            "domain_tree_node": ui_select_widget()
+        }
 
 
 class device_variable_form(ModelForm):
@@ -699,25 +783,38 @@ class device_variable_new_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
     # var_type = ChoiceField(choices=[("i", "integer"), ("s", "string")])
-    var_type = ChoiceField()
+    var_type = ChoiceField(widget=ui_select_widget)
     helper.layout = Layout(
         HTML("<h2>New device variable {% verbatim %}'{{ _edit_obj.name }}'{% endverbatim %}</h2>"),
         Fieldset(
             "Monitoring variables",
             HTML("""
+{% verbatim %}
 <div class='form-group'>
     <label class='control-label col-sm-3'>Copy</label>
     <div class='controls col-sm-8'>
-        <select chosen="1" ng-model="_edit_obj._mon_copy" ng-options="entry.idx as entry.info for entry in mon_vars" ng-change="take_mon_var()"></select>
+        <ui-select ng-model="_edit_obj._mon_copy" ng-change="take_mon_var()">
+            <ui-select-match placeholder="select a monitoring variable">{{$select.selected.info}}</ui-select-match>
+            <ui-select-choices repeat="entry.idx as entry in mon_vars | props_filter:{info:$select.search}">
+                <div ng-bind-html="entry.info | highlight: $select.search"></div>
+            </ui-select-choices>
+        </ui-select>
     </div>
 </div>
+{% endverbatim %}
             """),
             ng_show="_edit_obj.device && mon_vars.length",
         ),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')"),
-            Field("var_type", chosen=True, ng_options="value.short as value.long for value in valid_var_types"),
+            Field(
+                "var_type",
+                repeat="value.short as value in valid_var_types",
+                placeholder="Variable type",
+                display="long",
+                filter="{long:$select.search}",
+            ),
             Field("val_str", wrapper_ng_show="_edit_obj.var_type == 's'"),
             Field("val_int", wrapper_ng_show="_edit_obj.var_type == 'i'"),
             Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),

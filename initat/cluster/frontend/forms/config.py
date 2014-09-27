@@ -8,6 +8,7 @@ from crispy_forms.layout import Submit, Layout, Field, Fieldset, Div, HTML
 from django.forms import ModelForm
 from initat.cluster.backbone.models import config, config_str, config_int, config_bool, \
     config_script, config_catalog
+from initat.cluster.frontend.widgets import ui_select_widget
 
 
 __all__ = [
@@ -18,11 +19,6 @@ __all__ = [
     "config_bool_form",
     "config_script_form",
 ]
-
-
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class config_form(ModelForm):
@@ -48,9 +44,12 @@ class config_form(ModelForm):
             Field("description"),
             Field(
                 "parent_config",
-                ng_options="value.idx as value.name for value in this.get_valid_parents()",
-                chosen=True,
-                wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config"
+                repeat="value.idx as value in this.get_valid_parents()",
+                placeholder="select parent config",
+                display="name",
+                null=True,
+                filter="{name:$select.search}",
+                wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config",
             ),
         ),
         HTML(
@@ -64,7 +63,13 @@ class config_form(ModelForm):
         ),
         Fieldset(
             "Categories",
-            Field("config_catalog", ng_options="value.idx as value.name for value in this.config_catalogs", chosen=True),
+            Field(
+                "config_catalog",
+                repeat="value.idx as value in this.config_catalogs",
+                placeholder="select config catalog",
+                display="name",
+                filter="{name:$select.search}",
+            ),
             HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
         ),
         FormActions(
@@ -72,15 +77,13 @@ class config_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        super(config_form, self).__init__(*args, **kwargs)
-        for clear_f in ["config_catalog"]:
-            self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = None
-
     class Meta:
         model = config
         fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog", "server_config",)
+        widgets = {
+            "parent_config": ui_select_widget(),
+            "config_catalog": ui_select_widget(),
+        }
 
 
 class config_catalog_form(ModelForm):

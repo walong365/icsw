@@ -5,20 +5,15 @@
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Fieldset, HTML
-from django.forms import Form, ModelForm, ModelMultipleChoiceField, ChoiceField, BooleanField
+from django.forms import Form, ModelForm, ChoiceField, BooleanField
 from initat.cluster.backbone.models import package_search
+from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
 
 
 __all__ = [
     "package_search_form",
     "package_action_form",
 ]
-
-
-# empty query set
-class empty_query_set(object):
-    def all(self):
-        raise StopIteration
 
 
 class package_search_form(ModelForm):
@@ -57,48 +52,79 @@ class package_action_form(Form):
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
-    target_state = ChoiceField(required=False)
-    nodeps_flag = ChoiceField(required=False)
-    force_flag = ChoiceField(required=False)
-    image_dep = ChoiceField(required=False)
+    target_state = ChoiceField(required=False, widget=ui_select_widget)
+    nodeps_flag = ChoiceField(required=False, widget=ui_select_widget)
+    force_flag = ChoiceField(required=False, widget=ui_select_widget)
+    image_dep = ChoiceField(required=False, widget=ui_select_widget)
     image_change = BooleanField(label="change image list", required=False)
-    image_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
-    kernel_dep = ChoiceField(required=False)
+    image_list = ChoiceField(required=False, widget=ui_select_multiple_widget)
+    # ModelMultipleChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_multiple_widget)
+    kernel_dep = ChoiceField(required=False, widget=ui_select_widget)
     kernel_change = BooleanField(label="change kernel list", required=False)
-    kernel_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
+    kernel_list = ChoiceField(required=False, widget=ui_select_multiple_widget)
+    # ModelMultipleChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_multiple_widget)
     helper.layout = Layout(
         HTML("<h2>PDC action</h2>"),
         Fieldset(
             "Base data",
-            Field("target_state", ng_options="key as value for (key, value) in target_states", initial="keep", chosen=True),
+            Field(
+                "target_state",
+                repeat="value.state as value in target_states",
+                placeholder="select a target state",
+                display="info",
+            ),
         ),
         Fieldset(
             "Flags",
-            Field("nodeps_flag", ng_options="key as value for (key, value) in flag_states", initital="keep", chosen=True),
-            Field("force_flag", ng_options="key as value for (key, value) in flag_states", initial="keep", chosen=True),
+            Field(
+                "nodeps_flag",
+                repeat="value.idx as value in flag_states",
+                placeholder="select the nodeps flag",
+                display="info",
+                null=True,
+            ),
+            Field(
+                "force_flag",
+                repeat="value.idx as value in flag_states",
+                placeholder="select the force flag",
+                display="info",
+                null=True,
+            ),
         ),
         Fieldset(
             "Image Dependency",
-            Field("image_dep", ng_options="key as value for (key, value) in dep_states", initital="keep", chosen=True),
+            Field(
+                "image_dep",
+                repeat="value.idx as value in dep_states",
+                placeholder="select image dependency",
+                display="info",
+                null=True,
+            ),
             Field("image_change"),
             Field(
                 "image_list",
-                ng_options="img.idx as img.name for img in image_list",
-                initital="keep",
-                chosen=True,
-                wrapper_ng_show="edit_obj.image_change"
+                repeat="value.idx as value in srv_image_list",
+                placeholder="select one or more images",
+                display="name",
+                wrapper_ng_show="edit_obj.image_change",
             ),
         ),
         Fieldset(
             "Kernel Dependency",
-            Field("kernel_dep", ng_options="key as value for (key, value) in dep_states", initial="keep", chosen=True),
+            Field(
+                "kernel_dep",
+                repeat="value.idx as value in dep_states",
+                placeholder="select kernel dependency",
+                display="info",
+                null=True,
+            ),
             Field("kernel_change"),
             Field(
                 "kernel_list",
-                ng_options="val.idx as val.name for val in kernel_list",
-                initital="keep",
-                chosen=True,
-                wrapper_ng_show="edit_obj.kernel_change"
+                repeat="value.idx as value in srv_kernel_list",
+                display="name",
+                placeholder="select one or more kernels",
+                wrapper_ng_show="edit_obj.kernel_change",
             ),
         ),
         FormActions(

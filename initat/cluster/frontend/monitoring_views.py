@@ -271,9 +271,9 @@ class get_mon_vars(View):
                         )
                     )
         return HttpResponse(json.dumps(
-            [
-                {"idx": 0, "name": "please choose..."}
-            ] +
+            # [
+            #    {"idx": 0, "name": "please choose..."}
+            # ] +
             [
                 {
                     "idx": _idx,

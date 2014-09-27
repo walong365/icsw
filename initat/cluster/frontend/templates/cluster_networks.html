@@ -33,7 +33,7 @@
 </script>
 
 <script type="text/ng-template" id="network_type_row.html">
-    <td>{{ settings.network_types[obj.identifier] }}</td>
+    <td>{{ obj.identifier }}</td>
     <td>{{ obj.description  }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>

@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-partition_table_module = angular.module("icsw.partition_table", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+partition_table_module = angular.module("icsw.partition_table", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"])
 
 angular_module_setup([partition_table_module])
 
@@ -89,17 +89,16 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
                 if not scope.create_mode
                     scope.validate()
             )
-            scope.valid_label_types = () ->
-                return [
-                    {
-                        "label" : "msdos",
-                        "info_string" : "MSDOS",
-                    },
-                    {
-                        "label" : "gpt",
-                        "info_string" : "GPT",
-                    },
-                ]
+            scope.valid_label_types = [
+                {
+                    "label" : "msdos",
+                    "info_string" : "MSDOS",
+                },
+                {
+                    "label" : "gpt",
+                    "info_string" : "GPT",
+                },
+            ]
             scope.get_partition_fs = () ->
                 for entry in scope.partition_fs
                     entry.full_info = "#{entry.name}" + if entry.need_mountpoint then " (need mountpoint)" else "" 

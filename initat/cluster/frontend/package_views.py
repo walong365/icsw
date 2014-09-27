@@ -200,7 +200,8 @@ class change_package(View):
             change = False
             # flags
             for f_name in ["force_flag", "nodeps_flag"]:
-                if edit_obj[f_name]:
+                if f_name in edit_obj and edit_obj[f_name]:
+                    # print "**", f_name, edit_obj[f_name], int(edit_obj[f_name])
                     t_flag = True if int(edit_obj[f_name]) else False
                     if t_flag != getattr(cur_pdc, f_name):
                         setattr(cur_pdc, f_name, t_flag)
