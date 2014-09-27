@@ -317,8 +317,6 @@ PIPELINE_CSS = {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
             "js/libs/dynatree/skin/ui.dynatree.css",
-            "js/libs/chosen/chosen.min.css",
-            "js/libs/angular-chosen-1.0.6/chosen-spinner.css",
             "css/msdropdown/dd.css",
             "css/jqModal.css",
             "css/codemirror.css",
@@ -326,9 +324,6 @@ PIPELINE_CSS = {
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
             "css/angular-block-ui.css",
-            # "js/libs/select2/select2.css",
-            # "js/libs/select2/select2-bootstrap.css",
-            # hm, not working
             "js/libs/ui-select/select.css",
         },
         "output_filename": "pipeline/css/part1.css"
@@ -349,7 +344,6 @@ PIPELINE_JS = {
             "js/libs/jquery-ui-1.10.2.custom.js",
             "js/libs/jquery-migrate-1.2.1.min.js",
             "js/libs/jquery.layout-latest.min.js",
-            # "js/libs/select2/select2.min.js",
             # "js/jquery.sprintf.js_8.txt",
             # "js/jquery.timers-1.2.js",
             "js/jquery.noty.packaged.js",
@@ -358,7 +352,6 @@ PIPELINE_JS = {
             "js/jquery.simplemodal.js",
             "js/codemirror/codemirror.js",
             "js/bootstrap.js",
-            "js/libs/chosen/chosen.jquery.min.js",
             "js/libs/jquery.color.js",
             "js/libs/jquery.blockUI.js",
             "js/libs/angular.min.js",
@@ -379,11 +372,9 @@ PIPELINE_JS = {
             "js/libs/angular-cookies.min.js",
             "js/libs/angular-sanitize.min.js",
             "js/libs/angular-animate.min.js",
-            "js/libs/angular-chosen-1.0.6/chosen.js",
             "js/libs/angular-file-upload.js",
             "js/libs/restangular.min.js",
             "js/libs/angular-block-ui.js",
-            # hm, not working
             "js/libs/ui-select/select.js",
             "js/libs/ui-bootstrap-tpls.min.js",
             # now in common_function as coffeescript
