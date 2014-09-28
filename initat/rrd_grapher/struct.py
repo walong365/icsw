@@ -19,7 +19,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
 """ data_store structure for rrd-grapher """
 
 from django.db.models import Q
@@ -30,6 +29,7 @@ from lxml.builder import E  # @UnresolvedImport
 import copy
 import logging_tools
 import os
+import pprint  # @UnusedImport
 import process_tools
 import re
 import time
@@ -71,6 +71,146 @@ class var_cache(dict):
         return ret_dict, info_dict
 
 
+class compound_entry(object):
+    def __init__(self, _xml):
+        self.__re_list = []
+        self.__name = _xml.attrib["name"]
+        for _key in _xml.findall("key_list/key"):
+            _req = True if int(_key.get("required", "1")) else False
+            self.__re_list.append(
+                (
+                    _req,
+                    re.compile(_key.attrib["match"]),
+                    re.compile(_key.attrib["nomatch"]) if "nomatch" in _key.attrib else None,
+                    _key
+                )
+            )
+
+    def match(self, in_list):
+        # returns a list of matching keys
+        _success = False
+        # print "-"*20
+        # print self.__name
+        if self.__re_list:
+            _res = []
+            _success = True
+            for _req, _pos_re, _neg_re, _xml in self.__re_list:
+                _found = [key for key in in_list if _pos_re.match(key)]
+                if _neg_re is not None:
+                    _ignore = [key for key in in_list if _neg_re.match(key)]
+                    _found = [key for key in _found if key not in _ignore]
+                if _req and not _found:
+                    _success = False
+                _res.extend([(key, _xml) for key in _found])
+        if _success and _res:
+            return _res
+        else:
+            return []
+
+    def entry(self, m_list):
+        # cve: compount vector entry
+        return E.cve(
+            *[
+                E.cve_entry(
+                    key=_key,
+                    color=_xml.attrib["color"],
+                    draw_type=_xml.get("draw_type", "LINE1"),
+                ) for _key, _xml in m_list
+            ],
+            # keys="||".join(m_list),
+            name="compound.{}".format(self.__name),
+            part=self.__name,
+            info="{} ({:d})".format(
+                self.__name,
+                len(m_list),
+            )
+        )
+
+
+COMPOUND_NG = """
+<element name="compound" xmlns="http://relaxng.org/ns/structure/1.0">
+    <attribute name="name">
+    </attribute>
+    <element name="key_list">
+        <oneOrMore>
+            <element name="key">
+                <attribute name="match">
+                </attribute>
+                <optional>
+                    <attribute name="nomatch">
+                    </attribute>
+                </optional>
+                <attribute name="color">
+                </attribute>
+                <optional>
+                    <attribute name="required">
+                    </attribute>
+                </optional>
+                <optional>
+                    <attribute name="draw_type">
+                    </attribute>
+                </optional>
+            </element>
+        </oneOrMore>
+    </element>
+</element>
+"""
+
+
+class compound_tree(object):
+    def __init__(self):
+        self.__compounds = []
+        compound_xml = """
+<compounds>
+    <compound name="load">
+        <key_list>
+            <key match="^load\.1$" required="1" color="#ff0000"></key>
+            <key match="^load\.5$" color="#4444cc"></key>
+            <key match="^load\.15$" required="1" color="#44aa44" draw_type="LINE2"></key>
+        </key_list>
+    </compound>
+    <compound name="cpu">
+        <key_list>
+            <key match="^vms\.\D+$" required="1" color="set312" draw_type="AREA1STACK"></key>
+        </key_list>
+    </compound>
+    <compound name="processes">
+        <key_list>
+            <key match="^proc\..*$" nomatch="proc\.(sleeping|total)" required="1" color="set312" draw_type="LINE1"></key>
+        </key_list>
+    </compound>
+    <compound name="memory">
+        <key_list>
+            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
+            <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
+            <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
+            <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
+            <key match="mem\.used\.swap" required="0" color="#ff4444" draw_type="LINE3"></key>
+        </key_list>
+    </compound>
+</compounds>
+        """
+        _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))
+        comp_xml = etree.fromstring(compound_xml)
+        for _entry in comp_xml.findall("compound"):
+            _valid = _ng.validate(_entry)
+            if _valid:
+                self.__compounds.append(compound_entry(_entry))
+            else:
+                print("compound is invalid: {}".format(str(_ng.error_log)))
+
+    def append_compounds(self, top_el, in_list):
+        _added = 0
+        # print "*", len(in_list)
+        for _comp in self.__compounds:
+            m_list = _comp.match(in_list)
+            if m_list:
+                top_el.append(_comp.entry(m_list))
+                _added += 1
+        return _added
+    # print "*", etree.tostring(top_el)
+
+
 class data_store(object):
     def __init__(self, cur_dev):
         self.pk = cur_dev.pk
@@ -81,7 +221,7 @@ class data_store(object):
 
     def restore(self):
         try:
-            self.xml_vector = etree.fromstring(file(self.data_file_name(), "r").read())
+            self.xml_vector = etree.fromstring(file(self.data_file_name(), "r").read())  # @UndefinedVariable
         except:
             self.log("cannot interpret XML: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             self.xml_vector = E.machine_vector()
@@ -161,7 +301,7 @@ class data_store(object):
                 type_instance=pd_info.get("type_instance", ""),
                 init_time="%d" % (time.time()),
             )
-            for cur_idx, entry in enumerate(pd_info):
+            for _cur_idx, entry in enumerate(pd_info):
                 cur_entry.append(
                     E.value(
                         name=entry.get("name"),
@@ -221,7 +361,7 @@ class data_store(object):
         entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
 
     def store(self):
-        file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))
+        file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))  # @UndefinedVariable
         # sync XML to grapher
         self.sync_to_grapher()
 
@@ -233,7 +373,7 @@ class data_store(object):
             "graph",
             "xml_info",
             self.pk,
-            etree.tostring(self.struct_xml_vector("graph"))
+            etree.tostring(self.struct_xml_vector("graph"))  # @UndefinedVariable
         )
 
     def data_file_name(self):
@@ -264,8 +404,14 @@ class data_store(object):
         # graph mode: sent shortened representation to graph process
         graph_mode = mode == "graph"
         cur_xml = self.xml_vector
+        _ct = compound_tree()
         all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name", smart_strings=False))
         xml_vect, lu_dict = (E.machine_vector(), {})
+        compound_top = self._create_struct(xml_vect, "{}.{}".format("compound", ""))
+        any_added = _ct.append_compounds(compound_top, all_keys)
+        if not any_added:
+            # remove compound
+            compound_top.getparent().remove(compound_top)
         for key in sorted(all_keys):
             parts = key.split(".")
             s_dict, s_xml = (lu_dict, xml_vect)
@@ -285,13 +431,20 @@ class data_store(object):
                 add_entry.attrib["info"] = self._expand_info(add_entry)
             s_xml.append(add_entry)
         # remove structural entries with only one mve-child
-        for struct_ent in xml_vect.xpath(".//entry[not(entry)]", smart_strings=False):
+        for struct_ent in xml_vect.xpath(".//entry[not(@name) = 'compound' and not(entry)]", smart_strings=False):
+            # print "*", struct_ent.attrib
             parent = struct_ent.getparent()
-            parent.append(struct_ent[0])
+            # print etree.tostring(parent, pretty_print=True)
+            if struct_ent:
+                parent.append(struct_ent[0])
             parent.remove(struct_ent)
+            # pprint.pprint(struct_ent)
+        # print etree.tostring(xml_vect, pretty_print=True)
+        # print xml_vect.xpath(".//*/@name")
         # print etree.tostring(xml_vect, pretty_print=True)
         # add pde entries
         pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde[@active='1']")])
+        # add performance data entries
         for pde_key, type_inst, pde_node in pde_keys:
             ti_str = "/{}".format(type_inst) if type_inst else ""
             for sub_val in pde_node:
@@ -365,7 +518,7 @@ class data_store(object):
                 # add entries
                 for cur_node in res_list:
                     # print etree.tostring(cur_node, pretty_print=True)
-                    for val_el in cur_node[0].xpath(".//value|.//mve", smart_strings=False):
+                    for val_el in cur_node[0].xpath(".//value|.//mve|.//cve", smart_strings=False):
                         # build unique key and distinguish between MV and PD values
                         # (machine vector and performance data)
                         _name = val_el.get("name")
@@ -446,6 +599,7 @@ class data_store(object):
                             logging_tools.get_size_str(process_tools.get_mem_info())))
             else:
                 data_store.g_log("ignoring direntry '%s'" % (entry), logging_tools.LOG_LEVEL_WARN)
+
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log("[ds] %s" % (what), log_level)

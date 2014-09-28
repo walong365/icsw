@@ -26,6 +26,7 @@ from initat.cluster.backbone.models import device, rms_job_run, cluster_timezone
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
+import copy
 import datetime
 import dateutil.parser
 import logging_tools
@@ -41,6 +42,8 @@ import time
 import uuid
 
 FLOAT_FMT = "{:.6f}"
+
+COMPOUND_KEY = "compound"
 
 
 def rrd_escape(in_str):
@@ -64,6 +67,20 @@ def strftime(in_dt, comp_dt=None):
             return cluster_timezone.normalize(in_dt).strftime("%d. %b %Y, %H:%M:%S")
 
 
+class SimpleColorTable(object):
+    def __init__(self, entries):
+        self.__entries = entries
+        self.__idx = 0
+
+    @property
+    def color(self):
+        _col = self.__entries[self.__idx]
+        self.__idx += 1
+        if self.__idx == len(self.__entries):
+            self.__idx = 0
+        return _col
+
+
 class Colorizer(object):
     def __init__(self, log_com):
         self.log_com = log_com
@@ -80,12 +97,12 @@ class Colorizer(object):
     def _read_files(self):
         _ct_file = os.path.join(self._gc_base, "color_tables.xml")
         _cr_file = os.path.join(self._gc_base, "color_rules.xml")
-        self.colortables = etree.fromstring(file(_ct_file, "r").read())
+        self.colortables = etree.fromstring(file(_ct_file, "r").read())  # @UndefinedVariable
         self.color_tables = {}
         for c_table in self.colortables.findall(".//colortable[@name]"):
             self.color_tables[c_table.get("name")] = ["#{:s}".format(color.get("rgb")) for color in c_table if self._check_color(color)]
         self.log("read colortables from {}".format(_ct_file))
-        self.color_rules = etree.fromstring(file(_cr_file, "r").read())
+        self.color_rules = etree.fromstring(file(_cr_file, "r").read())  # @UndefinedVariable
         self.log("read colorrules from {}".format(_cr_file))
         self.match_re_keys = [
             (
@@ -108,16 +125,26 @@ class Colorizer(object):
         # reset values for next graph
         self.table_offset = {}
 
+    def simple_color_table(self, name):
+        return SimpleColorTable(self.color_tables[name])
+
     def get_color_and_style(self, entry):
-        t_name, s_dict = self.get_table_name(entry)
-        if t_name not in self.table_offset:
-            self.table_offset[t_name] = 0
-        self.table_offset[t_name] += 1
-        if self.table_offset[t_name] == len(self.color_tables[t_name]):
-            self.table_offset[t_name] = 0
-        _clr = self.color_tables[t_name][self.table_offset[t_name]]
-        if "transparency" in s_dict:
-            _clr = "{}{:02x}".format(_clr, int(s_dict["transparency"]))
+        if "color" in entry.attrib:
+            # specified in entry
+            _clr = entry.get("color")
+            s_dict = {}
+            if "draw_type" in entry.attrib:
+                s_dict["draw_type"] = entry.get("draw_type")
+        else:
+            t_name, s_dict = self.get_table_name(entry)
+            if t_name not in self.table_offset:
+                self.table_offset[t_name] = 0
+            self.table_offset[t_name] += 1
+            if self.table_offset[t_name] == len(self.color_tables[t_name]):
+                self.table_offset[t_name] = 0
+            _clr = self.color_tables[t_name][self.table_offset[t_name]]
+            if "transparency" in s_dict:
+                _clr = "{}{:02x}".format(_clr, int(s_dict["transparency"]))
         return _clr, s_dict
 
     def get_table_name(self, entry):
@@ -206,30 +233,50 @@ class graph_var(object):
         # if timeshift:
         #    c_lines.append("SHIFT:{}:{:d}".format(draw_name, timeshift))
         draw_type = self.style_dict.get("draw_type", "LINE1")
-        if draw_type in ["AREA1", "AREA2", "AREA3"]:
+        _stacked = draw_type.endswith("STACK")
+        if _stacked:
+            draw_type = draw_type[:-5]
+        # area: modes area (pure are), area{1,2,3} (area with lines)
+        # print draw_name, draw_type, _stacked
+        if draw_type.startswith("AREA"):  # in ["AREA", "AREA1", "AREA2", "AREA3"]:
             # support area with outline style
-            c_lines.extend(
-                [
-                    "{}:{}{}:<tt>{}</tt>".format(
-                        "AREA",
-                        draw_name,
-                        self.color,
-                        ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift))[:self.max_info_width]
-                    ),
-                    "{}:{}{}".format(
-                        draw_type.replace("AREA", "LINE"),
-                        draw_name,
-                        "#000000",
-                    )
-                ]
+            c_lines.append(
+                "{}:{}{}:<tt>{}</tt>{}".format(
+                    "AREA",
+                    draw_name,
+                    self.color,
+                    ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift))[:self.max_info_width],
+                    ":STACK" if _stacked else "",
+                ),
             )
+            if draw_type != "AREA":
+                if _stacked:
+                    # arealine draw_name
+                    c_lines.append(
+                        "CDEF:{}zero={},0,*".format(self.name, self.name),
+                    )
+                    al_dn = "{}zero".format(self.name)
+                else:
+                    al_dn = draw_name
+                c_lines.append(
+                    "{}:{}{}:{}".format(
+                        draw_type.replace("AREA", "LINE"),
+                        al_dn,
+                        "#000000",
+                        ":STACK" if _stacked else "",
+                    )
+                )
         else:
             c_lines.append(
-                "{}:{}{}:<tt>{}</tt>".format(
+                "{}:{}{}:<tt>{}</tt>{}".format(
                     draw_type,
                     draw_name,
                     self.color,
-                    ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift))[:self.max_info_width]),
+                    (
+                        "{{:<{:d}s}}".format(self.max_info_width)
+                    ).format(self.info(timeshift))[:self.max_info_width],
+                    ":STACK" if _stacked else "",
+                ),
             )
         if timeshift:
             # draw timeshifted graph
@@ -432,8 +479,16 @@ class RRDGraph(object):
 
     def _create_graph_keys(self, graph_keys):
         # graph_keys ... list of keys
+        _compounds = False
         first_level_keys = set([key.split(".")[0].split(":")[-1] for key in graph_keys])
+        if COMPOUND_KEY in first_level_keys:
+            # we have compound graphs
+            _compounds = True
+            first_level_keys.remove(COMPOUND_KEY)
         g_key_dict = {flk: sorted([key for key in graph_keys if key.split(".")[0].split(":")[-1] == flk]) for flk in first_level_keys}
+        if _compounds:
+            # add compound keys (each compound a separate graph)
+            g_key_dict.update({key: [key] for key in graph_keys if key.startswith("{}.".format(COMPOUND_KEY))})
         return g_key_dict
 
     def _get_jobs(self, dev_dict):
@@ -576,6 +631,26 @@ class RRDGraph(object):
                     )
         return _ext_args
 
+    def _expand_cve(self, cve_xml, dev_vector):
+        # expand compund vector entry
+        # print etree.tostring(cve_xml, pretty_print=True)
+        _res = []
+        _color_tables = {}
+        for _entry in cve_xml.findall("cve_entry"):
+            _ref_xml = dev_vector.find(".//mve[@name='{}']".format(_entry.get("key")))
+            if _ref_xml is not None:
+                _new_entry = copy.deepcopy(_ref_xml)
+                for _attr in ["color", "draw_type"]:
+                    _val = _entry.attrib[_attr]
+                    if _attr == "color" and not _val.startswith("#"):
+                        if _val not in _color_tables:
+                            _color_tables[_val] = self.colorizer.simple_color_table(_val)
+                        _val = _color_tables[_val].color
+                    _new_entry.attrib[_attr] = _val
+                _res.append(_new_entry)
+
+        return _res
+
     def graph(self, vector_dict, dev_pks, graph_keys):
         timeframe = abs((self.para_dict["end_time"] - self.para_dict["start_time"]).total_seconds())
         graph_size = self.para_dict["size"]
@@ -650,10 +725,19 @@ class RRDGraph(object):
                             if graph_key.startswith("pde:"):
                                 # performance data from icinga
                                 def_xml = dev_vector.find(".//value[@name='{}']".format(graph_key))
+                            elif graph_key.startswith("{}.".format(COMPOUND_KEY)):
+                                def_xml = dev_vector.find(".//cve[@name='{}']".format(graph_key))
                             else:
                                 # machine vector entry
                                 def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
                             if def_xml is not None:
+                                if def_xml.tag == "cve":
+                                    def_xmls = self._expand_cve(def_xml, dev_vector)
+                                else:
+                                    def_xmls = [def_xml]
+                            else:
+                                def_xmls = []
+                            for def_xml in def_xmls:
                                 _take = True
                                 if "file_name" in def_xml.attrib:
                                     if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
@@ -679,7 +763,11 @@ class RRDGraph(object):
                                 "--title",
                                 "{} on {} (tf: {})".format(
                                     _graph_target.graph_key,
-                                    dev_dict.get(_graph_target.dev_list[0][1], "unknown") if len(_graph_target.dev_list) == 1 else logging_tools.get_plural("device", len(_graph_target.dev_list)),
+                                    dev_dict.get(
+                                        _graph_target.dev_list[0][1], "unknown"
+                                    ) if len(_graph_target.dev_list) == 1 else logging_tools.get_plural(
+                                        "device", len(_graph_target.dev_list)
+                                    ),
                                     logging_tools.get_diff_time_str(timeframe)),
                             ])
                             rrd_args.extend(self._create_job_args(_graph_target.dev_list, _job_add_dict))
@@ -797,7 +885,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         pass
 
     def _xml_info(self, *args, **kwargs):
-        dev_id, xml_str = (args[0], etree.fromstring(args[1]))
+        dev_id, xml_str = (args[0], etree.fromstring(args[1]))  # @UndefinedVariable
         self.vector_dict[dev_id] = xml_str  # self._struct_vector(xml_str)
 
     def _graph_rrd(self, *args, **kwargs):

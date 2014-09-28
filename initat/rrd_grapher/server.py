@@ -346,7 +346,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
-        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
+        self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
         self.com_socket.send_unicode(srv_com)
 
     def _init_network_sockets(self):
@@ -366,7 +366,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             raise
         else:
             self.log("bound to {} (id {})".format(bind_str, self.bind_id))
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
             self.com_socket = client
         # connection to collectd clients
         self._collectd_sockets = {}
@@ -410,7 +410,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         in_data = []
         while True:
             in_data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):
+            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 break
         if len(in_data) == 2:
             src_id, data = in_data
@@ -422,7 +422,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     logging_tools.LOG_LEVEL_ERROR
                 )
                 # send something back
-                self.com_socket.send_unicode(src_id, zmq.SNDMORE)
+                self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
                 self.com_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
@@ -461,7 +461,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     )
                 if send_return:
                     srv_com.set_result(srv_reply, srv_state)
-                    self.com_socket.send_unicode(src_id, zmq.SNDMORE)
+                    self.com_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
                     self.com_socket.send_unicode(unicode(srv_com))
                 else:
                     del cur_com
