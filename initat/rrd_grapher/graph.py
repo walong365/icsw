@@ -640,7 +640,7 @@ class RRDGraph(object):
             _ref_xml = dev_vector.find(".//mve[@name='{}']".format(_entry.get("key")))
             if _ref_xml is not None:
                 _new_entry = copy.deepcopy(_ref_xml)
-                for _attr in ["color", "draw_type"]:
+                for _attr in ["color", "draw_type", "invert"]:
                     _val = _entry.attrib[_attr]
                     if _attr == "color" and not _val.startswith("#"):
                         if _val not in _color_tables:

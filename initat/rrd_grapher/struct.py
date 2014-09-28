@@ -115,6 +115,7 @@ class compound_entry(object):
                     key=_key,
                     color=_xml.attrib["color"],
                     draw_type=_xml.get("draw_type", "LINE1"),
+                    invert=_xml.get("invert", "0"),
                 ) for _key, _xml in m_list
             ],
             # keys="||".join(m_list),
@@ -147,6 +148,10 @@ COMPOUND_NG = """
                     </attribute>
                 </optional>
                 <optional>
+                    <attribute name="invert">
+                    </attribute>
+                </optional>
+                <optional>
                     <attribute name="draw_type">
                     </attribute>
                 </optional>
@@ -171,7 +176,16 @@ class compound_tree(object):
     </compound>
     <compound name="cpu">
         <key_list>
-            <key match="^vms\.\D+$" required="1" color="set312" draw_type="AREA1STACK"></key>
+            <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1STACK"></key>
+            <key match="^vms\.system$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
+            <key match="^vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
+            <key match="^vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
+            <key match="^vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
+            <key match="^vms\.steal$" required="0" color="#fbd462" draw_type="AREA1STACK"></key>
+            <key match="^vms\.nice$" required="0" color="#fccde5" draw_type="AREA1STACK"></key>
+            <key match="^vms\.idle$" required="1" color="#b3de69" draw_type="AREA1STACK"></key>
+            <key match="^vms\.guest$" required="0" color="#ff0000" draw_type="LINE2"></key>
+            <key match="^vms\.guest_nice$" required="0" color="#ffff00" draw_type="LINE2"></key>
         </key_list>
     </compound>
     <compound name="processes">
