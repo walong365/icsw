@@ -440,7 +440,8 @@ add_rrd_directive = (mod) ->
                     cur_node._show_select = false
                     $scope.g_tree.add_root_node(cur_node)
                 else
-                    if xml_node.prop("tagName") == "entry"
+                    _tag = xml_node.prop("tagName")
+                    if _tag == "entry"
                         # structural
                         cur_node = $scope.g_tree.new_node({
                             folder : true,
@@ -450,6 +451,9 @@ add_rrd_directive = (mod) ->
                             _node_type : "s"
                         })
                         cur_node._show_select = false
+                    else if _tag == "cve_entry"
+                        # ignore cve entries
+                        cur_node = null
                     else
                         if $scope.auto_select_re
                             _sel = $scope.auto_select_re.test(xml_node.attr("name"))
@@ -465,7 +469,8 @@ add_rrd_directive = (mod) ->
                             _name  : xml_node.attr("info")
                             _node_type : "e"
                         })
-                    p_node.add_child(cur_node)
+                    if cur_node
+                        p_node.add_child(cur_node)
                 for sub_node in xml_node.children()
                     $scope.add_nodes(cur_node, $(sub_node))
             $scope.update_search = () ->
