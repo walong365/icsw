@@ -15,6 +15,10 @@ rrd_graph_template = """
         Vector info:
         <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
         <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
+        <button type="button" ng-class="show_tree && 'btn btn-sm btn-primary' || 'btn btn-sm'" ng-click="show_tree=!show_tree">
+            <span class="glyphicon glyphicon-align-left"></span>
+            tree
+        </button>
         <button type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" ng-click="show_options=!show_options">
             <span class="glyphicon glyphicon-wrench"></span>
             options
@@ -133,7 +137,7 @@ rrd_graph_template = """
         </div>
     </div>
     <div class="row">
-        <div class="col-md-3">  
+        <div class="col-md-3" ng-show="show_tree">  
             <div class="input-group">
                 <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
                 <span class="input-group-btn">
@@ -143,7 +147,7 @@ rrd_graph_template = """
             </div>
             <tree treeconfig="g_tree"></tree>
         </div>
-        <div class="col-md-9" ng-show="graph_list.length">
+        <div ng-class="show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
             <h4>{{ graph_list.length }} graphs, {{ graph_list[0].get_tv(graph_list[0].ts_start_mom) }} to {{ graph_list[0].get_tv(graph_list[0].ts_end_mom) }}</h4>
             <table class="table-condensed">
                 <tr ng-repeat="gkey in get_graph_keys()">
@@ -336,6 +340,7 @@ add_rrd_directive = (mod) ->
             $scope.scale_y = false
             $scope.merge_devices = true
             $scope.show_options = false
+            $scope.show_tree = true
             $scope.g_tree = new rrd_tree($scope)
             $scope.$watch("from_date_mom", (new_val) ->
                 $scope.update_dt() 
