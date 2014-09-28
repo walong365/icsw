@@ -392,10 +392,19 @@ class _general(hm_classes.hm_module):
             _cpu_update_list = [("cpu", "")]
             if mvect.vector_flags["detailed_cpu_statistics"]:
                 _cpu_update_list.extend([("cpu{}".format(cpu_idx), ".p{}".format(cpu_idx)) for cpu_idx in self.cpu_list] if len(self.cpu_list) > 1 else [])
+            _correction = 1.0
             for cpu_str, name_p in _cpu_update_list:
                 if cpu_str in stat_dict and cpu_str in self.vmstat_dict:
+                    _vals = [
+                        float(
+                            sub_wrap(stat_dict[cpu_str][idx], self.vmstat_dict[cpu_str][idx]) / (vms_tdiff / 100.)
+                        ) for idx in xrange(len(self.stat_list))
+                    ]
+                    if not name_p and len(self.stat_list) > 7:
+                        # correction factor for small rounding errors, correct ?
+                        _correction = len(self.cpu_list) * 100.0 / sum(_vals[0:8])
                     for idx, name in enumerate(self.stat_list):
-                        mvect["vms.{}{}".format(name, name_p)] = float(sub_wrap(stat_dict[cpu_str][idx], self.vmstat_dict[cpu_str][idx]) / (vms_tdiff / 100.))
+                        mvect["vms.{}{}".format(name, name_p)] = _vals[idx] * _correction
                 else:
                     break
             if "intr" in stat_dict and "intr" in self.vmstat_dict:
