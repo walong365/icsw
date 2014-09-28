@@ -430,7 +430,7 @@ class host_message(object):
             return self.com_struct.interpret(result, self.ns)
 
     def interpret_old(self, result):
-        if isinstance(result, basestring):
+        if not isinstance(result, basestring):
             server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
         else:
             server_error = None
