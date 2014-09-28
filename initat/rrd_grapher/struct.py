@@ -177,7 +177,7 @@ class compound_tree(object):
     <compound name="cpu">
         <key_list>
             <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1STACK"></key>
-            <key match="^vms\.system$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
+            <key match="^vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
             <key match="^vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
             <key match="^vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
             <key match="^vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
@@ -199,7 +199,17 @@ class compound_tree(object):
             <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
             <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
             <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
-            <key match="mem\.used\.swap" required="0" color="#ff4444" draw_type="LINE3"></key>
+            <!--<key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="AREASTACK"></key>-->
+            <!--<key match="mem\.free\.swap$" required="0" color="#55ee55" draw_type="AREA1STACK"></key>-->
+            <key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="LINE2"></key>
+        </key_list>
+    </compound>
+    <compound name="io">
+        <key_list>
+            <key match="^net\.all\.rx$" required="1" color="#44ffffa0" draw_type="AREA1"></key>
+            <key match="^net\.all\.tx$" required="1" invert="1" color="#ff4444a0" draw_type="AREA1"></key>
+            <key match="^io\.total\.bytes\.read$" required="1" color="#4444ffa0" draw_type="AREA1"></key>
+            <key match="^io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
         </key_list>
     </compound>
 </compounds>

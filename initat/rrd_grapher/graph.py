@@ -133,8 +133,9 @@ class Colorizer(object):
             # specified in entry
             _clr = entry.get("color")
             s_dict = {}
-            if "draw_type" in entry.attrib:
-                s_dict["draw_type"] = entry.get("draw_type")
+            for _attr in["draw_type", "invert"]:
+                if _attr in entry.attrib:
+                    s_dict[_attr] = entry.get(_attr)
         else:
             t_name, s_dict = self.get_table_name(entry)
             if t_name not in self.table_offset:
