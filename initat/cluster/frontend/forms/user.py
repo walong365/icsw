@@ -346,9 +346,9 @@ class user_detail_form(ModelForm):
                 filter="{groupname:$select.search}",
             ),
             # do not use ui-select here (will not refresh on export_list change)
-            Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),
+            Field("export", wrapper_ng_show="!_edit_obj.only_webfrontend", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),
             HTML("""
-<div class='form-group'>
+<div class='form-group' ng-show="!_edit_obj.only_webfrontend'>
     <label class='control-label col-sm-2'>
         Homedir status
     </label>
@@ -378,7 +378,22 @@ class user_detail_form(ModelForm):
     </div>
 </div>
             """),
-            ng_show="_edit_obj.user_quota_setting_set.length",
+            ng_show="_edit_obj.user_quota_setting_set.length && !_edit_obj.only_webfrontend",
+        ),
+        Fieldset(
+            "/home scan settings",
+            HTML("""
+<div class='form-group'>
+    <label class='control-label col-sm-2'>Scan Home dir</label>
+    <div class='controls col-sm-8'>
+        <input type='button'
+            ng-class='_edit_obj.scan_user_home && "btn btn-sm btn-success" || "btn btn-sm"'
+            ng-click='_edit_obj.scan_user_home = !_edit_obj.scan_user_home' ng-value='_edit_obj.scan_user_home && "yes" || "no"'>
+        </input>
+    </div>
+</div>
+            """),
+            Field("scan_depth", min=1, max=5, wrapper_ng_show="_edit_obj.scan_user_home"),
         ),
         Fieldset(
             "Permissions",
@@ -492,6 +507,7 @@ class user_detail_form(ModelForm):
             "login", "uid", "shell", "first_name", "last_name", "active",
             "title", "email", "pager", "tel", "comment", "is_superuser",
             "allowed_device_groups", "secondary_groups",
+            "scan_depth",
             "aliases", "db_is_auth_for_password", "export", "group"
         ]
         widgets = {

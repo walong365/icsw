@@ -752,6 +752,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.quick_open = true
         $scope.ext_open = false
         $scope.quota_open = true
+        $scope.vdesktop_open = false
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
         $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS

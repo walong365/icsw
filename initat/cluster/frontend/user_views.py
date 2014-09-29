@@ -28,7 +28,7 @@ from django.apps import apps
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
-    csw_object_permission, group_permission, user_permission, group_object_permission, \
+    csw_object_permission, group_object_permission, \
     user_object_permission
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
@@ -63,7 +63,11 @@ class sync_users(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         # create homedirs
-        create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)).select_related("export__device")
+        create_user_list = user.objects.exclude(
+            Q(export=None)
+        ).filter(
+            Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)
+        ).select_related("export__device")
         logger.info("user homes to create: %d" % (len(create_user_list)))
         for create_user in create_user_list:
             logger.info(
