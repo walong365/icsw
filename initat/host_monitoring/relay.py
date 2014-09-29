@@ -192,7 +192,7 @@ class relay_code(threading_tools.process_pool):
         # register_to_master_timer set ?
         self.__rmt_set = False
         if os.path.isfile(MASTER_FILE_NAME):
-            master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())
+            master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())  # @UndefinedVariable
             self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
         else:
             self.log("no master_file found", logging_tools.LOG_LEVEL_WARN)
@@ -405,7 +405,7 @@ class relay_code(threading_tools.process_pool):
                      logging_tools.LOG_LEVEL_ERROR)
 
     def send_result(self, src_id, ret_str):
-        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
+        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
         self.sender_socket.send_unicode(ret_str)
 
     def _init_ipc_sockets(self):
@@ -420,8 +420,8 @@ class relay_code(threading_tools.process_pool):
         self.__raw_nhm_dict = {}
         self.__nhm_connections = set()
         sock_list = [
-            ("ipc", "receiver", zmq.PULL, 2),
-            ("ipc", "sender", zmq.PUB, 1024)
+            ("ipc", "receiver", zmq.PULL, 2),  # @UndefinedVariable
+            ("ipc", "sender", zmq.PUB, 1024),  # @UndefinedVariable
         ]
         [setattr(self, "{}_socket".format(short_sock_name), None) for _sock_proto, short_sock_name, _a0, _b0 in sock_list]
         for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
@@ -457,31 +457,31 @@ class relay_code(threading_tools.process_pool):
                 setattr(self, "%s_socket" % (short_sock_name), cur_socket)
                 _backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
-                cur_socket.setsockopt(zmq.LINGER, 0)
-                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
-                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
-                if sock_type == zmq.PULL:
-                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)
-        self.client_socket = self.zmq_context.socket(zmq.ROUTER)
-        self.client_socket.setsockopt(zmq.IDENTITY, "ccollclient:%s" % (process_tools.get_machine_name()))
-        self.client_socket.setsockopt(zmq.LINGER, 0)
-        self.client_socket.setsockopt(zmq.SNDHWM, 2)
-        self.client_socket.setsockopt(zmq.RCVHWM, 2)
-        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
+                cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
+                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
+                if sock_type == zmq.PULL:  # @UndefinedVariable
+                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+        self.client_socket = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+        self.client_socket.setsockopt(zmq.IDENTITY, "ccollclient:%s" % (process_tools.get_machine_name()))  # @UndefinedVariable
+        self.client_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        self.client_socket.setsockopt(zmq.SNDHWM, 2)  # @UndefinedVariable
+        self.client_socket.setsockopt(zmq.RCVHWM, 2)  # @UndefinedVariable
+        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+        self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)  # @UndefinedVariable
 
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)
+        client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         uuid = "%s:relayer" % (uuid_tools.get_uuid().get_urn())
-        client.setsockopt(zmq.IDENTITY, uuid)
+        client.setsockopt(zmq.IDENTITY, uuid)  # @UndefinedVariable
         # AL 2014-02-13, increased SNDHWM / RCVHWM from 10 to 128
-        client.setsockopt(zmq.SNDHWM, 128)
-        client.setsockopt(zmq.RCVHWM, 128)
-        client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-        client.setsockopt(zmq.RECONNECT_IVL, 200)
-        client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+        client.setsockopt(zmq.SNDHWM, 128)  # @UndefinedVariable
+        client.setsockopt(zmq.RCVHWM, 128)  # @UndefinedVariable
+        client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
+        client.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
+        client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
+        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
         conn_str = "tcp://*:%d" % (
             global_config["COM_PORT"])
         try:
@@ -503,7 +503,7 @@ class relay_code(threading_tools.process_pool):
                     uuid
                 )
             )
-            self.register_poller(client, zmq.POLLIN, self._recv_command)
+            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
             self.network_socket = client
 
     def _resolve_address_noresolve(self, target):
@@ -573,7 +573,7 @@ class relay_code(threading_tools.process_pool):
 
     def _recv_command(self, zmq_sock):
         data = zmq_sock.recv()
-        if zmq_sock.getsockopt(zmq.RCVMORE):
+        if zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             src_id = data
             data = zmq_sock.recv()
         else:
@@ -654,7 +654,7 @@ class relay_code(threading_tools.process_pool):
                     except socket.gaierror:
                         self.log("resolve error for '{}'".format(t_host),
                                  logging_tools.LOG_LEVEL_ERROR)
-                        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
+                        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
                         self.sender_socket.send_unicode("{:d}\0resolve error".format(limits.nag_STATE_CRITICAL))
                     else:
                         _e = srv_com.builder()
@@ -854,11 +854,11 @@ class relay_code(threading_tools.process_pool):
             if connected:
                 try:
                     if int(srv_com.get("raw_connect", "0")):
-                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
-                        self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)
+                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
+                        self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)  # @UndefinedVariable
                     else:
-                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
-                        self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
+                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
+                        self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)  # @UndefinedVariable
                 except:
                     self._send_result(
                         src_id,
@@ -879,7 +879,7 @@ class relay_code(threading_tools.process_pool):
             id_discovery(srv_com, src_id, xml_input)
 
     def _send_result(self, identity, reply_str, reply_state):
-        self.sender_socket.send_unicode(identity, zmq.SNDMORE)
+        self.sender_socket.send_unicode(identity, zmq.SNDMORE)  # @UndefinedVariable
         self.sender_socket.send_unicode(
             "{:d}\0{}".format(
                 reply_state,
@@ -891,11 +891,11 @@ class relay_code(threading_tools.process_pool):
         data = []
         while True:
             data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):
+            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 break
         if len(data) == 2:
             if data[0] in self.__raw_nhm_dict:
-                srv_result = etree.fromstring(data[1])
+                srv_result = etree.fromstring(data[1])  # @UndefinedVariable
                 srv_com = self.__raw_nhm_dict[data[0]][1]
                 cur_id = srv_com["identity"].text
                 self._send_result(cur_id, srv_result.findtext("nodestatus"), limits.nag_STATE_OK)
@@ -972,12 +972,12 @@ class relay_code(threading_tools.process_pool):
 
     def _close_ipc_sockets(self):
         if self.receiver_socket is not None:
-            self.unregister_poller(self.receiver_socket, zmq.POLLIN)
+            self.unregister_poller(self.receiver_socket, zmq.POLLIN)  # @UndefinedVariable
             self.receiver_socket.close()
         if self.sender_socket is not None:
             self.sender_socket.close()
         if self.client_socket is not None:
-            self.unregister_poller(self.client_socket, zmq.POLLIN)
+            self.unregister_poller(self.client_socket, zmq.POLLIN)  # @UndefinedVariable
             self.client_socket.close()
         host_connection.global_close()
 

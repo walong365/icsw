@@ -50,8 +50,10 @@ class affinity_struct(object):
         # has to be None on first run to detect initial run
         self.last_update = None
         self.__counter = 0
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[as] %s" % (what), log_level)
+
     def feed(self, p_dict):
         self.__counter += 1
         cur_time = time.time()
@@ -78,7 +80,12 @@ class affinity_struct(object):
                 else:
                     self.log("added %s" % (unicode(new_ps)))
         if old_keys:
-            self.log("%s: %s" % (logging_tools.get_plural("old key", len(old_keys)), ", ".join(["%s" % (unicode(self.dict[old_key])) for old_key in sorted(old_keys)])))
+            self.log(
+                "{}: {}".format(
+                    logging_tools.get_plural("old key", len(old_keys)),
+                    ", ".join(["%s" % (unicode(self.dict[old_key])) for old_key in sorted(old_keys)])
+                )
+            )
             for old_key in old_keys:
                 del self.dict[old_key]
         if self.last_update:
@@ -100,6 +107,7 @@ class affinity_struct(object):
             if sched_keys:
                 self._reschedule(sched_keys)
         self.last_update = cur_time
+
     def _reschedule(self, keys):
         cpu_c = affinity_tools.cpu_container()
         unsched = set()
@@ -136,6 +144,7 @@ class affinity_struct(object):
             # log cpu usage
             self.log("usage pattern: {}".format(cpu_c.get_usage_str()))
 
+
 class _general(hm_classes.hm_module):
     def init_module(self):
         # AFFINITY ist not set for relay mode
@@ -145,7 +154,11 @@ class _general(hm_classes.hm_module):
         if self.check_affinity:
             self.affinity_set = set()
             if os.path.isfile(AFFINITY_FILE):
-                self.affinity_set = set([line.strip() for line in file(AFFINITY_FILE, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")])
+                self.affinity_set = set(
+                    [
+                        line.strip() for line in file(AFFINITY_FILE, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")
+                    ]
+                )
             if self.affinity_set:
                 self.log("affinity_set (%d): %s" % (len(self.affinity_set), ",".join(self.affinity_set)))
                 affinity_re = re.compile("|".join(["(%s)" % (line) for line in self.affinity_set]))
@@ -153,29 +166,33 @@ class _general(hm_classes.hm_module):
             else:
                 self.log("affinity_set is empty (%s not present?)" % (AFFINITY_FILE), logging_tools.LOG_LEVEL_ERROR)
                 self.check_affinity = False
+
     def init_machine_vector(self, mv):
         mv.register_entry("proc.total", 0, "total number of processes")
         for key, value in process_tools.PROC_INFO_DICT.iteritems():
             mv.register_entry("proc.{}".format(key), 0, value)
+
     def update_machine_vector(self, mv):
         pdict = process_tools.get_proc_list_new()  # (add_stat_info=self.check_affinity, add_cmdline=False, add_exe=False)
         if self.check_affinity:
             self.af_struct.feed(pdict)
         pids = pdict.keys()
-        n_dict = {key : 0 for key in process_tools.PROC_INFO_DICT.iterkeys()}
+        n_dict = {key: 0 for key in process_tools.PROC_INFO_DICT.iterkeys()}
         # mem_mon_procs = []
         # mem_found_procs = {}
         for p_stuff in pdict.values():
             try:
-                if n_dict.has_key(p_stuff.status()):
+                if p_stuff.status() in n_dict:
                     n_dict[p_stuff.status()] += 1
                 else:
                     self.log(
                         "*** unknown process state '{}' for process {} (pid {:d})".format(
                             p_stuff.status(),
                             p_stuff.name(),
-                            p_stuff.pid()),
-                    logging_tools.LOG_LEVEL_ERROR)
+                            p_stuff.pid()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
             except psutil.NoSuchProcess:
                 pass
             # if p_stuff.get("name", "") in mem_mon_procs:
@@ -189,6 +206,7 @@ class _general(hm_classes.hm_module):
             mv["proc.{}".format(key)] = value
         mv["proc.total"] = len(pids)
 
+
 class procstat_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
@@ -196,6 +214,7 @@ class procstat_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=int, default=0)
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
         self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
+
     def __call__(self, srv_com, cur_ns):
         # s_time = time.time()
         if cur_ns.arguments:
@@ -215,9 +234,9 @@ class procstat_command(hm_classes.hm_command):
                 pass
         if cur_ns.arguments:
             # try to be smart about cron / crond
-            t_dict = {key : value for key, value in _p_dict.iteritems() if value["name"] in cur_ns.arguments}
+            t_dict = {key: value for key, value in _p_dict.iteritems() if value["name"] in cur_ns.arguments}
             if not t_dict and cur_ns.arguments[0] == "cron":
-                t_dict = {key : value for key, value in _p_dict.iteritems() if value["name"] in ["crond"]}
+                t_dict = {key: value for key, value in _p_dict.iteritems() if value["name"] in ["crond"]}
             _p_dict = t_dict
         srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(_p_dict)))
         srv_com["process_tree"].attrib["format"] = "2"
@@ -225,6 +244,7 @@ class procstat_command(hm_classes.hm_command):
         # e_time = time.time()
         # print e_time - s_time
         # print unicode(srv_com)
+
     def interpret(self, srv_com, cur_ns):
         result = srv_com["process_tree"]
         # pprint.pprint(result)
@@ -243,11 +263,11 @@ class procstat_command(hm_classes.hm_command):
         p_names = cur_ns.arguments
         zombie_ok_list = ["cron"]
         res_dict = {
-            "ok"        : 0,
-            "fail"      : 0,
-            "kernel"    : 0,
-            "userspace" : 0,
-            "zombie_ok" : 0,
+            "ok": 0,
+            "fail": 0,
+            "kernel": 0,
+            "userspace": 0,
+            "zombie_ok": 0,
         }
         zombie_dict = {}
         for _pid, value in result.iteritems():
@@ -280,11 +300,15 @@ class procstat_command(hm_classes.hm_command):
             if found_name != p_names[0]:
                 p_names[0] = "%s instead of %s" % (found_name, p_names[0])
             # print p_names, result
-        zombie_dict = {key : len(value) for key, value in zombie_dict.iteritems()}
+        zombie_dict = {key: len(value) for key, value in zombie_dict.iteritems()}
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
         ret_str = "{} running ({}{}{})".format(
             " + ".join(
-                [logging_tools.get_plural("{} process".format(key), res_dict[key]) for key in ["userspace", "kernel"] if res_dict[key]]) or "nothing",
+                [
+                    logging_tools.get_plural("{} process".format(key), res_dict[key]) for key in [
+                        "userspace", "kernel"
+                    ] if res_dict[key]
+                ]) or "nothing",
             ", ".join(sorted(p_names)) if p_names else "all",
             ", {} [{}]".format(
                 logging_tools.get_plural("zombie", res_dict["fail"]),
@@ -293,11 +317,12 @@ class procstat_command(hm_classes.hm_command):
             ", {}".format(logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
         )
         return ret_state, ret_str
+
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         shit_str = ""
-        ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
-        copy_struct = result.get("struct", None)
+        _ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
+        _copy_struct = result.get("struct", None)
         if parsed_coms.zombie:
             result["num_ok"] += result["num_fail"]
             result["num_fail"] = 0
@@ -321,12 +346,14 @@ class procstat_command(hm_classes.hm_command):
                 shit_str)
         return ret_state, rets
 
+
 class proclist_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name)
         self.parser.add_argument("-t", dest="tree", action="store_true", default=False)
         self.parser.add_argument("-c", dest="comline", action="store_true", default=False)
         self.parser.add_argument("-f", dest="filter", action="append", type=str, default=[])
+
     def __call__(self, srv_com, cur_ns):
         srv_com["psutil"] = "yes"
         srv_com["num_cores"] = psutil.cpu_count(logical=True)
@@ -335,8 +362,10 @@ class proclist_command(hm_classes.hm_command):
                 "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
             ])
         )))
+
     def interpret(self, srv_com, cur_ns):
         _fe = logging_tools.form_entry
+
         def proc_line(_ps, **kwargs):
             nest = kwargs.get("nest", 0)
             if _psutil:
@@ -358,6 +387,7 @@ class proclist_command(hm_classes.hm_command):
                 _fe(_affinity, header="aff"),
                 _fe(_ps["out_name"], header="process"),
             ]
+
         def draw_tree(m_pid, nest=0):
             proc_stuff = result[m_pid]
             r_list = [proc_line(proc_stuff, nest=nest)]
@@ -377,7 +407,7 @@ class proclist_command(hm_classes.hm_command):
         if _psutil:
             num_cores = srv_com["*num_cores"]
             # unpack and cast pid to integer
-            result = {int(key) : value for key, value in json.loads(bz2.decompress(base64.b64decode(result.text))).iteritems()}
+            result = {int(key): value for key, value in json.loads(bz2.decompress(base64.b64decode(result.text))).iteritems()}
             for _val in result.itervalues():
                 _val["state"] = process_tools.PROC_STATUSES_REV[_val["status"]]
         # print etree.tostring(srv_com.tree, pretty_print=True)
@@ -404,11 +434,13 @@ class proclist_command(hm_classes.hm_command):
             ret_a.extend(str(form_list).split("\n"))
         return ret_state, "\n".join(ret_a)
 
+
 class ipckill_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
+
     def __call__(self, srv_com, cur_ns):
         sig_str = "remove all all shm/msg/sem objects for uid %d:%d" % (
             cur_ns.min_uid,
@@ -417,12 +449,12 @@ class ipckill_command(hm_classes.hm_command):
         self.log(sig_str)
         srv_com["ipc_result"] = []
         for ipc_dict in [
-            {"file" : "shm", "key_name" : "shmid", "ipcrm_opt" : "m"},
-            {"file" : "msg", "key_name" : "msqid", "ipcrm_opt" : "q"},
-            {"file" : "sem", "key_name" : "semid", "ipcrm_opt" : "s"},
-            ]:
+            {"file": "shm", "key_name": "shmid", "ipcrm_opt": "m"},
+            {"file": "msg", "key_name": "msqid", "ipcrm_opt": "q"},
+            {"file": "sem", "key_name": "semid", "ipcrm_opt": "s"},
+        ]:
             ipcv_file = "/proc/sysvipc/{}".format(ipc_dict["file"])
-            d_key = ipc_dict["file"]
+            _d_key = ipc_dict["file"]
             cur_typenode = srv_com.builder("ipc_list", ipctype=ipc_dict["file"])
             srv_com["ipc_result"].append(cur_typenode)
             try:
@@ -448,25 +480,36 @@ class ipckill_command(hm_classes.hm_command):
                             rem_stat, rem_out = commands.getstatusoutput(rem_com)
                             # stat, out = (1, "???")
                             if rem_stat:
-                                rem_node.attrib.update({
-                                    "error"  : "1",
-                                    "result" : "error while executing command %s (%d): %s" % (rem_com, rem_stat, rem_out)})
+                                rem_node.attrib.update(
+                                    {
+                                        "error": "1",
+                                        "result": "error while executing command %s (%d): %s" % (rem_com, rem_stat, rem_out)
+                                    }
+                                )
                             else:
-                                rem_node.attrib.update({
-                                    "error"  : "0",
-                                    "result" : "ok deleted %s (%s %d uid %d)" % (ipc_dict["file"], ipc_dict["key_name"], key, act_dict["uid"])})
+                                rem_node.attrib.update(
+                                    {
+                                        "error": "0",
+                                        "result": "ok deleted %s (%s %d uid %d)" % (ipc_dict["file"], ipc_dict["key_name"], key, act_dict["uid"])
+                                    }
+                                )
                             cur_typenode.append(rem_node)
                     if not len(cur_typenode):
                         cur_typenode.attrib["info"] = "nothing to do"
+
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(".//ns:rem_result[@error='0']", smart_strings=False),
-                               srv_com.xpath(".//ns:rem_result[@error='1']", smart_strings=False))
+        ok_list, error_list = (
+            srv_com.xpath(".//ns:rem_result[@error='0']", smart_strings=False),
+            srv_com.xpath(".//ns:rem_result[@error='1']", smart_strings=False)
+        )
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed %s%s" % (
             logging_tools.get_plural("entry", len(ok_list)),
             ", error for %s" % (logging_tools.get_plural("entry", len(error_list))) if error_list else "")
 
+
 class signal_command(hm_classes.hm_command):
     info_str = "send signal to processes"
+
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--signal", dest="signal", type=int, default=15)
@@ -474,8 +517,10 @@ class signal_command(hm_classes.hm_command):
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
         self.parser.add_argument("--exclude", dest="exclude", type=str, default="")
         self.__signal_dict = dict([(getattr(signal, name), name) for name in dir(signal) if name.startswith("SIG") and not name.startswith("SIG_")])
+
     def get_signal_string(self, cur_sig):
         return self.__signal_dict.get(cur_sig, "#%d" % (cur_sig))
+
     def __call__(self, srv_com, cur_ns):
         def priv_check(key, what):
             _name, _uid = (what.name(), what.uids()[0])
@@ -531,7 +576,8 @@ class signal_command(hm_classes.hm_command):
                         error="1" if is_error else "0",
                         result=info_str,
                         cmdline=" ".join(_cmdline)))
-        srv_com["signal_list"].attrib.update({"signal" : "{:d}".format(cur_ns.signal)})
+        srv_com["signal_list"].attrib.update({"signal": "{:d}".format(cur_ns.signal)})
+
     def interpret(self, srv_com, cur_ns):
         ok_list, error_list = (srv_com.xpath(".//ns:signal[@error='0']/text()", smart_strings=False),
                                srv_com.xpath(".//ns:signal[@error='1']/text()", smart_strings=False))
@@ -541,6 +587,7 @@ class signal_command(hm_classes.hm_command):
             self.get_signal_string(cur_sig),
             logging_tools.get_plural("process", len(ok_list) + len(error_list)),
             " (%s)" % (logging_tools.get_plural("problem", len(error_list))) if error_list else "")
+
 
 def find_pids(ptree, check):
     def search(_dict, add, start):
@@ -562,7 +609,7 @@ def find_pids(ptree, check):
             else:
                 r_list = []
             if new_add >= 0:
-                p_dict = {_sp.pid : _sp for _sp in ptree.itervalues() if _sp.is_running() and _sp.ppid() == start}
+                p_dict = {_sp.pid: _sp for _sp in ptree.itervalues() if _sp.is_running() and _sp.ppid() == start}
                 if p_dict:
                     for pid in p_dict.keys():
                         r_list.extend(search(p_dict, add, pid))

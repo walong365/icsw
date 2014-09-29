@@ -17,16 +17,17 @@
 #
 
 from initat.host_monitoring import limits, hm_classes
-from lxml import etree # @UnresolvedImport
+from lxml import etree  # @UnresolvedImport
 import commands
 import logging_tools
 import process_tools
 import server_command
-import sys
+import sys  # @UnusedImport
 try:
     import libvirt_tools
 except:
     libvirt_tools = None
+
 
 class _general(hm_classes.hm_module):
     def init_module(self):
@@ -40,22 +41,26 @@ class _general(hm_classes.hm_module):
             self.libvirt_problem = "libvirt_tools missing"
             self.log("no libvirt_tools found", logging_tools.LOG_LEVEL_WARN)
             self.connection = None
+
     def establish_connection(self):
         if self.connection is None and libvirt_tools:
             self.connection = libvirt_tools.libvirt_connection(log_com=self.log)
             self.log("libvirt connection established")
             self.mv_regs, self.doms_reg = (set(), set())
+
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
             logger.warning("cannot execute {} ({:d}): {}".format(com, stat, out))
             out = ""
         return out.split("\n")
+
     def _save_mv(self, mv, key, info_str, ent, factor, value):
         if key not in self.mv_regs:
             mv.register_entry(key, 0., info_str, ent, factor)
             self.mv_regs.add(key)
         mv[key] = value
+
     def update_machine_vector(self, mv):
         self.establish_connection()
         if self.connection:
@@ -67,6 +72,7 @@ class _general(hm_classes.hm_module):
                 self.connection = None
             else:
                 self._parse_domains(mv)
+
     def _parse_domains(self, mv):
         _c = self.connection
         doms_found = set()
@@ -166,6 +172,7 @@ class _general(hm_classes.hm_module):
                 mv.unregister_tree("virt.{}".format(dom_del))
                 self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.{}.".format(dom_del))])
 
+
 class libvirt_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
@@ -177,12 +184,15 @@ class libvirt_status_command(hm_classes.hm_command):
             else:
                 ret_dict = {}
             srv_com["libvirt"] = ret_dict
+
     def interpret(self, srv_com, cur_ns):
         r_dict = srv_com["libvirt"]
         return self._interpret(r_dict, cur_ns)
+
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(r_dict, parsed_coms)
+
     def _interpret(self, r_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
         if "info" in r_dict:
@@ -196,6 +206,7 @@ class libvirt_status_command(hm_classes.hm_command):
             out_f.append("libvirt is not running")
         return ret_state, ", ".join(out_f)
 
+
 class domain_overview_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
@@ -207,11 +218,14 @@ class domain_overview_command(hm_classes.hm_command):
             else:
                 ret_dict = {}
             srv_com["domain_overview"] = ret_dict
+
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["domain_overview"], cur_ns)
+
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(r_dict, parsed_coms)
+
     def _interpret(self, dom_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
         if "running" in dom_dict and "defined" in dom_dict:
@@ -219,12 +233,13 @@ class domain_overview_command(hm_classes.hm_command):
         else:
             # reorder old-style retunr
             dom_dict = {
-                "running" : dom_dict,
-                "defined" : {}}
+                "running": dom_dict,
+                "defined": {}
+            }
         r_dict = dom_dict["running"]
         d_dict = dom_dict["defined"]
         # generate name lookup
-        name_lut = dict([(value["name"], key) for key, value in r_dict.iteritems()])
+        name_lut = {value["name"]: key for key, value in r_dict.iteritems()}
         all_names = sorted(name_lut.keys())
         for act_name in all_names:
             n_dict = r_dict[name_lut[act_name]]
@@ -239,14 +254,16 @@ class domain_overview_command(hm_classes.hm_command):
             logging_tools.get_plural("domain", len(all_names)),
             ", ".join(out_f))
 
+
 class domain_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
     def __call__(self, srv_com, cur_ns):
         if self.module.libvirt_problem:
             srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
         else:
-            if not "arguments:arg0" in srv_com:
+            if "arguments:arg0" not in srv_com:
                 srv_com.set_result("missing argument", server_command.SRV_REPLY_STATE_ERROR)
             else:
                 self.module.establish_connection()
@@ -255,16 +272,19 @@ class domain_status_command(hm_classes.hm_command):
                 else:
                     ret_dict = {}
                 srv_com["domain_status"] = ret_dict
+
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["domain_status"], cur_ns)
+
     def interpret_old(self, result, parsed_coms):
         r_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(r_dict, parsed_coms)
+
     def _interpret(self, dom_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
         if cur_ns and cur_ns.arguments:
             if "desc" in dom_dict and dom_dict["desc"]:
-                xml_doc = etree.fromstring(dom_dict["desc"])
+                xml_doc = etree.fromstring(dom_dict["desc"])  # @UndefinedVariable
                 # print etree.tostring(xml_doc, pretty_print=True)
                 out_f.append("{}, memory {}, {}, {}, VNC port is {:d}".format(
                     xml_doc.find(".//name").text,

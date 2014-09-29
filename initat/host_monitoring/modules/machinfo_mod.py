@@ -559,8 +559,10 @@ class _general(hm_classes.hm_module):
                 self.log(
                     "error calling self.%s(): %s" % (
                         call_name,
-                        process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_CRITICAL)
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
 
     def _partinfo_int(self):
         # lookup tables for /dev/disk-by

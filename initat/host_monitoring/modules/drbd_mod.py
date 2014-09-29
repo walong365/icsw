@@ -65,8 +65,10 @@ class drbd_status_command(hm_classes.hm_command):
                     c_state = loc_dict["connection_state"].lower()
                     if c_state in ["connected"]:
                         dev_state = limits.nag_STATE_OK
-                    elif c_state in ["unconfigured", "syncsource", "synctarget", "wfconnection", "wfreportparams",
-                                     "pausedsyncs", "pausedsynct", "wfbitmaps", "wfbitmapt"]:
+                    elif c_state in [
+                        "unconfigured", "syncsource", "synctarget", "wfconnection", "wfreportparams",
+                        "pausedsyncs", "pausedsynct", "wfbitmaps", "wfbitmapt"
+                    ]:
                         dev_state = limits.nag_STATE_WARNING
                     else:
                         dev_state = limits.nag_STATE_CRITICAL

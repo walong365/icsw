@@ -23,11 +23,14 @@ import process_tools
 import re
 import time
 
+
 class _general(hm_classes.hm_module):
     def init_module(self):
         self._find_ipsec_command()
+
     def _find_ipsec_command(self):
         self.__ipsec_command = process_tools.find_file("ipsec")
+
     def _exec_command(self, com):
         if com.startswith("."):
             if self.__ipsec_command:
@@ -41,10 +44,13 @@ class _general(hm_classes.hm_module):
             if c_stat:
                 self.log(
                     "cannot execute {} ({:d}): {}".format(
-                        com, c_stat, out or "<NO OUTPUT>"),
-                     logging_tools.LOG_LEVEL_WARN)
+                        com, c_stat, out or "<NO OUTPUT>"
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 out = ""
         return out.split("\n")
+
     def _update_ipsec_status(self):
         # for strongswan
         act_out = self._exec_command(". statusall")
@@ -62,9 +68,13 @@ class _general(hm_classes.hm_module):
                         if first_key.startswith('"'):
                             # connection related
                             con_key = first_key[1:-2]
-                            con_dict.setdefault(con_key, {"flags" : [],
-                                                          "keys" : {},
-                                                          "sa_dict" : {}})
+                            con_dict.setdefault(
+                                con_key, {
+                                    "flags": [],
+                                    "keys": {},
+                                    "sa_dict": {}
+                                }
+                            )
                             parts = [part.strip() for part in (" ".join(parts)).split(";") if part.strip()]
                             for part in parts:
                                 if part.count(": "):
@@ -88,9 +98,11 @@ class _general(hm_classes.hm_module):
                                 parts = [part.strip() for part in (" ".join(parts)).split(";") if part.strip()]
                                 con_dict[con_key]["sa_dict"].setdefault(("con_{:d}.{:d}".format(sa_key, port_num)), []).extend(parts)
         return con_dict
+
     def init_machine_vector(self, mv):
         self.__ipsec_re = re.compile("^\s*(?P<conn_name>\S+){(?P<conn_id>\d+)}:\s+.*\s+(?P<bytes_in>\d+)\s+bytes_i.*\s+(?P<bytes_out>\d+)\s+bytes_o.*$")
         self.__ipsec_conns = {}
+
     def update_machine_vector(self, mv):
         if self.__ipsec_command:
             _lines = [(line, self.__ipsec_re.match(line)) for line in self._exec_command(". statusall") if line.count("bytes_i")]
@@ -112,6 +124,7 @@ class _general(hm_classes.hm_module):
                 self.__ipsec_conns[_del].close(mv)
                 del self.__ipsec_conns[_del]
 
+
 class ipsec_con(object):
     def __init__(self, name, mv):
         self.name = name
@@ -119,6 +132,7 @@ class ipsec_con(object):
         mv.register_entry(self.key("out"), 0, "bytes transmitted for connection {}".format(self.name), "Byte/s", 1024)
         self.__in, self.__out = (0, 0)
         self.__last = None
+
     def feed(self, mv, _in, _out):
         cur_time = time.time()
         if self.__last:
@@ -127,25 +141,31 @@ class ipsec_con(object):
             mv[self.key("out")] = (max(0, _out - self.__out) / diff_time)
         self.__last = cur_time
         self.__in, self.__out = (_in, _out)
+
     def key(self, key):
         return "net.ipsec.{}.{}".format(self.name, key)
+
     def close(self, mv):
         mv.unregister_entry(self.key("in"))
         mv.unregister_entry(self.key("out"))
+
 
 class ipsec_tunnel(object):
     def __init__(self, t_id):
         self.t_id = t_id
         self.__parts = []
         self.__installed = False
+
     def feed(self, _parts):
         _line = " ".join(_parts)
         if _line.count("INSTALLED"):
             self.__installed = True
         self.__parts.append(_line)
         # print "*", self.t_id, self.__parts
+
     def is_ok(self):
         return self.__installed
+
 
 class c_con(object):
     # ipsec client connection
@@ -155,14 +175,17 @@ class c_con(object):
         self.__con_dict = {}
         self.__feedcount = 0
         self.__tunnels = {}
+
     @property
     def con_dict(self):
         return self.__con_dict
+
     def get_master(self):
         if self.__master_connection:
             return self.__master_connection.get_master()
         else:
             return self
+
     def feed(self, _parts, _prev_con):
         _mode = _parts[0][:-1]
         if _mode == "child" and self.__feedcount == 0:
@@ -175,10 +198,12 @@ class c_con(object):
             self.__con_dict.setdefault(_mode, []).append(_parts[1:])
         else:
             self.__con_dict.setdefault("info", []).append(_parts)
+
     def feed_tunnel(self, _id, _parts):
         if _id not in self.__tunnels:
             self.__tunnels[_id] = ipsec_tunnel(_id)
         self.__tunnels[_id].feed(_parts)
+
     def tunnel_ok(self):
         if self.__tunnels:
             return any([_tunnel.is_ok() for _tunnel in self.__tunnels.itervalues()])
@@ -186,17 +211,22 @@ class c_con(object):
             # no tunnels
             return False
 
+
 class ipsec_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
     def __call__(self, srv_com, cur_ns):
         srv_com["ipsec_status"] = self.module._update_ipsec_status()
+
     def interpret(self, srv_com, cur_ns):
         con_dict = srv_com["ipsec_status"]
         return self._interpret(con_dict, cur_ns)
+
     def interpret_old(self, result, parsed_coms):
         con_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(con_dict, parsed_coms)
+
     def _interpret(self, con_dict, cur_ns):
         if cur_ns.arguments:
             first_arg = cur_ns.arguments[0]
@@ -275,7 +305,7 @@ class ipsec_status_command(hm_classes.hm_command):
                     return ret_state, ", ".join(ret_list)
                 else:
                     return limits.nag_STATE_WARNING, "no connections defined"
-            elif con_dict.has_key(first_arg):
+            elif first_arg in con_dict:
                 con_stuff = con_dict[first_arg]
                 ret_state, ret_list = (limits.nag_STATE_OK, [])
                 if "erouted" in con_stuff["flags"]:
@@ -293,4 +323,3 @@ class ipsec_status_command(hm_classes.hm_command):
                 return limits.nag_STATE_CRITICAL, "error connection '{}' not found (defined: {})".format(
                     first_arg,
                     ", ".join(sorted(con_dict)) or "none")
-

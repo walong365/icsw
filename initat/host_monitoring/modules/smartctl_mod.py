@@ -25,17 +25,21 @@ import logging_tools
 import process_tools
 import server_command
 
+
 class _general(hm_classes.hm_module):
     def base_init(self):
         self.smartctl_bin = None
         self.devices = {}
+
     def check_for_smartctl(self):
         _was_there = True if self.smartctl_bin else False
         self.smartctl_bin = process_tools.find_file("smartctl")
         if not _was_there and self.smartctl_bin:
             self._check_devices()
+
     def init_module(self):
         self.check_for_smartctl()
+
     def _check_devices(self):
         _stat, _lines = self.smcall("--scan")
         if not _stat:
@@ -45,35 +49,41 @@ class _general(hm_classes.hm_module):
                     _dev_name, _dev_opts = line.split(None, 1)
                     self.log("found device {} ({})".format(_dev_name, _dev_opts))
                     self.devices[_dev_name] = {
-                        "opts"   : _dev_opts,
-                        "device" : _dev_name,
+                        "opts": _dev_opts,
+                        "device": _dev_name,
                     }
                 except:
                     self.log("error parsing line '{}': {}".format(line, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+
     def smcall(self, args):
         cmd_line = "{} {}".format(self.smartctl_bin, args)
         c_stat, c_out = commands.getstatusoutput(cmd_line)
         if c_stat:
-            self.log("error calling {} ({:d}): {}".format(
-                cmd_line,
-                c_stat,
-                c_out,
-                ))
+            self.log(
+                "error calling {} ({:d}): {}".format(
+                    cmd_line,
+                    c_stat,
+                    c_out,
+                )
+            )
         return c_stat, c_out.split("\n")
+
     def update_smart(self, dev_list=[]):
         dev_list = dev_list or self.devices.keys()
         for dev in dev_list:
             c_stat, c_out = self.smcall("-a {} -q errorsonly".format(dev))
             self.devices[dev].update(
                 {
-                    "check_result" : c_stat,
-                    "check_output" : c_out,
+                    "check_result": c_stat,
+                    "check_output": c_out,
                 }
             )
+
 
 class smartstat_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True, arguments_name="interface")
+
     def __call__(self, srv_com, cur_ns):
         self.module.check_for_smartctl()
         if self.module.smartctl_bin:
@@ -95,6 +105,7 @@ class smartstat_command(hm_classes.hm_command):
                 "no smartctl binary found",
                 server_command.SRV_REPLY_STATE_ERROR,
             )
+
     def interpret(self, srv_com, cur_ns):
         smartstat = srv_com["*smartstat"]
         if smartstat:
@@ -113,4 +124,3 @@ class smartstat_command(hm_classes.hm_command):
         else:
             ret_state, ret_str = limits.nag_STATE_WARNING, "no devices found"
         return ret_state, ret_str
-
