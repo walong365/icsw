@@ -25,7 +25,7 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
     group_object_permission, user_permission, user_object_permission, user_quota_setting, \
-    group_quota_setting
+    group_quota_setting, user_scan_result, user_scan_run
 
 __all__ = [
     "csw_permission_serializer",
@@ -38,6 +38,8 @@ __all__ = [
     "user_object_permission_serializer",
     "user_quota_setting_serializer",
     "group_quota_setting_serializer",
+    "user_scan_run_serializer",
+    "user_scan_result_serializer",
 ]
 
 
@@ -108,7 +110,8 @@ class user_serializer(serializers.ModelSerializer):
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
-            "home_dir_created", "user_quota_setting_set", "info",
+            "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
+            "only_webfrontend",
         )
 
 
@@ -121,7 +124,8 @@ class user_flat_serializer(serializers.ModelSerializer):
             "idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
-            "info",
+            "info", "scan_user_home", "scan_depth",
+            "only_webfrontend",
         )
 
 
@@ -138,3 +142,15 @@ class group_serializer(serializers.ModelSerializer):
             "allowed_device_groups", "group_permission_set", "group_object_permission_set",
             "group_quota_setting_set",
         )
+
+
+class user_scan_run_serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = user_scan_run
+
+
+class user_scan_result_serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = user_scan_result

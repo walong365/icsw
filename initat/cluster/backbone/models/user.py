@@ -55,6 +55,8 @@ __all__ = [
     "group_quota_setting",
     "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
     "AC_MASK_DICT",
+    "user_scan_run",
+    "user_scan_result",
 ]
 
 
@@ -587,10 +589,15 @@ class user(models.Model):
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_user_perms", blank=True, through=user_object_permission)
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
+    only_webfrontend = models.BooleanField(default=False)
     # create rms user ?
     create_rms_user = models.BooleanField(default=False)
     # rms user created ?
     rms_user_created = models.BooleanField(default=False)
+    # scan files in home dir ?
+    scan_user_home = models.BooleanField(default=False)
+    # scan depth
+    scan_depth = models.IntegerField(default=2)
 
     @property
     def is_anonymous(self):
@@ -1080,6 +1087,35 @@ class user_quota_setting(quota_setting):
 
 class group_quota_setting(quota_setting):
     group = models.ForeignKey("backbone.group")
+
+    class Meta:
+        app_label = "backbone"
+
+
+class user_scan_run(models.Model):
+    # user scan run, at most one scan run should be current
+    idx = models.AutoField(primary_key=True)
+    user = models.ForeignKey("backbone.user")
+    date = models.DateTimeField(auto_now_add=True)
+    # start with False, switch to True when this one becomes active
+    current = models.BooleanField(default=False)
+
+    class Meta:
+        app_label = "backbone"
+
+
+class user_scan_result(models.Model):
+    idx = models.AutoField(primary_key=True)
+    user_scan_run = models.ForeignKey("backbone.user_scan_run")
+    # parent dir (or empty if top level dir)
+    parent_dir = models.ForeignKey("self", null=True)
+    # name of dir (relative to parent dir)
+    name = models.CharField(max_length=384, default="")
+    # size of current dir
+    size = models.BigIntegerField(default=0)
+    # size of current dir and all subdirs
+    size_total = models.BigIntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = "backbone"
