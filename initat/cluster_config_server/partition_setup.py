@@ -32,7 +32,9 @@ class partition_setup(object):
         part_valid = False
         part_list = partition.objects.filter(
             Q(partition_disc__partition_table=conf.conf_dict["device"].partition_table)
-        ).select_related("partition_disc", "partition_disc__partition_table", "partition_fs")  # @UndefinedVariable
+        ).select_related(
+            "partition_disc", "partition_disc__partition_table", "partition_fs"
+        )
         if len(part_list):
             part_valid = True
             disc_dict, fstab, sfdisk, parted = ({}, [], [], [])
