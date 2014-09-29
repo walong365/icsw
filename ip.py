@@ -61,17 +61,19 @@ IP_MSS = 576
 import re
 rx_addr = re.compile('\([0-9]+\)\.\([0-9]+\)\.\([0-9]+\)\.\([0-9]+\)')
 
+
 def dotted_to_int(s, rx=rx_addr):
     if rx.match(s) == -1:
-        raise ValueError, "not a valid IP address"
-    parts = map(lambda x:chr(x), map(string.atoi, rx.group(1, 2, 3, 4)))
+        raise ValueError("not a valid IP address")
+    parts = map(lambda x: chr(x), map(string.atoi, rx.group(1, 2, 3, 4)))
     return string.join(parts, '')
+
 
 class Packet:
     """An IP packet.
 
     Doesn't handle IP options yet (but you have the option of adding
-    support).  
+    support).
     """
 
     def __init__(self, packet=None, cksum=0):
@@ -79,9 +81,9 @@ class Packet:
             self.__disassemble(packet, cksum)
         else:
             self.v = IPVERSION
-            self.hl = 5        # this implement punts on options
+            self.hl = 5  # this implement punts on options
             self.tos = IPTOS_PREC_ROUTINE
-            self.len = 20      # begin with header length
+            self.len = 20  # begin with header length
             self.id = 0
             self.off = 0
             self.ttl = 0
@@ -92,9 +94,14 @@ class Packet:
             self.data = ''
 
     def __repr__(self):
-        begin = "<IPv%d id=%d proto=%d src=%s dst=%s datalen=%d " % \
-               (self.v, self.id, self.p, self.src, self.dst,
-                self.len - self.hl * 4)
+        begin = "<IPv%d id=%d proto=%d src=%s dst=%s datalen=%d " % (
+            self.v,
+            self.id,
+            self.p,
+            self.src,
+            self.dst,
+            self.len - self.hl * 4
+        )
         if len(self.data) == 0:
             rep = begin + "\'\'>"
         elif len(self.data) < 10:
@@ -109,22 +116,24 @@ class Packet:
         self.len = self.hl * 4 + len(self.data)
         self.__parse_addrs()
         # create the packet
-        header =  struct.pack('cchhhcc',
-                              chr((self.v & 0x0f) << 4 
-                                  | (self.hl & 0x0f)),    # 4bits each
-                              chr(self.tos & 0xff),
-                              self.len,
-                              self.id,
-                              self.off,     # what about flags?
-                              chr(self.ttl & 0xff),
-                              chr(self.p & 0xff))
+        header = struct.pack(
+            'cchhhcc',
+            chr(
+                (self.v & 0x0f) << 4 | (self.hl & 0x0f)
+            ),  # 4bits each
+            chr(self.tos & 0xff),
+            self.len,
+            self.id,
+            self.off,  # what about flags?
+            chr(self.ttl & 0xff),
+            chr(self.p & 0xff)
+        )
         if cksum:
             self.sum = inet.cksum(header + '\000\000' + self.__src +
                                   self.__dst)
-            packet = header + struct.pack('h', self.sum) \
-                     + self.__src + self.__dst
+            packet = header + struct.pack('h', self.sum) + self.__src + self.__dst
         else:
-            packet = header + '\000\000' + self.__src + self.__dst 
+            packet = header + '\000\000' + self.__src + self.__dst
         packet = packet + self.data
 
         self.__packet = inet.iph2net(packet)
@@ -137,29 +146,29 @@ class Packet:
             try:
                 self.__src = dotted_to_int(socket.gethostbyname(self.src))
             except ValueError:
-                raise ValueError, "invalid source address"
+                raise ValueError("invalid source address")
         try:
             self.__dst = dotted_to_int(self.dst)
         except ValueError:
             try:
                 self.__dst = dotted_to_int(socket.gethostbyname(self.dst))
             except ValueError:
-                raise ValueError, "invalid source address"
+                raise ValueError("invalid source address")
 
     def __unparse_addrs(self):
         src = struct.unpack('cccc', self.src)
-        self.src = string.joinfields(map(lambda x:str(ord(x)), src), '.')
+        self.src = string.joinfields(map(lambda x: str(ord(x)), src), '.')
         dst = struct.unpack('cccc', self.dst)
-        self.dst = string.joinfields(map(lambda x:str(ord(x)), dst), '.')
+        self.dst = string.joinfields(map(lambda x: str(ord(x)), dst), '.')
 
     def __disassemble(self, raw_packet, cksum=0):
-        # The kernel computes the checksum, even on a raw packet. 
+        # The kernel computes the checksum, even on a raw packet.
         packet = inet.net2iph(raw_packet)
         b1 = ord(packet[0])
         self.v = (b1 >> 4) & 0x0f
         self.hl = b1 & 0x0f
         if self.v != IPVERSION:
-            raise ValueError, "cannot handle IPv%d packets" % self.v
+            raise ValueError("cannot handle IPv%d packets" % (self.v))
         hl = self.hl * 4
 
         # verify the checksum
@@ -167,19 +176,18 @@ class Packet:
         if cksum:
             our_cksum = inet.cksum(packet[:20])
             if our_cksum != 0:
-                raise ValueError, packet
+                raise ValueError(packet)
 
         # unpack the fields
-        elts = struct.unpack('cchhhcc', packet[:hl-10])
+        elts = struct.unpack('cchhhcc', packet[:hl - 10])
         # struct didn't do !<> when this was written
-        self.tos = ord(elts[1]) 
+        self.tos = ord(elts[1])
         self.len = elts[2] & 0xffff
         self.id = elts[3] & 0xffff
         self.off = elts[4] & 0xffff
         self.ttl = ord(elts[5])
         self.p = ord(elts[6])
         self.data = packet[hl:]
-        self.src = packet[hl-8:hl-4]
-        self.dst = packet[hl-4:hl]
+        self.src = packet[hl - 8:hl - 4]
+        self.dst = packet[hl - 4:hl]
         self.__unparse_addrs()
-

@@ -33,10 +33,16 @@ class disclaimer_handler(object):
         # has to be UTF-8 encoded
         _ui_name = "/etc/postfix/user_info.xml"
         try:
-            _parser = etree.XMLParser(recover=False, encoding="utf-8")
-            self.ui_tree = etree.parse(StringIO(codecs.open(_ui_name, "r", "utf-8").read()), _parser)
+            _parser = etree.XMLParser(recover=False, encoding="utf-8")  # @UndefinedVariable
+            self.ui_tree = etree.parse(StringIO(codecs.open(_ui_name, "r", "utf-8").read()), _parser)  # @UndefinedVariable
         except:
-            self.log("error reading ui_tree {}: {}".format(_ui_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error reading ui_tree {}: {}".format(
+                    _ui_name,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             self.ui_tree = None
         else:
             self.log("read user_info from {} ({})".format(
@@ -60,10 +66,10 @@ class disclaimer_handler(object):
     def _parse_from_to(self, _email):
         _rewrite, _from_address = (False, "")
         try:
-            _from_list = [email.utils.parseaddr(_email["From"])]
-            _to_list = [email.utils.parseaddr(_value) for _value in _email["To"].split(",")]
+            _from_list = [email.utils.parseaddr(_email["From"])]  # @UndefinedVariable
+            _to_list = [email.utils.parseaddr(_value) for _value in _email["To"].split(",")]  # @UndefinedVariable
             if _email["Cc"]:
-                _cc_list = [email.utils.parseaddr(_value) for _value in _email["Cc"].split(",")]
+                _cc_list = [email.utils.parseaddr(_value) for _value in _email["Cc"].split(",")]  # @UndefinedVariable
                 self.log("cc list: {}".format(_cc_list))
             else:
                 _cc_list = []

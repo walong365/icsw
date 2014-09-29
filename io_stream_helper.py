@@ -42,9 +42,9 @@ class io_stream(object):
         zmq_context = kwargs.get("zmq_context", None)
         if zmq_context is None:
             zmq_context = zmq.Context()
-        self.__zmq_sock = zmq_context.socket(zmq.PUSH)
+        self.__zmq_sock = zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
         self.__zmq_sock.connect(self.__sock_name)
-        self.__zmq_sock.setsockopt(zmq.LINGER, 60)
+        self.__zmq_sock.setsockopt(zmq.LINGER, 60)  # @UndefinedVariable
         self.__buffer = u""
         if kwargs.get("register_atexit", True):
             atexit.register(self.close)
@@ -90,7 +90,7 @@ class io_stream(object):
 
     def fileno(self):
         # dangerous, do not use
-        return self.__zmq_sock.getsockopt(zmq.FD)
+        return self.__zmq_sock.getsockopt(zmq.FD)  # @UndefinedVariable
 
     def close(self):
         if self.__zmq_sock:
