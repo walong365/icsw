@@ -45,6 +45,7 @@ import server_command
 import sys
 import threading
 import time
+import datetime
 from collections import namedtuple
 
 try:
@@ -172,6 +173,11 @@ def _fetch_rms_info(request):
     # call my_sge_info.update() before calling this!
     run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
     wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
+
+    if RMS_ADDONS:
+        for change_obj in RMS_ADDONS:
+            change_obj.modify_running_jobs(my_sge_info, run_job_list)
+            change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
     return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])(run_job_list, wait_job_list)
 
 
@@ -187,8 +193,6 @@ class get_rms_json(View):
         if RMS_ADDONS:
             for change_obj in RMS_ADDONS:
                 change_obj.set_headers(rms_headers(request))
-                change_obj.modify_running_jobs(my_sge_info, rms_info.run_job_list)
-                change_obj.modify_waiting_jobs(my_sge_info, rms_info.wait_job_list)
                 change_obj.modify_nodes(my_sge_info, node_list)
         fc_dict = {}
         cur_time = time.time()
@@ -241,10 +245,16 @@ class get_rms_jobinfo(View):
         _post = request.POST
         my_sge_info.update()
         rms_info = _fetch_rms_info(request)
+
+        latest_possible_end_time = datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"]))
+        done_jobs = rms_job_run.objects.all().filter(
+            Q(end_time__gt=latest_possible_end_time)
+        )
+
         json_resp = {
             "jobs_running": len(rms_info.run_job_list),
             "jobs_waiting": len(rms_info.wait_job_list),
-            "jobs_finished_last_60_min": len(rms_info.wait_job_list),
+            "jobs_finished": len(done_jobs),
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
@@ -417,4 +427,3 @@ class get_user_setting(View):
             else:
                 json_resp[t_name] = []
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
-

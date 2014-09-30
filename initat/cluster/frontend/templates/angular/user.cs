@@ -38,8 +38,21 @@ enter_password_template = """
 
 jobinfo_template = """
 		jobs running:  {{ jobs_running }} 
-			<br/>
+		<br/>
+
 		jobs waiting:  {{ jobs_waiting }} 
+		<br/>
+
+		jobs finished in 
+		<div class="btn-group">
+		    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+		        <span class="glyphicon glyphicon-dashboard"></span>
+		        {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
+		    </button>: {{ jobs_finished }}
+		    <ul class="dropdown-menu">
+		        <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
+		    </ul>
+		</div>
 """
 		
 quota_settings_template = """
@@ -603,18 +616,36 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             $scope.$broadcast("icsw.enter_password")
 ]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
-        $scope.jobs_running = 0
         $scope.jobs_waiting = 0
-        call_ajax
-            url      : "{% url 'rms:get_rms_jobinfo' %}"
-            dataType : "json"
-            success  : (json) =>
-                #console.log json
-                console.log json
-                $scope.$apply(
-                        $scope.jobs_running = json.jobs_running
-                        $scope.jobs_waiting = json.jobs_waiting
-                        )
+        $scope.jobs_running = 0
+        $scope.jobs_finished = 0
+        class jobinfo_timedelta
+            constructor: (@name, @timedelta_description) ->
+        $scope.all_timedeltas = [
+            new jobinfo_timedelta("last 15 minutes", [15, "minutes"])
+            new jobinfo_timedelta("last hour", [1, "hours"])
+            new jobinfo_timedelta("last 4 hours", [4, "hours"])
+            new jobinfo_timedelta("last day", [1, "days"])
+            new jobinfo_timedelta("last week", [1, "weeks"])
+        ]
+        $scope.set_jobinfo_timedelta = (ts) ->
+            $scope.last_jobinfo_timedelta = ts
+            jobsfrom = moment().subtract(
+                    ts.timedelta_description[0],
+                    ts.timedelta_description[1]
+                    ).unix()
+            call_ajax
+                  url      : "{% url 'rms:get_rms_jobinfo' %}"
+                  data     :
+                      "jobinfo_jobsfrom" : jobsfrom
+                  dataType : "json"
+                  success  : (json) =>
+                      $scope.$apply(
+                              $scope.jobs_running = json.jobs_running
+                              $scope.jobs_waiting = json.jobs_waiting
+                              $scope.jobs_finished = json.jobs_finished
+                              )
+        $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
