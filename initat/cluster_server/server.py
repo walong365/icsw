@@ -21,7 +21,7 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.cluster_server.background import usv_server, quota
+from initat.cluster_server.capabilities import capability_process
 from initat.cluster_server.backup_process import backup_process
 from initat.cluster_server.config import global_config
 from initat.cluster_server.notify import notify_mixin
@@ -46,7 +46,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.__run_command = True if global_config["COMMAND"].strip() else False
         # close DB conncetion (daemonize)
-        connection.close()
         if self.__run_command:
             # rewrite LOG_NAME and PID_NAME
             global_config["PID_NAME"] = "{}-direct-{}-{:d}".format(
@@ -60,13 +59,14 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         self._re_insert_config()
+        self.add_process(capability_process("capability_process"), start=True)
+        connection.close()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("bg_finished", self._bg_finished)
         self._log_config()
         self._check_uuid()
         self._load_modules()
-        self._init_capabilities()
         self.__options = options
         self._set_next_backup_time(True)
         if self.__run_command:
@@ -106,20 +106,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
         func_name = args[2]
         self.log("background task for '{}' finished".format(func_name))
         initat.cluster_server.modules.command_dict[func_name].Meta.cur_running -= 1
-
-    def _init_capabilities(self):
-        self.log("init server capabilities")
-        self.__server_cap_dict = {
-            "usv_server": usv_server.usv_server_stuff(self),
-            "quota_scan": quota.quota_stuff(self),
-            # "dummy"      : dummy_stuff(self),
-            }
-        self.__cap_list = []
-        for key, _value in self.__server_cap_dict.iteritems():
-            _sql_info = config_tools.server_check(server_type=key)
-            if _sql_info.effective_device:
-                self.__cap_list.append(key)
-            self.log("capability {}: {}".format(key, "enabled" if key in self.__cap_list else "disabled"))
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -213,8 +199,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
             if self.com_socket:
                 self.log("closing socket")
                 self.com_socket.close()
-            if self.vector_socket:
-                self.vector_socket.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -246,13 +230,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
             else:
                 self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
         self.com_socket = client
-        # connection to local collserver socket
-        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-        vector_socket.connect(conn_str)
-        self.vector_socket = vector_socket
-        self.log("connected vector_socket to {}".format(conn_str))
 
     def _recv_command(self, zmq_sock):
         data = []
@@ -377,7 +354,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
         return _send_return
 
     def _update(self):
-        cur_time = time.time()
         cur_dt = datetime.datetime.now().replace(microsecond=0)
         if not global_config["DEBUG"]:
             cur_dt = cur_dt.replace(minute=0, second=0)
@@ -390,10 +366,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
                 "start_backup",
             )
             connection.close()
-        drop_com = server_command.srv_command(command="set_vector")
-        for cap_name in self.__cap_list:
-            self.__server_cap_dict[cap_name](cur_time, drop_com)
-        self.vector_socket.send_unicode(unicode(drop_com))
 
     def send_to_server(self, conn_str, srv_uuid, srv_com, **kwargs):
         _success = True

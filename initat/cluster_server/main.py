@@ -167,6 +167,7 @@ def main():
         ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
         ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
         ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
+        ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
     ])
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     if not global_config["DEBUG"] and not global_config["COMMAND"]:

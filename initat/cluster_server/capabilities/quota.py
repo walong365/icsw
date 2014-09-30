@@ -22,7 +22,7 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, quota_capable_blockdevice, \
     user_quota_setting, group_quota_setting, device, partition_fs
-from initat.cluster_server.background.base import bg_stuff
+from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
 import commands
@@ -290,34 +290,6 @@ class quota_stuff(bg_stuff):
 
     def _get_gid_info(self, gid, default=None):
         return self.__group_dict.get(gid, None)
-
-    # def init_machvector(self):
-    #    self.wakeup()
-    #    ret_list = []
-    #    for dev_name, uid, _u_stuff in self.__quota_cache:
-    #        u_name = self._get_uid_info(uid, {}).get("login", "unknown")
-    #        ret_list.extend(
-    #            [
-    #                "quota.%s.%s.soft:0:Soft Limit for user $3 on $2:B:1000:1000" % (dev_name, u_name),
-    #                "quota.%s.%s.hard:0:Hard Limit for user $3 on $2:B:1000:1000" % (dev_name, u_name),
-    #                "quota.%s.%s.used:0:Used quota for user $3 on $2:B:1000:1000" % (dev_name, u_name)
-    #            ]
-    #        )
-    #    return ret_list
-
-    # def get_machvector(self):
-    #    ret_list = []
-    #    for dev_name, uid, u_stuff in self.__quota_cache:
-    #        u_name = self._get_uid_info(uid, {}).get("login", "unknown")
-    #        block_dict = u_stuff.get_block_dict()
-    #        ret_list.extend(
-    #            [
-    #                "quota.%s.%s.soft:i:%d" % (dev_name, u_name, block_dict["soft"]),
-    #                "quota.%s.%s.hard:i:%d" % (dev_name, u_name, block_dict["hard"]),
-    #                "quota.%s.%s.used:i:%d" % (dev_name, u_name, block_dict["used"])
-    #            ]
-    #        )
-    #    return ret_list
 
     def _call(self, cur_time, builder):
         sep_str = "-" * 64

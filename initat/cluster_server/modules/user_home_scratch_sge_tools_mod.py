@@ -28,7 +28,6 @@ import os
 import process_tools
 import server_command
 import shutil
-import sys
 import tempfile
 
 
@@ -47,7 +46,7 @@ class create_user_home(cs_base_class.server_com):
         # createdir : used for creation
         # when using NFSv4 createdir can be different from homeexport (homeexport is for instance relative to nfsv4root)
         try:
-            cur_user = user.objects.select_related("group").get(Q(login=cur_inst.option_dict["username"]))
+            cur_user = user.objects.select_related("group").get(Q(login=cur_inst.option_dict["username"]))  # @UndefinedVariable
         except user.DoesNotExist:  # @UndefinedVariable
             cur_inst.srv_com.set_result(
                 "cannot find user '{}'".format(cur_inst.option_dict["username"]),
@@ -56,9 +55,21 @@ class create_user_home(cs_base_class.server_com):
         else:
             # get homedir and / or createdir of export entry
             hd_exports = config_str.objects.filter(
-                (Q(name="homeexport") | Q(name="createdir")) &
-                Q(config__device_config=cur_user.export))
-            if not len(hd_exports):
+                (
+                    Q(name="homeexport") | Q(name="createdir")
+                ) & Q(config__device_config=cur_user.export)
+            )
+            if cur_user.only_webfrontend:
+                cur_inst.srv_com.set_result(
+                    "user '{}' is only valid for webfrontend".format(cur_inst.option_dict["username"]),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
+            elif not cur_user.active:
+                cur_inst.srv_com.set_result(
+                    "user '{}' is not active".format(cur_inst.option_dict["username"]),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
+            elif not len(hd_exports):
                 cur_inst.srv_com.set_result(
                     "no createdir / homeexport found for user '{}'".format(cur_inst.option_dict["username"]),
                     server_command.SRV_REPLY_STATE_ERROR
@@ -174,35 +185,12 @@ class create_user_home(cs_base_class.server_com):
                         server_command.SRV_REPLY_STATE_ERROR
                     )
 
-# class delete_user_home(cs_base_class.server_com):
-#    class Meta:
-#        needed_option_keys = ["username"]
-#    def _call(self, cur_inst):
-#        user = cur_inst.option_dict["username"]
-#        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-#        if self.dc.rowcount == 1:
-#            dset = self.dc.fetchone()
-#            full_home = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(global_config["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
-#            if os.path.isdir(full_home):
-#                shutil.rmtree(full_home, 1)
-#                cur_inst.srv_com.set_result(
-#                    "deleted homedirectory '{}' for user '{}'".format(full_home, user)
-#                )
-#            else:
-#                cur_inst.srv_com.set_result(
-#                    "no homedirecotry '{}' for user '{}'".format(full_home, user),
-#                    server_command.SRV_REPLY_STATE_ERROR
-#                )
-#        else:
-#            cur_inst.srv_com.set_result(
-#                "cannot find user '{}'".format(user),
-#                server_command.SRV_REPLY_STATE_ERROR
-#            )
 
 class create_sge_user(cs_base_class.server_com):
     class Meta:
         needed_configs = ["sge_server"]
         needed_option_keys = ["username"]
+
     def _call(self, cur_inst):
         # get fairshare-value
         self.dc.execute("SELECT ci.value FROM new_config c, config_int ci, device_config dc WHERE ci.new_config=c.new_config_idx AND ci.name='fairshare' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='sge_server'" % (global_config["SERVER_IDX"]))
@@ -217,11 +205,11 @@ class create_sge_user(cs_base_class.server_com):
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            _sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error sge-/etc/files not found"
+                "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply": "error sge-/etc/files not found"
             })
         else:
             if os.path.isfile("%s/%s/common/product_mode" % (sge_root, sge_cell)):
@@ -239,32 +227,34 @@ class create_sge_user(cs_base_class.server_com):
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
             if cstat:
                 cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error cannot create SGE user %s: '%s'" % (user, cout)
+                    "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply": "error cannot create SGE user %s: '%s'" % (user, cout)
                 })
             else:
                 cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                    "reply" : "ok created user %s for SGE (%s)" % (user, f_str)
+                    "state": "%d" % (server_command.SRV_REPLY_STATE_OK),
+                    "reply": "ok created user %s for SGE (%s)" % (user, f_str)
                 })
             try:
                 os.unlink(tmp_name)
             except:
                 pass
 
+
 class delete_sge_user(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["username"]
+
     def _call(self, cur_inst):
         user = cur_inst.option_dict["username"]
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            _sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error sge-/etc/files not found"
+                "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply": "error sge-/etc/files not found"
             })
         else:
             os.environ["SGE_ROOT"] = sge_root
@@ -272,97 +262,60 @@ class delete_sge_user(cs_base_class.server_com):
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, user))
             if cstat:
                 cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error cannot delete SGE user %s: '%s'" % (user, cout)
+                    "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply": "error cannot delete SGE user %s: '%s'" % (user, cout)
                 })
             else:
                 cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                    "reply" : "ok deleted user %s for SGE" % (user)
+                    "state": "%d" % (server_command.SRV_REPLY_STATE_OK),
+                    "reply": "ok deleted user %s for SGE" % (user)
                 })
+
 
 class rename_sge_user(cs_base_class.server_com):
     class Meta:
         needed_configs = ["sge_server"]
         needed_option_keys = ["username", "old_username"]
+
     def _call(self, cur_inst):
         user, old_user = (cur_inst.option_dict["username"],
                           cur_inst.option_dict["old_username"])
         try:
             sge_root = file("/etc/sge_root", "r").readline().strip()
             sge_cell = file("/etc/sge_cell", "r").readline().strip()
-            sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
+            _sge_stat, sge_arch = commands.getstatusoutput("/%s/util/arch" % (sge_root))
         except:
             cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error sge-/etc/files not found"
+                "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                "reply": "error sge-/etc/files not found"
             })
         else:
-            if os.path.isfile("%s/%s/common/product_mode" % (sge_root, sge_cell)):
-                sge60 = False
-            else:
-                sge60 = True
             cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -suser %s" % (sge_root, sge_arch, old_user))
             if cstat:
                 cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error cannot fetch info for SGE user %s: %s" % (old_user, cout)
+                    "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply": "error cannot fetch info for SGE user %s: %s" % (old_user, cout)
                 })
             else:
                 user_dict = dict([(a, b) for a, b in [x.strip().split(None, 1) for x in cout.strip().split("\n")] if a != "name"])
                 user_dict["name"] = user
                 tmp_name = tempfile.mktemp("sge")
-                tf = file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.iteritems()]))
+                _tf = file(tmp_name, "w").write("\n".join(["%s %s" % (k, v) for k, v in user_dict.iteritems()]))
                 os.environ["SGE_ROOT"] = sge_root
                 os.environ["SGE_CELL"] = sge_cell
                 commands.getstatusoutput("/%s/bin/%s/qconf -duser %s" % (sge_root, sge_arch, old_user))
                 cstat, cout = commands.getstatusoutput("/%s/bin/%s/qconf -Auser %s" % (sge_root, sge_arch, tmp_name))
                 if cstat:
                     cur_inst.srv_com["result"].attrib.update({
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                        "reply" : "error cannot create modified SGE user %s: '%s'" % (user, cout)
+                        "state": "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                        "reply": "error cannot create modified SGE user %s: '%s'" % (user, cout)
                     })
                 else:
                     cur_inst.srv_com["result"].attrib.update({
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                        "reply" : "ok modified SGE user %s" % (user)
+                        "state": "%d" % (server_command.SRV_REPLY_STATE_OK),
+                        "reply": "ok modified SGE user %s" % (user)
                     })
                 try:
                     os.unlink(tmp_name)
                 except:
                     pass
-
-class create_user_quota(cs_base_class.server_com):
-    class Meta:
-        needed_configs = ["quota"]
-        needed_option_keys = ["username"]
-    def _call(self, cur_inst):
-        self.dc.execute("SELECT cs.value FROM new_config c, config_str cs, device_config dc WHERE cs.new_config=c.new_config_idx AND cs.name='dummyuser' AND dc.new_config=c.new_config_idx AND dc.device=%d AND c.name='quota'" % (global_config["SERVER_IDX"]))
-        if self.dc.rowcount == 1:
-            quota_prot = self.dc.fetchone()["value"]
-            user = cur_inst.option_dict["username"]
-            cstat, cout = commands.getstatusoutput("/usr/sbin/edquota -p %s %s" % (quota_prot, user))
-            if cstat:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error cannot duplicate quotas for user %s from proto %s: '%s'" % (user, quota_prot, cout)
-                })
-            else:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                    "reply" : "ok duplicated quotas for user %s from proto %s" % (user, quota_prot)
-                })
-        elif self.dc.rowcount:
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error more than one quota-config found (%d)" % (self.dc.rowcount)
-            })
-        else:
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error quotas not configured"
-            })
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

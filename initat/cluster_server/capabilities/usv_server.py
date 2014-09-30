@@ -17,7 +17,7 @@
 #
 """ cluster-server, USV handling """
 
-from initat.cluster_server.background.base import bg_stuff
+from initat.cluster_server.capabilities.base import bg_stuff
 import commands
 import logging_tools
 

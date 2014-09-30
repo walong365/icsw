@@ -601,7 +601,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
             if ld_read and ld_write:
                 # fetch user / group info
                 all_groups = {cur_g.pk: cur_g for cur_g in group.objects.all()}
-                all_users = {cur_u.pk: cur_u for cur_u in user.objects.all().prefetch_related("secondary_groups")}  # @UndefinedVariable
+                all_users = {cur_u.pk: cur_u for cur_u in user.objects.filter(Q(only_webfrontend=False)).prefetch_related("secondary_groups")}  # @UndefinedVariable
                 # not used right now
                 devlog_dict = {}
                 # luts
