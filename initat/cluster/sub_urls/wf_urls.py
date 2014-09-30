@@ -33,6 +33,7 @@ rms_patterns = patterns(
     url(r"get_file_content", rms_views.get_file_content.as_view(), name="get_file_content"),
     url(r"set_user_setting", rms_views.set_user_setting.as_view(), name="set_user_setting"),
     url(r"get_user_setting", rms_views.get_user_setting.as_view(), name="get_user_setting"),
+    url(r"get_jobinfo", rms_views.get_jobinfo.as_view(), name="get_jobinfo"),
 )
 
 

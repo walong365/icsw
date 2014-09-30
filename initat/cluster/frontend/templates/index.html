@@ -99,6 +99,14 @@
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': vdesktop_open, 'glyphicon-chevron-right': !vdesktop_open}"></i>
             </accordion-heading>
             <vnc host="127.0.0.1" port="5902" is-connected="true" password="init4u" display="{width:1880,height:800,fitTo:'width',}"></vnc>
+        <accordion-group is-open="jobinfo_open"> <!-- TODO: if jobserver is available --> 
+            <accordion-heading>
+            	Job info
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>
+            </accordion-heading>
+            <div ng-controller="jobinfo_ctrl">
+                <jobinfo/>
+            </div>
         </accordion-group>
     </accordion>
 </div>

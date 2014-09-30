@@ -395,3 +395,18 @@ class get_user_setting(View):
             else:
                 json_resp[t_name] = []
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
+
+
+class get_jobinfo(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        my_sge_info.update()
+        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
+
+        import lxml.etree as ET
+        pprint.pprint(ET.tostring(run_job_list))
+        json_resp = {
+            "jobs_running": len(run_job_list)
+            }
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+

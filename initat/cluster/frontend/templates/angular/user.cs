@@ -36,6 +36,14 @@ enter_password_template = """
 
 {% verbatim %}
 
+jobinfo_template = """
+		jobs running:  {{ get_jobs_running() }} 
+			<br/>
+			direct: {{  run_list  }}
+			<br/>
+			direct: {{ run_list.length  }}
+"""
+		
 quota_settings_template = """
 <table class="table table-hover table-bordered table-condensed table-striped" style="width:100%;" ng-show="quota_settings.length">
     <thead>
@@ -595,6 +603,22 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
+]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
+        $scope.run_list = []
+        call_ajax
+            url      : "{% url 'rms:get_rms_json' %}"
+            dataType : "json"
+            success  : (json) =>
+                #console.log json
+                console.log json
+                $scope.$apply(
+                        $scope.run_list = json.run_table
+                        $scope.wait_list = json.wait_table
+                        $scope.node_list = json.node_table
+                        $scope.done_list = json.done_table
+                        )
+                $scope.get_jobs_running = () -> #{$scope.run_list.length} 
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
@@ -742,10 +766,17 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         )
                 return r_stack
     }
+).directive("jobinfo", ($compile, $templateCache, icswTools) ->
+        restrict : "EA"
+        template : $templateCache.get("jobinfo.html")
+        link: (scope, element, attrs) ->
+        	scope.get_jobs_done = () -> 42
+        	scope.jobs_done = 44
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)
     $templateCache.put("permissions.html", permissions_template)
+    $templateCache.put("jobinfo.html", jobinfo_template)
 ).controller("index_base", ["$scope", "$timeout", "$window",
     ($scope, $timeout, $window) ->
         $scope.show_index = true
@@ -753,6 +784,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.ext_open = false
         $scope.quota_open = true
         $scope.vdesktop_open = false
+        $scope.jobinfo_open = true
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
         $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
