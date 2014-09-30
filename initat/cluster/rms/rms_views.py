@@ -249,12 +249,15 @@ class get_rms_jobinfo(View):
         latest_possible_end_time = datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"]))
         done_jobs = rms_job_run.objects.all().filter(
             Q(end_time__gt=latest_possible_end_time)
-        )
+        ).select_related("rms_job")
+
+        def xml_to_jobid(jobxml):
+            return int(jobxml.findall("job_id")[0].text)
 
         json_resp = {
-            "jobs_running": len(rms_info.run_job_list),
-            "jobs_waiting": len(rms_info.wait_job_list),
-            "jobs_finished": len(done_jobs),
+            "jobs_running": sorted(map(xml_to_jobid, rms_info.run_job_list)),
+            "jobs_waiting": sorted(map(xml_to_jobid, rms_info.wait_job_list)),
+            "jobs_finished": sorted(job.rms_job.jobid for job in done_jobs),
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 

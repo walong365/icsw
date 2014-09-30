@@ -37,22 +37,44 @@ enter_password_template = """
 {% verbatim %}
 
 jobinfo_template = """
-		jobs running:  {{ jobs_running }} 
-		<br/>
+ <table class="table table-hover table-bordered table-condensed" style="width:100%;" >
+    <thead>
+        <tr>
+            <th></th>
+            <th>Number of jobs</th>
+            <th>Job ids</th>
+        </tr>
+    </thead>
 
-		jobs waiting:  {{ jobs_waiting }} 
-		<br/>
-
-		jobs finished in 
-		<div class="btn-group">
-		    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-		        <span class="glyphicon glyphicon-dashboard"></span>
-		        {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
-		    </button>: {{ jobs_finished }}
-		    <ul class="dropdown-menu">
-		        <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
-		    </ul>
-		</div>
+	<tbody>
+	    <tr>
+	        <td> Jobs waiting </td>
+		    <td> {{ jobs_waiting.length }} </td>
+		    <td> {{ longListToString(jobs_waiting) }} </td>
+	    </tr>
+	    <tr>
+	        <td> Jobs running </td>
+		    <td> {{ jobs_running.length }} </td>
+		    <td> {{ jobs_running.toString() }} </td>
+	    </tr>
+	    <tr>
+	        <td>
+	            Jobs finished in 
+	            <div class="btn-group">
+		            <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+		                <span class="glyphicon glyphicon-dashboard"></span>
+		                {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
+		            </button>
+		            <ul class="dropdown-menu">
+		                <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
+		            </ul>
+		         </div>
+		    </td>
+		    <td>{{ jobs_finished.length }}</td>
+		    <td>{{ longListToString(jobs_finished) }}</td>
+		</tr>
+	</tbody>
+</table>
 """
 		
 quota_settings_template = """
@@ -616,9 +638,9 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             $scope.$broadcast("icsw.enter_password")
 ]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
-        $scope.jobs_waiting = 0
-        $scope.jobs_running = 0
-        $scope.jobs_finished = 0
+        $scope.jobs_waiting = []
+        $scope.jobs_running = []
+        $scope.jobs_finished = []
         class jobinfo_timedelta
             constructor: (@name, @timedelta_description) ->
         $scope.all_timedeltas = [
@@ -646,6 +668,12 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                               $scope.jobs_finished = json.jobs_finished
                               )
         $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
+        listmax = 20
+        $scope.longListToString = (l) ->
+            if l.length < listmax
+                l.toString()
+            else
+                (l[0..listmax]).toString() + ", ..."
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
