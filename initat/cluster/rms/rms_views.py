@@ -252,12 +252,12 @@ class get_rms_jobinfo(View):
         ).select_related("rms_job")
 
         def xml_to_jobid(jobxml):
-            return int(jobxml.findall("job_id")[0].text)
+            return [int(jobxml.findall("job_id")[0].text), jobxml.findall("task_id")[0].text]
 
         json_resp = {
             "jobs_running": sorted(map(xml_to_jobid, rms_info.run_job_list)),
             "jobs_waiting": sorted(map(xml_to_jobid, rms_info.wait_job_list)),
-            "jobs_finished": sorted(job.rms_job.jobid for job in done_jobs),
+            "jobs_finished": sorted([job.rms_job.jobid, job.rms_job.taskid if job.rms_job.taskid else ""] for job in done_jobs),
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 

@@ -55,7 +55,7 @@ jobinfo_template = """
 	    <tr>
 	        <td> Jobs running </td>
 		    <td> {{ jobs_running.length }} </td>
-		    <td> {{ jobs_running.toString() }} </td>
+		    <td> {{ longListToString(jobs_running) }} </td>
 	    </tr>
 	    <tr>
 	        <td>
@@ -668,12 +668,18 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                               $scope.jobs_finished = json.jobs_finished
                               )
         $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
-        listmax = 20
+        listmax = 15
+        jobidToString = (j) -> 
+            if j[1] != ""
+                " "+j[0]+":"+j[1]
+            else
+                " "+j[0]
+                    
         $scope.longListToString = (l) ->
             if l.length < listmax
-                l.toString()
+                [jobidToString(i) for i in l].toString()
             else
-                (l[0..listmax]).toString() + ", ..."
+                (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
