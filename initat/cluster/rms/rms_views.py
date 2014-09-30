@@ -45,6 +45,7 @@ import server_command
 import sys
 import threading
 import time
+from collections import namedtuple
 
 try:
     import sge_tools
@@ -166,21 +167,28 @@ def _sort_list(in_list, _post):
     return [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
 
 
+def _fetch_rms_info(request):
+    # get rms info needed by several views
+    # call my_sge_info.update() before calling this!
+    run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
+    wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
+    return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])(run_job_list, wait_job_list)
+
+
 class get_rms_json(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
-        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
+        rms_info = _fetch_rms_info(request)
 
         # print etree.tostring(run_job_list, pretty_print=True)
-        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
         node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
         if RMS_ADDONS:
             for change_obj in RMS_ADDONS:
                 change_obj.set_headers(rms_headers(request))
-                change_obj.modify_running_jobs(my_sge_info, run_job_list)
-                change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
+                change_obj.modify_running_jobs(my_sge_info, rms_info.run_job_list)
+                change_obj.modify_waiting_jobs(my_sge_info, rms_info.wait_job_list)
                 change_obj.modify_nodes(my_sge_info, node_list)
         fc_dict = {}
         cur_time = time.time()
@@ -218,11 +226,25 @@ class get_rms_json(View):
         _done_ser = rms_job_run_serializer(done_jobs, many=True).data
         # pprint.pprint(_done_ser)
         json_resp = {
-            "run_table": _sort_list(run_job_list, _post),
-            "wait_table": _sort_list(wait_job_list, _post),
+            "run_table": _sort_list(rms_info.run_job_list, _post),
+            "wait_table": _sort_list(rms_info.wait_job_list, _post),
             "node_table": _sort_list(node_list, _post),
             "done_table": _done_ser,
             "files": fc_dict,
+        }
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+
+
+class get_rms_jobinfo(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        my_sge_info.update()
+        rms_info = _fetch_rms_info(request)
+        json_resp = {
+            "jobs_running": len(rms_info.run_job_list),
+            "jobs_waiting": len(rms_info.wait_job_list),
+            "jobs_finished_last_60_min": len(rms_info.wait_job_list),
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
@@ -394,19 +416,5 @@ class get_user_setting(View):
                 json_resp[t_name] = user_vars[var_name].value.split(",")
             else:
                 json_resp[t_name] = []
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
-
-
-class get_jobinfo(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        my_sge_info.update()
-        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
-
-        import lxml.etree as ET
-        pprint.pprint(ET.tostring(run_job_list))
-        json_resp = {
-            "jobs_running": len(run_job_list)
-            }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 

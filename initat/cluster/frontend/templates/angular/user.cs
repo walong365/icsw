@@ -37,11 +37,9 @@ enter_password_template = """
 {% verbatim %}
 
 jobinfo_template = """
-		jobs running:  {{ get_jobs_running() }} 
+		jobs running:  {{ jobs_running }} 
 			<br/>
-			direct: {{  run_list  }}
-			<br/>
-			direct: {{ run_list.length  }}
+		jobs waiting:  {{ jobs_waiting }} 
 """
 		
 quota_settings_template = """
@@ -605,20 +603,18 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             $scope.$broadcast("icsw.enter_password")
 ]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
-        $scope.run_list = []
+        $scope.jobs_running = 0
+        $scope.jobs_waiting = 0
         call_ajax
-            url      : "{% url 'rms:get_rms_json' %}"
+            url      : "{% url 'rms:get_rms_jobinfo' %}"
             dataType : "json"
             success  : (json) =>
                 #console.log json
                 console.log json
                 $scope.$apply(
-                        $scope.run_list = json.run_table
-                        $scope.wait_list = json.wait_table
-                        $scope.node_list = json.node_table
-                        $scope.done_list = json.done_table
+                        $scope.jobs_running = json.jobs_running
+                        $scope.jobs_waiting = json.jobs_waiting
                         )
-                $scope.get_jobs_running = () -> #{$scope.run_list.length} 
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
