@@ -780,9 +780,13 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                 logging_tools.LOG_LEVEL_ERROR
             )
 
-    def step(self, blocking=False, timeout=0):
+    def step(self, blocking=False, timeout=0, handle_timer=False):
         # unify with loop from process_pool ? FIXME, TODO
         # process all pending messages
+        if handle_timer:
+            cur_time = time.time()
+            if self.next_timeout and cur_time > self.next_timeout:
+                self._handle_timer(cur_time)
         if self.next_timeout:
             diff_time = self.next_timeout - time.time()
             # important to avoid negative timeouts
@@ -798,17 +802,14 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         while self["run_flag"] or self.__exit_locked:
             try:
                 if self.loop_timer:
-                    cur_time = time.time()
-                    if self.next_timeout and cur_time > self.next_timeout:
-                        self._handle_timer(cur_time)
-                    self.step(blocking=False, timeout=self.loop_timer)
+                    self.step(blocking=False, timeout=self.loop_timer, handle_timer=True)
                 else:
                     if self.__busy_loop:
                         self.step()
                     else:
                         self.step(blocking=True)
             except:
-                print "-" * 20
+                # print "-" * 20
                 handled = self.handle_exception()
                 if not handled:
                     print(
