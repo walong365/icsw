@@ -330,6 +330,7 @@ class user_detail_form(ModelForm):
                 ),
                 Div(
                     Field("db_is_auth_for_password"),
+                    Field("only_webfrontend"),
                     css_class="col-md-6",
                 ),
                 css_class="row",
@@ -348,7 +349,7 @@ class user_detail_form(ModelForm):
             # do not use ui-select here (will not refresh on export_list change)
             Field("export", wrapper_ng_show="!_edit_obj.only_webfrontend", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),
             HTML("""
-<div class='form-group' ng-show="!_edit_obj.only_webfrontend'>
+<div class='form-group' ng-show='!_edit_obj.only_webfrontend'>
     <label class='control-label col-sm-2'>
         Homedir status
     </label>
@@ -394,6 +395,7 @@ class user_detail_form(ModelForm):
 </div>
             """),
             Field("scan_depth", min=1, max=5, wrapper_ng_show="_edit_obj.scan_user_home"),
+            ng_show="!_edit_obj.only_webfrontend",
         ),
         Fieldset(
             "Permissions",
@@ -507,7 +509,7 @@ class user_detail_form(ModelForm):
             "login", "uid", "shell", "first_name", "last_name", "active",
             "title", "email", "pager", "tel", "comment", "is_superuser",
             "allowed_device_groups", "secondary_groups",
-            "scan_depth",
+            "scan_depth", "only_webfrontend",
             "aliases", "db_is_auth_for_password", "export", "group"
         ]
         widgets = {
