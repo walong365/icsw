@@ -25,7 +25,8 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
     group_object_permission, user_permission, user_object_permission, user_quota_setting, \
-    group_quota_setting, user_scan_result, user_scan_run
+    group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocols, virtual_desktop_user_settings, \
+    window_managers
 
 __all__ = [
     "csw_permission_serializer",
@@ -40,6 +41,9 @@ __all__ = [
     "group_quota_setting_serializer",
     "user_scan_run_serializer",
     "user_scan_result_serializer",
+    "virtual_desktop_user_settings_serializer",
+    "virtual_desktop_protocols",
+    "window_managers",
 ]
 
 
@@ -154,3 +158,21 @@ class user_scan_result_serializer(serializers.ModelSerializer):
 
     class Meta:
         model = user_scan_result
+
+
+class virtual_desktop_user_settings_serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = virtual_desktop_user_settings
+
+
+class virtual_desktop_protocols_serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = virtual_desktop_protocols
+
+
+class window_managers_serializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = window_managers

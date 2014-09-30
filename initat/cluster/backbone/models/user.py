@@ -57,6 +57,9 @@ __all__ = [
     "AC_MASK_DICT",
     "user_scan_run",
     "user_scan_result",
+    "virtual_desktop_protocols",
+    "virtual_desktop_user_settings",
+    "window_managers"
 ]
 
 
@@ -1119,3 +1122,46 @@ class user_scan_result(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+
+class virtual_desktop_user_settings(models.Model):
+    idx = models.AutoField(primary_key=True)
+    virtual_desktop_protocol = models.ForeignKey("backbone.virtual_desktop_protocols")
+    window_manager = models.ForeignKey("backbone.window_managers")
+    screen_size = models.CharField(max_length=256)
+
+    device = models.ForeignKey("backbone.device")
+    user = models.ForeignKey("user")
+    # 0 means autoselect
+    port = models.IntegerField(default=0)
+
+    is_running = models.BooleanField(default=False)
+    # whether this session should be started automatically
+    start = models.BooleanField(default=False)
+
+
+class virtual_desktop_protocols(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name of protocol to display to user
+    name = models.CharField(max_length=256, unique=True)
+    # binary to start protocol server
+    binary = models.CharField(max_length=256, default="")
+    # description of protocol for user
+    description = models.TextField()
+    # devices where this is available
+    devices = models.ManyToManyField("backbone.device")
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class window_managers(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name of window manager to display to user
+    name = models.CharField(max_length=256, unique=True)
+    # binary to start window manager
+    binary = models.CharField(max_length=256, default="")
+    # description of window manager for user
+    description = models.TextField()
+
+    # devices where this is available
+    devices = models.ManyToManyField("backbone.device")
+    date = models.DateTimeField(auto_now_add=True)

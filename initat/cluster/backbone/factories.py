@@ -6,7 +6,8 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
-    config_hint, config_var_hint, config_script_hint, device_variable
+    config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocols, \
+    window_managers
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -348,3 +349,15 @@ class DeviceVariable(factory.django.DjangoModelFactory):
         if self.local_copy_ok != extracted:
             self.local_copy_ok = extracted
             self.save()
+
+
+class VirtualDesktopProtocols(factory.django.DjangoModelFactory):
+    class Meta:
+        model = virtual_desktop_protocols
+        django_get_or_create = ("name",)
+
+
+class WindowManagers(factory.django.DjangoModelFactory):
+    class Meta:
+        model = window_managers
+        django_get_or_create = ("name",)
