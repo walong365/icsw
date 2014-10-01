@@ -20,7 +20,7 @@
 from django.db.models import Q
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
-from initat.cluster.backbone.models import virtual_desktop_protocols, window_managers, device
+from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, device
 import process_tools
 
 
@@ -32,7 +32,7 @@ class virtual_desktop_stuff(bg_stuff):
         self.__effective_device = device.objects.get(Q(pk=global_config["EFFECTIVE_DEVICE_IDX"]))
 
     def _call(self, cur_time, builder):
-        for vd_proto in virtual_desktop_protocols.objects.all():
+        for vd_proto in virtual_desktop_protocol.objects.all():
             _vd_update = False
             available = process_tools.find_file(vd_proto.binary)
             if vd_proto.devices.filter(pk=self.__effective_device.pk):
@@ -49,7 +49,7 @@ class virtual_desktop_stuff(bg_stuff):
             if _vd_update:
                 vd_proto.save()
 
-        for wm in window_managers.objects.all():
+        for wm in window_manager.objects.all():
             _wm_update = False
             available = process_tools.find_file(wm.binary)
             if wm.devices.filter(pk=self.__effective_device.pk):
