@@ -21,7 +21,7 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, home_export_list, user, user_scan_result, user_scan_run
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.cluster_server.capabilities import usv_server, quota
+from initat.cluster_server.capabilities import usv_server, quota, virtual_desktop
 from initat.cluster_server.config import global_config
 from initat.cluster_server.notify import notify_mixin
 import cluster_location
@@ -111,6 +111,7 @@ class capability_process(threading_tools.process_obj):
         self.__server_cap_dict = {
             "usv_server": usv_server.usv_server_stuff(self),
             "quota_scan": quota.quota_stuff(self),
+            "virtual_desktop": virtual_desktop.virtual_desktop_stuff(self),
             # "dummy"      : dummy_stuff(self),
             }
         self.__cap_list = []
