@@ -57,8 +57,8 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.__pid_name = global_config["PID_NAME"]
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
-        self._re_insert_config()
         connection.close()
+        self._re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("bg_finished", self._bg_finished)
