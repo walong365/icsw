@@ -78,7 +78,7 @@ jobinfo_template = """
 """
 
 diskusage_template = """
-<h4>{{ scan_run_info() }}, <input type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"></input></h4>
+<h4>{{ scan_run_info() }}<span ng-show="current_scan_run">, </span><input ng-show="current_scan_run" type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"></input></h4>
 <div ng-show="current_scan_run">
     <tree treeconfig="du_tree"></tree>
 </div>
@@ -123,7 +123,7 @@ quota_settings_template = """
         </tr>
     </tbody>
 </table>
-<span ng-show="!quota_settings.length">no quota info</span>
+<h4 ng-show="!quota_settings.length">no quota info</h4>
 """
 
 permissions_template = """
