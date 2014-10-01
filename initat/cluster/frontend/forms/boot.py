@@ -138,7 +138,7 @@ class boot_single_form(Form):
             ),
             Field(
                 "stage1_flavour",
-                repeat="value.idx as value in stage1_flavours",
+                repeat="value.val as value in stage1_flavours",
                 display="name",
                 placeholder="stage1 flavour",
                 filter="{name:$select.search}",
@@ -274,7 +274,7 @@ class boot_many_form(Form):
                 (
                     "stage1_flavour",
                     {
-                        "repeat": "value.idx as value in stage1_flavours",
+                        "repeat": "value.val as value in stage1_flavours",
                         "display": "name",
                         "placeholder": "stage1 flavour",
                         "filter": "{name:$select.search}",
