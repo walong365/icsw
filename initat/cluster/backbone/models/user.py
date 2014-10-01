@@ -1139,8 +1139,8 @@ class user_scan_result(models.Model):
 
 class virtual_desktop_user_setting(models.Model):
     idx = models.AutoField(primary_key=True)
-    virtual_desktop_protocol = models.ForeignKey("virtual_desktop_protocol")
-    window_manager = models.ForeignKey("window_manager")
+    virtual_desktop_protocol = models.ForeignKey("backbone.virtual_desktop_protocol")
+    window_manager = models.ForeignKey("backbone.window_manager")
     screen_size = models.CharField(max_length=256)
 
     device = models.ForeignKey("backbone.device")
