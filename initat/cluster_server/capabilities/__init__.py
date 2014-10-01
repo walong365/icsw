@@ -181,22 +181,33 @@ class capability_process(threading_tools.process_obj):
         _size_dict = sub_dir(_home_dir)
         _start_dir = _home_dir
         _top_depth = _start_dir.count("/")
-        for _main, _dirs, _files in os.walk(_start_dir):
-            _cur_depth = _main.count("/")
-            _parts = _main.split("/")
-            _max_depth = min(_top_depth + _scan_user.scan_depth, _cur_depth)
-            _key = "/".join(_parts[:_max_depth + 1])
-            # print _parts, _key
-            cur_dict = _size_dict
-            for _skey in _parts[_top_depth:_max_depth + 1]:
-                cur_dict = cur_dict.add_sub_dir(_skey)
-            cur_dict.dirs += 1
-            for _file in _files:
-                try:
-                    cur_dict.files += 1
-                    cur_dict.size += os.stat(os.path.join(_main, _file))[stat.ST_SIZE]
-                except:
-                    pass
+        try:
+            _last_dir = ""
+            for _main, _dirs, _files in os.walk(_start_dir):
+                _last_dir = _main
+                _cur_depth = _main.count("/")
+                _parts = _main.split("/")
+                _max_depth = min(_top_depth + _scan_user.scan_depth, _cur_depth)
+                _key = "/".join(_parts[:_max_depth + 1])
+                # print _parts, _key
+                cur_dict = _size_dict
+                for _skey in _parts[_top_depth:_max_depth + 1]:
+                    cur_dict = cur_dict.add_sub_dir(_skey)
+                cur_dict.dirs += 1
+                for _file in _files:
+                    try:
+                        cur_dict.files += 1
+                        cur_dict.size += os.stat(os.path.join(_main, _file))[stat.ST_SIZE]
+                    except:
+                        pass
+        except UnicodeDecodeError:
+            self.log(
+                u"UnicodeDecode: {}, _last_dir is '{}'".format(
+                    process_tools.get_except_info(),
+                    _last_dir,
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         # store current
         _size_dict.create_db_entries(new_run)
         _e_time = time.time()
