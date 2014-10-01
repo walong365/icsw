@@ -83,14 +83,16 @@
             </ul>
             {% verbatim %}
         </accordion-group>
-        <accordion-group is-open="quota_open" ng-if="NUM_QUOTA_SERVERS">
+        <accordion-group is-open="diskusage_open">
             <accordion-heading>
-                Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
-                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quota_open, 'glyphicon-chevron-right': !quota_open}"></i>
+                Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': diskusage_open, 'glyphicon-chevron-right': !diskusage_open}"></i>
             </accordion-heading>
             <div ng-controller="account_ctrl">
                 <quotasettings object='edit_obj' type='user'>
                 </quotasettings>
+                <diskusage object="edit_obj" type="user">
+                </diskusage>
             </div>
         </accordion-group>
         <accordion-group is-open="vdesktop_open">

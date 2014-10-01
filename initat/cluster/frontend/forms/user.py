@@ -365,6 +365,7 @@ class user_detail_form(ModelForm):
     </div>
 </div>
             """),
+            Field("home"),
         ),
         Fieldset(
             "Aliases",
@@ -395,7 +396,7 @@ class user_detail_form(ModelForm):
 </div>
             """),
             Field("scan_depth", min=1, max=5, wrapper_ng_show="_edit_obj.scan_user_home"),
-            ng_show="!_edit_obj.only_webfrontend",
+            ng_show="!_edit_obj.only_webfrontend && _edit_obj.export",
         ),
         Fieldset(
             "Permissions",
@@ -509,7 +510,7 @@ class user_detail_form(ModelForm):
             "login", "uid", "shell", "first_name", "last_name", "active",
             "title", "email", "pager", "tel", "comment", "is_superuser",
             "allowed_device_groups", "secondary_groups",
-            "scan_depth", "only_webfrontend",
+            "scan_depth", "only_webfrontend", "home",
             "aliases", "db_is_auth_for_password", "export", "group"
         ]
         widgets = {

@@ -76,7 +76,14 @@ jobinfo_template = """
 	</tbody>
 </table>
 """
-		
+
+diskusage_template = """
+<h4>{{ scan_run_info() }}, <input type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"></input></h4>
+<div ng-show="current_scan_run">
+    <tree treeconfig="du_tree"></tree>
+</div>
+"""
+
 quota_settings_template = """
 <table class="table table-hover table-bordered table-condensed table-striped" style="width:100%;" ng-show="quota_settings.length">
     <thead>
@@ -88,9 +95,9 @@ quota_settings_template = """
             <th>Bytes Graph</th>
             <th>Bytes used</th>
             <th>Bytes limit</th>
-            <th>Files Graph</th>
-            <th>Files used</th>
-            <th>Files limit</th>
+            <th>INode Graph</th>
+            <th>INodes used</th>
+            <th>INodes limit</th>
         </tr>
     </thead>
     <tbody>
@@ -219,6 +226,8 @@ add_tree_directive(user_module)
 
 angular_add_password_controller(user_module)
 
+DT_FORM = "YYYY-MM-DD HH:mm"
+
 class user_tree extends tree_config
     constructor: (@scope, args) ->
         super(args)
@@ -243,6 +252,36 @@ class user_tree extends tree_config
         entry.active = true
         @scope.edit_object(entry.obj, entry._node_type)
 
+
+class diskusage_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = true
+        @show_select = false
+        @show_descendants = true
+        @show_childs = false
+    get_name : (t_entry) ->
+        _dir = t_entry.obj
+        _size_total = _dir.size_total
+        _size = _dir.size
+        _size_total_str = @scope.icswTools.get_size_str(_size_total, 1024, "B")
+        if _size_total == _size
+            _info = ["#{_size_total_str} total"]
+        else
+            if _size
+                _size_str = @scope.icswTools.get_size_str(_size, 1024, "B")
+                _info = [
+                    "#{_size_total_str} total",
+                    "#{_size_str} in directory"
+                ]
+            else
+                _info = ["#{_size_total_str} total"]
+        if _dir.num_files_total
+            _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
+        return "#{_dir.name} (" + _info.join(", ") + ")"
+
+        
 user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.ac_levels = [
@@ -402,9 +441,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         _list.push(_group)
             return _list
         $scope.valid_device_groups = () ->
-            #console.log "vd"
             _list = (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false) 
-            #console.log _list
             return _list
         $scope.valid_group_csw_perms = () ->
             _list = (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"]) 
@@ -465,7 +502,6 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 $scope.group_edit.edit(obj)
             else if obj_type == "u"
                 $scope.user_edit.edit(obj)
-            #console.log obj_type, obj
         $scope.$on("icsw.set_password", (event, new_pwd) ->
             $scope._edit_obj.password = new_pwd
         )
@@ -588,27 +624,30 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             {"level" : 3, "info" : "Modify, Create"},
             {"level" : 7, "info" : "Modify, Create, Delete"},
         ]
-        wait_list = restDataSource.add_sources([
-            ["{% url 'rest:csw_permission_list' %}", {}]
-            ["{% url 'rest:csw_object_list' %}", {}]
-            ["{% url 'rest:quota_capable_blockdevice_list' %}", {}]
-        ])
-        wait_list.push(Restangular.one("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2), {{ user.pk }}).get())
-        $q.all(wait_list).then(
-            (data) ->
-                $scope.edit_obj = data[3]
-                $scope.csw_permission_list = data[0]
-                $scope.csw_permission_lut = {}
-                for entry in $scope.csw_permission_list
-                    $scope.csw_permission_lut[entry.idx] = entry
-                $scope.ct_dict = {}
-                for entry in data[1]
-                    $scope.ct_dict[entry.content_label] = entry.object_list
-                $scope.qcb_list = data[2]
-                $scope.qcb_lut = {}
-                for entry in $scope.qcb_list
-                    $scope.qcb_lut[entry.idx] = entry
-        )
+        $scope.update = () ->
+            wait_list = restDataSource.add_sources([
+                ["{% url 'rest:csw_permission_list' %}", {}]
+                ["{% url 'rest:csw_object_list' %}", {}]
+                ["{% url 'rest:quota_capable_blockdevice_list' %}", {}]
+            ])
+            wait_list.push(Restangular.one("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2), {{ user.pk }}).get())
+            $q.all(wait_list).then(
+                (data) ->
+                    # update once per minute
+                    $timeout($scope.update, 60000)
+                    $scope.edit_obj = data[3]
+                    $scope.csw_permission_list = data[0]
+                    $scope.csw_permission_lut = {}
+                    for entry in $scope.csw_permission_list
+                        $scope.csw_permission_lut[entry.idx] = entry
+                    $scope.ct_dict = {}
+                    for entry in data[1]
+                        $scope.ct_dict[entry.content_label] = entry.object_list
+                    $scope.qcb_list = data[2]
+                    $scope.qcb_lut = {}
+                    for entry in $scope.qcb_list
+                        $scope.qcb_lut[entry.idx] = entry
+            )
         $scope.update_account = () ->
             $scope.edit_obj.put().then(
                (data) ->
@@ -636,6 +675,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
+        $scope.update()
 ]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
         $scope.jobs_waiting = []
@@ -653,9 +693,9 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.set_jobinfo_timedelta = (ts) ->
             $scope.last_jobinfo_timedelta = ts
             jobsfrom = moment().subtract(
-                    ts.timedelta_description[0],
-                    ts.timedelta_description[1]
-                    ).unix()
+                ts.timedelta_description[0],
+                ts.timedelta_description[1]
+            ).unix()
             call_ajax
                   url      : "{% url 'rms:get_rms_jobinfo' %}"
                   data     :
@@ -663,23 +703,23 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                   dataType : "json"
                   success  : (json) =>
                       $scope.$apply(
-                              $scope.jobs_running = json.jobs_running
-                              $scope.jobs_waiting = json.jobs_waiting
-                              $scope.jobs_finished = json.jobs_finished
-                              )
+                          $scope.jobs_running = json.jobs_running
+                          $scope.jobs_waiting = json.jobs_waiting
+                          $scope.jobs_finished = json.jobs_finished
+                      )
         $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
         listmax = 15
         jobidToString = (j) -> 
             if j[1] != ""
-                " "+j[0]+":"+j[1]
+                return " "+j[0]+":"+j[1]
             else
-                " "+j[0]
+                return " "+j[0]
                     
         $scope.longListToString = (l) ->
             if l.length < listmax
-                [jobidToString(i) for i in l].toString()
+                return [jobidToString(i) for i in l].toString()
             else
-                (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
+                return (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
@@ -827,6 +867,88 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         )
                 return r_stack
     }
+).directive("diskusage", ($compile, $templateCache, icswTools) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("diskusage.html")
+        link: (scope, element, attrs) ->
+            scope.object = undefined
+            scope.scan_runs = []
+            scope.current_scan_run = null
+            scope.du_tree = null
+            scope.show_dots = false
+            scope.icswTools = icswTools
+            scope.$watch(attrs["object"], (new_val) ->
+                scope.object = new_val
+                scope.type = attrs["type"]
+                if scope.object?
+                    # salt list
+                    if scope.type == "user"
+                        scope.scan_runs = scope.object.user_scan_run_set
+                        _valid = (_entry for _entry in scope.scan_runs when _entry.current = true)
+                        if _valid.length
+                            scope.current_scan_run = _valid[0]
+                            scope.build_tree()
+                            # build tree
+                        else
+                            scope.current_scan_run = null
+            )
+            scope.toggle_dots = () ->
+                scope.show_dots = !scope.show_dots
+                scope.build_tree()
+            scope.build_tree = () ->
+                _run = scope.current_scan_run
+                # remember current expansion state
+                _expanded = []
+                if scope.du_tree
+                    scope.du_tree.iter((entry) ->
+                        if entry.expand
+                            _expanded.push(entry.obj.full_name)
+                    )
+                scope.du_tree = new diskusage_tree(scope)
+                scope.SIZE_LIMIT = 1024 * 1024
+                _tree_lut = {}
+                _rest_list = []
+                # pk of entries not shown (for .dot handling)
+                _ns_list = []
+                nodes_shown = 0
+                for entry in _run.user_scan_result_set
+                    if entry.parent_dir and entry.size_total < scope.SIZE_LIMIT
+                        _ns_list.push(entry.idx)
+                        continue
+                    if not scope.show_dots and entry.name[0] == "."
+                        _ns_list.push(entry.idx)
+                        continue
+                    if entry.parent_dir in _ns_list
+                        _ns_list.push(entry.idx)
+                        continue
+                    nodes_shown++
+                    t_entry = scope.du_tree.new_node({folder:false, obj:entry, expand:entry.full_name in _expanded, always_folder:true})
+                    _tree_lut[entry.idx] = t_entry
+                    if entry.parent_dir
+                        _rest_list.push(t_entry)
+                    else
+                        scope.du_tree.add_root_node(t_entry)
+                for entry in _rest_list
+                    _tree_lut[entry.obj.parent_dir].add_child(entry)
+                scope.nodes_shown = nodes_shown
+            scope.scan_run_info = () ->
+                if scope.scan_runs.length
+                    _r_field = []
+                    if scope.scan_runs.length > 1
+                        _r_field.push("#{scope.scan_runs.length} runs")
+                    if scope.current_scan_run
+                        _run = scope.current_scan_run
+                        _rundate = moment(_run.date)
+                        _r_field.push("disk usage from #{_rundate.format(DT_FORM)} (#{_rundate.fromNow()})")
+                        _r_field.push("took #{_run.run_time / 1000} seconds")
+                        _r_field.push("scan depth is #{_run.scan_depth}")
+                        _r_field.push("showing #{scope.nodes_shown} of #{_run.user_scan_result_set.length} nodes")
+                        _r_field.push("size limit is " + icswTools.get_size_str(scope.SIZE_LIMIT, 1024, "B"))
+                    return _r_field.join(", ")
+                else
+                    return "no scan runs"
+    }
 ).directive("jobinfo", ($compile, $templateCache, icswTools) ->
         restrict : "EA"
         template : $templateCache.get("jobinfo.html")
@@ -838,12 +960,13 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
     $templateCache.put("quotasettings.html", quota_settings_template)
     $templateCache.put("permissions.html", permissions_template)
     $templateCache.put("jobinfo.html", jobinfo_template)
+    $templateCache.put("diskusage.html", diskusage_template)
 ).controller("index_base", ["$scope", "$timeout", "$window",
     ($scope, $timeout, $window) ->
         $scope.show_index = true
         $scope.quick_open = true
         $scope.ext_open = false
-        $scope.quota_open = true
+        $scope.diskusage_open = true
         $scope.vdesktop_open = false
         $scope.jobinfo_open = true
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE

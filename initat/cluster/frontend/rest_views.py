@@ -188,7 +188,7 @@ class db_prefetch_mixin(object):
     def _user_prefetch(self):
         return [
             "user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups",
-            "allowed_device_groups", "user_quota_setting_set",
+            "allowed_device_groups", "user_quota_setting_set", "user_scan_run_set__user_scan_result_set",
         ]
 
     def _group_related(self):

@@ -56,7 +56,8 @@ _subnode = """
             <span ng-class="entry.get_label_class()">
                 <span ng-show="treeconfig.show_total_descendants">{{ entry._num_descendants }}</span>
                 <span ng-show="!treeconfig.show_total_descendants">{{ entry._num_nd_descendants }}</span>
-                <span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span></span>
+                <span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span>
+            </span>
         </span>
     </a>
 </span>
@@ -359,7 +360,7 @@ class tree_config
             r_class.push "dynatree-lastsib"
         if entry.selected
             r_class.push "dynatree-selected"
-        if entry.children.length
+        if entry.children.length or entry.always_folder?
             r_class.push "dynatree-has-children"
             if entry.expand
                 r_class.push "dynatree-expanded" 
