@@ -100,7 +100,7 @@
             </accordion-heading>
             <vnc host="127.0.0.1" port="5902" is-connected="true" password="init4u" display="{width:1880,height:800,fitTo:'width',}"></vnc>
         </accordion-group>
-        <accordion-group is-open="jobinfo_open"> <!-- TODO: if jobserver is available --> 
+        <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled">
             <accordion-heading>
             	Job info
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>
