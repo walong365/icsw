@@ -88,7 +88,10 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
             server_command.srv_command(command="server_control", control=mode, instance=service),
             multi=False
         )
-        self.log(*_result.get_log_tuple())
+        if _result is not None:
+            self.log(*_result.get_log_tuple())
+        else:
+            self.log("unable to connect", logging_tools.LOG_LEVEL_ERROR)
 
     def check_size(self):
         # init target coverage dict
