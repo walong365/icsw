@@ -53,7 +53,7 @@ import uuid
 from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
     log_source, log_status, device_group, cluster_license, device_type, cluster_setting, mac_ignore, \
     macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
-    quota_capable_blockdevice
+    quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting
 
 from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport

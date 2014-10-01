@@ -25,8 +25,8 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
     group_object_permission, user_permission, user_object_permission, user_quota_setting, \
-    group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocols, virtual_desktop_user_settings, \
-    window_managers
+    group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, virtual_desktop_user_setting, \
+    window_manager
 
 __all__ = [
     "csw_permission_serializer",
@@ -41,9 +41,9 @@ __all__ = [
     "group_quota_setting_serializer",
     "user_scan_run_serializer",
     "user_scan_result_serializer",
-    "virtual_desktop_user_settings_serializer",
-    "virtual_desktop_protocols",
-    "window_managers",
+    "virtual_desktop_user_setting_serializer",
+    "virtual_desktop_protocol_serializer",
+    "window_manager_serializer",
 ]
 
 
@@ -161,16 +161,16 @@ class group_serializer(serializers.ModelSerializer):
         )
 
 
-class virtual_desktop_user_settings_serializer(serializers.ModelSerializer):
+class virtual_desktop_user_setting_serializer(serializers.ModelSerializer):
     class Meta:
-        model = virtual_desktop_user_settings
+        model = virtual_desktop_user_setting
 
 
-class virtual_desktop_protocols_serializer(serializers.ModelSerializer):
+class virtual_desktop_protocol_serializer(serializers.ModelSerializer):
     class Meta:
-        model = virtual_desktop_protocols
+        model = virtual_desktop_protocol
 
 
-class window_managers_serializer(serializers.ModelSerializer):
+class window_manager_serializer(serializers.ModelSerializer):
     class Meta:
-        model = window_managers
+        model = window_manager

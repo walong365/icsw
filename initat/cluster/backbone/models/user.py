@@ -57,9 +57,9 @@ __all__ = [
     "AC_MASK_DICT",
     "user_scan_run",
     "user_scan_result",
-    "virtual_desktop_protocols",
-    "virtual_desktop_user_settings",
-    "window_managers"
+    "virtual_desktop_protocol",
+    "virtual_desktop_user_setting",
+    "window_manager"
 ]
 
 
@@ -1137,10 +1137,10 @@ class user_scan_result(models.Model):
         ordering = ("idx",)
 
 
-class virtual_desktop_user_settings(models.Model):
+class virtual_desktop_user_setting(models.Model):
     idx = models.AutoField(primary_key=True)
-    virtual_desktop_protocol = models.ForeignKey("backbone.virtual_desktop_protocols")
-    window_manager = models.ForeignKey("backbone.window_managers")
+    virtual_desktop_protocol = models.ForeignKey("virtual_desktop_protocol")
+    window_manager = models.ForeignKey("window_manager")
     screen_size = models.CharField(max_length=256)
 
     device = models.ForeignKey("backbone.device")
@@ -1153,7 +1153,7 @@ class virtual_desktop_user_settings(models.Model):
     start = models.BooleanField(default=False)
 
 
-class virtual_desktop_protocols(models.Model):
+class virtual_desktop_protocol(models.Model):
     idx = models.AutoField(primary_key=True)
     # name of protocol to display to user
     name = models.CharField(max_length=256, unique=True)
@@ -1166,7 +1166,7 @@ class virtual_desktop_protocols(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
-class window_managers(models.Model):
+class window_manager(models.Model):
     idx = models.AutoField(primary_key=True)
     # name of window manager to display to user
     name = models.CharField(max_length=256, unique=True)
