@@ -1105,6 +1105,8 @@ class user_scan_run(models.Model):
     running = models.BooleanField(default=False)
     # run_time in milliseconds
     run_time = models.IntegerField(default=0)
+    # depth
+    scan_depth = models.IntegerField(default=1)
 
     class Meta:
         app_label = "backbone"
@@ -1115,16 +1117,24 @@ class user_scan_result(models.Model):
     user_scan_run = models.ForeignKey("backbone.user_scan_run")
     # parent dir (or empty if top level dir)
     parent_dir = models.ForeignKey("self", null=True)
+    full_name = models.CharField(max_length=2048, default="")
     # name of dir (relative to parent dir)
     name = models.CharField(max_length=384, default="")
     # size of current dir
     size = models.BigIntegerField(default=0)
     # size of current dir and all subdirs
     size_total = models.BigIntegerField(default=0)
+    # number of files in directory
+    num_files = models.BigIntegerField(default=0)
+    num_dirs = models.BigIntegerField(default=0)
+    # number of files in all directory starting from this one
+    num_files_total = models.BigIntegerField(default=0)
+    num_dirs_total = models.BigIntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = "backbone"
+        ordering = ("idx",)
 
 
 class virtual_desktop_user_settings(models.Model):

@@ -100,11 +100,24 @@ class group_quota_setting_serializer(serializers.ModelSerializer):
         model = group_quota_setting
 
 
+class user_scan_result_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_scan_result
+
+
+class user_scan_run_serializer(serializers.ModelSerializer):
+    user_scan_result_set = user_scan_result_serializer(many=True, read_only=True)
+
+    class Meta:
+        model = user_scan_run
+
+
 class user_serializer(serializers.ModelSerializer):
     # object_perms = csw_object_permission_serializer(many=True, read_only=True)
     user_permission_set = user_permission_serializer(many=True, read_only=True)
     user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
     user_quota_setting_set = user_quota_setting_serializer(many=True, read_only=True)
+    user_scan_run_set = user_scan_run_serializer(many=True, read_only=True)
     info = serializers.Field(source="get_info")
 
     class Meta:
@@ -115,7 +128,7 @@ class user_serializer(serializers.ModelSerializer):
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
-            "only_webfrontend", "home",
+            "only_webfrontend", "home", "user_scan_run_set",
         )
 
 
@@ -148,31 +161,16 @@ class group_serializer(serializers.ModelSerializer):
         )
 
 
-class user_scan_result_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = user_scan_result
-
-
-class user_scan_run_serializer(serializers.ModelSerializer):
-    user_scan_result = user_scan_result_serializer(many=True, read_only=True)
-
-    class Meta:
-        model = user_scan_run
-
-
 class virtual_desktop_user_settings_serializer(serializers.ModelSerializer):
-
     class Meta:
         model = virtual_desktop_user_settings
 
 
 class virtual_desktop_protocols_serializer(serializers.ModelSerializer):
-
     class Meta:
         model = virtual_desktop_protocols
 
 
 class window_managers_serializer(serializers.ModelSerializer):
-
     class Meta:
         model = window_managers
