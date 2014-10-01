@@ -26,6 +26,11 @@ rrd_graph_template = """
     </h3>
     <div class="input-group form-inline" ng-show="show_options">
         <div class="input-group-btn">
+            <button type="button" class="btn btn-xs btn-success" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
+                <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+             </button>
+        </div>&nbsp;
+        <div class="input-group-btn">
             <div class="btn-group">
                 <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
                 <span class="glyphicon glyphicon-zoom-in"></span>
@@ -49,7 +54,7 @@ rrd_graph_template = """
         </div>&nbsp;
         <div class="input-group-btn">
             <div class="btn-group">
-                <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
                     <span class="glyphicon glyphicon-dashboard"></span>
                     timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
                 </button>
