@@ -24,6 +24,8 @@ else
     . /etc/rc.status_suse
 fi
 . /etc/init.d/ics_tools.sh
+# to fix strange python encoding error
+export LC_ALL=""
 
 SERVER_BIN=/opt/cluster/sbin/cluster-server.py
 PYTHON_BIN=/usr/bin/python-init
