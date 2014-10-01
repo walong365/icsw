@@ -26,7 +26,6 @@ from initat.cluster_server.backup_process import backup_process
 from initat.cluster_server.config import global_config
 from initat.cluster_server.notify import notify_mixin
 import cluster_location
-import config_tools
 import configfile
 import datetime
 import initat.cluster_server.modules
@@ -59,7 +58,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
         self._re_insert_config()
-        self.add_process(capability_process("capability_process"), start=True)
         connection.close()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -74,6 +72,8 @@ class server_process(threading_tools.process_pool, notify_mixin):
         else:
             self._init_network_sockets()
             self.init_notify_framework(global_config)
+            self.add_process(capability_process("capability_process"), start=True)
+            connection.close()
             self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):

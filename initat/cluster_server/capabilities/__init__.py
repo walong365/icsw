@@ -49,16 +49,25 @@ def sub_sum(_dict):
 
 
 class sub_dir(dict):
-    def __init__(self):
+    def __init__(self, full_name):
         self.size = 0
+        # number of dirs
+        self.dirs = 0
+        # number of files
+        self.files = 0
+        self.full_name = full_name
         dict.__init__(self)
 
-    @property
-    def size_total(self):
-        _sz = self.size
+    def add_sub_dir(self, key):
+        if key not in self:
+            self[key] = sub_dir(os.path.join(self.full_name, key))
+        return self[key]
+
+    def total(self, attr):
+        _total = getattr(self, attr)
         for _key, _value in self.iteritems():
-            _sz += _value.size_total
-        return _sz
+            _total += _value.total(attr)
+        return _total
 
     def create_db_entries(self, new_run, name=None, parent=None):
         if name is None:
@@ -69,10 +78,15 @@ class sub_dir(dict):
                 user_scan_run=new_run,
                 parent_dir=parent,
                 size=self.size,
-                size_total=self.size_total,
+                size_total=self.total("size"),
+                num_files=self.files,
+                num_dirs=self.dirs,
+                num_files_total=self.total("files"),
+                num_dirs_total=self.total("dirs"),
+                full_name=self.full_name,
             )
-        for key, value in self.iteritems():
-            value.create_db_entries(new_run, key, new_entry)
+        for _total_size, key in sorted([(-self[key].total("size"), key) for key in self.iterkeys()]):
+            self[key].create_db_entries(new_run, key, new_entry)
 
 
 class capability_process(threading_tools.process_obj):
@@ -140,10 +154,11 @@ class capability_process(threading_tools.process_obj):
 
     def _scan_users(self):
         _hel = home_export_list()
+        _scanned_ok, _scanned_error = (0, 0)
         for _key, _value in _hel.exp_dict.iteritems():
             if _value["entry"].device.pk == global_config["SERVER_IDX"]:
                 for _scan_user in user.objects.filter(Q(export=_value["entry"])):
-                    _h_dir = os.path.join(_value["createdir"], _scan_user.home)
+                    _h_dir = os.path.join(_value["createdir"], _scan_user.home or _scan_user.login)
                     if os.path.isdir(_h_dir):
                         s_time = time.time()
                         self.log(u"scanning user '{}' in {}".format(_scan_user, _h_dir))
@@ -151,32 +166,41 @@ class capability_process(threading_tools.process_obj):
                         self._scan_dir(_scan_user, _h_dir)
                         e_time = time.time()
                         self.log("... took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+                        _scanned_ok += 1
                     else:
                         self.log(u"homedir {} doest not exist for user '{}'".format(_h_dir, unicode(_scan_user)), logging_tools.LOG_LEVEL_ERROR)
+                        _scanned_error += 1
+        self.log("scan info: {:d} ok, {:d} with errors".format(_scanned_ok, _scanned_error))
 
     def _scan_dir(self, _scan_user, _home_dir):
+        _s_time = time.time()
         _prev_runs = list(user_scan_run.objects.filter(Q(user=_scan_user)))
-        new_run = user_scan_run.objects.create(user=_scan_user)
+        new_run = user_scan_run.objects.create(user=_scan_user, running=True, scan_depth=_scan_user.scan_depth)
         new_run.save()
-        _size_dict = sub_dir()
+        _size_dict = sub_dir(_home_dir)
         _start_dir = _home_dir
         _top_depth = _start_dir.count("/")
         for _main, _dirs, _files in os.walk(_start_dir):
             _cur_depth = _main.count("/")
             _parts = _main.split("/")
-            _max_depth = min(_top_depth + 3, _cur_depth)
+            _max_depth = min(_top_depth + _scan_user.scan_depth, _cur_depth)
             _key = "/".join(_parts[:_max_depth + 1])
             # print _parts, _key
             cur_dict = _size_dict
             for _skey in _parts[_top_depth:_max_depth + 1]:
-                cur_dict = cur_dict.setdefault(_skey, sub_dir())
+                cur_dict = cur_dict.add_sub_dir(_skey)
+            cur_dict.dirs += 1
             for _file in _files:
                 try:
+                    cur_dict.files += 1
                     cur_dict.size += os.stat(os.path.join(_main, _file))[stat.ST_SIZE]
                 except:
                     pass
         # store current
         _size_dict.create_db_entries(new_run)
+        _e_time = time.time()
         new_run.current = True
+        new_run.running = False
+        new_run.run_time = abs((_e_time - _s_time) * 1000)
         new_run.save()
         [_prev_run.delete() for _prev_run in _prev_runs]
