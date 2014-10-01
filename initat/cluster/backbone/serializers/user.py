@@ -115,7 +115,7 @@ class user_serializer(serializers.ModelSerializer):
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
-            "only_webfrontend",
+            "only_webfrontend", "home",
         )
 
 
@@ -128,7 +128,7 @@ class user_flat_serializer(serializers.ModelSerializer):
             "idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
-            "info", "scan_user_home", "scan_depth",
+            "info", "scan_user_home", "scan_depth", "home",
             "only_webfrontend",
         )
 
@@ -148,16 +148,16 @@ class group_serializer(serializers.ModelSerializer):
         )
 
 
+class user_scan_result_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_scan_result
+
+
 class user_scan_run_serializer(serializers.ModelSerializer):
+    user_scan_result = user_scan_result_serializer(many=True, read_only=True)
 
     class Meta:
         model = user_scan_run
-
-
-class user_scan_result_serializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = user_scan_result
 
 
 class virtual_desktop_user_settings_serializer(serializers.ModelSerializer):

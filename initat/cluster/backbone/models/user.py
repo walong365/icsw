@@ -561,7 +561,7 @@ class user(models.Model):
     group = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True, default="")
     export = models.ForeignKey("device_config", null=True, related_name="export", blank=True)
-    home = models.TextField(blank=True, null=True)
+    home = models.CharField(default="", blank=True, max_length=128)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
     # SHA encrypted
     password = models.CharField(max_length=128, blank=True)
@@ -1102,6 +1102,9 @@ class user_scan_run(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # start with False, switch to True when this one becomes active
     current = models.BooleanField(default=False)
+    running = models.BooleanField(default=False)
+    # run_time in milliseconds
+    run_time = models.IntegerField(default=0)
 
     class Meta:
         app_label = "backbone"
