@@ -195,7 +195,7 @@ class compound_tree(object):
     </compound>
     <compound name="memory">
         <key_list>
-            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
+            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1STACK"></key>
             <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
             <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
             <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
@@ -214,8 +214,8 @@ class compound_tree(object):
     </compound>
 </compounds>
         """
-        _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))
-        comp_xml = etree.fromstring(compound_xml)
+        _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))  # @UndefinedVariable
+        comp_xml = etree.fromstring(compound_xml)  # @UndefinedVariable
         for _entry in comp_xml.findall("compound"):
             _valid = _ng.validate(_entry)
             if _valid:

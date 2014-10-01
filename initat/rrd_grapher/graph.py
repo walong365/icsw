@@ -210,6 +210,13 @@ class graph_var(object):
     def get_color_and_style(self):
         self.color, self.style_dict = self.rrd_graph.colorizer.get_color_and_style(self.entry)
 
+    @property
+    def create_total(self):
+        if self.entry is not None:
+            return True if self.entry.get("unit", "").endswith("/s") else False
+        else:
+            return True
+
     def graph_def(self, unique_id, **kwargs):
         # unique_id = device pk
         timeshift = kwargs.get("timeshift", 0)
@@ -309,18 +316,24 @@ class graph_var(object):
             )
         # legend list
         l_list = self.get_legend_list()
-        for _num, (rep_name, cf) in enumerate(l_list):
+        _unit = self.entry.get("unit", "").replace("%", "%%")
+        # simplify some units
+        _unit = {"1": ""}.get(_unit, _unit)
+        _sum_unit = _unit
+        if _sum_unit.endswith("/s"):
+            _sum_unit = _sum_unit[:-2]
+        c_lines.append(
+            "COMMENT:<tt>{}</tt>".format("{:>4s}".format(_unit.replace("%%", "%")))
+        )
+        for _num, (rep_name, cf, total) in enumerate(l_list):
             _last = _num == len(l_list) - 1
-            _unit = self.entry.get("unit", "").replace("%", "%%")
-            # simply some units
-            _unit = {"1": "", "1/s": "/s"}.get(_unit, _unit)
             c_lines.extend(
                 [
                     "VDEF:{}{}={},{}".format(self.name, rep_name, self.name, cf),
                     "GPRINT:{}{}:<tt>%6.1lf%s{}</tt>{}".format(
                         self.name,
                         rep_name,
-                        _unit if _last else "",
+                        _sum_unit if total else "",
                         r"\l" if _last else r""
                     ),
                     # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
@@ -337,27 +350,31 @@ class graph_var(object):
 
     def get_legend_list(self):
         l_list = [
-            ("min", "MINIMUM", 39),
-            ("ave", "AVERAGE", 0),
-            ("max", "MAXIMUM", 39),
-            ("last", "LAST", 0),
-            ("total", "TOTAL", 39)]
-        l_list = [(rep_name, cf) for rep_name, cf, min_width in l_list if self.max_info_width > min_width or True]
+            ("min", "MINIMUM", 39, False),
+            ("ave", "AVERAGE", 0, False),
+            ("max", "MAXIMUM", 39, False),
+            ("last", "LAST", 0, False)
+        ]
+        if self.create_total:
+            l_list.append(
+                ("total", "TOTAL", 39, True)
+            )
+        l_list = [(rep_name, cf, total) for rep_name, cf, min_width, total in l_list if self.max_info_width > min_width or True]
         return l_list
 
     @property
     def header_line(self):
-        return "COMMENT:<tt>{}{}</tt>\\n".format(
+        return "COMMENT:<tt>{}unit{}</tt>\\n".format(
             (
                 "{{:<{:d}s}}".format(
-                    self.max_info_width + 2
+                    self.max_info_width + 4
                 )
             ).format(
                 "Description"
-            )[:self.max_info_width + 2],
+            )[:self.max_info_width + 4],
             "".join(
                 [
-                    "{:>9s}".format(rep_name) for rep_name, _cf in self.get_legend_list()
+                    "{:>9s}".format(rep_name) for rep_name, _cf, _total in self.get_legend_list()
                 ]
             )
         )
@@ -377,6 +394,18 @@ class GraphTarget(object):
         )
         # rrd post arguments, will not be reset
         self.__post_args = {}
+        self.reset_keys()
+
+    def reset_keys(self):
+        self.__draw_keys = []
+        self.__unique = 0
+
+    @property
+    def draw_keys(self):
+        return self.__draw_keys
+
+    def remove_keys(self, remove_keys):
+        self.__draw_keys = [_key for _key in self.__draw_keys if _key not in remove_keys]
 
     @property
     def dev_id_str(self):
@@ -408,6 +437,11 @@ class GraphTarget(object):
 
     def get_def_idx(self):
         return len(self.defs) + 1
+
+    def add_def(self, key, g_var, **kwargs):
+        self.__unique += 1
+        self.__draw_keys.append((self.__unique, key))
+        self.defs[(self.__unique, key)] = g_var.graph_def(self.__unique, **kwargs)
 
     def set_y_mm(self, _min, _max):
         # set min / max values for ordinate
@@ -718,8 +752,8 @@ class RRDGraph(object):
                         "--start", "{:d}".format(self.abs_start_time),  # start
                         graph_var(self, _graph_target, None, "").header_line,
                     ]
-                    _unique = 0
-                    draw_keys = []
+                    # reset graph keys
+                    _graph_target.reset_keys()
                     for graph_key in sorted(_graph_target.graph_keys):
                         for _cur_id, cur_pk in _graph_target.dev_list:
                             dev_vector = vector_dict[cur_pk]
@@ -745,20 +779,24 @@ class RRDGraph(object):
                                         self.log("skipping {} (file is too small)".format(def_xml.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
                                         _take = False
                                 if _take:
-                                    _unique += 1
-                                    _graph_target.defs[(_unique, graph_key)] = graph_var(
-                                        self,
-                                        _graph_target,
-                                        def_xml,
+                                    # store def
+                                    _graph_target.add_def(
                                         graph_key,
-                                        dev_dict[cur_pk]
-                                    ).graph_def(_unique, timeshift=self.para_dict["timeshift"])
-                                    draw_keys.append((_unique, graph_key))
+                                        graph_var(
+                                            self,
+                                            _graph_target,
+                                            def_xml,
+                                            graph_key,
+                                            dev_dict[cur_pk]
+                                        ),
+                                        timeshift=self.para_dict["timeshift"]
+                                    )
                     if _graph_target.defs:
                         draw_it = True
                         removed_keys = set()
+                        # print "**", draw_keys
                         while draw_it:
-                            rrd_args = rrd_pre_args + sum([_graph_target.defs[_key] for _key in draw_keys], [])
+                            rrd_args = rrd_pre_args + sum([_graph_target.defs[_key] for _key in _graph_target.draw_keys], [])
                             rrd_args.extend(_graph_target.rrd_post_args)
                             rrd_args.extend([
                                 "--title",
@@ -813,7 +851,7 @@ class RRDGraph(object):
                                             _graph_target.set_post_arg("-u", "0")
                                             draw_it = True
                                 # check for empty graphs
-                                empty_keys = set(draw_keys) - set(val_dict.keys())
+                                empty_keys = set(_graph_target.draw_keys) - set(val_dict.keys())
                                 if empty_keys and self.para_dict["hide_empty"]:
                                     self.log(
                                         u"{}: {}".format(
@@ -822,8 +860,9 @@ class RRDGraph(object):
                                         )
                                     )
                                     removed_keys |= empty_keys
-                                    draw_keys = [_key for _key in draw_keys if _key not in empty_keys]
-                                    if not draw_keys:
+                                    _graph_target.remove_keys(empty_keys)
+                                    # draw_keys = [_key for _key in draw_keys if _key not in empty_keys]
+                                    if not _graph_target.draw_keys:
                                         draw_result = None
                                     else:
                                         draw_it = True
