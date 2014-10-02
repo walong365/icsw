@@ -129,21 +129,26 @@ virtual_desktop_settings_template = """
             <th>Device</th>
             <th>Protocol</th>
             <th>Port</th>
-            <th>Window manager</th>
+            <th>Window<br/>manager</th>
             <th>Screen size</th>
-            <th>Is running</th>
-            <th>Is started automatically</th>
+            <th>Running</th>
+            <th>Is started<br/>automatically</th>
+            <th>Action</th>
         </tr>
     </thead>
     <tbody>
         <tr ng-repeat="vdus in virtual_desktop_user_setting">
-            <td> {{ devices[vdus.device].name }} </td>
+            <td> {{ get_device_by_index(vdus.device).name }} </td>
             <td> {{ get_virtual_desktop_protocol_by_index(vdus.virtual_desktop_protocol).description }} </td>
             <td> {{ vdus.port }} </td>
             <td> {{ get_window_manager_by_index(vdus.window_manager).description }} </td>
             <td> {{ vdus.screen_size }} </td>
-            <td> {{ vdus.is_running }} </td>
-            <td> {{ vdus.start }} </td>
+            <td> {{ vdus.is_running | yesno2 }} </td>
+            <td> {{ vdus.start | yesno2 }} </td>
+            <td>
+                <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_virtual_desktop_user_setting(vdus)"></input>
+                <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_virtual_desktop_user_setting(vdus)"></input>
+            </td>
         </tr>
     </tbody>
 </table>
@@ -497,7 +502,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 $scope.rebuild_tree()
                 $scope.virtual_desktop_protocol = data[7]
                 $scope.window_manager = data[8]
-                $scope.devices = data[9]
+                $scope.device = data[9]
                 $scope.virtual_desktop_user_setting = data[10]
         )
         $scope.sync_users = () ->
@@ -1101,7 +1106,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 # vd_devs and wm_devs contain duplicates, but we dont care
                 inter = _.intersection(vd_devs, wm_devs)
 
-                return (dev for dev in scope.devices when not dev.is_meta_device and dev.idx in inter)
+                return (dev for dev in scope.device when not dev.is_meta_device and dev.idx in inter)
             scope.virtual_desktop_device_available = () ->
                 return scope.virtual_desktop_devices().length > 0
             scope.get_available_window_managers = (dev_index) ->
@@ -1114,6 +1119,8 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     return (vd for vd in scope.virtual_desktop_protocol when (dev_index in vd.devices))
                 else
                     return []
+            scope.get_device_by_index = (index) ->
+                return _.find(scope.device, (vd) -> vd.idx == index)
             scope.get_virtual_desktop_protocol_by_index = (index) ->
                 return _.find(scope.virtual_desktop_protocol, (vd) -> vd.idx == index)
             scope.get_window_manager_by_index = (index) ->
@@ -1151,8 +1158,12 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     "port":             scope._edit_obj.port
                     "start":            scope._edit_obj.start_automatically
                 }
-                scope.push_virtual_desktop_user_setting(new_obj, () ->
+                scope.push_virtual_desktop_user_setting(new_obj, (data) ->
                     scope._edit_obj.device = undefined
+                    # also add locally
+                    scope.virtual_desktop_user_setting.push(data)
+                    noty
+                        text : "added virtual desktop setting"
                 )
             scope.on_device_change = () ->
                 # set default values
@@ -1167,6 +1178,17 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 if vds
                     scope._edit_obj.virtual_desktop_protocol = vds[0].idx
 
+            scope.delete_virtual_desktop_user_setting = (vdus) ->
+                vdus.remove().then( () ->
+                    # also remove locally
+                    index = _.indexOf(scope.virtual_desktop_user_setting, (elem) -> elem.idx = vdus.idx)
+                    scope.virtual_desktop_user_setting.splice(index, 1)
+                    noty
+                        text : "removed virtual desktop setting"
+                )
+            scope.modify_virtual_desktop_user_setting = (vdus) -> 
+                scope._edit_obj.device = vdus.device
+                # TODO: set modifying flag
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)
