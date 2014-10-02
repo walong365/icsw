@@ -36,6 +36,119 @@ enter_password_template = """
 
 {% verbatim %}
 
+virtual_desktop_settings_template = """
+<fieldset  ng-show="true">
+    <legend>Virtual Desktops</legend>
+    <div ng-show="!virtual_desktop_device_available()">
+        <p>No device supporting a virtual desktop protocol and a window manager found</p>
+    </div>
+    <div id="div_id_device" class="form-group" ng_show="virtual_desktop_device_available()">
+        <label for="id_device" class="control-label col-sm-2">
+           Device
+        </label>
+        <div class="controls col-sm-8">
+            <div class='input-group' style='max-width:400px; min-width:240px;'>
+            <ui-select ng-model='_edit_obj.device' ng-disabled='false' ng-change="on_device_change()">
+                <ui-select-match placeholder='Select a device'>{{$select.selected.name}}</ui-select-match>
+                <ui-select-choices repeat='value.idx as value in virtual_desktop_devices()' group-by='&#39;model_name&#39;'>
+                    <div ng-bind-html='value.name | highlight: $select.search'></div>
+                </ui-select-choices>
+            </ui-select>
+            <span class='input-group-btn'>
+            <button type="button" ng-click="_edit_obj.device = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div>
+        </div>
+    </div>
+            
+   <div id="div_id_virtual_desktop_protocol" class="form-group " ng_show="_edit_obj.device" >
+       <label for="id_virtual_desktop_protocol" class="control-label col-sm-2">
+           Virtual desktop protocol
+       </label>
+       <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select an virtual desktop protocol'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='&#39;model_name&#39;'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div></div>
+       <div id="div_id_port" class="form-group " ng_show="_edit_obj.device" ><label for="id_port" class="control-label col-sm-2"> Port
+       </label>
+       <div class="controls col-sm-8">
+           <input class="numberinput form-control" id="id_port" max="65535" min="0" name="port" ng-model="_edit_obj.port" placeholder="0" type="number" /> 
+       </div>
+   </div>
+   
+   <div id="div_id_window_manager" class="form-group " ng_show="_edit_obj.device" ><label for="id_window_manager" class="control-label col-sm-2">
+           Window manager
+       </label>
+       <div class="controls col-sm-8">
+           <ui-select ng-model='_edit_obj.window_manager' style='max-width:400px; min-width:240px;' ng-disabled='false'>
+               <ui-select-match placeholder='Select a wm'>{{$select.selected.description}}</ui-select-match>
+               <ui-select-choices repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='&#39;model_name&#39;'>
+                   <div ng-bind-html='value.description | highlight: $select.search'></div>
+               </ui-select-choices>
+           </ui-select>
+       </div>
+  </div>
+
+  <div id="div_id_screen_size" class="form-group " ng_show="_edit_obj.device" >
+       <label for="id_screen_size" class="control-label col-sm-2">
+           Screen size
+       </label>
+       <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.screen_size' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='...'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value as value in available_screen_sizes'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div>
+   </div>
+
+  
+  <!--
+  old manual_screen_size code
+
+  <div  ><div  class="control-label col-sm-2" > &nbsp; </div><div  class="controls form-inline col-sm-8" ><div  ><div id="div_id_manual_screen_size_x" class="form-group " ><label for="id_manual_screen_size_x" class="control-label col-sm-2">
+      Manual screen size x
+  </label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_manual_screen_size_x" label="" max="6000" min="200" name="manual_screen_size_x" ng-model="_edit_obj.manual_screen_size_x" placeholder="1900" type="number" /> </div></div> x </div></div></div>
+  -->
+
+  <div>
+      <div class="control-label col-sm-2" > &nbsp; </div>
+      <div class="controls form-inline col-sm-8" ng_show="_edit_obj.device && _edit_obj.screen_size.manual">
+          <div class="controls form-inline">
+              <input class="numberinput form-control" type="number" min="200", max="6000" placeholder="1900" ng-model="_edit_obj.manual_screen_size_x"></input> x <input class="numberinput form-control" type="number" min="200", max="6000" placeholder="1200" ng-model="_edit_obj.manual_screen_size_y"></input>
+          </div>
+      </div>
+  </div>
+  
+  <div  ng-show="_edit_obj.device">
+  <div  class="control-label col-sm-2" > &nbsp; </div>
+  <div class="form-group">
+      <div id="div_id_start_automatically" class="checkbox " >
+          <div class="controls col-lg-offset-0 col-sm-8">
+              <label for="id_start_automatically" class="">
+              <input class="checkboxinput checkbox" id="id_start_automatically" name="start_automatically" ng-model="_edit_obj.start_automatically" type="checkbox" />
+          Start automatically</label></div></div></div>
+  </div>
+               
+               
+  <input type="button" name="" value="create" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
+</fieldset>
+
+<table class="table table-condensed table-hover table-striped" style="width:100%;">
+    <thead>
+        <tr>
+            <th>Device</th>
+            <th>Protocol</th>
+            <th>Port</th>
+            <th>Window manager</th>
+            <th>Screen size</th>
+            <th>Is running</th>
+            <th>Is started automatically</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="vdus in virtual_desktop_user_setting">
+            <td> {{ devices[vdus.device].name }} </td>
+            <td> {{ get_virtual_desktop_protocol_by_index(vdus.virtual_desktop_protocol).description }} </td>
+            <td> {{ vdus.port }} </td>
+            <td> {{ get_window_manager_by_index(vdus.window_manager).description }} </td>
+            <td> {{ vdus.screen_size }} </td>
+            <td> {{ vdus.is_running }} </td>
+            <td> {{ vdus.start }} </td>
+        </tr>
+    </tbody>
+</table>
+"""
+
 jobinfo_template = """
  <table class="table table-hover table-bordered table-condensed" style="width:100%;" >
     <thead>
@@ -340,6 +453,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             ["{% url 'rest:home_export_list' %}", {}]
             ["{% url 'rest:csw_object_list' %}", {}]
             ["{% url 'rest:quota_capable_blockdevice_list' %}", {}]
+            ["{% url 'rest:virtual_desktop_protocol_list' %}", {}]
+            ["{% url 'rest:window_manager_list' %}", {}]
+            ["{% url 'rest:device_list' %}", {}]
+            ["{% url 'rest:virtual_desktop_user_setting_list' %}", {}]
         ])
         $scope.init_csw_cache = (entry, e_type) ->
             entry.permission = null
@@ -378,6 +495,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 for entry in $scope.qcb_list
                     $scope.qcb_lut[entry.idx] = entry
                 $scope.rebuild_tree()
+                $scope.virtual_desktop_protocol = data[7]
+                $scope.window_manager = data[8]
+                $scope.devices = data[9]
+                $scope.virtual_desktop_user_setting = data[10]
         )
         $scope.sync_users = () ->
             $.blockUI()
@@ -615,6 +736,12 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]
             key = "#{csw_perm.content_type.app_label}.#{csw_perm.content_type.model}"
             return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
+
+        $scope.push_virtual_desktop_user_setting = (new_obj, then_fun) ->
+            console.log new_obj
+            url = "{% url 'rest:virtual_desktop_user_setting_list' %}".slice(1)
+            Restangular.all(url).post(new_obj).then( then_fun )
+
                 
 ]).controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
@@ -955,9 +1082,95 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         link: (scope, element, attrs) ->
         	scope.get_jobs_done = () -> 42
         	scope.jobs_done = 44
+).directive("virtualdesktopsettings", ($compile, $templateCache, icswTools) ->
+        restrict : "EA"
+        template : $templateCache.get("virtualdesktopsettings.html")
+        link: (scope, element, attrs) ->
+            scope.virtual_desktop_devices = () ->
+                # devices which support both some kind of virtual desktop and window manager
+                vd_devs = []
+                for vd in scope.virtual_desktop_protocol
+                    for dev_index in vd.devices
+                        vd_devs.push(dev_index)
+                        
+                wm_devs = []
+                for wm in scope.window_manager
+                    for dev_index in wm.devices
+                        wm_devs.push(dev_index)
+                    
+                # vd_devs and wm_devs contain duplicates, but we dont care
+                inter = _.intersection(vd_devs, wm_devs)
+
+                return (dev for dev in scope.devices when not dev.is_meta_device and dev.idx in inter)
+            scope.virtual_desktop_device_available = () ->
+                return scope.virtual_desktop_devices().length > 0
+            scope.get_available_window_managers = (dev_index) ->
+                if dev_index
+                    return (wm for wm in scope.window_manager when (dev_index in wm.devices))
+                else
+                    return []
+            scope.get_available_virtual_desktop_protocols = (dev_index) ->
+                if dev_index
+                    return (vd for vd in scope.virtual_desktop_protocol when (dev_index in vd.devices))
+                else
+                    return []
+            scope.get_virtual_desktop_protocol_by_index = (index) ->
+                return _.find(scope.virtual_desktop_protocol, (vd) -> vd.idx == index)
+            scope.get_window_manager_by_index = (index) ->
+                return _.find(scope.window_manager, (vd) -> vd.idx == index)
+            res_count = 0 
+            class screen_size
+                constructor: (@x_size, @y_size) ->
+                    @idx = res_count++   # must be same as index in list
+                    @manual = @x_size == 0 and @y_size == 0 
+                    @name = if @manual then "manual" else @x_size+"x"+@y_size
+            scope.available_screen_sizes = [
+                new screen_size(0, 0),
+                new screen_size(1920, 1200), new screen_size(1920, 1080),
+                new screen_size(1680, 1050), new screen_size(1600, 900),
+                new screen_size(1440, 900), new screen_size(1400, 1050),
+                new screen_size(1280, 1024), new screen_size(1280, 800),
+                new screen_size(1280, 720), new screen_size(1152, 864),
+                new screen_size(1024, 768), new screen_size(800, 600),
+                new screen_size(640, 420),
+            ]
+            scope.get_selected_screen_size_as_string = () ->
+               if not scope._edit_obj.screen_size
+                   return ""
+               if scope._edit_obj.screen_size.manual
+                   return scope._edit_obj.manual_screen_size_x + "x" + scope._edit_obj.manual_screen_size_y
+               else 
+                   return scope._edit_obj.screen_size.name
+            scope.create_virtual_desktop_user_setting = () ->
+                new_obj = {
+                    "window_manager":   scope._edit_obj.window_manager
+                    "virtual_desktop_protocol": scope._edit_obj.virtual_desktop_protocol 
+                    "screen_size":      scope.get_selected_screen_size_as_string()
+                    "device":           scope._edit_obj.device
+                    "user":             scope._edit_obj.idx
+                    "port":             scope._edit_obj.port
+                    "start":            scope._edit_obj.start_automatically
+                }
+                scope.push_virtual_desktop_user_setting(new_obj, () ->
+                    scope._edit_obj.device = undefined
+                )
+            scope.on_device_change = () ->
+                # set default values
+                scope._edit_obj.port = 0  # could perhaps depend on protocol
+                scope._edit_obj.screen_size = scope.available_screen_sizes[1] # first is "manual"
+
+                dev_index = scope._edit_obj.device
+                wms = scope.get_available_window_managers(dev_index)
+                if wms
+                    scope._edit_obj.window_manager = wms[0].idx
+                vds = scope.get_available_virtual_desktop_protocols(dev_index)
+                if vds
+                    scope._edit_obj.virtual_desktop_protocol = vds[0].idx
+
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)
+    $templateCache.put("virtualdesktopsettings.html", virtual_desktop_settings_template)
     $templateCache.put("permissions.html", permissions_template)
     $templateCache.put("jobinfo.html", jobinfo_template)
     $templateCache.put("diskusage.html", diskusage_template)
