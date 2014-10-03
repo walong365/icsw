@@ -33,7 +33,6 @@ import process_tools
 import re
 import server_command
 import shutil
-import socket
 import time
 import zmq
 
@@ -202,22 +201,19 @@ class machine_vector(object):
                     instant=int(mv_target.get("immediate", "0")) == 1
                 )
                 # zmq sending, to collectd
-                if True:
-                    t_sock = p_pool.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-                    t_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-                    t_sock.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
-                    t_sock.setsockopt(zmq.BACKLOG, 4)  # @UndefinedVariable
-                    t_sock.setsockopt(zmq.SNDTIMEO, 1000)  # @UndefinedVariable
-                    # to stop 0MQ trashing the target socket
-                    t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)  # @UndefinedVariable
-                    t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)  # @UndefinedVariable
-                    target_str = "tcp://{}:{:d}".format(
-                        mv_target.get("target", "127.0.0.1"),
-                        int(mv_target.get("port", "8002")))
-                    self.log("creating zmq.PUSH socket for {}".format(target_str))
-                    t_sock.connect(target_str)
-                else:
-                    t_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                t_sock = p_pool.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+                t_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+                t_sock.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
+                t_sock.setsockopt(zmq.BACKLOG, 4)  # @UndefinedVariable
+                t_sock.setsockopt(zmq.SNDTIMEO, 1000)  # @UndefinedVariable
+                # to stop 0MQ trashing the target socket
+                t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)  # @UndefinedVariable
+                t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)  # @UndefinedVariable
+                target_str = "tcp://{}:{:d}".format(
+                    mv_target.get("target", "127.0.0.1"),
+                    int(mv_target.get("port", "8002")))
+                self.log("creating zmq.PUSH socket for {}".format(target_str))
+                t_sock.connect(target_str)
                 self.__socket_dict[send_id] = t_sock
         self.__xml_struct = xml_struct
         self.vector_flags = {}
