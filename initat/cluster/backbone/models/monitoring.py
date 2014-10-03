@@ -164,6 +164,9 @@ class mon_build_unreachable(models.Model):
     class Meta:
         app_label = "backbone"
 
+    class CSW_Meta:
+        backup = False
+
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
