@@ -18,7 +18,6 @@
 """ virtual desktop capability """
 
 from django.db.models import Q
-from django.db.utils import ProgrammingError
 from initat.cluster.backbone.models import device
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
@@ -39,13 +38,7 @@ class virtual_desktop_stuff(bg_stuff):
 
     def _call(self, cur_time, builder):
         # simple hack
-        if virtual_desktop_protocol is None:
-            return
-        try:
-            _count = virtual_desktop_protocol.objects.all().count()
-        except ProgrammingError:
-            return
-
+        return
         for vd_proto in virtual_desktop_protocol.objects.all():
             _vd_update = False
             available = process_tools.find_file(vd_proto.binary)

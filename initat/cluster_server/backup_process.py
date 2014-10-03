@@ -47,6 +47,16 @@ class backup_process(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
+    def get_ignore_list(self):
+        from django.db.models import get_app, get_apps, get_model, get_models  # @UnresolvedImport
+        ignore_list = []
+        for _app in get_apps():
+            for _model in get_models(_app):
+                if hasattr(_model, "CSW_Meta"):
+                    if not getattr(_model.CSW_Meta, "backup", True):
+                        ignore_list.append("{}.{}".format(_model._meta.app_label, _model._meta.model_name))
+        return ignore_list
+
     def _start_backup(self, *args, **kwargs):
         self.log("starting backup")
         bu_dir = global_config["DATABASE_DUMP_DIR"]
@@ -75,12 +85,18 @@ class backup_process(threading_tools.process_obj):
         # set BASE_OBJECT
         dumpdatafast.BASE_OBJECT = self
         buf_com = dumpdatafast.Command()
-        opts, args = OptionParser(option_list=buf_com.option_list).parse_args([
-            "-d",
-            bu_dir,
-            "-b",
-            "--one-file",
-            bu_name])
+        opts, args = OptionParser(option_list=buf_com.option_list).parse_args(
+            [
+                "-d",
+                bu_dir,
+                "-b",
+            ] + sum(
+                [["-e", _ignore] for _ignore in self.get_ignore_list()], []
+            ) + [
+                "--one-file",
+                bu_name
+            ]
+        )
         buf_com._handle(*args, **vars(opts))
         # clear base object
         dumpdatafast.BASE_OBJECT = None
@@ -97,19 +113,24 @@ class backup_process(threading_tools.process_obj):
         self.log("storing backup in %s" % (full_path))
         buf_com = dumpdataslow.Command()
         buf_com.stdout = dummy_file(full_path, "wb")
-        opts, args = OptionParser(option_list=buf_com.option_list).parse_args([
-            "-a",
-            "--format",
-            "xml",
-            "--traceback",
-            "auth",
-            "contenttypes",
-            "sessions",
-            "sites",
-            "messages",
-            "admin",
-            "backbone",
-        ])
+        opts, args = OptionParser(option_list=buf_com.option_list).parse_args(
+            [
+                "-a",
+                "--format",
+                "xml",
+                "--traceback",
+            ] + sum(
+                [["-e", _ignore] for _ignore in self.get_ignore_list()], []
+            ) + [
+                "auth",
+                "contenttypes",
+                "sessions",
+                "sites",
+                "messages",
+                "admin",
+                "backbone",
+            ]
+        )
         buf_com.handle(*args, **vars(opts))
         buf_com.stdout.close()
         file("%s.bz2" % (full_path), "wb").write(bz2.compress(file(full_path, "r").read()))
