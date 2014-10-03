@@ -18,10 +18,16 @@
 """ virtual desktop capability """
 
 from django.db.models import Q
+from django.db.utils import ProgrammingError
+from initat.cluster.backbone.models import device
 from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
-from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, device
 import process_tools
+try:
+    from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager
+except ImportError:
+    virtual_desktop_protocol = None
+    window_manager = None
 
 
 class virtual_desktop_stuff(bg_stuff):
@@ -32,6 +38,14 @@ class virtual_desktop_stuff(bg_stuff):
         self.__effective_device = device.objects.get(Q(pk=global_config["EFFECTIVE_DEVICE_IDX"]))
 
     def _call(self, cur_time, builder):
+        # simple hack
+        if virtual_desktop_protocol is None:
+            return
+        try:
+            _count = virtual_desktop_protocol.objects.all().count()
+        except ProgrammingError:
+            return
+
         for vd_proto in virtual_desktop_protocol.objects.all():
             _vd_update = False
             available = process_tools.find_file(vd_proto.binary)

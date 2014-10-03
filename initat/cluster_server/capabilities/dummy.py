@@ -17,7 +17,7 @@
 #
 """ cluster-server """
 
-from initat.cluster_server.background.base import bg_stuff
+from initat.cluster_server.capabilities.base import bg_stuff
 from initat.host_monitoring import hm_classes
 import time
 
