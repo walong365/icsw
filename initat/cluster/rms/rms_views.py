@@ -168,6 +168,12 @@ def _sort_list(in_list, _post):
     return [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
 
 
+def _salt_addons(request):
+    if RMS_ADDONS:
+        for change_obj in RMS_ADDONS:
+            change_obj.set_headers(rms_headers(request))
+
+
 def _fetch_rms_info(request):
     # get rms info needed by several views
     # call my_sge_info.update() before calling this!
@@ -186,13 +192,13 @@ class get_rms_json(View):
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
+        _salt_addons(request)
         rms_info = _fetch_rms_info(request)
 
         # print etree.tostring(run_job_list, pretty_print=True)
         node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
         if RMS_ADDONS:
             for change_obj in RMS_ADDONS:
-                change_obj.set_headers(rms_headers(request))
                 change_obj.modify_nodes(my_sge_info, node_list)
         fc_dict = {}
         cur_time = time.time()
@@ -244,6 +250,7 @@ class get_rms_jobinfo(View):
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
+        _salt_addons(request)
         rms_info = _fetch_rms_info(request)
 
         latest_possible_end_time = datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"]))
