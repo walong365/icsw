@@ -886,16 +886,15 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 scope.object = new_val
                 scope.type = attrs["type"]
                 if scope.object?
+                    scope.current_scan_run = null
                     # salt list
                     if scope.type == "user"
                         scope.scan_runs = scope.object.user_scan_run_set
-                        _valid = (_entry for _entry in scope.scan_runs when _entry.current = true)
+                        _valid = (_entry for _entry in scope.scan_runs when _entry.current == true)
                         if _valid.length
                             scope.current_scan_run = _valid[0]
-                            scope.build_tree()
                             # build tree
-                        else
-                            scope.current_scan_run = null
+                            scope.build_tree()
             )
             scope.toggle_dots = () ->
                 scope.show_dots = !scope.show_dots
