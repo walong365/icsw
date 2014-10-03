@@ -20,17 +20,19 @@
 """ connect to a given collectd-server and fetch some data """
 
 from initat.host_monitoring.hm_classes import mvect_entry
-from lxml import etree # @UnresolvedImports
+from lxml import etree  # @UnresolvedImports @UnusedImport
 import argparse
 import json
 import logging_tools
 import memcache
+import pprint  # @UnusedImport
 import process_tools
-import server_command
 import re
+import server_command
 import sys
 import time
 import zmq
+
 
 class base_com(object):
     def __init__(self, options, *args):
@@ -41,19 +43,23 @@ class base_com(object):
             srv_com["identity"] = process_tools.zmq_identity_str(self.options.identity_string)
             for arg_index, arg in enumerate(args):
                 if self.options.verbose:
-                    print " arg {:d}: {}".format(arg_index, arg)
+                    print(" arg {:d}: {}".format(arg_index, arg))
                     srv_com["arguments:arg{:d}".format(arg_index)] = arg
             srv_com["arg_list"] = " ".join(args)
             srv_com["host_filter"] = self.options.host_filter
             srv_com["key_filter"] = self.options.key_filter
-            self.srv_com = srv_com #
+            self.srv_com = srv_com  #
         self.ret_state = 1
+
     def __getitem__(self, key):
         return self.srv_com[key]
+
     def __unicode__(self):
         return unicode(self.srv_com)
+
     def get_mc(self):
         return memcache.Client([self.options.mc_addr])
+
     def compile_re(self, re_str):
         try:
             cur_re = re.compile(re_str)
@@ -61,6 +67,7 @@ class base_com(object):
             print("error transforming '{}' to re".format(re_str))
             cur_re = re.compile(".*")
         return cur_re
+
     def send_and_receive(self, client):
         # tcp (0MQ) mode
         conn_str = "tcp://{}:{:d}".format(self.options.host, self.options.port)
@@ -77,7 +84,7 @@ class base_com(object):
         r_client = client
         if r_client.poll(self.options.timeout * 1000):
             recv_str = r_client.recv()
-            if r_client.getsockopt(zmq.RCVMORE):
+            if r_client.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 recv_id = recv_str
                 recv_str = r_client.recv()
             else:
@@ -99,6 +106,7 @@ class base_com(object):
                     len(recv_str),
                 )
         return True if not timeout else False
+
     def interpret_tcp(self):
         recv_id, recv_str = self.receive_tuple
         try:
@@ -126,18 +134,21 @@ class base_com(object):
                 print "no result tag found in reply"
                 self.ret_state = 2
 
+
 class host_list_com(base_com):
     class Meta:
         command = "host_list"
+
     def fetch(self):
         _mc = self.get_mc()
         hlist = json.loads(_mc.get("cc_hc_list"))
         h_re = self.compile_re(self.options.host_filter)
-        v_dict = {key : value for key, value in hlist.iteritems() if h_re.match(value[1])}
+        v_dict = {key: value for key, value in hlist.iteritems() if h_re.match(value[1])}
         print("{} found : {}").format(logging_tools.get_plural("host", len(v_dict)), ", ".join(sorted([value[1] for value in v_dict.itervalues()])))
         for key, value in v_dict.iteritems():
             print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
         # print v_list
+
     def _interpret(self, srv_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
@@ -156,21 +167,36 @@ class host_list_com(base_com):
             print "No host_list found in result"
             self.ret_state = 1
 
+
 class key_list_com(base_com):
     class Meta:
         command = "key_list"
+
     def fetch(self):
         _mc = self.get_mc()
         hlist = json.loads(_mc.get("cc_hc_list"))
         h_re = self.compile_re(self.options.host_filter)
         v_re = self.compile_re(self.options.key_filter)
-        v_dict = {key : value for key, value in hlist.iteritems() if h_re.match(value[1])}
-        print("{} found : {}").format(logging_tools.get_plural("host", len(v_dict)), ", ".join(sorted([value[1] for value in v_dict.itervalues()])))
-        k_dict = {key : json.loads(_mc.get("cc_hc_{}".format(key))) for key in v_dict.iterkeys()}
-        for key, value in v_dict.iteritems():
+        v_dict = {
+            key: value for key, value in hlist.iteritems() if h_re.match(value[1])
+        }
+        print(
+            "{} found : {}".format(
+                logging_tools.get_plural("host", len(v_dict)),
+                ", ".join(sorted([value[1] for value in v_dict.itervalues()]))
+            )
+        )
+        k_dict = {
+            key: json.loads(_mc.get("cc_hc_{}".format(key))) for key in v_dict.iterkeys()
+        }
+        _sorted_uuids = sorted(v_dict, cmp=lambda x, y: cmp(v_dict[x][1], v_dict[y][1]))
+        for key in _sorted_uuids:
+            value = v_dict[key]
             print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
         out_f = logging_tools.new_form_list()
-        for h_uuid, h_struct in k_dict.iteritems():
+        # pprint.pprint(k_dict)
+        for h_uuid in _sorted_uuids:
+            h_struct = k_dict[h_uuid]
             num_key = 0
             for entry in sorted(h_struct):
                 if v_re.match(entry[1]):
@@ -181,6 +207,7 @@ class key_list_com(base_com):
                     out_f.append([logging_tools.form_entry(v_dict[h_uuid][1], header="device")] + cur_mv.get_form_entry(num_key))
         print unicode(out_f)
         # print v_list
+
     def _interpret(self, srv_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
@@ -201,6 +228,7 @@ class key_list_com(base_com):
         else:
             print "No host_list found in result"
             self.ret_state = 1
+
 
 def main():
     parser = argparse.ArgumentParser("query the datastore of collectd servers")
@@ -233,9 +261,9 @@ def main():
         sys.exit(ret_state)
     if args.mode == "tcp":
         zmq_context = zmq.Context(1)
-        client = zmq_context.socket(zmq.DEALER) # if not args.split else zmq.PUB) # ROUTER)#DEALER)
-        client.setsockopt(zmq.IDENTITY, cur_com["identity"].text)
-        client.setsockopt(zmq.LINGER, args.timeout)
+        client = zmq_context.socket(zmq.DEALER)  # if not args.split else zmq.PUB) # ROUTER)#DEALER) @UndefinedVariable
+        client.setsockopt(zmq.IDENTITY, cur_com["identity"].text)  # @UndefinedVariable
+        client.setsockopt(zmq.LINGER, args.timeout)  # @UndefinedVariable
         was_ok = cur_com.send_and_receive(client)
         if was_ok:
             cur_com.interpret_tcp()

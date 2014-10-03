@@ -21,8 +21,9 @@
 
 """ dump types """
 
-from initat.collectd.collectd_types import * # @UnusedWildImport
+from initat.collectd.collectd_types import *  # @UnusedWildImport
 import logging_tools
+
 
 def dump_types():
     out_list = logging_tools.new_form_list()
