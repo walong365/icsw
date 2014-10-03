@@ -1199,7 +1199,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                 self.log("SRM: received message %s" % (mes))
 
     def _tp_message_received(self, zmq_socket):
-        src_process = zmq_socket.recv_unicode(zmq.SNDMORE)
+        src_process = zmq_socket.recv_unicode(zmq.SNDMORE)  # @UndefinedVariable
         mes_parts = zmq_socket.recv_pyobj()
         if mes_parts["target"] != "main":
             # redirect
