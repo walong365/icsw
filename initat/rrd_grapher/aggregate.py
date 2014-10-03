@@ -576,10 +576,11 @@ class aggregate_process(threading_tools.process_obj, threading_tools.operational
             _meta_aggs = self._create_aggregates(_ref_uuids, v_dict)
             self.send_vector(_meta_uuid, _send_name, _meta_aggs)
             _meta_dict[_meta_uuid] = self.ag_tls.filter(_meta_aggs)
-        _sys_uuid, _send_name, _sys_srcs = build_list[-1]
-        # sys aggregates
-        _sys_aggs = self._create_aggregates(_sys_srcs, _meta_dict)
-        self.send_vector(_sys_uuid, _send_name, _sys_aggs)
+        if build_list:
+            _sys_uuid, _send_name, _sys_srcs = build_list[-1]
+            # sys aggregates
+            _sys_aggs = self._create_aggregates(_sys_srcs, _meta_dict)
+            self.send_vector(_sys_uuid, _send_name, _sys_aggs)
 
     def send_vector(self, target_uuid, send_name, entries):
         _vector = E.machine_vector(
