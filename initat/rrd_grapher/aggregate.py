@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from multiprocessing.dummy import Process
 """ aggregation part of rrd-grapher service """
 
 from django.db import connection
@@ -25,6 +26,7 @@ from initat.cluster.backbone.models import device_group
 import logging_tools
 import memcache
 import re
+import process_tools
 import pprint  # @UnusedImport
 import json
 import threading_tools
@@ -108,7 +110,7 @@ class ag_struct(object):
             self.__lut[_found].collectd_uuid = _uuid
             # add lut from foreigin uuid
             self.__lut[_uuid] = self.__lut[_found]
-            _mdict["fqdns"] += 1
+            _mdict["fqdn"] += 1
         snames = {h_struct[_uuid][1].split(".")[0]: _uuid for _uuid in _um}
         for _found in set(snames.keys()) & self.__snames:
             _uuid = snames[_found]
@@ -211,7 +213,7 @@ AGGREGATE_XML = """
     </aggregate>
     <aggregate action="sum">
         <key_list>
-            <key top-level="net.all" match="(rx|tx)$"></key>
+            <key top-level="vms" match="[^\.]+$"></key>
         </key_list>
     </aggregate>
 </aggregates>
@@ -265,15 +267,21 @@ class ag_tls(object):
                 self.__second_level_keys.add(".".join(_parts[:2]))
             self.__top_level_res.setdefault(_parts[0], []).extend(self.__re_dict[_key])
         for _key, _list in self.__top_level_res.iteritems():
-            self.__top_level_res[_key] = self._build_re(_list)
+            self.__top_level_res[_key] = self._build_re(_key, _list)
 
-    def _build_re(self, _in_list):
+    def _build_re(self, key, _in_list):
         _list = []
         for _name, _re_list in _in_list:
             _sub_list = "|".join(_re_list)
             _re = "(?P<{}>({}))".format(_name, _sub_list)
             _list.append(_re)
         # return a list of regexps so that one value can go into more than one aggregate
+        self.log(
+            "re_list for key {}: {}".format(
+                key,
+                ", ".join(_list),
+            )
+        )
         return [re.compile(_entry) for _entry in _list]
 
     def filter(self, in_list):
@@ -479,7 +487,11 @@ class aggregate_process(threading_tools.process_obj, threading_tools.operational
         return memcache.Client([global_config["MEMCACHE_ADDRESS"]])
 
     def _fetch_hosts(self, mc):
-        h_dict = json.loads(mc.get("cc_hc_list"))
+        try:
+            h_dict = json.loads(mc.get("cc_hc_list"))
+        except:
+            self.log("error fetching host_list: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            h_dict = {}
         build_list = self.struct.match(h_dict)
         self.struct.set_last_update(h_dict)
         return build_list
@@ -533,7 +545,7 @@ class aggregate_process(threading_tools.process_obj, threading_tools.operational
             time="{:d}".format(int(time.time())),
             simple="0"
         )
-        self.drop_socket.send_unicode(unicode(etree.tostring(_vector)))
+        self.drop_socket.send_unicode(unicode(etree.tostring(_vector)))  # @UndefinedVariable
 
     def aggregate(self):
         mc = self.get_mc()
