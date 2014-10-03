@@ -545,7 +545,15 @@ class aggregate_process(threading_tools.process_obj, threading_tools.operational
             time="{:d}".format(int(time.time())),
             simple="0"
         )
-        self.drop_socket.send_unicode(unicode(etree.tostring(_vector)))  # @UndefinedVariable
+        try:
+            self.drop_socket.send_unicode(unicode(etree.tostring(_vector)))  # @UndefinedVariable
+        except:
+            self.log(
+                "error sending vector: {}".format(
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL,
+            )
 
     def aggregate(self):
         mc = self.get_mc()
