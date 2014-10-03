@@ -176,7 +176,7 @@ class compound_tree(object):
     </compound>
     <compound name="cpu">
         <key_list>
-            <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1STACK"></key>
+            <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1"></key>
             <key match="^vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
             <key match="^vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
             <key match="^vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
@@ -195,7 +195,7 @@ class compound_tree(object):
     </compound>
     <compound name="memory">
         <key_list>
-            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1STACK"></key>
+            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
             <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
             <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
             <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>

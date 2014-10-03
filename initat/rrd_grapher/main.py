@@ -67,6 +67,7 @@ def main():
         ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
+        ("VERBOSE", configfile.int_c_var(0, help_string="verbose lewel [%(default)s]", only_commandline=True)),
         ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
         ("USER", configfile.str_c_var("idrrd", help_string="user to run as [%(default)s")),
         ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
@@ -139,6 +140,8 @@ def main():
         ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
         ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
         ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
+        ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
+        ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
     ])
     _create_dirs(global_config)
 

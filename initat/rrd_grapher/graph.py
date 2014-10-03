@@ -775,8 +775,18 @@ class RRDGraph(object):
                             for def_xml in def_xmls:
                                 _take = True
                                 if "file_name" in def_xml.attrib:
-                                    if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
-                                        self.log("skipping {} (file is too small)".format(def_xml.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                                    try:
+                                        if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
+                                            self.log("skipping {} (file is too small)".format(def_xml.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                                            _take = False
+                                    except:
+                                        self.log(
+                                            "RRD file {} not accessible: {}".format(
+                                                def_xml.attrib["file_name"],
+                                                process_tools.get_except_info(),
+                                            ),
+                                            logging_tools.LOG_LEVEL_ERROR
+                                        )
                                         _take = False
                                 if _take:
                                     # store def
