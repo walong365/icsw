@@ -17,7 +17,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from multiprocessing.dummy import Process
 """ aggregation part of rrd-grapher service """
 
 from django.db import connection
@@ -214,6 +213,13 @@ AGGREGATE_XML = """
     <aggregate action="sum">
         <key_list>
             <key top-level="vms" match="[^\.]+$"></key>
+        </key_list>
+    </aggregate>
+    <aggregate action="sum">
+        <key_list>
+            <key top-level="mem" match="used.*"></key>
+            <key top-level="mem" match="free.*"></key>
+            <key top-level="mem" match="avail.*"></key>
         </key_list>
     </aggregate>
 </aggregates>
