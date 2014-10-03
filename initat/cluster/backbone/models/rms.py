@@ -296,6 +296,9 @@ class ext_license_check(ext_license_base):
     ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
     run_time = models.FloatField(default=0.0)
 
+    class CSW_Meta:
+        backup = False
+
 
 class ext_license_state(models.Model):
     idx = models.AutoField(primary_key=True)
