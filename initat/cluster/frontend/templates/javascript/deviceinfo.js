@@ -227,13 +227,13 @@ urn:uuid:{{ _edit_obj.uuid }}
     </div>
 </div>
 """
-            if window.SERVICE_TYPES["grapher"]? and @has_perm("backbone.device.show_graphs", 0)
-                dev_div_txt += "<li><a href='#rrd'>Graphs#{addon_text_nmd}</a></li>"
-                main_part += """
+        if window.SERVICE_TYPES["grapher"]? and @has_perm("backbone.device.show_graphs", 0)
+            dev_div_txt += "<li><a href='#rrd'>Graphs#{addon_text}</a></li>"
+            main_part += """
 <div class="tab-pane" id="rrd">
     <div id='icsw.device.rrd'>
         <div ng-controller='rrd_ctrl'>
-            <rrdgraph devicepk='#{pk_list_nmd}'>
+            <rrdgraph devicepk='#{pk_list}'>
             </rrdgraph>
         </div>
     </div>

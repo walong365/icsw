@@ -167,7 +167,7 @@ class device_info_form(ModelForm):
             Fieldset(
                 "RRD / graph settings",
                 Field("store_rrd_data"),
-                ng_show="is_device()",
+                # ng_show="is_device()",
             ),
             Fieldset(
                 "Info",

@@ -79,7 +79,10 @@ class sidebar_tree extends tree_config
         if t_entry._node_type == "d"
             entry = @get_dev_entry(t_entry)
             if entry.is_meta_device
-                return "dynatree-icon"
+                if entry.has_active_rrds
+                    return "glyphicon glyphicon-pencil"
+                else
+                    return "dynatree-icon"
             else
                 if entry.has_active_rrds
                     return "glyphicon glyphicon-pencil"
