@@ -495,6 +495,14 @@ class device(models.Model):
         else:
             return self.name
 
+    @property
+    def display_name(self):
+        # like full_name but replaces METADEV_ with group
+        _name = self.full_name
+        if self.device_type.identifier == "MD" and _name.startswith("METADEV_"):
+            _name = "group {}".format(_name[8:])
+        return _name
+
     def crypt(self, in_pwd):
         if in_pwd:
             salt = "".join([chr(random.randint(65, 90)) for _idx in xrange(4)])
