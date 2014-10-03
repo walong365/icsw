@@ -36,6 +36,7 @@ import datetime
 import logging_tools
 import networkx as nx
 import os
+import process_tools
 import pstats
 import pytz
 import subprocess
@@ -130,7 +131,7 @@ class Command(BaseCommand):
         self.missing = options.get("missing")
 
         if iterator:
-            #self.iterator = partial(sql_iterator, step=lambda x: max(x / 100, 2000))
+            # self.iterator = partial(sql_iterator, step=lambda x: max(x / 100, 2000))
             self.iterator = partial(sql_iterator, step=step_size)
             self.iterator.name = "Custom SQL iterator"
         else:
@@ -216,18 +217,27 @@ class Command(BaseCommand):
             if model in excluded_models:
                 continue
             deps.add_to_tree(model)
-            many_to_many, file_name, nd = self.dump_model(model)
-            file_list.append(file_name)
-            not_dumped += nd
-            for m2m in many_to_many:
-                if m2m not in models:
-                    models.append(m2m)
+            try:
+                many_to_many, file_name, nd = self.dump_model(model)
+            except:
+                log(
+                    "error dumping model {}: {}".format(
+                        unicode(model),
+                        process_tools.get_except_info(),
+                    )
+                )
+            else:
+                file_list.append(file_name)
+                not_dumped += nd
+                for m2m in many_to_many:
+                    if m2m not in models:
+                        models.append(m2m)
 
         dep_file = os.path.join(self.directory, "DEPENDENCIES")
         file_list.append(dep_file)
         if self.missing and self.validator.missing_entries:
-            #print "The following database entries where found to be missing:"
-            #for entry in self.validator.missing_entries:
+            # print "The following database entries where found to be missing:"
+            # for entry in self.validator.missing_entries:
             #    print "%s=%s" % entry
             print "Not dumped: %d" % not_dumped
             print "All missing entries are"
@@ -312,14 +322,14 @@ class Command(BaseCommand):
 
         # We have to explicitly pass all ForeignKey and OneToOne fields, because
         # select_related() without params does not follow FKs with null=True
-        #queryset = model.objects.select_related(*pg_copy.foreign_keys)
+        # queryset = model.objects.select_related(*pg_copy.foreign_keys)
         queryset = model.objects.all()  # select_related(*pg_copy.foreign_keys)
         if self.count > 0:
             queryset = queryset[:self.count]
         obj_count = queryset.count()
-        #print "obj_count", obj_count
-        #print "len", len(queryset)
-        #assert obj_count == len(queryset)
+        # print "obj_count", obj_count
+        # print "len", len(queryset)
+        # assert obj_count == len(queryset)
 
         # The min is necessary to avoid 1 / 0 on small --count
         # arguments
@@ -331,7 +341,7 @@ class Command(BaseCommand):
             print msg
 
         if self.validate:
-            #self.validator.clear()
+            # self.validator.clear()
             self.validator.validate_model(model)
 
         not_dumped = 0
@@ -342,7 +352,7 @@ class Command(BaseCommand):
             model_name = model._meta.object_name
             for obj in self.iterator(queryset):
                 if (model_name, obj.pk) in self.validator.invalid_entries:
-                    #print "Not dumping %s=%d because of data errors" % (model, obj.pk)
+                    # print "Not dumping %s=%d because of data errors" % (model, obj.pk)
                     not_dumped += 1
                     continue
                 f.write(convert(obj))
@@ -487,13 +497,13 @@ class DatabaseValidator(object):
             fields = obj._meta.fields
 
             key = (obj._meta.object_name, obj.pk)
-            #print "checking", key
+            # print "checking", key
             if key in self.valid_entries:
-                #print key, "already marked as valid"
+                # print key, "already marked as valid"
                 return True
 
             if key in self.invalid_entries:
-                #print key, "already marked as INVALID"
+                # print key, "already marked as INVALID"
                 return False
 
             for field in fields:
@@ -514,8 +524,8 @@ class DatabaseValidator(object):
                                 self.invalid_entries.add(key)
                                 self.add_counting_edge(r_obj._meta.object_name, obj._meta.object_name)
                                 res = new_res
-                elif isinstance(field, (ManyToManyField, )):
-                    #TODO
+                elif isinstance(field, (ManyToManyField,)):
+                    # TODO
                     pass
 
             if res:
