@@ -40,7 +40,7 @@ class ag_struct(object):
         self.__log_com = log_com
         self.groups = []
         self.system_group = None
-        self.log("init")
+        self.log("init structure")
         # matched uuids from collectd
         self.__matched_uuids = set()
         # group_uuids
@@ -349,6 +349,17 @@ class ag_sink(object):
             ", ".join([str(_val) for _val in self.key_sinks.itervalues()]),
         )
 
+    def get_debug(self, num_src):
+        # return debug info
+        _sinks = [_value.get_debug(num_src) for _value in self.key_sinks.itervalues()]
+        _sinks = [_entry for _entry in _sinks if _entry]
+        _total = len(self.key_sinks)
+        return u"ag_sink ({:d} keys): {:.1f}%; {}".format(
+            _total,
+            float((_total - len(_sinks)) * 100. / len(self.key_sinks)),
+            ", ".join(_sinks) or "---",
+        )
+
 
 class key_sink(object):
     def __init__(self, _ve, action):
@@ -367,6 +378,12 @@ class key_sink(object):
             len(self.__values),
             str(self.__values),
         )
+
+    def get_debug(self, num_src):
+        if len(self.__values) != num_src:
+            return "{}: {:d}".format(self.key, len(self.__values))
+        else:
+            return ""
 
     def get_vector(self):
         return (self.format, self.key, self.info, self.unit, self.v_type, self.get_value(), self.base, self.factor)
@@ -430,8 +447,11 @@ class aggregate_process(threading_tools.process_obj, threading_tools.operational
             init_logger=True
         )
         connection.close()
+        self.__debug = global_config["DEBUG"]
         # last update of aggregation structure
         self.__struct_update = None
+        # cache for filtered values
+        self.__vector_filter_cache = {}
         self.init_sockets()
         self.init_ag_xml()
         self.register_timer(self.aggregate, 30, instant=False, first_timeout=1)
@@ -511,8 +531,15 @@ class aggregate_process(threading_tools.process_obj, threading_tools.operational
             _val = mc.get("cc_hc_{}".format(_key))
             if _val is not None:
                 v_dict[_key] = self.ag_tls.filter(json.loads(_val))
+                self.__vector_filter_cache[_key] = v_dict[_key]
             else:
-                _uuid_list.remove(_key)
+                if _key in self.__vector_filter_cache:
+                    self.log("error fetching data for {}, using cache".format(_key), logging_tools.LOG_LEVEL_WARN)
+                    v_dict[_key] = self.__vector_filter_cache[_key]
+                    del self.__vector_filter_cache[_key]
+                else:
+                    self.log("error fetching data for {}, and cache is empty".format(_key), logging_tools.LOG_LEVEL_ERROR)
+                    _uuid_list.remove(_key)
         return v_dict
 
     def _create_aggregates(self, src_uuids, v_dict):
@@ -527,6 +554,18 @@ class aggregate_process(threading_tools.process_obj, threading_tools.operational
                     [_local_aggs[_agg_name].feed_ve(_ve) for _agg_name in _target_agg]
         # build values for cluster-wide aggregation
         _group_values = sum([_ag_sink.get_vector() for _ag_sink in _local_aggs.itervalues()], [])
+        if self.__debug:
+            _num_src = len(v_dict)
+            self.log(
+                "dbg ({:d} srcs): {}".format(
+                    _num_src,
+                    ", ".join(
+                        [
+                            _ag_sink.get_debug(_num_src) for _ag_sink in _local_aggs.itervalues()
+                        ]
+                    )
+                )
+            )
         return _group_values
 
     def build_vectors(self, build_list, v_dict):
