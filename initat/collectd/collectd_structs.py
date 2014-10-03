@@ -90,17 +90,13 @@ class host_info(object):
     @staticmethod
     def host_update(hi):
         cur_time = time.time()
-        _changed = False
         # delete old entries
         del_keys = [key for key, value in host_info.entries.iteritems() if abs(value[0] - cur_time) > 15 * 60]
         if del_keys:
-            _changed = True
             for del_key in del_keys:
                 del host_info.entries[del_key]
         # set new entry
-        if hi.uuid not in host_info.entries:
-            _changed = True
-            host_info.entries[hi.uuid] = (time.time(), hi.name)
+        host_info.entries[hi.uuid] = (cur_time, hi.name)
         mc.set("cc_hc_list", json.dumps(host_info.entries))
 
     def mc_key(self):
