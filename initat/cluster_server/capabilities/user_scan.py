@@ -19,7 +19,7 @@
 
 from django.db.models import Q
 from initat.cluster_server.capabilities.base import bg_stuff
-from initat.cluster.backbone.models import device, home_export_list, user, user_scan_result, user_scan_run
+from initat.cluster.backbone.models import home_export_list, user, user_scan_result, user_scan_run
 from initat.cluster_server.config import global_config
 import logging_tools
 import os
@@ -102,7 +102,7 @@ class user_scan_stuff(bg_stuff):
         _scanned_ok, _scanned_error = (0, 0)
         for _key, _value in _hel.exp_dict.iteritems():
             if _value["entry"].device.pk == global_config["SERVER_IDX"]:
-                for _scan_user in user.objects.filter(Q(export=_value["entry"]) & Q(scan_user_home=True)):
+                for _scan_user in user.objects.filter(Q(export=_value["entry"]) & Q(scan_user_home=True)):  # @UndefinedVariable
                     _h_dir = os.path.join(_value["createdir"], _scan_user.home or _scan_user.login)
                     if os.path.isdir(_h_dir):
                         s_time = time.time()
