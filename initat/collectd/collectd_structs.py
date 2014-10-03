@@ -113,7 +113,7 @@ class host_info(object):
         return E.host_info(
             name=self.name,
             uuid=self.uuid,
-            last_update="{:d}".format(int(self.last_update) or 0),
+            last_update="{:d}".format(int(self.last_update or 0) or 0),
             keys="{:d}".format(len(self.__dict)),
             # update calls (full info)
             updates="{:d}".format(self.updates),
