@@ -78,7 +78,7 @@ class sub_dir(dict):
 
 class user_scan_stuff(bg_stuff):
     class Meta:
-        name = "quota"
+        name = "user_scan"
 
     def init_bg_stuff(self):
         self.__last_user_scan = None
