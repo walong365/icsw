@@ -310,6 +310,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 "active" : true
                 "homestart" : "/home"
                 "perms" : []
+                "group_quota_setting": []
             }
             return r_obj
         $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
@@ -330,6 +331,8 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 "group" : (entry.idx for entry in $scope.group_list)[0]
                 "shell" : "/bin/bash"
                 "perms" : []
+                "scan_depth" : 2
+                "user_quota_setting": []
             }
             return r_obj
         wait_list = restDataSource.add_sources([
@@ -785,14 +788,15 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         scope.quota_settings = scope.object.user_quota_setting_set
                     else
                         scope.quota_settings = scope.object.group_quota_setting_set
-                    for entry in scope.quota_settings
-                        # link
-                        entry.qcb = scope.qcb_lut[entry.quota_capable_blockdevice]
-                        entry.bytes_quota = if (entry.bytes_soft or entry.bytes_hard) then true else false
-                        entry.files_quota = if (entry.files_soft or entry.files_hard) then true else false
-                        # build stack
-                        entry.files_stacked = scope.build_stacked(entry, "files")
-                        entry.bytes_stacked = scope.build_stacked(entry, "bytes")
+                    if scope.quota_settings
+                        for entry in scope.quota_settings
+                            # link
+                            entry.qcb = scope.qcb_lut[entry.quota_capable_blockdevice]
+                            entry.bytes_quota = if (entry.bytes_soft or entry.bytes_hard) then true else false
+                            entry.files_quota = if (entry.files_soft or entry.files_hard) then true else false
+                            # build stack
+                            entry.files_stacked = scope.build_stacked(entry, "files")
+                            entry.bytes_stacked = scope.build_stacked(entry, "bytes")
             )
             scope.get_bytes_limit = (qs) ->
                 if qs.bytes_soft or qs.bytes_hard
