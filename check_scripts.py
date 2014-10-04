@@ -336,14 +336,18 @@ def check_system(opt_ns):
                                 pass
                         act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
                         threads_found = sum([value[1] for value in found_procs.itervalues()])
-                        entry.append(
-                            E.state_info(
-                                num_started="{:d}".format(threads_found),
-                                num_found="{:d}".format(threads_found),
-                                num_diff="0",
-                                state="0",
-                            )
+                        _info = E.state_info(
+                            num_diff="0",
+                            state="0" if act_pids else "7",
                         )
+                        if threads_found:
+                            _info.attrib.update(
+                                {
+                                    "num_started": "{:d}".format(threads_found),
+                                    "num_found": "{:d}".format(threads_found),
+                                }
+                            )
+                        entry.append(_info)
                     else:
                         entry.append(
                             E.state_info(
