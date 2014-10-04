@@ -353,7 +353,7 @@ class _general(hm_classes.hm_module):
                         bname = os.path.basename(dl)
                         if dl.startswith("cciss"):
                             bname = "cciss!%s" % (bname)
-                        cur_bs = int(file("/sys/block/%s/queue/hw_sector_size" % (bname), "r").read().strip())
+                        cur_bs = int(file("/sys/block/{}/queue/hw_sector_size".format(bname), "r").read().strip())
                     except:
                         cur_bs = 512
                         self.log(
@@ -411,40 +411,42 @@ class _general(hm_classes.hm_module):
                 mvect["num.interrupts"] = int(sub_wrap(stat_dict["intr"], self.vmstat_dict["intr"]) / tdiff)
             if "swap" in stat_dict and "swap" in self.vmstat_dict:
                 for name, idx in [("in", 0), ("out", 1)]:
-                    mvect["swap.%s" % (name)] = int(sub_wrap(stat_dict["swap"][idx], self.vmstat_dict["swap"][idx]) / tdiff)
+                    mvect["swap.{}".format(name)] = int(sub_wrap(stat_dict["swap"][idx], self.vmstat_dict["swap"][idx]) / tdiff)
             if "pages" in stat_dict and "pages" in self.vmstat_dict:
                 for name, idx in [("in", 0), ("out", 1)]:
-                    mvect["pages.%s" % (name)] = int(sub_wrap(stat_dict["pages"][idx], self.vmstat_dict["pages"][idx]) / tdiff)
+                    mvect["pages.{}".format(name)] = int(sub_wrap(stat_dict["pages"][idx], self.vmstat_dict["pages"][idx]) / tdiff)
             # print unique_dev_list
             if unique_dev_list != ["total"]:
                 for act_disk in unique_dev_list:
+                    _pf = "io.{}".format(act_disk)
                     if act_disk not in self.disk_stat:
                         info_str = act_disk == "total" and "total" or "on /dev/$2"
-                        mvect.register_entry("io.%s.blks.read" % (act_disk), 0, "number of blocks read per second %s" % (info_str), "1/s")
-                        mvect.register_entry("io.%s.blks.written" % (act_disk), 0, "number of blocks written per second %s" % (info_str), "1/s")
-                        mvect.register_entry("io.%s.bytes.read" % (act_disk), 0, "bytes read per second %s" % (info_str), "B/s", 1024)
-                        mvect.register_entry("io.%s.bytes.written" % (act_disk), 0, "bytes written per second %s" % (info_str), "B/s", 1024)
-                        mvect.register_entry("io.%s.time.read" % (act_disk), 0., "milliseconds spent reading %s" % (info_str), "s")
-                        mvect.register_entry("io.%s.time.written" % (act_disk), 0., "milliseconds spent writing %s" % (info_str), "s")
-                        mvect.register_entry("io.%s.time.io" % (act_disk), 0., "milliseconds spent doing I/O %s" % (info_str), "s")
+                        mvect.register_entry("{}.blks.read".format(_pf), 0, "number of blocks read per second {}".format(info_str), "1/s")
+                        mvect.register_entry("{}.blks.written".format(_pf), 0, "number of blocks written per second {}".format(info_str), "1/s")
+                        mvect.register_entry("{}.bytes.read".format(_pf), 0, "bytes read per second {}".format(info_str), "B/s", 1024)
+                        mvect.register_entry("{}.bytes.written".format(_pf), 0, "bytes written per second {}".format(info_str), "B/s", 1024)
+                        mvect.register_entry("{}.time.read".format(_pf), 0., "milliseconds spent reading {}".format(info_str), "s")
+                        mvect.register_entry("{}.time.written".format(_pf), 0., "milliseconds spent writing {}".format(info_str), "s")
+                        mvect.register_entry("{}.time.io".format(_pf), 0., "milliseconds spent doing I/O {}".format(info_str), "s")
             for old_disk in self.disk_stat.keys():
                 if old_disk not in disk_stat:
-                    mvect.unregister_entry("io.%s.blks.read" % (old_disk))
-                    mvect.unregister_entry("io.%s.blks.written" % (old_disk))
-                    mvect.unregister_entry("io.%s.bytes.read" % (old_disk))
-                    mvect.unregister_entry("io.%s.bytes.written" % (old_disk))
-                    mvect.unregister_entry("io.%s.time.read" % (old_disk))
-                    mvect.unregister_entry("io.%s.time.written" % (old_disk))
-                    mvect.unregister_entry("io.%s.time.io" % (old_disk))
+                    _pf = "io.{}".format(old_disk)
+                    mvect.unregister_entry("{}.blks.read".format(_pf))
+                    mvect.unregister_entry("{}.blks.written".format(_pf))
+                    mvect.unregister_entry("{}.bytes.read".format(_pf))
+                    mvect.unregister_entry("{}.bytes.written".format(_pf))
+                    mvect.unregister_entry("{}.time.read".format(_pf))
+                    mvect.unregister_entry("{}.time.written".format(_pf))
+                    mvect.unregister_entry("{}.time.io".format(_pf))
             if unique_dev_list != ["total"]:
                 for act_disk in [dev for dev in unique_dev_list if dev in self.disk_stat]:
                     # print act_disk, disk_stat[act_disk]
                     for idx, what in [(0, "read"), (1, "written")]:
-                        mvect["io.%s.blks.%s" % (act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
+                        mvect["io.{}.blks.{}".format(act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
                     for idx, what in [(5, "read"), (6, "written")]:
-                        mvect["io.%s.bytes.%s" % (act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
+                        mvect["io.{}.bytes.{}".format(act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
                     for idx, what in [(2, "read"), (3, "written"), (4, "io")]:
-                        mvect["io.%s.time.%s" % (act_disk, what)] = float(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / (1000 * tdiff))
+                        mvect["io.{}.time.{}".format(act_disk, what)] = float(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / (1000 * tdiff))
             self.vmstat_dict = stat_dict
             self.disk_stat = disk_stat
         else:
