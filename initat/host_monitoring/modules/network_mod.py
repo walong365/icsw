@@ -84,10 +84,13 @@ class argus_proc(object):
             else:
                 if cur_size > ARGUS_MAX_FILE_SIZE:
                     _wrap = True
-                    self.log("wrapping because file os too big (%s > %s)" % (
-                        logging_tools.get_size_str(cur_size),
-                        logging_tools.get_size_str(ARGUS_MAX_FILE_SIZE),
-                    ), logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "wrapping because file is too big ({} > {})".format(
+                            logging_tools.get_size_str(cur_size),
+                            logging_tools.get_size_str(ARGUS_MAX_FILE_SIZE),
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
                 elif datetime.datetime.now().day != self.create_day:
                     _wrap = True
                     self.log("wrapping because of new day has started")
@@ -98,7 +101,7 @@ class argus_proc(object):
 
     def run(self):
         self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        self.log("pid is %d" % (self.popen.pid))
+        self.log("pid is {:d}".format(self.popen.pid))
 
     def communicate(self):
         if self.popen:
@@ -216,11 +219,13 @@ class _general(hm_classes.hm_module):
         if _cur_free > ARGUS_MIN_FREE:
             return True
         else:
-            self.log("not enough free space for %s: %s < %s" % (
-                ARGUS_TARGET,
-                logging_tools.get_size_str(_cur_free),
-                logging_tools.get_size_str(ARGUS_MIN_FREE),
-                ))
+            self.log(
+                "not enough free space for {}: {} < {}".format(
+                    ARGUS_TARGET,
+                    logging_tools.get_size_str(_cur_free),
+                    logging_tools.get_size_str(ARGUS_MIN_FREE),
+                )
+            )
             return False
 
     def _compress_files(self):
@@ -307,6 +312,8 @@ class _general(hm_classes.hm_module):
 
     def init_machine_vector(self, mv):
         self.act_nds = netspeed(self.ethtool_path, self.ibv_devinfo_path)  # self.bonding_devices)
+        mv.register_entry("net.count.tcp", 0, "number of TCP connections", "1", 1)
+        mv.register_entry("net.count.udp", 0, "number of UDP connections", "1", 1)
 
     def update_machine_vector(self, mv):
         if self.__argus_path:
@@ -314,10 +321,12 @@ class _general(hm_classes.hm_module):
         try:
             self._net_int(mv)
         except:
-            self.log("error in net_int:",
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error in net_int:",
+                logging_tools.LOG_LEVEL_ERROR
+            )
             for log_line in process_tools.exception_info().log_lines:
-                self.log(" - %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
+                self.log(" - {}".format(log_line), logging_tools.LOG_LEVEL_ERROR)
 
     def _check_iptables(self, req_chain):
         """ req_chain can be:
@@ -349,8 +358,8 @@ class _general(hm_classes.hm_module):
                             if use_chain:
                                 t_dict[c_name] = {
                                     "policy": parts[-1][:-1],
-                                    "lines":-1
                                 }
+                                t_dict[c_name]["lines"] = -1
                         elif line.strip():
                             if use_chain:
                                 t_dict[c_name]["lines"] += 1
@@ -363,7 +372,7 @@ class _general(hm_classes.hm_module):
         time_diff = act_time - self.last_update
         if time_diff < 0:
             self.log(
-                "(net_int) possible clock-skew detected, adjusting (%s since last request)" % (
+                "(net_int) possible clock-skew detected, adjusting ({} since last request)".format(
                     logging_tools.get_diff_time_str(time_diff)
                 ),
                 logging_tools.LOG_LEVEL_WARN
@@ -371,15 +380,24 @@ class _general(hm_classes.hm_module):
             self.last_update = act_time
         elif time_diff < MIN_UPDATE_TIME:
             self.log(
-                "(net_int) too many update requests, skipping this one (last one %s ago; %d seconds minimum)" % (
+                "(net_int) too many update requests, skipping this one (last one {} ago; {:d} seconds minimum)".format(
                     logging_tools.get_diff_time_str(time_diff),
-                    MIN_UPDATE_TIME
+                    int(MIN_UPDATE_TIME)
                 ),
                 logging_tools.LOG_LEVEL_WARN
             )
         else:
             self.act_nds.update()
             self.last_update = time.time()
+        # tcp / udp connections
+        for _type in ["tcp", "udp"]:
+            _filename = "/proc/net/{}".format(_type)
+            try:
+                _lines = len(file(_filename, "r").readlines()) - 1
+            except:
+                self.log("error reading {}: {}".format(_filename, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                _lines = 0
+            mvect["net.count.{}".format(_type)] = _lines
         nd_dict = self.act_nds.make_speed_dict()
         # print nd_dict
         if nd_dict:
@@ -390,34 +408,37 @@ class _general(hm_classes.hm_module):
                     total_dict.setdefault(s_key, 0)
                     total_dict[s_key] += s_value
             nd_dict[TOTAL_DEVICE_NAME] = total_dict
-        for key in [x for x in self.dev_dict.keys() if x not in nd_dict]:
-            mvect.unregister_entry("net.%s.rx" % (key))
-            mvect.unregister_entry("net.%s.tx" % (key))
+        for key in [_key for _key in self.dev_dict.keys() if _key not in nd_dict]:
+            _pf = "net.{}".format(_key)
+            mvect.unregister_entry("{}.rx".format(key))
+            mvect.unregister_entry("{}.tx".format(key))
+            if any([key.startswith(x) for x in DETAIL_DEVICES]):
+                mvect.unregister_entry("{}.rxerr".format(_pf))
+                mvect.unregister_entry("{}.txerr".format(_pf))
+                mvect.unregister_entry("{}.rxdrop".format(_pf))
+                mvect.unregister_entry("{}.txdrop".format(_pf))
+                mvect.unregister_entry("{}.carrier".format(_pf))
+        for key in [_key for _key in nd_dict.keys() if _key not in self.dev_dict]:
+            _pf = "net.{}".format(_key)
+            mvect.register_entry("{}.rx".format(_pf), 0, "bytes per second received by $2", "Byte/s", 1000)
+            mvect.register_entry("{}.tx".format(_pf), 0, "bytes per second transmitted by $2", "Byte/s", 1000)
             if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect.unregister_entry("net.%s.rxerr" % (key))
-                mvect.unregister_entry("net.%s.txerr" % (key))
-                mvect.unregister_entry("net.%s.rxdrop" % (key))
-                mvect.unregister_entry("net.%s.txdrop" % (key))
-                mvect.unregister_entry("net.%s.carrier" % (key))
-        for key in [x for x in nd_dict.keys() if x not in self.dev_dict]:
-            mvect.register_entry("net.%s.rx" % (key), 0, "bytes per second received by $2", "Byte/s", 1000)
-            mvect.register_entry("net.%s.tx" % (key), 0, "bytes per second transmitted by $2", "Byte/s", 1000)
-            if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect.register_entry("net.%s.rxerr" % (key), 0, "receive error packets per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.txerr" % (key), 0, "transmit error packets per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.rxdrop" % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.txdrop" % (key), 0, "received packets dropped per second on $2", "1/s", 1000)
-                mvect.register_entry("net.%s.carrier" % (key), 0, "carrier errors per second on $2", "1/s", 1000)
+                mvect.register_entry("{}.rxerr".format(_pf), 0, "receive error packets per second on $2", "1/s", 1000)
+                mvect.register_entry("{}.txerr".format(_pf), 0, "transmit error packets per second on $2", "1/s", 1000)
+                mvect.register_entry("{}.rxdrop".format(_pf), 0, "received packets dropped per second on $2", "1/s", 1000)
+                mvect.register_entry("{}.txdrop".format(_pf), 0, "received packets dropped per second on $2", "1/s", 1000)
+                mvect.register_entry("{}.carrier".format(_pf), 0, "carrier errors per second on $2", "1/s", 1000)
         self.dev_dict = nd_dict
         for key in self.dev_dict.keys():
-            mvect["net.%s.rx" % (key)] = self.dev_dict[key]["rx"]
-            mvect["net.%s.tx" % (key)] = self.dev_dict[key]["tx"]
-            if [True for x in DETAIL_DEVICES if key.startswith(x)]:
-                mvect["net.%s.rxerr" % (key)] = self.dev_dict[key]["rxerr"]
-                mvect["net.%s.txerr" % (key)] = self.dev_dict[key]["txerr"]
-                mvect["net.%s.rxdrop" % (key)] = self.dev_dict[key]["rxdrop"]
-                mvect["net.%s.txdrop" % (key)] = self.dev_dict[key]["txdrop"]
-                mvect["net.%s.carrier" % (key)] = self.dev_dict[key]["carrier"]
+            _pf = "net.{}".format(_key)
+            mvect["{}.rx".format(_pf)] = self.dev_dict[key]["rx"]
+            mvect["{}.tx".format(_pf)] = self.dev_dict[key]["tx"]
+            if any([key.startswith(_x) for _x in DETAIL_DEVICES]):
+                mvect["{}.rxerr".format(_pf)] = self.dev_dict[key]["rxerr"]
+                mvect["{}.txerr".format(_pf)] = self.dev_dict[key]["txerr"]
+                mvect["{}.rxdrop".format(_pf)] = self.dev_dict[key]["rxdrop"]
+                mvect["{}.txdrop".format(_pf)] = self.dev_dict[key]["txdrop"]
+                mvect["{}.carrier".format(_pf)] = self.dev_dict[key]["carrier"]
         return
 
     def _check_for_bridges(self):
@@ -438,7 +459,7 @@ class _general(hm_classes.hm_module):
                 if os.path.isdir("%s/%s/bridge" % (net_dir, ent)):
                     bdir_dict[ent] = "%s/%s" % (net_dir, ent)
         for ent, loc_dir in bdir_dict.iteritems():
-            b_dict[ent] = {"interfaces": os.listdir("%s/brif" % (loc_dir))}
+            b_dict[ent] = {"interfaces": os.listdir(os.path.join(loc_dir, "brif"))}
             for key in ["address", "addr_len", "features", "flags", "mtu"]:
                 _f_name = os.path.join(loc_dir, key)
                 if os.path.exists(_f_name):
@@ -456,10 +477,14 @@ class _general(hm_classes.hm_module):
         ip_com = "ip addr show"
         c_stat, c_out = commands.getstatusoutput(ip_com)
         if c_stat:
-            self.log("error calling %s (%d): %s" % (ip_com,
-                                                    c_stat,
-                                                    c_out),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error calling {} ({:d}): {}".format(
+                    ip_com,
+                    c_stat,
+                    c_out
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             lines = c_out.split("\n")
             dev_dict = {}
@@ -540,7 +565,7 @@ class net_device(object):
 
     def feed(self, cur_line):
         # print self.name, cur_line, self.ibv_results, self.perfquery_path
-        line_dict = dict([(key, long(value)) for key, value in zip(self.nd_mapping, cur_line.split()) if key])
+        line_dict = {key: long(value) for key, value in zip(self.nd_mapping, cur_line.split()) if key}
         if self.ibv_results and self.perfquery_path:
             if "port_lid" in self.ibv_results and "port_lid" in self.ibv_results:
                 p_stat, p_out = commands.getstatusoutput("%s -x %d %d" % (
@@ -562,7 +587,7 @@ class net_device(object):
         # print "*", self.name, self.get_speed()
 
     def get_speed(self):
-        res_dict = dict([(key, []) for key in self.nd_keys])
+        res_dict = {key: [] for key in self.nd_keys}
         if self.__history:
             last_time, last_dict = self.__history[0]
             for cur_time, cur_dict in self.__history[1:]:
@@ -571,7 +596,7 @@ class net_device(object):
                     for key in self.nd_keys:
                         res_dict[key].append(min(1000 * 1000 * 1000 * 1000 * 1000, max(0, (cur_dict[key] - last_dict[key]) / diff_time)))
                 last_time, last_dict = (cur_time, cur_dict)
-        res_dict = dict([(key, sum(value) / len(value) if len(value) else 0.) for key, value in res_dict.iteritems()])
+        res_dict = {key: sum(value) / len(value) if len(value) else 0. for key, value in res_dict.iteritems()}
         return res_dict
 
     def update_ibv_devinfo(self):
@@ -744,7 +769,7 @@ class netspeed(object):
         return self.__is_xen_host
 
     def make_speed_dict(self):
-        return dict([(key, self[key].get_speed()) for key in self.keys()])
+        return {key: self[key].get_speed() for key in self.keys()}
 
     def update(self):
         ntime = time.time()
@@ -1069,13 +1094,13 @@ class net_command(hm_classes.hm_command):
             ibv_tree = srv_com["device:device_%s:ibv" % (dev_name)]
         except:
             ibv_tree = []
-        value_dict = dict([(el.tag.split("}")[-1], float(el.text)) for el in value_tree])
+        value_dict = {el.tag.split("}")[-1]: float(el.text) for el in value_tree}
         # build ethtool helper dict
         ethtool_dict = {"link detected": "yes"}
-        ethtool_dict.update(dict([(el.get("name"), el.text) for el in ethtool_tree]))
+        ethtool_dict.update({el.get("name"): el.text for el in ethtool_tree})
         ethtool_dict["duplex"] = self._parse_duplex_str(ethtool_dict.get("duplex", "unknown"))
         ethtool_dict["speed"] = self._parse_speed_str(ethtool_dict.get("speed", "unknown"))
-        ibv_dict = dict([(el.get("name"), el.text) for el in ibv_tree])
+        ibv_dict = {el.get("name"): el.text for el in ibv_tree}
         if ethtool_dict.get("speed", -1) < 0 and ethtool_dict.get("driver", None) in ["virtio_net"]:
             # set ethtool speed/duplex to 10G/full
             ethtool_dict["speed"] = 10 * 1000 * 1000 * 1000
@@ -1384,13 +1409,14 @@ class net_command(hm_classes.hm_command):
             add_errors.append("No cable connected?")
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
         report_device = result.get("report_device", device)
-        return ret_state, "%s, %s rx; %s tx%s%s%s" % (
+        return ret_state, "{}, {} rx; {} tx{}{}{}".format(
             device,
             b_str(result[rx_str]),
             b_str(result[tx_str]),
             add_oks and "; %s" % ("; ".join(add_oks)) or "",
             add_errors and "; %s" % ("; ".join(add_errors)) or "",
-            report_device != device and "; reporting device is %s" % (report_device) or "")
+            report_device != device and "; reporting device is %s" % (report_device) or ""
+        )
 
 
 class bridge_info_command(hm_classes.hm_command):
@@ -1402,16 +1428,19 @@ class bridge_info_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         bridge_dict = srv_com["bridges"]
         br_names = sorted(bridge_dict.keys())
-        out_f = ["found %s:" % (logging_tools.get_plural("bridge", len(br_names)))]
+        out_f = ["found {}:".format(logging_tools.get_plural("bridge", len(br_names)))]
         for br_name in br_names:
             br_stuff = bridge_dict[br_name]
-            out_f.append("%-16s: mtu %4d, flags 0x%x, features 0x%x, %s: %s" % (
-                br_name,
-                br_stuff["mtu"],
-                br_stuff["flags"],
-                br_stuff["features"],
-                logging_tools.get_plural("interface", len(br_stuff["interfaces"])),
-                ", ".join(sorted(br_stuff["interfaces"]))))
+            out_f.append(
+                "{:<16s}: mtu {:4d}, flags 0x{:x}, features {}, {}: {}".format(
+                    br_name,
+                    br_stuff["mtu"],
+                    br_stuff["flags"],
+                    "0x{:x}".format(br_stuff["features"]) if "features" in br_stuff else "---",
+                    logging_tools.get_plural("interface", len(br_stuff["interfaces"])),
+                    ", ".join(sorted(br_stuff["interfaces"]))
+                )
+            )
         return limits.nag_STATE_OK, "%s" % ("\n".join(out_f))
 
 
@@ -1488,12 +1517,13 @@ class iptables_info_command(hm_classes.hm_command):
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             elif cur_ns.warn is not None and num_lines < cur_ns.warn:
                 ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            return ret_state, "%s%s (%s, %d): %s" % (
+            return ret_state, "{}{} ({}, {:d}): {}".format(
                 logging_tools.get_plural("chain", len(all_chains)),
                 " (%s)" % (all_chains[0]) if len(all_chains) == 1 else "",
                 required_chain or "ALL",
                 detail_level,
-                logging_tools.get_plural("rule", num_lines))
+                logging_tools.get_plural("rule", num_lines)
+            )
 
 
 class ntpq_struct(hm_classes.subprocess_struct):
@@ -1560,9 +1590,9 @@ class ntp_status_command(hm_classes.hm_command):
             return ret_state, "%s defined, %s" % (
                 logging_tools.get_plural("peer", len(_peers)),
                 ", ".join([entry for entry in [
-                    "primary is %s" % (primary_peer) if primary_peer else "",
-                    "good: %s" % (", ".join(sorted(good_peers))) if good_peers else "",
-                    "ignored: %s" % (", ".join(sorted(ignored_peers))) if ignored_peers else "",
+                    "primary is {}".format(primary_peer) if primary_peer else "",
+                    "good: {}".format(", ".join(sorted(good_peers))) if good_peers else "",
+                    "ignored: {}".format(", ".join(sorted(ignored_peers))) if ignored_peers else "",
                 ] if entry]))
         else:
             return limits.nag_STATE_CRITICAL, _lines[0]
