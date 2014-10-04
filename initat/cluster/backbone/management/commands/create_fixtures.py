@@ -145,15 +145,14 @@ class Command(BaseCommand):
         factories.HostCheckCommand(name="check-host-alive-2", command_line="$USER2$ -m $HOSTADDRESS$ version")
         factories.HostCheckCommand(name="check-host-ok", command_line="$USER1$/check_dummy 0 up")
         factories.HostCheckCommand(name="check-host-down", command_line="$USER1$/check_dummy 2 down")
-        if False:
-            # virtual desktop protocols
-            factories.VirtualDesktopProtocol(name="vnc", description="VNC", binary="vncserver")
-            factories.VirtualDesktopProtocol(name="rdc", description="Remote Desktop Connection", binary="")
-            factories.VirtualDesktopProtocol(name="spice", description="SPICE", binary="")
-            # window managers
-            factories.WindowManager(name="kde", description="KDE", binary="startkde")
-            factories.WindowManager(name="gnome", description="GNOME", binary="gnome-session")
-            factories.WindowManager(name="windowmaker", description="Window Maker", binary="wmaker")
+        # virtual desktop protocols
+        factories.VirtualDesktopProtocol(name="vnc", description="VNC", binary="vncserver")
+        factories.VirtualDesktopProtocol(name="rdc", description="Remote Desktop Connection", binary="")
+        factories.VirtualDesktopProtocol(name="spice", description="SPICE", binary="")
+        # window managers
+        factories.WindowManager(name="kde", description="KDE", binary="startkde")
+        factories.WindowManager(name="gnome", description="GNOME", binary="gnome-session")
+        factories.WindowManager(name="windowmaker", description="Window Maker", binary="wmaker")
 
         # hints
         _server_cfg = factories.ConfigHint(
