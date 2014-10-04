@@ -26,6 +26,8 @@ import os
 import stat
 import process_tools
 import time
+# might be fast but still has troubles with unicode names (https://github.com/benhoyt/scandir/issues/40)
+# import scandir
 
 
 def sub_sum(_dict):
@@ -126,8 +128,15 @@ class user_scan_stuff(bg_stuff):
         _start_dir = _home_dir
         _top_depth = _start_dir.count("/")
         try:
+            nfs_mounts, nfs_ignore = (set(), [])
             _last_dir = ""
-            for _main, _dirs, _files in os.walk(_start_dir):
+            for _main, _dirs, _files in os.walk(unicode(_start_dir)):
+                if os.path.ismount(_main):
+                    nfs_mounts.add(_main)
+                    continue
+                elif any([_main.startswith(_nfs) for _nfs in nfs_mounts]):
+                    nfs_ignore.append(_nfs)
+                    continue
                 _last_dir = _main
                 _cur_depth = _main.count("/")
                 _parts = _main.split("/")
@@ -144,7 +153,15 @@ class user_scan_stuff(bg_stuff):
                         cur_dict.size += os.stat(os.path.join(_main, _file))[stat.ST_SIZE]
                     except:
                         pass
+            if nfs_mounts:
+                self.log(
+                    "ignored {} on {}".format(
+                        logging_tools.get_plural("NFS directory", len(nfs_ignore)),
+                        logging_tools.get_plural("NFS mount", len(nfs_mounts)),
+                    )
+                )
         except UnicodeDecodeError:
+            raise
             self.log(
                 u"UnicodeDecode: {}, _last_dir is '{}'".format(
                     process_tools.get_except_info(),
