@@ -208,6 +208,7 @@ AGGREGATE_XML = """
     <aggregate action="sum">
         <key_list>
             <key top-level="net.all" match="(rx|tx)$"></key>
+            <key top-level="io.total.bytes" match="(read|written)$"></key>
         </key_list>
     </aggregate>
     <aggregate action="sum">
@@ -220,6 +221,11 @@ AGGREGATE_XML = """
             <key top-level="mem" match="used.*"></key>
             <key top-level="mem" match="free.*"></key>
             <key top-level="mem" match="avail.*"></key>
+        </key_list>
+    </aggregate>
+    <aggregate action="sum">
+        <key_list>
+            <key top-level="vms" match="[^\.]+$"></key>
         </key_list>
     </aggregate>
 </aggregates>
