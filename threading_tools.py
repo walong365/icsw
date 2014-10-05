@@ -532,6 +532,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.kill_myself = kwargs.get("kill_myself", False)
         exception_handling_mixin.__init__(self)
         self.__stack_size = kwargs.get("stack_size", DEFAULT_STACK_SIZE)
+        # self.__set_stack_size = kwargs
         # received signals
         self.__signals = []
         # flags
@@ -906,7 +907,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                         _prev_time = _cur_time
                         _p = _t
                     if len(_uf) > 3 and min(_uf) > 0.95:
-                        self.log("exczess values: {}".format(str(_uf)))
+                        self.log("cpu overloads: {}".format(str(_uf)))
                         _excess = True
             except:
                 pass
