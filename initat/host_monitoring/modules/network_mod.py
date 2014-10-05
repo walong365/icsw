@@ -17,13 +17,13 @@
 #
 """ network througput and status information """
 
-from initat.host_monitoring import hm_classes
-from initat.host_monitoring import limits
+from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
 import commands
 import datetime
 import logging_tools
 import os
+import pprint  # @UnusedImport
 import process_tools
 import psutil
 import re
@@ -399,7 +399,7 @@ class _general(hm_classes.hm_module):
                 _lines = 0
             mvect["net.count.{}".format(_type)] = _lines
         nd_dict = self.act_nds.make_speed_dict()
-        # print nd_dict
+        # pprint.pprint(nd_dict)
         if nd_dict:
             # add total info
             total_dict = {}
@@ -419,7 +419,7 @@ class _general(hm_classes.hm_module):
                 mvect.unregister_entry("{}.txdrop".format(_pf))
                 mvect.unregister_entry("{}.carrier".format(_pf))
         for key in [_key for _key in nd_dict.keys() if _key not in self.dev_dict]:
-            _pf = "net.{}".format(_key)
+            _pf = "net.{}".format(key)
             mvect.register_entry("{}.rx".format(_pf), 0, "bytes per second received by $2", "Byte/s", 1000)
             mvect.register_entry("{}.tx".format(_pf), 0, "bytes per second transmitted by $2", "Byte/s", 1000)
             if [True for x in DETAIL_DEVICES if key.startswith(x)]:
@@ -430,7 +430,7 @@ class _general(hm_classes.hm_module):
                 mvect.register_entry("{}.carrier".format(_pf), 0, "carrier errors per second on $2", "1/s", 1000)
         self.dev_dict = nd_dict
         for key in self.dev_dict.keys():
-            _pf = "net.{}".format(_key)
+            _pf = "net.{}".format(key)
             mvect["{}.rx".format(_pf)] = self.dev_dict[key]["rx"]
             mvect["{}.tx".format(_pf)] = self.dev_dict[key]["tx"]
             if any([key.startswith(_x) for _x in DETAIL_DEVICES]):

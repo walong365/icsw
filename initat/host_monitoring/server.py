@@ -45,6 +45,10 @@ import uuid_tools
 import zmq
 
 
+# defaults to 10 seconds
+IDLE_LOOP_GRANULARITY = 10000.0
+
+
 class server_code(threading_tools.process_pool):
     def __init__(self):
         # monkey path process tools to allow consistent access
@@ -65,14 +69,17 @@ class server_code(threading_tools.process_pool):
             "main",
             zmq=True,
             zmq_contexts=1,
-            zmq_debug=global_config["ZMQ_DEBUG"])
+            zmq_debug=global_config["ZMQ_DEBUG"],
+            loop_granularity=IDLE_LOOP_GRANULARITY,
+        )
         self.renice(global_config["NICE_LEVEL"])
         self.add_process(socket_process("socket"), start=True)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
             zmq=True,
-            context=self.zmq_context)
+            context=self.zmq_context
+        )
         self.install_signal_handlers()
         self._check_ksm()
         self._check_huge()
@@ -251,18 +258,15 @@ class server_code(threading_tools.process_pool):
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4)
-        if True:  # not self.__options.DEBUG:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("collserver")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4, process_name="manager")
-            msi_block.start_command = "/etc/init.d/host-monitoring start"
-            msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
-            msi_block.kill_pids = True
-            # msi_block.heartbeat_timeout = 60
-            msi_block.save_block()
-        else:
-            msi_block = None
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("collserver")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4, process_name="manager")
+        msi_block.start_command = "/etc/init.d/host-monitoring start"
+        msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
+        msi_block.kill_pids = True
+        # msi_block.heartbeat_timeout = 60
+        msi_block.save_block()
         self.__msi_block = msi_block
 
     def process_start(self, src_process, src_pid):
@@ -549,16 +553,20 @@ class server_code(threading_tools.process_pool):
                         self.register_timer(self._check_delayed, 0.1)
                         self.loop_granularity = 10.0
                     if delayed.Meta.direct:
-                        self.send_to_process("socket",
-                                             *delayed.run())
+                        self.send_to_process(
+                            "socket",
+                            *delayed.run()
+                        )
                     else:
                         delayed.run()
                     self.__delayed.append(delayed)
             if not delayed:
                 self._send_return(zmq_sock, src_id, srv_com)
         else:
-            self.log("cannot receive more data, already got '%s'" % (", ".join(data)),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot receive more data, already got '{}'".format(", ".join(data)),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _send_return(self, zmq_sock, src_id, srv_com):
         c_time = time.time()
@@ -601,7 +609,7 @@ class server_code(threading_tools.process_pool):
                     new_list.append(cur_del)
         self.__delayed = new_list
         if not self.__delayed:
-            self.loop_granularity = 1000.0
+            self.loop_granularity = IDLE_LOOP_GRANULARITY
             self.unregister_timer(self._check_delayed)
 
     def _handle_module_command(self, srv_com, cur_ns, rest_str):
