@@ -113,7 +113,7 @@ class receiver(log_base):
         _iter = 0
         while True:
             try:
-                self.recv_sock.send_unicode(slave_name, zmq.SNDMORE)
+                self.recv_sock.send_unicode(slave_name, zmq.SNDMORE)  # @UndefinedVariable
                 self.recv_sock.send_pyobj(snd)
             except zmq.error.ZMQError:
                 if _ign:
