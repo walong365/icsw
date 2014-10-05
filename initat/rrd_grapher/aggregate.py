@@ -185,6 +185,8 @@ AGGREGATE_NG = """
 <element name="aggregate" xmlns="http://relaxng.org/ns/structure/1.0">
     <attribute name="action">
     </attribute>
+    <attribute name="name">
+    </attribute>
     <element name="key_list">
         <oneOrMore>
             <element name="key">
@@ -200,32 +202,32 @@ AGGREGATE_NG = """
 
 AGGREGATE_XML = """
 <aggregates>
-    <aggregate action="sum">
+    <aggregate action="sum" name="load">
         <key_list>
             <key top-level="load" match="\d+$"></key>
         </key_list>
     </aggregate>
-    <aggregate action="sum">
+    <aggregate action="sum" name="io">
         <key_list>
             <key top-level="net.all" match="(rx|tx)$"></key>
             <key top-level="io.total.bytes" match="(read|written)$"></key>
         </key_list>
     </aggregate>
-    <aggregate action="sum">
+    <aggregate action="sum" name="vms">
         <key_list>
             <key top-level="vms" match="[^\.]+$"></key>
         </key_list>
     </aggregate>
-    <aggregate action="sum">
+    <aggregate action="sum" name="memory">
         <key_list>
             <key top-level="mem" match="used.*"></key>
             <key top-level="mem" match="free.*"></key>
             <key top-level="mem" match="avail.*"></key>
         </key_list>
     </aggregate>
-    <aggregate action="sum">
+    <aggregate name="processes" action="sum">
         <key_list>
-            <key top-level="vms" match="[^\.]+$"></key>
+            <key top-level="proc" match="[^\.]+$"></key>
         </key_list>
     </aggregate>
 </aggregates>
