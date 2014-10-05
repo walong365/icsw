@@ -409,7 +409,7 @@ class _general(hm_classes.hm_module):
                     total_dict[s_key] += s_value
             nd_dict[TOTAL_DEVICE_NAME] = total_dict
         for key in [_key for _key in self.dev_dict.keys() if _key not in nd_dict]:
-            _pf = "net.{}".format(_key)
+            _pf = "net.{}".format(key)
             mvect.unregister_entry("{}.rx".format(key))
             mvect.unregister_entry("{}.tx".format(key))
             if any([key.startswith(x) for x in DETAIL_DEVICES]):
