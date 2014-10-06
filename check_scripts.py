@@ -67,29 +67,29 @@ def check_processes(name, pids, pid_thread_dict, any_ok):
 
 INSTANCE_XML = """
 <instances>
-    <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node">
+    <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node" version_file="/opt/cluster/sbin/_hoststatus_version.py">
     </instance>
-    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver">
+    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid" has_force_stop="1" meta_server_name="logserver" version_file="%{INIT_BASE}/%{NAME}/version.py">
     </instance>
-    <instance name="meta-server" runs_on="node"  has_force_stop="1">
+    <instance name="meta-server" runs_on="node"  has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
     </instance>
-    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver">
+    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver" version_file="%{INIT_BASE}/%{NAME}/version.py">
     </instance>
-    <instance name="package-client" runs_on="node"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
+    <instance name="package-client" runs_on="node"  has_force_stop="1" pid_file_name="package-client/package-client.pid" version_file="%{INIT_BASE}/package_install/client/version.py">
     </instance>
     <instance name="gmond" runs_on="node" pid_file_name="">
     </instance>
-    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck">
+    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
     </instance>
-    <instance name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
+    <instance name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/package_install/server/version.py">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
     </instance>
-    <instance name="mother" pid_file_name="mother/mother.pid" has_force_stop="1">
+    <instance name="mother" pid_file_name="mother/mother.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>mother_server</config_name>
         </config_names>
@@ -126,45 +126,45 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1">
+    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server">
+    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server" version_file="%{INIT_BASE}/rms/sge_server_version.py">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-server" has_force_stop="1">
+    <instance name="cluster-server" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1">
+    <instance name="discovery-server" pid_file_name="discovery-server/discovery-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>discovery_server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
+    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
     </instance>
-    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
+    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay" version_file="%{INIT_BASE}/host_monitoring/version.py">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1">
+    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1" version_file="%{INIT_BASE}/snmp_relay/version.py">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1">
+    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
@@ -212,6 +212,7 @@ def get_instance_xml():
 
 
 def check_system(opt_ns):
+    INIT_BASE = "/opt/python-init/lib/python/site-packages/initat"
     instance_xml = get_instance_xml()
     set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     set_all_nodes = True if (opt_ns.node == ["ALL"] or opt_ns.instance == ["ALL"]) else False
@@ -403,12 +404,28 @@ def check_system(opt_ns):
                 "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
                 )
             )
+        if "version_file" in entry.attrib:
+            entry.attrib["version_ok"] = "0"
+            try:
+                _path = entry.attrib["version_file"].replace("%{INIT_BASE}", INIT_BASE).replace("%{NAME}", entry.attrib["name"].replace("-", "_"))
+                if os.path.exists(_path):
+                    _lines = file(_path, "r").read().split("\n")
+                    _vers_lines = [_line for _line in _lines if _line.startswith("VERSION_STRING")]
+                    if _vers_lines:
+                        entry.attrib["version_ok"] = "1"
+                        entry.attrib["version"] = _vers_lines[0].split("=", 1)[1].strip().replace('"', "").replace("'", "")
+                    else:
+                        entry.attrib["version"] = "no version lines found in '{}'".format(_path)
+                else:
+                    entry.attrib["version"] = "{} missing".format(_path)
+            except:
+                entry.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
     return instance_xml
 
 
 def get_default_ns():
     def_ns = argparse.Namespace(
-        all=True, instance=[], system=[], server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True, no_database=False
+        all=True, instance=[], system=[], server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True, no_database=False, version=True,
     )
     return def_ns
 
@@ -541,6 +558,12 @@ def show_xml(opt_ns, res_xml, iteration=0):
                 # no pids hence no memory info
                 mem_str = "no pids"
             cur_line.append(logging_tools.form_entry_right(mem_str, header="Memory"))
+        if opt_ns.version:
+            if "version" in act_struct.attrib:
+                _version = act_struct.attrib["version"]
+            else:
+                _version = ""
+            cur_line.append(logging_tools.form_entry_right(_version, header="Version"))
         cur_state = int(act_struct.find("state_info").get("state", "1"))
         cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
         if not opt_ns.failed or (opt_ns.failed and cur_state in [1, 7]):
@@ -596,6 +619,7 @@ def main():
     my_parser.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except time and DB info (%(default)s)")
     my_parser.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
     my_parser.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
+    my_parser.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
     my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
     my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node entity names (%(default)s)")
     my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
@@ -611,6 +635,7 @@ def main():
         opt_ns.pid = True
         opt_ns.runlevel = True
         opt_ns.memory = True
+        opt_ns.version = True
     if opt_ns.all:
         opt_ns.time = True
         opt_ns.database = True
