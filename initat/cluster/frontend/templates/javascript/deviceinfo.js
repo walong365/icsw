@@ -48,7 +48,9 @@ class device_info
             @md_list.push(@dev_key)
         @build_div()
         if @replace_div
-            $("div#center_deviceinfo").children().remove().end().append(@dev_div)
+            #$("div#center_deviceinfo"). children().remove().end().append(@dev_div)
+            _index_scope = angular.element($("div[id='icsw.index_app']")[0]).scope()
+            $("div#center_deviceinfo"). children().remove().end().append(@dev_div)
         else
             @dev_div.simplemodal
                 opacity      : 50

@@ -4,14 +4,13 @@
 
 {% block title %}{% trans "Indexpage" %}{% endblock %}
 
-{% block angular %}{% include "angular/user.cs" %}{% endblock %}
-
 {% block content %}
 
 {% verbatim %}
 
 <div id="icsw.index_app" ng-controller="index_base" ng-cloack ng-show="show_index">
     <h2 class="center">Please select a device from the tree on the left side</h2>
+    {{ icsw_devsel }}
     <accordion close-others="no">
         <accordion-group is-open="quick_open">
             <accordion-heading>
@@ -125,33 +124,9 @@
 
 root = exports ? this
 
-use_devs = (dev_list, devg_list, md_list) ->
-    if dev_list.length
-        # only use when at least one device is selected
-        cur_di = new device_info(
-            undefined,
-            dev_list[0],
-            (entry for entry in dev_list[1..]),
-            md_list,
-            $("div#center_deviceinfo").attr("mode")
-        )
-        set_index_visibility(false)
-        $("div#center_deviceinfo").show()
-        cur_di.show()
-    else
-        # check for active device_info
-        if window.ICSW_DEV_INFO?
-            window.ICSW_DEV_INFO.close()
-        set_index_visibility(true)
-        $("div#center_deviceinfo").hide()
-
-add_config_handlers = ->
-    install_devsel_link(use_devs, true)
+$(document).ready(
     angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.user"])
-
-root.show_device_on_index = use_devs
-
-$(document).ready(add_config_handlers)
+)
 
 {% endinlinecoffeescript %}
 

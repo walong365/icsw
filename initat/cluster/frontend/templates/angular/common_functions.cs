@@ -1262,15 +1262,6 @@ reload_sidebar_tree = (pk_list) ->
             scope.reload(pk_list)
         )
 
-set_index_visibility = (flag) ->
-    index_div = $("div[id='icsw.index_app']")
-    # sidebar found ?
-    if index_div.length
-        scope = angular.element(index_div[0]).scope()
-        scope.$apply(() ->
-            scope.set_visibility(flag)
-        )
-
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin
@@ -1283,7 +1274,6 @@ root.simple_modal_template = simple_modal_template
 root.simple_modal_ctrl = simple_modal_ctrl
 root.simple_modal = simple_modal
 root.reload_sidebar_tree = reload_sidebar_tree
-root.set_index_visibility = set_index_visibility
 
 {% endinlinecoffeescript %}
 
