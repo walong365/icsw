@@ -93,9 +93,12 @@ def show_database_calls(**kwargs):
             cur_width = None
         else:
             # only output if stdout is a regular TTY
-            print "queries: {:d} in {:.2f} seconds".format(
-                len(connection.queries),
-                tot_time)
+            print(
+                "queries: {:d} in {:.2f} seconds".format(
+                    len(connection.queries),
+                    tot_time,
+                )
+            )
         if len(connection.queries) > 1 and cur_width:
             for act_sql in connection.queries:
                 sql_str = act_sql["sql"].replace("\n", "<NL>")
@@ -105,9 +108,12 @@ def show_database_calls(**kwargs):
                     if sql_str.count("FROM") and sql_str.count("WHERE"):
                         oper_str = sql_str.split()[0]
                         if sql_str.count("FROM") > 1 or sql_str.count("WHERE") > 1:
-                            print "FROM / COUNT: {:d} / {:d}".format(
-                                sql_str.count("FROM"),
-                                sql_str.count("WHERE"))
+                            print(
+                                "FROM / COUNT: {:d} / {:d}".format(
+                                    sql_str.count("FROM"),
+                                    sql_str.count("WHERE")
+                                )
+                            )
                         # parse sql_str
                         sub_str = sql_str[sql_str.index("FROM"):sql_str.index("WHERE")]
                         for r_char in "(),=":
@@ -122,7 +128,12 @@ def show_database_calls(**kwargs):
                             ", ".join(sorted(list(out_list))),
                             sql_str)
                     out_str = sql_str[0:cur_width - 8]
-                print u"{:6.2f} {}".format(float(act_sql["time"]), out_str)
+                print(
+                    u"{:6.2f} {}".format(
+                        float(act_sql["time"]),
+                        out_str
+                    )
+                )
     else:
         print("django.db.connection not loaded in backbone.middleware.py")
 

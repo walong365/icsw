@@ -198,6 +198,7 @@ class device_serializer(serializers.ModelSerializer):
     netdevice_set = netdevice_serializer(many=True)
     monitoring_hint_set = monitoring_hint_serializer(many=True)
     device_variable_set = device_variable_serializer(many=True)
+    device_mon_location_set = device_mon_location_serializer(many=True)
     device_config_set = device_config_serializer(many=True)
     package_device_connection_set = package_device_connection_serializer(many=True)
     latest_contact = serializers.Field(source="latest_contact")
@@ -210,7 +211,7 @@ class device_serializer(serializers.ModelSerializer):
         _optional_fields = set(
             [
                 "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
-                "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set"
+                "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set", "device_mon_location_set",
             ]
         )
         for _to_remove in _optional_fields - set(fields):
@@ -254,6 +255,8 @@ class device_serializer(serializers.ModelSerializer):
             "monitor_type",
             # monitoring hint
             "monitoring_hint_set",
+            # device monitoring location
+            "device_mon_location_set",
             "uuid",
         )
         read_only_fields = ("uuid",)
