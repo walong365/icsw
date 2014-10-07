@@ -9,7 +9,7 @@ from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField
-from django.forms.widgets import TextInput, PasswordInput
+from django.forms.widgets import TextInput, PasswordInput, NumberInput, CheckboxInput
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import user, group, home_export_list
 from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
@@ -293,8 +293,23 @@ class user_detail_form(ModelForm):
     permission = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
     object = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
     permission_level = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    window_manager = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    virtual_desktop_protocol = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    device = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    port = ModelChoiceField(queryset=empty_query_set(), required=False, widget=NumberInput)
+    screen_size = ModelChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_widget)
+    manual_screen_size_x = ModelChoiceField(queryset=empty_query_set(), required=False, widget=NumberInput)
+    manual_screen_size_y = ModelChoiceField(queryset=empty_query_set(), required=False, widget=NumberInput)
+    start_automatically = ModelChoiceField(queryset=empty_query_set(), required=False, widget=CheckboxInput)
     helper.layout = Layout(
         HTML("<h2>Details for user {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
+        HTML("""
+<div class='form-group'>
+    <div class='col-sm-12'>
+        <virtualdesktopsettings object='_edit_obj'></virtualdesktopsettings>
+    </div>
+</div>
+        """),
         Div(
             Div(
                 Fieldset(
@@ -463,8 +478,8 @@ class user_detail_form(ModelForm):
             HTML("<div class='col-sm-12'><div permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div>"),
         ),
         FormActions(
-            Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
-            Submit("create", "Create", css_class="btn-success", ng_show="create_mode", ng_disabled="!_edit_obj.password"),
+            Submit("modify", "modify", css_class="btn-success", ng_show="!create_mode"),
+            Submit("create", "create", css_class="btn-success", ng_show="create_mode", ng_disabled="!_edit_obj.password"),
             HTML("&nbsp;"),
             Button("close", "close", css_class="btn-primary", ng_click="user_edit.close_modal()", ng_show="!create_mode"),
             HTML("&nbsp;"),
