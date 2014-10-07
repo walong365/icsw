@@ -296,6 +296,9 @@ class ext_license_check(ext_license_base):
     ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
     run_time = models.FloatField(default=0.0)
 
+    class CSW_Meta:
+        backup = False
+
 
 class ext_license_state(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -309,6 +312,9 @@ class ext_license_state(models.Model):
     class Meta:
         app_label = "backbone"
 
+    class CSW_Meta:
+        backup = False
+
 
 class ext_license_version_state(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -321,10 +327,16 @@ class ext_license_version_state(models.Model):
     class Meta:
         app_label = "backbone"
 
+    class CSW_Meta:
+        backup = False
+
 
 class ext_license_client_version(ext_license_base):
     ext_license = models.ForeignKey("backbone.ext_license")
     client_version = models.CharField(default="", max_length=64)
+
+    class CSW_Meta:
+        backup = False
 
 
 class ext_license_usage(models.Model):
@@ -338,3 +350,6 @@ class ext_license_usage(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
