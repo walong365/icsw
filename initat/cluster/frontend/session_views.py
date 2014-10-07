@@ -134,7 +134,6 @@ def _login(request, _user_object, login_form=None):
 
 class sess_login(View):
     def get(self, request):
-        print "sget", request.POST, request.GET
         if user.objects.all().count():  # @UndefinedVariable
             if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:  # @UndefinedVariable
                 first_user = authenticate(

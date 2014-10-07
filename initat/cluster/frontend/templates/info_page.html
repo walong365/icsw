@@ -44,7 +44,7 @@
             </accordion-group>
             <accordion-group is-open="isopen2">
                 <accordion-heading>
-                    {{ server_info_list.length }} Servers checked
+                    <ng-pluralize count="server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
                     <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': isopen2, 'glyphicon-chevron-right': !isopen2}"></i>
                 </accordion-heading>
                 <table class="table table-hover table-striped" style="width:auto;">
@@ -89,7 +89,7 @@ instance_info = """
     <div class="text-warning" ng-switch-when="0">
         ---
     </div>
-    <div class="row" style="width:400px;" ng-switch-when="1">
+    <div class="row" style="width:520px;" ng-switch-when="1">
         <div class="col-xs-3 text-right">
             <span ng-class="get_version_class()" ng-bind-html="get_version()"></span>
         </div>

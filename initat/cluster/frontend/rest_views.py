@@ -593,6 +593,8 @@ class device_tree_mixin(object):
             _fields.append("device_variable_set")
         if self._get_post_boolean("with_device_configs", False):
             _fields.append("device_config_set")
+        if self._get_post_boolean("with_mon_locations", False):
+            _fields.append("device_mon_location_set")
         if self._get_post_boolean("package_state", False):
             _fields.extend(["package_device_connection_set", "latest_contact", "client_version"])
         if self._get_post_boolean("monitor_server_type", False):
@@ -729,6 +731,8 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.prefetch_related("device_variable_set")
         if self._get_post_boolean("with_device_configs", False):
             _q = _q.prefetch_related("device_config_set")
+        if self._get_post_boolean("with_mon_locations", False):
+            _q = _q.prefetch_related("device_mon_location_set")
         if self._get_post_boolean("with_disk_info", False):
             _q = _q.prefetch_related(
                 "partition_table__partition_disc_set__partition_set",
