@@ -92,25 +92,15 @@ virtual_desktop_settings_template = """
    </div>
 
   
-  <!--
-  old manual_screen_size code
-
-  <div  ><div  class="control-label col-sm-2" > &nbsp; </div><div  class="controls form-inline col-sm-8" ><div  ><div id="div_id_manual_screen_size_x" class="form-group " ><label for="id_manual_screen_size_x" class="control-label col-sm-2">
-      Manual screen size x
-  </label><div class="controls col-sm-8"><input class="numberinput form-control" id="id_manual_screen_size_x" label="" max="6000" min="200" name="manual_screen_size_x" ng-model="_edit_obj.manual_screen_size_x" placeholder="1900" type="number" /> </div></div> x </div></div></div>
-  -->
-
   <div>
       <div class="control-label col-sm-2" > &nbsp; </div>
-      <div class="controls form-inline col-sm-8" ng_show="_edit_obj.device && _edit_obj.screen_size.manual">
-          <div class="controls form-inline">
-              <input class="numberinput form-control" type="number" min="200", max="6000" placeholder="1900" ng-model="_edit_obj.manual_screen_size_x"></input> x <input class="numberinput form-control" type="number" min="200", max="6000" placeholder="1200" ng-model="_edit_obj.manual_screen_size_y"></input>
-          </div>
+      <div class="controls form-inline" ng_show="_edit_obj.device && _edit_obj.screen_size.manual">
+              <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_x"></input> x <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_y"></input>
       </div>
   </div>
   
   <div  ng-show="_edit_obj.device">
-  <div  class="control-label col-sm-2" > &nbsp; </div>
+      <!--<div  class="control-label col-sm-2" > &nbsp; </div>-->
   <div class="form-group">
       <div id="div_id_start_automatically" class="checkbox " >
           <div class="controls col-lg-offset-0 col-sm-8">
@@ -120,7 +110,8 @@ virtual_desktop_settings_template = """
   </div>
                
                
-  <input type="button" name="" value="create" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
+  <input type="button" name="" value="{{ get_virtual_desktop_submit_mode() }}" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
+  <input type="button" name="" value="cancel" class="btn btn btn-sm btn-danger" id="button-id-" ng-click="cancel_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
 </fieldset>
 
 <table class="table table-condensed table-hover table-striped" style="width:100%;">
@@ -743,7 +734,6 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
 
         $scope.push_virtual_desktop_user_setting = (new_obj, then_fun) ->
-            console.log new_obj
             url = "{% url 'rest:virtual_desktop_user_setting_list' %}".slice(1)
             Restangular.all(url).post(new_obj).then( then_fun )
 
@@ -1091,6 +1081,18 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         restrict : "EA"
         template : $templateCache.get("virtualdesktopsettings.html")
         link: (scope, element, attrs) ->
+            scope.current_vdus = null
+            scope.get_virtual_desktop_submit_mode = () ->
+                if scope.current_vdus == null
+                    return "create"
+                else
+                    return"modify"
+            scope.cancel_virtual_desktop_user_setting = () ->
+                scope.$apply(
+                        scope._edit_obj.device = undefined
+                )
+                scope.current_vdus = null
+                
             scope.virtual_desktop_devices = () ->
                 # devices which support both some kind of virtual desktop and window manager
                 vd_devs = []
@@ -1149,6 +1151,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                else 
                    return scope._edit_obj.screen_size.name
             scope.create_virtual_desktop_user_setting = () ->
+                # also called on modify
                 new_obj = {
                     "window_manager":   scope._edit_obj.window_manager
                     "virtual_desktop_protocol": scope._edit_obj.virtual_desktop_protocol 
@@ -1158,13 +1161,22 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     "port":             scope._edit_obj.port
                     "start":            scope._edit_obj.start_automatically
                 }
-                scope.push_virtual_desktop_user_setting(new_obj, (data) ->
+                if scope.get_virtual_desktop_submit_mode() == "create"
+                    scope.push_virtual_desktop_user_setting(new_obj, (data) ->
+                        scope._edit_obj.device = undefined
+                        # also add locally
+                        scope.virtual_desktop_user_setting.push(data)
+                        noty
+                            text : "added virtual desktop setting"
+                    )
+                else 
+                    # modify
+                    for prop, val of new_obj
+                        scope.current_vdus[prop] = val
+                    scope.current_vdus.put()
+                    scope.current_vdus = null # changes back to create mode
                     scope._edit_obj.device = undefined
-                    # also add locally
-                    scope.virtual_desktop_user_setting.push(data)
-                    noty
-                        text : "added virtual desktop setting"
-                )
+
             scope.on_device_change = () ->
                 # set default values
                 scope._edit_obj.port = 0  # could perhaps depend on protocol
@@ -1178,17 +1190,32 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 if vds
                     scope._edit_obj.virtual_desktop_protocol = vds[0].idx
 
+                scope._edit_obj.start_automatically = false
+
             scope.delete_virtual_desktop_user_setting = (vdus) ->
                 vdus.remove().then( () ->
                     # also remove locally
-                    index = _.indexOf(scope.virtual_desktop_user_setting, (elem) -> elem.idx = vdus.idx)
+                    index = scope.virtual_desktop_user_setting.indexOf(vdus)
                     scope.virtual_desktop_user_setting.splice(index, 1)
                     noty
                         text : "removed virtual desktop setting"
+                        type : "warning"
                 )
             scope.modify_virtual_desktop_user_setting = (vdus) -> 
-                scope._edit_obj.device = vdus.device
-                # TODO: set modifying flag
+                scope._edit_obj.device = vdus.device # this triggers the default settings, but we overwrite them hre
+                # this changes the mode to modify mode
+                scope.current_vdus = vdus
+                
+                # set initial data from vdus
+                scope._edit_obj.port = vdus.port
+                scope._edit_obj.screen_size = scope.available_screen_sizes.filter( (x) -> x.name == vdus.screen_size )[0]
+
+                scope._edit_obj.window_manager = vdus.window_manager
+                scope._edit_obj.virtual_desktop_protocol = vdus.virtual_desktop_protocol
+
+                scope._edit_obj.start_automatically = vdus.start
+
+
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)
