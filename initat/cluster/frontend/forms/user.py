@@ -303,13 +303,6 @@ class user_detail_form(ModelForm):
     start_automatically = ModelChoiceField(queryset=empty_query_set(), required=False, widget=CheckboxInput)
     helper.layout = Layout(
         HTML("<h2>Details for user {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
-        HTML("""
-<div class='form-group'>
-    <div class='col-sm-12'>
-        <virtualdesktopsettings object='_edit_obj'></virtualdesktopsettings>
-    </div>
-</div>
-        """),
         Div(
             Div(
                 Fieldset(
@@ -477,6 +470,13 @@ class user_detail_form(ModelForm):
             ),
             HTML("<div class='col-sm-12'><div permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div>"),
         ),
+        HTML("""
+<div class='form-group'>
+    <div class='col-sm-12'>
+        <virtualdesktopsettings object='_edit_obj'></virtualdesktopsettings>
+    </div>
+</div>
+        """),
         FormActions(
             Submit("modify", "modify", css_class="btn-success", ng_show="!create_mode"),
             Submit("create", "create", css_class="btn-success", ng_show="create_mode", ng_disabled="!_edit_obj.password"),
