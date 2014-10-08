@@ -39,6 +39,7 @@ import os
 import random
 import string
 import smbpasswd
+import datetime
 
 __all__ = [
     "csw_permission",
@@ -1170,9 +1171,15 @@ class virtual_desktop_user_setting(models.Model):
     # 0 means autoselect
     port = models.IntegerField(default=0)
 
+    # whether this session should be running
+    # TODO: rename this as soon as we have a proper way of doing manual migrations
     is_running = models.BooleanField(default=False)
-    # whether this session should be started automatically
-    start = models.BooleanField(default=False)
+ 
+    # data of running process
+    pid = models.IntegerField(default=0)
+    process_name = models.CharField(max_length=256, default="", blank=True)
+
+    last_start_attempt = models.DateTimeField(default=datetime.datetime.fromtimestamp(0), blank=True)
 
 
 class virtual_desktop_protocol(models.Model):

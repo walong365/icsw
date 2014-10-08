@@ -162,6 +162,11 @@ class group_serializer(serializers.ModelSerializer):
 
 
 class virtual_desktop_user_setting_serializer(serializers.ModelSerializer):
+    # rest should not change these
+    pid = serializers.IntegerField(read_only=True)
+    process_name = serializers.CharField(read_only=True)
+    last_start_attempt = serializers.DateField(read_only=True)
+
     class Meta:
         model = virtual_desktop_user_setting
 
