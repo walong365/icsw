@@ -11,61 +11,62 @@ root = exports ? this
 livestatus_templ = """
 <!-- <d3test data="testData"></d3test>
 <arctest data="testData"></arctest> -->
-<table class="table table-condensed table-hover table-striped" style="font-size:100%;">
+<h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}</h3>
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group">
+            <label>Filter options:</label>
+            <div class="btn-group">
+                <input ng-repeat="entry in md_states" type="button"
+                    ng-class="get_mds_class(entry[0])"
+                    ng-value="entry[1]"
+                    ng-click="toggle_mds(entry[0])"
+                    title="{{ entry[3] }}"
+                />
+            </div>
+            <div class="btn-group">
+                <input ng-repeat="entry in sh_states" type="button"
+                    ng-class="get_shs_class(entry[0])"
+                    ng-value="entry[1]"
+                    ng-click="toggle_shs(entry[0])"
+                    title="{{ entry[3] }}"
+                />
+            </div>
+            <label>show:</label>
+            <div class="btn-group">
+                <input type="button" class="btn btn-xs" ng-class="cat_tree_show && 'btn-success' || 'btn-default'" ng-click="cat_tree_show=!cat_tree_show" value="categories"/>
+                <input type="button" class="btn btn-xs" ng-class="burst_show && 'btn-success' || 'btn-default'" ng-click="burst_show=!burst_show" value="burst"/>
+                <input type="button" class="btn btn-xs" ng-class="table_show && 'btn-success' || 'btn-default'" ng-click="table_show=!table_show" value="table"/>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
+    </div>
+</div>
+<div class="row" ng-show="burst_show">
+    <div class="col-md-6">
+        <bursttest data="burstData" active-service="activeService" focus-service="focusService" trigger-redraw="redrawSunburst"></bursttest>
+    </div> 
+    <div class="col-md-6">
+        <serviceinfo type="service_type" service="current_service"></serviceinfo>
+    </div>
+</div>
+<hr/>
+<div class="row" ng-show="table_show">
+    <div class="btn-group col-md-12">
+        <div class="form-group">
+            <label>Show table columns:</label>
+            <input ng-repeat="entry in show_options" type="button"
+                ng-class="get_so_class(entry[0])"
+                ng-value="entry[1]"
+                ng-click="toggle_so(entry[0])"
+            />
+        </div>
+    </div>
+</div>
+<table class="table table-condensed table-hover table-striped" style="font-size:100%;" ng-show="table_show">
     <thead>
-        <tr>
-            <th colspan="99">
-                Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
-            </th>
-        </tr>
-        <tr>
-            <td colspan="99">
-                <div class="row">
-                    <div class="col-md-6">
-                        <tree treeconfig="cat_tree" ng-mouseenter="show_cat_tree()" ng-mouseleave="hide_cat_tree()"></tree>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <bursttest data="burstData" active-service="activeService" focus-service="focusService" trigger-redraw="redrawSunburst"></bursttest>
-                    </div> 
-                    <div class="col-md-6">
-                        <serviceinfo type="service_type" service="current_service"></serviceinfo>
-                    </div>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <th colspan="99">
-                <div class="btn-group">
-                    <input ng-repeat="entry in md_states" type="button"
-                        ng-class="get_mds_class(entry[0])"
-                        ng-value="entry[1]"
-                        ng-click="toggle_mds(entry[0])"
-                        title="{{ entry[3] }}"
-                    >
-                    </input>
-                </div>
-                <div class="btn-group">
-                    <input ng-repeat="entry in sh_states" type="button"
-                        ng-class="get_shs_class(entry[0])"
-                        ng-value="entry[1]"
-                        ng-click="toggle_shs(entry[0])"
-                        title="{{ entry[3] }}"
-                    >
-                    </input>
-                </div>
-                <div class="btn-group">
-                    <input ng-repeat="entry in show_options" type="button"
-                        ng-class="get_so_class(entry[0])"
-                        ng-value="entry[1]"
-                        ng-click="toggle_so(entry[0])"
-                    >
-                    </input>
-                </div>
-            </th>
-
-        </tr>
         <tr>
             <td colspan="99">
                 <div class="row">
@@ -286,6 +287,9 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.activeService = null
         $scope.focusService = null
         $scope.redrawSunburst = 0
+        $scope.cat_tree_show = false
+        $scope.burst_show = true
+        $scope.table_show = true
         # which devices to show
         $scope.show_devs = []
         # which service to show
@@ -398,10 +402,12 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             #restDataSource.reset()
             $scope.devsel_list = _dev_sel
             $scope.load_static_data()
-        $scope.show_cat_tree = () ->
-            $scope.cat_tree.toggle_expand_tree(1, false)
-        $scope.hide_cat_tree = () ->
-            $scope.cat_tree.toggle_expand_tree(-1, false)
+        #$scope.$watch("cat_tree_show", (new_val) ->
+        #    $scope.cat_tree.toggle_expand_tree(
+        #        if new_val then -1 else 1,
+        #        false
+        #    )
+        #)
         $scope.toggle_order = (name) ->
             if $scope.order_name == name
                 $scope.order_dir = not $scope.order_dir
