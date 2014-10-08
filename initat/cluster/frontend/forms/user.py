@@ -85,6 +85,8 @@ class authentication_form(Form):
     def clean(self):
         username = self.cleaned_data.get("username")
         password = self.cleaned_data.get("password")
+        self.user_cache = None
+        self.real_user_name = None
         # auth = PAM.pam()
         # auth.start("passwd")
         # auth.set_item(PAM.PAM_USER, username)
@@ -116,9 +118,10 @@ class authentication_form(Form):
                     else:
                         rev_dict[cur_al] = pk
             if username in rev_dict:
-                self.user_cache = authenticate(username=rev_dict[username], password=password)
+                self.real_user_name = rev_dict[username]
             else:
-                self.user_cache = authenticate(username=username, password=password)
+                self.real_user_name = username
+            self.user_cache = authenticate(username=self.real_user_name, password=password)
             if self.user_cache is None:
                 raise ValidationError(_("Please enter a correct username and password. Note that both fields are case-sensitive."))
             else:

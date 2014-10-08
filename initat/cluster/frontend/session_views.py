@@ -29,7 +29,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
-from initat.cluster.backbone.models import cluster_setting, user, device_variable
+from initat.cluster.backbone.models import cluster_setting, user, device_variable, login_history
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object
@@ -118,8 +118,18 @@ class sess_logout(View):
         return login_page(request, from_logout=from_logout)
 
 
+def _failed_login(request, user_name):
+    try:
+        _user = user.objects.get(Q(login=user_name))  # @UndefinedVariable
+    except user.DoesNotExist:  # @UndefinedVariable
+        pass
+    else:
+        login_history.login_attempt(_user, request, False)
+
+
 def _login(request, _user_object, login_form=None):
     login(request, _user_object)
+    login_history.login_attempt(_user_object, request, True)
     request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in _user_object.user_variable_set.all()])
     # for alias logins login_name != login
     if login_form is not None:
@@ -156,4 +166,6 @@ class sess_login(View):
                 return HttpResponseRedirect(_next)
             else:
                 return HttpResponseRedirect(reverse("main:index"))
+        else:
+            _failed_login(request, login_form.real_user_name)
         return login_page(request, login_form=login_form, next=_next)
