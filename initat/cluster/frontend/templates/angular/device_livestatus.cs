@@ -41,6 +41,7 @@ livestatus_templ = """
         </div>
     </div>
     <div class="col-md-6">
+        <h4 ng-show="cat_tree_show">Monitoring categories</h4>
         <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
     </div>
 </div>
