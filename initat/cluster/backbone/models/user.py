@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" NOCTUA / CORUVS models, user part """
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -1051,7 +1052,7 @@ class login_history(models.Model):
             user=_user,
             success=success,
             remote_addr=request.META["REMOTE_ADDR"],
-            remote_host=request.META["REMOTE_HOST"],
+            remote_host=request.META.get("REMOTE_HOST", request.META["REMOTE_ADDR"]),
             http_user_agent=request.META["HTTP_USER_AGENT"],
         )
         return entry

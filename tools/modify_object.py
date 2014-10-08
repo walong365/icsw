@@ -81,7 +81,7 @@ class rest_client(object):
 
     def to_xml(self, result):
         try:
-            xml = etree.fromstring(result.text.split("?>", 1)[1])
+            xml = etree.fromstring(result.text.split("?>", 1)[1])  # @UndefinedVariable
         except:
             xml = None
         return xml
@@ -117,7 +117,7 @@ class rest_client(object):
         ret_code = response.status_code
         if self.options.format == "xml":
             try:
-                xml = etree.fromstring(response.text.split("?>", 1)[1])
+                xml = etree.fromstring(response.text.split("?>", 1)[1])  # @UndefinedVariable
             except:
                 xml = None
         else:
@@ -131,7 +131,7 @@ class rest_client(object):
             if xml is None:
                 print response.text
             else:
-                print etree.tostring(xml, pretty_print=True)
+                print etree.tostring(xml, pretty_print=True)  # @UndefinedVariable
         return ret_code
 
 
