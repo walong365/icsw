@@ -73,20 +73,23 @@ class capability_process(threading_tools.process_obj):
         self.log("connected vector_socket to {}".format(conn_str))
 
     def _init_capabilities(self):
-        self.log("init server capabilities")
-        self.__server_cap_dict = {
-            "usv_server": usv_server.usv_server_stuff(self),
-            "quota_scan": quota.quota_stuff(self),
-            "virtual_desktop": virtual_desktop.virtual_desktop_stuff(self),
-            "user_scan": user_scan.user_scan_stuff(self),
-            # "dummy"      : dummy_stuff(self),
-            }
         self.__cap_list = []
-        for key, _value in self.__server_cap_dict.iteritems():
-            _sql_info = config_tools.server_check(server_type=key)
-            if _sql_info.effective_device:
-                self.__cap_list.append(key)
-            self.log("capability {}: {}".format(key, "enabled" if key in self.__cap_list else "disabled"))
+        if global_config["BACKUP_DATABASE"]:
+            self.log("doing database backup, ignoring capabilities", logging_tools.LOG_LEVEL_WARN)
+        else:
+            self.log("init server capabilities")
+            self.__server_cap_dict = {
+                "usv_server": usv_server.usv_server_stuff(self),
+                "quota_scan": quota.quota_stuff(self),
+                "virtual_desktop": virtual_desktop.virtual_desktop_stuff(self),
+                "user_scan": user_scan.user_scan_stuff(self),
+                # "dummy"      : dummy_stuff(self),
+                }
+            for key, _value in self.__server_cap_dict.iteritems():
+                _sql_info = config_tools.server_check(server_type=key)
+                if _sql_info.effective_device:
+                    self.__cap_list.append(key)
+                self.log("capability {}: {}".format(key, "enabled" if key in self.__cap_list else "disabled"))
 
     def _update(self):
         cur_time = time.time()
