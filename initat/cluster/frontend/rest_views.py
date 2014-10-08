@@ -218,6 +218,9 @@ class db_prefetch_mixin(object):
     def _macbootlog_related(self):
         return ["device__domain_tree_node"]
 
+    def _device_mon_location_related(self):
+        return ["device__domain_tree_node"]
+
     def _location_gfx_put(self, req_changes, prev_model):
         print req_changes
         req_changes.update(

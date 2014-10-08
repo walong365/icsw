@@ -59,7 +59,7 @@ device_location_template = """
 """
 
 mon_locations_template = """
-<h3>Locations ({{ set_pks.length }} of {{ dev_pks.length }} set), zoom is {{ cur_scale | number:2 }}</h3>
+<h3>Locations ({{ set_pks.length }} of {{ dev_pks.length }} set)<span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}</h3>
 <div ng-show="set_pks.length">
     <h4>Set devices:</h4>
     <ul class="list-group">
@@ -80,6 +80,14 @@ mon_locations_template = """
         <li class="list-group-item" ng-repeat="unset in unset_pks">
             {{ dev_lut[unset].full_name }}
             <input type="button" class="pull-right btn btn-xs btn-primary" value="set" ng-click="use_device(unset)"></input>
+        </li>
+    </ul>
+</div>
+<div ng-show="extra_dml_list.length">
+    <h4>Extra devices:</h4>
+    <ul class="list-group">
+        <li class="list-group-item" ng-repeat="dml in extra_dml_list">
+            {{ dml.device_name }}, {{ dml.pos_x }} / {{ dml.pos_y }}
         </li>
     </ul>
 </div>
@@ -879,12 +887,23 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 scope.dml_list = undefined
                 scope.active_loc_gfx = loc_gfx
                 scope.dml_list = []
-                # fill list
-                for _dev in scope.devices
-                    _loc_list = (entry for entry in _dev.device_mon_location_set when entry.location_gfx == scope.active_loc_gfx.idx)
-                    scope.dml_list = scope.dml_list.concat(_loc_list)
-                for _entry in scope.dml_list
-                    Restangular.restangularizeElement(null, _entry, "{% url 'rest:device_mon_location_detail' 1 %}".slice(1).slice(0, -2))
+                scope.extra_dml_list = []
+                # fetch list of all 
+                Restangular.all("{% url 'rest:device_mon_location_list' %}".slice(1)).getList({"location_gfx": scope.active_loc_gfx.idx}).then((data) ->
+                    # fill list
+                    for _dev in scope.devices
+                        _loc_list = (entry for entry in _dev.device_mon_location_set when entry.location_gfx == scope.active_loc_gfx.idx)
+                        scope.dml_list = scope.dml_list.concat(_loc_list)
+                    for _entry in scope.dml_list
+                        _entry.is_extra = false
+                        Restangular.restangularizeElement(null, _entry, "{% url 'rest:device_mon_location_detail' 1 %}".slice(1).slice(0, -2))
+                    # extra data (not currently displayed)
+                    _loc_pk = (entry.idx for entry in scope.dml_list)
+                    _ext_list = (entry for entry in data when entry.idx not in _loc_pk)
+                    for _entry in _ext_list
+                        _entry.is_extra = true
+                    scope.extra_dml_list = _ext_list
+                )
             scope.get_num_devices = (loc_gfx) ->
                 return loc_gfx.num_devices
             scope.get_button_class = (loc_gfx) ->
@@ -1006,6 +1025,28 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                             "preserveAspectRatio": "none"
                         )
                 )
+                scope.add_symbols = (centers) ->
+                    centers.append("circle").attr
+                        "r" : (n) -> return 18
+                        "fill" : (d) -> return if d.locked then "white" else "#ff8888"
+                        "stroke" : "black"
+                        "stroke-width" : "1"
+                    centers.append("text")
+                        .attr
+                            "text-anchor": "middle"
+                            "alignment-baseline": "middle"
+                            "stroke" : "white"
+                            "font-weight": "bold"
+                            "stroke-width": "2"
+                        .text((d) -> return d.device_name)
+                    centers.append("text")
+                        .attr
+                            "text-anchor": "middle"
+                            "alignment-baseline": "middle"
+                            "font-weight": "bold"
+                            "fill" : "black"
+                            "stroke-width": "0"
+                        .text((d) -> return d.device_name)
                 scope.$watch(
                     # need objectEquality == true
                     "dml_list",
@@ -1014,37 +1055,32 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                             # build lut
                             scope.dml_lut = {}
                             for entry in new_val
-                                entry.device_name = (_dev.full_name for _dev in scope.devices when _dev.idx == entry.device)[0]
                                 scope.dml_lut[entry.idx] = entry
                             scope.vis.selectAll(".pos").remove()
-                            scope.centers = scope.vis.selectAll(".pos").data(new_val).enter()
+                            scope.centers = scope.vis.selectAll(".pos").data(scope.dml_list).enter()
                                 .append("g").call(scope.drag_node)
                                 .attr
                                     "class" : "pos"
                                     "node_id" : (n) -> return n.device
                                     "transform": (n) ->
                                         return "translate(#{n.pos_x}, #{n.pos_y})"
-                            scope.centers.append("circle").attr
-                                "r" : (n) -> return 18
-                                "fill" : (d) -> return if d.locked then "white" else "#ff8888"
-                                "stroke" : "black"
-                                "stroke-width" : "1"
-                            scope.centers.append("text")
+                            scope.add_symbols(scope.centers)
+                    true
+                )
+                scope.$watch(
+                    # need objectEquality == true
+                    "extra_dml_list",
+                    (new_val) ->
+                        if new_val?
+                            scope.vis.selectAll(".extra").remove()
+                            scope.extra_centers = scope.vis.selectAll(".extra").data(scope.extra_dml_list).enter()
+                                .append("g")
                                 .attr
-                                    "text-anchor": "middle"
-                                    "alignment-baseline": "middle"
-                                    "stroke" : "white"
-                                    "font-weight": "bold"
-                                    "stroke-width": "2"
-                                .text((d) -> return d.device_name)
-                            scope.centers.append("text")
-                                .attr
-                                    "text-anchor": "middle"
-                                    "alignment-baseline": "middle"
-                                    "font-weight": "bold"
-                                    "fill" : "black"
-                                    "stroke-width": "0"
-                                .text((d) -> return d.device_name)
+                                    "class" : "extra"
+                                    "node_id" : (n) -> return n.device
+                                    "transform": (n) ->
+                                        return "translate(#{n.pos_x}, #{n.pos_y})"
+                            scope.add_symbols(scope.extra_centers)
                     true
                 )
             )
