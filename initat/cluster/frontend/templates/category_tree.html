@@ -163,7 +163,7 @@
 
 {% inlinecoffeescript %}
 
-category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps", "angularFileUpload"]) #"ngMap"])
+category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps", "angularFileUpload"])
 
 angular_module_setup([category_tree_module])
 
@@ -243,6 +243,14 @@ cat_ctrl = category_tree_module.controller("cat_base", [
         $scope.uploader.onCompleteAll = () ->
             $.unblockUI()
             $scope.uploader.clearQueue()
+            return null
+        $scope.uploader.onErrorItem = (item, repsonse, status, headers) ->
+            $.unblockUI()
+            $scope.uploader.clearQueue()
+            noty
+                text: "error uploading file, please check logs"
+                type: "error"
+                timeout: false
             return null
         $scope.uploader.onCompleteItem = (item, response, status, headers) ->
             xml = $.parseXML(response)
