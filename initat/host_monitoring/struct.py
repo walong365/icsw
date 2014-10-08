@@ -43,7 +43,7 @@ class sr_probe(object):
         self.__time = time.time()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.host_con.log("[probe for %s] %s" % (self.host_con.conn_str, what), log_level)
+        self.host_con.log("[probe for {}] {}".format(self.host_con.conn_str, what), log_level)
 
     @property
     def send(self):
@@ -54,7 +54,7 @@ class sr_probe(object):
         cur_time = time.time()
         diff_time = abs(cur_time - self.__time)
         if diff_time > 30 * 60:
-            self.log("sent / received in %s: %s / %s" % (
+            self.log("sent / received in {}: {} / {}".format(
                 logging_tools.get_diff_time_str(diff_time),
                 logging_tools.get_size_str(self.__val["send"]),
                 logging_tools.get_size_str(self.__val["recv"]),
@@ -119,17 +119,16 @@ class host_connection(object):
             )
         )
         # router socket
-        new_sock = host_connection.relayer_process.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         id_str = "relayer_rtr_{}".format(process_tools.get_machine_name())
-        new_sock.setsockopt(zmq.IDENTITY, id_str)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.SNDHWM, host_connection.backlog_size)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.RCVHWM, host_connection.backlog_size)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+        new_sock = process_tools.get_socket(
+            host_connection.relayer_process.zmq_context,
+            "ROUTER",
+            identity=id_str,
+            linger=0,
+            sndhwm=host_connection.backlog_size,
+            rcvhwm=host_connection.backlog_size,
+            backlog=host_connection.backlog_size,
+        )
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)  # @UndefinedVariable
 
@@ -137,7 +136,7 @@ class host_connection(object):
     def get_hc_0mq(conn_str, target_id="ms", **kwargs):
         if (True, conn_str) not in host_connection.hc_dict:
             if host_connection.verbose > 1:
-                host_connection.relayer_process.log("new 0MQ host_connection for '%s'" % (conn_str))
+                host_connection.relayer_process.log("new 0MQ host_connection for '{}'".format(conn_str))
             cur_hc = host_connection(conn_str, zmq_id=target_id, **kwargs)
         else:
             cur_hc = host_connection.hc_dict[(True, conn_str)]
@@ -147,7 +146,7 @@ class host_connection(object):
     def get_hc_tcp(conn_str, **kwargs):
         if (False, conn_str) not in host_connection.hc_dict:
             if host_connection.verbose > 1:
-                host_connection.relayer_process.log("new TCP host_connection for '%s'" % (conn_str))
+                host_connection.relayer_process.log("new TCP host_connection for '{}'".format(conn_str))
             cur_hc = host_connection(conn_str, **kwargs)
         else:
             cur_hc = host_connection.hc_dict[(False, conn_str)]
@@ -215,7 +214,7 @@ class host_connection(object):
         except:
             self.return_error(
                 host_mes,
-                "error parsing arguments: %s" % (process_tools.get_except_info()))
+                "error parsing arguments: {}".format(process_tools.get_except_info()))
         else:
             if not self.tcp_con:
                 try:
@@ -223,27 +222,32 @@ class host_connection(object):
                 except:
                     self.return_error(
                         host_mes,
-                        "error connecting to %s: %s" % (self.__conn_str,
-                                                        process_tools.get_except_info()))
+                        "error connecting to {}: {}".format(
+                            self.__conn_str,
+                            process_tools.get_except_info()
+                        )
+                    )
                 else:
                     if False and self.__backlog_counter == host_connection.backlog_size:
                         # no stupid backlog counting
                         self.return_error(
                             host_mes,
-                            "connection error (backlog full [%d.%d]) for '%s'" % (
+                            "connection error (backlog full [{:d}.{:d}]) for '{}'".format(
                                 self.__backlog_counter,
                                 host_connection.backlog_size,
-                                self.__conn_str))
+                                self.__conn_str
+                            )
+                        )
                         # self._close()
                     else:
+                        send_str = unicode(host_mes.srv_com)
                         try:
                             host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
-                            send_str = unicode(host_mes.srv_com)
                             host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
                         except:
                             self.return_error(
                                 host_mes,
-                                "connection error (%s)" % (process_tools.get_except_info()),
+                                "connection error ({})".format(process_tools.get_except_info()),
                             )
                         else:
                             # self.__backlog_counter += 1
@@ -295,7 +299,7 @@ class host_connection(object):
                 host_connection.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
             host_connection.hc_dict[host_connection.message_lut[mes_id]].handle_result(mes_id, result)
         else:
-            host_connection.g_log("got result for delayed id '%s'" % (mes_id), logging_tools.LOG_LEVEL_WARN)
+            host_connection.g_log("got result for delayed id '{}'".format(mes_id), logging_tools.LOG_LEVEL_WARN)
         del result
 
     def handle_result(self, mes_id, result):
@@ -314,8 +318,10 @@ class host_connection(object):
             except:
                 res_tuple = (
                     limits.nag_STATE_CRITICAL,
-                    "error interpreting result: %s" % (
-                        process_tools.get_except_info()))
+                    "error interpreting result: {}".format(
+                        process_tools.get_except_info()
+                    )
+                )
                 exc_info = process_tools.exception_info()
                 for line in exc_info.log_lines:
                     host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
@@ -332,10 +338,10 @@ class host_connection(object):
                 try:
                     res_tuple = cur_mes.interpret_old(result)
                 except:
-                    res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
+                    res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: {}".format(process_tools.get_except_info()))
             self.send_result(cur_mes, res_tuple)
         else:
-            self.log("unknown id '%s' in _handle_old_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
+            self.log("unknown id '{}' in _handle_old_result".format(mes_id), logging_tools.LOG_LEVEL_ERROR)
 
 
 class host_message(object):
