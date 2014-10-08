@@ -59,7 +59,7 @@ device_location_template = """
 """
 
 mon_locations_template = """
-<h3>Locations ({{ set_pks.length }} of {{ devices.length }} set), zoom is {{ cur_scale | number:2 }}</h3>
+<h3>Locations ({{ set_pks.length }} of {{ dev_pks.length }} set), zoom is {{ cur_scale | number:2 }}</h3>
 <div ng-show="set_pks.length">
     <h4>Set devices:</h4>
     <ul class="list-group">
@@ -759,6 +759,10 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 $scope.devices = data[1]
                 $scope.location_gfxs = data[2]
                 $scope.num_devices = $scope.devices.length
+                # build lut
+                $scope.dev_lut = {}
+                for _dev in $scope.devices
+                    $scope.dev_lut[_dev.idx] = _dev
                 $scope.loc_tree.change_select = true
                 for dev in $scope.devices
                     # check all devices and disable change button when not all devices are in allowed list
@@ -836,15 +840,18 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
             $scope.monloc_count = _count
             $scope.loc_tree.show_select = if $scope.monloc_count then false else true
         $scope.update_tree = (changes) ->
+            $scope.active_loc_gfx = null
             for add in changes.added
                 _dev = add[0]
                 _cat = add[1]
+                $scope.dev_lut[_dev].categories.push(_cat)
                 $scope.sel_dict[_cat].push(_dev)
                 $scope.loc_tree_lut[_cat].obj.num_refs++
             for rem in changes.removed
                 _dev = rem[0]
                 _cat = rem[1]
                 _.remove($scope.sel_dict[_cat], (num) -> return num == _dev)
+                _.remove($scope.dev_lut[_dev].categories, (num) -> return num == _cat)
                 $scope.loc_tree_lut[_cat].obj.num_refs--
         $scope.get_location_gfxs = (cat) ->
             if cat
@@ -897,10 +904,11 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
             scope.unset_pks = []
             scope.$watch("dml_list", (new_val) ->
                 if new_val?
-                    scope.dev_lut = {}
+                    scope.dev_pks = []
                     for entry in scope.devices
-                        scope.dev_lut[entry.idx] = entry
-                    scope.dev_pks = (entry.idx for entry in scope.devices)
+                        # check if this device is really assoicated with the location 
+                        if scope.active_loc_gfx.location in entry.categories
+                            scope.dev_pks.push(entry.idx)
                     scope.update_set_pks()
             )
             scope.update_set_pks = () ->
@@ -917,6 +925,7 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                     "location": scope.active_loc_gfx.location
                     "pos_x" : Math.min(scope.active_loc_gfx.width / 2, 50)
                     "pos_y" : Math.min(scope.active_loc_gfx.height / 2, 50)
+                    "changed": false
                 }).then((new_data) ->
                     # add to local list
                     scope.dml_list.push(new_data)
@@ -932,15 +941,21 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                     return true    
             scope.remove = (pk) ->
                 obj = scope.set_lut[pk]
-                simple_modal($modal, $q, "really delete location?").then(
-                    () ->
-                        obj.remove().then(
-                            # remove from local list and device list
-                            _dev = (_entry for _entry in scope.devices when _entry.idx == obj.device)[0]
-                            _.remove(scope.dml_list, (_entry) -> return _entry.device == pk)
-                            _.remove(_dev.device_mon_location_set, (_entry) -> return _entry.idx == obj.idx)
-                            scope.update_set_pks()
-                        )
+                if obj.changed
+                    simple_modal($modal, $q, "really delete location?").then(
+                        () ->
+                            scope.remove_dml(obj)
+                    )
+                else
+                    scope.remove_dml(obj)
+            scope.remove_dml = (obj) ->
+                pk = obj.device
+                obj.remove().then(
+                    # remove from local list and device list
+                    _dev = (_entry for _entry in scope.devices when _entry.idx == obj.device)[0]
+                    _.remove(scope.dml_list, (_entry) -> return _entry.device == pk)
+                    _.remove(_dev.device_mon_location_set, (_entry) -> return _entry.idx == obj.idx)
+                    scope.update_set_pks()
                 )
             scope.toggle_locked = (pk) ->
                 dml = scope.set_lut[pk]
@@ -957,6 +972,7 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                         scope.dml_lut[d.idx].put()
                     ).on("drag", (d) ->
                         if not d.locked
+                            d.changed = true
                             x = Math.max(Math.min(d3.event.x, scope.active_loc_gfx.width), 0)
                             y = Math.max(Math.min(d3.event.y, scope.active_loc_gfx.height), 0)
                             d.pos_x = parseInt(x)
