@@ -190,11 +190,11 @@ def get_socket(context, r_type, **kwargs):
     if r_type in ["ROUTER"]:
         _sock.setsockopt(zmq.ROUTER_MANDATORY, 1)  # @UndefinedVariable
     for _opt, _value in [
-        ("LINGER", 100),
-        ("SNDHWM", 256),
-        ("RCVHWM", 256),
+        ("LINGER", kwargs.get("linger", 100)),
+        ("SNDHWM", kwargs.get("sndhwm", 256)),
+        ("RCVHWM", kwargs.get("rcvhwm", 256)),
         ("SNDTIMEO", 500),
-        ("BACKLOG", 1),
+        ("BACKLOG", kwargs.get("backlog", 1)),
         ("TCP_KEEPALIVE", 1),
         ("TCP_KEEPALIVE_IDLE", 300),
         ("RECONNECT_IVL_MAX", 500),
