@@ -553,10 +553,11 @@ class server_code(threading_tools.process_pool):
                         self.register_timer(self._check_delayed, 0.1)
                         self.loop_granularity = 10.0
                     if delayed.Meta.direct:
-                        self.send_to_process(
-                            "socket",
-                            *delayed.run()
-                        )
+                        if not self["exit_requested"]:
+                            self.send_to_process(
+                                "socket",
+                                *delayed.run()
+                            )
                     else:
                         delayed.run()
                     self.__delayed.append(delayed)
