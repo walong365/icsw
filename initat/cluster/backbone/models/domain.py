@@ -26,6 +26,7 @@ __all__ = [
     "TOP_LOCATIONS",
     "TOP_MONITORING_CATEGORY",
     "location_gfx",
+    "device_mon_location",
 ]
 
 # top monitoring category
@@ -678,3 +679,42 @@ def location_gfx_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if not cur_inst.uuid:
             cur_inst.uuid = uuid.uuid4()
+
+
+class device_mon_location(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # link to device
+    device = models.ForeignKey("backbone.device")
+    # link to location_gfx
+    location_gfx = models.ForeignKey("backbone.location_gfx")
+    # link to location node
+    location = models.ForeignKey("backbone.category")
+
+    # position in graph
+    pos_x = models.IntegerField(default=0)
+    pos_y = models.IntegerField(default=0)
+    # locked (as soon as a graphic is set)
+    locked = models.BooleanField(default=False)
+    # comment
+    comment = models.CharField(max_length=1024, default="", blank=True)
+    # creation date
+    created = models.DateTimeField(auto_now_add=True)
+
+    def get_device_name(self):
+        return self.device.full_name
+
+    class Meta:
+        app_label = "backbone"
+
+
+@receiver(signals.pre_save, sender=device_mon_location)
+def device_mon_location_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.pk:
+            try:
+                _present = device_mon_location.objects.get(Q(device=cur_inst.device) & Q(location=cur_inst.location) & Q(location_gfx=cur_inst.location_gfx))
+            except device_mon_location.DoesNotExist:
+                pass
+            else:
+                raise(ValidationError("combination already used"))
