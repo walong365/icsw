@@ -35,5 +35,7 @@ class location_gfx_serializer(serializers.ModelSerializer):
 
 
 class device_mon_location_serializer(serializers.ModelSerializer):
+    device_name = serializers.Field(source="get_device_name")
+
     class Meta:
         model = device_mon_location

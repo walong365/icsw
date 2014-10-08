@@ -700,6 +700,9 @@ class device_mon_location(models.Model):
     # creation date
     created = models.DateTimeField(auto_now_add=True)
 
+    def get_device_name(self):
+        return self.device.full_name
+
     class Meta:
         app_label = "backbone"
 
