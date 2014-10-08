@@ -45,7 +45,7 @@ def main():
         sys.exit(-1)
     _xml = {}
     for xml_type, name in zip(["group", "user"], sys.argv[1:3]):
-        _xml[xml_type] = etree.fromstring(codecs.open(name, "r", "utf-8").read())
+        _xml[xml_type] = etree.fromstring(codecs.open(name, "r", "utf-8").read())  # @UndefinedVariable
         print("read %s from %s, found %s" % (
             xml_type,
             name,
@@ -67,7 +67,7 @@ def main():
                 ("respvname", "first_name"), ("respnname", "last_name"),
                 ("resptitan", "title"), ("respemail", "email"),
                 ("resptel", "tel"), ("respcom", "comment"),
-                ("groupcom", "comment"), ("ggroupname" , "groupname"),
+                ("groupcom", "comment"), ("ggroupname", "groupname"),
             ],
             "user": [
                 "active", "uid", "login", "aliases", "home", "shell",
