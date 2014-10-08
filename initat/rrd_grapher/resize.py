@@ -148,9 +148,18 @@ class resize_process(threading_tools.process_obj, threading_tools.operational_er
                 try:
                     _rrd = rrd_tools.RRD(f_name, log_com=self.log, build_rras=False, verbose=self.__verbose)
                 except:
-                    self.log("cannot get info about {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    for _line in process_tools.exception_info().log_lines:
-                        self.log(_line, logging_tools.LOG_LEVEL_ERROR)
+                    # check if file is not an rrd file
+                    _content = file(f_name, "rb").read()
+                    if f_name.endswith(".rrd") and _content[:3] != "RRD":
+                        self.log("file {} has no RRD header, trying to remove it".format(f_name), logging_tools.LOG_LEVEL_ERROR)
+                        try:
+                            os.unlink(f_name)
+                        except:
+                            pass
+                    else:
+                        self.log("cannot get info about {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        for _line in process_tools.exception_info().log_lines:
+                            self.log(_line, logging_tools.LOG_LEVEL_ERROR)
                 else:
                     _changed = self.check_rrd_file_2(f_name, _rrd)
                     if _changed:
