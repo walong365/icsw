@@ -83,11 +83,11 @@ class vncserver(virtual_desktop_server):
         vnc_user_uid = self.vdus.user.uid
 
         # set up files and directories needed for vncserver to start
-
         if not os.path.exists(self.corvus_dir):
             os.mkdir(self.corvus_dir)
             os.chown(self.corvus_dir, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
 
+        # fresh dir for every start
         if os.path.exists(self.vnc_home_dir):
             shutil.rmtree(self.vnc_home_dir)
 
@@ -112,7 +112,6 @@ class vncserver(virtual_desktop_server):
         # create startup file
         with open(self.vncstartup_file, "w") as f:
             f.write("#!/bin/sh\n")
-            # f.write("export HOME=\"{}\"\n".format(os.environ["HOME"]))
             f.write("export HOME=\"{}\"\n".format(self.user_home_dir))
             f.write(self.vdus.window_manager.binary+" &\n")
 
@@ -123,7 +122,6 @@ class vncserver(virtual_desktop_server):
     def start(self):
         cmd_line = "vncserver"
         cmd_line += " -geometry {} ".format(self.vdus.screen_size)
-        print "PORT", self.vdus.port
         if self.vdus.port != 0:
             cmd_line += " -rfbport {}".format(self.vdus.port)
         cmd_line += " -rfbauth {}".format(self.pwd_file)
@@ -148,7 +146,9 @@ class vncserver(virtual_desktop_server):
             from django.db import connection
             connection.close()
 
+            # turn process into daemon
             with daemon.DaemonContext(detach_process=True, stdout=sys.stdout, stderr=sys.stderr):
+                # execute vnc start script in daemon
                 subprocess.Popen(cmd_line.strip().split(), env=vnc_env, preexec_fn=preexec, stdout=proc_stdout, stderr=proc_stderr)
 
         proc = multiprocessing.Process(target=vnc_start_fun)
@@ -233,7 +233,6 @@ class virtual_desktop_stuff(bg_stuff):
 
                     s = klass(self.log, vdus)
 
-                    print 'last start:', vdus.last_start_attempt
                     if (timezone.now() - vdus.last_start_attempt) < datetime.timedelta(minutes=5):
                         # check if pid file has appeared and contains valid pid
                         pid = s.get_pid_from_file()
@@ -262,11 +261,13 @@ class virtual_desktop_stuff(bg_stuff):
                 if _check_process_running(vdus.pid, vdus.process_name):
                     self.log("Virtual desktop session {} {} should not be running but is, stopping".format(vdus.virtual_desktop_protocol.name,
                                                                                                            vdus.window_manager.name))
-                    if vdus.protocol.name == "vnc":
-                        s = vncserver(self.log, vdus)
-                    else:
-                        self.log("Unsupported virtual desktop protocol: {}".format(vdus.protocol.name))
+                    try:
+                        klass = virtual_desktop_server.get_class_for_protocol(vdus.virtual_desktop_protocol.name)
+                    except Exception as e:
+                        self.log(e)
                         continue
+
+                    s = klass(self.log, vdus)
                     s.stop()
 
 
