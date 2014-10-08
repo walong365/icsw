@@ -1134,7 +1134,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 ]
                                 if _unreachable:
                                     self.mach_log(
-                                        "cannot create host dependency, {} unrechable: {}".format(
+                                        "cannot create host dependency, {} unreachable: {}".format(
                                             logging_tools.get_plural("device", len(_unreachable)),
                                             ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
                                         ),
@@ -1145,10 +1145,18 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                     _list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
                                     _dep_list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
                                     if _list and _dep_list:
-                                        act_host_dep["host_name"] = _list
-                                        act_host_dep["dependent_host_name"] = _dep_list
-                                        h_dep.feed_config(act_host_dep)
-                                        host_config_list.append(act_host_dep)
+                                        if set(_list) & set(_dep_list):
+                                            self.mach_log(
+                                                "host_name and dependent_host_name share some hosts: {}".format(
+                                                    ", ".join(sorted(list(set(_list) & set(_dep_list))))
+                                                ),
+                                                logging_tools.LOG_LEVEL_ERROR
+                                            )
+                                        else:
+                                            act_host_dep["host_name"] = _list
+                                            act_host_dep["dependent_host_name"] = _dep_list
+                                            h_dep.feed_config(act_host_dep)
+                                            host_config_list.append(act_host_dep)
                                     else:
                                         self.mach_log(
                                             "empty list or dependency_list for hostdependency.(host_name|dependency_name)",
@@ -1163,7 +1171,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                     _unreachable = [_bc.get_host(_dev_pk) for _dev_pk in s_dep.master_list if not _bc.get_host(_dev_pk).reachable]
                                     if _unreachable:
                                         self.mach_log(
-                                            "cannot create host dependency, {} unrechable: {}".format(
+                                            "cannot create host dependency, {} unreachable: {}".format(
                                                 logging_tools.get_plural("device", len(_unreachable)),
                                                 ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
                                             ),
