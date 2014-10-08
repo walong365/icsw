@@ -55,7 +55,7 @@ class background_job(models.Model):
     # server to run on
     target_server = models.ForeignKey("backbone.device", null=True, related_name="bgj_target_server")
     # creator, mostly null due to problem with thread local storage
-    user = models.ForeignKey("backbone.user", null=True)
+    user = models.ForeignKey("backbone.user", null=True, on_delete=models.SET_NULL)
     # created
     date = models.DateTimeField(auto_now_add=True)
     # valid until

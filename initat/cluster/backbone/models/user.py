@@ -59,7 +59,8 @@ __all__ = [
     "user_scan_result",
     "virtual_desktop_protocol",
     "virtual_desktop_user_setting",
-    "window_manager"
+    "window_manager",
+    "login_history",
 ]
 
 
@@ -748,7 +749,7 @@ class user(models.Model):
             ("rms_operator", "change RMS settings", True),
         )
         # foreign keys to ignore
-        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission"]
+        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "login_history"]
 
     class Meta:
         db_table = u'user'
@@ -1032,6 +1033,27 @@ class user_variable(models.Model):
     class Meta:
         unique_together = [("name", "user"), ]
         app_label = "backbone"
+
+
+class login_history(models.Model):
+    idx = models.AutoField(primary_key=True)
+    user = models.ForeignKey("backbone.user")
+    success = models.BooleanField(default=False)
+    remote_addr = models.CharField(default="", max_length=128)
+    remote_host = models.CharField(default="", max_length=128)
+    http_user_agent = models.CharField(default="", max_length=256)
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def login_attempt(_user, request, success):
+        entry = login_history.objects.create(
+            user=_user,
+            success=success,
+            remote_addr=request.META["REMOTE_ADDR"],
+            remote_host=request.META["REMOTE_HOST"],
+            http_user_agent=request.META["HTTP_USER_AGENT"],
+        )
+        return entry
 
 
 @receiver(signals.pre_save, sender=user_variable)
