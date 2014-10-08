@@ -25,6 +25,7 @@ import inspect
 import io_stream_helper
 import logging_tools
 import multiprocessing
+import psutil
 import os
 import process_tools
 import signal
@@ -1085,10 +1086,11 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             _kill = self.__processes[p_name].kill_myself
             _pid = self.__processes[p_name].pid
             _kill_sig = 15
-            self.log("sending exit{} to process {} ({:d})".format(
-                " and kill signal ({:d})".format(_kill_sig) if _kill else "",
-                p_name,
-                _pid,
+            self.log(
+                "sending exit{} to process {} ({:d})".format(
+                    " and kill signal ({:d})".format(_kill_sig) if _kill else "",
+                    p_name,
+                    _pid,
                 )
             )
             # _debug("send exit to {:d}".format(_pid))
@@ -1107,8 +1109,9 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         self.process_start(t_name, t_pid)
 
     def _process_exception(self, t_name, t_pid, *args):
-        self.log("process %s (pid %d) exception: %s" % (t_name, t_pid, unicode(args[0])),
-                 logging_tools.LOG_LEVEL_CRITICAL)
+        self.log(
+            "process {} (pid {:d}) exception: {}".format(t_name, t_pid, unicode(args[0])),
+            logging_tools.LOG_LEVEL_CRITICAL)
         self["exit_requested"] = True
 
     def _process_exit(self, t_name, t_pid):
@@ -1117,7 +1120,20 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             self.log("process {} ({:d}) exited".format(t_name, t_pid))
             # remove process from structures
             _debug("join_wait for {:d}".format(t_pid))
-            self.__processes[t_name].join()
+            JOIN_TIMEOUT = 2
+            self.__processes[t_name].join(JOIN_TIMEOUT)
+            if psutil.pid_exists(t_pid):
+                self.log(
+                    "process {} ({:d}) still alive after {:d} seconds, killing it ...".format(
+                        t_name,
+                        t_pid,
+                        JOIN_TIMEOUT,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                os.kill(t_pid, 9)
+                self.__processes[t_name].join()
+                self.log("joined process {} ({:d}) after SIGKILL".format(t_name, t_pid))
             _debug("join_done for {:d}".format(t_pid))
         else:
             self.log("process {} forced exit".format(t_name))
@@ -1228,6 +1244,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                 if self.__blocking_loop:
                     while self["run_flag"]:
                         if self["exit_requested"]:
+                            self.loop_granularity = 500
                             self.stop_running_processes()
                         cur_time = time.time()
                         if self.next_timeout and cur_time > self.next_timeout:
