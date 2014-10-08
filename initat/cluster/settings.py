@@ -79,11 +79,17 @@ else:
         except IOError:
             raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(OLD_CONF_FILE))
 
-sql_dict = dict([(key.split("_")[1], value) for key, value in [
-    line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and not line.count("NAGIOS")]])
+sql_dict = {
+    key.split("_")[1]: value for key, value in [
+        line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and not line.count("NAGIOS")
+    ]
+}
 
-mon_dict = dict([(key.split("_")[1], value) for key, value in [
-    line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and line.count("NAGIOS_")]])
+mon_dict = {
+    key.split("_")[1]: value for key, value in [
+        line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and line.count("NAGIOS_")
+    ]
+}
 
 for src_key, dst_key in [
     ("DATABASE", "NAME"),
@@ -96,7 +102,7 @@ for src_key, dst_key in [
         DATABASES["default"][dst_key] = sql_dict[src_key]
 
 if mon_dict:
-    DATABASES["monitor"] = dict([(key, value) for key, value in DATABASES["default"].iteritems()])
+    DATABASES["monitor"] = {key: value for key, value in DATABASES["default"].iteritems()}
     for src_key, dst_key in [
         ("DATABASE", "NAME"),
         ("USER", "USER"),
