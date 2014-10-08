@@ -1299,11 +1299,16 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                             prev_processes_dead = False
                             self.__processes_stopped.add(p_name)
                         else:
-                            self.log("process %s seams to be dead" % (p_name),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "process {} seams to be dead".format(p_name),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                             self._process_exit(p_name, 0)
                     else:
-                        self.log("process '%s' already got exit message" % (p_name), logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "process '{}' already got exit message".format(p_name),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
 
     def __repr__(self):
         return "process_pool {}, {}".format(
