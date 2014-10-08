@@ -128,7 +128,7 @@ virtual_desktop_settings_template = """
         </tr>
     </thead>
     <tbody>
-        <tr ng-repeat="vdus in virtual_desktop_user_setting">
+        <tr ng-repeat="vdus in get_virtual_desktop_user_setting_of_user()">
             <td> {{ get_device_by_index(vdus.device).name }} </td>
             <td> {{ get_virtual_desktop_protocol_by_index(vdus.virtual_desktop_protocol).description }} </td>
             <td> {{ vdus.port }} </td>
@@ -1186,6 +1186,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                         scope._edit_obj.device = undefined
                 )
                 scope.current_vdus = null
+            scope.get_virtual_desktop_user_setting_of_user = () ->
+                return scope.virtual_desktop_user_setting.filter( (vdus) -> vdus.user == scope._edit_obj.idx )
                 
             scope.virtual_desktop_devices = () ->
                 # devices which support both some kind of virtual desktop and window manager
