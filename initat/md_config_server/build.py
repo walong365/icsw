@@ -287,7 +287,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     }
                 )
             )
-            self.log(*reply.get_log_tuple())
+            if reply is None:
+                self.log("got no reply", logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log(*reply.get_log_tuple())
 
     def _sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
