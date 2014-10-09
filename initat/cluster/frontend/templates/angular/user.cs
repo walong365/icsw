@@ -36,6 +36,16 @@ enter_password_template = """
 
 {% verbatim %}
 
+vncwebviewer_template = """
+<table>
+    <tr ng-repeat="vdus in virtual_desktop_sessions">
+        <td>
+        get_vnc_display_attribute_value(vdus.geometry)
+            <vnc host="{{ get_device_by_index(vdus.device).name }}" port="{{ vdus.websockify_port }}" is-connected="true" password="init4uinit4u" display="get_vnc_display_attribute_value(vdus.geometry)"></vnc>
+        </td>
+    </tr>
+</table>
+"""		
 virtual_desktop_settings_template = """
 <fieldset  ng-show="true">
     <legend>Virtual Desktops</legend>
@@ -63,11 +73,24 @@ virtual_desktop_settings_template = """
        <label for="id_virtual_desktop_protocol" class="control-label col-sm-2">
            Virtual desktop protocol
        </label>
-       <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select an virtual desktop protocol'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='&#39;model_name&#39;'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div></div>
-       <div id="div_id_port" class="form-group " ng_show="_edit_obj.device" ><label for="id_port" class="control-label col-sm-2"> Port
+       <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select an virtual desktop protocol'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='&#39;model_name&#39;'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div>
+   </div>
+
+   <div id="div_id_port" class="form-group " ng_show="_edit_obj.device" >
+       <label for="id_port" class="control-label col-sm-2">
+           Port
        </label>
        <div class="controls col-sm-8">
            <input class="numberinput form-control" id="id_port" max="65535" min="0" name="port" ng-model="_edit_obj.port" placeholder="0" type="number" /> 
+       </div>
+   </div>
+
+   <div id="div_id_web_vnc_port" class="form-group " ng_show="_edit_obj.device" >
+       <label for="id_web_vnc_port" class="control-label col-sm-2">
+           Web VNC Port
+       </label>
+       <div class="controls col-sm-8">
+           <input class="numberinput form-control" id="id_web_vnc_port" max="65535" min="0" name="port" ng-model="_edit_obj.websockify_port" placeholder="0" type="number" /> 
        </div>
    </div>
    
@@ -106,7 +129,7 @@ virtual_desktop_settings_template = """
           <div class="controls col-lg-offset-0 col-sm-8">
               <label for="id_start_automatically" class="">
               <input class="checkboxinput checkbox" id="id_start_automatically" name="start_automatically" ng-model="_edit_obj.start_automatically" type="checkbox" />
-          Start automatically</label></div></div></div>
+          Running (Check to make sure the server is always running)</label></div></div></div>
   </div>
                
                
@@ -120,6 +143,7 @@ virtual_desktop_settings_template = """
             <th>Device</th>
             <th>Protocol</th>
             <th>Port</th>
+            <th>Web VNC Port</th>
             <th>Window<br/>manager</th>
             <th>Screen size</th>
             <th>Running</th>
@@ -127,10 +151,11 @@ virtual_desktop_settings_template = """
         </tr>
     </thead>
     <tbody>
-        <tr ng-repeat="vdus in get_virtual_desktop_user_setting_of_user()">
+        <tr ng-repeat="vdus in get_virtual_desktop_user_setting_of_user(_edit_obj)">
             <td> {{ get_device_by_index(vdus.device).name }} </td>
             <td> {{ get_virtual_desktop_protocol_by_index(vdus.virtual_desktop_protocol).description }} </td>
             <td> {{ vdus.port }} </td>
+            <td> {{ vdus.websockify_port }} </td>
             <td> {{ get_window_manager_by_index(vdus.window_manager).description }} </td>
             <td> {{ vdus.screen_size }} </td>
             <td> {{ vdus.is_running | yesno2 }} </td>
@@ -449,6 +474,26 @@ class diskusage_tree extends tree_config
             _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
         return "#{_dir.name} (" + _info.join(", ") + ")"
 
+
+class screen_size
+    constructor: (@x_size, @y_size) ->
+        @idx = @constructor._count++   # must be same as index in list
+        @manual = @x_size == 0 and @y_size == 0 
+        @name = if @manual then "manual" else @x_size+"x"+@y_size
+    @_count = 0 
+    @parse_screen_size: (string) ->
+        return string.split "x"
+                    
+available_screen_sizes = [
+    new screen_size(0, 0),
+    new screen_size(1920, 1200), new screen_size(1920, 1080),
+    new screen_size(1680, 1050), new screen_size(1600, 900),
+    new screen_size(1440, 900), new screen_size(1400, 1050),
+    new screen_size(1280, 1024), new screen_size(1280, 800),
+    new screen_size(1280, 720), new screen_size(1152, 864),
+    new screen_size(1024, 768), new screen_size(800, 600),
+    new screen_size(640, 420),
+]
         
 user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
     devs = {}
@@ -841,13 +886,15 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 ["{% url 'rest:csw_permission_list' %}", {}]
                 ["{% url 'rest:csw_object_list' %}", {}]
                 ["{% url 'rest:quota_capable_blockdevice_list' %}", {}]
+                ["{% url 'rest:virtual_desktop_user_setting_list' %}", {}]
+                ["{% url 'rest:device_list' %}", {}]
             ])
             wait_list.push(Restangular.one("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2), {{ user.pk }}).get())
             $q.all(wait_list).then(
                 (data) ->
                     # update once per minute
                     $timeout($scope.update, 60000)
-                    $scope.edit_obj = data[3]
+                    $scope.edit_obj = data[5]
                     $scope.csw_permission_list = data[0]
                     $scope.csw_permission_lut = {}
                     for entry in $scope.csw_permission_list
@@ -859,6 +906,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     $scope.qcb_lut = {}
                     for entry in $scope.qcb_list
                         $scope.qcb_lut[entry.idx] = entry
+                    $scope.virtual_desktop_user_setting = data[3]
+                    $scope.device = data[4]
             )
         $scope.update_account = () ->
             $scope.edit_obj.put().then(
@@ -1167,12 +1216,11 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
         restrict : "EA"
         template : $templateCache.get("jobinfo.html")
         link: (scope, element, attrs) ->
-        	scope.get_jobs_done = () -> 42
-        	scope.jobs_done = 44
 ).directive("virtualdesktopsettings", ($compile, $templateCache, icswTools) ->
         restrict : "EA"
         template : $templateCache.get("virtualdesktopsettings.html")
         link: (scope, element, attrs) ->
+            scope.available_screen_sizes = available_screen_sizes
             scope.current_vdus = null
             scope.get_virtual_desktop_submit_mode = () ->
                 if scope.current_vdus == null
@@ -1184,8 +1232,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                         scope._edit_obj.device = undefined
                 )
                 scope.current_vdus = null
-            scope.get_virtual_desktop_user_setting_of_user = () ->
-                return scope.virtual_desktop_user_setting.filter( (vdus) -> vdus.user == scope._edit_obj.idx )
+            scope.get_virtual_desktop_user_setting_of_user = (user_obj) ->
+                return scope.virtual_desktop_user_setting.filter( (vdus) -> vdus.user == user_obj.idx )
                 
             scope.virtual_desktop_devices = () ->
                 # devices which support both some kind of virtual desktop and window manager
@@ -1221,22 +1269,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 return _.find(scope.virtual_desktop_protocol, (vd) -> vd.idx == index)
             scope.get_window_manager_by_index = (index) ->
                 return _.find(scope.window_manager, (vd) -> vd.idx == index)
-            res_count = 0 
-            class screen_size
-                constructor: (@x_size, @y_size) ->
-                    @idx = res_count++   # must be same as index in list
-                    @manual = @x_size == 0 and @y_size == 0 
-                    @name = if @manual then "manual" else @x_size+"x"+@y_size
-            scope.available_screen_sizes = [
-                new screen_size(0, 0),
-                new screen_size(1920, 1200), new screen_size(1920, 1080),
-                new screen_size(1680, 1050), new screen_size(1600, 900),
-                new screen_size(1440, 900), new screen_size(1400, 1050),
-                new screen_size(1280, 1024), new screen_size(1280, 800),
-                new screen_size(1280, 720), new screen_size(1152, 864),
-                new screen_size(1024, 768), new screen_size(800, 600),
-                new screen_size(640, 420),
-            ]
+            
             scope.get_selected_screen_size_as_string = () ->
                if not scope._edit_obj.screen_size
                    return ""
@@ -1253,6 +1286,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     "device":           scope._edit_obj.device
                     "user":             scope._edit_obj.idx
                     "port":             scope._edit_obj.port
+                    "websockify_port":             scope._edit_obj.websockify_port
                     "is_running":          scope._edit_obj.start_automatically
                 }
                 if scope.get_virtual_desktop_submit_mode() == "create"
@@ -1276,7 +1310,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
             scope.on_device_change = () ->
                 # set default values
                 scope._edit_obj.port = 0  # could perhaps depend on protocol
-                scope._edit_obj.screen_size = scope.available_screen_sizes[1] # first is "manual"
+                scope._edit_obj.websockify_port = 0  # could perhaps depend on protocol
+                scope._edit_obj.screen_size = available_screen_sizes[1] # first is "manual"
 
                 dev_index = scope._edit_obj.device
                 wms = scope.get_available_window_managers(dev_index)
@@ -1304,14 +1339,30 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 
                 # set initial data from vdus
                 scope._edit_obj.port = vdus.port
-                scope._edit_obj.screen_size = scope.available_screen_sizes.filter( (x) -> x.name == vdus.screen_size )[0]
+                scope._edit_obj.websockify_port = vdus.websockify_port
+                scope._edit_obj.screen_size = available_screen_sizes.filter( (x) -> x.name == vdus.screen_size )[0]
 
                 scope._edit_obj.window_manager = vdus.window_manager
                 scope._edit_obj.virtual_desktop_protocol = vdus.virtual_desktop_protocol
 
                 scope._edit_obj.start_automatically = vdus.is_running
-
-
+).directive("vncwebviewer", ($compile, $templateCache, icswTools) ->
+        restrict : "EA"
+        template : $templateCache.get("vncwebviewer.html")
+        link: (scope, element, attrs) ->
+            scope.object = undefined
+            scope.virtual_desktop_sessions = []
+            scope.virtual_desktop_user_setting = []
+            scope.$watch(attrs["object"], (new_val) ->
+                scope.object = new_val
+                if scope.object?
+                    scope.virtual_desktop_sessions =  scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx)
+            )
+            scope.get_vnc_display_attribute_value = (geometry) ->
+                [w, h] = screen_sizes.parse_screen_size(geometry)
+                return "{width:"+w+",height:"+h+",fitTo:'width',}"
+            scope.get_device_by_index = (index) ->
+                return _.find(scope.device, (vd) -> vd.idx == index)
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)
@@ -1319,13 +1370,14 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
     $templateCache.put("permissions.html", permissions_template)
     $templateCache.put("jobinfo.html", jobinfo_template)
     $templateCache.put("diskusage.html", diskusage_template)
+    $templateCache.put("vncwebviewer.html", vncwebviewer_template)
 ).controller("index_base", ["$scope", "$timeout", "$window",
     ($scope, $timeout, $window) ->
         $scope.show_index = true
         $scope.quick_open = true
         $scope.ext_open = false
         $scope.diskusage_open = true
-        $scope.vdesktop_open = false
+        $scope.vdesktop_open = true
         $scope.jobinfo_open = true
         $scope.show_devices = false
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE

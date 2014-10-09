@@ -99,7 +99,12 @@
                 Virtual desktops
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': vdesktop_open, 'glyphicon-chevron-right': !vdesktop_open}"></i>
             </accordion-heading>
-            <vnc host="127.0.0.1" port="5902" is-connected="true" password="init4u" display="{width:1880,height:800,fitTo:'width',}"></vnc>
+            
+            <div ng-controller="account_ctrl">
+                <vncwebviewer object="edit_obj">
+                </vncwebviewer>
+            </div>
+
         </accordion-group>
         <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled">
             <accordion-heading>
