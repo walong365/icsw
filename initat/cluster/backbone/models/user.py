@@ -1172,10 +1172,14 @@ class virtual_desktop_user_setting(models.Model):
     # 0 means autoselect
     port = models.IntegerField(default=0)
 
+    websockify_port = models.IntegerField(default=0)
+    websockify_pid = models.IntegerField(default=0)
+    websockify_process_name = models.CharField(max_length=256, default="", blank=True)
+
     # whether this session should be running
     # TODO: rename this as soon as we have a proper way of doing manual migrations
     is_running = models.BooleanField(default=False)
- 
+
     # data of running process
     pid = models.IntegerField(default=0)
     process_name = models.CharField(max_length=256, default="", blank=True)

@@ -167,6 +167,9 @@ class virtual_desktop_user_setting_serializer(serializers.ModelSerializer):
     process_name = serializers.CharField(read_only=True)
     last_start_attempt = serializers.DateField(read_only=True)
 
+    websockify_pid = serializers.IntegerField(read_only=True)
+    websockify_process_name = serializers.CharField(read_only=True)
+
     class Meta:
         model = virtual_desktop_user_setting
 
