@@ -123,7 +123,6 @@ virtual_desktop_settings_template = """
             <th>Window<br/>manager</th>
             <th>Screen size</th>
             <th>Running</th>
-            <th>Is started<br/>automatically</th>
             <th>Action</th>
         </tr>
     </thead>
@@ -135,7 +134,6 @@ virtual_desktop_settings_template = """
             <td> {{ get_window_manager_by_index(vdus.window_manager).description }} </td>
             <td> {{ vdus.screen_size }} </td>
             <td> {{ vdus.is_running | yesno2 }} </td>
-            <td> {{ vdus.start | yesno2 }} </td>
             <td>
                 <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_virtual_desktop_user_setting(vdus)"></input>
                 <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_virtual_desktop_user_setting(vdus)"></input>
@@ -1255,7 +1253,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     "device":           scope._edit_obj.device
                     "user":             scope._edit_obj.idx
                     "port":             scope._edit_obj.port
-                    "start":            scope._edit_obj.start_automatically
+                    "is_running":          scope._edit_obj.start_automatically
                 }
                 if scope.get_virtual_desktop_submit_mode() == "create"
                     scope.push_virtual_desktop_user_setting(new_obj, (data) ->
@@ -1270,6 +1268,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     for prop, val of new_obj
                         scope.current_vdus[prop] = val
                     scope.current_vdus.put()
+                    # this should be patch, but is currently not supported
+                    # scope.current_vdus.patch(new_obj)
                     scope.current_vdus = null # changes back to create mode
                     scope._edit_obj.device = undefined
 
@@ -1309,7 +1309,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 scope._edit_obj.window_manager = vdus.window_manager
                 scope._edit_obj.virtual_desktop_protocol = vdus.virtual_desktop_protocol
 
-                scope._edit_obj.start_automatically = vdus.start
+                scope._edit_obj.start_automatically = vdus.is_running
 
 
 ).run(($templateCache) ->
