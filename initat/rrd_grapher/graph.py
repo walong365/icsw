@@ -745,7 +745,7 @@ class RRDGraph(object):
                         "-h {:d}".format(graph_height),
                         "-aPNG",  # image forma
                         "--daemon", "unix:{}".format(global_config["RRD_CACHED_SOCKET"]),  # rrd caching daemon address
-                        "-W CORVUS by init.at",  # title
+                        "-W {} by init.at".format(settings.INIT_PRODUCT_NAME),  # title
                         "--slope-mode",  # slope mode
                         "-cBACK#ffffff",
                         "--end", "{:d}".format(self.abs_end_time),  # end
