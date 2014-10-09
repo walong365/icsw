@@ -122,13 +122,20 @@ monconfig_templ = """
 <tabset ng-show="!reload_pending">
     <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
         <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
-        <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+        <table class="table table-condensed table-hover table-striped" style="width:auto;">
             <thead>
                 <tr>
                     <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
                 </tr>
                 <tr>
-                    <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-click="value.toggle_order(attr)">
+                    <th colspan="{{ value.attr_list.length }}">
+                        <div class="btn-group btn-group-xs">
+                            <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
+                        </div>
+                    </th>
+                </tr>
+                <tr>
+                    <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
                         <span ng-class="value.get_order_glyph(attr)"></span>
                         {{ get_short_attr_name(attr) }}
                     </th>
@@ -136,7 +143,7 @@ monconfig_templ = """
             </thead>
             <tbody>
                 <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
-                    <td ng-repeat="attr in value.attr_list">
+                    <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
                         {{ entry[attr] }}
                     </td>
                 </tr>
@@ -1041,14 +1048,18 @@ class mc_table
         @short_name = @name.replace(/_/g, "").replace(/list$/, "")
         @attr_list = new Array()
         @entries = []
+        @columns_enabled = {}
         @xml.children().each (idx, entry) =>
             for attr in entry.attributes
                 if attr.name not in @attr_list
                     @attr_list.push(attr.name)
+                    @columns_enabled[attr.name] = true
             @entries.push(@_to_json($(entry)))
         @pagSettings = paginatorSettings.get_paginator("device_tree_base")
         @order_name = "name"
         @order_dir = true
+    toggle_column: (attr) ->
+        @columns_enabled[attr] = !@columns_enabled[attr]
     _to_json : (entry) =>
         _ret = new Object()
         for attr_name in @attr_list
