@@ -215,20 +215,20 @@ class netdevice_form(ModelForm):
         Fieldset(
             "",
             Button(
-                "show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool",
-                ng_class="_edit_obj.show_ethtool && 'btn btn-sm btn-success' || 'btn btn-sm'",
-            ),
-            Button(
                 "show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware",
                 ng_class="_edit_obj.show_hardware && 'btn btn-sm btn-success' || 'btn btn-sm'",
             ),
             Button(
-                "show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan",
-                ng_class="_edit_obj.show_vlan && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                "show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool",
+                ng_class="_edit_obj.show_ethtool && 'btn btn-sm btn-success' || 'btn btn-sm'",
             ),
             Button(
                 "show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac",
                 ng_class="_edit_obj.show_mac && 'btn btn-sm btn-success' || 'btn btn-sm'",
+            ),
+            Button(
+                "show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan",
+                ng_class="_edit_obj.show_vlan && 'btn btn-sm btn-success' || 'btn btn-sm'",
             ),
         ),
         Fieldset(
