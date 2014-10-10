@@ -38,7 +38,7 @@ class _general(hm_classes.hm_module):
             else:
                 self.log("no ipsec command found",
                          logging_tools.LOG_LEVEL_ERROR)
-                com, out = ""
+                com, out = ("", "")
         if com:
             c_stat, out = commands.getstatusoutput(com)
             if c_stat:
