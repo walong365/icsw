@@ -261,7 +261,7 @@ class main_process(threading_tools.process_pool):
 
     def _call_command(self, act_command, srv_com=None, merge_reply=False):
         # call command directly
-        if os.path.isfile(act_command):
+        if os.path.isfile(act_command.split()[0]):
             ret_code, _stdout, _stderr = process_tools.call_command(act_command, self.log)
         else:
             ret_code, _stdout, _stderr = (1, "", u"command '{}' does not exist".format(act_command))
