@@ -212,7 +212,7 @@ class server_info
     has_startstop: (instance) ->
         _xml = @xml.find("instance[name='#{instance}']")
         if _xml.attr("startstop")?
-            return true
+            return if parseInt(_xml.attr("startstop")) then true else false
         else
             return false    
     get_run_info: (instance) ->
