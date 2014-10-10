@@ -95,7 +95,7 @@ INSTANCE_XML = """
         </config_names>
     </instance>
     <!-- collectd is checked via process_name to take the python side-process into account -->
-    <instance name="collectd" any_threads_ok="1" runs_on="system" has_force_stop="1" meta_server_name="collectd">
+    <instance name="collectd-init" runs_on="server" has_force_stop="1" pid_file_name="collectd-init/collectd-init.pid" meta_server_name="collectd-init" version_file="%{INIT_BASE}/collectd/version.py">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
@@ -121,7 +121,7 @@ INSTANCE_XML = """
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance name="rrdcached" check_type="threads_by_pid_file" any_threads_ok="1" runs_on="system">
+    <instance name="rrdcached" check_type="threads_by_pid_file" any_threads_ok="1" runs_on="system" pid_file_name="rrdcached/rrdcached.pid" startstop="0">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
@@ -201,6 +201,7 @@ def get_instance_xml():
             ("any_threads_ok", "0"),
             ("pid_file_name", "{}.pid".format(name)),
             ("init_script_name", name),
+            ("startstop", "1"),
             ("checked", "0"),
             ("to_check", "0"),
             ("process_name", name),
@@ -578,7 +579,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
 
 
 def do_action_xml(opt_ns, res_xml, mode):
-    structs = res_xml.findall("instance[@checked='1']")
+    structs = res_xml.findall("instance[@checked='1' and @startstop='1']")
     if not opt_ns.quiet:
         print(
             "{}ing {}: {}".format(
