@@ -41,6 +41,7 @@ _SRV_TYPE_PORT_MAPPING = {
     "config": 8005,
     "discovery": 8006,
     "package": 8007,
+    "collectd-init": 8008,
     "rms": 8009,
     "md-config": 8010,
     "cransys": 8013,
@@ -52,6 +53,7 @@ _SRV_TYPE_UUID_MAPPING = {
     "server": "cluster-server",
     "grapher": "grapher",
     "md-config": "md-config-server",
+    "collectd-init": "collectd-init",
     "rms": "rms-server",
     "discovery": "discovery-server",
     "config": "config-server",
@@ -62,6 +64,7 @@ _SRV_TYPE_UUID_MAPPING = {
 _SRV_NAME_TYPE_MAPPING = {
     "mother": ["mother_server"],
     "grapher": ["rrd_server"],
+    "collectd-init": ["rrd_collector"],
     "server": ["server"],
     "config": ["config_server"],
     "package": ["package_server"],
