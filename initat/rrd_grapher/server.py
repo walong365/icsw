@@ -19,20 +19,18 @@
 #
 """ server-part of rrd-grapher """
 
-from config_tools import router_object
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
+from initat.rrd_grapher.aggregate import aggregate_process
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.config_static import CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.resize import resize_process
-from initat.rrd_grapher.aggregate import aggregate_process
-from initat.rrd_grapher.struct import data_store, var_cache
+from initat.rrd_grapher.struct import data_store
 from lxml.builder import E  # @UnresolvedImport
 import cluster_location
-import config_tools
 import configfile
 import logging_tools
 import os
@@ -73,7 +71,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
         self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
-        self.register_timer(self._connect_to_collectd, 300, instant=True)
         data_store.setup(self)
 
     def _log_config(self):
@@ -104,7 +101,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
-        self._connect_to_collectd()
 
     def process_start(self, src_process, src_pid):
         mult = 3
@@ -112,137 +108,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
-
-    def _get_disabled_hosts(self):
-        disabled_hosts = device.objects.filter(Q(store_rrd_data=False))
-        num_dis = disabled_hosts.count()
-        self.log(
-            "{} with no_store flag, contacting {}".format(
-                logging_tools.get_plural("device", num_dis),
-                logging_tools.get_plural("collectd", len(self._collectd_sockets))
-            )
-        )
-        dis_com = server_command.srv_command(command="disabled_hosts")
-        _bld = dis_com.builder()
-        dis_com["no_rrd_store"] = _bld.device_list(
-            *[
-                _bld.device(
-                    pk="{:d}".format(cur_dev.pk),
-                    short_name="{}".format(cur_dev.name),
-                    full_name="{}".format(cur_dev.full_name),
-                    uuid="{}".format(cur_dev.uuid)
-                ) for cur_dev in disabled_hosts]
-            )
-        return dis_com
-
-    def _check_reachability(self, devs, var_cache, _router, _type):
-        _reachable, _unreachable = ([], [])
-        _sc = config_tools.server_check(server_type="rrd_server")
-        for dev in devs:
-            _path = _sc.get_route_to_other_device(
-                _router, config_tools.server_check(device=dev, config=None, server_type="node"), allow_route_to_other_networks=True
-            )
-            if not len(_path):
-                _unreachable.append(dev)
-            else:
-                _ip = _path[0][3][1][0]
-                # self.log("IPMI device {} is reachable via {}".format(unicode(ipmi_host), _ip))
-                _reachable.append((dev, _ip, var_cache.get_vars(dev)[0]))
-        if _unreachable:
-            self.log(
-                "{}: {}".format(
-                    logging_tools.get_plural("unreachable {} device".format(_type), len(_unreachable)),
-                    logging_tools.compress_list([unicode(_dev) for _dev in _unreachable])
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-        if _reachable:
-            self.log(
-                "{}: {}".format(
-                    logging_tools.get_plural("reachable {} device".format(_type), len(_reachable)),
-                    logging_tools.compress_list([unicode(_dev) for _dev, _ip, _vars in _reachable])
-                ),
-            )
-        return _reachable
-
-    def _get_snmp_hosts(self, _router):
-        # var cache
-        _vc = var_cache(
-            device.objects.get(
-                Q(device_group__cluster_device_group=True)
-            ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public", "SNMP_SCHEME": "unknown"}
-        )
-        snmp_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="snmp://") & Q(enable_perfdata=True))
-        _reachable = self._check_reachability(snmp_hosts, _vc, _router, "SNMP")
-        snmp_com = server_command.srv_command(command="snmp_hosts")
-        _bld = snmp_com.builder()
-        snmp_com["devices"] = _bld.device_list(
-            *[
-                _bld.device(
-                    pk="{:d}".format(cur_dev.pk),
-                    short_name="{}".format(cur_dev.name),
-                    full_name="{}".format(cur_dev.full_name),
-                    uuid="{}".format(cur_dev.uuid),
-                    ip="{}".format(_ip),
-                    snmp_version="{:d}".format(_vars["SNMP_VERSION"]),
-                    snmp_read_community=_vars["SNMP_READ_COMMUNITY"],
-                    snmp_scheme=_vars["SNMP_SCHEME"],
-                ) for cur_dev, _ip, _vars in _reachable
-            ]
-        )
-        return snmp_com
-
-    def _get_ipmi_hosts(self, _router):
-        # var cache
-        _vc = var_cache(
-            device.objects.get(
-                Q(device_group__cluster_device_group=True)
-            ), {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
-        )
-        ipmi_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="ipmi://") & Q(enable_perfdata=True))
-        _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")
-        ipmi_com = server_command.srv_command(command="ipmi_hosts")
-        _bld = ipmi_com.builder()
-        ipmi_com["devices"] = _bld.device_list(
-            *[
-                _bld.device(
-                    pk="{:d}".format(cur_dev.pk),
-                    short_name="{}".format(cur_dev.name),
-                    full_name="{}".format(cur_dev.full_name),
-                    uuid="{}".format(cur_dev.uuid),
-                    ip="{}".format(_ip),
-                    ipmi_username=_vars["IPMI_USERNAME"],
-                    ipmi_password=_vars["IPMI_PASSWORD"],
-                    ipmi_interface=_vars["IPMI_INTERFACE"],
-                ) for cur_dev, _ip, _vars in _reachable
-            ]
-        )
-        return ipmi_com
-
-    def _connect_to_collectd(self):
-        _router = router_object(self.log)
-        send_coms = [self._get_disabled_hosts(), self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]
-        snd_ok, snd_try = (0, 0)
-        _error_keys = set()
-        for send_com in send_coms:
-            for key in sorted(self._collectd_sockets):
-                snd_try += 1
-                try:
-                    self._collectd_sockets[key].send_unicode(unicode(send_com))
-                except:
-                    self.log("error sending to {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    _error_keys.add(key)
-                else:
-                    snd_ok += 1
-        self.log(
-            "sent {}, {:d} OK, {:d} with problems".format(
-                logging_tools.get_plural("command", len(send_coms)),
-                snd_ok,
-                snd_try - snd_ok,
-            )
-        )
-        if _error_keys:
-            [self._open_collectd_socket(_host) for _host in _error_keys]
 
     def _check_for_stale_rrds(self):
         cur_time = time.time()
@@ -264,9 +129,10 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                         try:
                             rrd_info = rrdtool.info(f_name)
                         except:
-                            self.log("cannot get info for {} via rrdtool: {}".format(
-                                f_name,
-                                process_tools.get_except_info()
+                            self.log(
+                                "cannot get info for {} via rrdtool: {}".format(
+                                    f_name,
+                                    process_tools.get_except_info()
                                 ),
                                 logging_tools.LOG_LEVEL_ERROR
                             )
