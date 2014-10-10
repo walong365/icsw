@@ -21,12 +21,4 @@
 
 """ base constants and config """
 
-import process_tools
-import uuid_tools
-import configfile
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-
-IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name("snmp", connect_to_root_instance=True, s_name="collectd-init")
-
-MD_SERVER_UUID = uuid_tools.get_uuid().get_urn()
+COMMAND_PORT = 8008

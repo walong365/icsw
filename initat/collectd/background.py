@@ -19,23 +19,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" background job for collectd-init """
+""" background job definitions for collectd-init """
 
-from initat.collectd.collectd_structs import ext_com
+from initat.collectd.struct import ext_com
 from initat.collectd.collectd_types import *  # @UnusedWildImport
-from initat.collectd.config import IPC_SOCK, log_base, global_config, LOG_DESTINATION, \
-    IPC_SOCK_SNMP, MD_SERVER_UUID
-from initat.snmp_relay.snmp_process import simple_snmp_oid, snmp_process_container
+from initat.snmp_relay.snmp_process import simple_snmp_oid
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
 import logging_tools
-import multiprocessing
 import server_command
-import process_tools
-import threading
-import signal
-import os
-import zmq
 import time
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
@@ -339,7 +331,7 @@ class snmp_job(object):
         else:
             _tree, _mon_info = self.snmp_scheme_object.build(self, res_dict)
             # graphing
-            self.bg_proc.send_to_net(etree.tostring(_tree))  # @UndefinedVariable
+            self.bg_proc.feed_data(etree.tostring(_tree))  # @UndefinedVariable
 
     def check_for_timeout(self):
         diff_time = int(abs(time.time() - self.last_start))
@@ -555,7 +547,7 @@ class bg_job(object):
                     if self.builder is not None:
                         _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
                         # graphing
-                        bg_job.bg_proc.send_to_net(etree.tostring(_tree))  # @UndefinedVariable
+                        bg_job.bg_proc.feed_data(etree.tostring(_tree))  # @UndefinedVariable
                         # monitoring
                         bg_job.bg_proc.send_to_md(unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info)))
                     else:
@@ -622,242 +614,3 @@ class bg_job(object):
             )
             for _del in _to_delete:
                 del bg_job.ref_dict[_del]
-
-
-class background(multiprocessing.Process, log_base):
-    def __init__(self, main_pid):
-        self.main_pid = main_pid
-        multiprocessing.Process.__init__(self, target=self._code, name="collectd_background")
-
-    def _init(self):
-        threading.currentThread().name = "background"
-        # init zmq_context and logging
-        self.zmq_context = zmq.Context()
-        log_base.__init__(self)
-        self.log("background started")
-        # ignore signals
-        signal.signal(signal.SIGTERM, signal.SIG_IGN)
-        self._init_sockets()
-        self.__msi_block = None
-        self._init_snmp()
-        self.__ipmi_list = []
-        bg_job.setup(self)
-        snmp_job.setup(self)
-
-    def _read_msi_block(self):
-        self.log("reading MSI-block")
-        self.__msi_block = process_tools.meta_server_info("/var/lib/meta-server/collectd")
-        # add SNMP Processes
-        self.spc.check()
-
-    def _init_sockets(self):
-        self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
-        self.com = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        self.poller = zmq.Poller()
-        self.com.setsockopt(zmq.IDENTITY, "bg")  # @UndefinedVariable
-        self.com.connect(IPC_SOCK)
-        self.net_target = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-        listener_url = "tcp://127.0.0.1:{:d}".format(global_config["RECV_PORT"])
-        self.net_target.connect(listener_url)
-        self.poller.register(self.com, zmq.POLLIN)  # @UndefinedVariable
-        self.__hdict = {
-            self.com: self._handle_com,
-        }
-        self.md_target = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-        # clear send error timestamp
-        self.__last_md_send_error = None
-        for flag, value in [
-            (zmq.IDENTITY, self.zmq_id),  # @UndefinedVariable
-            (zmq.SNDHWM, 4),  # @UndefinedVariable
-            (zmq.RCVHWM, 4),  # @UndefinedVariable
-            (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
-            (zmq.IMMEDIATE, 1),  # @UndefinedVariable
-            (zmq.TCP_KEEPALIVE_IDLE, 300),  # @UndefinedVariable
-        ]:
-            self.md_target.setsockopt(flag, value)
-        self.md_target_addr = "tcp://{}:{:d}".format(
-            global_config["MD_SERVER_HOST"],
-            global_config["MD_SERVER_PORT"],
-        )
-        self.md_target.connect(self.md_target_addr)
-        self.md_target_id = "{}:{}:".format(
-            MD_SERVER_UUID,
-            "md-config-server",
-        )
-        self.md_target.connect(self.md_target_addr)
-        self.log("connection to md-config-server at {} (id {})".format(self.md_target_addr, self.md_target_id))
-
-    def _init_snmp(self):
-        self.spc = snmp_process_container(
-            IPC_SOCK_SNMP,
-            self.log,
-            global_config["SNMP_PROCS"],
-            global_config["MAX_SNMP_JOBS"],
-            {
-                "VERBOSE": True,
-                "LOG_NAME": global_config["LOG_NAME"],
-                "LOG_DESTINATION": LOG_DESTINATION
-            },
-            {
-                "process_start": self._snmp_process_start,
-                "process_exit": self._snmp_process_exit,
-                "all_stopped": self._snmp_all_stopped,
-                "finished": self._snmp_finished,
-            }
-        )
-        _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
-        self.poller.register(_snmp_sock, zmq.POLLIN)  # @UndefinedVariable
-        self.__hdict[_snmp_sock] = self.spc.handle
-
-    def _snmp_process_start(self, **kwargs):
-        self.__msi_block.add_actual_pid(
-            kwargs["pid"],
-            mult=kwargs.get("mult", 3),
-            process_name=kwargs["process_name"],
-            fuzzy_ceiling=kwargs.get("fuzzy_ceiling", 3)
-        )
-        self.__msi_block.save_block()
-
-    def _snmp_process_exit(self, **kwargs):
-        self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
-        self.__msi_block.save_block()
-
-    def _snmp_all_stopped(self):
-        self.__exit_ok = True
-
-    def _snmp_finished(self, data):
-        snmp_job.feed_result(data["args"])
-
-    def _close(self):
-        self._close_sockets()
-
-    def _close_sockets(self):
-        self.com.close()
-        self.spc.close()
-        self.net_target.close()
-        self.md_target.close()
-        self.log("background finished")
-        self.close_log()
-        self.zmq_context.term()
-
-    def send_to_net(self, _send_str):
-        self.net_target.send_unicode(_send_str)
-
-    def send_to_md(self, _send_str):
-        cur_time = time.time()
-        if self.__last_md_send_error and abs(self.__last_md_send_error - cur_time) < 10:
-            # silently fail
-            pass
-        else:
-            try:
-                self.md_target.send_unicode(_send_str, zmq.DONTWAIT)  # @UndefinedVariable
-            except zmq.error.ZMQError:
-                # this will never happen because we are using a REQ socket
-                self.log("cannot send to md: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
-                self.__last_md_send_error = cur_time
-            else:
-                pass
-
-    def _code(self):
-        self._init()
-        try:
-            self._loop()
-        except:
-            exc_info = process_tools.exception_info()
-            for line in exc_info.log_lines:
-                self.log(line, logging_tools.LOG_LEVEL_ERROR)
-
-    def _loop(self):
-        self.__exit_ok = False
-        self.__run = True
-        while self.__run or not self.__exit_ok:
-            try:
-                _rcv_list = self.poller.poll(timeout=1000)
-            except:
-                self.log("exception raised in poll:", logging_tools.LOG_LEVEL_ERROR)
-                exc_info = process_tools.exception_info()
-                if exc_info.except_info[1].strerror.lower().count("interrupted"):
-                    self.__run = False
-                # else:
-                for line in exc_info.log_lines:
-                    self.log(line, logging_tools.LOG_LEVEL_ERROR)
-                os.kill(self.main_pid, 15)
-                self.spc.stop()
-            else:
-                if len(_rcv_list):
-                    for _rcv_part in _rcv_list:
-                        self.__hdict[_rcv_part[0]]()
-                else:
-                    # timeout, update background jobs
-                    bg_job.check_jobs()
-                    snmp_job.check_jobs()
-        self._close()
-
-    def _handle_com(self):
-        src_id = self.com.recv_unicode()
-        data = self.com.recv_pyobj()
-        if data == "exit":
-            self.log("got exit from {}".format(src_id))
-            self.__run = False
-            self.spc.stop()
-        elif data == "read_msi_block":
-            self._read_msi_block()
-        elif data.startswith("<"):
-            _in_xml = server_command.srv_command(source=data)
-            self._handle_xml(_in_xml)
-        else:
-            self.log("got unknown data {} from {}".format(str(data), src_id), logging_tools.LOG_LEVEL_WARN)
-
-    def _handle_xml(self, in_com):
-        com_text = in_com["*command"]
-        if com_text in ["ipmi_hosts", "snmp_hosts"]:
-            j_type = com_text.split("_")[0]
-            t_obj = {
-                "ipmi": bg_job,
-                "snmp": snmp_job
-            }[j_type]
-            # create ids
-            _id_dict = {
-                "{}:{}".format(_dev.attrib["uuid"], j_type): _dev for _dev in in_com.xpath(".//ns:device_list/ns:device")
-            }
-            _new_list, _remove_list, _same_list = t_obj.sync_jobs_with_id_list(_id_dict.keys())
-            for new_id in _new_list:
-                _dev = _id_dict[new_id]
-                if j_type == "ipmi":
-                    t_obj(
-                        new_id,
-                        ipmi_builder().get_comline(_dev),
-                        ipmi_builder(),
-                        device_name=_dev.get("full_name"),
-                        uuid=_dev.get("uuid"),
-                    )
-                else:
-                    t_obj(
-                        new_id,
-                        _dev.get("ip"),
-                        _dev.get("snmp_scheme"),
-                        int(_dev.get("snmp_version")),
-                        _dev.get("snmp_read_community"),
-                        device_name=_dev.get("full_name"),
-                        uuid=_dev.get("uuid"),
-                    )
-            for same_id in _same_list:
-                _dev = _id_dict[same_id]
-                _job = t_obj.get_job(same_id)
-                if j_type == "ipmi":
-                    for attr_name, attr_value in [
-                        ("comline", ipmi_builder().get_comline(_dev)),
-                        ("device_name", _dev.get("full_name")),
-                        ("uuid", _dev.get("uuid")),
-                    ]:
-                        _job.update_attribute(attr_name, attr_value)
-                else:
-                    for attr_name, attr_value in [
-                        ("ip", _dev.get("ip")),
-                        ("snmp_scheme", _dev.get("snmp_scheme")),
-                        ("snmp_version", int(_dev.get("snmp_version"))),
-                        ("snmp_read_community", _dev.get("snmp_read_community")),
-                    ]:
-                        _job.update_attribute(attr_name, attr_value)
-        else:
-            self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)

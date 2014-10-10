@@ -67,6 +67,7 @@ class perfdata_object(object):
             self.get_type_instance(v_list),
             # hostname
             _xml.get("host"),
+            _xml.get("uuid", _xml.get("host")),
             # time
             int(_xml.get("time")),
             # report offset
@@ -88,6 +89,8 @@ class perfdata_object(object):
     def build_perfdata_info(self, mach_values):
         new_com = server_command.srv_command(command="perfdata_info")
         new_com["hostname"] = mach_values[2]
+        print mach_values
+        # new_com["uuid"] =
         new_com["pd_type"] = self.PD_NAME
         info = self.get_pd_xml_info(mach_values[5])
         if mach_values[1]:

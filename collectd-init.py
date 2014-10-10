@@ -1,9 +1,10 @@
+#!/usr/bin/python-init -Ot
 #
-# this file is part of collectd-init
-#
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
+#
+# This file belongs to the collectd-init package
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -18,15 +19,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" collector for graphing via RRD """
 
-""" base constants and config """
+from initat.collectd.main import main
+import sys
 
-import process_tools
-import uuid_tools
-import configfile
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-
-IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name("snmp", connect_to_root_instance=True, s_name="collectd-init")
-
-MD_SERVER_UUID = uuid_tools.get_uuid().get_urn()
+sys.exit(main())
