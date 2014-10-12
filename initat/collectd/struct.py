@@ -19,19 +19,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.collectd.config import global_config
+from django.db.models import Q
 from initat.cluster.backbone.models import device_variable, device
 from initat.collectd.collectd_types import value
-import initat.collectd.collectd_types
-from django.db.models import Q
+from initat.collectd.config import global_config
 from lxml.builder import E  # @UnresolvedImports
-import memcache
-import os
-import rrdtool
-import rrd_tools
+import initat.collectd.collectd_types
 import json
 import logging_tools
+import memcache
+import os
 import process_tools
+import rrd_tools
+import rrdtool  # @UnresolvedImport
 import subprocess
 import time
 
@@ -41,7 +41,7 @@ mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_co
 class file_creator(object):
     def __init__(self, log_com):
         self.__log_com = log_com
-        self.log("init host_matcher")
+        self.log("init file_creator")
         # dict, from {uuid, fqdn} to (uuid, fqdn, target_dir)
         cov_keys = [_key for _key in global_config.keys() if _key.startswith("RRD_COVERAGE")]
         self.rrd_coverage = [global_config[_key] for _key in cov_keys]
@@ -50,24 +50,39 @@ class file_creator(object):
         self.__heartbeat = self.__step * 2
         self.log("RRD step is {:d}, hearbeat is {:d} seconds".format(self.__step, self.__heartbeat))
         self.__cfs = ["MIN", "MAX", "AVERAGE"]
+        self.__main_dir = global_config["RRD_DIR"]
         self.__created = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[hm] {}".format(what), log_level)
 
-    def get_target_file(self, base_dir, plugin_name, type_instance, v_type, **kwargs):
-        _subdir = os.path.join(
-            plugin_name,
-            "{}{}.rrd".format(
-                v_type,
-                "-{}".format(type_instance) if type_instance else ""
+    def get_mve_file_path(self, uuid, entry):
+        _targ_dir = os.path.join(
+            self.__main_dir,
+            uuid,
+            "collserver",
+            "icval-{}.rrd".format(
+                entry.get("name"),
             )
         )
-        if _subdir not in self.__created:
-            _path = os.path.join(
-                base_dir,
-                _subdir,
+        return _targ_dir
+
+    def get_pd_file_path(self, uuid, pd_tuple):
+        _targ_dir = os.path.join(
+            self.__main_dir,
+            uuid,
+            "perfdata",
+            "ipd_{}.rrd".format(
+                pd_tuple[0],
+                "-{}".format(pd_tuple[1]) if pd_tuple[1] else "",
             )
+        )
+        return _targ_dir
+
+    def create_target_file(self, _path, **kwargs):
+        v_type = kwargs.get("v_type", "icval")
+        # print "v_type=", v_type
+        if _path not in self.__created:
             if not os.path.exists(_path):
                 if "step" in kwargs:
                     _step = kwargs["step"]
@@ -92,16 +107,19 @@ class file_creator(object):
                         ] + _ds_list + _rra_list
                         rrdtool.create(*_args)
                     except:
-                        self.log("error creating file {}: {}".format(
-                            _path,
-                            process_tools.get_except_info()
-                        ), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "error creating file {}: {}".format(
+                                _path,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         _path = None
                 else:
                     self.log("no DS list for {}".format(v_type), logging_tools.LOG_LEVEL_ERROR)
                     _path = None
-            self.__created[_subdir] = _path
-        return self.__created.get(_subdir, None)
+            self.__created[_path] = True
+        return _path if _path in self.__created else None
 
     def get_ds_spec(self, v_type, _step, _heartbeat):
         # get datasource spec
@@ -144,7 +162,7 @@ class host_matcher(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.log("init host_matcher")
-        # dict, from {uuid, fqdn} to (uuid, fqdn, target_dir)
+        # dict, from {uuid, fqdn} to _dev
         self.__match = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -181,33 +199,54 @@ class host_matcher(object):
             if match_mode:
                 _uuid, _fqdn = (match_dev.uuid, match_dev.full_name)
                 self.log("found match via {} for device {} (pk {:d}, UUID {})".format(match_mode, _fqdn, match_dev.pk, _uuid))
-                _target_dir = self.check_for_dirs(match_dev)
-                self.__match[_uuid] = (_uuid, _fqdn, _target_dir)
-                self.__match[_fqdn] = (_uuid, _fqdn, _target_dir)
-        return self.__match.get(uuid_spec, (None, None, None))[2]
+                _target_dir = self.check_dir_structure(match_dev)
+                self.__match[_uuid] = match_dev
+                self.__match[_fqdn] = match_dev
+        return self.__match.get(uuid_spec, None)
 
-    def check_for_dirs(self, match_dev):
+    def check_dir_structure(self, match_dev):
         main_dir = global_config["RRD_DIR"]
-        _targ_dir = os.path.join(main_dir, match_dev.full_name)
-        _check_list = [("u", match_dev.uuid), ("f", match_dev.full_name)]
+        _fqdn_path = os.path.join(main_dir, match_dev.full_name)
+        _uuid_path = os.path.join(main_dir, match_dev.uuid)
+        _check_dict = {"u": _uuid_path, "f": _fqdn_path}
         _found = {}
-        for _cn, _cp in _check_list:
-            _path = os.path.join(main_dir, _cp)
+        for _cn, _path in _check_dict.iteritems():
             if os.path.isdir(_path):
                 _found[_cn] = os.path.islink(_path)
         if not _found:
             # create structure
             self.log("creating disk structure (dir / link) for {}".format(unicode(match_dev)))
-            os.mkdir(_targ_dir)
-            os.symlink(match_dev.full_name, os.path.join(main_dir, match_dev.uuid))
+            os.mkdir(_uuid_path)
+            os.symlink(match_dev.uuid, _fqdn_path)
         else:
-            if "f" not in _found:
-                self.log("creating FQDN dir for {}".format(unicode(match_dev)))
-                os.mkdir(_targ_dir)
-            if "u" not in _found:
-                self.log("creating UUID link for {}".format(unicode(match_dev)))
-                os.symlink(match_dev.full_name, os.path.join(main_dir, match_dev.uuid))
-        return _targ_dir
+            if "f" in _found and "u" in _found and not _found["u"] and _found["f"]:
+                # all ok, do nothing
+                pass
+            else:
+                # remove all links
+                for _key, _value in _found.iteritems():
+                    if _value:
+                        self.log("removing link {}".format(_check_dict[_key]))
+                        os.unlink(_check_dict[_key])
+                # remove all links
+                _found = {_key: _value for _key, _value in _found.iteritems() if not _value}
+                if "f" in _found:
+                    # rename fqdn
+                    self.log("renaming {} to {}".format(_check_dict["f"], _check_dict["u"]))
+                    os.rename(_check_dict["f"], _check_dict["u"])
+                    _found["u"] = False
+                    del _found["f"]
+                if "u" in _found and "f" not in _found and not _found["u"]:
+                    self.log("creating FQDN link for {}".format(unicode(match_dev)))
+                    os.symlink(match_dev.uuid, _fqdn_path)
+                # if "f" not in _found:
+                #    self.log("creating FQDN dir for {}".format(unicode(match_dev)))
+                #    os.mkdir(_fqdn_path)
+                # if "u" not in _found:
+                #    self.log("creating UUID link for {}".format(unicode(match_dev)))
+                #    os.symlink(match_dev.full_name, _uuid_path)
+        return _fqdn_path
+
 
 # a similiar structure is used in md-config-server/config.py
 class var_cache(dict):
@@ -292,21 +331,26 @@ class ext_com(object):
 
 
 class host_info(object):
-    def __init__(self, log_com, uuid, name):
+    def __init__(self, log_com, _dev):
+        self.device = _dev
         self.__log_com = log_com
-        self.name = name
-        self.uuid = uuid
+        self.name = _dev.full_name
+        self.uuid = _dev.uuid
         self.__dict = {}
         self.last_update = None
         self.updates = 0
         self.stores = 0
         self.store_to_disk = True
-        self.log("init host_info for {} ({})".format(name, uuid))
+        self.__target_files = {}
+        self.log("init host_info for {} ({})".format(self.name, self.uuid))
         self.__mc_timeout = global_config["MEMCACHE_TIMEOUT"]
+        # for perfdata values, init with one to trigger send on first feed
+        self.__perfdata_count = {}
 
     @staticmethod
-    def setup():
+    def setup(fc):
         host_info.entries = {}
+        host_info.fc = fc
 
     @staticmethod
     def host_update(hi):
@@ -325,6 +369,32 @@ class host_info(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[h {}] {}".format(self.name, what), log_level)
+
+    def target_file(self, name, **kwargs):
+        _tf, _exists = self.__target_files[name]
+        if not _exists:
+            _created = host_info.fc.create_target_file(_tf, **kwargs)
+            if _created:
+                self.__target_files[name] = (_tf, True)
+                return _tf
+            else:
+                return None
+        else:
+            return _tf
+
+    def target_file_name(self, name):
+        return self.__target_files[name][0]
+
+    def feed_perfdata(self, pd_tuple):
+        if pd_tuple not in self.__perfdata_count:
+            self.__perfdata_count[pd_tuple] = 1
+            self.__target_files[pd_tuple] = (host_info.fc.get_pd_file_path(self.uuid, pd_tuple), False)
+        self.__perfdata_count[pd_tuple] -= 1
+        if not self.__perfdata_count[pd_tuple]:
+            self.__perfdata_count[pd_tuple] = 10
+            return True
+        else:
+            return False
 
     def get_host_info(self):
         return E.host_info(
@@ -346,7 +416,7 @@ class host_info(object):
                 h_info.append(self.__dict[key].get_key_info())
         return h_info
 
-    def update(self, _xml):
+    def update(self, _xml, _fc):
         cur_time = time.time()
         old_keys = set(self.__dict.keys())
         for entry in _xml.findall("mve"):
@@ -356,6 +426,9 @@ class host_info(object):
                 self.__dict[cur_name] = value(cur_name)
             # update value
             self.__dict[cur_name].update(entry, cur_time)
+            _tf = _fc.get_mve_file_path(self.uuid, entry)
+            self.__target_files[cur_name] = (_tf, False)
+            entry.attrib["file_name"] = _tf
         self._store_json_to_memcached()
         new_keys = set(self.__dict.keys())
         c_keys = old_keys ^ new_keys
@@ -388,7 +461,7 @@ class host_info(object):
         if key in self.__dict:
             try:
                 return (
-                    self.__dict[key].sane_name,
+                    self.__dict[key].name,
                     self.__dict[key].transform(value, cur_time),
                 )
             except:

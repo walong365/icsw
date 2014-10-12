@@ -57,17 +57,27 @@ class perfdata_value(object):
 
 
 class perfdata_object(object):
-    def _wrap(self, _xml, v_list, rsi=0):
+    def _wrap(self, _host_info, _xml, v_list, rsi=0):
         # rsi: report start index, used to skip values from v_list which should not be graphed
         # add name, host and timestamp values
+        pd_tuple = (self.PD_NAME, self.get_type_instance(v_list))
+        _send_info = _host_info.feed_perfdata(pd_tuple)
+        if _send_info:
+            _send_xml = self.build_perfdata_info(_host_info, pd_tuple, v_list)  # mach_values
+        else:
+            _send_xml = None
+        # print "****", self.PD_NAME, self.get_type_instance(v_list)
         return [
-            # name of instance (has to exist in init_types.db)
-            self.PD_NAME,
-            # instance type (for non-unique perfdata objects, PSUs on a bladecenterchassis for instance)
-            self.get_type_instance(v_list),
-            # hostname
-            _xml.get("host"),
-            _xml.get("uuid", _xml.get("host")),
+            # tuple of
+            # (
+            #   name of instance (has to exist in init_types.db) and
+            #   instance type (for non-unique perfdata objects, PSUs on a bladecenterchassis for instance)
+            # )
+            pd_tuple,
+            # host_info
+            _host_info,
+            # xml send info (may be None)
+            _send_xml,
             # time
             int(_xml.get("time")),
             # report offset
@@ -86,15 +96,16 @@ class perfdata_object(object):
     def get_pd_xml_info(self, v_list):
         return self.PD_XML_INFO
 
-    def build_perfdata_info(self, mach_values):
+    def build_perfdata_info(self, host_info, pd_tuple, v_list):  # mach_values):
         new_com = server_command.srv_command(command="perfdata_info")
-        new_com["hostname"] = mach_values[2]
-        print mach_values
+        new_com["hostname"] = host_info.name
+        new_com["uuid"] = host_info.uuid
         # new_com["uuid"] =
         new_com["pd_type"] = self.PD_NAME
-        info = self.get_pd_xml_info(mach_values[5])
-        if mach_values[1]:
-            info.attrib["type_instance"] = mach_values[1]
+        new_com["file_name"] = host_info.target_file_name(pd_tuple)
+        info = self.get_pd_xml_info(v_list)
+        if pd_tuple[1]:
+            info.attrib["type_instance"] = pd_tuple[1]
         new_com["info"] = info
         return new_com
 
@@ -107,8 +118,9 @@ class win_memory_pdata(perfdata_object):
         perfdata_value("total", "memory total", v_type="i", unit="B", rrd_spec="GAUGE:0:U", base=1024, key="memory.total").get_xml(),
     )
 
-    def build_values(self, _xml, in_dict):
+    def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
+            _host_info,
             _xml,
             [
                 int(float(in_dict[key]) * 1024 * 1024) for key in ["used", "total"]
@@ -131,8 +143,9 @@ class win_disk_pdata(perfdata_object):
             perfdata_value("total", "total size of {}".format(disk), v_type="i", unit="B", rrd_spec="GAUGE:0:U", key="disk.{}.total".format(disk)).get_xml(),
         )
 
-    def build_values(self, _xml, in_dict):
+    def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
+            _host_info,
             _xml,
             [in_dict["disk"], int(float(in_dict["used"]) * 1000 * 1000 * 1000), int(float(in_dict["total"]) * 1000 * 1000 * 1000)],
             rsi=1
@@ -152,8 +165,9 @@ class win_load_pdata(perfdata_object):
         perfdata_value("load15", "mean load of the 15 minutes", rrd_spec="GAUGE:0:10000", unit="%", v_type="i").get_xml(),
     )
 
-    def build_values(self, _xml, in_dict):
+    def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
+            _host_info,
             _xml,
             [float(in_dict[key]) for key in ["load1", "load5", "load15"]]
         )
@@ -168,8 +182,9 @@ class load_pdata(perfdata_object):
         perfdata_value("load15", "mean load of the 15 minutes", rrd_spec="GAUGE:0:10000").get_xml(),
     )
 
-    def build_values(self, _xml, in_dict):
+    def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
+            _host_info,
             _xml,
             [float(in_dict[key]) for key in ["load1", "load5", "load15"]]
         )
@@ -179,8 +194,9 @@ class smc_chassis_psu_pdata(perfdata_object):
     PD_RE = re.compile("^smcipmi\s+psu=(?P<psu_num>\d+)\s+temp=(?P<temp>\S+)\s+amps=(?P<amps>\S+)\s+fan1=(?P<fan1>\d+)\s+fan2=(?P<fan2>\d+)$")
     PD_NAME = "smc_chassis_psu"
 
-    def build_values(self, _xml, in_dict):
+    def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
+            _host_info,
             _xml,
             [int(in_dict["psu_num"]), float(in_dict["temp"]), float(in_dict["amps"]), int(in_dict["fan1"]), int(in_dict["fan2"])],
             rsi=1,
@@ -223,8 +239,9 @@ class ping_pdata(perfdata_object):
         perfdata_value("max", "maximum package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
     )
 
-    def build_values(self, _xml, in_dict):
+    def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
+            _host_info,
             _xml,
             [int(in_dict["sent"]), int(in_dict["loss"]), float(in_dict["rta"]), float(in_dict["min"]), float(in_dict["max"])]
         )

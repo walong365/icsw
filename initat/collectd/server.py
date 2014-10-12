@@ -25,9 +25,10 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.collectd.background import snmp_job, bg_job, ipmi_builder
-from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
+from initat.collectd.resize import resize_process
 from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
+from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.snmp_relay.snmp_process import snmp_process_container
 from lxml import etree
 from lxml.builder import E  # @UnresolvedImports
@@ -35,10 +36,10 @@ import cluster_location
 import config_tools
 import configfile
 import logging_tools
-import os
 import process_tools
 import re
 import server_command
+import socket
 import threading_tools
 import time
 import uuid_tools
@@ -62,9 +63,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.register_exception("hup_error", self._hup_error)
         self._log_config()
         self._init_network_sockets()
-        # self.add_process(resize_process("resize"), start=True)
-        # self.add_process(aggregate_process("aggregate"), start=True)
-        connection.close()
+        self.register_func("disable_rrd_cached", self.disable_rrd_cached)
+        self.register_func("enable_rrd_cached", self.enable_rrd_cached)
         self.hm = host_matcher(self.log)
         self.fc = file_creator(self.log)
         self.__last_sent = {}
@@ -74,16 +74,18 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self._init_vars()
         self._init_hosts()
         self._init_rrd_cached()
-        # self.register_func("send_command", self._send_command)
-        # self.register_timer(self._clear_old_graphs, 60, instant=True)
-        # self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
-        # self.register_timer(self._connect_to_collectd, 300, instant=True)
-        # data_store.setup(self)
         self.__ipmi_list = []
         bg_job.setup(self)
         snmp_job.setup(self)
         self.register_timer(self._check_database, 300, instant=True)
         self.register_timer(self._check_background, 2, instant=True)
+        self.add_process(resize_process("resize"), start=True)
+        connection.close()
+        # self.register_func("send_command", self._send_command)
+        # self.register_timer(self._clear_old_graphs, 60, instant=True)
+        # self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
+        # self.register_timer(self._connect_to_collectd, 300, instant=True)
+        # data_store.setup(self)
 
     def _init_perfdata(self):
         re_list = []
@@ -104,10 +106,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _init_hosts(self):
         # init host and perfdata structs
-        host_info.setup()
+        host_info.setup(self.fc)
         self.__hosts = {}
-        # counter when to send data to rrd-grapher
-        self.__perfdatas_cnt = {}
 
     def _log_config(self):
         self.log("Config info:")
@@ -162,7 +162,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _init_network_sockets(self):
         self.bind_id = get_server_uuid("collectd-init")
-        client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id)
+        client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id, immediate=True)
         bind_str = "tcp://*:{:d}".format(global_config["COMMAND_PORT"])
         try:
             client.bind(bind_str)
@@ -220,27 +220,89 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         )
         self.log("comline is {}".format(_comline))
         self.__rrd_com = ext_com(self.log, _comline, name="rrdcached")
+        self.__rrdcached_socket = None
+        # flag for enabled / disabled
+        self.__rrdcached_enabled = True
+        # flag for should run / should not run
+        self.__rrdcached_run = True
+        # flag for actually running
+        self.__rrdcached_running = False
         self.start_rrd_cached()
-        # time.sleep(20)
-        # self.stop_rrd_cached()
-        # time.sleep(20)
-        # self.start_rrd_cached()
+        self.register_timer(self._check_for_rrdcached_socket, timeout=30, first_timeout=1)
+
+    def disable_rrd_cached(self, *args, **kwargs):
+        # stop rrd_cached if running and disable further starts
+        self.__rrdcached_enabled = False
+        self._check_rrd_cached_state()
+
+    def enable_rrd_cached(self, *args, **kwargs):
+        # enable rrd_cached and start if requested
+        self.__rrdcached_enabled = True
+        self._check_rrd_cached_state()
 
     def start_rrd_cached(self):
-        self.log("starting rrd_cached process")
-        self.__rrd_com.run()
+        self.__rrdcached_run = True
+        self._check_rrd_cached_state()
 
     def stop_rrd_cached(self):
-        self.log("stopping rrd_cached process")
-        self.__rrd_com.terminate()
-        _result = self.__rrd_com.finished()
-        if _result is not None:
-            _stdout, _stderr = self.__rrd_com.communicate()
-            self.log("stopped with result {:d}".format(_result))
-            for _name, _stream in [("stdout", _stdout), ("stderr", _stderr)]:
-                if _stream:
-                    for _line in _stream.split("\n"):
-                        self.log("{}: {}".format(_name, _line))
+        self.__rrdcached_run = False
+        self._check_rrd_cached_state()
+
+    def _check_rrd_cached_state(self):
+        def _log():
+            self.log(
+                "_run={}, _enabled={}, _running={}, target_state={}".format(
+                    self.__rrdcached_run,
+                    self.__rrdcached_enabled,
+                    self.__rrdcached_running,
+                    _target_state,
+                )
+            )
+        _target_state = True if (self.__rrdcached_run and self.__rrdcached_enabled) else False
+        if self.__rrdcached_running and not _target_state:
+            _log()
+            self.__rrdcached_running = False
+            self._close_rrdcached_socket()
+            self.log("stopping rrd_cached process")
+            self.__rrd_com.terminate()
+            _result = self.__rrd_com.finished()
+            if _result is not None:
+                _stdout, _stderr = self.__rrd_com.communicate()
+                self.log("stopped with result {:d}".format(_result))
+                for _name, _stream in [("stdout", _stdout), ("stderr", _stderr)]:
+                    if _stream:
+                        for _line in _stream.split("\n"):
+                            self.log("{}: {}".format(_name, _line))
+        elif not self.__rrdcached_running and _target_state:
+            _log()
+            self.log("starting rrd_cached process")
+            self.__rrd_com.run()
+            self.__rrdcached_running = True
+
+    def _check_for_rrdcached_socket(self):
+        if not self.__rrdcached_socket and self.__rrdcached_running:
+            self._open_rrdcached_socket()
+
+    def _open_rrdcached_socket(self):
+        self._close_rrdcached_socket()
+        try:
+            self.__rrdcached_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.__rrdcached_socket.connect(global_config["RRD_CACHED_SOCKET"])
+        except:
+            self.log("error opening rrdcached socket: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.__rrdcached_socket = None
+        else:
+            self.log("connected to rrdcached socket {}".format(global_config["RRD_CACHED_SOCKET"]))
+
+    def _close_rrdcached_socket(self):
+        if self.__rrdcached_socket:
+            try:
+                self.__rrdcached_socket.close()
+            except:
+                self.log("error closing rrdcached socket: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("closed rrdcached socket")
+            self.__rrdcached_socket = None
 
     def send_to_grapher(self, send_xml):
         try:
@@ -481,19 +543,24 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         ))
         self._init_vars()
 
-    def _feed_host_info(self, host_uuid, host_name, _xml):
-        if host_uuid not in self.__hosts:
-            self.__hosts[host_uuid] = host_info(self.log, host_uuid, host_name)
-        if self.__hosts[host_uuid].update(_xml):
+    def _create_host_info(self, _dev):
+        if _dev.uuid not in self.__hosts:
+            self.__hosts[_dev.uuid] = host_info(self.log, _dev)
+        return self.__hosts[_dev.uuid]
+
+    def _feed_host_info(self, _dev, _xml):
+        _host_info = self._create_host_info(_dev)
+        if _host_info.update(_xml, self.fc):
             # something changed
             new_com = server_command.srv_command(command="mv_info")
             new_com["vector"] = _xml
-            self.com_socket.send_unicode(self.grapher_id, zmq.SNDMORE)  # @UndefinedVariable
-            self.com_socket.send_unicode(unicode(new_com))
+            self.send_to_grapher(new_com)
+        return _host_info
 
-    def _feed_host_info_ov(self, host_uuid, host_name, _xml):
+    def _feed_host_info_ov(self, _dev, _xml):
         # update only values
-        self.__hosts[host_uuid].update_ov(_xml)
+        self.__hosts[_dev.uuid].update_ov(_xml)
+        return self.__hosts[_dev.uuid]
 
     def feed_data(self, data):
         self._process_data(data)
@@ -545,75 +612,74 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             float(_xml.attrib["time"]),
         )
         self.__distinct_hosts_mv.add(host_uuid)
-        if simple and host_uuid not in self.__hosts:
-            self.log(
-                "no full info for host {} ({}) received, discarding data".format(
-                    host_name,
-                    host_uuid,
-                ),
-                logging_tools.LOG_LEVEL_WARN
-            )
+        _dev = self.hm.update(host_uuid)
+        if _dev is None:
+            self.log("no device found for host {} ({})".format(host_name, host_uuid))
             raise StopIteration
         else:
-            # store values in host_info (and memcached)
-            if simple:
-                # only values
-                self._feed_host_info_ov(host_uuid, host_name, _xml)
-            else:
-                self._feed_host_info(host_uuid, host_name, _xml)
-            if not self.__hosts[host_uuid].store_to_disk:
-                # writing to disk not allowed
+            if simple and _dev.uuid not in self.__hosts:
+                self.log(
+                    "no full info for host {} ({}) received, discarding data".format(
+                        host_name,
+                        host_uuid,
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 raise StopIteration
-            values = self.__hosts[host_uuid].get_values(_xml, simple)
-            r_data = ("mvector", host_name, host_uuid, recv_time, values)
-            yield r_data
+            else:
+                # store values in host_info (and memcached)
+                # host_uuid is uuid or name
+                if simple:
+                    # only values
+                    _host_info = self._feed_host_info_ov(_dev, _xml)
+                else:
+                    _host_info = self._feed_host_info(_dev, _xml)
+                if not _host_info.store_to_disk:
+                    # writing to disk not allowed
+                    raise StopIteration
+                values = _host_info.get_values(_xml, simple)
+                r_data = ("mvector", _host_info, recv_time, values)
+                yield r_data
 
     def _handle_perf_data(self, _xml, data_len):
         self.__total_size_pds += data_len
         # iterate over lines
         for p_data in _xml:
-            self.__pds_read += 1
-            perf_value = p_data.get("perfdata", "").strip()
-            if perf_value:
-                self.__distinct_hosts_pd.add(p_data.attrib["host"])
-                mach_values = self._find_matching_pd_handler(p_data, perf_value)
-                if len(mach_values):
-                    self._check_for_ext_perfdata(mach_values)
-                    yield ("pdata", mach_values)
+            _uuid = p_data.get("uuid", "")
+            _dev = self.hm.update(_uuid)
+            if _dev is None:
+                self.log("no device found for host {} ({})".format(p_data.get("host"), _uuid))
+            else:
+                _host_info = self._create_host_info(_dev)
+                self.__pds_read += 1
+                perf_value = p_data.get("perfdata", "").strip()
+                if perf_value:
+                    self.__distinct_hosts_pd.add(p_data.attrib["host"])
+                    mach_values = self._find_matching_pd_handler(_host_info, p_data, perf_value)
+                    for pd_vec in mach_values:
+                        if pd_vec[2] is not None:
+                            self.send_to_grapher(pd_vec[2])
+                        yield ("pdata", pd_vec)
         raise StopIteration
 
-    def _find_matching_pd_handler(self, p_data, perf_value):
+    def _find_matching_pd_handler(self, _host_info, p_data, perf_value):
         values = []
         for cur_re, re_obj in self.__pd_re_list:
             cur_m = cur_re.match(perf_value)
             if cur_m:
-                values.extend(re_obj.build_values(p_data, cur_m.groupdict()))
+                values.append(re_obj.build_values(_host_info, p_data, cur_m.groupdict()))
                 # stop loop
                 break
         if not values:
             self.log(
-                "unparsed perfdata '{}' from {}".format(
+                "unparsed perfdata '{}' from {} ({})".format(
                     perf_value,
-                    p_data.get("host")
+                    _host_info.name,
+                    _host_info.uuid,
                 ),
                 logging_tools.LOG_LEVEL_WARN
             )
         return values
-
-    def _check_for_ext_perfdata(self, mach_values):
-        # unique tuple
-        pd_tuple = (mach_values[0], mach_values[1])
-        # init counter
-        if pd_tuple not in self.__perfdatas_cnt:
-            self.__perfdatas_cnt[pd_tuple] = 1
-        # reduce by one
-        self.__perfdatas_cnt[pd_tuple] -= 1
-        if not self.__perfdatas_cnt[pd_tuple]:
-            # zero reached, reset counter to 10 and send info to local rrd-grapher
-            self.__perfdatas_cnt[pd_tuple] = 10
-            pd_obj = globals()["{}_pdata".format(mach_values[0])]()
-            _send_com = pd_obj.build_perfdata_info(mach_values)
-            self.send_to_grapher(_send_com)
 
     def handle_raw_data(self, data):
         _com = data[0]
@@ -622,8 +688,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         elif _com == "pdata":
             # always take the first value of data
             self._handle_perfdata(data[1])
-        elif _com.startswith("to_"):
-            self.send_to_slave(_com[3:], data[1])
         else:
             self.log("unknown data: {}".format(_com), logging_tools.LOG_LEVEL_ERROR)
 
@@ -638,33 +702,96 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         return self.__last_sent[h_tuple]
 
     def _handle_perfdata(self, data):
-        # print "***", data
-        _type, type_instance, host_name, host_uuid, time_recv, rsi, v_list = data
-        _target_dir = self.hm.update(host_uuid)
-        s_time = self.get_time((host_name, "ipd_{}".format(_type)), time_recv)
-        self.fc.get_target_file(_target_dir, "perfdata", type_instance, "ipd_{}".format(_type), interval=5 * 60)
-        # print "pd", data
-        return
-        collectd.Values(
-            plugin="perfdata",
-            type_instance=type_instance,
-            host=host_name,
-            time=s_time,
-            type="ipd_{}".format(_type),
-            interval=5 * 60
-        ).dispatch(values=v_list[rsi:])
+        pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list = data
+        s_time = self.get_time((_host_info.name, "ipd_{}_{}".format(pd_tuple[0], pd_tuple[1])), time_recv)
+        if self.__rrdcached_socket:
+            _tf = _host_info.target_file(pd_tuple, step=5 * 60, v_type="ipd_{}".format(pd_tuple[0]))
+            if _tf:
+                self.__rrdcached_socket.send("BATCH\n")
+                self.__rrdcached_socket.send(
+                    "UPDATE {} {:d}:{}\n".format(
+                        _tf,  # self.fc.get_target_file(_target_dir, "perfdata", type_instance, "ipd_{}".format(_type), step=5 * 60),
+                        s_time,
+                        ":".join([str(_val) for _val in v_list[rsi:]]),
+                    )
+                )
+                self._end_rrdcc(_host_info)
+        # collectd.Values(
+        #    plugin = "perfdata",
+        #    type_instance=type_instance,
+        #    host=host_name,
+        #    time=s_time,
+        #    type="ipd_{}".format(_type),
+        #    interval=5 * 60
+        # ).dispatch(values=v_list[rsi:])
 
     def _handle_mvector_tree(self, data):
-        host_name, host_uuid, time_recv, values = data
-        _target_dir = self.hm.update(host_uuid)
+        _host_info, time_recv, values = data
         # print host_name, time_recv
-        s_time = self.get_time((host_name, "icval"), time_recv)
-        for name, value in values:
-            # name can be none for values with transform problems
-            if name:
-                # print "cs", host_name, host_uuid, s_time, name, value
-                self.fc.get_target_file(_target_dir, "collserver", name, "icval")
-                # collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
+        s_time = self.get_time((_host_info.name, "icval"), time_recv)
+        _any_sent = False
+        if self.__rrdcached_socket:
+            for name, value in values:
+                # name can be none for values with transform problems
+                if name:
+                    try:
+                        _tf = _host_info.target_file(name)
+                    except:
+                        self.log("cannot get target file name for {}: {}".format(name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        if _tf:
+                            if not _any_sent:
+                                _any_sent = True
+                                self.__rrdcached_socket.send("BATCH\n")
+                            self.__rrdcached_socket.send(
+                                "UPDATE {} {:d}:{}\n".format(
+                                    _tf,
+                                    s_time,
+                                    str(value),
+                                )
+                            )
+            if _any_sent:
+                self._end_rrdcc(_host_info)
+            # collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
+
+    def _end_rrdcc(self, host_info):
+        # end rrd-cached communication
+        self.__rrdcached_socket.send(".\n")
+        _skip_lines = 0
+        _read = True
+        s_time = time.time()
+        while _read:
+            for _line in self.__rrdcached_socket.recv(16384).split("\n"):
+                if not _line.strip():
+                    # empty line
+                    continue
+                if _skip_lines:
+                    _skip_lines -= 1
+                    self.log("error: {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+                    if not _skip_lines:
+                        _read = False
+                else:
+                    if _line.startswith("0 Go"):
+                        # ignore first line
+                        pass
+                    elif _line.endswith("errors"):
+                        _errcount = int(_line.split()[0])
+                        _skip_lines = _errcount
+                        if _errcount:
+                            self.log(
+                                "errors from RRDcached for {}: {:d}".format(
+                                    host_info.name,
+                                    _errcount,
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                        else:
+                            _read = False
+                    else:
+                        self.log("unparsed line: '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
+        e_time = time.time()
+        if _errcount:
+            self.log("parsing took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
 
     def _handle_disabled_hosts(self):
         disabled_hosts = device.objects.filter(Q(store_rrd_data=False))
