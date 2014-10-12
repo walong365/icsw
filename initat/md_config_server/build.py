@@ -841,6 +841,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     act_host["retry_interval"] = act_def_dev.retry_interval
                     act_host["check_interval"] = act_def_dev.check_interval
                     act_host["notification_interval"] = act_def_dev.ninterval
+                    act_host["_uuid"] = host.uuid
                     act_host["check_period"] = cur_gc["timeperiod"][act_def_dev.mon_period_id].name
                     act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.not_period_id].name
                     # removed because this line screws active / passive checks

@@ -1108,23 +1108,39 @@ class main_config(object):
             if global_config["ENABLE_COLLECTD"]:
                 # setup perf
                 # collectd data:
-                main_values.extend([
-                        ("service_perfdata_file"         , os.path.join(self.__r_dir_dict["var"], "service-perfdata")),
-                        ("host_perfdata_file"            , os.path.join(self.__r_dir_dict["var"], "host-perfdata")),
-                        ("service_perfdata_file_template", "<rec type='service' time='$TIMET$' host='$HOSTNAME$' sdesc='$SERVICEDESC$' perfdata='$SERVICEPERFDATA$' com='$SERVICECHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$' ss='$SERVICESTATE$' sstype='$SERVICESTATETYPE$'/>"),
-                        ("host_perfdata_file_template"   , "<rec type='host' time='$TIMET$' host='$HOSTNAME$' perfdata='$HOSTPERFDATA$' com='$HOSTCHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$'/>"),
-                    ])
+                main_values.extend(
+                    [
+                        (
+                            "service_perfdata_file",
+                            os.path.join(self.__r_dir_dict["var"], "service-perfdata")
+                        ),
+                        (
+                            "host_perfdata_file",
+                            os.path.join(self.__r_dir_dict["var"], "host-perfdata")
+                        ),
+                        (
+                            "service_perfdata_file_template",
+                            "<rec type='service' uuid='$_HOSTUUID$' time='$TIMET$' host='$HOSTNAME$' sdesc='$SERVICEDESC$' perfdata='$SERVICEPERFDATA$' com='$SERVICECHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$' ss='$SERVICESTATE$' sstype='$SERVICESTATETYPE$'/>"
+                        ),
+                        (
+                            "host_perfdata_file_template",
+                            "<rec type='host' uuid='$_HOSTUUID$' time='$TIMET$' host='$HOSTNAME$' perfdata='$HOSTPERFDATA$' com='$HOSTCHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$'/>"
+                        ),
+                    ]
+                )
                 # general data:
-                main_values.extend([
-                    # ("host_perfdata_command"   , "process-host-perfdata"),
-                    # ("service_perfdata_command", "process-service-perfdata"),
-                    ("service_perfdata_file_mode"               , "a"),
-                    ("service_perfdata_file_processing_interval", "15"),
-                    ("service_perfdata_file_processing_command" , "process-service-perfdata-file"),
-                    ("host_perfdata_file_mode"                  , "a"),
-                    ("host_perfdata_file_processing_interval"   , "15"),
-                    ("host_perfdata_file_processing_command"    , "process-host-perfdata-file"),
-                ])
+                main_values.extend(
+                    [
+                        # ("host_perfdata_command"   , "process-host-perfdata"),
+                        # ("service_perfdata_command", "process-service-perfdata"),
+                        ("service_perfdata_file_mode", "a"),
+                        ("service_perfdata_file_processing_interval", "15"),
+                        ("service_perfdata_file_processing_command", "process-service-perfdata-file"),
+                        ("host_perfdata_file_mode", "a"),
+                        ("host_perfdata_file_processing_interval", "15"),
+                        ("host_perfdata_file_processing_command", "process-host-perfdata-file"),
+                    ]
+                )
             if global_config["ENABLE_NDO"]:
                 if os.path.exists(os.path.join(self.__r_dir_dict[lib_dir_name], "idomod.so")):
                     main_values.append(
@@ -1210,7 +1226,7 @@ class main_config(object):
                     ("authorized_for_all_hosts"                , def_user),
                     ("authorized_for_all_host_commands"        , def_user),
                     ("authorized_for_all_services"             , def_user),
-                    ("authorized_for_all_service_commands"     , def_user)] + 
+                    ("authorized_for_all_service_commands"     , def_user)] +
             [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
         if sql_suc:
             pass
@@ -2005,14 +2021,14 @@ class all_commands(host_type_config):
             check_coms += [
                 mon_check_command(
                     name="process-service-perfdata-file",
-                    command_line="/opt/cluster/sbin/send_collectd_zmq %s/service-perfdata" % (
+                    command_line="/opt/cluster/sbin/send_collectd_zmq {}/service-perfdata".format(
                         gen_conf.var_dir
                         ),
                     description="Process service performance data",
                     ),
                 mon_check_command(
                     name="process-host-perfdata-file",
-                    command_line="/opt/cluster/sbin/send_collectd_zmq %s/host-perfdata" % (
+                    command_line="/opt/cluster/sbin/send_collectd_zmq {}/host-perfdata".format(
                         gen_conf.var_dir
                         ),
                     description="Process host performance data",
