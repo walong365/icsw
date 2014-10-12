@@ -84,7 +84,7 @@ def main():
         ("SERVER_PATH", configfile.bool_c_var(False, help_string="set server_path to store RRDs [%(default)s]", only_commandline=True)),
         ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("RRD_DIR", configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc", database=True)),
-        ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached.sock", database=True)),
+        ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached/rrdcached.sock", database=True)),
         ("GRAPHCONFIG_BASE", configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="name of colortable file")),
     ])
     global_config.parse_file()
@@ -133,13 +133,9 @@ def main():
             ),
         ]
     )
+    if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
+        global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
     cluster_location.read_config_from_db(global_config, "rrd_server", [
-        ("RRD_COVERAGE_1", configfile.str_c_var("1min for 2days", database=True)),
-        ("RRD_COVERAGE_2", configfile.str_c_var("5min for 2 week", database=True)),
-        ("RRD_COVERAGE_3", configfile.str_c_var("15mins for 1month", database=True)),
-        ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
-        ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
-        ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
         ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
         ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
     ])

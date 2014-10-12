@@ -27,7 +27,6 @@ from initat.rrd_grapher.aggregate import aggregate_process
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.config_static import CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
-from initat.rrd_grapher.resize import resize_process
 from initat.rrd_grapher.struct import data_store
 from lxml.builder import E  # @UnresolvedImport
 import cluster_location
@@ -65,7 +64,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self._log_config()
         self._init_network_sockets()
         self.add_process(graph_process("graph"), start=True)
-        self.add_process(resize_process("resize"), start=True)
         self.add_process(aggregate_process("aggregate"), start=True)
         connection.close()
         self.register_func("send_command", self._send_command)
@@ -197,12 +195,12 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("rrd-grapher")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
             msi_block.start_command = "/etc/init.d/rrd-grapher start"
             msi_block.stop_command = "/etc/init.d/rrd-grapher force-stop"
             msi_block.kill_pids = True
@@ -255,8 +253,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
 
-    def _interpret_perfdata_info(self, host_name, pd_type, pd_info):
-        data_store.feed_perfdata(host_name, pd_type, pd_info)
+    def _interpret_perfdata_info(self, host_name, pd_type, pd_info, file_name):
+        data_store.feed_perfdata(host_name, pd_type, pd_info, file_name)
 
     def _get_node_rrd(self, srv_com):
         node_results = E.node_results()
@@ -309,7 +307,12 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     self._interpret_mv_info(srv_com["vector"])
                     send_return = False
                 elif cur_com in ["perfdata_info"]:
-                    self._interpret_perfdata_info(srv_com["hostname"].text, srv_com["pd_type"].text, srv_com["info"][0])
+                    self._interpret_perfdata_info(
+                        srv_com["hostname"].text,
+                        srv_com["pd_type"].text,
+                        srv_com["info"][0],
+                        srv_com["file_name"].text
+                    )
                     send_return = False
                 elif cur_com == "get_node_rrd":
                     self._get_node_rrd(srv_com)

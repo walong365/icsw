@@ -268,7 +268,7 @@ class data_store(object):
         self.set_active_rrds()
         self.store()
 
-    def feed_pd(self, host_name, pd_type, pd_info):
+    def feed_pd(self, host_name, pd_type, pd_info, file_name):
         # we ignore the global store name for perfdata stores
         old_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         rrd_dir = global_config["RRD_DIR"]
@@ -298,7 +298,7 @@ class data_store(object):
             self.xml_vector.append(cur_entry)
         else:
             cur_entry.attrib["type_instance"] = pd_info.get("type_instance", "")
-        self._update_pd_entry(cur_entry, pd_info, rrd_dir)
+        self._update_pd_entry(cur_entry, pd_info, rrd_dir, file_name)
         new_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         c_keys = old_keys ^ new_keys
         if c_keys:
@@ -309,18 +309,10 @@ class data_store(object):
         self.set_active_rrds()
         self.store()
 
-    def _update_pd_entry(self, entry, src_entry, rrd_dir):
+    def _update_pd_entry(self, entry, src_entry, rrd_dir, file_name):
         entry.attrib["last_update"] = "%d" % (time.time())
         entry.attrib["active"] = "1"
-        entry.attrib["file_name"] = os.path.join(
-            rrd_dir,
-            entry.get("host"),
-            "perfdata",
-            "ipd_%s%s.rrd" % (
-                entry.get("name"),
-                "-%s" % (entry.attrib["type_instance"]) if entry.get("type_instance", "") else "",
-            )
-        )
+        entry.attrib["file_name"] = file_name
         if len(entry) == len(src_entry):
             for v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
                 for key, def_value in [
@@ -346,7 +338,10 @@ class data_store(object):
         # last update time
         entry.attrib["last_update"] = "%d" % (time.time())
         entry.attrib["active"] = "1"
-        entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
+        if "file_name" in src_entry.attrib:
+            entry.attrib["file_name"] = src_entry.attrib["file_name"]
+        else:
+            entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
 
     def store(self):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))  # @UndefinedVariable
@@ -593,7 +588,7 @@ class data_store(object):
         data_store.process.log("[ds] %s" % (what), log_level)
 
     @staticmethod
-    def feed_perfdata(name, pd_type, pd_info):
+    def feed_perfdata(name, pd_type, pd_info, file_name):
         match_dev = None
         if name.count("."):
             full_name, short_name, dom_name = (name, name.split(".")[0], name.split(".", 1)[1])
@@ -621,7 +616,7 @@ class data_store(object):
                 data_store.g_log("found device %s (%s) for pd_type=%s" % (unicode(match_dev), match_mode, pd_type))
             if match_dev.pk not in data_store.__devices:
                 data_store.__devices[match_dev.pk] = data_store(match_dev)
-            data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info)
+            data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info, file_name)
         else:
             data_store.g_log(
                 "no device found (name=%s, pd_type=%s)" % (name, pd_type),
