@@ -359,6 +359,7 @@ def get_mem_info(pid=0, **kwargs):
     ps_list = []
     for cur_pid in pid:
         try:
+            # only count RSS (resident set size)
             ps_list.append(psutil.Process(cur_pid).memory_info()[0])
         except:
             # ignore missing process
