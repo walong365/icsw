@@ -36,6 +36,7 @@ import cluster_location
 import config_tools
 import configfile
 import logging_tools
+import pprint
 import process_tools
 import re
 import server_command
@@ -693,43 +694,39 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def get_time(self, h_tuple, cur_time):
         cur_time = int(cur_time)
+        print h_tuple, cur_time
+        pprint.pprint(self.__last_sent)
         if h_tuple in self.__last_sent:
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time
                 cur_time += diff_time
                 self.log("correcting time for {} (+{:d}s to {:d})".format(str(h_tuple), diff_time, int(cur_time)))
+                print "* ->", cur_time
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
 
     def _handle_perfdata(self, data):
         pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list = data
-        s_time = self.get_time((_host_info.name, "ipd_{}_{}".format(pd_tuple[0], pd_tuple[1])), time_recv)
+        # s_time = self.get_time((_host_info.name, "ipd_{}_{}".format(pd_tuple[0], pd_tuple[1])), time_recv)
+        s_time = int(time_recv)
         if self.__rrdcached_socket:
             _tf = _host_info.target_file(pd_tuple, step=5 * 60, v_type="ipd_{}".format(pd_tuple[0]))
             if _tf:
-                self.__rrdcached_socket.send("BATCH\n")
-                self.__rrdcached_socket.send(
-                    "UPDATE {} {:d}:{}\n".format(
+                cache_lines = [
+                    "UPDATE {} {:d}:{}".format(
                         _tf,  # self.fc.get_target_file(_target_dir, "perfdata", type_instance, "ipd_{}".format(_type), step=5 * 60),
                         s_time,
                         ":".join([str(_val) for _val in v_list[rsi:]]),
                     )
-                )
-                self._end_rrdcc(_host_info)
-        # collectd.Values(
-        #    plugin = "perfdata",
-        #    type_instance=type_instance,
-        #    host=host_name,
-        #    time=s_time,
-        #    type="ipd_{}".format(_type),
-        #    interval=5 * 60
-        # ).dispatch(values=v_list[rsi:])
+                ]
+                self.do_rrdcc(_host_info, cache_lines)
 
     def _handle_mvector_tree(self, data):
         _host_info, time_recv, values = data
         # print host_name, time_recv
-        s_time = self.get_time((_host_info.name, "icval"), time_recv)
-        _any_sent = False
+        # s_time = self.get_time((_host_info.name, "icval"), time_recv)
+        s_time = int(time_recv)
+        cache_lines = []
         if self.__rrdcached_socket:
             for name, value in values:
                 # name can be none for values with transform problems
@@ -740,55 +737,65 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                         self.log("cannot get target file name for {}: {}".format(name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         if _tf:
-                            if not _any_sent:
-                                _any_sent = True
-                                self.__rrdcached_socket.send("BATCH\n")
-                            self.__rrdcached_socket.send(
-                                "UPDATE {} {:d}:{}\n".format(
+                            cache_lines.append(
+                                "UPDATE {} {:d}:{}".format(
                                     _tf,
                                     s_time,
                                     str(value),
                                 )
                             )
-            if _any_sent:
-                self._end_rrdcc(_host_info)
-            # collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
+            if cache_lines:
+                self.do_rrdcc(_host_info, cache_lines)
 
-    def _end_rrdcc(self, host_info):
+    def do_rrdcc(self, host_info, cache_lines):
         # end rrd-cached communication
+        self.__rrdcached_socket.send("BATCH\n")
+        for _line in cache_lines:
+            self.__rrdcached_socket.send("{}\n".format(_line))
         self.__rrdcached_socket.send(".\n")
         _skip_lines = 0
         _read = True
         s_time = time.time()
+        _content = ""
         while _read:
-            for _line in self.__rrdcached_socket.recv(16384).split("\n"):
-                if not _line.strip():
-                    # empty line
-                    continue
-                if _skip_lines:
-                    _skip_lines -= 1
-                    self.log("error: {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
-                    if not _skip_lines:
-                        _read = False
-                else:
-                    if _line.startswith("0 Go"):
-                        # ignore first line
-                        pass
-                    elif _line.endswith("errors"):
-                        _errcount = int(_line.split()[0])
-                        _skip_lines = _errcount
-                        if _errcount:
-                            self.log(
-                                "errors from RRDcached for {}: {:d}".format(
-                                    host_info.name,
-                                    _errcount,
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                        else:
+            _content = "{}{}".format(_content, self.__rrdcached_socket.recv(4096))
+            if _content.endswith("\n"):
+                for _line in _content.split("\n"):
+                    if not _line.strip():
+                        # empty line
+                        continue
+                    if _skip_lines:
+                        _skip_lines -= 1
+                        _idx = int(_line.split()[0])
+                        self.log(
+                            u"error: {} for {}".format(
+                                _line,
+                                cache_lines[_idx - 1]
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                        if not _skip_lines:
                             _read = False
                     else:
-                        self.log("unparsed line: '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
+                        if _line.startswith("0 Go"):
+                            # ignore first line
+                            pass
+                        elif _line.endswith("errors"):
+                            _errcount = int(_line.split()[0])
+                            _skip_lines = _errcount
+                            if _errcount:
+                                self.log(
+                                    "errors from RRDcached for {}: {:d}".format(
+                                        host_info.name,
+                                        _errcount,
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
+                            else:
+                                _read = False
+                        else:
+                            self.log("unparsed line: '{}'".format(_line), logging_tools.LOG_LEVEL_WARN)
+                _content = ""
         e_time = time.time()
         if _errcount:
             self.log("parsing took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
