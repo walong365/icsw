@@ -1,11 +1,3 @@
-/*!
- * ui-select
- * http://github.com/angular-ui/ui-select
- * Version: 0.7.0 - 2014-09-09T01:02:43.612Z
- * License: MIT
- */
-
-
 /* Style when highlighting a search. */
 .ui-select-highlight {
   font-weight: bold;
@@ -121,6 +113,10 @@
   line-height: 0.75;
 }
 
+.ui-select-multiple.ui-select-bootstrap .ui-select-match-item{
+  outline: 0;
+}
+
 .ui-select-bootstrap .ui-select-choices-row>a {
     display: block;
     padding: 3px 20px;
@@ -142,6 +138,13 @@
     text-decoration: none;
     outline: 0;
     background-color: #428bca;
+}
+
+.ui-select-bootstrap .ui-select-choices-row.disabled>a,
+.ui-select-bootstrap .ui-select-choices-row.active.disabled>a {
+    color: #777;
+    cursor: not-allowed;
+    background-color: #fff;
 }
 
 /* fix hide/show angular animation */
