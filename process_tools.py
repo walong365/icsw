@@ -197,8 +197,8 @@ def get_socket(context, r_type, **kwargs):
         ("BACKLOG", kwargs.get("backlog", 1)),
         ("TCP_KEEPALIVE", 1),
         ("TCP_KEEPALIVE_IDLE", 300),
-        ("RECONNECT_IVL_MAX", 500),
-        ("RECONNECT_IVL", 200),
+        ("RECONNECT_IVL_MAX", kwargs.get("reconnect_ivl", 500)),
+        ("RECONNECT_IVL", kwargs.get("reconnect_ivl_max", 200)),
     ]:
         _sock.setsockopt(getattr(zmq, _opt), _value)
     if kwargs.get("immediate", False):
@@ -706,7 +706,8 @@ class meta_server_info(object):
                 pass
             else:
                 _parent_pids.append((_pid, _parent_pid))
-        pid_list = [_pid for _pid, _parent in _parent_pids if _parent in pid_list or _parent == 1]
+        # WTF ? removed to signal main process with SIGHUP (ALN, 20141014)
+        # pid_list = [_pid for _pid, _parent in _parent_pids if _parent in pid_list or _parent == 1]
         return pid_list
 
     def set_pids(self, in_pids):

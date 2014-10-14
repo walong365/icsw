@@ -32,13 +32,38 @@ META_DIR = "/var/lib/meta-server"
 
 def main():
     my_parser = argparse.ArgumentParser()
-    my_parser.add_argument("--name", type=str, default="", help="process name to check against [%(default)s]")
-    my_parser.add_argument("--meta", type=str, required=True, help="meta file to use (relative or absolute, when relative search in {} [%(defaults)s]".format(META_DIR))
-    my_parser.add_argument("--signal", type=int, default=0, help="signal to send to the processes [%(default)s]")
+    my_parser.add_argument(
+        "--name",
+        type=str,
+        default="",
+        help="process name to check against [%(default)s]"
+    )
+    my_parser.add_argument(
+        "--meta",
+        type=str,
+        required=True,
+        help="meta file to use (relative or absolute, when relative search in {} [%(default)s]".format(META_DIR)
+    )
+    my_parser.add_argument(
+        "--signal",
+        type=int,
+        default=0,
+        help="signal to send to the processes [%(default)s]"
+    )
+    my_parser.add_argument(
+        "--only-first",
+        default=False,
+        action="store_true",
+        help="signal only first process (==main), [%(default)s]",
+    )
     args = my_parser.parse_args()
     _msi = process_tools.meta_server_info(args.meta if args.meta.startswith("/") else os.path.join(META_DIR, args.meta))
     if _msi.parsed:
-        _pids = sorted(set(_msi.get_pids(process_name=args.name or None)))
+        _pids = _msi.get_pids(process_name=args.name or None)
+        if args.only_first:
+            _pids = [_pids[0]]
+        else:
+            _pids = sorted(set(_pids))
         if args.signal:
             for _pid in _pids:
                 os.kill(_pid, args.signal)
