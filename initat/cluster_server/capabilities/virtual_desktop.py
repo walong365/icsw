@@ -77,7 +77,7 @@ class vncserver(virtual_desktop_server):
         super(vncserver, self).__init__(logger)
         self.vdus = vdus
 
-        self.user_home_dir = os.path.expanduser("~"+self.vdus.user.login)
+        self.user_home_dir = os.path.expanduser("~" + self.vdus.user.login)
         self.corvus_dir = "{}/.corvus".format(self.user_home_dir)
         self.vnc_home_dir = "{}/vncsession-{}".format(self.corvus_dir, self.vdus.pk)
         self.vnc_dir = "{}/.vnc".format(self.vnc_home_dir)
@@ -111,7 +111,7 @@ class vncserver(virtual_desktop_server):
         with open(self.vncstartup_file, "w") as f:
             f.write("#!/bin/sh\n")
             f.write("export HOME=\"{}\"\n".format(self.user_home_dir))
-            f.write(self.vdus.window_manager.binary+" &\n")
+            f.write(self.vdus.window_manager.binary + " &\n")
 
         # make startup file executable
         os.chown(self.vncstartup_file, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
@@ -131,12 +131,12 @@ class vncserver(virtual_desktop_server):
 
     def start(self):
         # create pw for session
-        self.vdus.password = "".join(random.choice(string.ascii_letters + string.digits) for i in xrange(20))
+        self.vdus.password = "".join(random.choice(string.ascii_letters + string.digits) for _i in xrange(20))
         self._write_password_file(self.vdus.password)
 
         # calculate effective pw
         self.vdus.effective_port = self.vdus.port if self.vdus.port != 0 else random.randint(*self.PORT_RANGE)
-        self.vdus.websockify_effective_port = self.vdus.websockify_port if self.vdus.websockify_port != 0 else self.vdus.effective_port+1
+        self.vdus.websockify_effective_port = self.vdus.websockify_port if self.vdus.websockify_port != 0 else self.vdus.effective_port + 1
 
         # no vdus change below this line
         self.vdus.save()
@@ -145,7 +145,7 @@ class vncserver(virtual_desktop_server):
         cmd_line += " -geometry {} ".format(self.vdus.screen_size)
         cmd_line += " -rfbport {}".format(self.vdus.effective_port)
         cmd_line += " -rfbauth {}".format(self.pwd_file)
-        cmd_line += " -extension RANDR" # this prevents the window manager from changing the resolution, c.f. https://bugzilla.redhat.com/show_bug.cgi?id=847442
+        cmd_line += " -extension RANDR"  # this prevents the window manager from changing the resolution, c.f. https://bugzilla.redhat.com/show_bug.cgi?id=847442
 
         websockify_cmd_line = "websockify {} localhost:{}".format(self.vdus.websockify_effective_port, self.vdus.effective_port)
 
@@ -181,7 +181,7 @@ class vncserver(virtual_desktop_server):
                     # write pid file manually
                     with open(self.websockify_pid_file, "w") as f:
                         f.write(str(sub.pid))
-                    sub.wait() # terminate when child does
+                    sub.wait()  # terminate when child does
 
                 # pids are read in _call below such that we don't have to wait now
 
@@ -311,7 +311,7 @@ class virtual_desktop_stuff(bg_stuff):
                                                                                                               vdus.window_manager.name))
 
                         # for vnc: make sure that both vnc and websockify are not running before starting
-                        s.stop() 
+                        s.stop()
                         s.setup()
                         s.start()
                         vdus.last_start_attempt = timezone.now()
