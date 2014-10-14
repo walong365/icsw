@@ -40,9 +40,39 @@ vncwebviewer_template = """
 <table>
     <tr ng-repeat="vdus in virtual_desktop_sessions">
         <td>
-        get_vnc_display_attribute_value(vdus.geometry)
-            <vnc host="{{ get_device_by_index(vdus.device).name }}" port="{{ vdus.websockify_port }}" is-connected="true" password="init4uinit4u" display="get_vnc_display_attribute_value(vdus.geometry)"></vnc>
-        </td>
+            <table>
+                <tr>
+                    <td colspan="2">
+                        <h4 class="ng-binding">
+                            {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }}:{{vdus.effective_port }} running {{ get_window_manager(vdus.window_manager).description }}
+                        </h4>
+                   </td>
+                </tr>
+                <tr>
+                    <td>
+                        <button type="button" ng-click="download_vdus_start_script(vdus)" class="btn btn-default">Download start script</button>
+                    </td>
+                    <td>
+                          <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">open in new tab</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2">
+
+                        <accordion close-others="false">
+                           <accordion-group is-open="web_viewer">
+                               <accordion-heading>
+                                   Web viewer
+                                   <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
+                               </accordion-heading>
+                               <vnc host="{{ get_device_by_index(vdus.device).name }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
+                           </accordion-group>
+                           </accordion>
+      
+                    </td>
+                </tr>
+            </table
+      </td>
     </tr>
 </table>
 """		
@@ -887,6 +917,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 ["{% url 'rest:csw_object_list' %}", {}]
                 ["{% url 'rest:quota_capable_blockdevice_list' %}", {}]
                 ["{% url 'rest:virtual_desktop_user_setting_list' %}", {}]
+                ["{% url 'rest:virtual_desktop_protocol_list' %}", {}]
+                ["{% url 'rest:window_manager_list' %}", {}]
                 ["{% url 'rest:device_list' %}", {}]
             ])
             wait_list.push(Restangular.one("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2), {{ user.pk }}).get())
@@ -894,7 +926,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 (data) ->
                     # update once per minute
                     $timeout($scope.update, 60000)
-                    $scope.edit_obj = data[5]
+                    $scope.edit_obj = data[7]
                     $scope.csw_permission_list = data[0]
                     $scope.csw_permission_lut = {}
                     for entry in $scope.csw_permission_list
@@ -907,7 +939,9 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     for entry in $scope.qcb_list
                         $scope.qcb_lut[entry.idx] = entry
                     $scope.virtual_desktop_user_setting = data[3]
-                    $scope.device = data[4]
+                    $scope.virtual_desktop_protocol = data[4]
+                    $scope.window_manager = data[5]
+                    $scope.device = data[6]
             )
         $scope.update_account = () ->
             $scope.edit_obj.put().then(
@@ -1359,10 +1393,33 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     scope.virtual_desktop_sessions =  scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx)
             )
             scope.get_vnc_display_attribute_value = (geometry) ->
-                [w, h] = screen_sizes.parse_screen_size(geometry)
+                [w, h] = screen_size.parse_screen_size(geometry)
                 return "{width:"+w+",height:"+h+",fitTo:'width',}"
             scope.get_device_by_index = (index) ->
                 return _.find(scope.device, (vd) -> vd.idx == index)
+            scope.get_virtual_desktop_protocol = (index) ->
+                return _.find(scope.virtual_desktop_protocol, (vd) -> vd.idx == index)
+            scope.get_window_manager = (index) ->
+                return _.find(scope.window_manager, (vd) -> vd.idx == index)
+            scope.open_vdus_in_new_tab = (vdus) ->
+                w = window.open()
+                w.document.write(scope.get_vnc_tag(vdus, false))
+            scope.get_vnc_tag = (vdus, geometry) ->
+                display_attr = if geometry then ("display="+scope.get_vnc_display_attribute_value(geometry)) else ""
+                vnc = "<vnc host=\"" + scope.get_device_by_index(vdus.device).name + "\" port=\"" + vdus.websockify_effective_port + "\" is-connected=\"true\" password=\"" + vdus.password + "\" " + display_attr + "></vnc>"
+                container = document.createElement("div")
+                container.innerHTML = vnc
+                return container
+            scope.download_vdus_start_script = (vdus) ->
+                script = "#!/bin/sh\n"+
+                         "echo \"#{vdus.password}\" | vncviewer -autopass #{scope.get_device_by_index(vdus.device).name }:#{vdus.effective_port }\n"
+                blob = new Blob([ script ], { type : 'text/x-shellscript' });
+                url = (window.URL || window.webkitURL).createObjectURL( blob );
+                hidden = document.createElement('a')
+                hidden.href = url
+                hidden.target = "_blank"
+                hidden.download = "start_virtual_desktop_viewer.sh"
+                hidden.click()
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)
