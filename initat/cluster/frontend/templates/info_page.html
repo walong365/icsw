@@ -101,7 +101,7 @@ instance_info = """
         <div class="col-xs-3" style="height:10px;">
             <progressbar value="get_mem_value()" animate="false"></progressbar>
         </div>
-        <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control')">
+        <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop()"">
             <div class="btn-group">
                 <button type="button" class="btn btn-xs btn-warning dropdown-toggle" data-toggle="dropdown">
                     Action <span class="caret"></span>
@@ -123,7 +123,7 @@ instance_info = """
             not running
         </div>
         <div class="col-xs-2">
-            <div class="btn-group">
+            <div class="btn-group" ng-show="has_startstop()">
                 <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
                     Action <span class="caret"></span>
                 </button>
@@ -209,6 +209,12 @@ class server_info
             return _xml.attr("version").replace("-", "&ndash;")
         else
             return ""
+    has_startstop: (instance) ->
+        _xml = @xml.find("instance[name='#{instance}']")
+        if _xml.attr("startstop")?
+            return if parseInt(_xml.attr("startstop")) then true else false
+        else
+            return false    
     get_run_info: (instance) ->
         _xml = @xml.find("instance[name='#{instance}']")
         _state_info = _xml.find("state_info")
@@ -310,6 +316,8 @@ info_module.controller("info_ctrl", ["$scope", "$timeout", "access_level_service
                 return scope.srv_info.get_run_class(scope.instance)
             scope.get_version_class = () ->
                 return scope.srv_info.get_version_class(scope.instance)
+            scope.has_startstop = () ->
+                return scope.srv_info.has_startstop(scope.instance)
             scope.get_version = () ->
                 return scope.srv_info.get_version(scope.instance)
             scope.get_mem_info = () ->
