@@ -77,8 +77,8 @@ INSTANCE_XML = """
     </instance>
     <instance name="package-client" runs_on="node"  has_force_stop="1" pid_file_name="package-client/package-client.pid" version_file="%{INIT_BASE}/package_install/client/version.py">
     </instance>
-    <instance name="gmond" runs_on="node" pid_file_name="">
-    </instance>
+    <!--<instance name="gmond" runs_on="node" pid_file_name="">
+    </instance>-->
     <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1" meta_server_name="logcheck" version_file="%{INIT_BASE}/%{NAME}/version.py">
         <config_names>
             <config_name>syslog_server</config_name>
