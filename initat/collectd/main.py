@@ -26,10 +26,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from django.conf import settings
 from initat.cluster.backbone.models import log_source
-from initat.collectd.version import VERSION_STRING
 from initat.collectd.config_static import COMMAND_PORT
+from initat.collectd.version import VERSION_STRING
 from io_stream_helper import io_stream
 import cluster_location
 import config_tools
@@ -149,6 +148,10 @@ def main():
             "/var/run/collectd-init", global_config["RRD_DIR"], global_config["RRD_CACHED_DIR"],
         ]
     )
+    # check for already running rrdcached processes and kill them
+    proc_dict = process_tools.get_proc_list_new(proc_name_list=["rrdcached"])
+    for _key in proc_dict.iterkeys():
+        os.kill(_key, 9)
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         with daemon.DaemonContext(
