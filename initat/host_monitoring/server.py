@@ -88,6 +88,7 @@ class server_code(threading_tools.process_pool):
         self._init_network_sockets()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
+        self.register_exception("hup_error", self._sighup)
         self.register_func("socket_ping_result", self._socket_ping_result)
         self.__callbacks, self.__callback_queue = ({}, {})
         self.register_func("register_callback", self._register_callback)
@@ -117,6 +118,12 @@ class server_code(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+
+    def _sighup(self, err_cause):
+        self.log("got sighup")
+        for cur_mod in self.module_list:
+            self.log("calling reload_module() for {}".format(cur_mod.name))
+            cur_mod.reload()
 
     def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
@@ -674,8 +681,12 @@ class server_code(threading_tools.process_pool):
                                     ("init_module", False)]:
             for cur_mod in modules.module_list:
                 if global_config["VERBOSE"]:
-                    self.log("calling %s for module '%s'" % (call_name,
-                                                             cur_mod.name))
+                    self.log(
+                        "calling {} for module '{}'".format(
+                            call_name,
+                            cur_mod.name
+                        )
+                    )
                 try:
                     if add_self:
                         getattr(cur_mod, call_name)(self)

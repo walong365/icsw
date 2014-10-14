@@ -101,12 +101,21 @@ case "$1" in
         echo "Restarting $(basename $SERVER_BIN)"
         $0 stop ; sleep 1 ; $0 start || return=$rc_failed
         ;;
+    reload)
+        echo -n "Reloading $(basename $SERVER_BIN)"
+        if [ -f ${META_FILE} ] ; then
+	        /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collserver.py --signal 1 --only-first
+	    else
+	        rc_failed
+	    fi
+	    rc_status -v
+        ;;
     force-restart)
         echo "Restarting $(basename $SERVER_BIN)"
         $0 force-stop ; sleep 1 ; $0 start || return=$rc_failed
         ;;
     *)
-        echo "Usage: $0 {start|stop|restart|status|force-stop|force-restart}"
+        echo "Usage: $0 {start|stop|restart|status|force-stop|force-restart|reload}"
         exit 1
         ;;
 esac

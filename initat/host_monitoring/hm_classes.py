@@ -209,6 +209,9 @@ class hm_module(object):
     def close_module(self):
         pass
 
+    def reload(self):
+        pass
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.main_proc.log("[{}] {}".format(self.name, what), log_level)
 

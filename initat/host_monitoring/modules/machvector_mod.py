@@ -60,6 +60,9 @@ class _general(hm_classes.hm_module):
             self.log("machvector poll_counter is {:d} seconds".format(_mpc))
             self.main_proc.register_timer(self._update_machine_vector, _mpc, instant=True)
 
+    def reload(self):
+        self.machine_vector.reload()
+
     def close_module(self):
         if hasattr(self.main_proc, "register_vector_receiver"):
             self.machine_vector.close()
@@ -173,49 +176,7 @@ class machine_vector(object):
         # socket dict for mv-sending
         self.__socket_dict = {}
         # read machine vector config
-        self.conf_name = os.path.join("/etc/sysconfig/host-monitoring.d", MACHVECTOR_NAME)
-        if not os.path.isfile(self.conf_name):
-            self._create_default_config()
-        try:
-            xml_struct = etree.fromstring(file(self.conf_name, "r").read())  # @UndefinedVariable
-        except:
-            self.log(
-                "cannot read {}: {}".format(
-                    self.conf_name,
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            xml_struct = None
-        else:
-            send_id = 0
-            p_pool = self.module.main_proc
-            for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']", smart_strings=False):
-                send_id += 1
-                mv_target.attrib["send_id"] = "{:d}".format(send_id)
-                mv_target.attrib["sent"] = "0"
-                p_pool.register_timer(
-                    self._send_vector,
-                    int(mv_target.get("send_every", "30")),
-                    data=send_id,
-                    instant=int(mv_target.get("immediate", "0")) == 1
-                )
-                # zmq sending, to collectd
-                t_sock = p_pool.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-                t_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-                t_sock.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
-                t_sock.setsockopt(zmq.BACKLOG, 4)  # @UndefinedVariable
-                t_sock.setsockopt(zmq.SNDTIMEO, 1000)  # @UndefinedVariable
-                # to stop 0MQ trashing the target socket
-                t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)  # @UndefinedVariable
-                t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)  # @UndefinedVariable
-                target_str = "tcp://{}:{:d}".format(
-                    mv_target.get("target", "127.0.0.1"),
-                    int(mv_target.get("port", "8002")))
-                self.log("creating zmq.PUSH socket for {}".format(target_str))
-                t_sock.connect(target_str)
-                self.__socket_dict[send_id] = t_sock
-        self.__xml_struct = xml_struct
+        self.read_config()
         self.vector_flags = {}
         module.main_proc.register_vector_receiver(self._recv_vector)
         # check flags
@@ -265,6 +226,62 @@ class machine_vector(object):
         self._store_config()
         self._remove_old_dirs()
 
+    def read_config(self):
+        # close sockets
+        for _send_id, sock in self.__socket_dict.iteritems():
+            self.log("closing socket with id {:d}".format(_send_id))
+            sock.close()
+        self.__socket_dict = {}
+        self.conf_name = os.path.join("/etc/sysconfig/host-monitoring.d", MACHVECTOR_NAME)
+        if not os.path.isfile(self.conf_name):
+            self._create_default_config()
+        try:
+            xml_struct = etree.fromstring(file(self.conf_name, "r").read())  # @UndefinedVariable
+        except:
+            self.log(
+                "cannot read {}: {}".format(
+                    self.conf_name,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            xml_struct = None
+        else:
+            send_id = 0
+            p_pool = self.module.main_proc
+            for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']", smart_strings=False):
+                send_id += 1
+                mv_target.attrib["send_id"] = "{:d}".format(send_id)
+                mv_target.attrib["sent"] = "0"
+                p_pool.register_timer(
+                    self._send_vector,
+                    int(mv_target.get("send_every", "30")),
+                    data=send_id,
+                    instant=int(mv_target.get("immediate", "0")) == 1
+                )
+                # zmq sending, to collectd
+                t_sock = process_tools.get_socket(
+                    p_pool.zmq_context,
+                    "PUSH",
+                    linger=0,
+                    sndhwm=16,
+                    backlog=4,
+                    # to stop 0MQ trashing the target socket
+                    reconnect_ivl=1000,
+                    reconnect_ivl_max=30000
+                )
+                target_str = "tcp://{}:{:d}".format(
+                    mv_target.get("target", "127.0.0.1"),
+                    int(mv_target.get("port", "8002")))
+                self.log("creating zmq.PUSH socket for {}".format(target_str))
+                t_sock.connect(target_str)
+                self.__socket_dict[send_id] = t_sock
+        self.__xml_struct = xml_struct
+
+    def reload(self):
+        self.log("reloading machine vector")
+        self.read_config()
+
     def _remove_old_dirs(self):
         # delete external directories
         old_dir = "/tmp/.machvect_es"
@@ -275,8 +292,10 @@ class machine_vector(object):
                 self.log(
                     "error removing old external directory {}: {}".format(
                         old_dir,
-                        process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 self.log("removed old external directory {}".format(old_dir))
 
