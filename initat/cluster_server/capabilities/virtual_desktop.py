@@ -34,6 +34,8 @@ import sys
 import daemon
 import multiprocessing
 import socket
+import random
+import string
 try:
     from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, virtual_desktop_user_setting
 except ImportError:
@@ -69,6 +71,8 @@ class virtual_desktop_server(object):
 class vncserver(virtual_desktop_server):
     uses_websockify = True
 
+    PORT_RANGE = (16450, 16550)
+
     def __init__(self, logger, vdus):
         super(vncserver, self).__init__(logger)
         self.vdus = vdus
@@ -103,17 +107,6 @@ class vncserver(virtual_desktop_server):
         os.chown(self.vnc_dir, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
         os.chmod(self.vnc_dir, 0700)
 
-        # get binary data using vncpasswd
-        outfile = open(self.pwd_file, "w")
-        vncpw_proc = subprocess.Popen(["vncpasswd", "-f"], stdin=subprocess.PIPE, stdout=outfile)
-        vncpw_proc.stdin.write("init4uinit4u")
-        vncpw_proc.stdin.close()
-        vncpw_proc.wait()
-        outfile.close()
-
-        os.chown(self.pwd_file, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
-        os.chmod(self.pwd_file, 0600)
-
         # create startup file
         with open(self.vncstartup_file, "w") as f:
             f.write("#!/bin/sh\n")
@@ -124,21 +117,40 @@ class vncserver(virtual_desktop_server):
         os.chown(self.vncstartup_file, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
         os.chmod(self.vncstartup_file, 0700)
 
+    def _write_password_file(self, pw):
+        # get binary data using vncpasswd
+        outfile = open(self.pwd_file, "w")
+        vncpw_proc = subprocess.Popen(["vncpasswd", "-f"], stdin=subprocess.PIPE, stdout=outfile)
+        vncpw_proc.stdin.write(pw)
+        vncpw_proc.stdin.close()
+        vncpw_proc.wait()
+        outfile.close()
+
+        os.chown(self.pwd_file, self.vdus.user.uid, self._get_gid_of_uid(self.vdus.user.uid))
+        os.chmod(self.pwd_file, 0600)
+
     def start(self):
+        # create pw for session
+        self.vdus.password = "".join(random.choice(string.ascii_letters + string.digits) for i in xrange(20))
+        self._write_password_file(self.vdus.password)
+
+        # calculate effective pw
+        self.vdus.effective_port = self.vdus.port if self.vdus.port != 0 else random.randint(*self.PORT_RANGE)
+        self.vdus.websockify_effective_port = self.vdus.websockify_port if self.vdus.websockify_port != 0 else self.vdus.effective_port+1
+
+        # no vdus change below this line
+        self.vdus.save()
+
         cmd_line = "vncserver"
         cmd_line += " -geometry {} ".format(self.vdus.screen_size)
-        if self.vdus.port != 0:
-            cmd_line += " -rfbport {}".format(self.vdus.port)
+        cmd_line += " -rfbport {}".format(self.vdus.effective_port)
         cmd_line += " -rfbauth {}".format(self.pwd_file)
+        cmd_line += " -extension RANDR" # this prevents the window manager from changing the resolution, c.f. https://bugzilla.redhat.com/show_bug.cgi?id=847442
 
-        if self.vdus.port != 0 and self.vdus.websockify_port != 0:
-            websockify_cmd_line = "websockify {} localhost:{}".format(self.vdus.websockify_port, self.vdus.port)
-        else:
-            websockify_cmd_line = None
+        websockify_cmd_line = "websockify {} localhost:{}".format(self.vdus.websockify_effective_port, self.vdus.effective_port)
 
         self.log("Starting vncserver with command line: {}".format(cmd_line))
-        if websockify_cmd_line:
-            self.log("Starting websockify with command line: {}".format(websockify_cmd_line))
+        self.log("Starting websockify with command line: {}".format(websockify_cmd_line))
 
         vnc_env = os.environ.copy()
         vnc_env["HOME"] = self.vnc_home_dir
