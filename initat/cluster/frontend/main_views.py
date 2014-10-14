@@ -115,3 +115,16 @@ class server_control(View):
             connection_id="server_control",
             target_server_id=_cmd["server_id"]
         )
+
+
+class virtual_desktop_viewer(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request,
+            "virtual_desktop_viewer.html",
+            {
+                "hide_sidebar": True,
+                "vdus_index":   request.GET.get("vdus_index", 0),
+            }
+        )()

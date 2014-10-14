@@ -166,6 +166,7 @@ main_patterns = patterns(
     url(r"^info$", main_views.info_page.as_view(), name="info_page"),
     url(r"^server_info$", main_views.get_server_info.as_view(), name="get_server_info"),
     url(r"^server_control$", main_views.server_control.as_view(), name="server_control"),
+    url(r"^virtual_desktop_viewer$", main_views.virtual_desktop_viewer.as_view(), name="virtual_desktop_viewer"),
 )
 
 rrd_patterns = patterns(

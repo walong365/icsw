@@ -37,7 +37,15 @@ enter_password_template = """
 {% verbatim %}
 
 vncwebviewer_template = """
-<table>
+<!-- vnc viewer mode -->
+<div ng-if="show_single_vdus">
+    <vnc host="{{ get_device_by_index(single_vdus.device).name }}" port="{{ single_vdus.websockify_effective_port  }}" is-connected="show_single_vdus" password="{{ single_vdus.password }}" ></vnc>
+</div>
+<!-- dashboard mode -->
+<div ng-if="virtual_desktop_sessions.length == 0">
+    No virtual desktop sessions 
+</div>
+<table ng-if="!show_single_vdus">
     <tr ng-repeat="vdus in virtual_desktop_sessions">
         <td>
             <table>
@@ -50,7 +58,9 @@ vncwebviewer_template = """
                 </tr>
                 <tr>
                     <td>
-                        <button type="button" ng-click="download_vdus_start_script(vdus)" class="btn btn-default">Download start script</button>
+                        <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default">Show viewer command line</button>
+                        <br />
+                        {{vdus.viewer_cmd_line}}
                     </td>
                     <td>
                           <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">open in new tab</button>
@@ -905,6 +915,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 
 ]).controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+        $scope.virtual_desktop_user_setting = []
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -970,6 +981,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
             return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
+        $scope.get_vdus = (idx) ->
+            $scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.idx == idx)
         $scope.update()
 ]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
@@ -1385,12 +1398,22 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
         template : $templateCache.get("vncwebviewer.html")
         link: (scope, element, attrs) ->
             scope.object = undefined
+
+            scope.single_vdus_index = {{ vdus_index }} # from django via get parameter
+            scope.single_vdus = undefined
+            scope.show_single_vdus = false
+
             scope.virtual_desktop_sessions = []
             scope.virtual_desktop_user_setting = []
             scope.$watch(attrs["object"], (new_val) ->
                 scope.object = new_val
+                    
                 if scope.object?
                     scope.virtual_desktop_sessions =  scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx)
+
+                    if scope.single_vdus_index
+                        scope.single_vdus = scope.virtual_desktop_user_setting.filter((vdus) -> vdus.idx == scope.single_vdus_index)[0]
+                        scope.show_single_vdus = true
             )
             scope.get_vnc_display_attribute_value = (geometry) ->
                 [w, h] = screen_size.parse_screen_size(geometry)
@@ -1402,15 +1425,12 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
             scope.get_window_manager = (index) ->
                 return _.find(scope.window_manager, (vd) -> vd.idx == index)
             scope.open_vdus_in_new_tab = (vdus) ->
-                w = window.open()
-                w.document.write(scope.get_vnc_tag(vdus, false))
-            scope.get_vnc_tag = (vdus, geometry) ->
-                display_attr = if geometry then ("display="+scope.get_vnc_display_attribute_value(geometry)) else ""
-                vnc = "<vnc host=\"" + scope.get_device_by_index(vdus.device).name + "\" port=\"" + vdus.websockify_effective_port + "\" is-connected=\"true\" password=\"" + vdus.password + "\" " + display_attr + "></vnc>"
-                container = document.createElement("div")
-                container.innerHTML = vnc
-                return container
+                url = "{% url 'main:virtual_desktop_viewer' %}"
+                window.open(url + "?vdus_index="+vdus.idx)
+            scope.show_viewer_command_line = (vdus) ->
+                vdus.viewer_cmd_line = "echo \"#{vdus.password}\" | vncviewer -autopass #{scope.get_device_by_index(vdus.device).name }:#{vdus.effective_port }\n"
             scope.download_vdus_start_script = (vdus) ->
+                # currently unused
                 script = "#!/bin/sh\n"+
                          "echo \"#{vdus.password}\" | vncviewer -autopass #{scope.get_device_by_index(vdus.device).name }:#{vdus.effective_port }\n"
                 blob = new Blob([ script ], { type : 'text/x-shellscript' });

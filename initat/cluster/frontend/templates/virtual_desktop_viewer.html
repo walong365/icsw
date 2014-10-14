@@ -1,0 +1,35 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block title %}{% trans "Virtual Desktop Viewer" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.virtual_desktop_viewer">
+
+{% verbatim %}
+
+    <div ng-controller="account_ctrl">
+        <vncwebviewer object="edit_obj"> </vncwebviewer obj>
+    </div>
+
+{% endverbatim %}
+
+</div>
+
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.virtual_desktop_viewer']"), ["icsw.user"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+
+{% endblock %}
