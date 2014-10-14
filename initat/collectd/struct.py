@@ -196,6 +196,7 @@ class host_matcher(object):
                         pass
                     except device.MultipleObjectsReturned:
                         self.log("spec {} / {} is not unique".format(uuid_spec, host_name), logging_tools.LOG_LEVEL_WARN)
+                        match_dev = None
                     else:
                         match_mode = "name"
             else:
@@ -206,6 +207,8 @@ class host_matcher(object):
                 _target_dir = self.check_dir_structure(match_dev)
                 self.__match[_uuid] = match_dev
                 self.__match[_fqdn] = match_dev
+                # source name
+                self.__match[host_name] = match_dev
             else:
                 match_dev = None
         return match_dev
