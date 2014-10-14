@@ -613,7 +613,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             float(_xml.attrib["time"]),
         )
         self.__distinct_hosts_mv.add(host_uuid)
-        _dev = self.hm.update(host_uuid)
+        _dev = self.hm.update(host_uuid, host_name)
         if _dev is None:
             self.log("no device found for host {} ({})".format(host_name, host_uuid))
             raise StopIteration
@@ -647,7 +647,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         # iterate over lines
         for p_data in _xml:
             _uuid = p_data.get("uuid", "")
-            _dev = self.hm.update(_uuid)
+            _name = p_data.get("host", "")
+            _dev = self.hm.update(_uuid, _name)
             if _dev is None:
                 self.log("no device found for host {} ({})".format(p_data.get("host"), _uuid))
             else:

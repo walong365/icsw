@@ -168,17 +168,17 @@ class host_matcher(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[hm] {}".format(what), log_level)
 
-    def update(self, uuid_spec):
+    def update(self, uuid_spec, host_name):
         # print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
         # at first check for uuid
-        match_dev = None
-        if uuid_spec not in self.__match:
+        match_dev = self.__match.get(uuid_spec, self.__match.get(host_name, None))
+        if match_dev is None:
             match_mode = None
             try:
                 match_dev = device.objects.get(Q(uuid=uuid_spec))
             except device.DoesNotExist:
-                if uuid_spec.count("."):
-                    short_name, dom_name = (uuid_spec.split(".")[0], uuid_spec.split(".", 1)[1])
+                if host_name.count("."):
+                    short_name, dom_name = (host_name.split(".")[0], host_name.split(".", 1)[1])
                     try:
                         match_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node__full_name=dom_name))
                     except device.DoesNotExist:
@@ -187,11 +187,11 @@ class host_matcher(object):
                         match_mode = "fqdn"
                 else:
                     try:
-                        match_dev = device.objects.get(Q(name=uuid_spec))
+                        match_dev = device.objects.get(Q(name=host_name))
                     except device.DoesNotExist:
                         pass
                     except device.MultipleObjectsReturned:
-                        self.log("spec {} is not unique".format(uuid_spec), logging_tools.LOG_LEVEL_WARN)
+                        self.log("spec {} / {} is not unique".format(uuid_spec, host_name), logging_tools.LOG_LEVEL_WARN)
                     else:
                         match_mode = "name"
             else:
@@ -202,7 +202,9 @@ class host_matcher(object):
                 _target_dir = self.check_dir_structure(match_dev)
                 self.__match[_uuid] = match_dev
                 self.__match[_fqdn] = match_dev
-        return self.__match.get(uuid_spec, None)
+            else:
+                match_dev = None
+        return match_dev
 
     def check_dir_structure(self, match_dev):
         main_dir = global_config["RRD_DIR"]
