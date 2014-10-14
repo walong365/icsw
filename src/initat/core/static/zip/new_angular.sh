@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -x
 ANG_VERS=$(ls -1 angular*zip | cut -d "-" -f 2 | sed s/.zip//g)
 
 echo "New angular version is ${ANG_VERS}"
