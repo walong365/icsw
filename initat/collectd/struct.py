@@ -190,7 +190,7 @@ class host_matcher(object):
                 if match_dev is None:
                     # compare short name
                     try:
-                        match_dev = device.objects.get(Q(name=host_name))
+                        match_dev = device.objects.get(Q(name=short_name))
                     except device.DoesNotExist:
                         pass
                     except device.MultipleObjectsReturned:
