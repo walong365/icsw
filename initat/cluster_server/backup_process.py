@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,8 +15,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from subprocess import CalledProcessError
 """ cluster-server, backup process """
 
+from django.conf import settings
 from django.db import connection
 from initat.cluster_server.config import global_config
 from initat.core.management.commands import dumpdatafast, dumpdataslow
@@ -26,8 +26,10 @@ from optparse import OptionParser
 import bz2
 import datetime
 import logging_tools
+import process_tools
 import os
 import stat
+import subprocess
 import threading_tools
 import time
 
@@ -65,19 +67,27 @@ class backup_process(threading_tools.process_obj):
             os.mkdir(bu_dir)
         # delete old files
         for entry in os.listdir(bu_dir):
-            if entry.count(".") and entry.split(".")[-1] in ["zip", "bz2"]:
+            if entry.count(".") and entry.split(".")[-1] in ["zip", "bz2", "psql"]:
                 f_name = os.path.join(bu_dir, entry)
+                # _stat = os.stat(f_name)
                 diff_dt = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.stat(f_name)[stat.ST_CTIME])
                 if diff_dt.days > global_config["DATABASE_KEEP_DAYS"]:
                     self.log("removing backup %s" % (f_name))
                     os.unlink(f_name)
-        self._fast_backup(bu_dir)
-        self._normal_backup(bu_dir)
+        for bu_type, bu_call in [
+            ("fast", self._fast_backup),
+            ("normal", self._normal_backup),
+            ("database", self._database_backup),
+        ]:
+            self.log("--------- backup type {} -------------".format(bu_type))
+            s_time = time.time()
+            bu_call(bu_dir)
+            e_time = time.time()
+            self.log("{} backup finished in {}".format(bu_type, logging_tools.get_diff_time_str(e_time - s_time)))
         self._exit_process()
 
     def _fast_backup(self, bu_dir):
         # start 'fast' django backup
-        s_time = time.time()
         bu_name = datetime.datetime.now().strftime("db_bu_fast_%Y%m%d_%H:%M:%S")
         self.log("storing backup in %s" % (os.path.join(
             bu_dir,
@@ -100,12 +110,9 @@ class backup_process(threading_tools.process_obj):
         buf_com._handle(*args, **vars(opts))
         # clear base object
         dumpdatafast.BASE_OBJECT = None
-        e_time = time.time()
-        self.log("fast backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
 
     def _normal_backup(self, bu_dir):
         # start 'normal' django backup
-        s_time = time.time()
         bu_name = datetime.datetime.now().strftime("db_bu_django_%Y%m%d_%H:%M:%S")
         full_path = os.path.join(
             bu_dir,
@@ -135,8 +142,65 @@ class backup_process(threading_tools.process_obj):
         buf_com.stdout.close()
         file("%s.bz2" % (full_path), "wb").write(bz2.compress(file(full_path, "r").read()))
         os.unlink(full_path)
-        e_time = time.time()
-        self.log("normal backup finished in %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+
+    def _database_backup(self, bu_dir):
+        bu_name = datetime.datetime.now().strftime("db_bu_database_%Y%m%d_%H:%M:%S.psql")
+        full_path = os.path.join(
+            bu_dir,
+            bu_name
+        )
+        _def_db = settings.DATABASES.get("default", None)
+        if not _def_db:
+            self.log("no default database found", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("found default database, keys:")
+            for _key in sorted(_def_db.keys()):
+                self.log("    {}={}".format(_key, _def_db[_key]))
+            _engine = _def_db.get("ENGINE", "unknown").split(".")[-1]
+            bu_dict = {
+                "postgresql_psycopg2": {
+                    "dump_bin": "pg_dump",
+                    "cmdline": "{DUMP} -c -f {FILENAME} -F c -Z 4 -h {HOST} -U {USER} {NAME} -w",
+                    "pgpass": True
+                }
+            }
+            if _engine in bu_dict:
+                _bu_info = bu_dict[_engine]
+                _bin = process_tools.find_file(_bu_info["dump_bin"])
+                if not _bin:
+                    self.log("cannot find dump binary {}".format(_bu_info["dump_bin"]), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("found dump binary {} in {}".format(_bu_info["dump_bin"], _bin))
+                    cmdline = _bu_info["cmdline"].format(DUMP=_bin, FILENAME=full_path, **_def_db)
+                    _pgpass = _bu_info.get("pgpass", False)
+                    if _pgpass:
+                        _pgpassfile = "/root/.pgpass"
+                        if os.path.exists(_pgpassfile):
+                            _passcontent = file(_pgpassfile, "r").read()
+                        else:
+                            _passcontent = None
+                        file(_pgpassfile, "w").write("{HOST}:*:{NAME}:{USER}:{PASSWORD}\n".format(**_def_db))
+                        os.chmod(_pgpassfile, 0600)
+                    try:
+                        _output = subprocess.check_output(cmdline.split(), stderr=subprocess.PIPE)
+                    except subprocess.CalledProcessError:
+                        self.log(
+                            "error calling {}: {}".format(
+                                cmdline,
+                                process_tools.get_except_info(),
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                    else:
+                        self.log("successfully called {}: {}".format(cmdline, _output))
+                    if _pgpass:
+                        if _passcontent:
+                            file(_pgpassfile, "w").write(_passcontent)
+                            os.chmod(_pgpassfile, 0600)
+                        else:
+                            os.unlink(_pgpassfile)
+            else:
+                self.log("unsupported engine '{}' for database backup".format(_engine), logging_tools.LOG_LEVEL_WARN)
 
     def loop_post(self):
         self.__log_template.close()
