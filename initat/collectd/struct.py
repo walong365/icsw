@@ -87,9 +87,9 @@ class file_creator(object):
                 if "step" in kwargs:
                     _step = kwargs["step"]
                     if "heartbeat" in kwargs:
-                        _hearbeat = kwargs["heartbeat"]
+                        _heartbeat = kwargs["heartbeat"]
                     else:
-                        _hearbeat = _step * 2
+                        _heartbeat = _step * 2
                 else:
                     _step, _heartbeat = (self.__step, self.__heartbeat)
                 _base_dir = os.path.dirname(_path)
