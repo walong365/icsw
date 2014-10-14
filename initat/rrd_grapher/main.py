@@ -135,10 +135,6 @@ def main():
     )
     if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
         global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
-    cluster_location.read_config_from_db(global_config, "rrd_server", [
-        ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
-        ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
-    ])
     _create_dirs(global_config)
 
     process_tools.renice()
