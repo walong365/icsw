@@ -1171,10 +1171,18 @@ class virtual_desktop_user_setting(models.Model):
     user = models.ForeignKey("user")
     # 0 means autoselect
     port = models.IntegerField(default=0)
+    # port actually used
+    effective_port = models.IntegerField(default=0)
 
+    # port set in settings
     websockify_port = models.IntegerField(default=0)
+    # port actually used (different from one above if set to 0)
+    websockify_effective_port = models.IntegerField(default=0)
     websockify_pid = models.IntegerField(default=0)
     websockify_process_name = models.CharField(max_length=256, default="", blank=True)
+
+    # temporary password for vnc session
+    password = models.CharField(max_length=256, default="", blank=True)
 
     # whether this session should be running
     # TODO: rename this as soon as we have a proper way of doing manual migrations
