@@ -26,6 +26,7 @@ from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.collectd.background import snmp_job, bg_job, ipmi_builder
 from initat.collectd.resize import resize_process
+from initat.collectd.aggregate import aggregate_process
 from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
@@ -81,6 +82,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.register_timer(self._check_database, 300, instant=True)
         self.register_timer(self._check_background, 2, instant=True)
         self.add_process(resize_process("resize"), start=True)
+        self.add_process(aggregate_process("aggregate"), start=True)
         connection.close()
         # self.register_func("send_command", self._send_command)
         # self.register_timer(self._clear_old_graphs, 60, instant=True)
@@ -150,11 +152,11 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collectd-init")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
         msi_block.start_command = "/etc/init.d/collectd-init start"
         msi_block.stop_command = "/etc/init.d/collectd-init force-stop"
         msi_block.kill_pids = True
