@@ -36,11 +36,23 @@ import configfile
 import daemon
 import process_tools
 import sys
+import time
 
 
 def run_code():
     from initat.collectd.server import server_process
     server_process().loop()
+
+
+def kill_rrdcached():
+    # check for already running rrdcached processes and kill them
+    proc_dict = process_tools.get_proc_list_new(proc_name_list=["rrdcached"])
+    if proc_dict:
+        for _key in proc_dict.iterkeys():
+            os.kill(_key, 15)
+        time.sleep(2)
+        for _key in proc_dict.iterkeys():
+            os.kill(_key, 9)
 
 
 def _create_dirs(global_config):
@@ -148,10 +160,7 @@ def main():
             "/var/run/collectd-init", global_config["RRD_DIR"], global_config["RRD_CACHED_DIR"],
         ]
     )
-    # check for already running rrdcached processes and kill them
-    proc_dict = process_tools.get_proc_list_new(proc_name_list=["rrdcached"])
-    for _key in proc_dict.iterkeys():
-        os.kill(_key, 9)
+    kill_rrdcached()
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
         with daemon.DaemonContext(
