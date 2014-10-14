@@ -20,7 +20,7 @@
 """ aggregation part of rrd-grapher service """
 
 from django.db import connection
-from initat.rrd_grapher.config import global_config
+from initat.collectd.config import global_config
 from initat.cluster.backbone.models import device_group
 import logging_tools
 import memcache

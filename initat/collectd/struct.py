@@ -146,15 +146,16 @@ class file_creator(object):
         _rv = []
         _dict = {_key: rrd_tools.RRA.parse_width_str(_key, _step) for _key in self.rrd_coverage}
         for _value in _dict.itervalues():
-            for _cf in self.__cfs:
-                _rv.append(
-                    "RRA:{}:{:.1f}:{:d}:{:d}".format(
-                        _cf,
-                        0.1,
-                        _value["pdp"],
-                        _value["rows"],
+            if _value:
+                for _cf in self.__cfs:
+                    _rv.append(
+                        "RRA:{}:{:.1f}:{:d}:{:d}".format(
+                            _cf,
+                            0.1,
+                            _value["pdp"],
+                            _value["rows"],
+                        )
                     )
-                )
         return _rv
 
 

@@ -594,13 +594,12 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     for p_data in getattr(self, handle_name)(_xml, len(in_tree)):
                         self.handle_raw_data(p_data)
                 except:
-                    self.log(
-                        "error in {}: {}".format(
-                            handle_name,
-                            process_tools.get_except_info(),
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
+                    exc_info = process_tools.exception_info()
+                    for _line in exc_info.log_lines:
+                        self.log(
+                            _line,
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
             else:
                 self.log("unknown handle_name '{}'".format(handle_name), logging_tools.LOG_LEVEL_ERROR)
 
