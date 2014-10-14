@@ -177,15 +177,18 @@ class host_matcher(object):
             try:
                 match_dev = device.objects.get(Q(uuid=uuid_spec))
             except device.DoesNotExist:
-                if host_name.count("."):
-                    short_name, dom_name = (host_name.split(".")[0], host_name.split(".", 1)[1])
+                short_name = host_name.split(".")[0]
+                if short_name != host_name:
+                    # compare fqdn
+                    dom_name = host_name.split(".", 1)[1]
                     try:
                         match_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node__full_name=dom_name))
                     except device.DoesNotExist:
-                        pass
+                        match_dev = None
                     else:
                         match_mode = "fqdn"
-                else:
+                if match_dev is None:
+                    # compare short name
                     try:
                         match_dev = device.objects.get(Q(name=host_name))
                     except device.DoesNotExist:
