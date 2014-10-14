@@ -23,7 +23,6 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.rrd_grapher.aggregate import aggregate_process
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.config_static import CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
@@ -64,7 +63,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self._log_config()
         self._init_network_sockets()
         self.add_process(graph_process("graph"), start=True)
-        self.add_process(aggregate_process("aggregate"), start=True)
         connection.close()
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
@@ -195,18 +193,15 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
-        if not global_config["DEBUG"] or True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("rrd-grapher")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
-            msi_block.start_command = "/etc/init.d/rrd-grapher start"
-            msi_block.stop_command = "/etc/init.d/rrd-grapher force-stop"
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("rrd-grapher")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
+        msi_block.start_command = "/etc/init.d/rrd-grapher start"
+        msi_block.stop_command = "/etc/init.d/rrd-grapher force-stop"
+        msi_block.kill_pids = True
+        msi_block.save_block()
         return msi_block
 
     def _send_command(self, *args, **kwargs):
