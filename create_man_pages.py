@@ -28,7 +28,14 @@ def read_symboltable(path):
 
 def valid_file(path):
     """ Check if path is a python file"""
-    return os.access(path, os.X_OK) and path.endswith(".py")
+    executable = os.access(path, os.X_OK) and path.endswith(".py")
+
+    if executable and os.path.isfile(path):
+        with open(path, "r") as f:
+            first_line = f.readline()
+        return "python" in first_line
+    else:
+        return False
 
 
 def help2man(path):
@@ -84,6 +91,7 @@ a man page.
     parser.add_argument("--quiet", action="store_true", help="Be quiet")
     parser.add_argument("--nogz", action="store_const", default=(GzipFile, ".gz"),
                         const=(open, ""), help="Don't gzip the resulting files")
+    parser.add_argument("--list", action="store_true", help="Just output the found files")
     args = parser.parse_args()
 
     def output(message):
@@ -113,16 +121,20 @@ a man page.
                 if symbol.get_name() in IMPORT_SYMBOLS:
                     files_to_check.append(symbol_table._filename)
 
-    output("[+] Generating man pages")
-    for file_to_check in files_to_check:
-        manpage = help2man(file_to_check)
-        if manpage is not None:
-            manname = os.path.basename(file_to_check.replace(".py",
-                                                             ".1{}".format(args.nogz[1])))
-            write_manpage(manname, manpage, args.nogz[0])
-            output("Wrote manpage for {} to {}".format(file_to_check, manname))
-        else:
-            output("Cannot create man page for {}".format(file_to_check))
+    if args.list:
+        for file_to_check in files_to_check:
+            print file_to_check
+    else:
+        output("[+] Generating man pages")
+        for file_to_check in files_to_check:
+            manpage = help2man(file_to_check)
+            if manpage is not None:
+                manname = os.path.basename(file_to_check.replace(".py",
+                                                                 ".1{}".format(args.nogz[1])))
+                write_manpage(manname, manpage, args.nogz[0])
+                output("Wrote manpage for {} to {}".format(file_to_check, manname))
+            else:
+                output("Cannot create man page for {} - help2man failed!".format(file_to_check))
 
     return 0
 
