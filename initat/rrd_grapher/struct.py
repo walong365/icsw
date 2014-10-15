@@ -302,7 +302,7 @@ class data_store(object):
         new_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         c_keys = old_keys ^ new_keys
         if c_keys:
-            self.log("pde: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
+            self.log("pde: {:d} keys total, {:d} keys changed".format(len(new_keys), len(c_keys)))
         # else:
         #    too verbose
         #    self.log("pde: %d keys total" % (len(new_keys)))
@@ -336,12 +336,12 @@ class data_store(object):
         ]:
             entry.attrib[key] = src_entry.get(key, def_value)
         # last update time
-        entry.attrib["last_update"] = "%d" % (time.time())
+        entry.attrib["last_update"] = "{:d}".format(int(time.time()))
         entry.attrib["active"] = "1"
         if "file_name" in src_entry.attrib:
             entry.attrib["file_name"] = src_entry.attrib["file_name"]
         else:
-            entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
+            entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-{}.rrd".format(entry.attrib["sane_name"]))
 
     def store(self):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))  # @UndefinedVariable
