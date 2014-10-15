@@ -1110,6 +1110,7 @@ def get_waiting_headers(options):
             E.left_time()
         ])
     cur_job.extend([
+        E.prio(),
         E.priority(),
         E.depends()
     ])
@@ -1146,7 +1147,7 @@ def build_waiting_list(s_info, options, **kwargs):
             if "h" in act_job.findtext("state") or "E" in act_job.findtext("state"):
                 show_job = False
         if show_job:
-            show_ids.append((float(act_job.findtext("JB_priority")), act_job.get("full_id"), act_job))
+            show_ids.append((float(act_job.findtext("JAT_prio")), act_job.get("full_id"), act_job))
     show_ids.sort()
     show_ids.reverse()
     job_list = E.job_list(total="{:d}".format(len(w_jobs)))
@@ -1179,7 +1180,8 @@ def build_waiting_list(s_info, options, **kwargs):
             ])
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
         cur_job.extend([
-            E.priority(act_job.findtext("JAT_prio")),
+            E.prio(act_job.findtext("JAT_prio")),
+            E.priority(act_job.findtext("JB_priority")),
             E.depends(
                 "{:d}: {}".format(
                     len(dep_list),
