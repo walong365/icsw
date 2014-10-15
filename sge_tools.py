@@ -248,7 +248,9 @@ class sge_info(object):
         }
         if self.__is_active:
             self._sanitize_sge_dict()
-        self.__job_dict = {}
+        # dicts for running / waiting job additional infos (via qstat -j )
+        self.__run_job_dict = {}
+        self.__wait_job_dict = {}
         self._init_update()
         if _riu and self.__is_active:
             self.update()
@@ -259,7 +261,6 @@ class sge_info(object):
         if self.__0mq_context:
             self.__0mq_context.term()
         if self._cache_socket:
-            # print "close cache socket"
             self._cache_socket.close()
 
     def _init_cache(self):
@@ -304,9 +305,8 @@ class sge_info(object):
         return self.__act_dicts.get(key, def_value)
     # extended job id
 
-    def add_job_info(self, job_id, qstat_com):
-        # print "add", job_id
-        job_key = "sgeinfo:job:{}".format(job_id)
+    def add_run_job_info(self, job_id, qstat_com):
+        job_key = "sgeinfo:job:r{}".format(job_id)
         _cache = self.get_cache(job_key)
         if _cache is None:
             _c_stat, c_out = self._execute_command("{} -u \* -xml -j {}".format(qstat_com, job_id))
@@ -345,13 +345,39 @@ class sge_info(object):
             self.set_cache(job_key, etree.tostring(ext_xml))  # @UndefinedVariable
         else:
             ext_xml = etree.fromstring(_cache)  # @UndefinedVariable
-        self.__job_dict[job_id] = ext_xml
+        self.__run_job_dict[job_id] = ext_xml
 
-    def get_job_info(self, job_id):
-        return self.__job_dict.get(job_id, None)
+    def add_wait_job_info(self, job_id, qstat_com):
+        job_key = "sgeinfo:job:w{}".format(job_id)
+        _cache = self.get_cache(job_key)
+        if _cache is None:
+            _c_stat, c_out = self._execute_command("{} -u \* -xml -j {}".format(qstat_com, job_id))
+            if _c_stat:
+                job_xml = E.call_error(c_out, stat="{:d}".format(_c_stat))
+            else:
+                job_xml = etree.fromstring(c_out)  # @UndefinedVariable
+            # print etree.tostring(job_xml, pretty_print=True)
+            ext_xml = E.job_ext_info()
+            _exec_time_el = job_xml.find(".//JB_execution_time")
+            if _exec_time_el is not None and int(_exec_time_el.text):
+                _exec_time = datetime.datetime.fromtimestamp(int(_exec_time_el.text))
+                ext_xml.append(E.execution_time(str(int(_exec_time_el.text))))
+            self.set_cache(job_key, etree.tostring(ext_xml))  # @UndefinedVariable
+        else:
+            ext_xml = etree.fromstring(_cache)  # @UndefinedVariable
+        self.__wait_job_dict[job_id] = ext_xml
 
-    def del_job_info(self, job_id):
-        del self.__job_dict[job_id]
+    def get_run_job_info(self, job_id):
+        return self.__run_job_dict.get(job_id, None)
+
+    def del_run_job_info(self, job_id):
+        del self.__run_job_dict[job_id]
+
+    def get_wait_job_info(self, job_id):
+        return self.__wait_job_dict.get(job_id, None)
+
+    def del_wait_job_info(self, job_id):
+        del self.__wait_job_dict[job_id]
 
     def get_run_time(self, cur_time):
         # returns time running
@@ -763,19 +789,35 @@ class sge_info(object):
                 cur_job.findtext("JB_job_number"),
                 ".{}".format(cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else "")
         # print etree.tostring(all_jobs, pretty_print=True)
-        cur_job_ids = set(all_jobs.xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False))
+        # add info for running jobs
+        run_job_ids = set(all_jobs.xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False))
         # print cur_job_ids, set(all_jobs.xpath(".//job_list/@full_id", smart_strings=False))
-        present_ids = set(self.__job_dict.keys())
-        for del_job_id in present_ids - cur_job_ids:
-            self.del_job_info(del_job_id)
-        for add_job_id in cur_job_ids - present_ids:
-            self.add_job_info(add_job_id, qstat_com)
-        for cur_job_id in cur_job_ids:
-            # print cur_job_id, all_jobs.xpath(".//job_list/@full_id", smart_strings=False)
+        present_ids = set(self.__run_job_dict.keys())
+        for del_job_id in present_ids - run_job_ids:
+            self.del_run_job_info(del_job_id)
+        for add_job_id in run_job_ids - present_ids:
+            self.add_run_job_info(add_job_id, qstat_com)
+        for cur_job_id in run_job_ids:
             cur_job = all_jobs.xpath(".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(cur_job_id), smart_strings=False)[0]
             job_info = self.get_job_info(cur_job_id)
             if job_info is not None:
                 cur_job.append(job_info)
+        # add info for waiting jobs
+        waiting_ids = set(all_jobs.xpath(".//job_list[@state='pending']/JB_job_number/text()", smart_strings=False))
+        present_ids = set(self.__wait_job_dict.keys())
+        for del_job_id in present_ids - waiting_ids:
+            self.del_wait_job_info(del_job_id)
+        for add_job_id in waiting_ids - present_ids:
+            self.add_wait_job_info(add_job_id, qstat_com)
+        for cur_job_id in waiting_ids:
+            cur_job = all_jobs.xpath(".//job_list[@state='pending' and JB_job_number/text() = \"{}\"]".format(cur_job_id), smart_strings=False)
+            # just a precaution
+            if len(cur_job):
+                cur_job = cur_job[0]
+                job_info = self.get_wait_job_info(cur_job_id)
+                if job_info is not None:
+                    cur_job.append(job_info)
+
         self._add_stdout_stderr_info(all_jobs)
         for state_el in all_jobs.xpath(".//job_list/state", smart_strings=False):
             state_el.addnext(E.state_long(",".join(["({}){}".format(
@@ -794,8 +836,10 @@ class sge_info(object):
                     "o": "orphaned",
                     "E": "Error"
                 }.get(cur_state, cur_state)[1:]) for cur_state in state_el.text or "-"])))
-        for node_name, attr_name in [("JAT_start_time", "start_time"),
-                                     ("JB_submission_time", "submit_time")]:
+        for node_name, attr_name in [
+            ("JAT_start_time", "start_time"),
+            ("JB_submission_time", "submit_time")
+        ]:
             for time_el in all_jobs.findall(".//{}".format(node_name)):
                 time_el.getparent().attrib[attr_name] = datetime.datetime.strptime(time_el.text, "%Y-%m-%dT%H:%M:%S").strftime("%s")
         return all_jobs
@@ -1107,7 +1151,8 @@ def get_waiting_headers(options):
         cur_job.extend([
             E.queue_time(),
             E.wait_time(),
-            E.left_time()
+            E.left_time(),
+            E.exec_time(),
         ])
     cur_job.extend([
         E.prio(),
@@ -1178,6 +1223,12 @@ def build_waiting_list(s_info, options, **kwargs):
                 E.wait_time(s_info.get_run_time(submit_time)),
                 E.runtime(s_info.get_h_rt_time(act_job.findtext("hard_request[@name='h_rt']"))),
             ])
+            _exec_time = act_job.find(".//execution_time")
+            if _exec_time is None:
+                cur_job.append(E.exec_time(""))
+            else:
+                _exec_time = datetime.datetime.fromtimestamp(int(_exec_time.text))
+                cur_job.append(E.exec_time(logging_tools.get_relative_dt(_exec_time)))
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
         cur_job.extend([
             E.prio(act_job.findtext("JAT_prio")),
