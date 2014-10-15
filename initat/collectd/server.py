@@ -20,6 +20,7 @@
 #
 """ collectd-init, server part """
 
+from django.conf import settings
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
@@ -760,9 +761,11 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         s_time = time.time()
         _content = ""
         while _read:
-            self.log("read...")
+            if settings.DEBUG:
+                self.log("read...")
             _content = "{}{}".format(_content, self.__rrdcached_socket.recv(4096))
-            self.log("...done, content has {:d} bytes".format(len(_content)))
+            if settings.DEBUG:
+                self.log("...done, content has {:d} bytes".format(len(_content)))
             if _content.endswith("\n"):
                 for _line in _content.split("\n"):
                     if not _line.strip():

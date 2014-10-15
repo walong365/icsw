@@ -29,6 +29,7 @@ import initat.collectd.collectd_types
 import json
 import logging_tools
 import memcache
+import shutil
 import os
 import process_tools
 import rrd_tools
@@ -258,6 +259,16 @@ class host_matcher(object):
                 # if "u" not in _found:
                 #    self.log("creating UUID link for {}".format(unicode(match_dev)))
                 #    os.symlink(match_dev.full_name, _uuid_path)
+        # remove dead df. entries
+        if os.path.exists(_uuid_path):
+            for _dir, _dirs, _files in os.walk(_uuid_path):
+                if _dir.endswith("df."):
+                    try:
+                        shutil.rmtree(_dir)
+                    except:
+                        self.log("error removing {}: {}".format(_dir, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("removed tree below {}".format(_dir))
         return _fqdn_path
 
 
