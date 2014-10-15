@@ -799,7 +799,7 @@ class sge_info(object):
             self.add_run_job_info(add_job_id, qstat_com)
         for cur_job_id in run_job_ids:
             cur_job = all_jobs.xpath(".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(cur_job_id), smart_strings=False)[0]
-            job_info = self.get_job_info(cur_job_id)
+            job_info = self.get_run_job_info(cur_job_id)
             if job_info is not None:
                 cur_job.append(job_info)
         # add info for waiting jobs
