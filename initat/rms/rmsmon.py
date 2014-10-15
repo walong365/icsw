@@ -31,7 +31,7 @@ from lxml.builder import E  # @UnresolvedImport
 import commands
 import logging_tools
 import os
-import pprint
+import pprint  # @UnusedImport
 import process_tools
 import server_command
 import sge_tools
@@ -145,14 +145,14 @@ class rms_mon_process(threading_tools.process_obj):
 
     def _init_network(self):
         _v_conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)
-        vector_socket.setsockopt(zmq.LINGER, 0)
+        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
         vector_socket.connect(_v_conn_str)
         self.vector_socket = vector_socket
         _c_conn_str = "tcp://localhost:8002"
-        collectd_socket = self.zmq_context.socket(zmq.PUSH)
-        collectd_socket.setsockopt(zmq.LINGER, 0)
-        collectd_socket.setsockopt(zmq.IMMEDIATE, 1),
+        collectd_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+        collectd_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        collectd_socket.setsockopt(zmq.IMMEDIATE, 1),  # @UndefinedVariable
         collectd_socket.connect(_c_conn_str)
         self.collectd_socket = collectd_socket
 
@@ -315,7 +315,7 @@ class rms_mon_process(threading_tools.process_obj):
                 ]
             )
             try:
-                self.collectd_socket.send_unicode(etree.tostring(mach_vect), zmq.DONTWAIT)
+                self.collectd_socket.send_unicode(etree.tostring(mach_vect), zmq.DONTWAIT)  # @UndefinedVariable
             except:
                 self.log(
                     "error sending rms-slot info regarding {} to collectd: {}".format(
@@ -360,7 +360,21 @@ class rms_mon_process(threading_tools.process_obj):
                 "{} {} {}".format(
                     self._get_sge_bin("qdel"),
                     "-f" if job_action == "force_delete" else "",
-                    job_id
+                    job_id,
+                ),
+                log_com=self.log
+            )
+            srv_com.set_result(
+                "{} gave: {}".format(job_action, cur_out),
+                server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
+            )
+        elif job_action in ["modify_priority"]:
+            targ_pri = int(srv_com.xpath(".//ns:job_list/ns:job/@priority", smart_strings=False)[0])
+            cur_stat, cur_out = call_command(
+                "{} -p {:d} {}".format(
+                    self._get_sge_bin("qalter"),
+                    targ_pri,
+                    job_id,
                 ),
                 log_com=self.log
             )
