@@ -760,7 +760,9 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         s_time = time.time()
         _content = ""
         while _read:
+            self.log("read...")
             _content = "{}{}".format(_content, self.__rrdcached_socket.recv(4096))
+            self.log("...done, content has {:d} bytes".format(len(_content)))
             if _content.endswith("\n"):
                 for _line in _content.split("\n"):
                     if not _line.strip():

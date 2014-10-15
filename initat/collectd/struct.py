@@ -24,6 +24,7 @@ from initat.cluster.backbone.models import device_variable, device
 from initat.collectd.collectd_types import value
 from initat.collectd.config import global_config
 from lxml.builder import E  # @UnresolvedImports
+from lxml import etree
 import initat.collectd.collectd_types
 import json
 import logging_tools
@@ -56,13 +57,16 @@ class file_creator(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[hm] {}".format(what), log_level)
 
+    def sane_name(self, name):
+        return name.replace("/", "_sl_")
+
     def get_mve_file_path(self, uuid, entry):
         _targ_dir = os.path.join(
             self.__main_dir,
             uuid,
             "collserver",
             "icval-{}.rrd".format(
-                entry.get("name"),
+                self.sane_name(entry.attrib["name"]),
             )
         )
         return _targ_dir
@@ -73,8 +77,8 @@ class file_creator(object):
             uuid,
             "perfdata",
             "ipd_{}.rrd".format(
-                pd_tuple[0],
-                "-{}".format(pd_tuple[1]) if pd_tuple[1] else "",
+                self.sane_name(pd_tuple[0]),
+                "-{}".format(self.sane_name(pd_tuple[1])) if pd_tuple[1] else "",
             )
         )
         return _targ_dir
