@@ -328,6 +328,9 @@ rmswaitline = """
 <td ng-show="waiting_struct.toggle['left_time']">
     {{ data.left_time.value }}
 </td>
+<td ng-show="waiting_struct.toggle['exec_time']">
+    {{ data.exec_time.value }}
+</td>
 <td ng-show="waiting_struct.toggle['prio']">
     {{ data.prio.value }}
 </td>
