@@ -94,7 +94,7 @@
 
 <script type="text/ng-template" id="package_search_row.html">
     <td>{{ obj.search_string }}</td>
-    <td>{{ obj.user | array_lookup:this.rest_data.user | show_user }}</td>
+    <td>{{ obj.user | array_lookup:rest_data.user | show_user }}</td>
     <td>{{ obj.num_searches }}</td>
     <td>{{ obj.current_state }}</td>
     <td>{{ obj.results }}</td>
@@ -121,7 +121,7 @@
     <td>{{ obj.name }}</td>
     <td>{{ obj.version }}</td>
     <td>{{ obj.kind }}</td>
-    <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
+    <td>{{ obj.package_repo | array_lookup:rest_data.package_repo:"name" }}</td>
     <td>{{ obj.arch }}</td>
     <td><input type="button" ng-show="obj.copied == 0" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
     <td>
@@ -158,8 +158,8 @@
     <td>{{ obj.name }}</td>
     <td ng-show="obj.always_latest == false">{{ obj.version }}</td>
     <td ng-show="obj.always_latest == true">&lt;latest&gt;</td>
-    <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
-    <td>{{ obj.target_repo | array_lookup:this.rest_data.package_repo:"name":"---" }}</td>
+    <td>{{ obj.package_repo | array_lookup:rest_data.package_repo:"name" }}</td>
+    <td>{{ obj.target_repo | array_lookup:rest_data.package_repo:"name":"---" }}</td>
     <td>{{ obj.kind }}</td>
     <td>{{ obj.arch }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
@@ -275,7 +275,7 @@
                                 {{ pack.name }}
                                 <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
                                 <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
-                                <span ng-show="pack.target_repo"> from {{ pack.target_repo | array_lookup:this.rest_data.package_repo:"name" }}</span>
+                                <span ng-show="pack.target_repo"> from {{ pack.target_repo | array_lookup:rest_data.package_repo:"name" }}</span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-xs">

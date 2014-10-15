@@ -53,9 +53,9 @@
 <script type="text/ng-template" id="mon_host_cluster_row.html">
     <td>{{ obj.name }}</td>
     <td>{{ obj.description }}</td>
-    <td>{{ obj.mon_service_templ | array_lookup:this.rest_data.mon_service_templ:'name' }}</td>
-    <td>{{ obj.main_device | array_lookup:this.rest_data.device:'name' }}</td>
-    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_service_templ | array_lookup:rest_data.mon_service_templ:'name' }}</td>
+    <td>{{ obj.main_device | array_lookup:rest_data.device:'name' }}</td>
+    <td>{{ obj.devices | resolve_n2m:rest_data.device:'name' }}</td>
     <td>{{ obj.warn_value }}</td>
     <td>{{ obj.error_value }}</td>
     <td>{{ obj.user_editable | yesno1 }}</td>
@@ -81,10 +81,10 @@
 <script type="text/ng-template" id="mon_service_cluster_row.html">
     <td>{{ obj.name }}</td>
     <td>{{ obj.description }}</td>
-    <td>{{ obj.mon_service_templ | array_lookup:this.rest_data.mon_service_templ:'name' }}</td>
-    <td>{{ obj.main_device | array_lookup:this.rest_data.device:'name' }}</td>
-    <td>{{ obj.mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
-    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_service_templ | array_lookup:rest_data.mon_service_templ:'name' }}</td>
+    <td>{{ obj.main_device | array_lookup:rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_check_command | array_lookup:rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.devices | resolve_n2m:rest_data.device:'name' }}</td>
     <td>{{ obj.warn_value }}</td>
     <td>{{ obj.error_value }}</td>
     <td>{{ obj.user_editable | yesno1 }}</td>
@@ -114,7 +114,7 @@
     <td>{{ obj.name }}</td>
     <td>{{ obj.inherits_parent | yesno1 }}</td>
     <td>{{ obj.priority }}</td>
-    <td>{{ obj.dependency_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.dependency_period | array_lookup:rest_data.mon_period:'name' }}</td>
     <td>{{ obj.efc_up | yesno1 }}</td>
     <td>{{ obj.efc_down | yesno1 }}</td>
     <td>{{ obj.efc_unreachable | yesno1 }}</td>
@@ -151,7 +151,7 @@
     <td>{{ obj.name }}</td>
     <td>{{ obj.inherits_parent | yesno1 }}</td>
     <td>{{ obj.priority }}</td>
-    <td>{{ obj.dependency_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.dependency_period | array_lookup:rest_data.mon_period:'name' }}</td>
     <td>{{ obj.efc_ok | yesno1 }}</td>
     <td>{{ obj.efc_warn | yesno1 }}</td>
     <td>{{ obj.efc_unknown | yesno1 }}</td>
@@ -177,10 +177,10 @@
 </script>
 
 <script type="text/ng-template" id="mon_host_dependency_row.html">
-    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
-    <td>{{ obj.dependent_devices | resolve_n2m:this.rest_data.device:'name' }}</td>
-    <td>{{ obj.mon_host_dependency_templ | array_lookup:this.rest_data.mon_host_dependency_templ:'name' }}</td>
-    <td>{{ obj.mon_host_cluster | array_lookup:this.rest_data.mon_host_cluster:'name' }}</td>
+    <td>{{ obj.devices | resolve_n2m:rest_data.device:'name' }}</td>
+    <td>{{ obj.dependent_devices | resolve_n2m:rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_host_dependency_templ | array_lookup:rest_data.mon_host_dependency_templ:'name' }}</td>
+    <td>{{ obj.mon_host_cluster | array_lookup:rest_data.mon_host_cluster:'name' }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
@@ -198,12 +198,12 @@
 </script>
 
 <script type="text/ng-template" id="mon_service_dependency_row.html">
-    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
-    <td>{{ obj.mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
-    <td>{{ obj.dependent_devices | resolve_n2m:this.rest_data.device:'name' }}</td>
-    <td>{{ obj.dependent_mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
-    <td>{{ obj.mon_service_dependency_templ | array_lookup:this.rest_data.mon_service_dependency_templ:'name' }}</td>
-    <td>{{ obj.mon_service_cluster | array_lookup:this.rest_data.mon_service_cluster:'name' }}</td>
+    <td>{{ obj.devices | resolve_n2m:rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_check_command | array_lookup:rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.dependent_devices | resolve_n2m:rest_data.device:'name' }}</td>
+    <td>{{ obj.dependent_mon_check_command | array_lookup:rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.mon_service_dependency_templ | array_lookup:rest_data.mon_service_dependency_templ:'name' }}</td>
+    <td>{{ obj.mon_service_cluster | array_lookup:rest_data.mon_service_cluster:'name' }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>

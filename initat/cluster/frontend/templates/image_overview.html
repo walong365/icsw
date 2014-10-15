@@ -33,7 +33,7 @@
     <td>{{ obj.name }}</td>
     <td class="text-center">{{ obj.version  }}.{{ obj.release }}</td>
     <td>{{ obj.enabled | yesno1 }}</td>
-    <td>{{ obj.architecture | array_lookup:this.architectures:'architecture':'---' }}</td>
+    <td>{{ obj.architecture | array_lookup:architectures:'architecture':'---' }}</td>
     <td>{{ obj.sys_vendor }}, {{ obj.sys_version || "?" }}.{{ obj.sys_release || "?" }}</td>
     <td class="text-center">{{ obj.act_image.length }} / {{ obj.new_image.length }}</td>
     <td class="text-center">{{ obj.size_string }}</td>

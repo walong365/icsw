@@ -39,7 +39,7 @@
     </td>
     <td>{{ obj.device_group_obj.description }}</td>
     <td colspan="2"></td>
-    <td ng-show="hide_lut['tln']">{{ obj.device_group_obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
+    <td ng-show="hide_lut['tln']">{{ obj.device_group_obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
         <input type="button" class="btn btn-primary btn-sm" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/>
@@ -60,7 +60,7 @@
     <td>
         <b>{{ obj.device_group_obj.num_devices }}</b>
     </td>
-    <td ng-show="hide_lut['tln']">{{ obj.device_group_obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
+    <td ng-show="hide_lut['tln']">{{ obj.device_group_obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
         <input type="button" class="btn btn-primary btn-xs" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/>
@@ -79,12 +79,12 @@
         <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
         <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
     </td>
-    <td>{{ obj.device_type | array_lookup:this.rest_data.device_type:"description" }}</td>
-    <td ng-show="hide_lut['tln']">{{ obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
+    <td>{{ obj.device_type | array_lookup:rest_data.device_type:"description" }}</td>
+    <td ng-show="hide_lut['tln']">{{ obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="hide_lut['rrd_store']">{{ obj.store_rrd_data | yesno2 }}</td>
     <td ng-show="hide_lut['passwd']">{{ obj.root_passwd_set | isset }}</td>
-    <td ng-show="hide_lut['mon_master']">{{ obj.monitor_server | array_lookup:this.rest_data.monitor_server:"full_name_wt" }}</td>
-    <td ng-show="hide_lut['boot_master']">{{ obj.bootserver | array_lookup:this.rest_data.mother_server:"full_name" }}</td>
+    <td ng-show="hide_lut['mon_master']">{{ obj.monitor_server | array_lookup:rest_data.monitor_server:"full_name_wt" }}</td>
+    <td ng-show="hide_lut['boot_master']">{{ obj.bootserver | array_lookup:rest_data.mother_server:"full_name" }}</td>
     <td ng-show="hide_lut['curl']">{{ obj.curl }}</td>
     <td>
         <input type="button" class="btn btn-primary btn-xs" ng-click="edit('device', $event, obj)" value="modify"/>
@@ -182,7 +182,7 @@
             <tr devicetreehead></tr>
         </thead>
         <tbody>
-            <tr devicetreerow ng-repeat="obj in entries | paginator2:this.pagSettings" ng-class="get_tr_class(obj)"></tr>
+            <tr devicetreerow ng-repeat="obj in entries | paginator2:pagSettings" ng-class="get_tr_class(obj)"></tr>
         </tbody>
     </table>
     </div>

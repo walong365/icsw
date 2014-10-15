@@ -17,7 +17,7 @@ running_table = """
         <tr headers struct="running_struct" class="info"></tr>
     </thead>
     <tbody>
-        <tr rmsrunline ng-repeat-start="data in run_list | paginator2:this.pagRun" ></tr>
+        <tr rmsrunline ng-repeat-start="data in run_list | paginator2:pagRun" ></tr>
         <tr ng-repeat-end ng-show="data.files.value != '0' && running_struct.toggle['files']">
             <td colspan="99"><fileinfo job="data" files="files" fis="fis"></fileinfo></td>
         </tr>
@@ -37,7 +37,7 @@ waiting_table = """
         <tr headers struct="waiting_struct" class="info"></tr>
     </thead>
     <tbody>
-        <tr rmswaitline ng-repeat="data in wait_list | paginator2:this.pagWait"></tr>
+        <tr rmswaitline ng-repeat="data in wait_list | paginator2:pagWait"></tr>
     </tbody>
     <tfoot>
         <tr headertoggle ng-show="header_filter_set" struct="waiting_struct"></tr>
@@ -54,7 +54,7 @@ done_table ="""
         <tr headers struct="done_struct" class="info"></tr>
     </thead>
     <tbody>
-        <tr rmsdoneline ng-repeat="data in done_list | paginator2:this.pagDone"></tr>
+        <tr rmsdoneline ng-repeat="data in done_list | paginator2:pagDone"></tr>
     </tbody>
     <tfoot>
         <tr headertoggle ng-show="header_filter_set" struct="done_struct"></tr>
@@ -71,7 +71,7 @@ node_table = """
         <tr headers struct="node_struct" class="info"></tr>
     </thead>
     <tbody>
-        <tr rmsnodeline ng-repeat="data in node_list | paginator2:this.pagNode" ng-class="get_class(data)"></tr>
+        <tr rmsnodeline ng-repeat="data in node_list | paginator2:pagNode" ng-class="get_class(data)"></tr>
     </tbody>
     <tfoot>
         <tr headertoggle ng-show="header_filter_set" struct="node_struct"></tr>

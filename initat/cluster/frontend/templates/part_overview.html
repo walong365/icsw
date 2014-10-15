@@ -102,7 +102,7 @@
     <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
     <td>{{ part.fs_freq }}</td>
     <td>{{ part.fs_passno }}</td>
-    <td>{{ part.partition_fs | array_lookup:this.partition_fs:'name' }}</td>
+    <td>{{ part.partition_fs | array_lookup:partition_fs:'name' }}</td>
     <td>
         <span ng-if="part.warn_threshold || part.crit_threshold">{{ part.warn_threshold }} / {{ part.crit_threshold }}</span>
         <span ng-if="!(part.warn_threshold && part.crit_threshold)">---</span>

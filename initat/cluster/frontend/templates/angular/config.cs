@@ -107,7 +107,7 @@ config_table_template = """
                     <input type="button" class="btn disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"></input>
                 </div>
             </td>
-            <td>{{ config.config_catalog | array_lookup:this.config_catalogs:'name':'-' }}</td>
+            <td>{{ config.config_catalog | array_lookup:config_catalogs:'name':'-' }}</td>
             <td class="text-center">{{ config.enabled | yesno1 }}</td>
             <td>{{ config.description }}</td>
             <td>{{ show_parent_config(config) }}</td>
@@ -264,7 +264,7 @@ mon_table_template = """
     <tbody>
         <tr ng-repeat="obj in config.mon_check_command_set | orderBy:'name'">
             <td>{{ obj.name }}</td>
-            <td>{{ obj.mon_service_templ | array_lookup:this.mon_service_templ:'name':'-' }}</td>
+            <td>{{ obj.mon_service_templ | array_lookup:mon_service_templ:'name':'-' }}</td>
             <td>{{ obj.description }}</td>
             <td>{{ obj.mon_check_command_special && 'yes' || 'no' }}</td>
             <td title="{{ get_mon_command_line(obj) }}">

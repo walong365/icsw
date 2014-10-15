@@ -42,7 +42,7 @@
     <td>{{ obj.first_notification }}</td>
     <td>{{ obj.last_notification }}</td>
     <td>{{ obj.ninterval }}</td>
-    <td>{{ obj.esc_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.esc_period | array_lookup:rest_data.mon_period:'name' }}</td>
     <td>{{ obj.nrecovery | yesno1 }}</td>
     <td>{{ obj.ncritical | yesno1 }}</td>
     <td>{{ obj.nwarning | yesno1 }}</td>
@@ -75,8 +75,8 @@
     <td>{{ obj.first_notification }}</td>
     <td>{{ obj.last_notification }}</td>
     <td>{{ obj.ninterval }}</td>
-    <td>{{ obj.esc_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
-    <td>{{ obj.mon_service_esc_templ | array_lookup:this.rest_data.mon_service_esc_templ:'name' }}</td>
+    <td>{{ obj.esc_period | array_lookup:rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.mon_service_esc_templ | array_lookup:rest_data.mon_service_esc_templ:'name' }}</td>
     <td>{{ obj.nrecovery | yesno1 }}</td>
     <td>{{ obj.ndown | yesno1 }}</td>
     <td>{{ obj.nunreachable | yesno1 }}</td>

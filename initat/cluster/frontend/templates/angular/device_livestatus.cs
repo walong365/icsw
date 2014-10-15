@@ -93,7 +93,7 @@ livestatus_templ = """
         </tr>
     </thead>
     <tbody>
-        <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings">
+        <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:pagSettings">
             <td ng-show="so_enabled['host_name']" ng-class="get_host_class(entry)">
                 {{ entry.host_name }}
                 <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>

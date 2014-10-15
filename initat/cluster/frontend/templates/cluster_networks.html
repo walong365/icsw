@@ -92,9 +92,9 @@
     <td class="text-right">{{ obj.num_ip }}</td>
     <td>{{ obj.penalty }}</td>
     <td>{{ obj.enforce_unique_ips | yesno1 }}</td>
-    <td>{{ obj.network_type | array_lookup:this.rest_data.network_types:'description' }}</td>
-    <td>{{ obj.master_network | array_lookup:this.entries:'identifier':'---' }}</td>
-    <td>{{ obj.network_device_type | resolve_n2m:this.rest_data.network_device_types:'identifier':'---' }}</td>
+    <td>{{ obj.network_type | array_lookup:rest_data.network_types:'description' }}</td>
+    <td>{{ obj.master_network | array_lookup:entries:'identifier':'---' }}</td>
+    <td>{{ obj.network_device_type | resolve_n2m:rest_data.network_device_types:'identifier':'---' }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_mixin.edit(obj, $event)" value="modify"/></td>
     <td>
         <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0" ng-click="edit_mixin.delete_obj(obj)" value="delete"/>
