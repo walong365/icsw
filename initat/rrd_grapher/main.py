@@ -29,18 +29,13 @@ django.setup()
 from django.conf import settings
 from initat.cluster.backbone.models import log_source
 from initat.rrd_grapher.config_static import SERVER_COM_PORT
+from initat.rrd_grapher.version import VERSION_STRING
 from io_stream_helper import io_stream
-import cluster_location
 import config_tools
 import configfile
 import daemon
 import process_tools
 import sys
-
-try:
-    from initat.rrd_grapher.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
 
 
 def run_code():
@@ -120,13 +115,25 @@ def main():
                 )
             ),
             (
+                "GRAPH_ROOT_DEBUG",
+                configfile.str_c_var(
+                    os.path.abspath(
+                        os.path.join(
+                            settings.STATIC_ROOT_DEBUG,
+                            "graphs"
+                        )
+                    ),
+                    database=True
+                )
+            ),
+            (
                 "GRAPH_ROOT",
                 configfile.str_c_var(
                     os.path.abspath(
                         os.path.join(
                             settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT,
                             "graphs"
-                            )
+                        )
                     ),
                     database=True
                 )
@@ -142,7 +149,7 @@ def main():
         global_config["USER"],
         global_config["GROUP"],
         [
-            "/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["RRD_DIR"]
+            "/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["GRAPH_ROOT_DEBUG"], global_config["RRD_DIR"]
         ]
     )
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)

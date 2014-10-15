@@ -118,23 +118,32 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 f_name = file_el.attrib["file_name"]
                 is_active = True if int(file_el.get("active", "1")) else False
                 if os.path.isfile(f_name):
-                    c_time = os.stat(f_name)[stat.ST_MTIME]
-                    stale = abs(cur_time - c_time) > MAX_DT
-                    if stale and rrdtool:
-                        # check via rrdtool
+                    _stat = os.stat(f_name)
+                    if _stat[stat.ST_SIZE] < 1024:
+                        self.log("file {} is too small, deleting and disabling...".format(f_name), logging_tools.LOG_LEVEL_ERROR)
                         try:
-                            rrd_info = rrdtool.info(f_name)
+                            os.unlink(f_name)
                         except:
-                            self.log(
-                                "cannot get info for {} via rrdtool: {}".format(
-                                    f_name,
-                                    process_tools.get_except_info()
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                        else:
-                            c_time = int(rrd_info["last_update"])
-                            stale = abs(cur_time - c_time) > MAX_DT
+                            self.log("error deleting {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        is_active, stale = (False, True)
+                    else:
+                        c_time = os.stat(f_name)[stat.ST_MTIME]
+                        stale = abs(cur_time - c_time) > MAX_DT
+                        if stale and rrdtool:
+                            # check via rrdtool
+                            try:
+                                rrd_info = rrdtool.info(f_name)
+                            except:
+                                self.log(
+                                    "cannot get info for {} via rrdtool: {}".format(
+                                        f_name,
+                                        process_tools.get_except_info()
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
+                            else:
+                                c_time = int(rrd_info["last_update"])
+                                stale = abs(cur_time - c_time) > MAX_DT
                     if is_active:
                         num_active += 1
                     if is_active and stale:

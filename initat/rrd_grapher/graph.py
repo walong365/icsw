@@ -493,11 +493,11 @@ class GraphTarget(object):
 
 
 class RRDGraph(object):
-    def __init__(self, log_com, colorizer, para_dict):
+    def __init__(self, graph_root, log_com, colorizer, para_dict):
         self.log_com = log_com
         self.para_dict = {
             "size": "400x200",
-            "graph_root": global_config["GRAPH_ROOT"],
+            "graph_root": graph_root,
             "hide_empty":  False,
             "include_zero": False,
             "scale_y": False,
@@ -825,7 +825,8 @@ class RRDGraph(object):
                             except:
                                 self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                                 if global_config["DEBUG"]:
-                                    pprint.pprint(rrd_args)
+                                    for _idx, _entry in enumerate(rrd_args, 1):
+                                        self.log("  {:4d} {}".format(_idx, _entry))
                                 draw_result = None
                                 draw_it = False
                             else:
@@ -921,7 +922,8 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         self.register_func("xml_info", self._xml_info)
         self.vector_dict = {}
         self.graph_root = global_config["GRAPH_ROOT"]
-        self.log("graphs go into {}".format(self.graph_root))
+        self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]
+        self.log("graphs go into {} for non-debug calls and into {} for debug calls".format(self.graph_root, self.graph_root_debug))
         self.colorizer = Colorizer(self.log)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -950,9 +952,14 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
-        for key, _default in [("hide_empty", "0"), ("merge_devices", "1"), ("scale_y", "0"), ("include_zero", "0")]:
+        for key, _default in [("hide_empty", "0"), ("merge_devices", "1"), ("scale_y", "0"), ("include_zero", "0"), ("debug_mode", "0")]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
-        graph_list = RRDGraph(self.log, self.colorizer, para_dict).graph(self.vector_dict, dev_pks, graph_keys)
+        graph_list = RRDGraph(
+            self.graph_root_debug if para_dict.get("debug_mode", False) else self.graph_root,
+            self.log,
+            self.colorizer,
+            para_dict
+        ).graph(self.vector_dict, dev_pks, graph_keys)
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()
         srv_com.set_result(
