@@ -1,4 +1,4 @@
-{% load coffeescript %}
+-{% load coffeescript %}
 
 <script type="text/javascript">
 
@@ -227,6 +227,9 @@ jobactionoper = """
             <li ng-click="job_control('delete', true)">
                 <a href="#">force Delete</a>
             </li>
+            <li ng-show="mode=='w'" ng-click="change_priority()">
+                <a href="#">change priority</a>
+            </li>
         </ul>
     </div>
 </div>
@@ -325,6 +328,9 @@ rmswaitline = """
 <td ng-show="waiting_struct.toggle['left_time']">
     {{ data.left_time.value }}
 </td>
+<td ng-show="waiting_struct.toggle['prio']">
+    {{ data.prio.value }}
+</td>
 <td ng-show="waiting_struct.toggle['priority']">
     {{ data.priority.value }}
 </td>
@@ -332,7 +338,7 @@ rmswaitline = """
     {{ data.depends.value || '---' }}
 </td>
 <td ng-show="waiting_struct.toggle['action']">
-    <jobaction job="data" operator="rms_operator"></jobaction>
+    <jobaction job="data" operator="rms_operator" mode="'w'"></jobaction>
 </td>
 """
 
@@ -395,8 +401,33 @@ rmsrunline = """
     {{ get_nodelist(data) }}
 </td>
 <td ng-show="running_struct.toggle['action']">
-    <jobaction job="data" operator="rms_operator"></jobaction>
+    <jobaction job="data" operator="rms_operator" mode="'r'"></jobaction>
 </td>
+"""
+
+change_pri_template = """
+<div class="modal-header"><h3>Change priority of job {{ get_job_id() }}</h3></div>
+<div class="modal-body">
+    <h4>Allowed priority range:</h4>
+    <ul class="list-group">
+        <li class="list-group-item">lowest priority: <tt>-1023</tt></li>
+        <li class="list-group-item">highest priority: <tt>{{ get_max_priority() }}</tt></li>
+    </ul>
+    <form name="priform" class="form-horizontal">
+    <div class="row form-group">
+        <div class="col-md-4">
+            <label class="control-label pull-right">Priority (actual: {{ job.priority.value }}):</label>
+        </div>
+        <div class="controls col-md-8">
+            <input class="form-control input-sm" type="number" ng-model="cur_priority" min="-1023" max="{{ get_max_priority() }}" required></input>
+        </div>
+    </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()" ng-show="priform.$valid">Modify</button>
+    <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+</div>
 """
 
 {% endverbatim %}
@@ -643,7 +674,6 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     url      : "{% url 'rms:get_rms_json' %}"
                     dataType : "json"
                     success  : (json) =>
-                        #console.log json
                         $scope.$apply(() ->
                             # reset counter
                             $scope.running_slots = 0
@@ -1058,7 +1088,6 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.get_load = (load) ->
                 cur_m = load.value.match(LOAD_RE)
                 if cur_m
-                    # console.log parseFloat(load.value), (100 * parseFloat(load.value)), (100 * parseFloat(load.value)) / scope.max_load, String((100 * parseFloat(load.value)) / scope.max_load)
                     return String((100 * parseFloat(load.value)) / scope.max_load)
                 else
                     return 0
@@ -1078,13 +1107,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             struct : "="
         link : (scope, el, attrs) ->
     }
-).directive("jobaction", ($compile, $templateCache) ->
+).directive("jobaction", ($compile, $templateCache, $modal) ->
     return {
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
         scope:
             job : "="
             operator : "="
+            mode : "="
         replace : true
         compile : (tElement, tAttr) ->
             return (scope, el, attrs) ->
@@ -1096,6 +1126,49 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     is_oper = true
                 else
                     is_oper = false
+                scope.$watch("job", (job) ->
+                    scope.job = job
+                )
+                cp_scope = ($scope, $modalInstance, job, oper) ->
+                    $scope.job = job
+                    $scope.cur_priority = parseInt($scope.job.priority.value)
+                    $scope.get_max_priority = () ->
+                        return if oper then 1024 else 0
+                    $scope.get_job_id = () ->
+                        _id = $scope.job.job_id.value
+                        if $scope.job.task_id.value
+                            _id = "#{_id}." + $scope.job.task_id.value
+                        return _id
+                    $scope.ok = () ->
+                        _job_id = $scope.get_job_id()
+                        $modalInstance.close([$scope.cur_priority, _job_id])
+                    $scope.cancel = () ->
+                        $modalInstance.dismiss("cancel")
+                scope.change_priority = () ->
+                    c_modal = $modal.open
+                        template : $templateCache.get("change_pri.html")
+                        controller : cp_scope
+                        backdrop : "static"
+                        resolve :
+                            job : () =>
+                                return scope.job
+                            oper: () =>
+                                return is_oper
+                    c_modal.result.then(
+                        (_tuple) ->
+                            new_pri = _tuple[0]
+                            job_id = _tuple[1]
+                            call_ajax
+                                url      : "{% url 'rms:change_job_priority' %}"
+                                data:
+                                    "job_id": job_id
+                                    "new_pri" : new_pri
+                                success  : (xml) =>
+                                    if parse_xml_response(xml)
+                                        scope.$apply(
+                                            scope.job.priority.value = new_pri
+                                        )
+                    )
                 el.append($compile($templateCache.get(if is_oper then "job_action_oper.html" else "job_action.html"))(scope))
       
     }
@@ -1173,6 +1246,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("job_action_oper.html", jobactionoper)
     $templateCache.put("job_action.html", jobaction)
     $templateCache.put("files_info.html", filesinfo)
+    $templateCache.put("change_pri.html", change_pri_template)
 )
 
 add_rrd_directive(rms_module)

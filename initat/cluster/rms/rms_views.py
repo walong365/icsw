@@ -437,3 +437,16 @@ class get_user_setting(View):
             else:
                 json_resp[t_name] = []
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
+
+
+class change_job_priority(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        srv_com = server_command.srv_command(command="job_control", action="modify_priority")
+        srv_com["job_list"] = srv_com.builder(
+            "job_list",
+            srv_com.builder("job", job_id=_post["job_id"], priority=_post["new_pri"])
+        )
+        contact_server(request, "rms", srv_com, timeout=10)
