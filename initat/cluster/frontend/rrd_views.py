@@ -1,4 +1,3 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -23,6 +22,7 @@
 
 """ RRD views """
 
+from django.conf import settings
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
@@ -83,6 +83,7 @@ class graph_rrds(View):
             start_time = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(4 * 3600)
             end_time = datetime.datetime.now(dateutil.tz.tzutc())
         srv_com["parameters"] = E.parameters(
+            E.debug_mode("1" if settings.DEBUG else "0"),
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
             E.size(_post.get("size", "400x200")),
