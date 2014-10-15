@@ -237,7 +237,7 @@ def check_system(opt_ns):
                 key, level_list = line.split(None, 1)
                 level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
                 stat_dict[key.lower()] = level_list
-    for entry in instance_xml.findall("instance[@to_check='1']"):
+    for entry in instance_xml.xpath("instance[@to_check='1']"):
         if config_tools and not opt_ns.no_database and entry.find(".//config_names/config_name") is not None:
             dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
         else:
@@ -579,7 +579,7 @@ def show_xml(opt_ns, res_xml, iteration=0):
 
 
 def do_action_xml(opt_ns, res_xml, mode):
-    structs = res_xml.findall("instance[@checked='1' and @startstop='1']")
+    structs = res_xml.xpath("instance[@checked='1' and @startstop='1']")
     if not opt_ns.quiet:
         print(
             "{}ing {}: {}".format(
@@ -644,7 +644,7 @@ def main():
         print("Not running as root, information may be incomplete, disabling display of memory")
         opt_ns.memory = False
     ret_xml = check_system(opt_ns)
-    if not len(ret_xml.findall("instance[@checked='1']")):
+    if not len(ret_xml.xpath("instance[@checked='1']")):
         print("Nothing to do")
         sys.exit(1)
 
