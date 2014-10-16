@@ -354,10 +354,15 @@ class list_view(mixins.ListModelMixin,
             if key.startswith("_"):
                 special_dict[key[1:]] = value
             else:
-                filter_list.append(Q(**{key: value}))
+                if key.endswith("__in"):
+                    filter_list.append(Q(**{key: json.loads(value)}))
+                else:
+                    filter_list.append(Q(**{key: value}))
         if filter_list:
             res = res.filter(reduce(operator.iand, filter_list))
         res = res.select_related(*related_fields).prefetch_related(*prefetch_fields)
+        if "distinct" in special_dict:
+            res = res.distinct()
         if "order_by" in special_dict:
             res = res.order_by(special_dict["order_by"])
         if "num_entries" in special_dict:

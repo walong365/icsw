@@ -8,10 +8,45 @@ root = exports ? this
 
 {% verbatim %}
 
+map_template = """
+<svg ng-show="loc_gfx" ng-attr-width="{{ loc_gfx.width }}" ng-attr-height="{{ loc_gfx.height }}"
+    ng-attr-viewBox="0 0 {{ loc_gfx.width }} {{ loc_gfx.height }}">
+    <g>
+        <image xlink:href="{{ loc_gfx.image_url }}" ng-attr-width="{{ loc_gfx.width }}" ng-attr-height="{{ loc_gfx.height }}" preserveAspectRatio="none">
+        </image>
+        <devnode ng-repeat="dml in loc_gfx.dml_list"></devnode>
+    </g>
+</svg>
+"""
+
+devnode_template = """
+<g ng-attr-transform="{{ transform }}" ng-switch="host_state">
+    <g ng-switch-when="-1">
+        <circle r='20' fill='grey' stroke='black' stroke-width='1'></circle>
+        <text text-anchor="middle" alignment-baseline="middle" stroke="white" font-weight="bold" stroke-width="2">{{ dml.device_name }}</text>
+        <text text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold" stroke-width="0">{{ dml.device_name }}</text>
+    </g>
+    <g ng-switch-default>
+        <path d="M-40,0 a40,40 0 0,1 80,0 z"
+            fill="red" stroke="black" stroke-width="1" />
+        <circle ng-show="any_services()" r='30' ng-attr-fill='{{ service_status_color() }}' stroke='black' stroke-width='1'></circle>
+        <circle r='15' ng-attr-fill='{{ host_status_color() }}' stroke='black' stroke-width='1'></circle>
+        <text text-anchor="middle" alignment-baseline="middle" stroke="white" font-weight="bold" stroke-width="2">{{ dml.device_name }}</text>
+        <text text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold" stroke-width="0">{{ dml.device_name }}</text>
+    </g>
+</g>
+"""
+
 livestatus_templ = """
-<!-- <d3test data="testData"></d3test>
-<arctest data="testData"></arctest> -->
-<h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}</h3>
+<!--
+    <d3test data="testData"></d3test>
+    <arctest data="testData"></arctest>
+-->
+<h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
+    <span ng-show="location_gfx_list.length"> on
+        <ng-pluralize count="location_gfx_list.length" when="{'1' : '1 map', 'other' : '{} maps'}"/>
+    </span>
+</h3>
 <div class="row">
     <div class="col-md-6">
         <div class="form-group">
@@ -36,6 +71,7 @@ livestatus_templ = """
             <div class="btn-group">
                 <input type="button" class="btn btn-xs" ng-class="cat_tree_show && 'btn-success' || 'btn-default'" ng-click="cat_tree_show=!cat_tree_show" value="categories"/>
                 <input type="button" class="btn btn-xs" ng-class="burst_show && 'btn-success' || 'btn-default'" ng-click="burst_show=!burst_show" value="burst"/>
+                <input type="button" class="btn btn-xs" ng-show="location_gfx_list.length" ng-class="map_show && 'btn-success' || 'btn-default'" ng-click="map_show=!map_show" value="map"/>
                 <input type="button" class="btn btn-xs" ng-class="table_show && 'btn-success' || 'btn-default'" ng-click="table_show=!table_show" value="table"/>
             </div>
         </div>
@@ -47,13 +83,22 @@ livestatus_templ = """
 </div>
 <div class="row" ng-show="burst_show">
     <div class="col-md-6">
-        <bursttest data="burstData" active-service="activeService" focus-service="focusService" trigger-redraw="redrawSunburst"></bursttest>
+        <burst data="burstData" active-service="activeService" focus-service="focusService" trigger-redraw="redrawSunburst"></burst>
     </div> 
     <div class="col-md-6">
         <serviceinfo type="service_type" service="current_service"></serviceinfo>
     </div>
 </div>
-<hr/>
+<tabset ng-show="map_show">
+    <tab ng-repeat="loc_gfx in location_gfx_list">
+        <tab-heading>
+            {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
+        </tab-heading>
+        <h4>{{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span></h4>
+        <monmap gfx="{{ loc_gfx }}"></monmap>
+    </tab>
+</tabset>
+<hr/ ng-show="table_show">
 <div class="row" ng-show="table_show">
     <div class="btn-group col-md-12">
         <div class="form-group">
@@ -99,8 +144,8 @@ livestatus_templ = """
                 <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
                 <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
             </td>
-            <td ng-show="so_enabled['state']" ng-class="get_state_class(entry)">
-                {{ get_state_string(entry) }}
+            <td ng-show="so_enabled['state']" ng-class="get_service_state_class(entry)">
+                {{ get_service_state_string(entry) }}
                 <span ng-show="show_attempt_info(entry)" class="badge pull-right">{{ get_attempt_info(entry) }}</span>
                 <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
             </td>
@@ -164,7 +209,7 @@ serviceinfo_templ = """
         <div ng-switch-when="group">
            <ul class="list-group">
                <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-               <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
+               <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
            </ul>
         </div>
         <div ng-switch-when="host">
@@ -172,7 +217,7 @@ serviceinfo_templ = """
                 <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
                 <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
                 <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-                <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
+                <li class="list-group-item">State<span ng-class="get_host_state_class(service)">{{ get_host_state_string(service) }}</span></li>
                 <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
                 <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
                 <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
@@ -183,7 +228,7 @@ serviceinfo_templ = """
                 <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
                 <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
                 <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-                <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
+                <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
                 <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
                 <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
                 <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
@@ -200,20 +245,34 @@ angular_module_setup([device_livestatus_module])
 
 add_tree_directive(device_livestatus_module)
 
-get_state_string = (entry) ->
+get_service_state_string = (entry) ->
     return {
-        0 : "OK"
-        1 : "Warning"
-        2 : "Critical"
-        3 : "Unknown"
+        0: "OK"
+        1: "Warning"
+        2: "Critical"
+        3: "Unknown"
     }[entry.state]
 
-get_state_class = (entry) ->
+get_host_state_string = (entry) ->
     return {
-        0 : "success"
-        1 : "warning"
-        2 : "danger"
-        3 : "danger"
+        0: "OK"
+        1: "Critical"
+        2: "Unreachable"
+    }[entry.state]
+
+get_service_state_class = (entry) ->
+    return {
+        0: "success"
+        1: "warning"
+        2: "danger"
+        3: "danger"
+    }[entry.state]
+
+get_host_state_class = (entry) ->
+    return {
+        0: "success"
+        1: "danger"
+        2: "danger"
     }[entry.state]
 
 show_attempt_info = (entry) ->
@@ -297,11 +356,14 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.redrawSunburst = 0
         $scope.cat_tree_show = false
         $scope.burst_show = true
+        $scope.map_show = true
         $scope.table_show = true
         # which devices to show
         $scope.show_devs = []
         # which service to show
         $scope.show_service = null
+        # location gfx list
+        $scope.location_gfx_list = []
         $scope.$watch("activeService", (as) ->
             _parsed = $scope.parse_service(as)
             $scope.service_type = _parsed[0]
@@ -398,7 +460,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.get_mds_class = (int_state) ->
             return if $scope.mds_enabled[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
         $scope.get_shs_class = (int_state) ->
-            return if $scope.shs_enabled[int_state] then "btn btn-xs btn-success" else "btn btn-xs"
+            return if $scope.shs_enabled[int_state] then "btn btn-xs btn-primary" else "btn btn-xs"
         $scope.toggle_mds = (int_state) ->
             $scope.mds_enabled[int_state] = !$scope.mds_enabled[int_state]
             $scope.md_filter_changed()
@@ -443,8 +505,17 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_meta_devices" : false, "ignore_cdg" : true}])
+                restDataSource.reload(["{% url 'rest:location_gfx_list' %}", {"device_mon_location__device__in": angular.toJson($scope.devsel_list), "_distinct": true}])
+                restDataSource.reload(["{% url 'rest:device_mon_location_list' %}", {"device__in": angular.toJson($scope.devsel_list)}])
             ]
             $q.all(wait_list).then((data) ->
+                $scope.location_gfx_list = data[2]
+                gfx_lut = {}
+                for entry in $scope.location_gfx_list
+                    gfx_lut[entry.idx] = entry
+                    entry.dml_list = []
+                for entry in data[3]
+                    gfx_lut[entry.location_gfx].dml_list.push(entry)
                 cat_tree_lut = {}
                 $scope.cat_tree.clear_root_nodes()
                 $scope.selected_mcs = []
@@ -489,12 +560,19 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             for entry in host_entries
                                 # sanitize entries
                                 $scope._sanitize_entries(entry)
+                                # list of checks for host
+                                entry.checks = []
+                                entry.ct = "host"
                                 entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
                                 $scope.host_lut[entry.host_name] = entry
+                                $scope.host_lut[entry.custom_variables.device_pk] = entry
                             for entry in service_entries
                                 # sanitize entries
                                 $scope._sanitize_entries(entry)
                                 entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
+                                entry.ct = "service"
+                                # populate list of checks
+                                $scope.host_lut[entry.custom_variables.device_pk].checks.push(entry)
                                 if entry.custom_variables and entry.custom_variables.cat_pks?
                                     used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
                             for pk of $scope.cat_tree_lut
@@ -517,7 +595,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             _bdat = {
                 "name" : "System"
                 "children" : []
-                "check" : {"state" : 0, "type" : "system", "idx" : 0}
+                "check" : {"state" : 0, "type" : "system", "idx" : 0, "ct": "system"}
             }
             _devg_lut = {}
             srv_lut = {}
@@ -534,9 +612,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             "name" : _dev.device_group_name,
                             "children" : [],
                             "check" : {
-                                "state" : 0,
-                                "type"  : "group",
-                                "idx"   : _idx,
+                                "ct"    : "group"
+                                "state" : 0
+                                "type"  : "group"
+                                "idx"   : _idx
                                 "group_name" : _dev.device_group_name
                             }
                         }
@@ -660,10 +739,14 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             service : "=service"
         }
         link : (scope, element) ->
-            scope.get_state_string = (entry) ->
-                return get_state_string(entry)
-            scope.get_state_class = (entry) ->
-                return "label label-#{get_state_class(entry)} pull-right"
+            scope.get_service_state_string = (entry) ->
+                return get_service_state_string(entry)
+            scope.get_host_state_string = (entry) ->
+                return get_host_state_string(entry)
+            scope.get_host_state_class = (entry) ->
+                return "label label-#{get_host_state_class(entry)} pull-right"
+            scope.get_service_state_class = (entry) ->
+                return "label label-#{get_service_state_class(entry)} pull-right"
             scope.get_attempt_info = (entry) ->
                 return get_attempt_info(entry, true)
             scope.get_state_type = (entry) ->
@@ -671,15 +754,22 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.get_check_type = (entry) ->
                 return get_check_type(entry)
     }
-]).directive("bursttest", ["d3_service", "$compile", (d3_service, $compile) ->
+]).directive("burst", ["d3_service", "$compile", (d3_service, $compile) ->
     get_color = (d) ->
         if d.check?
-            return {
-                0 : "#66dd66"
-                1 : "#dddd88"
-                2 : "#ff7777"
-                3 : "#ff0000"
-            }[d.check.state]
+            if d.check.ct == "host"
+                return {
+                    0 : "#66dd66"
+                    1 : "#ff7777"
+                    2 : "#ff0000"
+                }[d.check.state]
+            else
+                return {
+                    0 : "#66dd66"
+                    1 : "#dddd88"
+                    2 : "#ff7777"
+                    3 : "#ff0000"
+                }[d.check.state]
         else
             return "#dddddd"
     return {
@@ -1024,10 +1114,14 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 else
                     h_state_str = "warning"
                 return "#{h_state_str} nowrap"
-            scope.get_state_string = (entry) -> 
-                return get_state_string(entry)
-            scope.get_state_class = (entry) -> 
-                return get_state_class(entry) + " nowrap"
+            scope.get_host_state_string = (entry) -> 
+                return get_host_state_string(entry)
+            scope.get_host_state_class = (entry) -> 
+                return get_host_state_class(entry) + " nowrap"
+            scope.get_service_state_string = (entry) -> 
+                return get_service_state_string(entry)
+            scope.get_service_state_class = (entry) -> 
+                return get_service_state_class(entry) + " nowrap"
             scope.show_host_attempt_info = (srv_entry) ->
                 return scope.show_attempt_info(scope.host_lut[srv_entry.host_name])
             scope.show_attempt_info = (entry) ->
@@ -1040,6 +1134,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ).run(($templateCache) ->
     $templateCache.put("livestatus_template.html", livestatus_templ)
     $templateCache.put("serviceinfo_template.html", serviceinfo_templ)
+    $templateCache.put("map.html", map_template)
+    $templateCache.put("devnode.html", devnode_template)
 )
 
 class mc_table
@@ -1146,6 +1242,67 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
     }
 ).run(($templateCache) ->
     $templateCache.put("monconfig_template.html", monconfig_templ)
+).directive("monmap", ["d3_service", "$templateCache", "$compile", "$modal", "Restangular", (d3_service, $templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("map.html")
+        link : (scope, element, attrs) ->
+            scope.loc_gfx = undefined
+            scope.$watch(attrs["gfx"], (new_val) ->
+                scope.loc_gfx = new_val
+            )
+    }
+]).directive("devnode", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        replace: true
+        template: $templateCache.get("devnode.html")
+        link: (scope, element, attrs) ->
+            dml = scope.dml
+            # not set
+            scope.mon_host = undefined
+            scope.host_state = -1
+            scope.checks_ok = 0
+            scope.checks_warn = 0
+            scope.checks_error = 0
+            scope.transform = "translate(#{dml.pos_x},#{dml.pos_y})"
+            scope.$watch("host_lut", (lut) ->
+                if lut
+                    dev = lut[dml.device]
+                    _host = lut[dml.device]
+                    scope.mon_host = _host
+                    #console.log "host", _host, dml
+                    scope.host_state = _host.state
+            )
+            scope.any_services = () ->
+                if scope.mon_host?
+                    return if scope.mon_host.checks.length then true else false
+                else
+                    return false
+            scope.service_status_color = () ->
+                if scope.mon_host?
+                    _states = (entry.state for entry in scope.mon_host.checks)
+                    if _states.length
+                        max_state = _.max(_states)
+                        _col = {
+                            0: "green"
+                            1: "yellow"
+                            2: "red"
+                            2: "red"
+                        }[max_state]
+                        return _col
+                    else
+                        return "yellow"
+                else
+                    return "red"    
+            scope.host_status_color = () ->
+                _col = {
+                    0: "green"
+                    1: "red"
+                    2: "red"
+                }[scope.host_state]
+                return _col
+    }    
 )
 
 {% endinlinecoffeescript %}

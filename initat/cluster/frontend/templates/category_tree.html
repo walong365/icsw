@@ -99,9 +99,10 @@
                                     <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
                                     <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
                                     <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                                    <ng-pluralize count="loc_gfx.num_dml" when="{'0': ', no devices', '1': 'one device', 'other':'{} devices'}"/>
                                     </span>
                                     <span class="pull-right">
-                                        <div class="btn-group">
+                                        <div class="btn-group" ng-show="loc_gfx.num_dml == 0">
                                             <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
                                         </div>
                                     </span>
@@ -304,10 +305,12 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:location_gfx_list' %}", {}])
+                restDataSource.reload(["{% url 'rest:device_mon_location_list' %}"])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.entries = data[0]
                 $scope.location_gfxs = data[1]
+                $scope.dml_list = data[2]
                 $scope.edit_mixin.create_list = $scope.entries
                 $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_cat()
@@ -338,6 +341,12 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                     $scope.cat.clear_active()
             )
         $scope.rebuild_cat = () ->
+            # check location gfx refs
+            $scope.gfx_lut = build_lut($scope.location_gfxs)
+            for entry in $scope.location_gfxs
+                entry.num_dml = 0
+            for entry in $scope.dml_list
+                $scope.gfx_lut[entry.location_gfx].num_dml++
             cat_lut = {}
             $scope.cat.clear_root_nodes()
             for entry in $scope.entries
@@ -451,6 +460,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             $scope.preview_gfx = undefined
             $scope.loc_gfx_mother = loc
             $scope.gfx_mixin.create($event).then((data) ->
+                data.num_dml = 0
                 loc.location_gfxs.push(data)
             )
         $scope.modify_location_gfx = ($event, loc) ->
