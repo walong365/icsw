@@ -356,6 +356,7 @@ PIPELINE_JS = {
             # "js/jquery.timers-1.2.js",
             "js/jquery.noty.packaged.js",
             "js/libs/lodash.min.js",
+            "js/bluebird.js",
             "js/jquery.dd.min.js",
             "js/jquery.simplemodal.js",
             "js/codemirror/codemirror.js",
