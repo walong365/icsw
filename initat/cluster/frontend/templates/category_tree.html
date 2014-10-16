@@ -64,11 +64,11 @@
             <div class="row">
                 <div class="col-md-6">
                     <div id="map_canvas">
-                    <google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
-                        <marker ng-repeat="loc in locations" idKey="loc.key" coords="loc" options="loc.options" events="map.marker.events">
+                    <ui-gmap-google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
+                        <ui-gmap-marker ng-repeat="loc in locations" idKey="loc.key" coords="loc" options="loc.options" events="map.marker.events">
                             <!-- <marker-label content="loc.comment" anchor="2 0"></marker-label>-->
-                        </marker>
-                    </google-map>
+                        </ui-gmap-marker>
+                    </ui-gmap-google-map>
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -163,7 +163,7 @@
 
 {% inlinecoffeescript %}
 
-category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps", "angularFileUpload"])
+category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps".ns(), "angularFileUpload"])
 
 angular_module_setup([category_tree_module])
 
@@ -244,7 +244,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             $.unblockUI()
             $scope.uploader.clearQueue()
             return null
-        $scope.uploader.onErrorItem = (item, repsonse, status, headers) ->
+        $scope.uploader.onErrorItem = (item, response, status, headers) ->
             $.unblockUI()
             $scope.uploader.clearQueue()
             noty

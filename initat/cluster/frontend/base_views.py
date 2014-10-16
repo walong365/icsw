@@ -18,6 +18,7 @@ from initat.cluster.frontend.helper_functions import xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 import initat.cluster.backbone.models
 import json
+import PIL
 import logging
 import logging_tools
 import process_tools
@@ -67,9 +68,7 @@ class prune_category_tree(permission_required_mixin, View):
         request.xml_response.info("tree pruned")
 
 
-MIN_WIDTH, MAX_WIDTH, MIN_HEIGHT, MAX_HEIGHT = (
-    400, 3840, 200, 3840,
-)
+TARGET_WIDTH, TARGET_HEIGTH = (1920, 1920)
 
 
 class upload_location_gfx(View):
@@ -84,24 +83,23 @@ class upload_location_gfx(View):
                 if _file.content_type in ["image/png", "image/jpeg"]:
                     _img = Image.open(_file)
                     _w, _h = _img.size
-                    if _w < MIN_WIDTH or _w > MAX_WIDTH or _h < MIN_HEIGHT or _h > MAX_HEIGHT:
-                        request.xml_response.error("wrong size ({:d}, {:d}) not in [({:d}, {:d}), ({:d}, {:d})]".format(
-                            _w, _h,
-                            MIN_WIDTH, MIN_HEIGHT,
-                            MAX_WIDTH, MAX_HEIGHT,
-                        ))
+                    _x_fact = float(TARGET_WIDTH) / float(_w)
+                    _y_fact = float(TARGET_HEIGTH) / float(_h)
+                    _fact = min(_x_fact, _y_fact)
+                    _w = int(_w * _fact)
+                    _h = int(_h * _fact)
+                    _img = _img.resize((_w, _h), resample=PIL.Image.BICUBIC)
+                    try:
+                        _location.store_graphic(_img, _file.content_type, _file.name)
+                    except:
+                        request.xml_response.critical("error storing image: {}".format(process_tools.get_except_info()), logger=logger)
                     else:
-                        try:
-                            _location.store_graphic(_img, _file.content_type, _file.name)
-                        except:
-                            request.xml_response.critical("error storing image: {}".format(process_tools.get_except_info()), logger=logger)
-                        else:
-                            request.xml_response.info("uploaded {} (type {}, size {:d} x {:d})".format(
-                                _file.name,
-                                _file.content_type,
-                                _w,
-                                _h,
-                            ))
+                        request.xml_response.info("uploaded {} (type {}, size {:d} x {:d})".format(
+                            _file.name,
+                            _file.content_type,
+                            _w,
+                            _h,
+                        ))
                 else:
                     request.xml_response.error("wrong content_type '{}'".format(_file.content_type))
             else:
