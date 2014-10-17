@@ -233,7 +233,6 @@ class apc_upc_v1_scheme(snmp_scheme):
                 name="upc.ampere.out",
             ),
         ])
-        print res_dict
 
 
 class snmp_job(object):
