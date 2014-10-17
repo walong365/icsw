@@ -313,6 +313,14 @@ class _general(hm_classes.hm_module):
                             )
                         ).split("/", 2)[2] if _value.count("/by-") else _value for _value in mount_list
                     ]
+                    # expand mount_list by resolving links
+                    for _entry in mount_list:
+                        _abs_entry = os.path.join("/dev", _entry)
+                        if os.path.islink(_abs_entry):
+                            _new_entry = os.path.normpath(
+                                os.path.join(os.path.dirname(_abs_entry), os.readlink(_abs_entry))
+                            )
+                            mount_list.append(_new_entry[5:])
                 # get unique devices
                 ds_keys_ok_by_name = sorted([key for key in ds_dict.iterkeys() if key in self.valid_block_devs])
                 # sort out partition stuff
@@ -331,12 +339,16 @@ class _general(hm_classes.hm_module):
                 mounted_lvms = {}
                 if self.local_lvm_info.lvm_present:
                     for _loc_lvm_name, loc_lvm_info in self.local_lvm_info.lv_dict.get("lv", {}).iteritems():
-                        lv_k_major, lv_k_minor = (int(loc_lvm_info["kernel_major"]),
-                                                  int(loc_lvm_info["kernel_minor"]))
+                        lv_k_major, lv_k_minor = (
+                            int(loc_lvm_info["kernel_major"]),
+                            int(loc_lvm_info["kernel_minor"])
+                        )
                         if lv_k_major in self.valid_major_nums.keys():
-                            mount_dev = "%s/%s" % (loc_lvm_info["vg_name"],
-                                                   loc_lvm_info["name"])
-                            mounted_lvms[mount_dev] = "%s-%d" % (self.valid_major_nums[lv_k_major][0].split("-")[0], lv_k_minor)
+                            mount_dev = os.path.join(
+                                loc_lvm_info["vg_name"],
+                                loc_lvm_info["name"]
+                            )
+                            mounted_lvms[mount_dev] = "{}-{:d}".format(self.valid_major_nums[lv_k_major][0].split("-")[0], lv_k_minor)
                 if os.path.isfile(EXTRA_BLOCK_DEVS):
                     extra_block_devs = [entry.strip() for entry in file(EXTRA_BLOCK_DEVS, "r").read().split("\n") if entry.strip()]
                 else:
@@ -446,7 +458,11 @@ class _general(hm_classes.hm_module):
                     for idx, what in [(5, "read"), (6, "written")]:
                         mvect["io.{}.bytes.{}".format(act_disk, what)] = int(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / tdiff)
                     for idx, what in [(2, "read"), (3, "written"), (4, "io")]:
-                        mvect["io.{}.time.{}".format(act_disk, what)] = float(sub_wrap(disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]) / (1000 * tdiff))
+                        mvect["io.{}.time.{}".format(act_disk, what)] = float(
+                            sub_wrap(
+                                disk_stat[act_disk][idx], self.disk_stat[act_disk][idx]
+                            ) / (1000 * tdiff)
+                        )
             self.vmstat_dict = stat_dict
             self.disk_stat = disk_stat
         else:
@@ -487,16 +503,16 @@ class _general(hm_classes.hm_module):
                 tdiff = act_time - self.last_nfsstat_time
                 # read cache
                 for index, name in enumerate(["hits", "misses", "nocache"]):
-                    mvect["nfs.rc.%s" % (name)] = float(sub_wrap(nfs_dict["rc"][index], self.nfsstat_dict["rc"][index]) / tdiff)
+                    mvect["nfs.rc.{}".format(name)] = float(sub_wrap(nfs_dict["rc"][index], self.nfsstat_dict["rc"][index]) / tdiff)
                 # io
                 for index, name in enumerate(["read", "write"]):
-                    mvect["nfs.io.%s" % (name)] = float(sub_wrap(nfs_dict["io"][index], self.nfsstat_dict["io"][index]) / tdiff)
+                    mvect["nfs.io.{}".format(name)] = float(sub_wrap(nfs_dict["io"][index], self.nfsstat_dict["io"][index]) / tdiff)
                 # net
                 for index, name in enumerate(["count", "udpcount", "tcpcount", "tcpcons"]):
-                    mvect["nfs.net.%s" % (name)] = float(sub_wrap(nfs_dict["net"][index], self.nfsstat_dict["net"][index]) / tdiff)
+                    mvect["nfs.net.{}".format(name)] = float(sub_wrap(nfs_dict["net"][index], self.nfsstat_dict["net"][index]) / tdiff)
                 # rpc
                 for index, name in enumerate(["count", "badtotal", "badfmt", "badauth", "badclnt"]):
-                    mvect["nfs.rpc.%s" % (name)] = float(sub_wrap(nfs_dict["rpc"][index], self.nfsstat_dict["rpc"][index]) / tdiff)
+                    mvect["nfs.rpc.{}".format(name)] = float(sub_wrap(nfs_dict["rpc"][index], self.nfsstat_dict["rpc"][index]) / tdiff)
             self.nfsstat_dict = nfs_dict
             self.last_nfsstat_time = act_time
             # pprint.pprint(nfs_dict)
@@ -559,7 +575,7 @@ class _general(hm_classes.hm_module):
                 getattr(self, call_name)(mv)
             except:
                 self.log(
-                    "error calling self.%s(): %s" % (
+                    "error calling self.{}(): {}".format(
                         call_name,
                         process_tools.get_except_info()
                     ),
@@ -590,7 +606,7 @@ class _general(hm_classes.hm_module):
         except:
             read_err_list.append("/proc/sys/kernel/real-root-dev")
         if read_err_list:
-            ret_str = "error reading %s" % (", ".join(read_err_list))
+            ret_str = "error reading {}".format(", ".join(read_err_list))
         else:
             ret_str = ""
             # build devices-dict
@@ -610,7 +626,7 @@ class _general(hm_classes.hm_module):
                         real_root_dev_name = part_name
                     blocks = int(blocks)
                     if not minor or not part_name[-1].isdigit():
-                        dev_dict["/dev/%s" % (part_name)] = {}
+                        dev_dict["/dev/{}".format(part_name)] = {}
                     part_dict.setdefault(major, {}).setdefault(minor, (part_name, blocks))
             if not real_root_dev_name and real_root_dev:
                 real_root_list = [entry[0] for entry in file_dict.get("mounts", []) if entry[1] == "/" and entry[0] != "rootfs"]
@@ -654,7 +670,7 @@ class _general(hm_classes.hm_module):
                 part_bin = self.parted_path
                 if part_bin:
                     self.log("getting partition info via parted")
-                    cur_stat, out = commands.getstatusoutput("%s -l" % (part_bin))
+                    cur_stat, out = commands.getstatusoutput("{} -l".format(part_bin))
                     skip_until_next_blank_line = False
                     parted_dict = {}
                     dev_dict = {}
@@ -726,12 +742,12 @@ class _general(hm_classes.hm_module):
                                 "hextype": hextype,
                                 "info": " ".join(parts),
                             }
-                            part_lut["%s%s" % (d_name, part_num)] = (d_name, part_num)
+                            part_lut["{}{}".format(d_name, part_num)] = (d_name, part_num)
                 else:
                     self.log("getting partition info via sfdisk (deprecated)")
                     # fetch fdisk information
                     for dev in dev_dict.keys():
-                        cur_stat, out = commands.getstatusoutput("/sbin/fdisk -l %s" % (dev))
+                        cur_stat, out = commands.getstatusoutput("/sbin/fdisk -l {}".format(dev))
                         if cur_stat:
                             ret_str = "error reading partition table of %s (%d): %s" % (dev, cur_stat, out)
                             break
