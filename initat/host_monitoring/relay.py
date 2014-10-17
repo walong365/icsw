@@ -427,8 +427,13 @@ class relay_code(threading_tools.process_pool):
         for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
-            self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
-                                                            hwm_size))
+            self.log(
+                "init {} ipc_socket '{}' (HWM: {:d})".format(
+                    short_sock_name,
+                    sock_name,
+                    hwm_size
+                )
+            )
             if os.path.exists(file_name):
                 self.log("removing previous file")
                 try:
@@ -454,7 +459,7 @@ class relay_code(threading_tools.process_pool):
                 )
                 raise
             else:
-                setattr(self, "%s_socket" % (short_sock_name), cur_socket)
+                setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 _backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
@@ -462,13 +467,15 @@ class relay_code(threading_tools.process_pool):
                 cur_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
                 if sock_type == zmq.PULL:  # @UndefinedVariable
                     self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
-        self.client_socket = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        self.client_socket.setsockopt(zmq.IDENTITY, "ccollclient:%s" % (process_tools.get_machine_name()))  # @UndefinedVariable
-        self.client_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-        self.client_socket.setsockopt(zmq.SNDHWM, 2)  # @UndefinedVariable
-        self.client_socket.setsockopt(zmq.RCVHWM, 2)  # @UndefinedVariable
-        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-        self.client_socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+        self.client_socket = process_tools.get_socket(
+            self.zmq_context,
+            "ROUTER",
+            identity="ccollclient:{}".format(process_tools.get_machine_name()),
+            linger=0,
+            sndhwm=2,
+            rcvhwm=2,
+            immediate=True,
+        )
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)  # @UndefinedVariable
 
     def _init_network_sockets(self):
