@@ -61,9 +61,9 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._log_config()
-        self._init_network_sockets()
         self.add_process(graph_process("graph"), start=True)
         connection.close()
+        self._init_network_sockets()
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
         self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
@@ -221,7 +221,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _init_network_sockets(self):
         self.bind_id = get_server_uuid("grapher")
-        client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id)
+        client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id, immediate=True)
         bind_str = "tcp://*:{:d}".format(global_config["COM_PORT"])
         try:
             client.bind(bind_str)
@@ -239,20 +239,20 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
             self.com_socket = client
         # connection to collectd clients
-        self._collectd_sockets = {}
-        collectd_hosts = ["127.0.0.1"]
-        [self._open_collectd_socket(_host) for _host in collectd_hosts]
+        # self._collectd_sockets = {}
+        # collectd_hosts = ["127.0.0.1"]
+        # [self._open_collectd_socket(_host) for _host in collectd_hosts]
 
-    def _open_collectd_socket(self, _ch):
-        if _ch in self._collectd_sockets:
-            self._collectd_sockets[_ch].close()
-            del self._collectd_sockets[_ch]
-        _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
-        _cs = process_tools.get_socket(self.zmq_context, "DEALER", identity=self.bind_id)
-        _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
-        self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
-        _cs.connect(_conn_str)
-        self._collectd_sockets[_ch] = _cs
+    # def _open_collectd_socket(self, _ch):
+    #    if _ch in self._collectd_sockets:
+    #        self._collectd_sockets[_ch].close()
+    #        del self._collectd_sockets[_ch]
+    #    _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
+    #    _cs = process_tools.get_socket(self.zmq_context, "DEALER", identity=self.bind_id)
+    #    _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
+    #    self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
+    #    _cs.connect(_conn_str)
+    #    self._collectd_sockets[_ch] = _cs
 
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
@@ -282,6 +282,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             in_data.append(zmq_sock.recv())
             if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 break
+        # self.log("{:d}".format(len(in_data)))
         if len(in_data) == 2:
             src_id, data = in_data
             try:
@@ -308,6 +309,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     server_command.SRV_REPLY_STATE_OK
                 )
                 if cur_com in ["mv_info"]:
+                    self.log("got mv_info")
                     self._interpret_mv_info(srv_com["vector"])
                     send_return = False
                 elif cur_com in ["perfdata_info"]:
@@ -354,8 +356,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def loop_post(self):
         self.com_socket.close()
-        for _key, _sock in self._collectd_sockets.iteritems():
-            _sock.close()
+        # for _key, _sock in self._collectd_sockets.iteritems():
+        #    _sock.close()
         self.__log_template.close()
 
     def thread_loop_post(self):
