@@ -82,6 +82,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         snmp_job.setup(self)
         self.register_timer(self._check_database, 300, instant=True)
         self.register_timer(self._check_background, 2, instant=True)
+        self.__cached_stats, self.__cached_time = (None, time.time())
+        self.register_timer(self._check_cached_stats, 30, first_timeout=5)
         self.add_process(resize_process("resize"), start=True)
         self.add_process(aggregate_process("aggregate"), start=True)
         connection.close()
@@ -208,7 +210,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             self.com_socket.connect(self.md_target_addr)
             self.log("connection to md-config-server at {}".format(self.md_target_addr))  # , self.md_target_id))
             self.__grapher_connected = False
-            self._reconnect_to_grapher()
             # receiver socket
             self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
             listener_url = "tcp://*:{:d}".format(global_config["RECV_PORT"])
@@ -228,20 +229,22 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     ),
                     logging_tools.LOG_LEVEL_ERROR
                 )
-            self.__grapher_connected = False
-            try:
-                self.com_socket.connect(self.__grapher_url)
-            except:
-                self.log(
-                    "error connecting grapher {}: {}".format(
-                        self.__grapher_url,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
             else:
-                self.log("connected to grapher at {}".format(self.__grapher_url))
-                self.__grapher_connected = True
+                self.log("closed grapher connection", logging_tools.LOG_LEVEL_WARN)
+            self.__grapher_connected = False
+        try:
+            self.com_socket.connect(self.__grapher_url)
+        except:
+            self.log(
+                "error connecting grapher {}: {}".format(
+                    self.__grapher_url,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            self.log("connected to grapher at {}".format(self.__grapher_url))
+            self.__grapher_connected = True
 
     def _init_rrd_cached(self):
         self.log("init rrd cached process")
@@ -350,6 +353,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             )
             self._reconnect_to_grapher()
         else:
+            # print "sent", unicode(send_xml)
             pass
 
     def send_to_md(self, send_str):
@@ -726,14 +730,12 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def get_time(self, h_tuple, cur_time):
         cur_time = int(cur_time)
-        print h_tuple, cur_time
         pprint.pprint(self.__last_sent)
         if h_tuple in self.__last_sent:
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time
                 cur_time += diff_time
                 self.log("correcting time for {} (+{:d}s to {:d})".format(str(h_tuple), diff_time, int(cur_time)))
-                print "* ->", cur_time
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
 
@@ -835,6 +837,46 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         e_time = time.time()
         if _errcount:
             self.log("parsing took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+
+    def _check_cached_stats(self):
+        if self.__rrdcached_socket:
+            try:
+                self.__rrdcached_socket.send("STATS\n")
+                _lines = self.__rrdcached_socket.recv(16384).split("\n")
+            except:
+                self.log("error communicating with rrdcached: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                _first_line_parts = _lines[0].strip().split()
+                _dict = None
+                if _first_line_parts and _first_line_parts[0].isdigit():
+                    if int(_first_line_parts[0]) + 2 == len(_lines):
+                        cur_time = time.time()
+                        _dict = {_line.split(":")[0]: int(_line.split(":")[1].strip()) for _line in _lines[1:-1]}
+                        if self.__cached_stats is not None:
+                            _tree = E.machine_vector(
+                                simple="0",
+                                name=process_tools.get_fqdn()[0],
+                                uuid=str(uuid_tools.get_uuid()),
+                                time="{:d}".format(int(time.time())),
+                            )
+                            diff_time = max(1, abs(cur_time - self.__cached_time))
+                            for _key in sorted(_dict.iterkeys()):
+                                _value = abs(self.__cached_stats[_key] - _dict[_key]) / diff_time
+                                _tree.append(
+                                    E.mve(
+                                        info="RRD {}".format(_key),
+                                        unit="1/s",
+                                        base="1",
+                                        v_type="f",
+                                        factor="1",
+                                        value="{:.2f}".format(_value),
+                                        name="rrd.operations.{}".format(_key),
+                                    ),
+                                )
+                            self._process_data(etree.tostring(_tree))
+                        self.__cached_stats, self.__cached_time = (_dict, cur_time)
+                if _dict is None:
+                    self.log("error parsing stats {}".format("; ".join(_lines)), logging_tools.LOG_LEVEL_ERROR)
 
     def _handle_disabled_hosts(self):
         disabled_hosts = device.objects.filter(Q(store_rrd_data=False))

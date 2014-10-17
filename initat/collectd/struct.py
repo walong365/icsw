@@ -216,6 +216,9 @@ class host_matcher(object):
                 self.__match[host_name] = match_dev
             else:
                 match_dev = None
+        if match_dev:
+            # set active_rrd to True
+            device.objects.filter(Q(pk=match_dev.pk)).update(has_active_rrds=True)
         return match_dev
 
     def check_dir_structure(self, match_dev):
