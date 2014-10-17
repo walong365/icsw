@@ -886,13 +886,16 @@ class relay_code(threading_tools.process_pool):
             id_discovery(srv_com, src_id, xml_input)
 
     def _send_result(self, identity, reply_str, reply_state):
-        self.sender_socket.send_unicode(identity, zmq.SNDMORE)  # @UndefinedVariable
-        self.sender_socket.send_unicode(
-            "{:d}\0{}".format(
-                reply_state,
-                reply_str
+        if identity is None:
+            self.log("refuse to use identity==None", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.sender_socket.send_unicode(identity, zmq.SNDMORE)  # @UndefinedVariable
+            self.sender_socket.send_unicode(
+                "{:d}\0{}".format(
+                    reply_state,
+                    reply_str
+                )
             )
-        )
 
     def _recv_nhm_result(self, zmq_sock):
         data = []
