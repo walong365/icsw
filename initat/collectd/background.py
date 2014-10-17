@@ -535,11 +535,11 @@ class bg_job(object):
                 self.running = False
                 stdout, stderr = self.__ec.communicate()
                 self.log(
-                    "done (RC={:d}) in {} (stdout: {}, stderr: {})".format(
+                    "done (RC={:d}) in {} (stdout: {}{})".format(
                         self.result,
                         logging_tools.get_diff_time_str(self.__ec.end_time - self.__ec.start_time),
                         logging_tools.get_plural("byte", len(stdout)),
-                        logging_tools.get_plural("byte", len(stderr)),
+                        ", stderr: {}".format(logging_tools.get_plural("byte", len(stderr))) if stderr else "",
                     )
                 )
                 if stdout and self.result == 0:

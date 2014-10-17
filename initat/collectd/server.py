@@ -195,7 +195,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             # ]:
             #    self.md_target.setsockopt(flag, value)
             self.grapher_id = "{}:grapher:".format(uuid_tools.get_uuid().get_urn())
-            grapher_url = "tcp://localhost:{:d}".format(global_config["GRAPHER_PORT"])
+            self.__grapher_url = "tcp://localhost:{:d}".format(global_config["GRAPHER_PORT"])
             self.md_target_addr = "tcp://{}:{:d}".format(
                 global_config["MD_SERVER_HOST"],
                 global_config["MD_SERVER_PORT"],
@@ -207,13 +207,41 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             )
             self.com_socket.connect(self.md_target_addr)
             self.log("connection to md-config-server at {}".format(self.md_target_addr))  # , self.md_target_id))
-            self.com_socket.connect(grapher_url)
-            self.log("connected to grapher at {}".format(grapher_url))
+            self.__grapher_connected = False
+            self._reconnect_to_grapher()
             # receiver socket
             self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
             listener_url = "tcp://*:{:d}".format(global_config["RECV_PORT"])
             self.receiver.bind(listener_url)
+            self._reconnect_to_grapher()
             self.register_poller(self.receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
+
+    def _reconnect_to_grapher(self):
+        if self.__grapher_connected:
+            try:
+                self.com_socket.disconnect(self.__grapher_url)
+            except:
+                self.log(
+                    "error disconnecting grapher {}: {}".format(
+                        self.__grapher_url,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            self.__grapher_connected = False
+            try:
+                self.com_socket.connect(self.__grapher_url)
+            except:
+                self.log(
+                    "error connecting grapher {}: {}".format(
+                        self.__grapher_url,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            else:
+                self.log("connected to grapher at {}".format(self.__grapher_url))
+                self.__grapher_connected = True
 
     def _init_rrd_cached(self):
         self.log("init rrd cached process")
@@ -320,6 +348,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL
             )
+            self._reconnect_to_grapher()
         else:
             pass
 
