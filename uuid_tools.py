@@ -24,6 +24,7 @@ import uuid
 
 UUID_NAME = "/etc/sysconfig/cluster/.cluster_device_uuid"
 
+
 def get_uuid():
     write_uuid = False
     if os.path.isfile(UUID_NAME):
