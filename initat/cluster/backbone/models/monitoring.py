@@ -1073,12 +1073,16 @@ class monitoring_hint(models.Model):
                     setattr(self, v_key, value)
         return changed
 
-    def get_limit(self, name, default):
+    def get_limit(self, name, default, ignore_zero=False):
         key = "{}_{}".format(name, self.get_v_type_display())
         if getattr(self, "{}_source".format(key)) == "n":
             return default
         else:
-            return str(getattr(self, key))
+            _val = str(getattr(self, key))
+            if _val == "0" and ignore_zero:
+                return default
+            else:
+                return _val
 
     def set_value(self, value):
         if type(value) in [int, long]:
