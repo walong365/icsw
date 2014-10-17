@@ -31,12 +31,14 @@ import datetime
 import dateutil.parser
 import logging_tools
 import os
-import stat
-import pprint
+import pprint  # @UnusedImport
 import process_tools
 import re
 import rrdtool  # @UnresolvedImport
+import select
 import server_command
+import socket
+import stat
 import threading_tools
 import time
 import uuid
@@ -431,6 +433,7 @@ class GraphTarget(object):
 
     def reset(self):
         self.defs = {}
+        self.file_names = set()
         self.draw_result = None
         self.removed_keys = []
         self.__result_dict = None
@@ -442,6 +445,7 @@ class GraphTarget(object):
         self.__unique += 1
         self.__draw_keys.append((self.__unique, key))
         self.defs[(self.__unique, key)] = g_var.graph_def(self.__unique, **kwargs)
+        self.file_names.add(g_var["file_name"])
 
     def set_y_mm(self, _min, _max):
         # set min / max values for ordinate
@@ -493,7 +497,7 @@ class GraphTarget(object):
 
 
 class RRDGraph(object):
-    def __init__(self, graph_root, log_com, colorizer, para_dict):
+    def __init__(self, graph_root, log_com, colorizer, para_dict, proc):
         self.log_com = log_com
         self.para_dict = {
             "size": "400x200",
@@ -508,6 +512,7 @@ class RRDGraph(object):
         self.dt_1970 = dateutil.parser.parse("1970-01-01 00:00 +0000")
         self.para_dict.update(para_dict)
         self.colorizer = colorizer
+        self.proc = proc
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com(u"[RRDG] {}".format(what), log_level)
@@ -744,7 +749,7 @@ class RRDGraph(object):
                         "-w {:d}".format(graph_width),
                         "-h {:d}".format(graph_height),
                         "-aPNG",  # image forma
-                        "--daemon", "unix:{}".format(global_config["RRD_CACHED_SOCKET"]),  # rrd caching daemon address
+                        # "--daemon", "unix:{}".format(global_config["RRD_CACHED_SOCKET"]),  # rrd caching daemon address
                         "-W {} by init.at".format(settings.INIT_PRODUCT_NAME),  # title
                         "--slope-mode",  # slope mode
                         "-cBACK#ffffff",
@@ -820,6 +825,7 @@ class RRDGraph(object):
                                     logging_tools.get_diff_time_str(timeframe)),
                             ])
                             rrd_args.extend(self._create_job_args(_graph_target.dev_list, _job_add_dict))
+                            self.proc.flush_rrdcached(_graph_target.file_names)
                             try:
                                 draw_result = rrdtool.graphv(*rrd_args)
                             except:
@@ -925,6 +931,29 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]
         self.log("graphs go into {} for non-debug calls and into {} for debug calls".format(self.graph_root, self.graph_root_debug))
         self.colorizer = Colorizer(self.log)
+        self.__rrdcached_socket = None
+
+    def _open_rrdcached_socket(self):
+        self._close_rrdcached_socket()
+        try:
+            self.__rrdcached_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.__rrdcached_socket.connect(global_config["RRD_CACHED_SOCKET"])
+        except:
+            self.log("error opening rrdcached socket: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.__rrdcached_socket = None
+        else:
+            self.log("connected to rrdcached socket {}".format(global_config["RRD_CACHED_SOCKET"]))
+        self.__flush_cache = set()
+
+    def _close_rrdcached_socket(self):
+        if self.__rrdcached_socket:
+            try:
+                self.__rrdcached_socket.close()
+            except:
+                self.log("error closing rrdcached socket: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("closed rrdcached socket")
+            self.__rrdcached_socket = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -935,6 +964,34 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
 
     def _close(self):
         pass
+
+    def flush_rrdcached(self, f_names):
+        if f_names:
+            f_names -= self.__flush_cache
+            if f_names:
+                self.__flush_cache |= f_names
+                if self.__rrdcached_socket:
+                    _s_time = time.time()
+                    self.log("sending flush() to rrdcached for {}".format(logging_tools.get_plural("file", len(f_names))))
+                    _lines = [
+                        "BATCH"
+                    ] + [
+                        "FLUSH {}".format(_f_name) for _f_name in f_names
+                    ] + [
+                        ".",
+                        "",
+                    ]
+                    self.__rrdcached_socket.send("\n".join(_lines))
+                    _read, _write, _exc = select.select([self.__rrdcached_socket.fileno()], [], [], 5000)
+                    _e_time = time.time()
+                    if not _read:
+                        self.log("read list is empty after {}".format(logging_tools.get_diff_time_str(_e_time - _s_time)), logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        _recv = self.__rrdcached_socket.recv(16384)
+                else:
+                    self.log("no valid rrdcached_socket, skipping flush()", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no file names given, skipping flush()", logging_tools.LOG_LEVEL_WARN)
 
     def _xml_info(self, *args, **kwargs):
         dev_id, xml_str = (args[0], etree.fromstring(args[1]))  # @UndefinedVariable
@@ -954,12 +1011,15 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
             para_dict[key] = dateutil.parser.parse(para_dict[key])
         for key, _default in [("hide_empty", "0"), ("merge_devices", "1"), ("scale_y", "0"), ("include_zero", "0"), ("debug_mode", "0")]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
+        self._open_rrdcached_socket()
         graph_list = RRDGraph(
             self.graph_root_debug if para_dict.get("debug_mode", False) else self.graph_root,
             self.log,
             self.colorizer,
-            para_dict
+            para_dict,
+            self
         ).graph(self.vector_dict, dev_pks, graph_keys)
+        self._close_rrdcached_socket()
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()
         srv_com.set_result(
