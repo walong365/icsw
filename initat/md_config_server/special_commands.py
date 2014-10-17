@@ -524,11 +524,14 @@ class special_disc(special_base):
         # LVM-partitions
         for lvm_part in lvm_lv.objects.filter(Q(lvm_vg__partition_table=self.host.act_partition_table)).select_related("lvm_vg").order_by("name"):
             if lvm_part.mountpoint:
-                warn_level, crit_level = (lvm_part.warn_threshold or 0,
-                                          lvm_part.crit_threshold or 0)
+                warn_level, crit_level = (
+                    lvm_part.warn_threshold or 0,
+                    lvm_part.crit_threshold or 0
+                )
                 warn_level_str, crit_level_str = (
                     "{:d}".format(warn_level if warn_level else 85),
-                    "{:d}".format(crit_level if crit_level else 95))
+                    "{:d}".format(crit_level if crit_level else 95)
+                )
                 part_list.append((
                     "{} (LVM)".format(lvm_part.mountpoint),
                     "/dev/mapper/{}-{}".format(lvm_part.lvm_vg.name, lvm_part.name),
@@ -652,10 +655,10 @@ class special_ipmi(special_base):
                 self.get_arg_template(
                     hint.info,
                     arg1="na",
-                    arg2=hint.get_limit("lower_crit", "na"),
-                    arg3=hint.get_limit("lower_warn", "na"),
-                    arg4=hint.get_limit("upper_warn", "na"),
-                    arg5=hint.get_limit("upper_crit", "na"),
+                    arg2=hint.get_limit("lower_crit", "na", ignore_zero=True),
+                    arg3=hint.get_limit("lower_warn", "na", ignore_zero=True),
+                    arg4=hint.get_limit("upper_warn", "na", ignore_zero=True),
+                    arg5=hint.get_limit("upper_crit", "na", ignore_zero=True),
                     arg6="na",
                     arg7=hint.key,
                 )
