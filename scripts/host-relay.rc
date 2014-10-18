@@ -45,7 +45,7 @@ case "$1" in
             echo -n " ... already running"
         else
             for dir in $SERVER_DIRS ; do
-            [ ! -d "${dir}" ] && mkdir -p ${dir}
+                [ ! -d "${dir}" ] && mkdir -p ${dir}
             done
             ${RELAY_BIN} ${RELAY_ARGS}
         fi
@@ -54,7 +54,11 @@ case "$1" in
     stop)      
         echo -n "Stopping collrelay.py"
         if [ -f ${RELAY_PID} ] ; then
-            kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
+            if [ -f ${META_FILE} ] ; then
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collrelay.py --signal 15 --proc-name main
+            else
+                kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
+	        fi
         else
             rc_failed
         fi
@@ -63,7 +67,11 @@ case "$1" in
     force-stop)
         echo -n "Force stopping collrelay.py"
         if [ -f ${RELAY_PID} ] ; then
-            kill -9 `cat ${RELAY_PID} ` || rc_failed
+            if [ -f ${META_FILE} ] ; then
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collrelay.py --signal 9
+            else
+                kill -9 `cat ${RELAY_PID} ` || rc_failed
+            fi
         else
             rc_failed
         fi
@@ -87,10 +95,10 @@ case "$1" in
         ;;
     reload)
         echo -n "Reloading collrelay.py"
-        if [ -f ${SERVER_PID} ] ; then
-            kill -HUP `cat ${RELAY_PID} | head -n 1` || rc_failed
-        else
-            rc_failed
+        if [ -f ${META_FILE} ] ; then
+	        /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collrelay.py --signal 1 --proc-name main
+	    else
+	        rc_failed
         fi
         rc_status -v
         ;;

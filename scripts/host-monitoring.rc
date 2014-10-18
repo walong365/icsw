@@ -57,7 +57,7 @@ case "$1" in
         echo -n "Stopping collserver.py"
         if [ -f ${SERVER_PID} ] ; then
             if [ -f ${META_FILE} ] ; then
-                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collserver.py --signal 15
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collserver.py --signal 15 --proc-name main
             else        
                 kill -s 15 `cat ${SERVER_PID} | head -n 1` || rc_failed
             fi
@@ -104,7 +104,7 @@ case "$1" in
     reload)
         echo -n "Reloading $(basename $SERVER_BIN)"
         if [ -f ${META_FILE} ] ; then
-	        /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collserver.py --signal 1 --only-first
+	        /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collserver.py --signal 1 --proc-name main
 	    else
 	        rc_failed
 	    fi

@@ -668,6 +668,10 @@ class snmp_process(threading_tools.process_obj):
         for to_key in timed_out:
             self.__job_dict[to_key].finish()
         self.step()
+        if self["exit_requested"]:
+            _stop_keys = set(self.__job_dict.keys())
+            for _key in _stop_keys:
+                self.__job_dict[_key].finish()
 
     def _recv_func(self, disp, domain, address, whole_msg):
         while whole_msg:

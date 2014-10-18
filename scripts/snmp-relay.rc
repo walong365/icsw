@@ -58,7 +58,7 @@ case "$1" in
         echo -n "Stopping snmp-relay.py"
         if [ -f ${RELAY_PID} ] ; then
             if [ -f ${META_FILE} ] ; then
-                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name snmp-relay.py --signal 15
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name snmp-relay.py --signal 15 --proc-name main
             else        
                 kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
             fi
@@ -105,8 +105,8 @@ case "$1" in
         ;;
     reload)
         echo -n "Reloading snmp-relay.py"
-        if [ -f ${SERVER_PID} ] ; then
-            kill -HUP `cat ${RELAY_PID} | head -n 1` || rc_failed
+        if [ -f ${META_FILE} ] ; then
+	        /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name snmp-relay.py --signal 1 --proc-name main
         else
             rc_failed
         fi
