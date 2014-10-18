@@ -28,6 +28,7 @@ fi
 HOSTMON_BIN=/opt/cluster/sbin/host-monitoring-zmq.py
 RELAY_BIN=/opt/cluster/sbin/collrelay.py
 PYTHON_BIN=/opt/python-init/bin/python
+META_FILE=/var/lib/meta-server/collrelay
 RELAY_PID=/var/run/collrelay/collrelay.pid
 SERVER_DIRS="/var/run/collrelay"
 
