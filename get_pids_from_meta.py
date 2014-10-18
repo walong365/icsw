@@ -51,19 +51,16 @@ def main():
         help="signal to send to the processes [%(default)s]"
     )
     my_parser.add_argument(
-        "--only-first",
-        default=False,
-        action="store_true",
-        help="signal only first process (==main), [%(default)s]",
+        "--proc-name",
+        type=str,
+        default="",
+        help="process name filter (in most cases 'main'), [%(default)s]",
     )
     args = my_parser.parse_args()
     _msi = process_tools.meta_server_info(args.meta if args.meta.startswith("/") else os.path.join(META_DIR, args.meta))
     if _msi.parsed:
-        _pids = _msi.get_pids(process_name=args.name or None)
-        if args.only_first:
-            _pids = [_pids[0]]
-        else:
-            _pids = sorted(set(_pids))
+        _pids = _msi.get_pids(process_name=args.name or None, name=args.proc_name or None)
+        _pids = sorted(set(_pids))
         if args.signal:
             for _pid in _pids:
                 os.kill(_pid, args.signal)

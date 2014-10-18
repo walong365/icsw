@@ -537,7 +537,9 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         # received signals
         self.__signals = []
         # flags
-        self.__flags = {}
+        self.__flags = {
+            "exit_requested": False
+        }
         # function table
         self.__func_table = {}
         # ignore calls
@@ -738,6 +740,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
     def _exit_process(self, **kwargs):
         self.log("exit_process called for process {} (pid={:d})".format(self.name, self.pid))
         self["run_flag"] = False
+        self["exit_requested"] = True
 
     def process_exit(self):
         self.send_pool_message("process_exit")

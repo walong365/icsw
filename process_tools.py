@@ -687,7 +687,7 @@ class meta_server_info(object):
                 self.__pids.remove(act_pid)
         self.__pids.sort()
 
-    def get_pids(self, process_name=None):
+    def get_pids(self, process_name=None, name=None):
         pid_list = self.__pids
         if process_name is None:
             pass
@@ -697,6 +697,8 @@ class meta_server_info(object):
                 pass
             else:
                 pid_list = [_pid for _pid in pid_list if self.__pid_proc_names[_pid] == process_name]
+        if name is not None:
+            pid_list = [_pid for _pid in pid_list if self.__pid_names.get(_pid, "???") == name]
         # get parent processes
         _parent_pids = []
         for _pid in pid_list:
