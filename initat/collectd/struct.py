@@ -367,9 +367,15 @@ class host_info(object):
         self.last_update = None
         self.updates = 0
         self.stores = 0
-        self.store_to_disk = True
+        self.store_to_disk = _dev.store_rrd_data
         self.__target_files = {}
-        self.log("init host_info for {} ({})".format(self.name, self.uuid))
+        self.log(
+            "init host_info for {} ({}, RRD store is {})".format(
+                self.name,
+                self.uuid,
+                "enabled" if self.store_to_disk else "disabled",
+            )
+        )
         self.__mc_timeout = global_config["MEMCACHE_TIMEOUT"]
         # for perfdata values, init with one to trigger send on first feed
         self.__perfdata_count = {}

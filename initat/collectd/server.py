@@ -901,13 +901,15 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 logging_tools.LOG_LEVEL_WARN
             )
             for _to_dis in to_disable:
-                _host = self.__hosts[_to_dis]
-                _host.store_to_disk = False
-                self.log("disabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
+                if _to_dis in self.__hosts:
+                    _host = self.__hosts[_to_dis]
+                    _host.store_to_disk = False
+                    self.log("disabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
             for _to_en in to_enable:
-                _host = self.__hosts[_to_en]
-                _host.store_to_disk = True
-                self.log("enabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
+                if _to_en in self.__hosts:
+                    _host = self.__hosts[_to_en]
+                    _host.store_to_disk = True
+                    self.log("enabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
 
     def _handle_xml(self, in_com):
         com_text = in_com["*command"]
