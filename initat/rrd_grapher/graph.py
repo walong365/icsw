@@ -324,6 +324,8 @@ class graph_var(object):
         _sum_unit = _unit
         if _sum_unit.endswith("/s"):
             _sum_unit = _sum_unit[:-2]
+            if _sum_unit == "1":
+                _sum_unit = ""
         c_lines.append(
             "COMMENT:<tt>{}</tt>".format("{:>4s}".format(_unit.replace("%%", "%")))
         )

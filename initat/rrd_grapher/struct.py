@@ -666,4 +666,6 @@ class data_store(object):
             data_store.g_log("no device found (%s: %s)" % (
                 logging_tools.get_plural("key", len(in_vector.attrib)),
                 ", ".join(["%s=%s" % (key, str(value)) for key, value in in_vector.attrib.iteritems()])
-            ), logging_tools.LOG_LEVEL_ERROR)
+            ),
+            logging_tools.LOG_LEVEL_ERROR
+        )
