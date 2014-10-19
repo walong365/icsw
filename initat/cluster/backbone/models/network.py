@@ -389,6 +389,8 @@ class netdevice(models.Model):
     # enabled, in fact admin enabled
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+    # maximum transfer unit
+    mtu = models.IntegerField(default=1500)
 
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -491,6 +493,7 @@ def netdevice_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "devname")
+        _check_integer(cur_inst, "mtu", min_val=16, max_val=65536)
         all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
         if cur_inst.devname in all_nd_names:
             raise ValidationError("devname '{}' already used".format(cur_inst.devname))
@@ -533,6 +536,7 @@ def netdevice_pre_save(sender, **kwargs):
                 raise ValidationError("cannot be my own VLAN master")
             if cur_inst.master_device.master_device_id:
                 raise ValidationError("cannot chain VLAN devices")
+
         if cur_inst.netdevice_speed_id is None:
             # set a default
             cur_inst.netdevice_speed = netdevice_speed.objects.get(Q(speed_bps=1000000000) & Q(full_duplex=True) & Q(check_via_ethtool=False))
