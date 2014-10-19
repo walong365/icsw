@@ -97,7 +97,15 @@ dev_row_template = """
     </button>
 </td>
 <td>
-    <input type="button" class="btn btn-xs btn-warning" ng-class="get_bootdevice_info_class(ndip_obj)" ng-show="get_num_bootips(ndip_obj)" ng-value="get_boot_value(ndip_obj)" ng-click="edit_boot_settings(ndip_obj, $event)"></input>
+    <input
+        type="button"
+        class="btn btn-xs btn-warning"
+        ng-class="get_bootdevice_info_class(ndip_obj)"
+        ng-show="get_num_bootips(ndip_obj)"
+        ng-value="get_boot_value(ndip_obj)"
+        ng-click="edit_boot_settings(ndip_obj, $event)">
+    </input>
+    <span ng-show="!get_num_bootips(ndip_obj)">N/A</span>
 </td>
 <td>
     {{ get_num_netdevices(ndip_obj) }}
