@@ -383,7 +383,7 @@ class snmp_batch(object):
             pass
         self.proc.unregister_batch(self)
         _res = self.snmp
-        if len(self.__received) and self.__received == set(self.snmp.keys()) and self.__simplify_result:
+        if len(self.__received) == 1 and self.__received == set(self.snmp.keys()) and self.__simplify_result:
             _res = _res[list(self.__received)[0]]
         self.proc.send_return(self.envelope, self.__error_list, self.__received, _res)
 
