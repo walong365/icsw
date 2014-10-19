@@ -394,7 +394,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     # dummy value
                     "network_device_type" : $scope.network_device_types[0].idx
                 } 
-                $scope.set_edit_flags(_dev)
                 return _dev
             $scope.netdevice_edit.create(event).then(
                 (new_obj) ->
@@ -407,7 +406,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.edit_netdevice = (dev, ndev, event) ->
             $scope._current_dev = dev
-            $scope.set_edit_flags(ndev)
             $scope.netdevice_edit.edit(ndev, event).then(
                 (mod_ndev) ->
                     if mod_ndev != false
@@ -419,11 +417,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 (mod_dev) ->
                     true
             )
-        $scope.set_edit_flags = (dev) ->
-            dev.show_mac = true
-            dev.show_hardware = true
-            dev.show_ethtool = true
-            dev.show_vlan = true
         $scope.check_for_peer_change = (ndev) ->
             # at first remove from list
             $scope.nd_peers = (entry for entry in $scope.nd_peers when entry.idx != ndev.idx)

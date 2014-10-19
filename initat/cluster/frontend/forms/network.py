@@ -181,10 +181,12 @@ class netdevice_form(ModelForm):
     enabled = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
+        HTML("<tabset><tab heading='basic settings'>"),
         Fieldset(
             "Basic settings",
             Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
             Field("description"),
+            Field("mtu"),
             Field(
                 "netdevice_speed",
                 repeat="value.idx as value in netdevice_speeds",
@@ -213,36 +215,29 @@ class netdevice_form(ModelForm):
             Field("inter_device_routing"),
         ),
         Fieldset(
-            "",
-            Button(
-                "show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware",
-                ng_class="_edit_obj.show_hardware && 'btn btn-sm btn-success' || 'btn btn-sm'",
+            "VLAN settings",
+            Field(
+                "master_device",
+                repeat="value.idx as value in get_vlan_masters(_edit_obj)",
+                # ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)",
+                placeholder="VLAN master device",
+                display="devname",
+                null=True,
             ),
-            Button(
-                "show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool",
-                ng_class="_edit_obj.show_ethtool && 'btn btn-sm btn-success' || 'btn btn-sm'",
-            ),
-            Button(
-                "show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac",
-                ng_class="_edit_obj.show_mac && 'btn btn-sm btn-success' || 'btn btn-sm'",
-            ),
-            Button(
-                "show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan",
-                ng_class="_edit_obj.show_vlan && 'btn btn-sm btn-success' || 'btn btn-sm'",
-            ),
+            Field("vlan_id", min=0, max=255),
+            ng_show="!_edit_obj.is_bridge && get_vlan_masters(_edit_obj).length",
         ),
+        HTML("</tab><tab heading='hardware'>"),
         Fieldset(
             "hardware settings",
             Field("driver"),
             Field("driver_options"),
-            ng_show="_edit_obj.show_hardware",
         ),
         Fieldset(
             "ethtool settings (for cluster boot)",
             Field("ethtool_autoneg", ng_change="update_ethtool(_edit_obj)"),
             Field("ethtool_duplex", ng_change="update_ethtool(_edit_obj)"),
             Field("ethtool_speed", ng_change="update_ethtool(_edit_obj)"),
-            ng_show="_edit_obj.show_ethtool",
         ),
         Fieldset(
             "MAC Address settings",
@@ -259,21 +254,8 @@ class netdevice_form(ModelForm):
                 css_class="row",
             ),
             Field("dhcp_device"),
-            ng_show="_edit_obj.show_mac",
         ),
-        Fieldset(
-            "VLAN settings",
-            Field(
-                "master_device",
-                repeat="value.idx as value in get_vlan_masters(_edit_obj)",
-                # ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)",
-                placeholder="VLAN master device",
-                display="devname",
-                # wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length",
-            ),
-            Field("vlan_id", min=0, max=255),
-            ng_show="_edit_obj.show_vlan && !_edit_obj.is_bridge",
-        ),
+        HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )
@@ -284,7 +266,7 @@ class netdevice_form(ModelForm):
         fields = (
             "devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
             "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
-            "bridge_device", "inter_device_routing", "enabled")
+            "bridge_device", "inter_device_routing", "enabled", "mtu")
         widgets = {
             "netdevice_speed": ui_select_widget(),
             "bridge_device": ui_select_widget(),
