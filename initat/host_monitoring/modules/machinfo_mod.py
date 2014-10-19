@@ -299,7 +299,9 @@ class _general(hm_classes.hm_module):
             else:
                 # get list of mounts
                 try:
-                    mount_list = [line.strip().split()[0].split("/", 2)[2] for line in open("/proc/mounts", "r").readlines() if line.startswith("/dev")]
+                    mount_list = [
+                        line.strip().split()[0].split("/", 2)[2] for line in open("/proc/mounts", "r").readlines() if line.startswith("/dev")
+                    ]
                 except:
                     # cannot read, take all devs
                     mount_list = ds_dict.keys()
@@ -321,6 +323,44 @@ class _general(hm_classes.hm_module):
                                 os.path.join(os.path.dirname(_abs_entry), os.readlink(_abs_entry))
                             )
                             mount_list.append(_new_entry[5:])
+                # build slave dict
+                _BS = "/sys/block"
+                _slave_dict = {}
+                for _entry in os.listdir(_BS):
+                    _path = os.path.join(_BS, _entry)
+                    if not int(file("{}/removable".format(_path), "r").read()):
+                        # partition list, not needed right now
+                        _part_list = []
+                        for _s_entry in os.listdir(_path):
+                            if _s_entry.startswith(_entry):
+                                _part_list.append(_s_entry)
+                                _slave_dict[_s_entry] = [_entry]
+                        _slave_dict[_entry] = []
+                        _slaves_dir = os.path.join(_path, "slaves")
+                        if os.path.isdir(_slaves_dir):
+                            for _se in os.listdir(_slaves_dir):
+                                _sep = os.path.join(_slaves_dir, _se)
+                                if os.path.islink(_sep):
+                                    _slave_dict[_entry].append(_se)
+                # correct slave dict until everything has been resolved
+                # try to find last block device in chain
+                # pprint.pprint(_slave_dict)
+                _resolve = True
+                while _resolve:
+                    _resolve = False
+                    for _key, _value in _slave_dict.iteritems():
+                        _new_list = []
+                        for _skey in _value:
+                            if _skey in _slave_dict:
+                                if _slave_dict[_skey] == []:
+                                    _new_list.append(_skey)
+                                else:
+                                    _resolve = True
+                                    _new_list.extend(_slave_dict[_skey])
+                            else:
+                                _new_list.append(_skey)
+                        _slave_dict[_key] = _new_list
+                _slave_dict = {key: value for key, value in _slave_dict.iteritems() if value}
                 # get unique devices
                 ds_keys_ok_by_name = sorted([key for key in ds_dict.iterkeys() if key in self.valid_block_devs])
                 # sort out partition stuff
@@ -356,10 +396,14 @@ class _general(hm_classes.hm_module):
                 # problem: Multipath devices are not always recognized
                 # problem: LVM devices are not handled properly
                 dev_list = [
-                    ds_key for ds_key in ds_keys_ok_by_name if [True for m_entry in mount_list if m_entry.startswith(ds_key)]
+                    ds_key for ds_key in ds_keys_ok_by_name if [
+                        True for m_entry in mount_list if m_entry.startswith(ds_key)
+                    ]
                 ] + [
                     value for key, value in mounted_lvms.iteritems() if key in mount_list
                 ] + extra_block_devs
+                # resolve according to slave_dict
+                dev_list = list(set(sum([_slave_dict.get(key, [key]) for key in dev_list], [])))
                 for dl in set(dev_list):
                     try:
                         bname = os.path.basename(dl)
@@ -384,7 +428,7 @@ class _general(hm_classes.hm_module):
                         ds_dict[dl][11],
                         ds_dict[dl][4] * cur_bs,
                         ds_dict[dl][8] * cur_bs,
-                        )
+                    )
                 # pprint.pprint(disk_stat)
                 # pprint.pprint(psutil.disk_io_counters(perdisk=False))
                 # pprint.pprint(psutil.disk_io_counters(perdisk=True))

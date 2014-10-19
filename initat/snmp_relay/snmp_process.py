@@ -19,7 +19,7 @@
 SNMP relayer, SNMP process
 used by
  o mother
- o collectd (via background)
+ o collectd-init
  o discovery-server
 """
 
@@ -53,6 +53,21 @@ rfc1155.Counter.clone = counter_clone_hack
 rfc1902.Counter32.clone = counter_clone_hack
 
 DEFAULT_RETURN_NAME = "main"
+
+
+def simplify_dict(in_dict, start_tuple):
+    # check in_dict for all keys starting with start_tuple and return a reordered dict for faster
+    # processing
+    _slist = list(start_tuple)
+    # get all valid keys
+    _ref_keys = set([_key for _key in in_dict.iterkeys() if list(_key)[:len(start_tuple)] == _slist])
+    # the last entry is the reference idx
+    _result = {}
+    for _key in _ref_keys:
+        _s_key = _key[len(start_tuple):]
+        if len(_s_key) == 2:
+            _result.setdefault(_s_key[1], {})[_s_key[0]] = in_dict[_key]
+    return _result
 
 
 class snmp_process_container(object):
@@ -149,12 +164,12 @@ class snmp_process_container(object):
             )
         )
 
-    def start_batch(self, vers, ip, com, batch_id, single_key_transform, timeout, *oid_list):
+    def start_batch(self, vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, **kwargs):
         # see proc_data in snmp_relay_schemes
         snmp_id = self.get_free_snmp_id()
         self.__snmp_dict[snmp_id]["jobs"] += 1
         self.__snmp_dict[snmp_id]["pending"] += 1
-        self.send("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, VERBOSE=0)
+        self.send("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, VERBOSE=0, **kwargs)
 
     def send(self, target, m_type, *args, **kwargs):
         self._socket.send_unicode(target, zmq.SNDMORE)  # @UndefinedVariable
@@ -279,6 +294,7 @@ class snmp_batch(object):
         self.proc = proc
         snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout = scheme_data[0:6]
         self.__verbose = kwargs.pop("VERBOSE", False)
+        self.__simplify_result = kwargs.get("simplify_result", False)
         self._clear_errors()
         self._set_target(snmp_ver, snmp_host, snmp_community)
         if self.__verbose > 2:
@@ -366,7 +382,10 @@ class snmp_batch(object):
         for _v in self.iterator:
             pass
         self.proc.unregister_batch(self)
-        self.proc.send_return(self.envelope, self.__error_list, self.__received, self.snmp)
+        _res = self.snmp
+        if len(self.__received) and self.__received == set(self.snmp.keys()) and self.__simplify_result:
+            _res = _res[list(self.__received)[0]]
+        self.proc.send_return(self.envelope, self.__error_list, self.__received, _res)
 
     def __del__(self):
         if self.__verbose > 3:
