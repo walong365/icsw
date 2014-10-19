@@ -357,7 +357,7 @@ Peer information from {{ get_peer_src_info(_edit_obj) }}
             HTML("""
 {% verbatim %}
 <div ng-if="source_is_local">
-    <div class='form-group' ng-show="create_mode">
+    <div class='form-group' ng-if="create_mode">
         <label class='control-label col-sm-2'>
             Source
         </label>
@@ -404,7 +404,7 @@ Peer information from {{ get_peer_src_info(_edit_obj) }}
     </div>
 </div>
 <div ng-if="!source_is_local">
-    <div class='form-group' ng-show="create_mode">
+    <div class='form-group' ng-if="create_mode">
         <label class='control-label col-sm-2'>
             Destination
         </label>

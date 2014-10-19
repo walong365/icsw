@@ -931,8 +931,12 @@ class angular_edit_mixin
         if @use_promise
             @_prom = @q.defer()
         if @use_modal
-            @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@scope)
-            @edit_div.on("$destroy", () ->
+            @child_scope = @scope.$new(false, @scope)
+            @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@child_scope)
+            @edit_div.on("$destroy", () =>
+                _scope= angular.element(@edit_div[0]).scope()
+                #console.log "DEST", @edit_div[0], @scope, @child_scope
+                @child_scope.$destroy()
                 return null
             )
             @edit_div.simplemodal
@@ -951,6 +955,7 @@ class angular_edit_mixin
                 onClose: (dialog) =>
                     @close_modal()
         else
+            @child_scope = @scope
             @scope.modal_active = true
             @scope.active_aem = @name
         if @use_promise
@@ -981,7 +986,7 @@ class angular_edit_mixin
             else
                 return "has-error"
     modify : () ->
-        if not @scope.form.$invalid
+        if not @child_scope.form.$invalid
             if @scope.create_mode
                 @create_rest_url.post(@scope.new_obj).then(
                     (new_data) =>
@@ -1099,7 +1104,7 @@ class angular_modal_mixin
         else
             return "has-error"
     modify : () ->
-        if not @scope.form.$invalid
+        if not @child_scope.form.$invalid
             @close_modal()
             return @_prom.resolve(@scope._edit_obj)
         else

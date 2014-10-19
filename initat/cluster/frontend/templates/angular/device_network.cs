@@ -10,55 +10,118 @@ root = exports ? this
 
 device_networks_template = """
 <h3>
-    Network config for {{ devices.length }} devices
+    Network config for {{ devices.length }} devices ({{ get_nd_objects().length }} netdevices, {{ get_ip_objects().length }} IPs, {{ get_peer_objects().length }} peers)
 </h3>
-<table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
     <thead>
         <tr>
-            <th>Devname / IP</th>
-            <th>Bridge</th>
-            <th>MAC / Network</th>
-            <th>Devtype / DTN</th>
-            <th>routing / alias / enabled</th>
-            <th colspan="3">action</th>
+            <th>Device</th>
+            <th>bootinfo</th>
+            <th>#Ports</th>
+            <th>#IPs</th>
+            <th>#peers</th>
         </tr>
     </thead>
     <tbody>
-        <tr dnrow ng-repeat-start="obj in devices" class="success"></tr>
-        <tr ndiprow ng-repeat-end ng-repeat="ndip_obj in get_ndip_objects(obj)" ng-show="obj.expanded && get_ndip_expanded(ndip_obj)" ng-class="get_ndip_class(ndip_obj)"></tr>
+        <tr devrow ng-repeat="ndip_obj in devices"></tr>
+    </tbody>
+</table>
+
+<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <thead>
+        <tr>
+            <th>Device</th>
+            <th>Port</th>
+            <th>#IPs</th>
+            <th>#peers</th>
+            <th>Bridge</th>
+            <th>MAC</th>
+            <th>Devtype</th>
+            <th>MTU</th>
+            <th>speed</th>
+            <th>penalty</th>
+            <th>flags</th>
+            <th colspan="4">action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr netdevicerow ng-repeat="ndip_obj in get_nd_objects()"></tr>
+    </tbody>
+</table>
+
+<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <thead>
+        <tr>
+            <th>Device</th>
+            <th>Port</th>
+            <th>IP</th>
+            <th>Network</th>
+            <th>DTN</th>
+            <th>alias</th>
+            <th colspan="2">action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr netiprow ng-repeat="ndip_obj in get_ip_objects()"></tr>
+    </tbody>
+</table>
+
+<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <thead>
+        <tr>
+            <th>Device</th>
+            <th>Port</th>
+            <th>cost</th>
+            <th>Dest</th>
+            <th>type</th>
+            <th colspan="2">action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr netpeerrow ng-repeat="ndip_obj in get_peer_objects()"></tr>
     </tbody>
 </table>
 """
 
-dn_row_template = """
+dev_row_template = """
 <td>
-    <button class="btn btn-primary btn-xs" ng-click="toggle_expand(obj)">
-        <span ng_class="get_expand_class(obj)">
-        {{ get_num_netdevices(obj) }} / {{ get_num_netips(obj) }} / {{ get_num_peers(obj) }}  
-        </span>
+    {{ ndip_obj.full_name }}
+    <button type="button" class="btn btn-xs btn-success pull-right"
+        tooltip-placement="bottom"
+        tooltip-html-unsafe="<div class='text-left'>
+        devicegroup: {{ ndip_obj.device_group_name }}<br>
+        comment: {{ ndip_obj.comment }}<br>
+        </div>
+        ">
+        <span class="glyphicon glyphicon-info-sign"></span>
     </button>
 </td>
-<th>{{ obj.full_name }}</th>
-<th ng_class="get_bootdevice_info_class(obj)">
-    {{ get_bootdevice_info(obj) }}
-    <input type="button" class="btn btn-xs btn-warning" ng-show="get_num_bootips(obj)" ng-value="get_boot_value(obj)" ng-click="edit_boot_settings(obj, $event)"></input>
-</th>
-<th>{{ obj.device_group_name }}</th>
-<th>{{ obj.comment }}</th>
+<td>
+    <input type="button" class="btn btn-xs btn-warning" ng-class="get_bootdevice_info_class(ndip_obj)" ng-show="get_num_bootips(ndip_obj)" ng-value="get_boot_value(ndip_obj)" ng-click="edit_boot_settings(ndip_obj, $event)"></input>
+</td>
+<td>
+    {{ get_num_netdevices(ndip_obj) }}
+</td>
+<td>
+    {{ get_num_netips_dev(ndip_obj) }}
+</td>
+<td>
+    {{ get_num_peers_dev(ndip_obj) }}
+</td>
 <th colspan="3">
     <div class="input-group-btn" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')">
-        <div class="btn-group">
-            <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-toggle="dropdown">
+        <div class="btn-group btn-xs">
+            <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
                 Create new <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
-                <li ng-click="create_netdevice(obj, $event)"><a href="#">Netdevice</a></li>
-                <li ng-show="obj.netdevice_set.length && networks.length" ng-click="create_netip(obj, $event)"><a href="#">IP Address</a></li>
-                <li ng-show="obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information(obj, $event)"><a href="#">Peer</a></li>
+                <li ng-click="create_netdevice(ndip_obj, $event)"><a href="#">Netdevice</a></li>
+                <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a href="#">IP Address</a></li>
+                <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Peer</a></li>
             </ul>
         </div>
         <div class="btn-group">
-            <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-toggle="dropdown" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && no_objects_defined(obj)">
+            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && no_objects_defined(ndip_obj)">
                scan via <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
@@ -71,24 +134,32 @@ dn_row_template = """
 
 nd_row_template = """
 <td>
-    <button class="btn btn-info btn-xs" ng-disabled="ndip_obj.net_ip_set.length + ndip_obj.peers.length == 0" ng-click="toggle_expand(ndip_obj)">
-        <span ng-class="get_expand_class(ndip_obj)">
-        {{ ndip_obj.net_ip_set.length }} / {{ ndip_obj.peers.length }} {{ get_netdevice_boot_info(ndip_obj) }}
-        </span>
-    </button>
+    {{ dev_lut[ndip_obj.device].full_name }}
+</td>
+<td>
     <span ng-show="ndip_obj.enabled">
         {{ get_netdevice_name(ndip_obj) }}
     </span>
     <span ng-show="!ndip_obj.enabled">
-        <em>{{ get_netdevice_name(ndip_obj) }}</em>
+        <em><strike>{{ get_netdevice_name(ndip_obj) }}</strike></em>
     </span>
+</td>
+<td>
+    {{ get_num_netips_nd(ndip_obj) }}
+</td>
+<td>
+    {{ get_num_peers_nd(ndip_obj) }}
 </td>
 <td>{{ get_bridge_info(ndip_obj) }}</td>
 <td>{{ ndip_obj.macaddr }}</td>
 <td>{{ ndip_obj.network_device_type | array_lookup:network_device_types:'info_string':'-' }}</td>
-<td>{{ ndip_obj.routing | yesno2 }} ({{ ndip_obj.penalty }}) / {{ ndip_obj.inter_device_routing | yesno2 }} / {{ ndip_obj.enabled | yesno2 }}</td>
+<td class="text-right">{{ ndip_obj.mtu }}</td>
+<td>{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}</td>
+<td class="text-right">{{ ndip_obj.penalty }}</td>
+<td>{{ get_flags(ndip_obj) }}</td>
 <td>
-    <input type="button" class="btn btn-xs btn-info" value="info" tooltip-placement="right"
+    <button type="button" class="btn btn-xs btn-success"
+     tooltip-placement="right"
      tooltip-html-unsafe="<div class='text-left'>
         device: {{ ndip_obj.devname }}<br>
         enabled: {{ ndip_obj.enabled | yesno2 }}<br>
@@ -103,23 +174,36 @@ nd_row_template = """
         Speed: {{ ethtool_options(ndip_obj, 's')}}
         <hr>
         Monitoring: {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }} 
-     </div>"></input>
+     </div>">
+     <span class="glyphicon glyphicon-info-sign"></span>
+     </button>
 </td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(obj, ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
 </td>
 <td>
     <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
 </td>
+<td>
+    <div class="btn-group btn-xs" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')">
+        <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
+            Create new <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
+            <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Peer</a></li>
+        </ul>
+    </div>
+</td>
 """
 
 ip_row_template = """
+<td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
+<td>{{ nd_lut[ndip_obj.netdevice].devname }}</td>
 <td>{{ ndip_obj.ip }}</td>
-<td></td>
 <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
 <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
-<td><span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} ({{ ndip_obj.alias_excl | yesno1 }})</span></td>
-<td></td>
+<td><span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span></td>
 <td>
     <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
 </td>
@@ -129,13 +213,18 @@ ip_row_template = """
 """
 
 peer_row_template = """
-<td></td>
-<td colspan="4">
+<td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
+<td>{{ nd_lut[ndip_obj.netdevice].devname }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
+<td>
     with cost {{ ndip_obj.peer.penalty }}
     &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
+</td>
+<td>
     to {{ get_peer_target(ndip_obj) }}
 </td>
-<td></td>
+<td>
+    {{ get_peer_type(ndip_obj) }}
+</td>
 <td>
     <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
 </td>
@@ -167,12 +256,12 @@ device_network_module = angular.module("icsw.network.device", ["ngResource", "ng
 
 angular_module_setup([device_network_module])
 
-device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope) ->
         access_level_service.install($scope)
         $scope.enable_modal = true
         # mixins
-        $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
         $scope.netdevice_edit.create_template = "netdevice_form.html"
         $scope.netdevice_edit.edit_template = "netdevice_form.html"
         $scope.netdevice_edit.create_rest_url = Restangular.all("{% url 'rest:netdevice_list'%}".slice(1))
@@ -180,7 +269,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.netdevice_edit.new_object_at_tail = false
         $scope.netdevice_edit.use_promise = true
 
-        $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "ni")
         $scope.netip_edit.create_template = "net_ip_form.html"
         $scope.netip_edit.edit_template = "net_ip_form.html"
         $scope.netip_edit.create_rest_url = Restangular.all("{% url 'rest:net_ip_list'%}".slice(1))
@@ -188,7 +277,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.netip_edit.new_object_at_tail = false
         $scope.netip_edit.use_promise = true
 
-        $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "np")
         $scope.peer_edit.create_template = "peer_information_form.html"
         $scope.peer_edit.edit_template = "peer_information_form.html"
         #$scope.peer_edit.edit_template = "netip_template.html"
@@ -197,7 +286,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.peer_edit.new_object_at_tail = false
         $scope.peer_edit.use_promise = true
 
-        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nb")
         $scope.boot_edit.edit_template = "device_boot_form.html"
         $scope.boot_edit.put_parameters = {"only_boot" : true}
         $scope.boot_edit.modify_rest_url = "{% url 'rest:device_tree_detail' 1 %}".slice(1).slice(0, -2)
@@ -274,14 +363,23 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
                 if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
                     $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
+        $scope.get_flags = (nd) ->
+            _f = []
+            if nd.routing
+                _f.push("extrouting")
+            if nd.inter_device_routing
+                _f.push("introuting")
+            if !nd.enabled
+                _f.push("disabled")
+            return _f.join(", ")
         $scope.get_bridge_info = (nd) ->
             dev = $scope.dev_lut[nd.device]
             if nd.is_bridge
                 slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx)
                 if slaves.length
-                    return "yes" + " (" + slaves.join(", ") + ")"
+                    return "bridge" + " (" + slaves.join(", ") + ")"
                 else
-                    return "yes"
+                    return "bridge"
             else if nd.bridge_device
                 return "slave (" + $scope.nd_lut[nd.bridge_device].devname + ")"
             else
@@ -310,27 +408,24 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 return "(b)"
             else
                 return "(#{num_boot})"
-        $scope.get_expand_class = (dev) ->
-            if dev.expanded
-                return "glyphicon glyphicon-chevron-down"
-            else
-                return "glyphicon glyphicon-chevron-right"
-        $scope.toggle_expand = (dev) ->
-            dev.expanded = !dev.expanded
         $scope.get_num_netdevices = (dev) ->
             return dev.netdevice_set.length
         $scope.no_objects_defined = (dev) ->
             return if (dev.netdevice_set.length == 0) then true else false
-        $scope.get_num_netips = (dev) ->
-            num_ip = 0
+        $scope.get_num_netips_nd = (nd) ->
+            return nd.net_ip_set.length
+        $scope.get_num_netips_dev = (dev) ->
+            _n = 0
             for nd in dev.netdevice_set
-                num_ip += nd.net_ip_set.length
-            return num_ip
-        $scope.get_num_peers = (dev) ->
-            num_peers = 0
+                _n += nd.net_ip_set.length
+            return _n
+        $scope.get_num_peers_nd = (nd) ->
+            return nd.peers.length
+        $scope.get_num_peers_dev = (dev) ->
+            _n = 0
             for nd in dev.netdevice_set
-                num_peers += nd.peers.length
-            return num_peers
+                _n += nd.peers.length
+            return _n
         $scope.get_route_peers =() ->
             return (entry for entry in $scope.nd_peers when entry.routing)
         $scope.get_ndip_objects = (dev) ->
@@ -340,13 +435,31 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 r_list = r_list.concat(ndev.net_ip_set)
                 r_list = r_list.concat(ndev.peers)
             return r_list
+        $scope.get_ip_objects = () ->
+            r_list = []
+            for dev in $scope.devices
+                for ndev in dev.netdevice_set
+                    r_list = r_list.concat(ndev.net_ip_set)
+            return r_list
+        $scope.get_nd_objects = () ->
+            r_list = []
+            for dev in $scope.devices
+                for ndev in dev.netdevice_set
+                    r_list.push(ndev)
+            return r_list
+        $scope.get_peer_objects = () ->
+            r_list = []
+            for dev in $scope.devices
+                for ndev in dev.netdevice_set
+                    r_list = r_list.concat(ndev.peers)
+            return r_list
         $scope.scan_device_network = (dev, event) ->
             dev.scan_address = dev.full_name
             dev.strict_mode = true
             $scope.scan_device = dev
             $scope.scan_mixin.edit(dev, event).then(
                 (mod_obj) ->
-                    true #console.log "*", mod_obj
+                    true
             )
         $scope.fetch_device_network = () ->
             $.blockUI()
@@ -376,12 +489,11 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                             $scope.build_luts()
                             $.unblockUI()
                     )
-        $scope.create_netdevice = (dev, event) ->
-            $scope._current_dev = dev
-            $scope.netdevice_edit.create_list = dev.netdevice_set
+        $scope.create_netdevice = (obj, event) ->
+            $scope.netdevice_edit.create_list = obj.netdevice_set
             $scope.netdevice_edit.new_object = (scope) ->
                 _dev = {
-                    "device" : dev.idx
+                    "device" : obj.idx
                     "devname" : "eth0"
                     "enabled" : true
                     "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
@@ -391,6 +503,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     "ethtool_autoneg" : 0
                     "ethtool_speed" : 0
                     "ethtool_duplex" : 0
+                    "mtu": 1500
                     # dummy value
                     "network_device_type" : $scope.network_device_types[0].idx
                 } 
@@ -404,16 +517,14 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         $scope.nd_lut[new_obj.idx] = new_obj
                         $scope.check_for_peer_change(new_obj)
             )
-        $scope.edit_netdevice = (dev, ndev, event) ->
-            $scope._current_dev = dev
+        $scope.edit_netdevice = (ndev, event) ->
             $scope.netdevice_edit.edit(ndev, event).then(
                 (mod_ndev) ->
                     if mod_ndev != false
                         $scope.check_for_peer_change(mod_ndev)
             )
-        $scope.edit_boot_settings = (dev, event) ->
-            $scope._current_dev = dev
-            $scope.boot_edit.edit(dev, event).then(
+        $scope.edit_boot_settings = (obj, event) ->
+            $scope.boot_edit.edit(obj, event).then(
                 (mod_dev) ->
                     true
             )
@@ -421,21 +532,24 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             # at first remove from list
             $scope.nd_peers = (entry for entry in $scope.nd_peers when entry.idx != ndev.idx)
             if ndev.routing
-                ndev.fqdn = $scope._current_dev.full_name
-                ndev.device_name = $scope._current_dev.name
-                ndev.device_group_name = $scope._current_dev.device_group_name
+                _cd = $scope.dev_lut[ndev.device]
+                ndev.fqdn = _cd.full_name
+                ndev.device_name = _cd.name
+                ndev.device_group_name = _cd.device_group_name
                 $scope.nd_peers.push(ndev)
             $scope.build_luts()
         $scope.get_vlan_masters = (cur_nd) ->
-            return (entry for entry in $scope._current_dev.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge)
+            _cd = $scope.dev_lut[cur_nd.device]
+            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge)
         $scope.get_bridge_masters = (cur_nd) ->
-            return (entry for entry in $scope._current_dev.netdevice_set when entry.idx != cur_nd.idx and entry.is_bridge)
-        $scope.create_netip = (dev, event) ->
-            $scope._current_dev = dev
+            _cd = $scope.dev_lut[cur_nd.device]
+            return (entry for entry in _cd.netdevice_set when entry.idx != cur_nd.idx and entry.is_bridge)
+        $scope.create_netip_dev = (obj, event) ->
+            $scope._current_dev = obj
             $scope.netip_edit.create_list = undefined
             $scope.netip_edit.new_object = (scope) ->
                 return {
-                    "netdevice" : (entry.idx for entry in dev.netdevice_set)[0]
+                    "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
                     "ip" : "0.0.0.0"
                     "network" : $scope.networks[0].idx
                     "domain_tree_node" : $scope.domain_tree_node[0].idx
@@ -443,7 +557,22 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $scope.netip_edit.create(event).then(
                 (new_obj) ->
                     if new_obj != false
-                        # console.log "***", new_obj
+                        $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
+                        $scope.ip_lut[new_obj.idx] = new_obj
+            )
+        $scope.create_netip_nd = (obj, event) ->
+            $scope._current_dev = $scope.dev_lut[obj.device]
+            $scope.netip_edit.create_list = undefined
+            $scope.netip_edit.new_object = (scope) ->
+                return {
+                    "netdevice" : obj.idx
+                    "ip" : "0.0.0.0"
+                    "network" : $scope.networks[0].idx
+                    "domain_tree_node" : $scope.domain_tree_node[0].idx
+                } 
+            $scope.netip_edit.create(event).then(
+                (new_obj) ->
+                    if new_obj != false
                         $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
                         $scope.ip_lut[new_obj.idx] = new_obj
             )
@@ -452,7 +581,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 (mod_ip) ->
                     if mod_ip != false
                         true
-                        #console.log "modip"
             )
         $scope.get_peer_src_info = (_edit_obj) ->
             if $scope.source_is_local
@@ -487,15 +615,27 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                             $scope.nd_lut[peer.d_netdevice].peers = (entry for entry in $scope.nd_lut[peer.d_netdevice].peers when entry.peer.idx != peer.idx)
                         delete $scope.peer_lut[peer.idx]
             )
-        $scope.create_peer_information = (dev, event) ->
-            $scope._current_dev = dev
+        $scope.create_peer_information_dev = (obj, event) ->
+            $scope._current_dev = obj
             $scope.source_is_local = true
             $scope.peer_edit.create_list = undefined
             $scope.peer_edit.new_object = (scope) ->
                 return {
-                    "s_netdevice" : (entry.idx for entry in dev.netdevice_set)[0]
+                    "s_netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
                     "penalty" : 1
                 } 
+            $scope.create_peer_information(event)
+        $scope.create_peer_information_nd = (obj, event) ->
+            $scope._current_dev = $scope.dev_lut[obj.device]
+            $scope.source_is_local = true
+            $scope.peer_edit.create_list = undefined
+            $scope.peer_edit.new_object = (scope) ->
+                return {
+                    "s_netdevice" : obj.idx
+                    "penalty" : 1
+                } 
+            $scope.create_peer_information(event)
+        $scope.create_peer_information = (event) ->
             $scope.peer_edit.create(event).then(
                 (peer) ->
                     if peer != false
@@ -512,7 +652,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 (res) ->
                     if res
                         true
-                        # console.log "deldip"
             )
         $scope.delete_netdevice = (nd, event) ->
             # find device / netdevice
@@ -521,13 +660,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 (res) ->
                     if res
                         true
-                        #console.log "delnd"
             )
-        $scope.get_ndip_class = (ndip_obj) ->
-            if ndip_obj.device
-                return "warning"
-            else
-                return ""
         $scope.ethtool_options = (ndip_obj, type) ->
             if type == "a"
                 eth_opt = ndip_obj.ethtool_options & 3
@@ -571,6 +704,16 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     return "#{peer.devname} (#{peer.penalty}) on #{peer.fqdn}"
                 else
                     return "N/A (disabled device ?)"
+        $scope.get_peer_type = (peer) ->
+            if peer.target of $scope.nd_lut
+                other = $scope.nd_lut[peer.target]
+                return if other.device == peer.device then "local" else "remote"
+            else
+                if peer.target of $scope.nd_peer_lut
+                    other= $scope.nd_peer_lut[peer.target]
+                    return if other.device == peer.device then "local" else "remote"
+                else
+                    return "---"    
         $scope.copy_network = (src_obj, event) ->
             if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
                 $.blockUI()
@@ -584,32 +727,24 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         $.unblockUI()
                         parse_xml_response(xml)
                         $scope.reload()
-        $scope.get_bootdevice_info = (obj) ->
-            num_bootips = $scope.get_num_bootips(obj)
-            if num_bootips == 0
-                return "---"
-            else if num_bootips == 1
-                return "1 boot-IP"
-            else
-                return "#{num_bootips} boot-IPs"
         $scope.get_bootdevice_info_class = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
             if num_bootips == 0
                 return ""
             else if num_bootips == 1
-                return "success"
+                return "btn-success"
             else
-                return "danger"
+                return "btn-danger"
         $scope.get_num_bootips = (obj) ->
             num_bootips = 0
             for net_dev in obj.netdevice_set
                 for net_ip in net_dev.net_ip_set
-                    #console.log net_ip.ip, $scope.network_lut[net_ip.network].network_type_identifier
                     if $scope.network_lut[net_ip.network].network_type_identifier == "b"
                         num_bootips++
             return num_bootips
         $scope.get_boot_value = (obj) ->
-            return "boot (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
+            num_bootips = $scope.get_num_bootips(obj)
+            return "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
         install_devsel_link($scope.new_devsel, false)
 ]).directive("devicenetworks", ($templateCache) ->
     return {
@@ -621,35 +756,37 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             if attrs["devicepk"]?
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
-).directive("dnrow", ($templateCache) ->
+).directive("netdevicerow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("devicenetrow.html")
-    }
-).directive("ndiprow", ($templateCache, $compile) ->
-    return {
-        restrict : "EA"
+        template: $templateCache.get("netdevicerow.html")
         link : (scope, element, attrs) ->
-            if scope.ndip_obj.device
-                new_el = $compile($templateCache.get("netdevicerow.html"))
-            else if scope.ndip_obj.peer
-                new_el = $compile($templateCache.get("peerrow.html"))
-            else
-                new_el = $compile($templateCache.get("netiprow.html"))
-            element.append(new_el(scope))        
     }
-).directive("iprow", ($templateCache) ->
+).directive("netiprow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("netiprow.html")
+        template: $templateCache.get("netiprow.html")
+        link : (scope, element, attrs) ->
+    }
+).directive("devrow", ($templateCache, $compile) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("devrow.html")
+        link : (scope, element, attrs) ->
+    }
+).directive("netpeerrow", ($templateCache, $compile) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("peerrow.html")
+        link : (scope, element, attrs) ->
     }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("devicenetworks.html", device_networks_template)
-    $templateCache.put("devicenetrow.html", dn_row_template)
     $templateCache.put("netdevicerow.html", nd_row_template)
     $templateCache.put("netiprow.html", ip_row_template)
     $templateCache.put("peerrow.html", peer_row_template)
+    $templateCache.put("devrow.html", dev_row_template)
     $templateCache.put("net_cluster_info.html", net_cluster_info_template)
 )
 
@@ -729,7 +866,6 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 scope.svg = svg
                 scope.vis = d3.select(element[0])
                 svg.attr("height", height)
-                #console.log svg
                 scope.vis = svg.append("svg:g")
                     .call(d3.behavior.zoom().on("zoom", scope.rescale))
                     .on("dblclick.zoom", null)
@@ -860,7 +996,6 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                             if scope.mouseup_node == scope.mousedown_node
                                 scope.reset_connection_parameters()
                             else
-                                #console.log "nl"
                                 link = {
                                     source : scope.mousedown_node
                                     target : scope.mouseup_node
@@ -908,7 +1043,6 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                         "y1" : scope.mousedown_node.y
                         "x2" : d3.mouse(scope.vis[0][0])[0]
                         "y2" : d3.mouse(scope.vis[0][0])[1]
-                #console.log "mm", d3.mouse(scope.svg[0][0])
             scope.tick = () ->
                 scope.svg_links.attr
                     "x1" : (d) -> return d.source.x
@@ -924,7 +1058,6 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                         scope.svg_nodes.call(scope.drag_node).on("mousedown.drag", null)
                     else
                         scope.svg_nodes.call(scope.drag_node)
-                #console.log "ngm", new_val
             )
     }
 ])
