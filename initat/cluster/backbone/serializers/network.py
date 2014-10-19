@@ -56,7 +56,7 @@ class net_ip_serializer(serializers.ModelSerializer):
 
 
 class netdevice_serializer(serializers.ModelSerializer):
-    net_ip_set = net_ip_serializer(many=True)
+    net_ip_set = net_ip_serializer(many=True, read_only=True)
     ethtool_autoneg = serializers.Field(source="ethtool_autoneg")
     ethtool_duplex = serializers.Field(source="ethtool_duplex")
     ethtool_speed = serializers.Field(source="ethtool_speed")
