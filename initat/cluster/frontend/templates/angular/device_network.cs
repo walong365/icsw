@@ -42,6 +42,7 @@ device_networks_template = """
             <th>speed</th>
             <th>penalty</th>
             <th>flags</th>
+            <th>status</th>
             <th colspan="4">action</th>
         </tr>
     </thead>
@@ -131,14 +132,11 @@ dev_row_template = """
                 <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Peer</a></li>
             </ul>
         </div>
-        <div class="btn-group">
-            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && no_objects_defined(ndip_obj)">
-               scan via <span class="caret"></span>
+            <button type="button" class="btn btn-warning btn-xs"
+                ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')"
+                ng-click="scan_device_network(ndip_obj, $event)">
+            update network
             </button>
-            <ul class="dropdown-menu">
-                 <li ng-click="scan_device_network(obj, $event)"><a href="#">HostMonitor</a></li>
-            </ul>
-        </div>
     </div>
 </td>
 """
@@ -163,11 +161,12 @@ nd_row_template = """
 </td>
 <td>{{ get_bridge_info(ndip_obj) }}</td>
 <td>{{ ndip_obj.macaddr }}</td>
-<td>{{ ndip_obj.network_device_type | array_lookup:network_device_types:'info_string':'-' }}</td>
+<td>{{ get_network_type(ndip_obj) }}</td>
 <td class="text-right">{{ ndip_obj.mtu }}</td>
 <td>{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}</td>
 <td class="text-right">{{ ndip_obj.penalty }}</td>
 <td>{{ get_flags(ndip_obj) }}</td>
+<td ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
 <td>
     <button type="button" class="btn btn-xs btn-success"
      tooltip-placement="right"
@@ -333,6 +332,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         "device_boot_form"
                      ])
                 }]),
+                # 8
+                restDataSource.reload(["{% url 'rest:snmp_network_type_list' %}", {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -343,6 +344,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 $scope.peers = data[1]
                 $scope.netdevice_speeds = data[2]
                 $scope.network_device_types = data[3]
+                $scope.ndt_lut = build_lut($scope.network_device_types)
                 $scope.networks = data[4]
                 $scope.network_lut = build_lut($scope.networks)
                 $scope.domain_tree_node = data[5]
@@ -351,6 +353,9 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 $scope.build_luts()
                 for cur_form in data[7] 
                     $templateCache.put(cur_form.name, cur_form.form)
+                # snmp network types
+                $scope.snt = data[8]
+                $scope.snt_lut = build_lut($scope.snt)
             )
         $scope.build_luts = () ->
             $scope.dev_lut = {}
@@ -464,10 +469,24 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 for ndev in dev.netdevice_set
                     r_list = r_list.concat(ndev.peers)
             return r_list
+        $scope.set_scan_mode = (sm) ->
+            $scope.scan_device.scan_mode = sm
+            $scope.scan_device["scan_#{sm}_active"] = true
         $scope.scan_device_network = (dev, event) ->
-            dev.scan_address = dev.full_name
-            dev.strict_mode = true
+            $scope._current_dev = dev
             $scope.scan_device = dev
+            dev.scan_address = dev.full_name
+            dev.snmp_address = dev.full_name
+            dev.snmp_community = "public"
+            dev.snmp_version = 1
+            dev.remove_not_found = false
+            dev.strict_mode = true
+            dev.scan_hm_active = false
+            dev.scan_snmp_active = false
+            if $scope.no_objects_defined(dev)
+                $scope.set_scan_mode("snmp")
+            else
+                $scope.set_scan_mode("hm")
             $scope.scan_mixin.edit(dev, event).then(
                 (mod_obj) ->
                     true
@@ -476,30 +495,28 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $.blockUI()
             call_ajax
                 url     : "{% url 'device:scan_device_network' %}"
-                data    : {
-                    "info" : angular.toJson({
-                        "pk" : $scope.scan_device.idx
-                        "scan_address" : $scope.scan_device.scan_address
-                        "strict_mode" : $scope.scan_device.strict_mode
-                    }) 
-                }
+                data    :
+                    "dev" : angular.toJson($scope.scan_device)
                 success : (xml) ->
                     parse_xml_response(xml)
-                    
                     Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_network" : true, "pks" : angular.toJson([$scope.scan_device.idx]), "olp" : "backbone.device.change_network"}).then(
-                        (data) ->
-                            new_dev = data[0]
-                            new_dev.expanded = true
-                            cur_devs = []
-                            for dev in $scope.devices
-                                if dev.idx == new_dev.idx
-                                    cur_devs.push(new_dev)
-                                else
-                                    cur_devs.push(dev)
-                            $scope.devices = cur_devs
-                            $scope.build_luts()
-                            $.unblockUI()
+                        (dev_data) ->
+                            Restangular.all("{% url 'rest:network_list' %}".slice(1)).getList().then((data) ->
+                                $scope.networks = data
+                                $scope.network_lut = build_lut($scope.networks)
+                                $scope.update_device(dev_data[0])
+                                $.unblockUI()
+                            )
                     )
+        $scope.update_device = (new_dev) ->
+            cur_devs = []
+            for dev in $scope.devices
+                if dev.idx == new_dev.idx
+                    cur_devs.push(new_dev)
+                else
+                    cur_devs.push(dev)
+            $scope.devices = cur_devs
+            $scope.build_luts()
         $scope.create_netdevice = (obj, event) ->
             $scope.netdevice_edit.create_list = obj.netdevice_set
             $scope.netdevice_edit.new_object = (scope) ->
@@ -772,7 +789,33 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         restrict : "EA"
         template: $templateCache.get("netdevicerow.html")
         link : (scope, element, attrs) ->
-    }
+            scope.get_network_type = (ndip_obj) ->
+                if ndip_obj.snmp_network_type
+                    return scope.snt_lut[ndip_obj.snmp_network_type].if_label
+                else
+                    return scope.ndt_lut[ndip_obj.network_device_type].info_string
+            scope.get_snmp_ao_status = (ndip_obj) ->
+                as = ndip_obj.snmp_admin_status
+                os = ndip_obj.snmp_oper_status
+                if as == 0 and os == 0
+                    return ""
+                else if as == 1 and os == 1
+                    return "up"
+                else
+                    _r_f = []
+                    _r_f.push({1 : "up", 2: "down", 3: "testing"}[as])
+                    _r_f.push({1 : "up", 2: "down", 3: "testing", 4: "unknown", 5:"dormant", 6:"notpresent", 7:"lowerLayerDown"}[os])
+                    return _r_f.join(", ")
+            scope.get_snmp_ao_status_class = (ndip_obj) ->
+                as = ndip_obj.snmp_admin_status
+                os = ndip_obj.snmp_oper_status
+                if as == 0 and os == 0
+                    return ""
+                else if as == 1 and os == 1
+                    return "success text-center"
+                else
+                    return "warning text-center"
+    }        
 ).directive("netiprow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
@@ -1076,4 +1119,3 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
 {% endinlinecoffeescript %}
 
 </script>
-

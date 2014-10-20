@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel
@@ -30,15 +29,16 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_type, device_group, device, \
     cd_connection, domain_tree_node
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
     device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from initat.cluster.backbone.render import permission_required_mixin, render_me
 import json
-import server_command
 import logging
 import logging_tools
+import pprint
 import re
+import server_command
 
 logger = logging.getLogger("cluster.device")
 
@@ -226,13 +226,30 @@ class scan_device_network(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _data = json.loads(request.POST["info"])
-        _dev = device.objects.get(Q(pk=_data["pk"]))
-        logger.info("scanning network settings from %s" % (unicode(_dev)))
-        srv_com = server_command.srv_command(command="scan_network_info")
-        srv_com["pk"] = "%d" % (_dev.pk)
-        srv_com["scan_address"] = _data["scan_address"]
-        srv_com["strict_mode"] = "1" if _data["strict_mode"] else "0"
+        _json_dev = json.loads(request.POST["dev"])
+        pprint.pprint(_json_dev)
+        _dev = device.objects.get(Q(pk=_json_dev["idx"]))
+        _sm = _json_dev["scan_mode"]
+        logger.info("scanning network settings of device {} via {}".format(unicode(_dev.full_name), _sm))
+        if _sm == "hm":
+            srv_com = server_command.srv_command(command="scan_network_info")
+            srv_com["pk"] = "{:d}".format(_dev.pk)
+            srv_com["scan_address"] = _json_dev["scan_address"]
+            srv_com["strict_mode"] = "1" if _json_dev["strict_mode"] else "0"
+        else:
+            srv_com = server_command.srv_command(command="snmp_basic_scan")
+            _dev_node = srv_com.builder("device")
+            _dev_node.attrib.update(
+                {
+                    "pk": "{:d}".format(_dev.pk),
+                    "scan_address": _json_dev["scan_address"],
+                    "snmp_version": "{:d}".format(_json_dev["snmp_version"]),
+                    "snmp_address": _json_dev["snmp_address"],
+                    "snmp_community": _json_dev["snmp_community"],
+                    "strict": "1" if _json_dev["remove_not_found"] else "0"
+                }
+            )
+            srv_com["devices"] = _dev_node
         _result = contact_server(request, "discovery", srv_com, timeout=30)
 
 

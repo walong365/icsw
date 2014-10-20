@@ -447,9 +447,14 @@ class device_network_scan_form(Form):
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
     scan_address = CharField(max_length=128)
+    snmp_address = CharField(max_length=128)
+    snmp_community = CharField(max_length=128)
+    snmp_version = ChoiceField(choices=[(1, "1"), (2, "2c")])
     strict_mode = BooleanField(required=False)
+    remove_not_found = BooleanField(required=False)
     helper.layout = Layout(
-        HTML("<h2>Scan device</h2>"),
+        HTML("<h2>Scan network of device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
+        HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
         Fieldset(
             "Base data",
             Field("scan_address"),
@@ -458,6 +463,18 @@ class device_network_scan_form(Form):
             "Flags",
             Field("strict_mode"),
         ),
+        HTML("</tab><tab heading='SNMP' select='set_scan_mode(\"snmp\")' active='_current_dev.scan_snmp_active'>"),
+        Fieldset(
+            "Base data",
+            Field("snmp_address"),
+            Field("snmp_community"),
+            Field("snmp_version"),
+        ),
+        Fieldset(
+            "Flags",
+            Field("remove_not_found"),
+        ),
+        HTML("</tab></tabset>"),
         FormActions(
             Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
             Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),

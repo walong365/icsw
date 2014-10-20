@@ -980,8 +980,8 @@ class angular_edit_mixin
         return null
     form_error : (field_name) =>
         # hm, hack. needed in partition_table.cs / part_overview.html
-        if field_name of @scope.form
-            if @scope.form[field_name].$valid
+        if field_name of @child_scope.form
+            if @child_scope.form[field_name].$valid
                 return ""
             else
                 return "has-error"
