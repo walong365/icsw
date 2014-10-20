@@ -20,6 +20,7 @@ device_networks_template = """
             <th>#Ports</th>
             <th>#IPs</th>
             <th>#peers</th>
+            <th colspan="2">action</th>
         </tr>
     </thead>
     <tbody>
@@ -86,15 +87,6 @@ device_networks_template = """
 dev_row_template = """
 <td>
     {{ ndip_obj.full_name }}
-    <button type="button" class="btn btn-xs btn-success pull-right"
-        tooltip-placement="bottom"
-        tooltip-html-unsafe="<div class='text-left'>
-        devicegroup: {{ ndip_obj.device_group_name }}<br>
-        comment: {{ ndip_obj.comment }}<br>
-        </div>
-        ">
-        <span class="glyphicon glyphicon-info-sign"></span>
-    </button>
 </td>
 <td>
     <input
@@ -116,7 +108,18 @@ dev_row_template = """
 <td>
     {{ get_num_peers_dev(ndip_obj) }}
 </td>
-<th colspan="3">
+<td>
+    <button type="button" class="btn btn-xs btn-success pull-right"
+        tooltip-placement="bottom"
+        tooltip-html-unsafe="<div class='text-left'>
+        devicegroup: {{ ndip_obj.device_group_name }}<br>
+        comment: {{ ndip_obj.comment }}<br>
+        </div>
+        ">
+        <span class="glyphicon glyphicon-info-sign"></span>
+    </button>
+</td>
+<td>
     <div class="input-group-btn" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')">
         <div class="btn-group btn-xs">
             <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
@@ -137,7 +140,7 @@ dev_row_template = """
             </ul>
         </div>
     </div>
-</th>
+</td>
 """
 
 nd_row_template = """

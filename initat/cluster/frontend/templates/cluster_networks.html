@@ -46,6 +46,7 @@
         <th>RegExp</th> 
         <th>MAC</th>
         <th>virtIF</th>   
+        <th>for matching</th>
         <th colspan="2" class="text-center">action</th>   
     </tr>
 </script>
@@ -56,6 +57,7 @@
     <td>{{ obj.name_re }}</td>
     <td>{{ obj.mac_bytes }}</td>
     <td>{{ obj.allow_virtual_interfaces | yesno1 }}</td>
+    <td>{{ obj.for_matching | yesno2 }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
 </script>
@@ -105,7 +107,7 @@
 <tabset>
     <tab heading="Network device types">
         <div ng-controller="network_device_type_base">
-            <h3>Network device types ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h3>
+            <h3>Network device types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead networkdevicetypehead></thead>
                 <tbody>
@@ -116,7 +118,7 @@
     </tab>
     <tab heading="Network types">
         <div ng-controller="network_type_base">
-            <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h3>
+            <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead networktypehead></thead>
                 <tbody>
