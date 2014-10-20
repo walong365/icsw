@@ -231,7 +231,7 @@ def network_pre_save(sender, **kwargs):
         # check netmask
         _mask = 0
         any_match = False
-        for _idx in xrange(32, 0, -1):
+        for _idx in xrange(32, -1, -1):
             if _mask == ip_dict["netmask"].value():
                 any_match = True
                 break
