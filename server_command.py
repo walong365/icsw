@@ -62,6 +62,14 @@ def srv_reply_to_log_level(srv_reply_state):
     }.get(srv_reply_state, logging_tools.LOG_LEVEL_ERROR)
 
 
+def log_level_to_srv_reply(log_level):
+    return {
+        logging_tools.LOG_LEVEL_OK: SRV_REPLY_STATE_OK,
+        logging_tools.LOG_LEVEL_WARN: SRV_REPLY_STATE_WARN,
+        logging_tools.LOG_LEVEL_ERROR: SRV_REPLY_STATE_ERROR,
+    }.get(log_level, SRV_REPLY_STATE_ERROR)
+
+
 def srv_reply_state_is_valid(srv_reply_state):
     return srv_reply_state in [SRV_REPLY_STATE_CRITICAL, SRV_REPLY_STATE_ERROR, SRV_REPLY_STATE_OK, SRV_REPLY_STATE_WARN]
 
