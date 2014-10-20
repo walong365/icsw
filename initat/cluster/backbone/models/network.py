@@ -375,7 +375,7 @@ def net_ip_post_save(sender, **kwargs):
 class netdevice(models.Model):
     idx = models.AutoField(db_column="netdevice_idx", primary_key=True)
     device = models.ForeignKey("backbone.device")
-    devname = models.CharField(max_length=36)
+    devname = models.CharField(max_length=64)
     macaddr = models.CharField(db_column="macadr", max_length=177, blank=True, default="")
     driver_options = models.CharField(max_length=672, blank=True)
     speed = models.IntegerField(default=0, null=True, blank=True)
@@ -518,6 +518,8 @@ def netdevice_pre_delete(sender, **kwargs):
 def netdevice_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        if cur_inst.devname:
+            cur_inst.devname = cur_inst.devname[:63]
         _check_empty_string(cur_inst, "devname")
         _check_integer(cur_inst, "mtu", min_val=0, max_val=65536)
         all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
