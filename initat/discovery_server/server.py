@@ -24,9 +24,10 @@ from django.db.models import Q
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.discovery_server.config import global_config, IPC_SOCK_SNMP
 from initat.discovery_server.discovery import discovery_process
-from initat.snmp_relay.snmp_process import snmp_process_container, simple_snmp_oid, simplify_dict
-from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
+from initat.snmp_relay.snmp_process import snmp_process_container
+from initat.cluster.backbone.models import device
+from lxml import etree  # @UnresolvedImport @UnusedImport
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import cluster_location
 import pprint  # @UnusedImport
 import configfile
@@ -224,7 +225,15 @@ class server_process(threading_tools.process_pool):
 
     def _test(self):
         _srv_com = server_command.srv_command(command="snmp_basic_scan")
-        _srv_com["devices"] = E.device(snmp_version="1", snmp_community="public", address="192.168.44.2")
+        _srv_com["devices"] = _srv_com.builder(
+            "device",
+            snmp_version="1",
+            pk="{:d}".format(device.objects.get(Q(name='eddie')).pk),
+            snmp_community="public",
+            # snmp_address="127.0.0.1",
+            # snmp_address="192.168.1.50",
+            # snmp_address="192.168.2.12",
+        )
         self.send_to_process("discovery", _srv_com["*command"], "", unicode(_srv_com))
 
     def _snmp_run(self, *args, **kwargs):

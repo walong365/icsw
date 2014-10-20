@@ -22,22 +22,69 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
-    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed
+    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed, snmp_network_type, \
+    network, network_type
 from initat.discovery_server.config import global_config
 from initat.snmp_relay.snmp_process import simple_snmp_oid, simplify_dict
 import base64
 import bz2
-import pprint
 import config_tools
 import logging_tools
 import net_tools
 import partition_tools
-import time
+import pprint  # @UnusedImport
 import process_tools
 import server_command
+import ipvx_tools
 import threading_tools
+import time
 
 IGNORE_LIST = ["tun", "tap", "vnet"]
+
+
+class snmp_if_counter(object):
+    def __init__(self, octets, ucast_pkts, nucast_pkts, discards, errors):
+        self.octets = octets
+        self.ucast_pkts = ucast_pkts
+        self.nucast_pkts = nucast_pkts
+        self.discards = discards
+        self.errors = errors
+
+
+class snmp_if(object):
+    def __init__(self, in_dict):
+        self.idx = in_dict[1]
+        self.name = in_dict[2]
+        self.if_type = in_dict[3]
+        self.mtu = in_dict[4]
+        self.speed = in_dict[5]
+        self.macaddr = ":".join(["{:02x}".format(ord(_val)) for _val in in_dict[6]])
+        self.admin_status = in_dict[7]
+        self.oper_status = in_dict[8]
+        self.last_change = in_dict[9]
+        self.in_counter = snmp_if_counter(in_dict[10], in_dict[11], in_dict[12], in_dict[13], in_dict[14])
+        self.out_counter = snmp_if_counter(in_dict[16], in_dict[17], in_dict[18], in_dict[19], in_dict[20])
+        self.in_unknown_protos = in_dict[15]
+
+    def __repr__(self):
+        return "if {} ({:d}), MTU is {:d}, type is {:d}".format(
+            self.name,
+            self.idx,
+            self.mtu,
+            self.if_type
+        )
+
+
+class snmp_ip(object):
+    def __init__(self, in_dict):
+        self.address = ".".join(["{:d}".format(ord(_val)) for _val in in_dict[1]])
+        self.netmask = ".".join(["{:d}".format(ord(_val)) for _val in in_dict[3]])
+        self.address_ipv4 = ipvx_tools.ipv4(self.address)
+        self.netmask_ipv4 = ipvx_tools.ipv4(self.netmask)
+        self.if_idx = in_dict[2]
+
+    def __repr__(self):
+        return "{}/{}".format(self.address, self.netmask)
 
 
 class snmp_batch(object):
@@ -50,29 +97,73 @@ class snmp_batch(object):
         self.__snmp_results = {}
         self.__start_time = time.time()
         self.log("init new batch with command {}".format(self.command))
+        self.batch_valid = True
+        try:
+            _dev = self.srv_com.xpath(".//ns:devices/ns:device")[0]
+            self.device = device.objects.get(Q(pk=_dev.attrib["pk"]))
+            self.log("device is {}".format(unicode(self.device)))
+            self.set_snmp_props(
+                int(_dev.attrib["snmp_version"]),
+                _dev.attrib["snmp_address"],
+                _dev.attrib["snmp_community"],
+            )
+            self.flags = {
+                "strict": True if int(_dev.attrib.get("strict", "0")) else False,
+            }
+        except:
+            _err_str = "error setting device node: {}".format(process_tools.get_except_info())
+            self.log(_err_str, logging_tools.LOG_LEVEL_ERROR, result=True)
+            self.batch_valid = False
+            self.finish()
+        else:
+            self.start_run()
+
+    def start_run(self):
+        if self.command == "snmp_basic_scan":
+            self.new_run(
+                True,
+                10,
+                *[
+                    ("T", [simple_snmp_oid("1.3.6.1.2.1.1")]),
+                    ("T", [simple_snmp_oid("1.3.6.1.2.1.2")]),
+                    ("T", [simple_snmp_oid("1.3.6.1.2.1.4.20")]),
+                ]
+            )
+        else:
+            self.log("unknown command '{}'".format(self.command), logging_tools.LOG_LEVEL_ERROR, result=True)
+            self.finish()
 
     def set_snmp_props(self, version, address, com):
         self.snmp_version = version
         self.snmp_address = address
         self.snmp_community = com
+        self.log("set snmp props to {}@{} (v{:d})".format(self.snmp_community, self.snmp_address, self.snmp_version))
 
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, result=False):
         snmp_batch.process.log("[batch {:d}] {}".format(self.id, what), log_level)
+        if result:
+            self.srv_com.set_result(
+                what,
+                server_command.log_level_to_srv_reply(log_level)
+            )
 
     def new_run(self, flag, timeout, *oid_list, **kwargs):
-        _run_id = snmp_batch.next_snmp_run_id(self.id)
-        self.__snmp_results[_run_id] = None
-        snmp_batch.process.send_pool_message(
-            "snmp_run",
-            self.snmp_version,
-            self.snmp_address,
-            self.snmp_community,
-            _run_id,
-            flag,
-            timeout,
-            *oid_list,
-            **kwargs
-        )
+        if self.batch_valid:
+            _run_id = snmp_batch.next_snmp_run_id(self.id)
+            self.__snmp_results[_run_id] = None
+            snmp_batch.process.send_pool_message(
+                "snmp_run",
+                self.snmp_version,
+                self.snmp_address,
+                self.snmp_community,
+                _run_id,
+                flag,
+                timeout,
+                *oid_list,
+                **kwargs
+            )
+        else:
+            self.log("cannot start run, batch is marked invalid", logging_tools.LOG_LEVEL_ERROR)
 
     def __del__(self):
         # print("delete batch {:d}".format(self.id))
@@ -95,16 +186,31 @@ class snmp_batch(object):
                 )
             )
             if _errors:
-                print "*" * 20, _errors
+                self.log(
+                    "{} reported: {}".format(
+                        logging_tools.get_plural("error", len(_errors)),
+                        ", ".join(_errors)
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR,
+                    result=True
+                )
             else:
                 # unify dict
                 _res_dict = {}
                 for _key, _value in self.__snmp_results.iteritems():
                     _res_dict.update(_value[2])
-                pprint.pprint(_res_dict)
-            self.srv_com.set_result("x")
-            self.send_return()
-            snmp_batch.remove_batch(self)
+                try:
+                    getattr(self.process, "process_{}".format(self.command))(self, _res_dict)
+                except:
+                    exc_info = process_tools.exception_info()
+                    self.log("unable to process results: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, result=True)
+                    for _line in exc_info.log_lines:
+                        self.log("  {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+            self.finish()
+
+    def finish(self):
+        self.send_return()
+        snmp_batch.remove_batch(self)
 
     def send_return(self):
         self.process.send_pool_message("discovery_result", self.src_uid, unicode(self.srv_com))
@@ -555,9 +661,9 @@ class discovery_process(threading_tools.process_obj):
 
     def scan_network_info(self, srv_com):
         # print cur_inst.option_dict
-        dev_pk = int(srv_com["pk"])
-        strict_mode = True if int(srv_com["strict_mode"]) else False
-        scan_address = srv_com["scan_address"]
+        dev_pk = int(srv_com["*pk"])
+        strict_mode = True if int(srv_com["*strict_mode"]) else False
+        scan_address = srv_com["*scan_address"]
         scan_dev = device.objects.get(Q(pk=dev_pk))
         self.log("scanning network for device '{}' ({:d}), scan_address is '{}', strict_mode is {}".format(
             unicode(scan_dev),
@@ -567,7 +673,7 @@ class discovery_process(threading_tools.process_obj):
             ))
         zmq_con = net_tools.zmq_connection(
             "server:{}".format(process_tools.get_machine_name()),
-            context=self.process_pool.zmq_context)
+            context=self.zmq_context)
         conn_str = "tcp://{}:{:d}".format(
             scan_address,
             2001)
@@ -644,34 +750,120 @@ class discovery_process(threading_tools.process_obj):
         if not ret_f:
             ret_f = ["nothing to log"]
         if num_errors:
-            self.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_ERROR)
+            srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_ERROR)
         elif num_warnings:
-            self.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_WARN)
+            srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_WARN)
         else:
-            self.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_OK)
+            srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_OK)
 
     def _init_snmp(self):
         snmp_batch.setup(self)
 
     def _snmp_basic_scan(self, *args, **kwargs):
         src_uid, srv_com = args[0:2]
-        srv_com = server_command.srv_command(source=srv_com)
-        self.snmp_basic_scan(src_uid, srv_com)
+        snmp_batch(src_uid, server_command.srv_command(source=srv_com))
 
     def _snmp_result(self, *args, **kwargs):
         _batch_id, _error, _src, _results = args
         snmp_batch.glob_feed_snmp(_batch_id, _error, _src, _results)
 
-    def snmp_basic_scan(self, src_uid, srv_com):
-        _com = srv_com["*command"]
-        cur_batch = snmp_batch(src_uid, srv_com)
-        # cur_batch.set_snmp_props(1, "192.168.2.12", "public")
-        cur_batch.set_snmp_props(1, "127.0.0.1", "public")
-        cur_batch.new_run(
-            True,
-            10,
-            *[
-                ("T", [simple_snmp_oid("1.3.6.1.2.1.1")]),
-                ("T", [simple_snmp_oid("1.3.6.1.2.1.2")]),
-            ]
+    def process_snmp_basic_scan(self, batch, _result):
+        # interface dict
+        _if_dict = {key: snmp_if(value) for key, value in simplify_dict(_result[(1, 3, 6, 1, 2, 1, 2)], (2, 1)).iteritems()}
+        # ip dict
+        _ip_dict = {key: snmp_ip(value) for key, value in simplify_dict(_result[(1, 3, 6, 1, 2, 1, 4, 20)], (1,)).iteritems()}
+        dev = batch.device
+        snmp_type_dict = {_value.if_type: _value for _value in snmp_network_type.objects.all()}
+        speed_dict = {}
+        for _entry in netdevice_speed.objects.all():
+            if _entry.speed_bps in speed_dict:
+                if not speed_dict[_entry.speed_bps].check_via_ethtool:
+                    speed_dict[_entry.speed_bps] = _entry
+            else:
+                speed_dict[_entry.speed_bps] = _entry
+        _added, _updated, _removed = (0, 0, 0)
+        # found and used database ids (for deletion)
+        _found_nd_ids, _found_ip_ids = (set(), set())
+        # lookup dict for snmp_if -> dev_nd
+        if_lut = {}
+        for if_idx, if_struct in _if_dict.iteritems():
+            _created = False
+            try:
+                # try to get interface with matching idx
+                _dev_nd = netdevice.objects.get(Q(device=dev) & Q(snmp_idx=if_idx))
+            except netdevice.DoesNotExist:
+                try:
+                    # try to get interface with matching name
+                    _dev_nd = netdevice.objects.get(Q(device=dev) & Q(devname=if_struct.name))
+                except:
+                    _created = True
+                    _added += 1
+                    # create new entry, will be updated later with more values
+                    _dev_nd = netdevice(
+                        device=dev,
+                        snmp_idx=if_idx,
+                        force_network_device_type_match=False,
+                    )
+            if _dev_nd is not None:
+                if not _created:
+                    _updated += 1
+                _dev_nd.devname = if_struct.name
+                _dev_nd.netdevice_speed = speed_dict.get(if_struct.speed, speed_dict[0])
+                _dev_nd.snmp_network_type = snmp_type_dict[if_struct.if_type]
+                _dev_nd.mtu = if_struct.mtu
+                _dev_nd.macaddr = if_struct.macaddr
+                _dev_nd.snmp_admin_status = if_struct.admin_status
+                _dev_nd.snmp_oper_status = if_struct.oper_status
+                _dev_nd.save()
+                _found_nd_ids.add(_dev_nd.idx)
+                if_lut[_dev_nd.snmp_idx] = _dev_nd
+        # handle IPs
+        for ip_struct in _ip_dict.itervalues():
+            if ip_struct.if_idx in if_lut:
+                _dev_nd = if_lut[ip_struct.if_idx]
+                # check for network
+                _network_addr = ip_struct.address_ipv4 & ip_struct.netmask_ipv4
+                try:
+                    cur_nw = network.objects.get(Q(network=str(_network_addr)) & Q(netmask=ip_struct.netmask))  # @UndefinedVariable
+                except network.DoesNotExist:  # @UndefinedVariable
+                    # create new network
+                    cur_nw = network(
+                        network_type=network_type.objects.get(Q(identifier='o')),
+                        short_names=False,
+                        identifier=network.get_unique_identifier(),
+                        name="autogenerated",
+                        info="autogenerated",
+                        network=str(_network_addr),
+                        netmask=ip_struct.netmask,
+                        gateway=str(_network_addr + ipvx_tools.ipv4("0.0.0.1")),
+                        broadcast=str(~ip_struct.netmask_ipv4 | (_network_addr & ip_struct.netmask_ipv4)),
+                    )
+                    cur_nw.save()
+                # check for existing IP
+                try:
+                    _ip = net_ip.objects.get(Q(netdevice__device=dev) & Q(ip=ip_struct.address))
+                except net_ip.DoesNotExist:
+                    _ip = net_ip(
+                        ip=ip_struct.address,
+                    )
+                _ip.network = cur_nw
+                _ip.netdevice = _dev_nd
+                _ip.save()
+                _found_ip_ids.add(_ip.idx)
+        if batch.flags["strict"]:
+            stale_ips = net_ip.objects.exclude(Q(pk__in=_found_ip_ids)).filter(Q(netdevice__device=dev))
+            if stale_ips.count():
+                stale_ips.delete()
+            stale_nds = netdevice.objects.exclude(Q(pk__in=_found_nd_ids)).filter(Q(device=dev))
+            if stale_nds.count():
+                _removed += stale_nds.count()
+                stale_nds.delete()
+        # pprint.pprint(_if_dict)
+        # pprint.pprint(_ip_dict)
+        batch.srv_com.set_result(
+            "updated interfaces (added {:d}, updated {:d}, removed {:d})".format(
+                _added,
+                _updated,
+                _removed,
+            )
         )
