@@ -62,7 +62,6 @@ class server_process(threading_tools.process_pool):
         self._init_processes()
         self.__run_idx = 0
         self.__pending_commands = {}
-        self._test()
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -194,8 +193,14 @@ class server_process(threading_tools.process_pool):
     def _discovery_result(self, *args, **kwargs):
         _src_prod, _src_pid, id_str, srv_com = args
         if id_str:
-            self.com_socket.send_unicode(id_str, zmq.SNDMORE)  # @UndefinedVariable
-            self.com_socket.send_unicode(srv_com)
+            try:
+                self.com_socket.send_unicode(id_str, zmq.SNDMORE)  # @UndefinedVariable
+                self.com_socket.send_unicode(srv_com)
+            except:
+                self.log(
+                    "error sending to {}: {}".format(id_str, process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             self.log("empty id_str, sending no return", logging_tools.LOG_LEVEL_WARN)
 

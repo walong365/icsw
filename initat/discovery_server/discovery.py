@@ -23,7 +23,7 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed, snmp_network_type, \
-    network, network_type
+    network, network_type, snmp_schemes, domain_tree_node
 from initat.discovery_server.config import global_config
 from initat.snmp_relay.snmp_process import simple_snmp_oid, simplify_dict
 import base64
@@ -127,6 +127,8 @@ class snmp_batch(object):
                     ("T", [simple_snmp_oid("1.3.6.1.2.1.1")]),
                     ("T", [simple_snmp_oid("1.3.6.1.2.1.2")]),
                     ("T", [simple_snmp_oid("1.3.6.1.2.1.4.20")]),
+                    # MAC routing
+                    # ("T", [simple_snmp_oid("1.3.6.1.2.1.17.4.3.1")]),
                 ]
             )
         else:
@@ -768,11 +770,14 @@ class discovery_process(threading_tools.process_obj):
         snmp_batch.glob_feed_snmp(_batch_id, _error, _src, _results)
 
     def process_snmp_basic_scan(self, batch, _result):
+        dev = batch.device
+        all_schemes = snmp_schemes()
+        dev.snmp_schemes.add(all_schemes.get_scheme("generic.net"))
         # interface dict
         _if_dict = {key: snmp_if(value) for key, value in simplify_dict(_result[(1, 3, 6, 1, 2, 1, 2)], (2, 1)).iteritems()}
         # ip dict
         _ip_dict = {key: snmp_ip(value) for key, value in simplify_dict(_result[(1, 3, 6, 1, 2, 1, 4, 20)], (1,)).iteritems()}
-        dev = batch.device
+        # pprint.pprint(_result[(1, 3, 6, 1, 2, 1, 17, 4, 3, 1)])
         snmp_type_dict = {_value.if_type: _value for _value in snmp_network_type.objects.all()}
         speed_dict = {}
         for _entry in netdevice_speed.objects.all():
@@ -817,6 +822,7 @@ class discovery_process(threading_tools.process_obj):
                 _dev_nd.save()
                 _found_nd_ids.add(_dev_nd.idx)
                 if_lut[_dev_nd.snmp_idx] = _dev_nd
+        _tln = domain_tree_node.objects.get(Q(depth=0))
         # handle IPs
         for ip_struct in _ip_dict.itervalues():
             if ip_struct.if_idx in if_lut:
@@ -827,6 +833,7 @@ class discovery_process(threading_tools.process_obj):
                     cur_nw = network.objects.get(Q(network=str(_network_addr)) & Q(netmask=ip_struct.netmask))  # @UndefinedVariable
                 except network.DoesNotExist:  # @UndefinedVariable
                     # create new network
+                    print _network_addr, ip_struct.netmask
                     cur_nw = network(
                         network_type=network_type.objects.get(Q(identifier='o')),
                         short_names=False,
@@ -846,6 +853,7 @@ class discovery_process(threading_tools.process_obj):
                     _ip = net_ip(
                         ip=ip_struct.address,
                     )
+                _ip.domain_tree_node = _tln
                 _ip.network = cur_nw
                 _ip.netdevice = _dev_nd
                 _ip.save()
