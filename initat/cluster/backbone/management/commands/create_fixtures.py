@@ -316,7 +316,7 @@ def _add_snmp_fixtures():
     for _if_type, _if_label in SNMP_NET_TYPES:
         factories.SNMPNetworkType(if_type=_if_type, if_label=_if_label)
     # SNMP fixtures
-    gen_vendor = factories.SNMPSchemeVendor(name="general", company_info="general schemes")
+    gen_vendor = factories.SNMPSchemeVendor(name="generic", company_info="general schemes")
     apc_vendor = factories.SNMPSchemeVendor(name="apc", company_info="American Power Conversion")
     factories.SNMPScheme(
         name="rpdu",
@@ -331,6 +331,12 @@ def _add_snmp_fixtures():
         description="USV",
         collect=True,
         snmp_scheme_vendor=apc_vendor,
+    )
+    factories.SNMPScheme(
+        name="base",
+        version=1,
+        collect=True,
+        snmp_scheme_vendor=gen_vendor,
     )
     factories.SNMPScheme(
         name="net",

@@ -54,14 +54,16 @@ __all__ = [
 ]
 
 
-class snmp_scheme_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = snmp_scheme
-
-
 class snmp_scheme_vendor_serializer(serializers.ModelSerializer):
     class Meta:
         model = snmp_scheme_vendor
+
+
+class snmp_scheme_serializer(serializers.ModelSerializer):
+    snmp_scheme_vendor = snmp_scheme_vendor_serializer()
+
+    class Meta:
+        model = snmp_scheme
 
 
 class mon_host_cluster_serializer(serializers.ModelSerializer):

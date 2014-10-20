@@ -61,6 +61,7 @@ __all__ = [
     "parse_commandline",  # commandline parsing
     "snmp_scheme_vendor",
     "snmp_scheme",
+    "snmp_schemes",
 ]
 
 
@@ -71,6 +72,9 @@ class snmp_scheme_vendor(models.Model):
     # info (full name of company)
     company_info = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "snmp_scheme_vendor {}".format(self.name)
 
     class Meta:
         app_label = "backbone"
@@ -90,8 +94,27 @@ class snmp_scheme(models.Model):
     collect = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return "snmp_scheme {}".format(self.name)
+
     class Meta:
         app_label = "backbone"
+
+
+class snmp_schemes(object):
+    # to ease access
+    def __init__(self):
+        self.__all_vendors = snmp_scheme_vendor.objects.all()
+        self.__all_schemes = snmp_scheme.objects.all()
+        self.__vendor_dict = {value.idx: value for value in self.__all_vendors}
+        self.__scheme_dict = {
+            "{}.{}".format(
+                self.__vendor_dict[value.snmp_scheme_vendor_id].name,
+                value.name,
+            ): value for value in self.__all_schemes}
+
+    def get_scheme(self, full_name):
+        return self.__scheme_dict[full_name]
 
 
 class mon_trace(models.Model):
