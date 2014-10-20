@@ -24,10 +24,11 @@ from django.db.models import Q
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.discovery_server.config import global_config, IPC_SOCK_SNMP
 from initat.discovery_server.discovery import discovery_process
-from initat.snmp_relay.snmp_process import snmp_process_container
+from initat.snmp_relay.snmp_process import snmp_process_container, simple_snmp_oid, simplify_dict
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import cluster_location
+import pprint  # @UnusedImport
 import configfile
 import logging_tools
 import process_tools
@@ -52,6 +53,7 @@ class server_process(threading_tools.process_pool):
         self.add_process(discovery_process("discovery"), start=True)
         self._init_network_sockets()
         self.register_func("discovery_result", self._discovery_result)
+        self.register_func("snmp_run", self._snmp_run)
         # self.add_process(build_process("build"), start=True)
         connection.close()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
@@ -59,6 +61,7 @@ class server_process(threading_tools.process_pool):
         self._init_processes()
         self.__run_idx = 0
         self.__pending_commands = {}
+        self._test()
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -185,33 +188,46 @@ class server_process(threading_tools.process_pool):
                     conn_str,
                 )
             )
-            self.register_poller(self.com_socket, zmq.POLLIN, self._new_com)
+            self.register_poller(self.com_socket, zmq.POLLIN, self._new_com)  # @UndefinedVariable
 
     def _discovery_result(self, *args, **kwargs):
         _src_prod, _src_pid, id_str, srv_com = args
-        self.com_socket.send_unicode(id_str, zmq.SNDMORE)
-        self.com_socket.send_unicode(srv_com)
+        if id_str:
+            self.com_socket.send_unicode(id_str, zmq.SNDMORE)  # @UndefinedVariable
+            self.com_socket.send_unicode(srv_com)
+        else:
+            self.log("empty id_str, sending no return", logging_tools.LOG_LEVEL_WARN)
 
     def _new_com(self, zmq_sock):
         data = [zmq_sock.recv_unicode()]
-        while zmq_sock.getsockopt(zmq.RCVMORE):
+        while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
             c_uid, srv_com = (data[0], server_command.srv_command(source=data[1]))
             cur_com = srv_com["command"].text
             srv_com.update_source()
             if cur_com in [
-                "fetch_partition_info", "scan_network_info"
+                "fetch_partition_info", "scan_network_info", "snmp_basic_scan",
             ]:
                 self.send_to_process("discovery", cur_com, c_uid, unicode(srv_com))
             else:
                 srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                self.com_socket.send_unicode(c_uid, zmq.SNDMORE)
+                self.com_socket.send_unicode(c_uid, zmq.SNDMORE)  # @UndefinedVariable
                 self.com_socket.send_unicode(unicode(srv_com))
 
         else:
             self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
 
-    def _snmp_finished(self, data):  # src_proc, src_pid, *args, **kwargs):
-        print "fin", data
+    def _snmp_finished(self, args):
+        self.send_to_process("discovery", "snmp_result", *args["args"])
+
+    def _test(self):
+        _srv_com = server_command.srv_command(command="snmp_basic_scan")
+        _srv_com["devices"] = E.device(snmp_version="1", snmp_community="public", address="192.168.44.2")
+        self.send_to_process("discovery", _srv_com["*command"], "", unicode(_srv_com))
+
+    def _snmp_run(self, *args, **kwargs):
+        # ignore src specs
+        _src_proc, _src_pid = args[0:2]
+        self.spc.start_batch(*args[2:], **kwargs)

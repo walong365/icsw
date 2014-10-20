@@ -24,17 +24,124 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed
 from initat.discovery_server.config import global_config
+from initat.snmp_relay.snmp_process import simple_snmp_oid, simplify_dict
 import base64
 import bz2
+import pprint
 import config_tools
 import logging_tools
 import net_tools
 import partition_tools
+import time
 import process_tools
 import server_command
 import threading_tools
 
 IGNORE_LIST = ["tun", "tap", "vnet"]
+
+
+class snmp_batch(object):
+    def __init__(self, src_uid, srv_com):
+        self.src_uid = src_uid
+        self.srv_com = srv_com
+        self.id = snmp_batch.next_snmp_batch_id()
+        self.command = self.srv_com["*command"]
+        snmp_batch.add_batch(self)
+        self.__snmp_results = {}
+        self.__start_time = time.time()
+        self.log("init new batch with command {}".format(self.command))
+
+    def set_snmp_props(self, version, address, com):
+        self.snmp_version = version
+        self.snmp_address = address
+        self.snmp_community = com
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        snmp_batch.process.log("[batch {:d}] {}".format(self.id, what), log_level)
+
+    def new_run(self, flag, timeout, *oid_list, **kwargs):
+        _run_id = snmp_batch.next_snmp_run_id(self.id)
+        self.__snmp_results[_run_id] = None
+        snmp_batch.process.send_pool_message(
+            "snmp_run",
+            self.snmp_version,
+            self.snmp_address,
+            self.snmp_community,
+            _run_id,
+            flag,
+            timeout,
+            *oid_list,
+            **kwargs
+        )
+
+    def __del__(self):
+        # print("delete batch {:d}".format(self.id))
+        pass
+
+    def feed_snmp(self, run_id, error, src, results):
+        _res_dict = simplify_dict(results, (2, 1))
+        self.__snmp_results[run_id] = (error, src, results)
+        self.check_for_result()
+
+    def check_for_result(self):
+        if all(self.__snmp_results.values()):
+            self.__end_time = time.time()
+            _errors = sum([_value[0] for _value in self.__snmp_results.itervalues()], [])
+            self.log(
+                "finished batch in {} ({}, {})".format(
+                    logging_tools.get_diff_time_str(self.__end_time - self.__start_time),
+                    logging_tools.get_plural("run", len(self.__snmp_results)),
+                    logging_tools.get_plural("error", len(_errors)),
+                )
+            )
+            if _errors:
+                print "*" * 20, _errors
+            else:
+                # unify dict
+                _res_dict = {}
+                for _key, _value in self.__snmp_results.iteritems():
+                    _res_dict.update(_value[2])
+                pprint.pprint(_res_dict)
+            self.srv_com.set_result("x")
+            self.send_return()
+            snmp_batch.remove_batch(self)
+
+    def send_return(self):
+        self.process.send_pool_message("discovery_result", self.src_uid, unicode(self.srv_com))
+
+    @staticmethod
+    def glob_feed_snmp(_run_id, error, src, results):
+        snmp_batch.batch_dict[snmp_batch.run_batch_lut[_run_id]].feed_snmp(_run_id, error, src, results)
+        del snmp_batch.run_batch_lut[_run_id]
+
+    @staticmethod
+    def setup(proc):
+        snmp_batch.process = proc
+        snmp_batch.snmp_batch_id = 0
+        snmp_batch.snmp_run_id = 0
+        snmp_batch.pending = {}
+        snmp_batch.run_batch_lut = {}
+        snmp_batch.batch_dict = {}
+
+    @staticmethod
+    def next_snmp_run_id(batch_id):
+        snmp_batch.snmp_run_id += 1
+        snmp_batch.run_batch_lut[snmp_batch.snmp_run_id] = batch_id
+        return snmp_batch.snmp_run_id
+
+    @staticmethod
+    def next_snmp_batch_id():
+        snmp_batch.snmp_batch_id += 1
+        return snmp_batch.snmp_batch_id
+
+    @staticmethod
+    def add_batch(batch):
+        snmp_batch.batch_dict[batch.id] = batch
+
+    @staticmethod
+    def remove_batch(batch):
+        del snmp_batch.batch_dict[batch.id]
+        del batch
 
 
 class nd_struct(object):
@@ -104,8 +211,11 @@ class discovery_process(threading_tools.process_obj):
         connection.close()
         self.register_func("fetch_partition_info", self._fetch_partition_info)
         self.register_func("scan_network_info", self._scan_network_info)
+        self.register_func("snmp_basic_scan", self._snmp_basic_scan)
+        self.register_func("snmp_result", self._snmp_result)
         self.__run_idx = 0
         self.__pending_commands = {}
+        self._init_snmp()
 
     def _fetch_partition_info(self, *args, **kwargs):
         src_uid, srv_com = args[0:2]
@@ -539,3 +649,29 @@ class discovery_process(threading_tools.process_obj):
             self.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_WARN)
         else:
             self.srv_com.set_result(u"; ".join(ret_f), server_command.SRV_REPLY_STATE_OK)
+
+    def _init_snmp(self):
+        snmp_batch.setup(self)
+
+    def _snmp_basic_scan(self, *args, **kwargs):
+        src_uid, srv_com = args[0:2]
+        srv_com = server_command.srv_command(source=srv_com)
+        self.snmp_basic_scan(src_uid, srv_com)
+
+    def _snmp_result(self, *args, **kwargs):
+        _batch_id, _error, _src, _results = args
+        snmp_batch.glob_feed_snmp(_batch_id, _error, _src, _results)
+
+    def snmp_basic_scan(self, src_uid, srv_com):
+        _com = srv_com["*command"]
+        cur_batch = snmp_batch(src_uid, srv_com)
+        # cur_batch.set_snmp_props(1, "192.168.2.12", "public")
+        cur_batch.set_snmp_props(1, "127.0.0.1", "public")
+        cur_batch.new_run(
+            True,
+            10,
+            *[
+                ("T", [simple_snmp_oid("1.3.6.1.2.1.1")]),
+                ("T", [simple_snmp_oid("1.3.6.1.2.1.2")]),
+            ]
+        )
