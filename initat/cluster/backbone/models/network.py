@@ -398,7 +398,10 @@ class netdevice(models.Model):
     # also affects MAC-address matching
     force_network_device_type_match = models.BooleanField(default=True)
     # snmp network type
-    snmp_network_type = models.ForeignKey("backbone.snmp_network_type", null=True)
+    snmp_network_type = models.ForeignKey("backbone.snmp_network_type", null=True, blank=True)
+    # admin / oper stats
+    snmp_admin_status = models.IntegerField(default=0)
+    snmp_oper_status = models.IntegerField(default=0)
 
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -430,6 +433,8 @@ class netdevice(models.Model):
             mtu=self.mtu,
             force_network_device_type_match=self.force_network_device_type_match,
             snmp_network_type=self.snmp_network_type,
+            snmp_admin_status=self.snmp_admin_status,
+            snmp_oper_status=self.snmp_oper_status,
             # hm ...
             # bridge_device=self.bridge_device,
         )
