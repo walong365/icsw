@@ -338,9 +338,10 @@ def check_system(opt_ns):
                                 pass
                         act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
                         threads_found = sum([value[1] for value in found_procs.itervalues()])
+                        act_state = 0 if act_pids else 7
                         _info = E.state_info(
                             num_diff="0",
-                            state="0" if act_pids else "7",
+                            state="{:d}".format(act_state)
                         )
                         if threads_found:
                             _info.attrib.update(
@@ -351,17 +352,19 @@ def check_system(opt_ns):
                             )
                         entry.append(_info)
                     else:
+                        act_state = 7
                         entry.append(
                             E.state_info(
                                 "no threads",
-                                state="7",
+                                state="{:d}".format(act_state),
                             )
                         )
                 else:
+                    act_state = 5
                     entry.append(
                         E.state_info(
                             "not installed",
-                            state="5",
+                            state="{:d}".format(act_state),
                         )
                     )
         else:
@@ -405,7 +408,7 @@ def check_system(opt_ns):
                 "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
                 )
             )
-        if "version_file" in entry.attrib:
+        if "version_file" in entry.attrib and act_state != 5:
             entry.attrib["version_ok"] = "0"
             try:
                 _path = entry.attrib["version_file"].replace("%{INIT_BASE}", INIT_BASE).replace("%{NAME}", entry.attrib["name"].replace("-", "_"))
