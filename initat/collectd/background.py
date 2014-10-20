@@ -491,11 +491,13 @@ class bg_job(object):
 
     def update_attribute(self, attr_name, attr_value):
         if getattr(self, attr_name) != attr_value:
-            self.log("changed attribute {} from '{}' to '{}'".format(
-                attr_name,
-                getattr(self, attr_name),
-                attr_value,
-                ))
+            self.log(
+                "changed attribute {} from '{}' to '{}'".format(
+                    attr_name,
+                    getattr(self, attr_name),
+                    attr_value,
+                )
+            )
             setattr(self, attr_name, attr_value)
 
     def _start_ext_com(self):
