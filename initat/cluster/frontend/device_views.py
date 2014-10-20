@@ -36,7 +36,7 @@ from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 import json
 import logging
 import logging_tools
-import pprint
+import pprint  # @UnusedImport
 import re
 import server_command
 
@@ -227,7 +227,6 @@ class scan_device_network(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _json_dev = json.loads(request.POST["dev"])
-        pprint.pprint(_json_dev)
         _dev = device.objects.get(Q(pk=_json_dev["idx"]))
         _sm = _json_dev["scan_mode"]
         logger.info("scanning network settings of device {} via {}".format(unicode(_dev.full_name), _sm))
