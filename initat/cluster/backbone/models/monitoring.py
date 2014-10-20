@@ -69,7 +69,7 @@ class snmp_scheme_vendor(models.Model):
     # name
     name = models.CharField(max_length=128, unique=True)
     # info (full name of company)
-    company_info = models.CharField(max_lengh=256, default="")
+    company_info = models.CharField(max_length=256, default="")
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
