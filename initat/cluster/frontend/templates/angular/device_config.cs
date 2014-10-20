@@ -1229,6 +1229,15 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                         return "none"
                 else
                     return "---"
+            scope.get_snmp_scheme_info = () ->
+                if scope._edit_obj?
+                    _sc = scope._edit_obj.snmp_schemes
+                    if _sc.length
+                        return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
+                    else
+                        return "none"
+                else
+                    return "---"
     }
 )
 

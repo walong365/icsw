@@ -20,6 +20,7 @@ device_networks_template = """
             <th>#Ports</th>
             <th>#IPs</th>
             <th>#peers</th>
+            <th>SNMP schemes</th>
             <th colspan="2">action</th>
         </tr>
     </thead>
@@ -108,6 +109,9 @@ dev_row_template = """
 </td>
 <td>
     {{ get_num_peers_dev(ndip_obj) }}
+</td>
+<td>
+    {{ get_snmp_scheme_info(ndip_obj) }}
 </td>
 <td>
     <button type="button" class="btn btn-xs btn-success pull-right"
@@ -827,6 +831,12 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         restrict : "EA"
         template: $templateCache.get("devrow.html")
         link : (scope, element, attrs) ->
+            scope.get_snmp_scheme_info = (obj) ->
+                _sc = obj.snmp_schemes
+                if _sc.length
+                    return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
+                else
+                    return "---"
     }
 ).directive("netpeerrow", ($templateCache, $compile) ->
     return {

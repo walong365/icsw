@@ -121,8 +121,18 @@ class device_info_form(ModelForm):
     <label class='control-label col-sm-3'>
         IP Info
     </label>
-    <div class='col-sm-9'>
+    <div class='col-sm-9 form-control-static'>
         {% verbatim %}{{ get_ip_info() }}{% endverbatim %}
+    </div>
+</div>
+                """),
+                HTML("""
+<div class='form-group' ng-show="is_device()">
+    <label class='control-label col-sm-3'>
+        SNMP scheme
+    </label>
+    <div class='col-sm-9 form-control-static'>
+        {% verbatim %}{{ get_snmp_scheme_info() }}{% endverbatim %}
     </div>
 </div>
                 """),
