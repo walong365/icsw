@@ -377,8 +377,8 @@ class SNMPScheme(factory.django.DjangoModelFactory):
     @factory.post_generation
     def collectd(self, create, extracted, **kwargs):
         extracted = extracted or True
-        if self.collectd != extracted:
-            self.collectd = extracted
+        if self.collect != extracted:
+            self.collect = extracted
             self.save()
 
     @factory.post_generation
