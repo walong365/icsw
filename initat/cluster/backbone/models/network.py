@@ -1,5 +1,3 @@
-#!/usr/bin/python-init
-
 # from lxml.builder import E  # @UnresolvedImport
 from django.apps import apps
 from django.core.exceptions import ValidationError
@@ -23,7 +21,8 @@ __all__ = [
     "netdevice",
     "netdevice_speed",
     "peer_information",
-    ]
+    "snmp_network_type",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +34,8 @@ class network_device_type(models.Model):
     description = models.CharField(max_length=192)
     mac_bytes = models.PositiveIntegerField(default=6)
     allow_virtual_interfaces = models.BooleanField(default=True)
+    # used for matching ?
+    for_matching = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -63,7 +64,7 @@ def network_device_type_post_init(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         # print "*" * 20, cur_inst.identifier, cur_inst.pk, "+" * 20
-        if cur_inst.name_re == "^.*$" and cur_inst.pk:
+        if cur_inst.name_re == "^.*$" and cur_inst.pk and not cur_inst.for_matching:
             if cur_inst.identifier in ["lo"]:
                 cur_inst.name_re = "^{}$".format(cur_inst.identifier)
             else:
@@ -254,7 +255,7 @@ class net_ip(models.Model):
             alias=self.alias,
             alias_excl=self.alias_excl,
             domain_tree_node=self.domain_tree_node,
-            )
+        )
 
     def get_hex_ip(self):
         return "".join(["%02X" % (int(part)) for part in self.ip.split(".")])
@@ -365,7 +366,7 @@ class netdevice(models.Model):
     idx = models.AutoField(db_column="netdevice_idx", primary_key=True)
     device = models.ForeignKey("backbone.device")
     devname = models.CharField(max_length=36)
-    macaddr = models.CharField(db_column="macadr", max_length=177, blank=True)
+    macaddr = models.CharField(db_column="macadr", max_length=177, blank=True, default="")
     driver_options = models.CharField(max_length=672, blank=True)
     speed = models.IntegerField(default=0, null=True, blank=True)
     netdevice_speed = models.ForeignKey("backbone.netdevice_speed")
@@ -377,7 +378,7 @@ class netdevice(models.Model):
     penalty = models.IntegerField(null=True, blank=True, default=1, verbose_name="cost")
     dhcp_device = models.NullBooleanField(null=True, blank=True, default=False)
     ethtool_options = models.IntegerField(null=True, blank=True, default=0)
-    fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True)
+    fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True, default="")
     network_device_type = models.ForeignKey("backbone.network_device_type")
     description = models.CharField(max_length=765, blank=True)
     is_bridge = models.BooleanField(default=False)
@@ -391,6 +392,13 @@ class netdevice(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # maximum transfer unit
     mtu = models.IntegerField(default=1500)
+    # snmp related fields, zero for non-SNMP fetched network devices
+    snmp_idx = models.IntegerField(default=0)
+    # force matching th network device types, defaults to True
+    # also affects MAC-address matching
+    force_network_device_type_match = models.BooleanField(default=True)
+    # snmp network type
+    snmp_network_type = models.ForeignKey("backbone.snmp_network_type", null=True)
 
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -419,12 +427,15 @@ class netdevice(models.Model):
             bridge_name=self.bridge_name,
             vlan_id=self.vlan_id,
             enabled=self.enabled,
+            mtu=self.mtu,
+            force_network_device_type_match=self.force_network_device_type_match,
+            snmp_network_type=self.snmp_network_type,
             # hm ...
             # bridge_device=self.bridge_device,
         )
 
     def find_matching_network_device_type(self):
-        match_list = [ndt for ndt in network_device_type.objects.all() if ndt.match(self.devname)]
+        match_list = [ndt for ndt in network_device_type.objects.filter(Q(for_matching=True)) if ndt.match(self.devname)]
         if len(match_list) == 0:
             return None
         elif len(match_list) == 1:
@@ -498,37 +509,44 @@ def netdevice_pre_save(sender, **kwargs):
         if cur_inst.devname in all_nd_names:
             raise ValidationError("devname '{}' already used".format(cur_inst.devname))
         # change network_device_type
-        nd_type = cur_inst.find_matching_network_device_type()
-        if not nd_type:
-            raise ValidationError("no matching device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
-        cur_inst.network_device_type = nd_type
+        if cur_inst.force_network_device_type_match:
+            nd_type = cur_inst.find_matching_network_device_type()
+            if not nd_type:
+                raise ValidationError("no matching device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
+            cur_inst.network_device_type = nd_type
+        else:
+            if not cur_inst.network_device_type_id:
+                # take the first one which is not used for matching
+                cur_inst.network_device_type = network_device_type.objects.filter(Q(for_matching=False))[0]
         # fix None as vlan_id
         _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
         # penalty
         _check_integer(cur_inst, "penalty", min_val=1)
-        # check mac address
-        if cur_inst.macaddr:
-            cur_inst.macaddr = cur_inst.macaddr.replace("-", ":").lower()
-        if cur_inst.fake_macaddr:
-            cur_inst.fake_macaddr = cur_inst.fake_macaddr.replace("-", ":").lower()
-        dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
-                             re.compile("^{}$".format(":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
-        # set empty if not set
-        try:
-            if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
-                cur_inst.macaddr = dummy_mac
-        except:
-            raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
-        # set empty if not set
-        try:
-            if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
-                cur_inst.fake_macaddr = dummy_mac
-        except:
-            raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
-        if not mac_re.match(cur_inst.macaddr):
-            raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
-        if not mac_re.match(cur_inst.fake_macaddr):
-            raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
+        # mac address matching (if needed)
+        if cur_inst.force_network_device_type_match:
+            # check mac address
+            if cur_inst.macaddr:
+                cur_inst.macaddr = cur_inst.macaddr.replace("-", ":").lower()
+            if cur_inst.fake_macaddr:
+                cur_inst.fake_macaddr = cur_inst.fake_macaddr.replace("-", ":").lower()
+            dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
+                                 re.compile("^{}$".format(":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
+            # set empty if not set
+            try:
+                if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
+                    cur_inst.macaddr = dummy_mac
+            except:
+                raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
+            # set empty if not set
+            try:
+                if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
+                    cur_inst.fake_macaddr = dummy_mac
+            except:
+                raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
+            if not mac_re.match(cur_inst.macaddr):
+                raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
+            if not mac_re.match(cur_inst.fake_macaddr):
+                raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
         if cur_inst.master_device_id:
             if not cur_inst.vlan_id:
                 raise ValidationError("VLAN id cannot be zero")
@@ -642,3 +660,13 @@ def peer_information_post_save(sender, **kwargs):
 def peer_information_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+
+
+class snmp_network_type(models.Model):
+    idx = models.AutoField(primary_key=True)
+    if_type = models.IntegerField(default=0)
+    if_label = models.CharField(max_length=128, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "backbone"

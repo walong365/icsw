@@ -7,7 +7,7 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
-    window_manager
+    window_manager, snmp_network_type
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -361,3 +361,9 @@ class WindowManager(factory.django.DjangoModelFactory):
     class Meta:
         model = window_manager
         django_get_or_create = ("name",)
+
+
+class SNMPNetworkType(factory.django.DjangoModelFactory):
+    class Meta:
+        model = snmp_network_type
+        django_get_or_create = ("if_type",)
