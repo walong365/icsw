@@ -66,7 +66,11 @@ def simplify_dict(in_dict, start_tuple):
     for _key in _ref_keys:
         _s_key = _key[len(start_tuple):]
         if len(_s_key) == 2:
+            # integer as key
             _result.setdefault(_s_key[1], {})[_s_key[0]] = in_dict[_key]
+        else:
+            # tuple as key
+            _result.setdefault(tuple(list(_s_key[1:])), {})[_s_key[0]] = in_dict[_key]
     return _result
 
 
@@ -329,6 +333,9 @@ class snmp_batch(object):
     def oid_pretty_print(self, oids):
         return ";".join(["{}".format(".".join(["{:d}".format(oidp) for oidp in oid])) for oid in oids])
 
+    def add_error(self, err_str):
+        self.__error_list.append(err_str)
+
     def loop(self):
         for key, header_list in self.kh_list:
             if self.run_ok() and header_list:
@@ -362,10 +369,12 @@ class snmp_batch(object):
                             logging_tools.get_plural("table header", len(header_list)),
                             logging_tools.get_plural("result", self.num_result_values)))
                 else:
-                    self.__error_list.append(
+                    self.add_error(
                         "snmp timeout ({:d} secs, OID is {})".format(
                             self.__timeout,
-                            self.oid_pretty_print(header_list)))
+                            self.oid_pretty_print(header_list)
+                        )
+                    )
                     self.log(
                         "({}) run not ok for host {} ({})".format(
                             key,
@@ -650,17 +659,27 @@ class snmp_process(threading_tools.process_obj):
                 self.__disp.runDispatcher()
                 self.step(blocking=self["run_flag"])
         except ValueConstraintError:
-            self.log("caught ValueConstraintError, terminating process",
-                     logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "caught ValueConstraintError, terminating process",
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
+            _term_cause = "ValueConstraintError"
         except:
             exc_info = process_tools.exception_info()
             self.log("exception in dispatcher, terminating process",
                      logging_tools.LOG_LEVEL_CRITICAL)
             for log_line in exc_info.log_lines:
                 self.log(" - {}".format(log_line), logging_tools.LOG_LEVEL_CRITICAL)
+            _term_cause = "internal error"
         else:
             self.log("no more jobs running")
+            _term_cause = ""
         self.log("jobs pending: {:d}".format(len(self.__job_dict)))
+        # close all jobs
+        if _term_cause:
+            self._terminate_jobs(error="{}, check logs".format(_term_cause))
+        else:
+            self._terminate_jobs()
         self.__disp.closeDispatcher()
 
     def _inject(self, cur_batch):
@@ -688,9 +707,14 @@ class snmp_process(threading_tools.process_obj):
             self.__job_dict[to_key].finish()
         self.step()
         if self["exit_requested"]:
-            _stop_keys = set(self.__job_dict.keys())
-            for _key in _stop_keys:
-                self.__job_dict[_key].finish()
+            self._terminate_jobs(error="exit requested")
+
+    def _terminate_jobs(self, **kwargs):
+        _stop_keys = set(self.__job_dict.keys())
+        for _key in _stop_keys:
+            if "error" in kwargs:
+                self.__job_dict[_key].add_error(kwargs["error"])
+            self.__job_dict[_key].finish()
 
     def _recv_func(self, disp, domain, address, whole_msg):
         while whole_msg:
