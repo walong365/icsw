@@ -1,7 +1,7 @@
 #!/usr/bin/python-init
 
 from initat.cluster.backbone.models import network_type, network_device_type, network, net_ip, \
-    netdevice, netdevice_speed, peer_information
+    netdevice, netdevice_speed, peer_information, snmp_network_type
 # from lxml.builder import E  # @UnresolvedImport
 from rest_framework import serializers
 import logging
@@ -14,6 +14,7 @@ __all__ = [
     "netdevice_serializer",
     "netdevice_speed_serializer",
     "peer_information_serializer",
+    "snmp_network_type_serializer",
     ]
 
 logger = logging.getLogger(__name__)
@@ -75,3 +76,8 @@ class netdevice_speed_serializer(serializers.ModelSerializer):
 class peer_information_serializer(serializers.ModelSerializer):
     class Meta:
         model = peer_information
+
+
+class snmp_network_type_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = snmp_network_type

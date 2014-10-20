@@ -130,7 +130,7 @@ class network(models.Model):
     name = models.CharField(max_length=192, blank=True, default="")
     penalty = models.PositiveIntegerField(default=1, verbose_name="cost")
     # should no longer be used, now in domain_tree_node
-    postfix = models.CharField(max_length=12, blank=True)
+    postfix = models.CharField(max_length=12, blank=True, default="")
     info = models.CharField(max_length=255, blank=True)
     network = models.GenericIPAddressField(blank=False)
     netmask = models.GenericIPAddressField(blank=False)
@@ -152,6 +152,16 @@ class network(models.Model):
             ("modify_network", "modify global network settings", False),
             ("show_clusters", "show network clustering", False),
         )
+
+    @staticmethod
+    def get_unique_identifier():
+        _all_ids = network.objects.all().values_list("identifier", flat=True)
+        gen_idx = 1
+        while True:
+            if "autogen{:d}".format(gen_idx) not in _all_ids:
+                break
+            gen_idx += 1
+        return "autogen{:d}".format(gen_idx)
 
     def get_identifier(self):
         return self.network_type.identifier
@@ -315,7 +325,7 @@ def net_ip_pre_save(sender, **kwargs):
                 raise ValidationError("no maching network found for '{}'".format(cur_inst.ip))
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
         if cur_inst.ip in dev_ips:
-            raise ValidationError("Address already {} used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
+            raise ValidationError("Address {} already used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
         if cur_inst.network.enforce_unique_ips:
             try:
                 present_ip = net_ip.objects.exclude(Q(pk=cur_inst.pk)).get(Q(network=cur_inst.network) & Q(ip=cur_inst.ip))
@@ -509,7 +519,7 @@ def netdevice_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "devname")
-        _check_integer(cur_inst, "mtu", min_val=16, max_val=65536)
+        _check_integer(cur_inst, "mtu", min_val=0, max_val=65536)
         all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
         if cur_inst.devname in all_nd_names:
             raise ValidationError("devname '{}' already used".format(cur_inst.devname))
@@ -597,14 +607,20 @@ class netdevice_speed(models.Model):
         return unicode(self)
 
     def __unicode__(self):
-        _s_str, lut_idx = ("", 0)
-        cur_s = self.speed_bps
-        while cur_s > 999:
-            cur_s = cur_s / 1000
-            lut_idx += 1
-        return u"{}{}Bps, {} duplex, {}".format(
-            cur_s,
-            " kMGT"[lut_idx].strip(),
+        if self.speed_bps:
+            _s_str, lut_idx = ("", 0)
+            cur_s = self.speed_bps
+            while cur_s > 999:
+                cur_s = cur_s / 1000
+                lut_idx += 1
+            _speed_str = "{}{}Bps".format(
+                cur_s,
+                " kMGT"[lut_idx].strip()
+            )
+        else:
+            _speed_str = "unspec."
+        return u"{}, {} duplex, {}".format(
+            _speed_str,
             "full" if self.full_duplex else "half",
             "check via ethtool" if self.check_via_ethtool else "no check")
 
