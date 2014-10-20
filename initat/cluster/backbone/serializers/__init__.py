@@ -257,6 +257,9 @@ class device_serializer(serializers.ModelSerializer):
             "monitoring_hint_set",
             # device monitoring location
             "device_mon_location_set",
+            # snmp schemes
+            "snmp_schemes",
+            # uuid
             "uuid",
         )
         read_only_fields = ("uuid",)

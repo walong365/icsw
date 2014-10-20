@@ -484,6 +484,8 @@ class device(models.Model):
     store_rrd_data = models.BooleanField(default=True)
     # has active RRDs
     has_active_rrds = models.BooleanField(default=False)
+    # active snmp scheme
+    snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
 
     @property
     def full_name(self):

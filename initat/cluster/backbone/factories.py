@@ -7,7 +7,7 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
-    window_manager, snmp_network_type
+    window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -367,3 +367,36 @@ class SNMPNetworkType(factory.django.DjangoModelFactory):
     class Meta:
         model = snmp_network_type
         django_get_or_create = ("if_type",)
+
+
+class SNMPScheme(factory.django.DjangoModelFactory):
+    class Meta:
+        model = snmp_scheme
+        django_get_or_create = ("name", "snmp_scheme_vendor", "version")
+
+    @factory.post_generation
+    def collectd(self, create, extracted, **kwargs):
+        extracted = extracted or True
+        if self.collectd != extracted:
+            self.collectd = extracted
+            self.save()
+
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
+
+class SNMPSchemeVendor(factory.django.DjangoModelFactory):
+    class Meta:
+        model = snmp_scheme_vendor
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def company_info(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.company_info != extracted:
+            self.company_info = extracted
+            self.save()

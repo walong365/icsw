@@ -59,7 +59,39 @@ __all__ = [
     # unreachable info
     "mon_build_unreachable",  # track unreachable devices
     "parse_commandline",  # commandline parsing
+    "snmp_scheme_vendor",
+    "snmp_scheme",
 ]
+
+
+class snmp_scheme_vendor(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(max_length=128, unique=True)
+    # info (full name of company)
+    company_info = models.CharField(max_lengh=256, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "backbone"
+
+
+class snmp_scheme(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # vendor
+    snmp_scheme_vendor = models.ForeignKey("backbone.snmp_scheme_vendor")
+    # name
+    name = models.CharField(max_length=128, unique=True)
+    # description
+    description = models.CharField(max_length=128, default="")
+    # version
+    version = models.IntegerField(default=1)
+    # used for collectd calls
+    collect = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = "backbone"
 
 
 class mon_trace(models.Model):

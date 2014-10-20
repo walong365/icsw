@@ -312,8 +312,32 @@ SNMP_NET_TYPES = [
 
 
 def _add_snmp_fixtures():
+    # SNMP Network types
     for _if_type, _if_label in SNMP_NET_TYPES:
         factories.SNMPNetworkType(if_type=_if_type, if_label=_if_label)
+    # SNMP fixtures
+    gen_vendor = factories.SNMPSchemeVendor(name="general", company_info="general schemes")
+    apc_vendor = factories.SNMPSchemeVendor(name="apc", company_info="American Power Conversion")
+    factories.SNMPScheme(
+        name="rpdu",
+        version=1,
+        description="rackable power distribution unit",
+        collect=True,
+        snmp_scheme_vendor=apc_vendor,
+    )
+    factories.SNMPScheme(
+        name="usv",
+        version=1,
+        description="USV",
+        collect=True,
+        snmp_scheme_vendor=apc_vendor,
+    )
+    factories.SNMPScheme(
+        name="net",
+        version=1,
+        collect=True,
+        snmp_scheme_vendor=gen_vendor,
+    )
 
 
 class Command(BaseCommand):
