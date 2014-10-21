@@ -314,9 +314,10 @@ class var_cache(dict):
 class ext_com(object):
     run_idx = 0
 
-    def __init__(self, log_com, command, name=None):
+    def __init__(self, log_com, command, name=None, detach=False):
         ext_com.run_idx += 1
         self.__name = name
+        self.__detach = detach
         self.idx = ext_com.run_idx
         self.command = command
         self.popen = None
@@ -334,8 +335,24 @@ class ext_com(object):
 
     def run(self):
         self.start_time = time.time()
-        self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        self.log("start with pid {}".format(self.popen.pid))
+        if self.__detach:
+            self.popen = subprocess.Popen(
+                self.command,
+                bufsize=1,
+                shell=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                close_fds=True
+            )
+            self.log("start with pid {} (detached)".format(self.popen.pid))
+        else:
+            self.popen = subprocess.Popen(
+                self.command,
+                shell=True,
+                stderr=subprocess.PIPE,
+                stdout=subprocess.PIPE
+            )
+            self.log("start with pid {}".format(self.popen.pid))
 
     def communicate(self):
         if self.popen:

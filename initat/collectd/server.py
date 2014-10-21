@@ -38,6 +38,7 @@ import cluster_location
 import config_tools
 import configfile
 import logging_tools
+import os
 import pprint
 import process_tools
 import re
@@ -47,6 +48,9 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
+
+
+RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
 class server_process(threading_tools.process_pool, threading_tools.operational_error_mixin):
@@ -248,13 +252,15 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
 
     def _init_rrd_cached(self):
         self.log("init rrd cached process")
-        _comline = "/opt/cluster/bin/rrdcached -m0777 -l {} -s idg -w 60 -t {:d} -F -g -b {} -p /var/run/rrdcached/rrdcached.pid".format(
+        _comline = "/opt/cluster/bin/rrdcached -m0777 -l {} -s idg -w 60 -t {:d} -F -b {} -p {} > /tmp/.rrdcached_output 2>&1".format(
             global_config["RRD_CACHED_SOCKET"],
             global_config["RRD_CACHED_WRITETHREADS"],
             global_config["RRD_DIR"],
+            RRD_CACHED_PID,
         )
         self.log("comline is {}".format(_comline))
-        self.__rrd_com = ext_com(self.log, _comline, name="rrdcached")
+        # rrd_com is only used for starting
+        self.__rrd_com = ext_com(self.log, _comline, name="rrdcached", detach=True)
         self.__rrdcached_socket = None
         # flag for enabled / disabled
         self.__rrdcached_enabled = True
@@ -299,6 +305,17 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             self.__rrdcached_running = False
             self._close_rrdcached_socket()
             self.log("stopping rrd_cached process")
+            try:
+                _pid = int(open(RRD_CACHED_PID, "r").read().strip())
+            except:
+                self.log("error reading pid of rrdcached: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                try:
+                    os.kill(_pid, 15)
+                except:
+                    self.log("cannot kill pid {:d}".format(_pid))
+                else:
+                    self.log("killed rrdcached at {:d}".format(_pid))
             self.__rrd_com.terminate()
             _result = self.__rrd_com.finished()
             if _result is not None:
@@ -312,6 +329,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             _log()
             self.log("starting rrd_cached process")
             self.__rrd_com.run()
+            _result = self.__rrd_com.finished()
             self.__rrdcached_running = True
 
     def _check_for_rrdcached_socket(self):
