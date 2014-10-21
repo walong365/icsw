@@ -382,6 +382,13 @@ class SNMPScheme(factory.django.DjangoModelFactory):
             self.save()
 
     @factory.post_generation
+    def initial(self, create, extracted, **kwargs):
+        extracted = extracted or True
+        if self.initial != extracted:
+            self.initial = extracted
+            self.save()
+
+    @factory.post_generation
     def description(self, create, extracted, **kwargs):
         extracted = extracted or ""
         if self.description != extracted:

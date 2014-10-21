@@ -93,6 +93,8 @@ class snmp_scheme(models.Model):
     version = models.IntegerField(default=1)
     # used for collectd calls
     collect = models.BooleanField(default=False)
+    # when found make an initial lookup call
+    initial = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -125,11 +127,11 @@ class snmp_schemes(object):
                 self.__vendor_dict[value.snmp_scheme_vendor_id].name,
                 value.name,
             ): value for value in self.__all_schemes}
+        for _scheme in self.__all_schemes:
+            self.__scheme_dict[_scheme.pk] = _scheme
         self.__oid_lut = {}
         for _sc in self.__all_schemes:
-            print _sc, list(_sc.snmp_scheme_tl_oid_set.all())
             for _tl in _sc.snmp_scheme_tl_oid_set.all():
-                print _tl.oid
                 self.__oid_lut[_tl.oid] = _sc
 
     def all_schemes(self):
@@ -138,8 +140,8 @@ class snmp_schemes(object):
     def all_tl_oids(self):
         return sum([list(_sc.snmp_scheme_tl_oid_set.all()) for _sc in self.__scheme_dict.itervalues()], [])
 
-    def get_scheme(self, full_name):
-        return self.__scheme_dict[full_name]
+    def get_scheme(self, key):
+        return self.__scheme_dict[key]
 
     def get_scheme_by_oid(self, oid):
         if type(oid) == tuple:

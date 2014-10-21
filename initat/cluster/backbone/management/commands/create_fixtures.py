@@ -345,7 +345,7 @@ def _add_snmp_fixtures():
     base_scheme = factories.SNMPScheme(
         name="base",
         version=1,
-        collect=True,
+        initial=True,
         snmp_scheme_vendor=gen_vendor,
     )
     factories.SNMPSchemeTLOID(
@@ -356,6 +356,7 @@ def _add_snmp_fixtures():
         name="net",
         version=1,
         collect=True,
+        initial=True,
         snmp_scheme_vendor=gen_vendor,
     )
     factories.SNMPSchemeTLOID(
