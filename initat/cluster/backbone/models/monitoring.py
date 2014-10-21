@@ -105,7 +105,7 @@ class snmp_scheme(models.Model):
 class snmp_scheme_tl_oid(models.Model):
     idx = models.AutoField(primary_key=True)
     snmp_scheme = models.ForeignKey("backbone.snmp_scheme")
-    oid = models.CharField(default="")
+    oid = models.CharField(default="", max_length=255)
     # is this oid optional ?
     optional = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
@@ -118,16 +118,33 @@ class snmp_schemes(object):
     # to ease access
     def __init__(self):
         self.__all_vendors = snmp_scheme_vendor.objects.all()
-        self.__all_schemes = snmp_scheme.objects.all()
+        self.__all_schemes = snmp_scheme.objects.all().prefetch_related("snmp_scheme_tl_oid_set")
         self.__vendor_dict = {value.idx: value for value in self.__all_vendors}
         self.__scheme_dict = {
             "{}.{}".format(
                 self.__vendor_dict[value.snmp_scheme_vendor_id].name,
                 value.name,
             ): value for value in self.__all_schemes}
+        self.__oid_lut = {}
+        for _sc in self.__all_schemes:
+            print _sc, list(_sc.snmp_scheme_tl_oid_set.all())
+            for _tl in _sc.snmp_scheme_tl_oid_set.all():
+                print _tl.oid
+                self.__oid_lut[_tl.oid] = _sc
+
+    def all_schemes(self):
+        return self.__scheme_dict.itervalues()
+
+    def all_tl_oids(self):
+        return sum([list(_sc.snmp_scheme_tl_oid_set.all()) for _sc in self.__scheme_dict.itervalues()], [])
 
     def get_scheme(self, full_name):
         return self.__scheme_dict[full_name]
+
+    def get_scheme_by_oid(self, oid):
+        if type(oid) == tuple:
+            oid = ".".join(["{:d}".format(_p) for _p in oid])
+        return self.__oid_lut.get(oid, None)
 
 
 class mon_trace(models.Model):
