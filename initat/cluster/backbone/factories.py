@@ -7,7 +7,7 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
-    window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor
+    window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -375,7 +375,7 @@ class SNMPScheme(factory.django.DjangoModelFactory):
         django_get_or_create = ("name", "snmp_scheme_vendor", "version")
 
     @factory.post_generation
-    def collectd(self, create, extracted, **kwargs):
+    def collect(self, create, extracted, **kwargs):
         extracted = extracted or True
         if self.collect != extracted:
             self.collect = extracted
@@ -386,6 +386,19 @@ class SNMPScheme(factory.django.DjangoModelFactory):
         extracted = extracted or ""
         if self.description != extracted:
             self.description = extracted
+            self.save()
+
+
+class SNMPSchemeTLOID(factory.django.DjangoModelFactory):
+    class Meta:
+        model = snmp_scheme_tl_oid
+        django_get_or_create = ("oid", "snmp_scheme")
+
+    @factory.post_generation
+    def optional(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.optional != extracted:
+            self.optional = extracted
             self.save()
 
 

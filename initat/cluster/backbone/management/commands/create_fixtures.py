@@ -316,33 +316,51 @@ def _add_snmp_fixtures():
     for _if_type, _if_label in SNMP_NET_TYPES:
         factories.SNMPNetworkType(if_type=_if_type, if_label=_if_label)
     # SNMP fixtures
-    gen_vendor = factories.SNMPSchemeVendor(name="generic", company_info="general schemes")
+    gen_vendor = factories.SNMPSchemeVendor(name="generic", company_info="generic schemes")
     apc_vendor = factories.SNMPSchemeVendor(name="apc", company_info="American Power Conversion")
-    factories.SNMPScheme(
+    # Rack PDUs
+    rpdu_scheme = factories.SNMPScheme(
         name="rpdu",
         version=1,
         description="rackable power distribution unit",
         collect=True,
         snmp_scheme_vendor=apc_vendor,
     )
-    factories.SNMPScheme(
+    factories.SNMPSchemeTLOID(
+        oid="1.3.6.1.4.1.318.1.1.12",
+        snmp_scheme=rpdu_scheme,
+    )
+    # USV
+    usv_scheme = factories.SNMPScheme(
         name="usv",
         version=1,
         description="USV",
         collect=True,
         snmp_scheme_vendor=apc_vendor,
     )
-    factories.SNMPScheme(
+    factories.SNMPSchemeTLOID(
+        oid="1.3.6.1.4.1.318.1.1.1",
+        snmp_scheme=usv_scheme,
+    )
+    base_scheme = factories.SNMPScheme(
         name="base",
         version=1,
         collect=True,
         snmp_scheme_vendor=gen_vendor,
     )
-    factories.SNMPScheme(
+    factories.SNMPSchemeTLOID(
+        oid="1.3.6.1.2.1.1",
+        snmp_scheme=base_scheme,
+    )
+    net_scheme = factories.SNMPScheme(
         name="net",
         version=1,
         collect=True,
         snmp_scheme_vendor=gen_vendor,
+    )
+    factories.SNMPSchemeTLOID(
+        oid="1.3.6.1.2.1.2",
+        snmp_scheme=net_scheme,
     )
 
 

@@ -61,6 +61,7 @@ __all__ = [
     "parse_commandline",  # commandline parsing
     "snmp_scheme_vendor",
     "snmp_scheme",
+    "snmp_scheme_tl_oid",
     "snmp_schemes",
 ]
 
@@ -96,6 +97,18 @@ class snmp_scheme(models.Model):
 
     def __unicode__(self):
         return "snmp_scheme {}".format(self.name)
+
+    class Meta:
+        app_label = "backbone"
+
+
+class snmp_scheme_tl_oid(models.Model):
+    idx = models.AutoField(primary_key=True)
+    snmp_scheme = models.ForeignKey("backbone.snmp_scheme")
+    oid = models.CharField(default="")
+    # is this oid optional ?
+    optional = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = "backbone"
