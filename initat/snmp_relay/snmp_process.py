@@ -29,13 +29,14 @@ from pysnmp.carrier.asynsock.dgram import udp  # @UnresolvedImport
 from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher  # @UnresolvedImport
 from pysnmp.proto import rfc1155, rfc1902, api  # @UnresolvedImport
 from pysnmp.smi import exval  # @UnresolvedImport
-import os
 import logging_tools
+import os
+import pprint  # @UnusedImport
 import process_tools
 import pyasn1  # @UnresolvedImport
+import signal
 import threading_tools
 import time
-import signal
 import zmq
 
 # --- hack Counter type, from http://pysnmp.sourceforge.net/faq.html
@@ -96,6 +97,8 @@ class snmp_process_container(object):
     def create_ipc_socket(self, zmq_context, socket_addr, socket_name=DEFAULT_RETURN_NAME):
         self._socket = zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
         self._socket.setsockopt(zmq.IDENTITY, socket_name)  # @UndefinedVariable
+        self._socket.setsockopt(zmq.IMMEDIATE, True)  # @UndefinedVariable
+        self._socket.setsockopt(zmq.ROUTER_MANDATORY, True)  # @UndefinedVariable
         self._socket.bind(socket_addr)
         return self._socket
 
@@ -127,6 +130,7 @@ class snmp_process_container(object):
                     "msi_name": "snmp_{:d}".format(_npid),
                     "proc": snmp_process("snmp_{:d}".format(new_idx), self.conf_dict, ignore_signals=True),
                     "running": False,
+                    "stopping": False,
                     "stopped": False,
                     "jobs": 0,
                     "pending": 0,
@@ -139,8 +143,16 @@ class snmp_process_container(object):
     def get_free_snmp_id(self):
         # code from old snmp-relay:
         # free_processes = sorted([(value["calls_init"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
-        idle_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and not value["pending"]])
-        running_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and value["pending"]])
+        idle_procs = sorted(
+            [
+                (value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and not value["pending"] and not value["stopping"]
+            ]
+        )
+        running_procs = sorted(
+            [
+                (value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and value["pending"] and not value["stopping"]
+            ]
+        )
         if idle_procs:
             proc_id = idle_procs[0][1]
         else:
@@ -176,13 +188,24 @@ class snmp_process_container(object):
         self.send("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, VERBOSE=0, **kwargs)
 
     def send(self, target, m_type, *args, **kwargs):
-        self._socket.send_unicode(target, zmq.SNDMORE)  # @UndefinedVariable
-        self._socket.send_pyobj({
-            "pid": self.pid,
-            "type": m_type,
-            "args": args,
-            "kwargs": kwargs,
-        })
+        _iter = 0
+        while True:
+            _iter += 1
+            try:
+                self._socket.send_unicode(target, zmq.SNDMORE)  # @UndefinedVariable
+                self._socket.send_pyobj({
+                    "pid": self.pid,
+                    "type": m_type,
+                    "args": args,
+                    "kwargs": kwargs,
+                })
+            except zmq.error.ZMQError:
+                _iter += 1
+                time.sleep(0.1)
+                if _iter > 10:
+                    logging_tools.my_syslog("unable to send to {}".format(target))
+            else:
+                break
 
     def _event(self, ev_name, *args, **kwargs):
         if ev_name in self.__event_dict:
@@ -200,7 +223,6 @@ class snmp_process_container(object):
         data = self._socket.recv_pyobj()
         if data["type"] == "process_start":
             self.__snmp_dict[snmp_idx]["running"] = True
-            # print data
             self._event(
                 "process_start",
                 pid=data["pid"],
@@ -232,6 +254,7 @@ class snmp_process_container(object):
             self.__snmp_dict[snmp_idx]["done"] += 1
             self._event("finished", data)
             if self.__snmp_dict[snmp_idx]["jobs"] > self.max_snmp_jobs:
+                self.__snmp_dict[snmp_idx]["stopping"] = True
                 self.log(
                     "stopping SNMP process {:d} ({:d} > {:d})".format(
                         snmp_idx,
@@ -265,6 +288,9 @@ class simple_snmp_oid(object):
     def __str__(self):
         return self._str_oid
 
+    def __repr__(self):
+        return "OID {}".format(self._str_oid)
+
     def __iter__(self):
         # reset iteration idx
         self.__idx = -1
@@ -287,6 +313,9 @@ class simple_snmp_oid(object):
                 return p_mod.Null("")
         else:
             return p_mod.Null("")
+
+    def as_tuple(self):
+        return self._oid
 
 
 class snmp_batch(object):
@@ -331,7 +360,7 @@ class snmp_batch(object):
         return not self.__timed_out and not self.__other_errors
 
     def oid_pretty_print(self, oids):
-        return ";".join(["{}".format(".".join(["{:d}".format(oidp) for oidp in oid])) for oid in oids])
+        return ";".join([unicode(oid) for oid in oids])
 
     def add_error(self, err_str):
         self.__error_list.append(err_str)
@@ -347,6 +376,16 @@ class snmp_batch(object):
                     yield self.get_tables(header_list)
                     if self.__verbose > 1:
                         self.log("bulk-walk tables: done")
+                elif key == "T*":
+                    # get table (bulk)
+                    if self.__verbose > 1:
+                        self.log("bulk-walk tables test ({}): {}".format(self.__snmp_host, self.oid_pretty_print(header_list)))
+                    yield self.get_tables(header_list, stop_after_first=True)
+                    if self.__verbose > 1:
+                        self.log("bulk-walk tables test: done")
+                    for _head in header_list:
+                        if _head.as_tuple() not in self.__snmp_dict:
+                            self.add_error("oid {} gave no results".format(unicode(_head)))
                 elif key == "S":
                     # set value, header_list is now a list of (mib, value) tuples
                     if self.__verbose > 1:
@@ -363,11 +402,14 @@ class snmp_batch(object):
                         self.log("get tables: done")
                 if self.run_ok():
                     if self.__verbose > 1:
-                        self.log("({}) for host {} ({}): {}".format(
-                            key,
-                            self.__snmp_host,
-                            logging_tools.get_plural("table header", len(header_list)),
-                            logging_tools.get_plural("result", self.num_result_values)))
+                        self.log(
+                            "({}) for host {} ({}): {}".format(
+                                key,
+                                self.__snmp_host,
+                                logging_tools.get_plural("table header", len(header_list)),
+                                logging_tools.get_plural("result", self.num_result_values)
+                            )
+                        )
                 else:
                     self.add_error(
                         "snmp timeout ({:d} secs, OID is {})".format(
@@ -402,6 +444,7 @@ class snmp_batch(object):
 
     def get_tables(self, base_oids, **kwargs):
         self._set = kwargs.get("set", False)
+        self._stop_after_first = kwargs.get("stop_after_first", False)
         # table header
         self.__head_vars = [self.__p_mod.ObjectIdentifier(base_oid) for base_oid in base_oids]
         self.__max_head_vars = [self.__p_mod.ObjectIdentifier(base_oid.get_max_oid()) if base_oid.has_max_oid() else None for base_oid in base_oids]
@@ -520,6 +563,8 @@ class snmp_batch(object):
                             self.snmp = (tuple(act_h), tuple(name), tuple(value))
                         else:
                             self.snmp = (tuple(act_h), tuple(name), str(value))
+                        if self._stop_after_first:
+                            terminate = True
                         self.num_result_values += 1
                 self.__num_items += 1
                 if self.__max_items and self.__num_items > self.__max_items:
@@ -527,7 +572,7 @@ class snmp_batch(object):
             # Stop on EOM
             if not terminate:
                 for _oid, val in var_bind_table[-1]:
-                    # continue when val is not None and mode==GET is active
+                    # continue when val is not None and mode==SET is active
                     if (val is not None) and not self._set:
                         terminate = False
                         break
@@ -596,6 +641,7 @@ class snmp_batch(object):
 
 class snmp_process(threading_tools.process_obj):
     def __init__(self, name, conf_dict, **kwargs):
+        self.__snmp_name = name
         self.__log_name, self.__log_destination = (
             conf_dict["LOG_NAME"],
             conf_dict["LOG_DESTINATION"],
