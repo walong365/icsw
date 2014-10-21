@@ -179,6 +179,12 @@ class db_prefetch_mixin(object):
     def _network_prefetch(self):
         return ["network_device_type", "net_ip_set"]
 
+    def _virtual_desktop_protocol_prefetch(self):
+        return ["devices"]
+
+    def _window_manager_prefetch(self):
+        return ["devices"]
+
     def _netdevice_prefetch(self):
         return ["net_ip_set"]
 
