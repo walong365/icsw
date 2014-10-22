@@ -467,7 +467,7 @@ class netdevice(models.Model):
 
     class Meta:
         db_table = u'netdevice'
-        ordering = ("devname",)
+        ordering = ("snmp_idx", "devname",)
         app_label = "backbone"
 
     def delete(self, *args, **kwargs):
