@@ -136,6 +136,16 @@ class device_info_form(ModelForm):
     </div>
 </div>
                 """),
+                HTML("""
+<div class='form-group' ng-show="is_device()">
+    <label class='control-label col-sm-3'>
+        SNMP Info
+    </label>
+    <div class='col-sm-9 form-control-static'>
+        {% verbatim %}{{ get_snmp_info() }}{% endverbatim %}
+    </div>
+</div>
+                """),
             ),
             # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
             Fieldset(

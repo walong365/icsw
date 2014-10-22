@@ -57,6 +57,8 @@ _ser_keys = dir(model_serializers)
 for key in _ser_keys:
     if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
         REST_LIST.append((model_serializers, "_".join(key.split("_")[:-1])))
+    elif key.endswith("Serializer"):
+        REST_LIST.append((model_serializers, key[:10]))
 
 init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
 
@@ -165,7 +167,7 @@ class db_prefetch_mixin(object):
         return ["domain_tree_node", "device_type", "device_group", "mon_ext_host"]
 
     def _device_prefetch(self):
-        return ["snmp_schemes__snmp_scheme_vendor"]
+        return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo"]
 
     def _mon_check_command_prefetch(self):
         return ["exclude_devices", "categories"]
@@ -734,7 +736,7 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.filter(Q(pk__in=dev_keys))
         if not self._get_post_boolean("ignore_disabled", False):
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
-        _q = _q.select_related("domain_tree_node", "device_type", "device_group").prefetch_related("snmp_schemes__snmp_scheme_vendor")
+        _q = _q.select_related("domain_tree_node", "device_type", "device_group").prefetch_related("snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo")
         if package_state:
             _q = _q.prefetch_related(
                 "package_device_connection_set",
@@ -785,7 +787,10 @@ class device_selection_list(APIView):
         return Response(ser.data)
 
 for src_mod, obj_name in REST_LIST:
-    ser_name = "{}_serializer".format(obj_name)
+    if obj_name[0].lower() != obj_name[0]:
+        ser_name = "{}Serializer".format(obj_name)
+    else:
+        ser_name = "{}_serializer".format(obj_name)
     ser_class = getattr(src_mod, ser_name)
     for mode in ["list", "detail"]:
         class_name = "{}_{}".format(obj_name, mode)
