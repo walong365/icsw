@@ -81,8 +81,8 @@ class router_object(object):
                 if cur_nd[1] not in self.dev_dict:
                     self.dev_dict[cur_nd[1]] = []
                 self.dev_dict[cur_nd[1]].append(cur_nd)
-            self.nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device") if value[1] in self.dev_dict])
-            self.nd_dict = dict([(cur_nd[0], cur_nd) for cur_nd in self.all_nds])
+            self.nd_lut = {value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device") if value[1] in self.dev_dict}
+            self.nd_dict = {cur_nd[0]: cur_nd for cur_nd in self.all_nds}
             self.log(
                 "init router helper object, {} / {}".format(
                     logging_tools.get_plural("netdevice", len(self.all_nds)),
@@ -491,13 +491,13 @@ class server_check(object):
                     self.config = config.objects.get(
                         Q(name=self.__server_type) & Q(device_config__device=self.device)
                     )
-                except config.DoesNotExist:
+                except config.DoesNotExist:  # @UndefinedVariable
                     try:
                         self.config = config.objects.get(
                             Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") &
                             Q(device_config__device__device_group=self.device.device_group_id)
                         )
-                    except config.DoesNotExist:
+                    except config.DoesNotExist:  # @UndefinedVariable
                         self.config = None
                     else:
                         self.effective_device = device.objects.get(
@@ -603,7 +603,7 @@ class server_check(object):
             if match_ips:
                 self.device = cur_dev
                 # always working ?
-                self.config = config.objects.get(Q(name=self.__server_type))
+                self.config = config.objects.get(Q(name=self.__server_type))  # @UndefinedVariable
                 self.effective_device = cur_dev
                 self.short_host_name = cur_dev.name
                 self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))
@@ -760,7 +760,7 @@ class device_with_config(dict):
                 "netdevice_set__net_ip_set__network__network_type"
             )
         }
-        conf_dict = dict([(cur_conf.pk, cur_conf) for cur_conf in config.objects.filter(Q(pk__in=conf_pks))])
+        conf_dict = {cur_conf.pk: cur_conf for cur_conf in config.objects.filter(Q(pk__in=conf_pks))}  # @UndefinedVariable
         for dev_key, conf_list in dev_conf_dict.iteritems():
             dev_name, dev_pk, devg_pk, _dev_type = dev_key
             for conf_name, conf_pk, m_type, src_type in conf_list:
