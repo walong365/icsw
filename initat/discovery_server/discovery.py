@@ -23,19 +23,20 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed, snmp_network_type, \
-    network, network_type, snmp_schemes, domain_tree_node
+    network, network_type, snmp_schemes, domain_tree_node, DeviceSNMPInfo
 from initat.discovery_server.config import global_config
 from initat.snmp_relay.snmp_process import simple_snmp_oid, simplify_dict
 import base64
 import bz2
 import config_tools
+import inspect
+import ipvx_tools
 import logging_tools
 import net_tools
 import partition_tools
 import pprint  # @UnusedImport
 import process_tools
 import server_command
-import ipvx_tools
 import threading_tools
 import time
 
@@ -92,11 +93,8 @@ class snmp_batch(object):
         self.src_uid = src_uid
         self.srv_com = srv_com
         self.id = snmp_batch.next_snmp_batch_id()
-        self.command = self.srv_com["*command"]
         snmp_batch.add_batch(self)
-        self.__snmp_results = {}
-        self.__start_time = time.time()
-        self.log("init new batch with command {}".format(self.command))
+        self.init_run(self.srv_com["*command"])
         self.batch_valid = True
         try:
             _dev = self.srv_com.xpath(".//ns:devices/ns:device")[0]
@@ -118,17 +116,21 @@ class snmp_batch(object):
         else:
             self.start_run()
 
+    def init_run(self, command):
+        self.command = command
+        self.__snmp_results = {}
+        # (optional) mapping from run_id to snmp_scheme pk
+        self.__start_time = time.time()
+        self.log("init new batch with command {}".format(self.command))
+
     def start_run(self):
         if self.command == "snmp_basic_scan":
+            _all_schemes = snmp_schemes()
             self.new_run(
                 True,
-                10,
+                20,
                 *[
-                    ("T", [simple_snmp_oid("1.3.6.1.2.1.1")]),
-                    ("T", [simple_snmp_oid("1.3.6.1.2.1.2")]),
-                    ("T", [simple_snmp_oid("1.3.6.1.2.1.4.20")]),
-                    # MAC routing
-                    # ("T", [simple_snmp_oid("1.3.6.1.2.1.17.4.3.1")]),
+                    ("T*", [simple_snmp_oid(_tl_oid.oid)]) for _tl_oid in _all_schemes.all_tl_oids()
                 ]
             )
         else:
@@ -179,7 +181,14 @@ class snmp_batch(object):
     def check_for_result(self):
         if all(self.__snmp_results.values()):
             self.__end_time = time.time()
-            _errors = sum([_value[0] for _value in self.__snmp_results.itervalues()], [])
+            # unify results
+            # pprint.pprint(self.__snmp_results)
+            # unify dict
+            _errors, _found, _res_dict = ([], set(), {})
+            for _key, _value in self.__snmp_results.iteritems():
+                _errors.extend(_value[0])
+                _found |= _value[1]
+                _res_dict.update(_value[2])
             self.log(
                 "finished batch in {} ({}, {})".format(
                     logging_tools.get_diff_time_str(self.__end_time - self.__start_time),
@@ -187,27 +196,75 @@ class snmp_batch(object):
                     logging_tools.get_plural("error", len(_errors)),
                 )
             )
-            if _errors:
-                self.log(
-                    "{} reported: {}".format(
-                        logging_tools.get_plural("error", len(_errors)),
-                        ", ".join(_errors)
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR,
-                    result=True
-                )
+            attr_name = "handle_{}".format(self.command)
+            if hasattr(self, attr_name):
+                getattr(self, attr_name)(_errors, _found, _res_dict)
             else:
-                # unify dict
-                _res_dict = {}
-                for _key, _value in self.__snmp_results.iteritems():
-                    _res_dict.update(_value[2])
-                try:
-                    getattr(self.process, "process_{}".format(self.command))(self, _res_dict)
-                except:
-                    exc_info = process_tools.exception_info()
-                    self.log("unable to process results: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR, result=True)
-                    for _line in exc_info.log_lines:
-                        self.log("  {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+                self.log("dont know how to handle {}".format(self.command), logging_tools.LOG_LEVEL_ERROR, result=True)
+                self.finish()
+
+    def handle_snmp_initial_scan(self, errors, found, res_dict):
+        _all_schemes = snmp_schemes()
+        _found_struct = {}
+        # reorganize oids to dict with scheme -> {..., oid_list, ...}
+        for _oid in found:
+            _found_scheme = _all_schemes.get_scheme_by_oid(_oid)
+            if _found_scheme:
+                _key = (_found_scheme.priority, _found_scheme.pk)
+                if _key not in _found_struct:
+                    _found_struct[_key] = {
+                        "scheme": _found_scheme,
+                        "oids": set(),
+                        "full_name": _found_scheme.full_name,
+                    }
+                _found_struct[_key]["oids"].add(_all_schemes.oid_to_str(_oid))
+        _handler = SNMPSink(self.log)
+        result = ResultNode(error=errors)
+        for _key in sorted(_found_struct, reverse=True):
+            _struct = _found_struct[_key]
+            result.merge(
+                _handler.update(
+                    self.device,
+                    _struct["scheme"],
+                    _all_schemes.filter_results(res_dict, _struct["oids"]),
+                    _struct["oids"],
+                    self.flags,
+                )
+            )
+        self.srv_com.set_result(*result.get_srv_com_result())
+        self.finish()
+
+    def handle_snmp_basic_scan(self, errors, found, res_dict):
+        _all_schemes = snmp_schemes()
+        if found:
+            # any found, delete all present schemes
+            self.device.snmp_schemes.clear()
+        _added_pks = set()
+        for _oid in found:
+            _add_scheme = _all_schemes.get_scheme_by_oid(_oid)
+            if _add_scheme is not None and _add_scheme.pk not in _added_pks:
+                _added_pks.add(_add_scheme.pk)
+                self.device.snmp_schemes.add(_add_scheme)
+        if _added_pks:
+            _scan_schemes = [_all_schemes.get_scheme(_pk) for _pk in _added_pks if _all_schemes.get_scheme(_pk).initial]
+            if _scan_schemes:
+                self.init_run("snmp_initial_scan")
+                for _scheme in _scan_schemes:
+                    self.new_run(
+                        True,
+                        20,
+                        *[
+                            ("T", [simple_snmp_oid(_tl_oid.oid)]) for _tl_oid in _scheme.snmp_scheme_tl_oid_set.all()
+                        ]
+                    )
+            else:
+                self.log("found {}".format(logging_tools.get_plural("scheme", len(_added_pks))), result=True)
+                self.finish()
+        else:
+            if errors:
+                self.log(", ".join(errors), logging_tools.LOG_LEVEL_ERROR, result=True)
+            else:
+                self.log("initial scan was ok, but no schemes found", logging_tools.LOG_LEVEL_WARN, result=True)
             self.finish()
 
     def finish(self):
@@ -662,7 +719,6 @@ class discovery_process(threading_tools.process_obj):
             srv_com.set_result(u"ok %s" % ("; ".join(ret_f)), server_command.SRV_REPLY_STATE_OK)
 
     def scan_network_info(self, srv_com):
-        # print cur_inst.option_dict
         dev_pk = int(srv_com["*pk"])
         strict_mode = True if int(srv_com["*strict_mode"]) else False
         scan_address = srv_com["*scan_address"]
@@ -694,7 +750,6 @@ class discovery_process(threading_tools.process_obj):
         self.log("default nds is {}".format(unicode(default_nds)))
         for _idx, (result, target_dev) in enumerate(zip(res_list, [scan_dev])):
             self.log("device {} ...".format(unicode(target_dev)))
-            # print idx, result, target_dev
             res_state = -1 if result is None else int(result["result"].attrib["state"])
             if res_state:
                 num_errors += 1
@@ -769,15 +824,84 @@ class discovery_process(threading_tools.process_obj):
         _batch_id, _error, _src, _results = args
         snmp_batch.glob_feed_snmp(_batch_id, _error, _src, _results)
 
-    def process_snmp_basic_scan(self, batch, _result):
-        dev = batch.device
-        all_schemes = snmp_schemes()
-        dev.snmp_schemes.add(all_schemes.get_scheme("generic.net"))
-        # interface dict
-        _if_dict = {key: snmp_if(value) for key, value in simplify_dict(_result[(1, 3, 6, 1, 2, 1, 2)], (2, 1)).iteritems()}
-        # ip dict
-        _ip_dict = {key: snmp_ip(value) for key, value in simplify_dict(_result[(1, 3, 6, 1, 2, 1, 4, 20)], (1,)).iteritems()}
-        # pprint.pprint(_result[(1, 3, 6, 1, 2, 1, 17, 4, 3, 1)])
+
+class ResultNode(object):
+    def __init__(self, **kwargs):
+        for inst_name in ["ok", "warn", "error"]:
+            _target = "{}_list".format(inst_name)
+            _val = kwargs.get(inst_name, [])
+            if _val is None:
+                _val = []
+            elif type(_val) != list:
+                _val = [_val]
+            setattr(self, _target, _val)
+
+    def merge(self, other_node):
+        self.ok_list.extend(other_node.ok_list)
+        self.warn_list.extend(other_node.warn_list)
+        self.error_list.extend(other_node.error_list)
+
+    def __repr__(self):
+        return "; ".join(
+            [
+                "{:d} {}: {}".format(
+                    len(_val),
+                    _val_name,
+                    ", ".join(_val)
+                ) for _val, _val_name in [
+                    (self.ok_list, "ok"),
+                    (self.warn_list, "warn"),
+                    (self.error_list, "error"),
+                ] if _val
+            ]
+        ) or "empty ResultNode"
+
+    def get_srv_com_result(self):
+        if self.error_list:
+            _state = server_command.SRV_REPLY_STATE_ERROR
+        elif self.warn_list:
+            _state = server_command.SRV_REPLY_STATE_WARN
+        else:
+            _state = server_command.SRV_REPLY_STATE_OK
+        return unicode(self), _state
+
+
+class SNMPHandler(object):
+    def __init__(self, log_com):
+        self.__log_com = log_com
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[SH] {}".format(what), log_level)
+
+
+class generic_base_handler(SNMPHandler):
+    class Meta:
+        oids = ["generic.base"]
+
+    def update(self, dev, scheme, result_dict, oid_list, flags):
+        try:
+            _cur_info = dev.DeviceSNMPInfo
+        except DeviceSNMPInfo.DoesNotExist:
+            _cur_info = DeviceSNMPInfo(device=dev)
+        _dict = simplify_dict(result_dict[list(oid_list)[0]], ())
+        for _idx, attr, default in [
+            (1, "description", "???"),
+            (4, "contact", "???"),
+            (5, "name", "???"),
+            (6, "location", "???"),
+            (8, "services", 0),
+        ]:
+            setattr(_cur_info, attr, _dict[0].get(_idx, default))
+        _cur_info.save()
+        return ResultNode()
+
+
+class generic_net_handler(SNMPHandler):
+    class Meta:
+        oids = ["generic.net"]
+
+    def update(self, dev, scheme, result_dict, oid_list, flags):
+        _if_dict = {key: snmp_if(value) for key, value in simplify_dict(result_dict["1.3.6.1.2.1.2"], (2, 1)).iteritems()}
         snmp_type_dict = {_value.if_type: _value for _value in snmp_network_type.objects.all()}
         speed_dict = {}
         for _entry in netdevice_speed.objects.all():
@@ -788,9 +912,8 @@ class discovery_process(threading_tools.process_obj):
                 speed_dict[_entry.speed_bps] = _entry
         _added, _updated, _removed = (0, 0, 0)
         # found and used database ids (for deletion)
-        _found_nd_ids, _found_ip_ids = (set(), set())
+        _found_nd_ids = set()
         # lookup dict for snmp_if -> dev_nd
-        if_lut = {}
         for if_idx, if_struct in _if_dict.iteritems():
             _created = False
             try:
@@ -821,9 +944,32 @@ class discovery_process(threading_tools.process_obj):
                 _dev_nd.snmp_oper_status = if_struct.oper_status
                 _dev_nd.save()
                 _found_nd_ids.add(_dev_nd.idx)
-                if_lut[_dev_nd.snmp_idx] = _dev_nd
+        if flags["strict"]:
+            stale_nds = netdevice.objects.exclude(Q(pk__in=_found_nd_ids)).filter(Q(device=dev))
+            if stale_nds.count():
+                _removed += stale_nds.count()
+                stale_nds.delete()
+        return ResultNode(
+            ok="updated interfaces (added {:d}, updated {:d}, removed {:d})".format(
+                _added,
+                _updated,
+                _removed,
+            )
+        )
+
+
+class generic_netip_handler(SNMPHandler):
+    class Meta:
+        oids = ["generic.netip"]
+
+    def update(self, dev, scheme, result_dict, oid_list, flags):
+        # ip dict
+        _ip_dict = {key: snmp_ip(value) for key, value in simplify_dict(result_dict["1.3.6.1.2.1.4.20"], (1,)).iteritems()}
         _tln = domain_tree_node.objects.get(Q(depth=0))
+        if_lut = {_dev_nd.snmp_idx: _dev_nd for _dev_nd in netdevice.objects.filter(Q(snmp_idx__gt=0) & Q(device=dev))}
         # handle IPs
+        _found_ip_ids = set()
+        _added = 0
         for ip_struct in _ip_dict.itervalues():
             if ip_struct.if_idx in if_lut:
                 _dev_nd = if_lut[ip_struct.if_idx]
@@ -833,11 +979,10 @@ class discovery_process(threading_tools.process_obj):
                     cur_nw = network.objects.get(Q(network=str(_network_addr)) & Q(netmask=ip_struct.netmask))  # @UndefinedVariable
                 except network.DoesNotExist:  # @UndefinedVariable
                     # create new network
-                    print _network_addr, ip_struct.netmask
                     cur_nw = network(
                         network_type=network_type.objects.get(Q(identifier='o')),
                         short_names=False,
-                        identifier=network.get_unique_identifier(),
+                        identifier=network.get_unique_identifier(),  # @UndefinedVariable
                         name="autogenerated",
                         info="autogenerated",
                         network=str(_network_addr),
@@ -850,6 +995,7 @@ class discovery_process(threading_tools.process_obj):
                 try:
                     _ip = net_ip.objects.get(Q(netdevice__device=dev) & Q(ip=ip_struct.address))
                 except net_ip.DoesNotExist:
+                    _added += 1
                     _ip = net_ip(
                         ip=ip_struct.address,
                     )
@@ -858,20 +1004,67 @@ class discovery_process(threading_tools.process_obj):
                 _ip.netdevice = _dev_nd
                 _ip.save()
                 _found_ip_ids.add(_ip.idx)
-        if batch.flags["strict"]:
+        if flags["strict"]:
             stale_ips = net_ip.objects.exclude(Q(pk__in=_found_ip_ids)).filter(Q(netdevice__device=dev))
             if stale_ips.count():
                 stale_ips.delete()
-            stale_nds = netdevice.objects.exclude(Q(pk__in=_found_nd_ids)).filter(Q(device=dev))
-            if stale_nds.count():
-                _removed += stale_nds.count()
-                stale_nds.delete()
-        # pprint.pprint(_if_dict)
-        # pprint.pprint(_ip_dict)
-        batch.srv_com.set_result(
-            "updated interfaces (added {:d}, updated {:d}, removed {:d})".format(
-                _added,
-                _updated,
-                _removed,
-            )
-        )
+        if _added:
+            return ResultNode(ok="updated IPs (added: {:d})".format(_added))
+        else:
+            return ResultNode()
+
+
+class SNMPSink(object):
+    def __init__(self, log_com):
+        self.__log_com = log_com
+        # possible handlers
+        self.__handlers = [
+            _value for _key, _value in globals().iteritems() if inspect.isclass(
+                _value
+            ) and issubclass(
+                _value, SNMPHandler
+            ) and _value != SNMPHandler
+        ]
+        # registered handlers
+        self.__reg_handlers = {}
+        self.log("init ({} found)".format(logging_tools.get_plural("handler", len(self.__handlers))))
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com(u"[SS] {}".format(what), log_level)
+
+    def get_handler(self, scheme):
+        full_name, full_name_version = (scheme.full_name, scheme.full_name_version)
+        if full_name_version not in self.__reg_handlers:
+            # search for full name with version
+            _v_found, _found = ([], [])
+            for _handler in self.__handlers:
+                if full_name_version in _handler.Meta.oids:
+                    _v_found.append(_handler)
+                if full_name in _handler.Meta.oids:
+                    _found.append(_handler)
+            if _v_found:
+                self.__reg_handlers[full_name_version] = _v_found[0](self.__log_com)
+            elif _found:
+                self.__reg_handlers[full_name_version] = _found[0](self.__log_com)
+            else:
+                self.log("no handlers found for {} or {}".format(full_name_version, full_name), logging_tools.LOG_LEVEL_ERROR)
+                self.__reg_handlers[full_name_version] = None
+        return self.__reg_handlers[full_name_version]
+
+    def update(self, dev, scheme, result_dict, oid_list, flags):
+        # update dev with results from given snmp_scheme
+        # valid oid_list is oid_list
+        # results are in result_dict
+        _handler = self.get_handler(scheme)
+        if _handler:
+            try:
+                return _handler.update(dev, scheme, result_dict, oid_list, flags)
+            except:
+                exc_info = process_tools.exception_info()
+                _err_str = "unable to process results: {}".format(process_tools.get_except_info())
+                self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
+                for _line in exc_info.log_lines:
+                    self.log("  {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+                return ResultNode(error=_err_str)
+        else:
+            return ResultNode(error="no handler found for {}".format(scheme.full_name_version))

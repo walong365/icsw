@@ -62,6 +62,8 @@ class server_process(threading_tools.process_pool):
         self._init_processes()
         self.__run_idx = 0
         self.__pending_commands = {}
+        if process_tools.get_machine_name() == "eddie" and global_config["DEBUG"]:
+            self._test()
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -235,7 +237,7 @@ class server_process(threading_tools.process_pool):
             snmp_version="1",
             pk="{:d}".format(device.objects.get(Q(name='eddie')).pk),
             snmp_community="public",
-            # snmp_address="127.0.0.1",
+            snmp_address="127.0.0.1",
             # snmp_address="192.168.1.50",
             # snmp_address="192.168.2.12",
         )
