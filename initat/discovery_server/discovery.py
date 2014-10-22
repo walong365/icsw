@@ -23,7 +23,7 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed, snmp_network_type, \
-    network, network_type, snmp_schemes, domain_tree_node, DeviceSNMPInfo
+    network, network_type, snmp_schemes, domain_tree_node, DeviceSNMPInfo, peer_information
 from initat.discovery_server.config import global_config
 from initat.snmp_relay.snmp_process import simple_snmp_oid, simplify_dict
 import base64
@@ -904,11 +904,8 @@ class generic_net_handler(SNMPHandler):
         _if_dict = {key: snmp_if(value) for key, value in simplify_dict(result_dict["1.3.6.1.2.1.2"], (2, 1)).iteritems()}
         snmp_type_dict = {_value.if_type: _value for _value in snmp_network_type.objects.all()}
         speed_dict = {}
-        for _entry in netdevice_speed.objects.all():
-            if _entry.speed_bps in speed_dict:
-                if not speed_dict[_entry.speed_bps].check_via_ethtool:
-                    speed_dict[_entry.speed_bps] = _entry
-            else:
+        for _entry in netdevice_speed.objects.all().order_by("-check_via_ethtool", "-full_duplex"):
+            if _entry.speed_bps not in speed_dict:
                 speed_dict[_entry.speed_bps] = _entry
         _added, _updated, _removed = (0, 0, 0)
         # found and used database ids (for deletion)
@@ -947,8 +944,30 @@ class generic_net_handler(SNMPHandler):
         if flags["strict"]:
             stale_nds = netdevice.objects.exclude(Q(pk__in=_found_nd_ids)).filter(Q(device=dev))
             if stale_nds.count():
-                _removed += stale_nds.count()
-                stale_nds.delete()
+                _remove = True
+                _stale_ids = [_nd.idx for _nd in stale_nds]
+                # check peers
+                stale_peers = peer_information.objects.filter(Q(s_netdevice__in=_stale_ids) | Q(d_netdevice__in=_stale_ids))
+                if stale_peers.count():
+                    # relink stale peers to first new netdevice
+                    if _found_nd_ids:
+                        relink_nd = netdevice.objects.get(Q(pk=list(_found_nd_ids)[0]))
+                        for stale_peer in stale_peers:
+                            if stale_peer.s_netdevice_id in _stale_ids and stale_peer.d_netdevice_id in _stale_ids:
+                                # source and dest will be delete, delete this peer
+                                pass
+                            elif stale_peer.s_netdevice_id in _stale_ids:
+                                stale_peer.s_netdevice = relink_nd
+                                stale_peer.save()
+                            else:
+                                stale_peer.d_netdevice = relink_nd
+                                stale_peer.save()
+                    else:
+                        # no netdevices found, skip removing stale nds
+                        _remove = False
+                if _remove:
+                    _removed += stale_nds.count()
+                    stale_nds.delete()
         return ResultNode(
             ok="updated interfaces (added {:d}, updated {:d}, removed {:d})".format(
                 _added,
@@ -965,7 +984,10 @@ class generic_netip_handler(SNMPHandler):
     def update(self, dev, scheme, result_dict, oid_list, flags):
         # ip dict
         _ip_dict = {key: snmp_ip(value) for key, value in simplify_dict(result_dict["1.3.6.1.2.1.4.20"], (1,)).iteritems()}
-        _tln = domain_tree_node.objects.get(Q(depth=0))
+        if dev.domain_tree_node_id:
+            _tln = dev.domain_tree_node
+        else:
+            _tln = domain_tree_node.objects.get(Q(depth=0))
         if_lut = {_dev_nd.snmp_idx: _dev_nd for _dev_nd in netdevice.objects.filter(Q(snmp_idx__gt=0) & Q(device=dev))}
         # handle IPs
         _found_ip_ids = set()
