@@ -34,6 +34,8 @@ import time
 
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
+# names of netdevices to ignore for total
+TOTAL_IGNORE_LIST = ["lo"]
 # name of bonding info filename
 # BONDFILE_NAME = "bondinfo"
 # devices to check
@@ -405,8 +407,9 @@ class _general(hm_classes.hm_module):
             total_dict = {}
             for key, stuff in nd_dict.iteritems():
                 for s_key, s_value in stuff.iteritems():
-                    total_dict.setdefault(s_key, 0)
-                    total_dict[s_key] += s_value
+                    if s_key not in TOTAL_IGNORE_LIST:
+                        total_dict.setdefault(s_key, 0)
+                        total_dict[s_key] += s_value
             nd_dict[TOTAL_DEVICE_NAME] = total_dict
         for key in [_key for _key in self.dev_dict.keys() if _key not in nd_dict]:
             _pf = "net.{}".format(key)
