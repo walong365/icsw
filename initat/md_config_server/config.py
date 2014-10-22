@@ -22,11 +22,11 @@
 from django.conf import settings
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
-     user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command, \
-     mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special, \
-     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency, \
-     mon_build_unreachable, parse_commandline
+    mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
+    user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command, \
+    mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special, \
+    mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency, \
+    mon_build_unreachable, parse_commandline
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E  # @UnresolvedImport
 import ConfigParser
@@ -964,21 +964,21 @@ class main_config(object):
             NDOMOD_NAME,
             belongs_to_ndo=True,
             values=[
-                ("instance_name"              , "clusternagios"),
-                ("output_type"                , "unixsocket"),
-                ("output"                     , "%s/ido.sock" % (self.__r_dir_dict["var"])),
-                ("tcp_port"                   , 5668),
-                ("output_buffer_items"        , 5000),
-                ("buffer_file"                , "%s/ndomod.tmp" % (self.__r_dir_dict["var"])),
-                ("file_rotation_interval"     , 14400),
-                ("file_rotation_timeout"      , 60),
-                ("reconnect_interval"         , 15),
-                ("reconnect_warning_interval" , 15),
-                ("debug_level"                , 0),
-                ("debug_verbosity"            , 0),
-                ("debug_file"                 , os.path.join(self.__r_dir_dict["var"], "ndomod.debug")),
-                ("data_processing_options"    , global_config["NDO_DATA_PROCESSING_OPTIONS"]),
-                ("config_output_options"      , 2)])
+                ("instance_name", "clusternagios"),
+                ("output_type", "unixsocket"),
+                ("output", "%s/ido.sock" % (self.__r_dir_dict["var"])),
+                ("tcp_port", 5668),
+                ("output_buffer_items", 5000),
+                ("buffer_file", "%s/ndomod.tmp" % (self.__r_dir_dict["var"])),
+                ("file_rotation_interval", 14400),
+                ("file_rotation_timeout", 60),
+                ("reconnect_interval", 15),
+                ("reconnect_warning_interval", 15),
+                ("debug_level", 0),
+                ("debug_verbosity", 0),
+                ("debug_file", os.path.join(self.__r_dir_dict["var"], "ndomod.debug")),
+                ("data_processing_options", global_config["NDO_DATA_PROCESSING_OPTIONS"]),
+                ("config_output_options", 2)])
         if not sql_suc:
             self.log("error reading sql_file '%s', no ndo2b_cfg to write" % (sql_file),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -998,89 +998,89 @@ class main_config(object):
                 NDO2DB_NAME,
                 belongs_to_ndo=True,
                 values=[
-                    ("ndo2db_user"            , "idnagios"),
-                    ("ndo2db_group"           , "idg"),
-                    ("socket_type"            , "unix"),
-                    ("socket_name"            , "%s/ido.sock" % (self.__r_dir_dict["var"])),
-                    ("tcp_port"               , 5668),
-                    ("db_servertype"          , db_server),
-                    ("db_host"                , sql_dict["MYSQL_HOST"]),
-                    ("db_port"                , sql_dict["PORT"]),
-                    ("db_name"                , sql_dict["NAGIOS_DATABASE"]),
-                    ("db_prefix"              , "%s_" % (global_config["MD_TYPE"])),
-                    ("db_user"                , sql_dict["MYSQL_USER"]),
-                    ("db_pass"                , sql_dict["MYSQL_PASSWD"]),
+                    ("ndo2db_user", "idnagios"),
+                    ("ndo2db_group", "idg"),
+                    ("socket_type", "unix"),
+                    ("socket_name", "%s/ido.sock" % (self.__r_dir_dict["var"])),
+                    ("tcp_port", 5668),
+                    ("db_servertype", db_server),
+                    ("db_host", sql_dict["MYSQL_HOST"]),
+                    ("db_port", sql_dict["PORT"]),
+                    ("db_name", sql_dict["NAGIOS_DATABASE"]),
+                    ("db_prefix", "%s_" % (global_config["MD_TYPE"])),
+                    ("db_user", sql_dict["MYSQL_USER"]),
+                    ("db_pass", sql_dict["MYSQL_PASSWD"]),
                     # time limits one week
-                    ("max_timedevents_age"    , 1440),
-                    ("max_systemcommands_age" , 1440),
-                    ("max_servicechecks_age"  , 1440),
-                    ("max_hostchecks_age"     , 1440),
-                    ("max_eventhandlers_age"  , 1440),
-                    ("debug_level"            , 0),
-                    ("debug_verbosity"        , 1),
-                    ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
-                    ("max_debug_file_size"    , 1000000)])
+                    ("max_timedevents_age", 1440),
+                    ("max_systemcommands_age", 1440),
+                    ("max_servicechecks_age", 1440),
+                    ("max_hostchecks_age", 1440),
+                    ("max_eventhandlers_age", 1440),
+                    ("debug_level", 0),
+                    ("debug_verbosity", 1),
+                    ("debug_file", "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
+                    ("max_debug_file_size", 1000000)])
         main_values = [
-            ("log_file"                         , "{}/{}.log".format(
+            ("log_file", "{}/{}.log".format(
                 self.__r_dir_dict["var"],
                 global_config["MD_TYPE"]
             )),
-            ("cfg_file"                         , []),
-            ("resource_file"                    , "%s/%s.cfg" % (
+            ("cfg_file", []),
+            ("resource_file", "%s/%s.cfg" % (
                 self.__r_dir_dict["etc"],
                 resource_cfg.get_name())),
-            ("%s_user" % (global_config["MD_TYPE"]) , "idnagios"),
+            ("%s_user" % (global_config["MD_TYPE"]), "idnagios"),
             ("%s_group" % (global_config["MD_TYPE"]), "idg"),
-            ("check_external_commands"          , 1),
-            ("command_check_interval"           , 1),
-            ("command_file"                     , self.get_command_name()),
-            ("command_check_interval"           , "5s"),
-            ("lock_file"                        , "%s/%s" % (self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
-            ("temp_file"                        , "%s/temp.tmp" % (self.__r_dir_dict["var"])),
-            ("log_rotation_method"              , "d"),
-            ("log_archive_path"                 , self.__r_dir_dict["var/archives"]),
-            ("use_syslog"                       , 0),
-            ("host_inter_check_delay_method"    , "s"),
-            ("service_inter_check_delay_method" , "s"),
-            ("service_interleave_factor"        , "s"),
+            ("check_external_commands", 1),
+            ("command_check_interval", 1),
+            ("command_file", self.get_command_name()),
+            ("command_check_interval", "5s"),
+            ("lock_file", "%s/%s" % (self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
+            ("temp_file", "%s/temp.tmp" % (self.__r_dir_dict["var"])),
+            ("log_rotation_method", "d"),
+            ("log_archive_path", self.__r_dir_dict["var/archives"]),
+            ("use_syslog", 0),
+            ("host_inter_check_delay_method", "s"),
+            ("service_inter_check_delay_method", "s"),
+            ("service_interleave_factor", "s"),
             # ("enable_predictive_service_dependency_checks", 1 if global_config["USE_HOST_DEPENDENCIES"] else 0),
             ("enable_predictive_host_dependency_checks", 1 if global_config["USE_HOST_DEPENDENCIES"] else 0),
-            ("translate_passive_host_checks"    , 1 if global_config["TRANSLATE_PASSIVE_HOST_CHECKS"] else 0),
-            ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
-            ("passive_host_checks_are_soft"     , 1 if global_config["PASSIVE_HOST_CHECKS_ARE_SOFT"] else 0),
-            ("service_reaper_frequency"         , 12),
-            ("sleep_time"                       , 1),
-            ("retain_state_information"         , 1 if global_config["RETAIN_SERVICE_STATUS"] else 0),  # if self.master else 0),
-            ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
-            ("retention_update_interval"        , 60),
-            ("use_retained_program_state"       , 1 if global_config["RETAIN_PROGRAM_STATE"] else 0),
-            ("use_retained_scheduling_info"     , 0),
-            ("interval_length"                  , 60 if not self.master else 60),
-            ("use_aggressive_host_checking"     , 0),
-            ("execute_service_checks"           , 1),
-            ("accept_passive_host_checks"       , 1),
-            ("accept_passive_service_checks"    , 1),
-            ("enable_notifications"             , 1 if self.master else 0),
-            ("enable_event_handlers"            , 1),
-            ("process_performance_data"         , (1 if global_config["ENABLE_COLLECTD"] else 0) if self.master else 0),
-            ("obsess_over_services"             , 1 if not self.master else 0),
-            ("obsess_over_hosts"                , 1 if not self.master else 0),
-            ("check_for_orphaned_services"      , 0),
-            ("check_service_freshness"          , 1 if global_config["CHECK_SERVICE_FRESHNESS"] else 0),
-            ("service_freshness_check_interval" , global_config["SERVICE_FRESHNESS_CHECK_INTERVAL"]),
-            ("check_host_freshness"             , 1 if global_config["CHECK_HOST_FRESHNESS"] else 0),
-            ("host_freshness_check_interval"    , global_config["HOST_FRESHNESS_CHECK_INTERVAL"]),
-            ("freshness_check_interval"         , 15),
-            ("enable_flap_detection"            , 1 if global_config["ENABLE_FLAP_DETECTION"] else 0),
-            ("low_service_flap_threshold"       , 25),
-            ("high_service_flap_threshold"      , 50),
-            ("low_host_flap_threshold"          , 25),
-            ("high_host_flap_threshold"         , 50),
-            ("date_format"                      , "euro"),
-            ("illegal_object_name_chars"        , r"~!$%^&*|'\"<>?),()"),
-            ("illegal_macro_output_chars"       , r"~$&|'\"<>"),
-            ("admin_email"                      , "lang-nevyjel@init.at"),
-            ("admin_pager"                      , "????"),
+            ("translate_passive_host_checks", 1 if global_config["TRANSLATE_PASSIVE_HOST_CHECKS"] else 0),
+            ("max_concurrent_checks", global_config["MAX_CONCURRENT_CHECKS"]),
+            ("passive_host_checks_are_soft", 1 if global_config["PASSIVE_HOST_CHECKS_ARE_SOFT"] else 0),
+            ("service_reaper_frequency", 12),
+            ("sleep_time", 1),
+            ("retain_state_information", 1 if global_config["RETAIN_SERVICE_STATUS"] else 0),  # if self.master else 0),
+            ("state_retention_file", "%s/retention.dat" % (self.__r_dir_dict["var"])),
+            ("retention_update_interval", 60),
+            ("use_retained_program_state", 1 if global_config["RETAIN_PROGRAM_STATE"] else 0),
+            ("use_retained_scheduling_info", 0),
+            ("interval_length", 60 if not self.master else 60),
+            ("use_aggressive_host_checking", 0),
+            ("execute_service_checks", 1),
+            ("accept_passive_host_checks", 1),
+            ("accept_passive_service_checks", 1),
+            ("enable_notifications", 1 if self.master else 0),
+            ("enable_event_handlers", 1),
+            ("process_performance_data", (1 if global_config["ENABLE_COLLECTD"] else 0) if self.master else 0),
+            ("obsess_over_services", 1 if not self.master else 0),
+            ("obsess_over_hosts", 1 if not self.master else 0),
+            ("check_for_orphaned_services", 0),
+            ("check_service_freshness", 1 if global_config["CHECK_SERVICE_FRESHNESS"] else 0),
+            ("service_freshness_check_interval", global_config["SERVICE_FRESHNESS_CHECK_INTERVAL"]),
+            ("check_host_freshness", 1 if global_config["CHECK_HOST_FRESHNESS"] else 0),
+            ("host_freshness_check_interval", global_config["HOST_FRESHNESS_CHECK_INTERVAL"]),
+            ("freshness_check_interval", 15),
+            ("enable_flap_detection", 1 if global_config["ENABLE_FLAP_DETECTION"] else 0),
+            ("low_service_flap_threshold", 25),
+            ("high_service_flap_threshold", 50),
+            ("low_host_flap_threshold", 25),
+            ("high_host_flap_threshold", 50),
+            ("date_format", "euro"),
+            ("illegal_object_name_chars", r"~!$%^&*|'\"<>?),()"),
+            ("illegal_macro_output_chars", r"~$&|'\"<>"),
+            ("admin_email", "lang-nevyjel@init.at"),
+            ("admin_pager", "????"),
             # ("debug_file"      , os.path.join(self.__r_dir_dict["var"], "icinga.dbg")),
             # ("debug_level"     , -1),
             # ("debug_verbosity" , 2),
@@ -1150,58 +1150,70 @@ class main_config(object):
                             NDOMOD_NAME)))
                 else:
                     main_values.append(
-                        ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
-                            self.__r_dir_dict["lib"],
-                            self.__r_dir_dict["etc"],
-                            NDOMOD_NAME)))
+                        (
+                            "*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
+                                self.__r_dir_dict["lib"],
+                                self.__r_dir_dict["etc"],
+                                NDOMOD_NAME
+                            )
+                        )
+                    )
             main_values.append(
-                ("event_broker_options"             , -1 if global_config["ENABLE_LIVESTATUS"] else global_config["EVENT_BROKER_OPTIONS"])
+                ("event_broker_options", -1 if global_config["ENABLE_LIVESTATUS"] else global_config["EVENT_BROKER_OPTIONS"])
             )
         else:
             # add global event handlers
             main_values.extend([
-                ("cfg_dir"                , []),
-                ("ochp_command"           , "ochp-command"),
-                ("ocsp_command"           , "ocsp-command"),
-                ("stalking_event_handlers_for_hosts"   , 1),
+                ("cfg_dir", []),
+                ("ochp_command", "ochp-command"),
+                ("ocsp_command", "ocsp-command"),
+                ("stalking_event_handlers_for_hosts", 1),
                 ("stalking_event_handlers_for_services", 1),
             ])
         main_values.extend(
             [
-                ("object_cache_file"            , "%s/object.cache" % (self.__r_dir_dict["var"])),
+                ("object_cache_file", "%s/object.cache" % (self.__r_dir_dict["var"])),
                 ("use_large_installation_tweaks", "1"),
-                ("enable_environment_macros"    , "0"),
-                ("max_service_check_spread"     , global_config["MAX_SERVICE_CHECK_SPREAD"]),
-                ("max_host_check_spread"        , global_config["MAX_HOST_CHECK_SPREAD"]),
+                ("enable_environment_macros", "0"),
+                ("max_service_check_spread", global_config["MAX_SERVICE_CHECK_SPREAD"]),
+                ("max_host_check_spread", global_config["MAX_HOST_CHECK_SPREAD"]),
             ])
         main_cfg = base_config(global_config["MAIN_CONFIG_NAME"],
                                is_host_file=True,
                                values=main_values)
         for log_descr, en in [
-            ("notifications"    , 1),
-            ("service_retries"  , 1),
-            ("host_retries"     , 1),
-            ("event_handlers"   , 1),
-            ("initial_states"   , 1 if global_config["LOG_INITIAL_STATES"] else 0),
+            ("notifications" , 1),
+            ("service_retries", 1),
+            ("host_retries", 1),
+            ("event_handlers", 1),
+            ("initial_states", 1 if global_config["LOG_INITIAL_STATES"] else 0),
             ("external_commands", 1 if global_config["LOG_EXTERNAL_COMMANDS"] else 0),
-            ("passive_checks"   , 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
-            ]:
+            ("passive_checks", 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
+        ]:
             main_cfg["log_%s" % (log_descr)] = en
         for to_descr, to in [
             ("service_check", 60),
-            ("host_check"   , 30),
+            ("host_check", 30),
             ("event_handler", 30),
-            ("notification" , 30),
-            ("ocsp"         , 5),
-            ("perfdata"     , 5)]:
+            ("notification", 30),
+            ("ocsp", 5),
+            ("perfdata", 5)
+        ]:
             main_cfg["%s_timeout" % (to_descr)] = to
         for th_descr, th in [
-            ("low_service" , 5.0),
+            ("low_service", 5.0),
             ("high_service", 20.0),
-            ("low_host"    , 5.0),
-            ("high_host"   , 20.0)]:
+            ("low_host", 5.0),
+            ("high_host", 20.0)
+        ]:
             main_cfg["%s_flap_threshold" % (th_descr)] = th
-        admin_list = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.device.all_devices")])
+        admin_list = list(
+            [
+                cur_u.login for cur_u in user.objects.filter(
+                    Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)
+                ) if cur_u.has_perm("backbone.device.all_devices")
+            ]
+        )
         if admin_list:
             def_user = ",".join(admin_list)
         else:
@@ -1209,24 +1221,28 @@ class main_config(object):
         cgi_config = base_config(
             "cgi",
             is_host_file=True,
-            values=[("main_config_file"         , "%s/%s.cfg" % (
-                self.__r_dir_dict["etc"], global_config["MAIN_CONFIG_NAME"])),
-                    ("physical_html_path"       , "%s" % (self.__r_dir_dict["share"])),
-                    ("url_html_path"            , "/%s" % (global_config["MD_TYPE"])),
-                    ("show_context_help"        , 0),
-                    ("use_authentication"       , 1),
-                    # ("default_user_name"        , def_user),
-                    ("default_statusmap_layout" , 5),
-                    ("default_statuswrl_layout" , 4),
-                    ("refresh_rate"             , 60),
-                    ("lock_author_name"         , 1),
-                    ("authorized_for_system_information"       , def_user),
-                    ("authorized_for_system_commands"          , def_user),
-                    ("authorized_for_configuration_information", def_user),
-                    ("authorized_for_all_hosts"                , def_user),
-                    ("authorized_for_all_host_commands"        , def_user),
-                    ("authorized_for_all_services"             , def_user),
-                    ("authorized_for_all_service_commands"     , def_user)] +
+            values=[
+                (
+                    "main_config_file", "%s/%s.cfg" % (
+                        self.__r_dir_dict["etc"], global_config["MAIN_CONFIG_NAME"]
+                    )
+                ),
+                ("physical_html_path", "%s" % (self.__r_dir_dict["share"])),
+                ("url_html_path", "/%s" % (global_config["MD_TYPE"])),
+                ("show_context_help", 0),
+                ("use_authentication", 1),
+                # ("default_user_name"        , def_user),
+                ("default_statusmap_layout", 5),
+                ("default_statuswrl_layout", 4),
+                ("refresh_rate", 60),
+                ("lock_author_name", 1),
+                ("authorized_for_system_information", def_user),
+                ("authorized_for_system_commands", def_user),
+                ("authorized_for_configuration_information", def_user),
+                ("authorized_for_all_hosts", def_user),
+                ("authorized_for_all_host_commands", def_user),
+                ("authorized_for_all_services", def_user),
+                ("authorized_for_all_service_commands", def_user)] +
             [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
         if sql_suc:
             pass
@@ -1251,25 +1267,25 @@ class main_config(object):
                 is_host_file=True,
                 headers=["[uwsgi]"],
                 values=[
-                    ("chdir"           , self.__r_dir_dict[""]),
-                    ("plugin-dir"      , "/opt/cluster/%s" % (lib_dir_name)),
-                    ("cgi-mode"        , "true"),
-                    ("master"          , "true"),
+                    ("chdir", self.__r_dir_dict[""]),
+                    ("plugin-dir", "/opt/cluster/%s" % (lib_dir_name)),
+                    ("cgi-mode", "true"),
+                    ("master", "true"),
                     # set vacuum to false because of problems with uwsgi 1.9
-                    ("vacuum"          , "false"),
-                    ("workers"         , 4),
+                    ("vacuum", "false"),
+                    ("workers", 4),
                     ("harakiri-verbose", 1),
-                    ("plugins"         , "cgi"),
-                    ("socket"          , os.path.join(self.__r_dir_dict["var"], "uwsgi.sock")),
-                    ("uid"             , www_user),
-                    ("gid"             , www_group),
-                    ("cgi"             , self.__r_dir_dict["sbin"]),
-                    ("no-default-app"  , "true"),
-                    ("cgi-timeout"     , 3600),
-                    ("pidfile"         , os.path.join(self.__r_dir_dict["var"], "wsgi.pid")),
-                    ("daemonize"       , os.path.join(self.__r_dir_dict["var"], "wsgi.log")),
-                    ("chown-socket"    , www_user),
-                    ("no-site"         , "true"),
+                    ("plugins", "cgi"),
+                    ("socket", os.path.join(self.__r_dir_dict["var"], "uwsgi.sock")),
+                    ("uid", www_user),
+                    ("gid", www_group),
+                    ("cgi", self.__r_dir_dict["sbin"]),
+                    ("no-default-app", "true"),
+                    ("cgi-timeout", 3600),
+                    ("pidfile", os.path.join(self.__r_dir_dict["var"], "wsgi.pid")),
+                    ("daemonize", os.path.join(self.__r_dir_dict["var"], "wsgi.log")),
+                    ("chown-socket", www_user),
+                    ("no-site", "true"),
                     # ("route"           , "^/icinga/cgi-bin basicauth:Monitor,init:init"),
                 ])
             self[wsgi_config.get_name()] = wsgi_config
@@ -1286,7 +1302,7 @@ class main_config(object):
                     ["{}:{{SSHA}}{}".format(
                         cur_u.login,
                         cur_u.password_ssha.split(":", 1)[1]
-                    ) for cur_u in user.objects.filter(Q(active=True)) if cur_u.password_ssha.count(":")] + [""]
+                    ) for cur_u in user.objects.filter(Q(active=True)) if cur_u.password_ssha.count(":")] + [""]  # @UndefinedVariable
                 )
             )
             if global_config["ENABLE_NAGVIS"]:
@@ -1302,8 +1318,12 @@ class main_config(object):
                     cur_c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
                     # tables
                     all_tables = [value[0] for value in cur_c.fetchall()]
-                    self.log("found %s: %s" % (logging_tools.get_plural("table", len(all_tables)),
-                                               ", ".join(sorted(all_tables))))
+                    self.log(
+                        "found {}: {}".format(
+                            logging_tools.get_plural("table", len(all_tables)),
+                            ", ".join(sorted(all_tables))
+                        )
+                    )
                     # delete previous users
                     cur_c.execute("DELETE FROM users2roles")
                     cur_c.execute("DELETE FROM users")
@@ -1322,12 +1342,16 @@ class main_config(object):
                     self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
                     # get nagivs root points
                     nagvis_rds = device.objects.filter(Q(automap_root_nagvis=True)).select_related("domain_tree_node", "device_group")
-                    self.log("%s: %s" % (logging_tools.get_plural("NagVIS root device", len(nagvis_rds)),
-                                         ", ".join([unicode(cur_dev) for cur_dev in nagvis_rds])))
+                    self.log(
+                        "{}: {}".format(
+                            logging_tools.get_plural("NagVIS root device", len(nagvis_rds)),
+                            ", ".join([unicode(cur_dev) for cur_dev in nagvis_rds])
+                        )
+                    )
                     devg_lut = {}
                     for cur_dev in nagvis_rds:
                         devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.full_name)
-                    for cur_u in user.objects.filter(Q(active=True) & Q(mon_contact__pk__gt=0)).prefetch_related("allowed_device_groups"):
+                    for cur_u in user.objects.filter(Q(active=True) & Q(mon_contact__pk__gt=0)).prefetch_related("allowed_device_groups"):  # @UndefinedVariable
                         # check for admin
                         if cur_u.has_perm("backbone.device.all_devices"):
                             target_role = "admins"
@@ -1336,26 +1360,35 @@ class main_config(object):
                             target_role = cur_u.login
                             role_dict[target_role] = cur_c.execute("INSERT INTO roles VALUES(Null, '%s')" % (cur_u.login)).lastrowid
                             add_perms = ["auth.logout.*", "overview.view.*", "general.*.*", "user.setoption.*"]
+                            perm_names = []
                             for cur_devg in cur_u.allowed_device_groups.values_list("pk", flat=True):
                                 for dev_name in devg_lut.get(cur_devg, []):
-                                    perm_name = "map.view.%s" % (dev_name)
-                                    if perm_name not in perms_dict:
-                                        try:
-                                            perms_dict[perm_name] = cur_c.execute("INSERT INTO perms VALUES(Null, '%s', '%s', '%s')" % (
+                                    perm_names.extend(
+                                        [
+                                            "map.view.{}".format(dev_name),
+                                            "automap.view.{}".format(dev_name),
+                                        ]
+                                    )
+                            for perm_name in perm_names:
+                                if perm_name not in perms_dict:
+                                    try:
+                                        perms_dict[perm_name] = cur_c.execute(
+                                            "INSERT INTO perms VALUES(Null, '%s', '%s', '%s')" % (
                                                 perm_name.split(".")[0].title(),
                                                 perm_name.split(".")[1],
                                                 perm_name.split(".")[2]
-                                                )).lastrowid
-                                            self.log("permission '%s' has id %d" % (perm_name, perms_dict[perm_name]))
-                                        except:
-                                            self.log(
-                                                "cannot create permission '{}': {}".format(
-                                                    perm_name,
-                                                    process_tools.get_except_info()
-                                                ),
-                                                logging_tools.LOG_LEVEL_ERROR
                                             )
-                                        add_perms.append(perm_name)
+                                        ).lastrowid
+                                        self.log("permission '%s' has id %d" % (perm_name, perms_dict[perm_name]))
+                                    except:
+                                        self.log(
+                                            "cannot create permission '{}': {}".format(
+                                                perm_name,
+                                                process_tools.get_except_info()
+                                            ),
+                                            logging_tools.LOG_LEVEL_ERROR
+                                        )
+                                add_perms.append(perm_name)
                             # add perms
                             for new_perm in add_perms:
                                 if new_perm in perms_dict:
@@ -1623,7 +1656,7 @@ class build_cache(object):
         self.join_char = "_" if global_config["SAFE_NAMES"] else " "
         # device_group user access
         self.dg_user_access = {}
-        mon_user_pks = list(user.objects.filter(Q(mon_contact__pk__gt=0)).values_list("pk", flat=True))
+        mon_user_pks = list(user.objects.filter(Q(mon_contact__pk__gt=0)).values_list("pk", flat=True))  # @UndefinedVariable
         for _dg in device_group.objects.all().prefetch_related("user_set"):
             self.dg_user_access[_dg.pk] = list([_user for _user in _dg.user_set.all() if _user.pk in mon_user_pks])
         # all hosts dict
