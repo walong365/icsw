@@ -893,7 +893,7 @@ class generic_base_handler(SNMPHandler):
         ]:
             setattr(_cur_info, attr, _dict[0].get(_idx, default))
         _cur_info.save()
-        return ResultNode()
+        return ResultNode(ok="set Infos")
 
 
 class generic_net_handler(SNMPHandler):
