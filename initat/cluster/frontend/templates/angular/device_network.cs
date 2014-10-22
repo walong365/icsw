@@ -341,10 +341,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
-                for dev in $scope.devices
-                    dev.expanded = true
-                    for nd in dev.netdevice_set
-                        nd.expanded = false
                 $scope.peers = data[1]
                 $scope.netdevice_speeds = data[2]
                 $scope.network_device_types = data[3]
@@ -544,7 +540,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 (new_obj) ->
                     if new_obj != false
                         new_obj.net_ip_set = []
-                        new_obj.expanded = false
                         new_obj.peers = []
                         $scope.nd_lut[new_obj.idx] = new_obj
                         $scope.check_for_peer_change(new_obj)
@@ -705,13 +700,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 return {0 : "default", 1 : "10 MBit", 2 : "100 MBit", 3 : "1 GBit", 4 : "10 GBit"}[eth_opt]
         $scope.update_ethtool = (ndip_obj) ->
             ndip_obj.ethtool_options = (parseInt(ndip_obj.ethtool_speed) << 4) | (parseInt(ndip_obj.ethtool_duplex) << 2) < (parseInt(ndip_obj.ethtool_autoneg))
-        $scope.get_ndip_expanded = (ndip_obj) ->
-            if ndip_obj.device
-                return true
-            else if ndip_obj.netdevice
-                return $scope.nd_lut[ndip_obj.netdevice].expanded
-            else
-                return $scope.nd_lut[ndip_obj.netdevice].expanded
         $scope.get_peer_cost = (ndip_obj) ->
             if ndip_obj.target of $scope.nd_lut
                 t_cost = $scope.nd_lut[ndip_obj.target].penalty

@@ -1104,7 +1104,7 @@ class angular_modal_mixin
         else
             return "has-error"
     modify : () ->
-        if not @child_scope.form.$invalid
+        if not @scope.form.$invalid
             @close_modal()
             return @_prom.resolve(@scope._edit_obj)
         else
