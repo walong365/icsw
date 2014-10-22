@@ -381,6 +381,17 @@ class device_config(models.Model):
         db_table = u'device_config'
 
 
+class DeviceSNMPInfo(models.Model):
+    idx = models.AutoField(db_column="device_idx", primary_key=True)
+    device = models.OneToOneField("backbone.device", related_name="DeviceSNMPInfo")
+    description = models.CharField(default="", max_length=512)
+    contact = models.CharField(default="", max_length=512)
+    name = models.CharField(default="", max_length=512)
+    location = models.CharField(default="", max_length=512)
+    services = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)

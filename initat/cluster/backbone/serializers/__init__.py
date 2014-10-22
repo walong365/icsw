@@ -53,7 +53,8 @@ import uuid
 from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
     log_source, log_status, device_group, cluster_license, device_type, cluster_setting, mac_ignore, \
     macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
-    quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting
+    quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting, \
+    DeviceSNMPInfo
 
 from initat.cluster.backbone.serializers.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.config import *  # @UnusedWildImport
@@ -184,6 +185,11 @@ class mon_dist_master_serializer(serializers.ModelSerializer):
         model = mon_dist_master
 
 
+class DeviceSNMPSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DeviceSNMPInfo
+
+
 class device_serializer(serializers.ModelSerializer):
     full_name = serializers.Field(source="full_name")
     is_meta_device = serializers.Field(source="is_meta_device")
@@ -205,6 +211,7 @@ class device_serializer(serializers.ModelSerializer):
     client_version = serializers.Field(source="client_version")
     monitor_type = serializers.Field(source="get_monitor_type")
     snmp_schemes = snmp_scheme_serializer(many=True)
+    DeviceSNMPInfo = DeviceSNMPSerializer()
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
@@ -260,6 +267,8 @@ class device_serializer(serializers.ModelSerializer):
             "device_mon_location_set",
             # snmp schemes
             "snmp_schemes",
+            # snmp info
+            "DeviceSNMPInfo",
             # uuid
             "uuid",
         )

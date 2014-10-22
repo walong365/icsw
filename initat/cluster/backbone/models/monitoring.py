@@ -102,10 +102,17 @@ class snmp_scheme(models.Model):
     def __unicode__(self):
         return "snmp_scheme {}".format(self.name)
 
+    @property
     def full_name(self):
-        return "{}.{}_v{:d}".format(
+        return "{}.{}".format(
             self.snmp_scheme_vendor.name,
             self.name,
+        )
+
+    @property
+    def full_name_version(self):
+        return "{}_v{:d}".format(
+            self.full_name,
             self.version,
         )
 
@@ -159,6 +166,13 @@ class snmp_schemes(object):
 
     def get_scheme_by_oid(self, oid):
         return self.__oid_lut.get(self.oid_to_str(oid), None)
+
+    def filter_results(self, in_dict, oids):
+        # return a dict where only the given oids are present
+        # and the top level keys are only strings
+        _oid_lut = {self.oid_to_str(oid): oid for oid in in_dict.iterkeys()}
+        oids = [self.oid_to_str(oid) for oid in oids]
+        return {oid: in_dict[_oid_lut[oid]] for oid in oids if oid in _oid_lut}
 
 
 class mon_trace(models.Model):
