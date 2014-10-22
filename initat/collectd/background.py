@@ -416,7 +416,10 @@ class snmp_job(object):
                 logging_tools.LOG_LEVEL_WARN
             )
             for _del in _to_delete:
-                del bg_job.ref_dict[_del]
+                try:
+                    del bg_job.ref_dict[_del]
+                except KeyError:
+                    snmp_job.g_log("key {} not in ref_dict, strange...".format(_del), logging_tools.LOG_LEVEL_CRITICAL)
 
 
 class ipmi_builder(object):
