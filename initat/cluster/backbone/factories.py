@@ -395,6 +395,13 @@ class SNMPScheme(factory.django.DjangoModelFactory):
             self.description = extracted
             self.save()
 
+    @factory.post_generation
+    def priority(self, create, extracted, **kwargs):
+        extracted = extracted or 0
+        if self.priority != extracted:
+            self.priority = extracted
+            self.save()
+
 
 class SNMPSchemeTLOID(factory.django.DjangoModelFactory):
     class Meta:

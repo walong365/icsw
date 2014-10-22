@@ -354,14 +354,27 @@ def _add_snmp_fixtures():
     )
     net_scheme = factories.SNMPScheme(
         name="net",
+        description="network settings (devices)",
         version=1,
         collect=True,
         initial=True,
+        priority=64,
         snmp_scheme_vendor=gen_vendor,
     )
     factories.SNMPSchemeTLOID(
         oid="1.3.6.1.2.1.2",
         snmp_scheme=net_scheme,
+    )
+    netip_scheme = factories.SNMPScheme(
+        name="netip",
+        description="network settings (IPs)",
+        version=1,
+        initial=True,
+        snmp_scheme_vendor=gen_vendor,
+    )
+    factories.SNMPSchemeTLOID(
+        oid="1.3.6.1.2.1.4.20",
+        snmp_scheme=netip_scheme,
     )
 
 

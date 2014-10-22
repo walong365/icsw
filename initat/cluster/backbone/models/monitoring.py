@@ -95,10 +95,19 @@ class snmp_scheme(models.Model):
     collect = models.BooleanField(default=False)
     # when found make an initial lookup call
     initial = models.BooleanField(default=False)
+    # priority for handling, schemes with higher priority will be handled first
+    priority = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
         return "snmp_scheme {}".format(self.name)
+
+    def full_name(self):
+        return "{}.{}_v{:d}".format(
+            self.snmp_scheme_vendor.name,
+            self.name,
+            self.version,
+        )
 
     class Meta:
         app_label = "backbone"
@@ -143,10 +152,13 @@ class snmp_schemes(object):
     def get_scheme(self, key):
         return self.__scheme_dict[key]
 
-    def get_scheme_by_oid(self, oid):
+    def oid_to_str(self, oid):
         if type(oid) == tuple:
             oid = ".".join(["{:d}".format(_p) for _p in oid])
-        return self.__oid_lut.get(oid, None)
+        return oid
+
+    def get_scheme_by_oid(self, oid):
+        return self.__oid_lut.get(self.oid_to_str(oid), None)
 
 
 class mon_trace(models.Model):
