@@ -167,7 +167,7 @@ class db_prefetch_mixin(object):
         return ["domain_tree_node", "device_type", "device_group", "mon_ext_host"]
 
     def _device_prefetch(self):
-        return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo"]
+        return ["snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo", "snmp_schemes__snmp_scheme_tl_oid_set"]
 
     def _mon_check_command_prefetch(self):
         return ["exclude_devices", "categories"]
@@ -736,7 +736,15 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.filter(Q(pk__in=dev_keys))
         if not self._get_post_boolean("ignore_disabled", False):
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
-        _q = _q.select_related("domain_tree_node", "device_type", "device_group").prefetch_related("snmp_schemes__snmp_scheme_vendor", "DeviceSNMPInfo")
+        _q = _q.select_related(
+            "domain_tree_node",
+            "device_type",
+            "device_group",
+        ).prefetch_related(
+            "snmp_schemes__snmp_scheme_vendor",
+            "DeviceSNMPInfo",
+            "snmp_schemes__snmp_scheme_tl_oid_set",
+        )
         if package_state:
             _q = _q.prefetch_related(
                 "package_device_connection_set",

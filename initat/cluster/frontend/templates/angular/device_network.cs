@@ -33,6 +33,7 @@ device_networks_template = """
     <thead>
         <tr>
             <th>Device</th>
+            <th>idx</th>
             <th>Port</th>
             <th>#IPs</th>
             <th>#peers</th>
@@ -111,7 +112,10 @@ dev_row_template = """
     {{ get_num_peers_dev(ndip_obj) }}
 </td>
 <td>
-    {{ get_snmp_scheme_info(ndip_obj) }}
+    <span class="label label-info" ng-repeat="obj in ndip_obj.snmp_schemes">
+        {{ obj.full_name }}
+        <span class="glyphicon glyphicon-remove"></span>
+    </span>
 </td>
 <td>
     <button type="button" class="btn btn-xs btn-success pull-right"
@@ -150,6 +154,8 @@ nd_row_template = """
     {{ dev_lut[ndip_obj.device].full_name }}
 </td>
 <td>
+    <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
+<td>
     <span ng-show="ndip_obj.enabled">
         {{ get_netdevice_name(ndip_obj) }}
     </span>
@@ -175,7 +181,8 @@ nd_row_template = """
     <button type="button" class="btn btn-xs btn-success"
      tooltip-placement="right"
      tooltip-html-unsafe="<div class='text-left'>
-        device: {{ ndip_obj.devname }}<br>
+        device: {{ get_netdevice_name(ndip_obj) }}<br>
+        SNMP: {{ ndip_obj.snmp_idx && 'yes' || 'no' }}<span ng-show='ndip_obj.snmp'> ( {{ ndip_obj.snmp_idx }} )</span><br>
         enabled: {{ ndip_obj.enabled | yesno2 }}<br>
         <hr>  
         driver: {{ ndip_obj.driver }}<br>
@@ -213,7 +220,7 @@ nd_row_template = """
 
 ip_row_template = """
 <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-<td>{{ nd_lut[ndip_obj.netdevice].devname }}</td>
+<td>{{ get_netdevice_name(ndip_obj.netdevice) }}</td>
 <td>{{ ndip_obj.ip }}</td>
 <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
 <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
@@ -228,7 +235,7 @@ ip_row_template = """
 
 peer_row_template = """
 <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-<td>{{ nd_lut[ndip_obj.netdevice].devname }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
+<td>{{ get_netdevice_name(ndip_obj.netdevice) }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
 <td>
     with cost {{ ndip_obj.peer.penalty }}
     &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
@@ -327,6 +334,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                 # 6
                 restDataSource.reload(["{% url 'rest:netdevice_peer_list' %}", {}])
+                restDataSource.reload(["{% url 'rest:snmp_network_type_list' %}", {}])
+                # 8
                 restDataSource.reload(["{% url 'rest:fetch_forms' %}", {
                     "forms" : angular.toJson([
                         "netdevice_form"
@@ -336,8 +345,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         "device_boot_form"
                      ])
                 }]),
-                # 8
-                restDataSource.reload(["{% url 'rest:snmp_network_type_list' %}", {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -351,11 +358,12 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 $scope.dtn_lut = build_lut($scope.domain_tree_node)
                 $scope.nd_peers = data[6]
                 $scope.build_luts()
-                for cur_form in data[7] 
-                    $templateCache.put(cur_form.name, cur_form.form)
                 # snmp network types
-                $scope.snt = data[8]
+                $scope.snt = data[7]
                 $scope.snt_lut = build_lut($scope.snt)
+                # forms
+                for cur_form in data[8] 
+                    $templateCache.put(cur_form.name, cur_form.form)
             )
         $scope.build_luts = () ->
             $scope.dev_lut = {}
@@ -407,6 +415,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             else
                 return false
         $scope.get_netdevice_name = (nd) ->
+            if angular.isNumber(nd)
+                nd = $scope.nd_lut[nd]
             nd_name = nd.devname
             if nd.description
                 nd_name = "#{nd_name} (#{nd.description})"
@@ -819,12 +829,12 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         restrict : "EA"
         template: $templateCache.get("devrow.html")
         link : (scope, element, attrs) ->
-            scope.get_snmp_scheme_info = (obj) ->
-                _sc = obj.snmp_schemes
-                if _sc.length
-                    return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
-                else
-                    return "---"
+            #scope.get_snmp_scheme_info = (obj) ->
+            #    _sc = obj.snmp_schemes
+            #    if _sc.length
+            #        return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
+            #    else
+            #        return "---"
     }
 ).directive("netpeerrow", ($templateCache, $compile) ->
     return {
