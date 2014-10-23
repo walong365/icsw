@@ -910,28 +910,42 @@ class generic_net_handler(SNMPHandler):
         _added, _updated, _removed = (0, 0, 0)
         # found and used database ids (for deletion)
         _found_nd_ids = set()
+        # all present netdevices
+        present_nds = netdevice.objects.filter(Q(device=dev))
+        # lut
+        pnd_lut = {}
+        for entry in present_nds:
+            pnd_lut[entry.devname] = entry
+            if entry.snmp_idx:
+                pnd_lut[entry.snmp_idx] = entry
+        # pprint.pprint(pnd_lut)
         # lookup dict for snmp_if -> dev_nd
         for if_idx, if_struct in _if_dict.iteritems():
             _created = False
-            try:
-                # try to get interface with matching idx
-                _dev_nd = netdevice.objects.get(Q(device=dev) & Q(snmp_idx=if_idx))
-            except netdevice.DoesNotExist:
-                try:
-                    # try to get interface with matching name
-                    _dev_nd = netdevice.objects.get(Q(device=dev) & Q(devname=if_struct.name))
-                except:
-                    _created = True
-                    _added += 1
-                    # create new entry, will be updated later with more values
-                    _dev_nd = netdevice(
-                        device=dev,
-                        snmp_idx=if_idx,
-                        force_network_device_type_match=False,
-                    )
+            _dev_nd = pnd_lut.get(if_idx, pnd_lut.get(if_struct.name, None))
+            if _dev_nd is None:
+                _created = True
+                _added += 1
+                # create new entry, will be updated later with more values
+                _dev_nd = netdevice(
+                    device=dev,
+                    snmp_idx=if_idx,
+                    force_network_device_type_match=False,
+                )
+                # update lut
+                pnd_lut[if_idx] = _dev_nd
+                pnd_lut[if_struct.name] = _dev_nd
             if _dev_nd is not None:
                 if not _created:
                     _updated += 1
+                if if_struct.name in pnd_lut and pnd_lut[if_struct.name].snmp_idx != _dev_nd.snmp_idx:
+                    self.log(
+                        "namechange detected for SNMP interfaces, deleting previous interface ({}, {:d})".format(
+                            if_struct.name,
+                            if_idx,
+                        )
+                    )
+                    pnd_lut[if_struct.name].delete()
                 _dev_nd.devname = if_struct.name
                 _dev_nd.netdevice_speed = speed_dict.get(if_struct.speed, speed_dict[0])
                 _dev_nd.snmp_network_type = snmp_type_dict[if_struct.if_type]
@@ -951,7 +965,14 @@ class generic_net_handler(SNMPHandler):
                 if stale_peers.count():
                     # relink stale peers to first new netdevice
                     if _found_nd_ids:
-                        relink_nd = netdevice.objects.get(Q(pk=list(_found_nd_ids)[0]))
+                        # nds without loopback devices
+                        relink_nds = netdevice.objects.exclude(Q(snmp_network_type__if_type__in=[24])).filter(Q(pk__in=_found_nd_ids))
+                        if relink_nds.count():
+                            # ok, take first one
+                            relink_nd = relink_nds[0]
+                        else:
+                            # take first one without software loopback filter
+                            relink_nd = netdevice.objects.get(Q(pk=list(_found_nd_ids)[0]))
                         for stale_peer in stale_peers:
                             if stale_peer.s_netdevice_id in _stale_ids and stale_peer.d_netdevice_id in _stale_ids:
                                 # source and dest will be delete, delete this peer
