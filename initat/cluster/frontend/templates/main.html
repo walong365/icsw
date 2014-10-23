@@ -25,16 +25,70 @@
 
     {% block stylesheets %}
         {% compressed_css 'part1' %}
-    <style type="text/css" media="screen">
-    
-        .dataTables_info { padding-top: 0; }
-        .dataTables_paginate { padding-top: 0; }
-        .css_right { float: right; }
-    
-    </style>
-    
+
     <style type="text/css">
+    body { padding-top: 64px; }
+    #wrapper {
+        padding-left: 0;
+        -webkit-transition: all 0.5s ease;
+        -moz-transition: all 0.5s ease;
+        -o-transition: all 0.5s ease;
+        transition: all 0.5s ease;
+    }
     
+    #wrapper.toggled {
+        padding-left: 250px;
+    }
+    
+    #sidebar-wrapper {
+        z-index: 1000;
+        position: fixed;
+        left: 350px;
+        width: 0;
+        height: 100%;
+        margin-left: -350px;
+        overflow-y: auto;
+        -webkit-transition: all 0.5s ease;
+        -moz-transition: all 0.5s ease;
+        -o-transition: all 0.5s ease;
+        transition: all 0.5s ease;
+    }
+    
+    #wrapper.toggled #sidebar-wrapper {
+        width: 350px;
+    }
+    
+    #page-content-wrapper {
+        width: 100%;
+        padding: 2px;
+    }
+    
+    #wrapper.toggled #page-content-wrapper {
+        position: absolute;
+        margin-right: -350px;
+    }
+    
+    @media(min-width:768px) {
+        #wrapper {
+            padding-left: 350px;
+        }
+        #wrapper.toggled {
+            padding-left: 0;
+        }
+        #sidebar-wrapper {
+            width: 350px;
+        }
+        #wrapper.toggled #sidebar-wrapper {
+            width: 0;
+        }
+        #page-content-wrapper {
+            padding: 2px;
+        }
+        #wrapper.toggled #page-content-wrapper {
+            position: relative;
+            margin-right: 0;
+        }
+    }
     .CodeMirror {
         border-top: 1px solid black;
         border-bottom: 1px solid black;
@@ -115,65 +169,34 @@
     {% endblock %}
     </header>
 
-    {% block main %}
-    {% block body %}
     {% if user.is_authenticated %}
-        <div class="ui-layout-north">
-            {% include "menu.html" %}
-        </div>
+        {% include "menu.html" %}
     {% endif %}
-    <noscript>
-        <p>no JavaScript, no Clustersoftware</p>
-    </noscript>
-    {% if not hide_sidebar %}
-        <div class="ui-layout-west " >
-            {% include 'sidebar.html' %}
-        </div>
+    {% if user.is_authenticated %}
+        <div id="wrapper">
+    {% else %}
+        <div id="wrapper" class="toggled">
     {% endif %}
-    <div class="ui-layout-center" id="pane-center">
-        {% block content %}
-        {% endblock %}
+
+        {% if user.is_authenticated %}
+            <div id="sidebar-wrapper">
+                {% include 'sidebar.html' %}
+            </div>
+        {% endif %}
+
+        <div id="page-content-wrapper">
+            <div class="container-fluid">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
     </div>
-    {% endblock %}
-    {% endblock %}
     <footer>
         {% block footer %}
         
         <script type="text/javascript">
         
         {% inlinecoffeescript %}
-        
-        save_layout_state = (my_layout, p_name) ->
-            call_ajax
-                url  : "{% url 'user:save_layout_state' %}"
-                data : 
-                    my_layout.state
-                    
-        init_layout = ->
-            if $("div.ui-layout-center").length
-                my_layout = $("body").layout
-                    applyDefaultStyles  : true
-                    slidable            : false
-                    spacing_open        : 6
-                    spacing_closed      : 6
-                    west__size          : 340
-                    west__maxSize       : 480
-                    west__minSize       : 100
-                    east__size          : 300
-                    east__maxSize       : 600
-                    east__minSize       : 300
-                    north__size         : 52
-                    center_minWidth     : 200
-                    north__spacing_open : 0
-                    south__initClosed   : true
-                    west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %}
-                    east__initClosed    : true
-                    onopen : (p_name) ->
-                        save_layout_state(my_layout, p_name)
-                    onclose : (p_name) ->
-                        save_layout_state(my_layout, p_name)
-                my_layout.panes.north.css("background-color", "#000000")
-                my_layout.allowOverflow("north")
         
         init_blockUI = ->
             $.blockUI.defaults.fadeOut = 0
@@ -184,16 +207,16 @@
             $.noty.defaults = {
                 "layout" : "topRight"
                 "theme"  : "defaultTheme"
-                "type"   : 'success',
-                "text"   : '',
+                "type"   : 'success'
+                "text"   : ''
                 "dismissQueue" : true, # If you want to use queue feature set this true
-                "template"     : '<div class="noty_message"><span class="noty_text"></span><div class="noty_close"></div></div>',
+                "template"     : '<div class="noty_message"><span class="noty_text"></span><div class="noty_close"></div></div>'
                 "animation"    : {
-                    open   : {height: 'toggle'},
-                    close  : {height: 'toggle'},
-                    easing : 'swing',
+                    open   : {height: 'toggle'}
+                    close  : {height: 'toggle'}
+                    easing : 'swing'
                     speed  : 200 # opening & closing animation speed
-                },
+                }
                 "timeout"   : 5000,  # delay for closing event. Set false for sticky notifications
                 "force"     : false, # adds notification to the beginning of queue when set to true
                 "modal"     : false,
@@ -203,15 +226,14 @@
                     afterShow  : ->
                     onClose    : ->
                     afterClose : ->
-                },
+                }
                 buttons: false
             }
         add_handlers_main = ->
-            init_layout()
             init_blockUI()
             init_noty()
         
-        $(document).ready(add_handlers_main)
+        angular.element(document).ready(add_handlers_main)
         
         {% endinlinecoffeescript %}
         

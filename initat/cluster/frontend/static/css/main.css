@@ -10,109 +10,6 @@ input, textarea, select {
     /* border: 1px solid #AAAAAA; */
 }
 
-span.error {
-    color       : #ff0000;
-    font-weight : bold;
-}
-
-span.warn {
-    color       : #ffff88;
-}
-
-span.ok {
-    color       : #44aa44;
-    font-weight : bold;
-    font-style : italic;
-}
-
-.ui-layout-north {
-    padding: 0px !important;
-}
-.ui-layout-west {
-    padding: 2px !important;
-}
-
-tr.warn.even  { background-color: #ff8 !important; }
-tr.warn.odd   { background-color: #ee9 !important; }
-
-tr.warn.even > td.sorting_1 { background-color: #ffa !important; }
-tr.warn.odd  > td.sorting_1 { background-color: #eea !important; }
-
-tr.error.even { background-color: #f88 !important; }
-tr.error.odd  { background-color: #e99 !important; }
-
-tr.error.even > td.sorting_1 { background-color: #f99 !important; }
-tr.error.odd  > td.sorting_1 { background-color: #eaa !important; }
-
-tr.ok.even    { background-color: #8f8 !important; }
-tr.ok.odd     { background-color: #9e9 !important; }
-
-tr.ok.even > td.sorting_1 { background-color: #bfb !important; }
-tr.ok.odd  > td.sorting_1 { background-color: #aea !important; }
-
-tr.unknown.even { background-color: #f8f !important; }
-tr.unknown.odd  { background-color: #e9e !important; }
-
-tr.unknown.even > td.sorting_1 { background-color: #fbf !important; }
-tr.unknown.odd  > td.sorting_1 { background-color: #eae !important; }
-
-td.warn {
-    background-color: #ffff88;
-}
-
-td.error {
-    background-color: #ff8888;
-}
-
-input.delete {
-    color      : #ff0000;
-    font-style : italic;
-}
-td.ok {
-    background-color: #88ff88;
-}
-
-a.white, a.white:link, a.white:visited, a.white:focus, a.white:hover, a.white:active { 
-    color:#FFFFFF;  
-} 
-
-tr.white {
-    background-color: #ffffff;
-}
-tr.even {
-    background-color: #EAEBFF;
-}
-tr.odd {
-    background-color: #DADfFF;
-}
-
-/* RMS styles */
-tr.odd td.slots_info {
-    background-color: #cceedd;
-}
-
-tr.even td.slots_info {
-    background-color: #ddeedd;
-}
-
-tr.odd td.load {
-    background-color: #eeddcc;
-    white-space: nowrap;
-}
-
-td.nowrap {
-    white-space: nowrap;
-}
-
-th.center, td.center {
-    text-align : center;
-}
-
-tr.even td.load {
-    background-color: #ddeedd;
-    white-space: nowrap;
-}
-
 #tooltip {
     position: absolute;
     z-index: 3000;
@@ -121,20 +18,6 @@ tr.even td.load {
     padding: 5px;
     opacity: 0.95;
 }
-
-th.left {
-    text-align: left;
-}
-
-td.right {
-    text-align: right;
-}
-
-div.leftfloat {
-    float : left;
-}
-
-#tooltip h3, #tooltip div { margin: 0; }
 
 tr.highlight, th.highlight, td.highlight { color: #000000 ; background-color: #ffe060 !important ; }
 
@@ -155,17 +38,6 @@ ul.dynatree-container span.ip_ok {
 }
 .noborder.ui-tabs .ui-tabs-panel {
     padding: 0 0 0 0 ;
-}
-
-td.selectable {
-    padding : 1px;
-}
-
-td.selected {
-    font-weight : bold;
-    color : #229622;
-    background-color : #ffffff;
-    border: 1px solid black;
 }
 
 /* css for timepicker */
