@@ -350,7 +350,8 @@ PIPELINE_JS = {
     "js_base": {
         "source_filenames": {
             "js/libs/jquery-ui-1.10.2.custom.js",
-            "js/libs/jquery-migrate-1.2.1.min.js",
+            # "js/libs/jquery-migrate-1.2.1.min.js",
+            # now via bootstrap
             "js/libs/jquery.layout-latest.min.js",
             # "js/jquery.sprintf.js_8.txt",
             # "js/jquery.timers-1.2.js",
