@@ -735,15 +735,20 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 else
                     return "N/A (disabled device ?)"
         $scope.get_peer_type = (peer) ->
-            if peer.target of $scope.nd_lut
-                other = $scope.nd_lut[peer.target]
-                return if other.device == peer.device then "local" else "remote"
+            source = peer.netdevice
+            dest = peer.target
+            if source of $scope.nd_lut
+                source = $scope.nd_lut[source]
             else
-                if peer.target of $scope.nd_peer_lut
-                    other= $scope.nd_peer_lut[peer.target]
-                    return if other.device == peer.device then "local" else "remote"
-                else
-                    return "---"    
+                source = undefined
+            if dest of $scope.nd_lut
+                dest = $scope.nd_lut[dest]
+            else
+                dest = undefined
+            if source and dest
+                return if source.device == dest.device then "local" else "remote"
+            else
+                return "---"    
         $scope.copy_network = (src_obj, event) ->
             if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
                 $.blockUI()
