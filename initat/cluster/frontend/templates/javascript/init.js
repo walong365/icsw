@@ -57,7 +57,7 @@ call_ajax = (in_dict) ->
         type       : "POST"
         timeout    : 50000
         dataType   : "xml"
-        headers    : { "X-CSRFToken" : $.cookie("csrftoken") }
+        headers    : { "X-CSRFToken" : '{{ csrf_token }}'}
         beforeSend : (xhr, settings) ->
             if not settings.hidden
                 xhr.inituuid = my_ajax_struct.new_connection(settings)
