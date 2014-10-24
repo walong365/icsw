@@ -325,13 +325,14 @@ PIPELINE_CSS = {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
             "js/libs/dynatree/skin/ui.dynatree.css",
-            "css/msdropdown/dd.css",
+            # "css/msdropdown/dd.css",
             "css/jqModal.css",
             "css/codemirror.css",
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
-            "css/angular-block-ui.css",
+            # not used right now
+            # "css/angular-block-ui.css",
             "js/libs/ui-select/select.css",
         },
         "output_filename": "pipeline/css/part1.css"
@@ -342,7 +343,7 @@ PIPELINE_JS = {
     "js_jquery_new": {
         "source_filenames": {
             "js/libs/modernizr-2.8.1.min.js",
-            "js/plugins.js",
+            # "js/plugins.js",
             "js/libs/jquery-2.1.1.min.js",
         },
         "output_filename": "pipeline/js/jquery_new.js"
@@ -352,13 +353,13 @@ PIPELINE_JS = {
             "js/libs/jquery-ui-1.10.2.custom.js",
             # "js/libs/jquery-migrate-1.2.1.min.js",
             # now via bootstrap
-            "js/libs/jquery.layout-latest.min.js",
+            # "js/libs/jquery.layout-latest.min.js",
             # "js/jquery.sprintf.js_8.txt",
             # "js/jquery.timers-1.2.js",
             "js/jquery.noty.packaged.js",
             "js/libs/lodash.min.js",
             "js/bluebird.js",
-            "js/jquery.dd.min.js",
+            # "js/jquery.dd.min.js",
             "js/jquery.simplemodal.js",
             "js/codemirror/codemirror.js",
             "js/bootstrap.js",
@@ -376,7 +377,7 @@ PIPELINE_JS = {
             "js/codemirror/mode/python/python.js",
             "js/codemirror/mode/xml/xml.js",
             "js/codemirror/mode/shell/shell.js",
-            "js/libs/jquery-ui-timepicker-addon.js",
+            # "js/libs/jquery-ui-timepicker-addon.js",
             "js/libs/angular-route.min.js",
             "js/libs/angular-resource.min.js",
             "js/libs/angular-cookies.min.js",
@@ -384,7 +385,8 @@ PIPELINE_JS = {
             "js/libs/angular-animate.min.js",
             "js/libs/angular-file-upload.js",
             "js/libs/restangular.min.js",
-            "js/libs/angular-block-ui.js",
+            # not used right now
+            # "js/libs/angular-block-ui.js",
             "js/libs/ui-select/select.js",
             "js/libs/ui-bootstrap-tpls.min.js",
             # now in common_function as coffeescript
