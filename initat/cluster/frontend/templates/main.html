@@ -54,6 +54,23 @@
         transition: all 0.5s ease;
     }
     
+    #sidebar-sep {
+        z-index: 1000;
+        position: fixed;
+        left: 350px;
+        width: 6px;
+        height: 100%;
+        margin-left: 1px;
+        margin-right: 1px;
+        overflow-y: auto;
+        background-color: #dddddd;
+        border:1px solid #888888;
+        -webkit-transition: all 0.5s ease;
+        -moz-transition: all 0.5s ease;
+        -o-transition: all 0.5s ease;
+        transition: all 0.5s ease;
+    }
+    
     #wrapper.toggled #sidebar-wrapper {
         width: 350px;
     }
@@ -65,12 +82,12 @@
     
     #wrapper.toggled #page-content-wrapper {
         position: absolute;
-        margin-right: -350px;
+        margin-right: -356px;
     }
     
-    @media(min-width:768px) {
+    @media(min-width:400px) {
         #wrapper {
-            padding-left: 350px;
+            padding-left: 356px;
         }
         #wrapper.toggled {
             padding-left: 0;
@@ -172,16 +189,13 @@
     {% if user.is_authenticated %}
         {% include "menu.html" %}
     {% endif %}
-    {% if user.is_authenticated %}
-        <div id="wrapper">
-    {% else %}
-        <div id="wrapper" class="toggled">
-    {% endif %}
+    <div id="wrapper" {% if not user.is_authenticated %}class="toggled"{% endif %}>
 
         {% if user.is_authenticated %}
             <div id="sidebar-wrapper">
                 {% include 'sidebar.html' %}
             </div>
+            <div id="sidebar-sep"></div>
         {% endif %}
 
         <div id="page-content-wrapper">
@@ -192,8 +206,6 @@
         </div>
     </div>
     <footer>
-        {% block footer %}
-        
         <script type="text/javascript">
         
         {% inlinecoffeescript %}
@@ -238,7 +250,6 @@
         {% endinlinecoffeescript %}
         
         </script>
-        {% endblock %}
     </footer>
 
 </body>

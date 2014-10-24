@@ -124,7 +124,7 @@ class virtual_desktop_viewer(View):
             request,
             "virtual_desktop_viewer.html",
             {
-                "hide_sidebar": True,
+                # "hide_sidebar": True,
                 "vdus_index":   request.GET.get("vdus_index", 0),
             }
         )()

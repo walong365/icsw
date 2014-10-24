@@ -231,7 +231,11 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
             window.location = "/cluster/doc/main.pdf"
             return false
         $scope.show_handbook_page = () ->
-            window.open("{% url 'dyndoc:doc_page' 'x' %}".slice(0, -1) + $scope.HANDBOOK_PAGE, "cluster documenation", "height=400,width=400,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes")
+            window.open(
+                "{% url 'dyndoc:doc_page' 'x' %}".slice(0, -1) + $scope.HANDBOOK_PAGE
+                "cluster documenation"
+                "height=400,width=400,menubar=no,status=no,location=no,titlebar=no,resizeable=yes,scrollbars=yes"
+            )
             return false
         $scope.redirect_to_bgj_info = () ->
             if $scope.check_perm('background_job.show_background')

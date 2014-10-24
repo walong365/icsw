@@ -54,7 +54,6 @@ class device_tree(permission_required_mixin, View):
                 "device_tree_form": device_tree_form(),
                 "device_group_tree_form": device_group_tree_form(),
                 "device_tree_many_form": device_tree_many_form(),
-                "hide_sidebar": True,
             }
         )()
 

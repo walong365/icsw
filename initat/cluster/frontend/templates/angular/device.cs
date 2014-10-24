@@ -69,6 +69,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         }
         $scope.modal_active = false
         $scope.entries = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.sel_cache = _dev_sel
+            $scope.initial_load = true
+            $scope.reload()
         $scope.reload = () ->
             $.blockUI()
             # store selected state when not first load
@@ -86,7 +90,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 $.unblockUI()
                 $scope.rest_data_set()
             )
-        $scope.reload()
         $scope.dg_present = () ->
             return (entry for entry in $scope.entries when entry.device_type_identifier == "MD").length > 1
         $scope.modify = () ->
@@ -354,6 +357,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 }
                 success : (xml) ->
                     parse_xml_response(xml)
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("devicetreerow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
