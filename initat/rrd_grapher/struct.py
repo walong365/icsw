@@ -176,6 +176,11 @@ class compound_tree(object):
             <key match="^io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
         </key_list>
     </compound>
+    <compound name="icsw memory">
+        <key_list>
+            <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
+        </key_list>
+    </compound>
 </compounds>
         """
         _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))  # @UndefinedVariable

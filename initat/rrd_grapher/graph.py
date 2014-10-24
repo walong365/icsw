@@ -128,7 +128,10 @@ class Colorizer(object):
         self.table_offset = {}
 
     def simple_color_table(self, name):
-        return SimpleColorTable(self.color_tables[name])
+        if name in self.color_tables:
+            return SimpleColorTable(self.color_tables[name])
+        else:
+            return SimpleColorTable(self.color_tables[self.color_tables.keys()[0]])
 
     def get_color_and_style(self, entry):
         if "color" in entry.attrib:
