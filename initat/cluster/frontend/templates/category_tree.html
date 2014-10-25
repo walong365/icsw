@@ -38,6 +38,7 @@
         <th>lat</th>
         <th>long</th>
         <th>locked</th>
+        <th>physical</th>
         <th colspan="2">Action</th>
     </tr>
 </script>
@@ -50,6 +51,7 @@
     <td><span ng-show="is_location(obj)">{{ obj.latitude }}</span></td>
     <td><span ng-show="is_location(obj)">{{ obj.longitude }}</span></td>
     <td><span ng-show="is_location(obj)">{{ obj.locked | yesno1 }}</span></td>
+    <td><span ng-show="is_location(obj)">{{ obj.physical | yesno1 }}</span></td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_obj(obj, $event)" value="modify" ng-show="obj.depth > 1"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_obj(obj)" value="delete" ng-show="obj.depth > 1"/></td>
 </script>
@@ -78,7 +80,9 @@
                         <li class="list-group-item" ng-repeat="loc in get_valid_locations()">
                             <input type="button" class="btn btn-sm btn-success" value="add location gfx" ng-click="add_location_gfx($event, loc)"></input>
                             <input type="button" class="btn btn-sm btn-primary" value="locate" ng-click="locate(loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></input>&nbsp;
-                            <span class="glyphicon glyphicon-ban-circle" ng-show="loc.locked"></span>&nbsp;
+                            <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+                            <span class="glyphicon glyphicon-th" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                            <span class="glyphicon glyphicon-lock" title="location is locked" ng-show="loc.locked"></span>&nbsp;
                             {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
                             <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
                             <span class="pull-right">
@@ -93,6 +97,18 @@
                                         </button>
                                         <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="rotate(loc_gfx, -90)" title="rotate right">
                                             <span class="glyphicon glyphicon-arrow-right"></span>
+                                        </button>
+                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="brightness(loc_gfx, 1.25)" title="increase brightness">
+                                            <span class="glyphicon glyphicon-upload"></span>
+                                        </button>
+                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="brightness(loc_gfx, 0.75)" title="decrease brightness">
+                                            <span class="glyphicon glyphicon-download"></span>
+                                        </button>
+                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="sharpen(loc_gfx, 1.25)" title="sharpen image">
+                                            <span class="glyphicon glyphicon-zoom-in"></span>
+                                        </button>
+                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="sharpen(loc_gfx, 0,75)" title="unsharpen image">
+                                            <span class="glyphicon glyphicon-zoom-out"></span>
                                         </button>
                                     </div>
                                     {{ loc_gfx.name }}
@@ -178,17 +194,26 @@ class category_tree_edit extends tree_config
         @show_select = false
         @show_descendants = true
         @show_childs = false
+        @location_re = new RegExp("^/location/.*$")
     get_name : (t_entry) ->
         cat = t_entry.obj
+        is_loc = @location_re.test(cat.full_name)
         if cat.depth > 1
             r_info = "#{cat.full_name} (#{cat.name})"
             if cat.num_refs
                 r_info = "#{r_info} (refs=#{cat.num_refs})"
-            return r_info
+            if is_loc
+                if cat.physical
+                    r_info = "#{r_info}, physical"
+                else
+                    r_info = "#{r_info}, structural"
+                if cat.locked
+                    r_info = "#{r_info}, locked"
         else if cat.depth
-            return cat.full_name
+            r_info = cat.full_name
         else
-            return "TOP"
+            r_info = "TOP"
+        return r_info
     handle_click: (entry, event) =>
         @clear_active()
         cat = entry.obj
@@ -479,13 +504,38 @@ cat_ctrl = category_tree_module.controller("cat_base", [
         $scope.show_preview = (obj) ->
             $scope.preview_gfx = obj
         $scope.rotate = (obj, degrees) ->
-            $.blockUI()
-            call_ajax
-                url : "{% url 'base:modify_location_gfx' %}"
-                data:
+            $scope.modify_image(
+                 obj
+                 {
                     "id": obj.idx
                     "mode": "rotate"
                     "degrees" : degrees
+                 }
+            )
+        $scope.brightness = (obj, factor) ->
+            $scope.modify_image(
+                 obj
+                 {
+                    "id": obj.idx
+                    "mode": "brightness"
+                    "factor" : factor
+                 }
+            )
+        $scope.sharpen = (obj, factor) ->
+            $scope.modify_image(
+                 obj
+                 {
+                    "id": obj.idx
+                    "mode": "sharpen"
+                    "factor" : factor
+                 }
+            )
+        $scope.modify_image = (obj, data) ->
+            $scope.show_preview(obj)
+            $.blockUI()
+            call_ajax
+                url : "{% url 'base:modify_location_gfx' %}"
+                data: data
                 success: (xml) ->
                     $.unblockUI()
                     if parse_xml_response(xml)

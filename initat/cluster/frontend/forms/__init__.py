@@ -251,6 +251,7 @@ class category_form(ModelForm):
                 Field("latitude", ng_pattern="/^\d+(\.\d+)*$/", wrapper_class="ng-class:form_error('latitude')"),
                 Field("longitude", ng_pattern="/^\d+(\.\d+)*$/", wrapper_class="ng-class:form_error('longitude')"),
                 Field("locked"),
+                Field("physical"),
                 ng_if="is_location(_edit_obj)",
             ),
             FormActions(
@@ -265,7 +266,7 @@ class category_form(ModelForm):
 
     class Meta:
         model = category
-        fields = ["name", "comment", "parent", "longitude", "latitude", "locked"]
+        fields = ["name", "comment", "parent", "longitude", "latitude", "locked", "physical"]
         widgets = {
             "parent": ui_select_widget()
         }

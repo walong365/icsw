@@ -97,9 +97,10 @@ location_list_template = """
 <h3><ng-pluralize count="gfx_cat.location_gfxs.length" when="{'0': 'No Location maps for {{ gfx_cat.full_name }}', 'one': 'One Location map for {{ gfx_cat.full_name }}', 'other': '{} location maps for {{ gfx_cat.full_name }}'}"></ng-pluralize></h3>
 <ul class="list-group">
     <li class="list-group-item" ng-repeat="loc_gfx in get_location_gfxs(gfx_cat)">
-        <input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"></input>
+        <span ng-show="DEBUG">[{{ loc_gfx.idx }}]</span><input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"></input>
         {{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
         <ng-pluralize count="get_num_devices(loc_gfx)" when="{'0': '', 'one' : ', one device', 'other' : ', {} devices'}"></ng-pluralize>
+        <span ng-show="get_num_devices(loc_gfx)" class="glyphicon glyphicon-info-sign" tooltip="{{ get_device_list(loc_gfx) }}" tooltip-placement="right"></span>
         , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
         <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
     </li>
@@ -703,6 +704,7 @@ class location_tree extends tree_config
         @show_descendants = false
         @show_childs = false
         @single_select = true
+        @location_re = new RegExp("^/location/.*$")
     selection_changed: (entry) =>
         if @scope.multi_device_mode
             @scope.new_md_selection(entry)
@@ -716,8 +718,13 @@ class location_tree extends tree_config
             @scope.new_selection(sel_list)
     get_name : (t_entry) ->
         cat = t_entry.obj
+        is_loc = @location_re.test(cat.full_name)
         if cat.depth > 1
-            r_info = "#{cat.full_name} (#{cat.name})"
+            if @scope.DEBUG
+                r_info = "[#{cat.idx}] "
+            else
+                r_info = ""    
+            r_info = "#{r_info}#{cat.full_name} (#{cat.name})"
             num_sel = @scope.sel_dict[cat.idx].length
             if num_sel and num_sel < @scope.num_devices
                 r_info = "#{r_info}, #{num_sel} of #{@scope.num_devices}"
@@ -726,6 +733,13 @@ class location_tree extends tree_config
             num_locs = cat.location_gfxs.length
             if num_locs
                 r_info = "#{r_info}, #{num_locs} location gfx"
+            if is_loc
+                if cat.physical
+                    r_info = "#{r_info}, physical"
+                else
+                    r_info = "#{r_info}, structural"
+                if cat.locked
+                    r_info = "#{r_info}, locked"
             return r_info
         else if cat.depth
             return cat.full_name
@@ -747,6 +761,7 @@ class location_tree extends tree_config
 loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restDataSource", "$q", "access_level_service",
     ($scope, restDataSource, $q, access_level_service) ->
         access_level_service.install($scope)
+        $scope.DEBUG = false
         $scope.loc_tree = new location_tree($scope, {})
         # category with gfx 
         $scope.gfx_cat = undefined
@@ -792,6 +807,9 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 for entry in data[0]
                     if entry.full_name.match(/^\/location/)
                         t_entry = $scope.loc_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: sel_dict[entry.idx].length == $scope.num_devices})
+                        if not entry.physical
+                            # do not show select entry for structural entries
+                            t_entry._show_select = false
                         loc_tree_lut[entry.idx] = t_entry
                         if entry.parent and entry.parent of loc_tree_lut
                             loc_tree_lut[entry.parent].add_child(t_entry)
@@ -839,12 +857,14 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
             _gfx_lut = {}
             for _loc_gfx in $scope.location_gfxs
                 _loc_gfx.num_devices = 0
+                _loc_gfx.devices = []
                 _gfx_lut[_loc_gfx.idx] = _loc_gfx
             _count = 0
             for _dev in $scope.devices
                 _count += _dev.device_mon_location_set.length
                 for _entry in _dev.device_mon_location_set
                     _gfx_lut[_entry.location_gfx].num_devices++
+                    _gfx_lut[_entry.location_gfx].devices.push(_dev.idx)
             $scope.monloc_count = _count
             $scope.loc_tree.show_select = if $scope.monloc_count then false else true
         $scope.update_tree = (changes) ->
@@ -904,6 +924,8 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                         _entry.is_extra = true
                     scope.extra_dml_list = _ext_list
                 )
+            scope.get_device_list = (loc_gfx) ->
+                return (scope.dev_lut[_entry].full_name for _entry in loc_gfx.devices).join("<br>")
             scope.get_num_devices = (loc_gfx) ->
                 return loc_gfx.num_devices
             scope.get_button_class = (loc_gfx) ->
@@ -925,8 +947,13 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 if new_val?
                     scope.dev_pks = []
                     for entry in scope.devices
-                        # check if this device is really assoicated with the location 
-                        if scope.active_loc_gfx.location in entry.categories
+                        # check if this device is really associated with the location 
+                        _location = scope.loc_tree_lut[scope.active_loc_gfx.location].obj
+                        if scope.active_loc_gfx.location in entry.categories and _location.physical
+                            # allow addition if location is in categorie list and location is physical
+                            scope.dev_pks.push(entry.idx)
+                        else if not _location.physical
+                            # always allow structural entries
                             scope.dev_pks.push(entry.idx)
                     scope.update_set_pks()
             )
@@ -997,7 +1024,6 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                             d.pos_x = parseInt(x)
                             d.pos_y = parseInt(y)
                             d3.select(this).attr("transform": "translate(#{x},#{y})")
-                            #console.log "d", this, d3.select(this)
                     )
                 scope.rescale = () ->
                     scope.$apply(() -> scope.cur_scale = Math.max(Math.min(d3.event.scale, 1.0), 0.3))

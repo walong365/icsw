@@ -141,6 +141,14 @@ class modify_location_gfx(View):
                 _loc.rotate(int(_post["degrees"]))
                 request.xml_response["image_url"] = _loc.get_image_url()
                 request.xml_response["icon_url"] = _loc.get_icon_url()
+            elif _post["mode"] == "brightness":
+                _loc.brightness(float(_post["factor"]))
+                request.xml_response["image_url"] = _loc.get_image_url()
+                request.xml_response["icon_url"] = _loc.get_icon_url()
+            elif _post["mode"] == "sharpen":
+                _loc.sharpen(float(_post["factor"]))
+                request.xml_response["image_url"] = _loc.get_image_url()
+                request.xml_response["icon_url"] = _loc.get_icon_url()
             else:
                 request.xml_response.error("unknown mode '{}'".format(_post["mode"]))
 
