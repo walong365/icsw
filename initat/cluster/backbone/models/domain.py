@@ -1,7 +1,7 @@
 #!/usr/bin/python-init
 
 
-from PIL import Image
+from PIL import Image, ImageEnhance
 from django.apps import apps
 from django.conf import settings
 from django.core.cache import cache
@@ -459,6 +459,10 @@ class category(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     # immutable
     immutable = models.BooleanField(default=False)
+    # for location fields: physical or structural (for overview location maps)
+    # a device can be used on a structural (non-physical) loction map even if
+    # this location map is not attached to the location node the devices is attached to
+    physical = models.BooleanField(default=True)
     # location field for location nodes, defaults to Vienna (approx)
     latitude = models.FloatField(default=48.1)
     longitude = models.FloatField(default=16.3)
@@ -650,6 +654,18 @@ class location_gfx(models.Model):
         _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
         _img = Image.open(file(_entry, "rb"))
         _img = _img.rotate(degrees)
+        self.store_graphic(_img, self.content_type, self.image_name)
+
+    def brightness(self, factor):
+        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
+        _img = ImageEnhance.Brightness(Image.open(file(_entry, "rb")))
+        _img = _img.enhance(factor)
+        self.store_graphic(_img, self.content_type, self.image_name)
+
+    def sharpen(self, factor):
+        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
+        _img = ImageEnhance.Sharpness(Image.open(file(_entry, "rb")))
+        _img = _img.enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def store_graphic(self, img, content_type, file_name):
