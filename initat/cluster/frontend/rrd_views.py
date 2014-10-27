@@ -23,6 +23,7 @@
 """ RRD views """
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
@@ -38,6 +39,7 @@ logger = logging.getLogger("cluster.rrd")
 
 
 class device_rrds(View):
+    @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="get_node_rrd")
@@ -65,6 +67,7 @@ class graph_rrds(View):
     def _parse_post_boolean(self, _post, name, default):
         return "1" if _post.get(name, default).lower() in ["1", "true"] else "0"
 
+    @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST

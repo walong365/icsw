@@ -861,10 +861,12 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 _gfx_lut[_loc_gfx.idx] = _loc_gfx
             _count = 0
             for _dev in $scope.devices
-                _count += _dev.device_mon_location_set.length
                 for _entry in _dev.device_mon_location_set
-                    _gfx_lut[_entry.location_gfx].num_devices++
-                    _gfx_lut[_entry.location_gfx].devices.push(_dev.idx)
+                    _mon_loc = _gfx_lut[_entry.location_gfx]
+                    if $scope.loc_tree_lut[_mon_loc.location].obj.physical
+                        _count++
+                    _mon_loc.num_devices++
+                    _mon_loc.devices.push(_dev.idx)
             $scope.monloc_count = _count
             $scope.loc_tree.show_select = if $scope.monloc_count then false else true
         $scope.update_tree = (changes) ->

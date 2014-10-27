@@ -37,8 +37,8 @@
         <th>refs</th>
         <th>lat</th>
         <th>long</th>
-        <th>locked</th>
-        <th>physical</th>
+        <th>lockstate</th>
+        <th>type</th>
         <th colspan="2">Action</th>
     </tr>
 </script>
@@ -50,8 +50,8 @@
     <td><span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span></td>
     <td><span ng-show="is_location(obj)">{{ obj.latitude }}</span></td>
     <td><span ng-show="is_location(obj)">{{ obj.longitude }}</span></td>
-    <td><span ng-show="is_location(obj)">{{ obj.locked | yesno1 }}</span></td>
-    <td><span ng-show="is_location(obj)">{{ obj.physical | yesno1 }}</span></td>
+    <td><span ng-show="is_location(obj)">{{ obj.locked && 'locked' || 'unlocked' }}</span></td>
+    <td><span ng-show="is_location(obj)">{{ obj.physical && 'physical' || 'structural' }}</span></td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_obj(obj, $event)" value="modify" ng-show="obj.depth > 1"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_obj(obj)" value="delete" ng-show="obj.depth > 1"/></td>
 </script>
@@ -81,7 +81,7 @@
                             <input type="button" class="btn btn-sm btn-success" value="add location gfx" ng-click="add_location_gfx($event, loc)"></input>
                             <input type="button" class="btn btn-sm btn-primary" value="locate" ng-click="locate(loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></input>&nbsp;
                             <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
-                            <span class="glyphicon glyphicon-th" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                            <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
                             <span class="glyphicon glyphicon-lock" title="location is locked" ng-show="loc.locked"></span>&nbsp;
                             {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
                             <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
