@@ -47,7 +47,7 @@ devnode_template = """
             innerradius="30"
             outerradius="70"
             showname="1"
-            zoom="1"
+            fontstroke="1"
         ></newburst>
     </g>
     <g ng-switch-default>
@@ -100,14 +100,18 @@ livestatus_templ = """
 </div>
 <div class="row" ng-show="burst_show">
     <div class="col-md-6">
-        <newburst
-            data="burstData"
-            redraw="redrawSunburst"
-            recalc="recalcSunburst"
-            innerradius="60"
-            servicefocus="focusService"
-            zoom="1"
-        ></newburst>
+        <svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+            <g transform="translate(300,160)">
+                <newburst
+                    data="burstData"
+                    redraw="redrawSunburst"
+                    recalc="recalcSunburst"
+                    innerradius="60"
+                    servicefocus="focusService"
+                    zoom="1"
+                ></newburst>
+            </g>
+        </svg>
     </div>
     <div class="col-md-6">
         <serviceinfo service="focus_service"></serviceinfo>
@@ -538,7 +542,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 # lut: device_idx -> list of dml_entries
                 dev_gfx_lut = {}
                 for entry in data[3]
-                    if entry.device not in dev_gfx_lut
+                    if entry.device not of dev_gfx_lut
                         dev_gfx_lut[entry.device] = []
                     dev_gfx_lut[entry.device].push(entry)
                     entry.redraw = 0
@@ -784,48 +788,65 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         templateNamespace: "svg"
         template: """
 {% verbatim %}
-<svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
-    <g transform="translate(300,160)">
-        <path
-            ng-repeat="node in nodes track by $index"
-            ng-attr-d="{{ node.path }}"
-            stroke="black"
-            ng-attr-fill="{{ get_fill_color(node) }}"
-            ng-attr-fill-opacity="{{ get_fill_opacity(node) }}"
-            stroke-width="0.5"
-            ng-mouseenter="mouse_enter(node)"
-            ng-mouseleave="mouse_leave(node)"
-            ng-click="mouse_click(node)"
-        >
-        </path>
-        <polyline
-            ng-repeat="node in nodes track by $index"
-            ng-attr-points="{{ node.legendpath }}"
-            stroke="black"
-            fill="none"
-            stroke-width="0.5"
+<g>
+    <path
+        ng-repeat="node in nodes track by $index"
+        ng-attr-d="{{ node.path }}"
+        stroke="black"
+        ng-attr-fill="{{ get_fill_color(node) }}"
+        ng-attr-fill-opacity="{{ get_fill_opacity(node) }}"
+        stroke-width="0.5"
+        ng-mouseenter="mouse_enter(node)"
+        ng-mouseleave="mouse_leave(node)"
+        ng-click="mouse_click(node)"
+    >
+    </path>
+    <polyline
+        ng-repeat="node in nodes track by $index"
+        ng-attr-points="{{ node.legendpath }}"
+        stroke="black"
+        fill="none"
+        stroke-width="0.5"
+        ng-show="node.legend_show"
+    >
+    </polyline>
+    <g ng-repeat="node in nodes track by $index">
+        <text
+            ng-if="font_stroke"
+            ng-attr-x="{{ node.legend_x }}"
+            ng-attr-y="{{ node.legend_y }}"
+            text-anchor="{{ node.legend_anchor }}"
             ng-show="node.legend_show"
-        >
-        </polyline>
-        <g ng-repeat="node in nodes track by $index">
-            <text
-                ng-attr-x="{{ node.legend_x }}"
-                ng-attr-y="{{ node.legend_y }}"
-                text-anchor="{{ node.legend_anchor }}"
-                ng-show="node.legend_show"
-                alignment-baseline="middle"
-            >{{ node.name }}</text>
-        </g>
-        <g ng-show="show_name">
-            <text
-                text-anchor="middle"
-                alignment-baseline="middle"
-                font-weight="bold"
-                fill="black"
-            >{{ name }}</text>
-        </g>
+            alignment-baseline="middle"
+            stroke="white"
+            stroke-width="4"
+        >{{ node.name }}</text>
+        <text
+            ng-attr-x="{{ node.legend_x }}"
+            ng-attr-y="{{ node.legend_y }}"
+            text-anchor="{{ node.legend_anchor }}"
+            ng-show="node.legend_show"
+            alignment-baseline="middle"
+        >{{ node.name }}</text>
     </g>
-</svg>
+    <g ng-show="show_name">
+        <text
+            ng-if="font_stroke"
+            text-anchor="middle"
+            alignment-baseline="middle"
+            font-weight="bold"
+            fill="black"
+            stroke="white"
+            stroke-width="2"
+        >{{ name }}</text>
+        <text
+            text-anchor="middle"
+            alignment-baseline="middle"
+            font-weight="bold"
+            fill="black"
+        >{{ name }}</text>
+    </g>
+</g>
 {% endverbatim %}
 """
         scope:
@@ -838,6 +859,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.inner = parseInt(attrs["innerradius"] or 20)
             scope.outer = parseInt(attrs["outerradius"] or 120)
             scope.zoom = parseInt(attrs["zoom"] or 0)
+            scope.font_stroke = parseInt(attrs["fontstroke"] or 0)
             scope.show_name = parseInt(attrs["showname"] or 0)
             scope.create_node = (name, settings) ->
                 ns = 'http://www.w3.org/2000/svg'
