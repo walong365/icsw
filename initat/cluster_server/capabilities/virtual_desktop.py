@@ -147,7 +147,7 @@ class vncserver(virtual_desktop_server):
         cmd_line += " -rfbauth {}".format(self.pwd_file)
         cmd_line += " -extension RANDR"  # this prevents the window manager from changing the resolution, c.f. https://bugzilla.redhat.com/show_bug.cgi?id=847442
 
-        websockify_cmd_line = "websockify {} localhost:{}".format(self.vdus.websockify_effective_port, self.vdus.effective_port)
+        websockify_cmd_line = "/opt/python-init/bin/websockify {} localhost:{}".format(self.vdus.websockify_effective_port, self.vdus.effective_port)
 
         self.log("Starting vncserver with command line: {}".format(cmd_line))
         self.log("Starting websockify with command line: {}".format(websockify_cmd_line))
