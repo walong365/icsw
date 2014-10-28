@@ -38,10 +38,6 @@ devnode_template = """
 """
 
 livestatus_templ = """
-<!--
-    <d3test data="testData"></d3test>
-    <arctest data="testData"></arctest>
--->
 <h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
     <span ng-show="location_gfx_list.length"> on
         <ng-pluralize count="location_gfx_list.length" when="{'1' : '1 map', 'other' : '{} maps'}"/>
@@ -83,8 +79,11 @@ livestatus_templ = """
 </div>
 <div class="row" ng-show="burst_show">
     <div class="col-md-6">
+        <newburst data="burstData" redraw="redrawSunburst"></newburst>
+    </div>
+<!--    <div class="col-md-6">
         <burst data="burstData" active-service="activeService" focus-service="focusService" trigger-redraw="redrawSunburst"></burst>
-    </div> 
+    </div> -->
     <div class="col-md-6">
         <serviceinfo type="service_type" service="current_service"></serviceinfo>
     </div>
@@ -356,6 +355,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.redrawSunburst = 0
         $scope.cat_tree_show = false
         $scope.burst_show = true
+        $scope.burstData = {"name" : "empty", "children" : []}
         $scope.map_show = true
         $scope.table_show = true
         # which devices to show
@@ -365,31 +365,34 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         # location gfx list
         $scope.location_gfx_list = []
         $scope.$watch("activeService", (as) ->
-            _parsed = $scope.parse_service(as)
-            $scope.service_type = _parsed[0]
-            $scope.current_service = _parsed[1]
+            if as
+                $scope.service_type = as.ct
+                $scope.current_service = as
+            else
+                $scope.service_type = null
+                $scope.current_service = null
         )
         $scope.$watch("focusService", (nf) ->
-            _parsed = $scope.parse_service(nf)
-            _type = _parsed[0]
-            _service = _parsed[1]
-            $scope.show_service = null
-            switch _type
-                when "system"
-                    # show all
-                    show_devs = []
-                when "group"
-                    show_devs = (entry.check.idx for entry in $scope.devg_lut[_service.group_name].children)
-                when "host"
-                    show_devs = [_service.idx]
-                when "service"
-                    show_devs = [_service.custom_variables.device_pk]
-                    $scope.show_service = _service
-                else
-                    # default (equal to system)
-                    show_devs = []
-            $scope.show_devs = show_devs
-            $scope.md_filter_changed()
+            if nf?
+                _type = nf.check_type
+                _service = nf.check
+                $scope.show_service = null
+                switch _type
+                    when "system"
+                        # show all
+                        show_devs = []
+                    when "group"
+                        show_devs = (entry.check.idx for entry in $scope.devg_lut[_service.group_name].children)
+                    when "host"
+                        show_devs = [_service.idx]
+                    when "service"
+                        show_devs = [_service.custom_variables.device_pk]
+                        $scope.show_service = _service
+                    else
+                        # default (equal to system)
+                        show_devs = []
+                $scope.show_devs = show_devs
+                $scope.md_filter_changed()
         )
         $scope.parse_service = (srv) ->
             # parse compacted service identifier
@@ -418,7 +421,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.master_cat_pk = 0
         $scope.show_unspec_cat = true
         $scope.testData = []
-        $scope.burstData = {"name" : "empty", "children" : []}
         $scope.show_options = [
             # 1 ... option local name
             # 2 ... option display name
@@ -754,6 +756,221 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.get_check_type = (entry) ->
                 return get_check_type(entry)
     }
+]).directive("newburst", ["$compile", (d3_service, $compile) ->
+    return {
+        restrict : "E"
+        replace: true
+        templateNamespace: "svg"
+        template: """
+{% verbatim %}
+<svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+    <g transform="translate(300,160)">
+        <path
+            ng-repeat="node in nodes track by $index"
+            ng-attr-d="{{ node.path }}"
+            stroke="black"
+            ng-attr-fill="{{ get_fill_color(node) }}"
+            ng-attr-fill-opacity="{{ get_fill_opacity(node) }}"
+            stroke-width="0.5"
+            ng-mouseenter="mouse_enter(node)"
+            ng-mouseleave="mouse_leave(node)"
+            ng-click="mouse_click(node)"
+        >
+        </path>
+        <polyline
+            ng-repeat="node in nodes track by $index"
+            ng-attr-points="{{ node.legendpath }}"
+            stroke="black"
+            fill="none"
+            stroke-width="0.5"
+            ng-show="node.legend_show"
+        >
+        </polyline>
+        <g ng-repeat="node in nodes track by $index">
+            <text
+                ng-attr-x="{{ node.legend_x }}"
+                ng-attr-y="{{ node.legend_y }}"
+                text-anchor="{{ node.legend_anchor }}"
+                ng-show="node.legend_show"
+                alignment-baseline="middle"
+            >{{ node.name }}</text>
+        </g>
+    </g>
+</svg>
+{% endverbatim %}
+"""
+        link: (scope, element, attrs) ->
+            scope.nodes = []
+            scope.inner = 20
+            scope.outer = 120
+            scope.create_node = (name, settings) ->
+                ns = 'http://www.w3.org/2000/svg'
+                node = document.createElementNS(ns, name)
+                for attr of settings
+                    value = settings[attr]
+                    if value?
+                        node.setAttribute(attr, value)
+                return node
+            scope.get_children = (node, depth, struct) ->
+                _num = 0
+                if node.children.length
+                    for _child in node.children
+                        _child.parent = node
+                        _num += scope.get_children(_child, depth+1, struct)
+                else
+                    if node.value?
+                        _num = node.value
+                node.width = _num
+                if not struct[depth]?
+                    struct[depth] = []
+                struct[depth].push(node)
+                return _num
+            scope.$watch(attrs["redraw"], (data) ->
+                if scope.sunburst_data?
+                    scope.draw_data()
+            )
+            scope.$watch(attrs["data"], (data) ->
+                if data?
+                    scope.sunburst_data = data
+                    scope.draw_data()
+            )
+            scope.draw_data = () ->
+                scope.activeService = null
+                struct = {}
+                _size = scope.get_children(scope.sunburst_data, 0, struct)
+                scope.max_depth = (idx for idx of struct).length
+                scope.nodes = []
+                for idx of struct
+                    if struct[idx].length
+                        scope.add_circle(parseInt(idx), struct[idx])
+            scope.add_circle = (idx, nodes) ->
+                _len = _.reduce(
+                    nodes,
+                    (sum, obj) ->
+                        return sum + obj.width
+                    0
+                )
+                if not _len
+                    return
+                end_arc = 0
+                end_num = 0
+                outer = scope.get_inner(idx)
+                inner = scope.get_outer(idx)
+                # legend radii
+                inner_legend = (outer + inner) / 2
+                outer_legend = 140
+                for part in nodes
+                    start_arc = end_arc #+ 1 * Math.PI / 180
+                    start_sin = Math.sin(start_arc)
+                    start_cos = Math.cos(start_arc)
+                    end_num += part.width
+                    end_arc = 2 * Math.PI * end_num / _len
+                    mean_arc = (start_arc + end_arc) / 2
+                    mean_sin = Math.sin(mean_arc)
+                    mean_cos = Math.cos(mean_arc)
+                    end_sin = Math.sin(end_arc)
+                    end_cos = Math.cos(end_arc)
+                    if end_arc > start_arc + Math.PI
+                        _large_arc_flag = 1
+                    else
+                        _large_arc_flag = 0
+                    if mean_cos < 0
+                        legend_x = -outer_legend * 1.2
+                        part.legend_anchor = "end"
+                    else
+                        legend_x = outer_legend * 1.2
+                        part.legend_anchor = "start"
+                    part.legend_x = legend_x
+                    part.legend_y = mean_sin * outer_legend
+                    part.legendpath = "#{mean_cos * inner_legend},#{mean_sin * inner_legend} #{mean_cos * outer_legend},#{mean_sin * outer_legend} " + \
+                        "#{legend_x},#{mean_sin * outer_legend}"
+                    if part.width == _len
+                        _large_arc_flag = 1
+                        part.path = "M#{start_cos * outer},#{start_sin * outer} " + \
+                            "A#{outer},#{outer} 0 #{_large_arc_flag},1 #{end_cos * outer},#{end_sin * outer} " + \
+                            "M#{end_cos * inner},#{end_sin * inner} " + \
+                            "A#{inner},#{inner} 0 #{_large_arc_flag},0 #{start_cos * inner},#{start_sin * inner} " + \
+                            "Z"
+                    else
+                        part.path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
+                            "A#{outer},#{outer} 0 #{_large_arc_flag},1 #{end_cos * outer},#{end_sin * outer} " + \
+                            "L#{end_cos * inner},#{end_sin * inner} " + \
+                            "A#{inner},#{inner} 0 #{_large_arc_flag},0 #{start_cos * inner},#{start_sin * inner} " + \
+                            "Z"
+                    scope.nodes.push(part)
+            scope.get_inner = (idx) ->
+                _inner = scope.inner + (scope.outer - scope.inner) * idx / scope.max_depth
+                return _inner
+            scope.get_outer = (idx) ->
+                _outer = scope.inner + (scope.outer - scope.inner) * (idx + 1) / scope.max_depth
+                return _outer
+            scope.get_fill_color = (part) ->
+                if part.check?
+                    if part.check.ct == "host"
+                        color = {
+                            0 : "#66dd66"
+                            1 : "#ff7777"
+                            2 : "#ff0000"
+                        }[part.check.state]
+                    else
+                        color = {
+                            0 : "#66dd66"
+                            1 : "#dddd88"
+                            2 : "#ff7777"
+                            3 : "#ff0000"
+                        }[part.check.state]
+                else
+                    color = "#dddddd"
+                return color
+            scope.get_fill_opacity = (part) ->
+                if part.mouseover? and part.mouseover
+                    return 0.5
+                else
+                    return 1
+            scope.mouse_enter = (part) ->
+                scope.activeService = part.check
+                if part.children.length
+                    for _entry in part.children
+                        if _entry.value
+                            _entry.legend_show = true
+                else
+                    if part.value
+                        part.legend_show = true
+                scope.set_mouseover(part, true)
+            scope.set_value = (part, value) ->
+                part.value = value
+                (scope.set_value(_entry, value) for _entry in part.children)
+            scope.mouse_click = (part) ->
+                # get parent
+                parent = part
+                while parent.parent?
+                    parent = parent.parent
+                # hide all
+                scope.set_value(parent, 0)
+                # unhide all below
+                scope.set_value(part, 1)
+                # unhide all parents
+                parent = part
+                while parent.parent?
+                    parent = parent.parent
+                    parent.value = 1
+                scope.draw_data()
+                scope.activeService = part.check
+            scope.mouse_leave = (part) ->
+                if part.children.length
+                    for _entry in part.children
+                        _entry.legend_show = false
+                else
+                    part.legend_show = false
+                scope.set_mouseover(part, false)
+            scope.set_mouseover = (part, flag) ->
+                while true
+                    part.mouseover = flag
+                    if part.parent?
+                        part = part.parent
+                    else
+                        break
+    }
 ]).directive("burst", ["d3_service", "$compile", (d3_service, $compile) ->
     get_color = (d) ->
         if d.check?
@@ -855,10 +1072,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             else
                                 # no children, show label
                                 d3.select("g.labels g[_gid='#{d._gid}']").attr("display", null)
-                            scope.$apply(() ->
-                                if d? and d.check?
-                                    scope.activeService = "#{d.check.type}_#{d.check.idx}"
-                            )
                         ).on("mouseout", (d) ->
                             cur_d = d
                             while cur_d
@@ -933,131 +1146,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 )
             )
     } 
-]).directive("arctest", ["d3_service", (d3_service) ->
-    return {
-        restrict : "E"
-        scope: {
-            data: "="
-        }
-        link: (scope, element) ->
-            width = 280
-            height = 160
-            d3_service.d3().then((d3) ->
-                radius = Math.min(width, height) / 2
-                arc = d3.svg.arc().outerRadius(radius - 10).innerRadius(radius - 50)
-                pie = d3.layout.pie()
-                    .sort(null)
-                    .value((d) ->
-                        return d.count
-                    )
-
-                svg = d3.select(element[0]).append("svg")
-                    .attr("width", width)
-                    .attr("height", height)
-                    .append("g")
-                    .attr("transform", "translate(#{width / 2},#{height / 2})")
-                scope.render = (data) ->
-                    g = svg.selectAll(".arc")
-                        .data(pie(data))
-                        .enter().append("g")
-                        .attr("class", "arc")
-                    g.append("path")
-                        .attr("d", arc)
-                        .style("fill", (d) ->
-                            return d.data.color
-                        ).attr("stroke", "#dddddd").attr("stroke-width", "0.6px")
-                    g.append("text")
-                        .attr("transform", (d) ->
-                            return "translate(#{arc.centroid(d)})"
-                        )
-                        .attr("dy", ".35em")
-                        .style("text-anchor", "middle")
-                        .text((d) ->
-                            return d.data.color
-                        )
-                scope.$watch('data', () ->
-                    scope.render(scope.data)
-                    true
-                )
-            )  
-    }
-]).directive("d3test", ["d3_service", (d3_service) ->
-    return {
-        restrict : "E"
-        scope: {
-            data: "="
-        }
-        link: (scope, element) ->
-            margin = {
-                top: 20
-                right: 20
-                bottom: 20
-                left: 40
-            }
-            width = 280 - margin.left - margin.right
-            height = 160 - margin.top - margin.bottom
-            d3_service.d3().then((d3) ->
-                svg = d3.select(element[0])
-                    .append("svg")
-                    .attr("width", width + margin.left + margin.right)
-                    .attr("height", height + margin.top + margin.bottom)
-                    .append("g")
-                    .attr("transform", "translate(#{margin.left},#{margin.top})")
-                x = d3.scale.ordinal().rangeRoundBands([0, width], .1)
-                y = d3.scale.linear().range([height, 0])
-                xAxis = d3.svg.axis().scale(x).orient("bottom").tickSize([1])
-                yAxis = d3.svg.axis().scale(y).orient("left").ticks(10).tickSize([1])
-                scope.render = (data) ->
-                    x.domain(data.map(
-                        (d) -> 
-                            return d.name
-                    ))
-                    y.domain([0, d3.max(data, (d) ->
-                        return d.count
-                    )])
-                    # Redraw the axes
-                    svg.selectAll("g.axis").remove()
-                    # X axis
-                    svg.append("g")
-                        .attr("class", "x axis")
-                        .attr("transform", "translate(0,#{height})")
-                        .call(xAxis)
-                    # Y axis
-                    svg.append("g")
-                        .attr("class", "y axis")
-                        .call(yAxis)
-                        .append("text")
-                        .attr("transform", "rotate(-90)")
-                        .attr("y", -30)
-                        .attr("x", -40)
-                        .style("text-anchor", "end")
-                        .text("Count")
-                    svg.selectAll(".bar").remove()
-                    bars = svg.selectAll(".bar").data(data)
-                    bars.enter()
-                        .append("rect")
-                        .attr("class", "bar")
-                        .attr("x", (d) -> 
-                            return x(d.name)
-                         )
-                        .attr("width", (d) ->
-                            return x.rangeBand()
-                        )
-                        .attr('height', (d) ->
-                            return height - y(d.count)
-                        )
-                        .attr("y", (d) ->
-                            return y(d.count)
-                        )
-                        .attr("fill", (d) ->
-                            return d.color
-                        )
-                scope.$watch('data', () ->
-                    scope.render(scope.data)
-                    true
-                )
-            )  
-    }
 ]).directive("livestatus", ($templateCache) ->
     return {
         restrict : "EA"
@@ -1268,11 +1356,13 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             scope.transform = "translate(#{dml.pos_x},#{dml.pos_y})"
             scope.$watch("host_lut", (lut) ->
                 if lut
-                    dev = lut[dml.device]
-                    _host = lut[dml.device]
-                    scope.mon_host = _host
-                    #console.log "host", _host, dml
-                    scope.host_state = _host.state
+                    if dml.device of lut
+                        _host = lut[dml.device]
+                        scope.mon_host = _host
+                        scope.host_state = _host.state
+                    else
+                        scope.mon_host = undefined
+                        scope.host_state = -1
             )
             scope.any_services = () ->
                 if scope.mon_host?
