@@ -76,99 +76,133 @@
                 <div class="col-md-6">
                     <div class="row">
                         <div class="col-md-12">
-                    <ul class="list-group">
-                        <li class="list-group-item" ng-repeat="loc in get_valid_locations()">
-                            <input type="button" class="btn btn-sm btn-success" value="add location gfx" ng-click="add_location_gfx($event, loc)"></input>
-                            <input type="button" class="btn btn-sm btn-primary" value="locate" ng-click="locate(loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></input>&nbsp;
-                            <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
-                            <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
-                            <span class="glyphicon glyphicon-lock" title="location is locked" ng-show="loc.locked"></span>&nbsp;
-                            {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
-                            <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
-                            <span class="pull-right">
-                            </span>
-                            <ul ng-show="loc.location_gfxs.length" class="list-group">
-                                <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
-                                    <div class="btn-group">
-                                        <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></input>
-                                        <input type="button" ng-class="preview_gfx.idx != loc_gfx.idx && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-show="loc_gfx.image_stored" value="preview" ng-click="show_preview(loc_gfx)"></input>
-                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="rotate(loc_gfx, 90)" title="rotate left">
-                                            <span class="glyphicon glyphicon-arrow-left"></span>
-                                        </button>
-                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="rotate(loc_gfx, -90)" title="rotate right">
-                                            <span class="glyphicon glyphicon-arrow-right"></span>
-                                        </button>
-                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="brightness(loc_gfx, 1.25)" title="increase brightness">
-                                            <span class="glyphicon glyphicon-upload"></span>
-                                        </button>
-                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="brightness(loc_gfx, 0.75)" title="decrease brightness">
-                                            <span class="glyphicon glyphicon-download"></span>
-                                        </button>
-                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="sharpen(loc_gfx, 1.25)" title="sharpen image">
-                                            <span class="glyphicon glyphicon-zoom-in"></span>
-                                        </button>
-                                        <button type="button" ng-class="'btn btn-xs btn-warning'" ng-show="loc_gfx.image_stored" ng-click="sharpen(loc_gfx, 0,75)" title="unsharpen image">
-                                            <span class="glyphicon glyphicon-zoom-out"></span>
-                                        </button>
-                                    </div>
-                                    {{ loc_gfx.name }}
-                                    <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
-                                    <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
-                                    <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
-                                    <ng-pluralize count="loc_gfx.num_dml" when="{'0': ', no devices', '1': 'one device', 'other':'{} devices'}"/>
-                                    </span>
+                            <ul class="list-group">
+                                <li class="list-group-item" ng-repeat="loc in get_valid_locations()">
+                                    <input type="button" class="btn btn-sm btn-success" value="add location gfx" ng-click="add_location_gfx($event, loc)"></input>
+                                    <input type="button" class="btn btn-sm btn-primary" value="locate" ng-click="locate(loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"></input>&nbsp;
+                                    <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+                                    <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                                    <span class="glyphicon glyphicon-lock" title="location is locked" ng-show="loc.locked"></span>&nbsp;
+                                    {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
+                                    <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
                                     <span class="pull-right">
-                                        <div class="btn-group" ng-show="loc_gfx.num_dml == 0">
-                                            <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
-                                        </div>
                                     </span>
+                                    <ul ng-show="loc.location_gfxs.length" class="list-group">
+                                        <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
+                                            <div class="btn-group">
+                                                <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></input>
+                                                <input type="button" ng-class="preview_gfx.idx != loc_gfx.idx && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-show="loc_gfx.image_stored" value="preview and enhance" ng-click="show_preview(loc_gfx)"></input>
+                                            </div>
+                                            {{ loc_gfx.name }}
+                                            <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+                                            <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+                                            <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                                            <ng-pluralize count="loc_gfx.num_dml" when="{'0': ', no devices', '1': 'one device', 'other':'{} devices'}"/>
+                                            </span>
+                                            <span class="pull-right">
+                                                <div class="btn-group" ng-show="loc_gfx.num_dml == 0">
+                                                    <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"></input>
+                                                </div>
+                                            </span>
+                                        </li>
+                                    </ul>
                                 </li>
                             </ul>
-                        </li>
-                    </ul>
                         </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-12" ng-show="preview_gfx">
-                            <image ng-src="{{ preview_gfx.image_url }}" width="100%"></image>
-                        </div>
+                </div>
+            </div>
+            <hr ng-show="preview_gfx"/>
+            <div class="row panel panel-default" ng-show="preview_gfx">
+                <div class="col-md-12 panel-heading">
+                    <h3>Modify and enhance '{{ preview_gfx.name }}'</h3>
+                    Rotate:
+                    <div class="btn-group">
+                        <button type="button" ng-class="'btn btn-success'" ng-click="rotate(preview_gfx, 90)" title="rotate left">
+                            <span class="glyphicon glyphicon-arrow-left"></span>
+                        </button>
+                        <button type="button" ng-class="'btn btn-success'" ng-click="rotate(preview_gfx, -90)" title="rotate right">
+                            <span class="glyphicon glyphicon-arrow-right"></span>
+                        </button>
                     </div>
+                    Brightness:
+                    <div class="btn-group">
+                        <button type="button" ng-class="'btn btn-default'" ng-click="brightness(preview_gfx, 1.25)" title="increase brightness">
+                            <span class="glyphicon glyphicon-upload"></span>
+                        </button>
+                        <button type="button" ng-class="'btn btn-default'" ng-click="brightness(preview_gfx, 0.75)" title="decrease brightness">
+                            <span class="glyphicon glyphicon-download"></span>
+                        </button>
+                    </div>
+                    Sharpen:
+                    <div class="btn-group">
+                        <button type="button" ng-class="'btn btn-warning'" ng-click="sharpen(preview_gfx, 1.25)" title="sharpen image">
+                            <span class="glyphicon glyphicon-zoom-in"></span>
+                        </button>
+                        <button type="button" ng-class="'btn btn-warning'" ng-click="sharpen(preview_gfx, 0,75)" title="unsharpen image">
+                            <span class="glyphicon glyphicon-zoom-out"></span>
+                        </button>
+                    </div>
+                    Filter:
+                    <div class="btn-group">
+                        <button type="button" ng-class="'btn btn-primary'" ng-click="emboss(preview_gfx)" title="apply emboss filter">
+                            <span class="glyphicon glyphicon-th"></span>
+                        </button>
+                        <button type="button" ng-class="'btn btn-primary'" ng-click="contour(preview_gfx)" title="apply contour filter">
+                            <span class="glyphicon glyphicon-th-list"></span>
+                        </button>
+                        <button type="button" ng-class="'btn btn-primary'" ng-click="edge_enhance(preview_gfx)" title="apply edge enhance filter">
+                            <span class="glyphicon glyphicon-align-left"></span>
+                        </button>
+                    </div>
+                    Undo / reset:
+                    <div class="btn-group">
+                        <button type="button" ng-class="'btn btn-warning'" ng-click="undo(preview_gfx)" title="undo last step">
+                            <span class="glyphicon glyphicon-repeat"></span>
+                        </button>
+                        <button type="button" ng-class="'btn btn-danger'" ng-click="restore(preview_gfx)" title="restore original image">
+                            <span class="glyphicon glyphicon-off"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-12 panel-body">
+                    <image ng-src="{{ preview_gfx.image_url }}" width="100%"></image>
                 </div>
             </div>
         </tab>
         <tab heading="Categories">
-        <h3>Actions:
-        <input type="button" value="create new" class="btn btn-sm btn-success" ng-click="create_new($event, '')"/>&nbsp;
-        <input type="button" value="prune tree" class="btn btn-sm btn-warning" ng-click="prune_tree()"/>
-        </h3>
-    <div class="row">
-        <div class="col-sm-4">
+            <h3>Actions:
+                <input type="button" value="create new" class="btn btn-sm btn-success" ng-click="create_new($event, '')"/>&nbsp;
+                <input type="button" value="prune tree" class="btn btn-sm btn-warning" ng-click="prune_tree()"/>
+            </h3>
             <div class="row">
-                <div class="col-sm-12">
-                    <h3>Tree view</h3>
-                    <tree treeconfig="cat"></tree>
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-sm-12" ng-if="modal_active && !settings.use_modal && active_aem == 'cat'" >
-                    <h3 ng-show="create_mode">Create</h3>
-                    <h3 ng-show="!create_mode">Modify</h3>
-                    <div edittemplate class="well well-sm">
+                <div class="col-sm-4">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <h3>Tree view</h3>
+                            <tree treeconfig="cat"></tree>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-12" ng-if="modal_active && !settings.use_modal && active_aem == 'cat'" >
+                            <h3 ng-show="create_mode">Create</h3>
+                            <h3 ng-show="!create_mode">Modify</h3>
+                            <div edittemplate class="well well-sm">
+                            </div>
+                        </div>
                     </div>
                 </div>
+                <div class="col-sm-8">
+                    <h3>Table view</h3>
+                    <table class="table table-condensed table-hover" style="width:auto;">
+                        <thead cathead></thead>
+                        <tbody>
+                            <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                            <tr catrow ng-repeat="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-        <div class="col-sm-8">
-            <h3>Table view</h3>
-            <table class="table table-condensed table-hover" style="width:auto;">
-                <thead cathead></thead>
-                <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-                    <tr catrow ng-repeat="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
         </tab>
     </tabset>
 </div>
@@ -530,8 +564,20 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                     "factor" : factor
                  }
             )
+        $scope.restore = (obj) ->
+            $scope.modify_image(obj, "restore")
+        $scope.undo = (obj) ->
+            $scope.modify_image(obj, "undo")
+        $scope.emboss = (obj) ->
+            $scope.modify_image(obj, "emboss")
+        $scope.contour = (obj) ->
+            $scope.modify_image(obj, "contour")
+        $scope.edge_enhance = (obj) ->
+            $scope.modify_image(obj, "edge_enhance")
         $scope.modify_image = (obj, data) ->
             $scope.show_preview(obj)
+            if angular.isString(data)
+                data = {"id" : obj.idx, "mode": data}
             $.blockUI()
             call_ajax
                 url : "{% url 'base:modify_location_gfx' %}"

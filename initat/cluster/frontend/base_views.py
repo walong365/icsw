@@ -137,20 +137,29 @@ class modify_location_gfx(View):
         except location_gfx.DoesNotExist:
             request.xml_response.error("location_gfx does not exist")
         else:
+            _changed = True
             if _post["mode"] == "rotate":
                 _loc.rotate(int(_post["degrees"]))
-                request.xml_response["image_url"] = _loc.get_image_url()
-                request.xml_response["icon_url"] = _loc.get_icon_url()
             elif _post["mode"] == "brightness":
                 _loc.brightness(float(_post["factor"]))
-                request.xml_response["image_url"] = _loc.get_image_url()
-                request.xml_response["icon_url"] = _loc.get_icon_url()
             elif _post["mode"] == "sharpen":
                 _loc.sharpen(float(_post["factor"]))
+            elif _post["mode"] == "restore":
+                _loc.restore_original_image()
+            elif _post["mode"] == "undo":
+                _loc.undo_last_step()
+            elif _post["mode"] == "emboss":
+                _loc.apply_emboss()
+            elif _post["mode"] == "contour":
+                _loc.apply_contour()
+            elif _post["mode"] == "edge_enhance":
+                _loc.apply_edge_enhance()
+            else:
+                _changed = False
+                request.xml_response.error("unknown mode '{}'".format(_post["mode"]))
+            if _changed:
                 request.xml_response["image_url"] = _loc.get_image_url()
                 request.xml_response["icon_url"] = _loc.get_icon_url()
-            else:
-                request.xml_response.error("unknown mode '{}'".format(_post["mode"]))
 
 
 class change_category(View):

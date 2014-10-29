@@ -44,8 +44,8 @@ devnode_template = """
         <newburst
             data="dml.sunburst"
             redraw="dml.redraw"
-            innerradius="30"
-            outerradius="70"
+            innerradius="20"
+            outerradius="50"
             showname="1"
             fontstroke="1"
         ></newburst>
