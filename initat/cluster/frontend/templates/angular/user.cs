@@ -1446,8 +1446,6 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                         "device" : index
                     dataType : "json"
                     success  : (json) =>
-                        console.log("answer:")
-                        console.log(json)
                         scope.$apply(
                             scope.ips_for_devices[index] = json.ip
                             if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
