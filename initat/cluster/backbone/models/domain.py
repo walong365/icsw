@@ -670,17 +670,14 @@ class location_gfx(models.Model):
         _img = ImageEnhance.Sharpness(self._read_image()).enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
-    def apply_emboss(self):
-        _img = self._read_image().filter(ImageFilter.EMBOSS)
-        self.store_graphic(_img, self.content_type, self.image_name)
-
-    def apply_contour(self):
-        _img = self._read_image().filter(ImageFilter.CONTOUR)
-        self.store_graphic(_img, self.content_type, self.image_name)
-
-    def apply_edge_enhance(self):
-        _img = self._read_image().filter(ImageFilter.EDGE_ENHANCE)
-        self.store_graphic(_img, self.content_type, self.image_name)
+    def apply_filter(self, filter_name):
+        try:
+            _filter = getattr(ImageFilter, filter_name)
+        except:
+            pass
+        else:
+            _img = self._read_image().filter(_filter)
+            self.store_graphic(_img, self.content_type, self.image_name)
 
     def restore_original_image(self):
         if os.path.exists(self.image_file_name_orig):
