@@ -148,12 +148,8 @@ class modify_location_gfx(View):
                 _loc.restore_original_image()
             elif _post["mode"] == "undo":
                 _loc.undo_last_step()
-            elif _post["mode"] == "emboss":
-                _loc.apply_emboss()
-            elif _post["mode"] == "contour":
-                _loc.apply_contour()
-            elif _post["mode"] == "edge_enhance":
-                _loc.apply_edge_enhance()
+            elif _post["mode"].startswith("af_"):
+                _loc.apply_filter(_post["mode"][3:].upper())
             else:
                 _changed = False
                 request.xml_response.error("unknown mode '{}'".format(_post["mode"]))
