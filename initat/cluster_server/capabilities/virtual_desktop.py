@@ -178,7 +178,8 @@ class vncserver(virtual_desktop_server):
 
                 # run websockify
                 if websockify_cmd_line:
-                    sub = subprocess.Popen(websockify_cmd_line.strip().split(), env=vnc_env, preexec_fn=preexec, stdout=proc_stdout, stderr=proc_stderr)
+                    # websockify needs to write somewhere
+                    sub = subprocess.Popen(websockify_cmd_line.strip().split(), env=vnc_env, preexec_fn=preexec, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     # write pid file manually
                     with open(self.websockify_pid_file, "w") as f:
                         f.write(str(sub.pid))
