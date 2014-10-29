@@ -160,7 +160,8 @@ class vncserver(virtual_desktop_server):
             os.setgid(self._get_gid_of_uid(self.vdus.user.uid))
             os.setuid(self.vdus.user.uid)
 
-        if global_config["DEBUG"]:
+        if True or global_config["DEBUG"]:
+            # TODO: writing to dev null causes the vncserver to not start
             proc_stdout, proc_stderr = None, None
         else:
             proc_stdout, proc_stderr = open(os.devnull, "w"), open(os.devnull, "w")
