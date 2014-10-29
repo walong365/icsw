@@ -1,7 +1,7 @@
 #!/usr/bin/python-init
 
 
-from PIL import Image, ImageEnhance
+from PIL import Image, ImageEnhance, ImageFilter
 from django.apps import apps
 from django.conf import settings
 from django.core.cache import cache
@@ -582,7 +582,7 @@ class location_gfx(models.Model):
     uuid = models.CharField(max_length=64, blank=True)
     # image stored ?
     image_stored = models.BooleanField(default=False)
-    # image count
+    # image count, to make urls unique
     image_count = models.IntegerField(default=1)
     # size
     width = models.IntegerField(default=0)
@@ -595,6 +595,8 @@ class location_gfx(models.Model):
     location = models.ForeignKey("backbone.category")
     # locked (as soon as a graphic is set)
     locked = models.BooleanField(default=False)
+    # changes
+    changes = models.IntegerField(default=0)
     # comment
     comment = models.CharField(max_length=1024, default="", blank=True)
 
@@ -632,7 +634,7 @@ class location_gfx(models.Model):
             return _content
 
     def get_image(self):
-        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
+        _entry = self.image_file_name
         if os.path.isfile(_entry):
             return file(_entry, "rb").read()
         else:
@@ -650,30 +652,80 @@ class location_gfx(models.Model):
         Image.new("RGB", (640, 400), color="red").save(_content, format="JPEG")
         return _content.getvalue()
 
+    def _read_image(self):
+        # returns an _img object and stores for undo
+        _img = Image.open(file(self.image_file_name, "rb"))
+        _img.save(file(self.image_file_name_last, "wb"), format="PNG")
+        return _img
+
     def rotate(self, degrees):
-        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
-        _img = Image.open(file(_entry, "rb"))
-        _img = _img.rotate(degrees)
+        _img = self._read_image().rotate(degrees)
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def brightness(self, factor):
-        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
-        _img = ImageEnhance.Brightness(Image.open(file(_entry, "rb")))
-        _img = _img.enhance(factor)
+        _img = ImageEnhance.Brightness(self.read_image()).enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def sharpen(self, factor):
-        _entry = os.path.join(settings.ICSW_WEBCACHE, "lgfx", self.uuid)
-        _img = ImageEnhance.Sharpness(Image.open(file(_entry, "rb")))
-        _img = _img.enhance(factor)
+        _img = ImageEnhance.Sharpness(self.read_image()).enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
+    def apply_emboss(self):
+        _img = self._read_image().filter(ImageFilter.EMBOSS)
+        self.store_graphic(_img, self.content_type, self.image_name)
+
+    def apply_contour(self):
+        _img = self._read_image().filter(ImageFilter.CONTOUR)
+        self.store_graphic(_img, self.content_type, self.image_name)
+
+    def apply_edge_enhance(self):
+        _img = self._read_image().filter(ImageFilter.EDGE_ENHANCE)
+        self.store_graphic(_img, self.content_type, self.image_name)
+
+    def restore_original_image(self):
+        if os.path.exists(self.image_file_name_orig):
+            _img = Image.open(file(self.image_file_name_orig, "rb"))
+            self.store_graphic(_img, self.content_type, self.image_name)
+
+    def undo_last_step(self):
+        if os.path.exists(self.image_file_name_last):
+            _img = Image.open(file(self.image_file_name_last, "rb"))
+            self.store_graphic(_img, self.content_type, self.image_name)
+
+    @property
+    def image_file_name(self):
+        return os.path.join(
+            settings.ICSW_WEBCACHE,
+            "lgfx",
+            self.uuid,
+        )
+
+    @property
+    def image_file_name_orig(self):
+        return os.path.join(
+            settings.ICSW_WEBCACHE,
+            "lgfx",
+            "{}.orig".format(self.uuid),
+        )
+
+    @property
+    def image_file_name_last(self):
+        return os.path.join(
+            settings.ICSW_WEBCACHE,
+            "lgfx",
+            "{}.last".format(self.uuid),
+        )
+
     def store_graphic(self, img, content_type, file_name):
-        _gfx_dir = os.path.join(settings.ICSW_WEBCACHE, "lgfx")
+        self.changes += 1
+        _entry = self.image_file_name
+        _gfx_dir = os.path.dirname(_entry)
         if not os.path.isdir(_gfx_dir):
             os.mkdir(_gfx_dir)
-        _entry = os.path.join(_gfx_dir, self.uuid)
         img.save(file(_entry, "wb"), format="PNG")
+        if self.changes == 1:
+            # first change, store original image
+            img.save(file(self.image_file_name_orig, "wb"), format="PNG")
         self.image_name = file_name
         self.width = img.size[0]
         self.height = img.size[1]
@@ -683,7 +735,11 @@ class location_gfx(models.Model):
         self.locked = True
         if cache.get(self.icon_cache_key):
             cache.delete(self.icon_cache_key)
-        self.save(update_fields=["width", "height", "content_type", "locked", "image_stored", "image_count", "image_name"])
+        self.save(update_fields=[
+            "changes",
+            "width", "height",
+            "content_type",
+            "locked", "image_stored", "image_count", "image_name"])
 
     class Meta:
         app_label = "backbone"
