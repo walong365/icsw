@@ -27,11 +27,13 @@ from django.db.models import Q
 from django.apps import apps
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from django.http.response import HttpResponse
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
-    user_object_permission
+    user_object_permission, device
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone import routing
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form, global_settings_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
@@ -294,3 +296,31 @@ class clear_home_dir_created(View):
         cur_user = user.objects.get(Q(pk=user_pk))
         cur_user.home_dir_created = False
         cur_user.save(update_fields=["home_dir_created"])
+
+
+class get_device_ip(View):
+    '''
+    Retrieves ip address to communicate to from local device
+    '''
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        to_dev_pk = int(_post["device"])
+        to_dev = device.objects.get(Q(pk=to_dev_pk))
+
+        cur_routing = routing.srv_type_routing(force=True)
+        from_dev = cur_routing.local_device
+
+        from_server_check = config_tools.server_check(device=from_dev, config=None, server_type="node")
+        to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
+
+        # calc route to it and use target ip
+        _router = config_tools.router_object(logger)
+        route = from_server_check.get_route_to_other_device(_router, to_server_check, allow_route_to_other_networks=True, prefer_production_net=True)
+
+        if route:
+            ip = route[0][3][1][0]
+        else:
+            ip = "127.0.0.1" # try fallback (it might not work, but it will not make things more broken)
+
+        return HttpResponse(json.dumps({"ip": ip}), content_type="application/json")

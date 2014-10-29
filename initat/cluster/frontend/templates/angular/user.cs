@@ -38,21 +38,21 @@ enter_password_template = """
 
 vncwebviewer_template = """
 <!-- vnc viewer mode -->
-<div ng-if="show_single_vdus">
-    <vnc host="{{ get_device_by_index(single_vdus.device).name }}" port="{{ single_vdus.websockify_effective_port  }}" is-connected="show_single_vdus" password="{{ single_vdus.password }}" ></vnc>
+<div ng-if="show_single_vdus && ips_loaded">
+    <vnc host="{{ ips_for_devices[single_vdus.device] }}" port="{{ single_vdus.websockify_effective_port  }}" is-connected="show_single_vdus" password="{{ single_vdus.password }}" ></vnc>
 </div>
 <!-- dashboard mode -->
 <div ng-if="virtual_desktop_sessions.length == 0">
     No virtual desktop sessions 
 </div>
-<table ng-if="!show_single_vdus">
+<table ng-if="(!show_single_vdus) && ips_loaded">
     <tr ng-repeat="vdus in virtual_desktop_sessions">
         <td>
             <table>
                 <tr>
                     <td colspan="2">
                         <h4 class="ng-binding">
-                            {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }}:{{vdus.effective_port }} running {{ get_window_manager(vdus.window_manager).description }}
+                            {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
                         </h4>
                    </td>
                 </tr>
@@ -60,7 +60,9 @@ vncwebviewer_template = """
                     <td>
                         <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default">Show viewer command line</button>
                         <br />
-                        {{vdus.viewer_cmd_line}}
+                        <p>
+                            {{vdus.viewer_cmd_line}}
+                        </p>
                     </td>
                     <td>
                           <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">open in new tab</button>
@@ -75,7 +77,7 @@ vncwebviewer_template = """
                                    Web viewer
                                    <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
                                </accordion-heading>
-                               <vnc host="{{ get_device_by_index(vdus.device).name }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
+                               <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
                            </accordion-group>
                            </accordion>
       
@@ -1398,6 +1400,9 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
         template : $templateCache.get("vncwebviewer.html")
         link: (scope, element, attrs) ->
             scope.object = undefined
+            
+            scope.ips_for_devices = {}
+            scope.ips_loaded = false
 
             scope.single_vdus_index = {{ vdus_index }} # from django via get parameter
             scope.single_vdus = undefined
@@ -1409,7 +1414,9 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 scope.object = new_val
                     
                 if scope.object?
-                    scope.virtual_desktop_sessions =  scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx)
+                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx)
+                    # get all ips
+                    scope.retrieve_device_ip vdus.device for vdus in scope.virtual_desktop_sessions
 
                     if scope.single_vdus_index
                         scope.single_vdus = scope.virtual_desktop_user_setting.filter((vdus) -> vdus.idx == scope.single_vdus_index)[0]
@@ -1428,7 +1435,26 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 url = "{% url 'main:virtual_desktop_viewer' %}"
                 window.open(url + "?vdus_index="+vdus.idx)
             scope.show_viewer_command_line = (vdus) ->
-                vdus.viewer_cmd_line = "echo \"#{vdus.password}\" | vncviewer -autopass #{scope.get_device_by_index(vdus.device).name }:#{vdus.effective_port }\n"
+                vdus.viewer_cmd_line = "echo \"#{vdus.password}\" | vncviewer -autopass #{scope.ips_for_devices[vdus.device] }:#{vdus.effective_port }\n"
+            scope.retrieve_device_ip = (index) ->
+                # set some dummy value so that the vnc directive doesn't complain
+                dummy_ip = "0.0.0.0"
+                scope.ips_for_devices[index] = dummy_ip
+                call_ajax
+                    url      : "{% url 'user:get_device_ip' %}"
+                    data     :
+                        "device" : index
+                    dataType : "json"
+                    success  : (json) =>
+                        console.log("answer:")
+                        console.log(json)
+                        scope.$apply(
+                            scope.ips_for_devices[index] = json.ip
+                            if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
+                                # all are loaded
+                                scope.ips_loaded = true
+                        )
+                
             scope.download_vdus_start_script = (vdus) ->
                 # currently unused
                 script = "#!/bin/sh\n"+
