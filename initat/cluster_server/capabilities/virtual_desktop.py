@@ -167,7 +167,7 @@ class vncserver(virtual_desktop_server):
             proc_stdout, proc_stderr = open(os.devnull, "w"), open(os.devnull, "w")
 
         def vnc_start_fun():
-            # make sure not to interfere with db
+            # make sure not to interfere with db (db should actually be already closed at this point but be really sure)
             from django.db import connection
             connection.close()
 
@@ -186,6 +186,10 @@ class vncserver(virtual_desktop_server):
                     sub.wait()  # terminate when child does
 
                 # pids are read in _call below such that we don't have to wait now
+
+        # make sure not to interfere with db 
+        from django.db import connection
+        connection.close()
 
         proc = multiprocessing.Process(target=vnc_start_fun)
         proc.start()
