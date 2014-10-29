@@ -663,11 +663,11 @@ class location_gfx(models.Model):
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def brightness(self, factor):
-        _img = ImageEnhance.Brightness(self.read_image()).enhance(factor)
+        _img = ImageEnhance.Brightness(self._read_image()).enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def sharpen(self, factor):
-        _img = ImageEnhance.Sharpness(self.read_image()).enhance(factor)
+        _img = ImageEnhance.Sharpness(self._read_image()).enhance(factor)
         self.store_graphic(_img, self.content_type, self.image_name)
 
     def apply_emboss(self):
