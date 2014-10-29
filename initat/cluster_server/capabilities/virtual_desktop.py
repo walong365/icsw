@@ -231,8 +231,10 @@ class virtual_desktop_stuff(bg_stuff):
         self.__first_run = True
 
     def _call(self, cur_time, builder):
-        if self.__first_run:
-            self.__first_run = False
+        # handle first run locally
+        is_first_run = self.__first_run
+        self.__first_run = False
+        if is_first_run:
             # only check for services on first run
             for vd_proto in virtual_desktop_protocol.objects.all():
                 _vd_update = False
@@ -281,7 +283,7 @@ class virtual_desktop_stuff(bg_stuff):
 
                     s = klass(self.log, vdus)
 
-                    if (timezone.now() - vdus.last_start_attempt) < datetime.timedelta(minutes=5):
+                    if (not is_first_run) and (timezone.now() - vdus.last_start_attempt) < datetime.timedelta(minutes=5):
                         # check if pid file has appeared and contains valid pid
                         pid = s.get_pid_from_file()
                         self.log("Last start attempt was earlier than 5 minutes, found pid: {}".format(pid))
@@ -306,6 +308,8 @@ class virtual_desktop_stuff(bg_stuff):
                                 vdus.process_name = psutil.Process(pid=pid).name()
                                 vdus.save()
                                 self.log("Virtual desktop server startup successful")
+                        else:
+                            self.log("No valid pid found, waiting for it to become available or timeout")
                     else:
                         # start
                         self.log("Virtual desktop session {} {} should be running but isn't, starting".format(vdus.virtual_desktop_protocol.name,
