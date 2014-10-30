@@ -69,10 +69,38 @@ def simplify_dict(in_dict, start_tuple):
         if len(_s_key) == 2:
             # integer as key
             _result.setdefault(_s_key[1], {})[_s_key[0]] = in_dict[_key]
-        else:
+        elif _s_key:
             # tuple as key
             _result.setdefault(tuple(list(_s_key[1:])), {})[_s_key[0]] = in_dict[_key]
+        else:
+            _result[None] = in_dict[_key]
     return _result
+
+
+def flatten_dict(in_dict):
+    _changed = True
+    while _changed:
+        _changed = False
+        if len(in_dict) == 1:
+            in_dict = in_dict.values()[0]
+        _r_dict = {}
+        for _key, _value in in_dict.iteritems():
+            if type(_value) == dict:
+                _changed = True
+                if type(_key) in [int, long]:
+                    _key = [_key]
+                else:
+                    _key = list(_key)
+                for _s_key, _s_value in _value.iteritems():
+                    if type(_s_key) in [int, long]:
+                        _s_key = _key + [_s_key]
+                    else:
+                        _s_key = _key + list(_s_key)
+                    _r_dict[tuple(_s_key)] = _s_value
+            else:
+                _r_dict[_key] = _value
+        in_dict = _r_dict
+    return _r_dict
 
 
 class snmp_process_container(object):
