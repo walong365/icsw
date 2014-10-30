@@ -23,7 +23,7 @@
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.collectd.background import snmp_job, bg_job, ipmi_builder
 from initat.collectd.resize import resize_process
@@ -455,15 +455,33 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         _vc = var_cache(
             device.objects.get(
                 Q(device_group__cluster_device_group=True)
-            ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public", "SNMP_SCHEME": "unknown"}
+            ), {"SNMP_VERSION": 1, "SNMP_READ_COMMUNITY": "public"}
         )
-        snmp_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="snmp://") & Q(enable_perfdata=True))
+        snmp_hosts = device.objects.exclude(
+            Q(snmp_schemes=None)
+        ).filter(
+            Q(enabled=True) &
+            Q(device_group__enabled=True) &
+            Q(curl__istartswith="snmp://") &
+            Q(enable_perfdata=True) &
+            Q(snmp_schemes__collect=True)
+        ).prefetch_related(
+            "snmp_schemes__snmp_scheme_vendor"
+        )
         _reachable = self._check_reachability(snmp_hosts, _vc, _router, "SNMP")
         snmp_com = server_command.srv_command(command="snmp_hosts")
         _bld = snmp_com.builder()
         snmp_com["devices"] = _bld.device_list(
             *[
                 _bld.device(
+                    _bld.schemes(
+                        *[
+                            _bld.scheme(
+                                _scheme.full_name_version,
+                                pk="{:d}".format(_scheme.pk)
+                            ) for _scheme in cur_dev.snmp_schemes.all() if _scheme.collect
+                        ]
+                    ),
                     pk="{:d}".format(cur_dev.pk),
                     short_name="{}".format(cur_dev.name),
                     full_name="{}".format(cur_dev.full_name),
@@ -471,7 +489,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     ip="{}".format(_ip),
                     snmp_version="{:d}".format(_vars["SNMP_VERSION"]),
                     snmp_read_community=_vars["SNMP_READ_COMMUNITY"],
-                    snmp_scheme=_vars["SNMP_SCHEME"],
                 ) for cur_dev, _ip, _vars in _reachable
             ]
         )
@@ -963,10 +980,11 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                         uuid=_dev.get("uuid"),
                     )
                 else:
+                    _schemes = snmp_scheme.objects.filter(Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev)))
                     t_obj(
                         new_id,
                         _dev.get("ip"),
-                        _dev.get("snmp_scheme"),
+                        _schemes,
                         int(_dev.get("snmp_version")),
                         _dev.get("snmp_read_community"),
                         device_name=_dev.get("full_name"),
@@ -983,9 +1001,10 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     ]:
                         _job.update_attribute(attr_name, attr_value)
                 else:
+                    _schemes = snmp_scheme.objects.filter(Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev)))
                     for attr_name, attr_value in [
                         ("ip", _dev.get("ip")),
-                        ("snmp_scheme", _dev.get("snmp_scheme")),
+                        ("snmp_schemes", _schemes),
                         ("snmp_version", int(_dev.get("snmp_version"))),
                         ("snmp_read_community", _dev.get("snmp_read_community")),
                     ]:

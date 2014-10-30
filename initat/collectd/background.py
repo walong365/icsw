@@ -21,9 +21,9 @@
 
 """ background job definitions for collectd-init """
 
-from initat.collectd.struct import ext_com
 from initat.collectd.collectd_types import *  # @UnusedWildImport
-from initat.snmp_relay.snmp_process import simple_snmp_oid
+from initat.collectd.struct import ext_com
+from initat.snmp.sink import SNMPSink
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
 import logging_tools
@@ -92,156 +92,13 @@ def parse_ipmi(in_lines):
     return result
 
 
-class snmp_scheme(object):
-    def __init__(self):
-        pass
-
-    def get_oid_list(self):
-        _list = []
-        if hasattr(self, "var_list"):
-            _list.append(("V", self.var_list))
-        if hasattr(self, "table_list"):
-            _list.append(("T", self.table_list))
-        return _list
-
-    def simplify_dict(self, in_dict):
-        # simplify dict (reduce keys)
-        while True:
-            if len(set([list(_key)[0] for _key in in_dict.iterkeys()])) == 1:
-                in_dict = {tuple(list(_key)[1:]): _value for _key, _value in in_dict.iteritems()}
-            else:
-                break
-        if len(set([len(_key) for _key in in_dict.iterkeys()])) == 1:
-            # all keys have the same length, remove from behind
-            while True:
-                if len(set([list(_key)[-1] for _key in in_dict.iterkeys()])) == 1:
-                    in_dict = {tuple(list(_key)[:-1]): _value for _key, _value in in_dict.iteritems()}
-                else:
-                    break
-        return in_dict
-
-    def build(self, job, res_dict):
-        headers = {
-            "name": job.device_name,
-            "uuid": job.uuid,
-            "time": "{:d}".format(int(job.last_start))
-        }
-        _tree = E.machine_vector(
-            simple="0",
-            **headers
-        )
-        _mon_info = E.monitor_info(
-            **headers
-        )
-        self.feed_trees(_tree, _mon_info, res_dict)
-        return _tree, _mon_info
-
-
-class apcv1_scheme(snmp_scheme):
-    var_list = [simple_snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.1")]
-
-    def feed_trees(self, mv_tree, mon_tree, res_dict):
-        mv_tree.append(
-            E.mve(
-                info="Ampere",
-                unit="A",
-                base="1",
-                v_type="f",
-                value="{:.1f}".format(float(res_dict.values()[0]) / 10.),
-                name="apc.ampere.used",
-            )
-        )
-
-
-class apc_upc_v1_scheme(snmp_scheme):
-    var_list = [
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.1.0"),
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.2.0"),
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.3.0"),
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.4.0"),
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.1.0"),
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.2.0"),
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.3.0"),
-        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.4.0"),
-    ]
-
-    def feed_trees(self, mv_tree, mon_tree, res_dict):
-        res_dict = self.simplify_dict(res_dict)
-        mv_tree.extend([
-            E.mve(
-                info="Input frequency",
-                unit="1/s",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(3, 2, 4)]),
-                name="upc.frequency.in",
-            ),
-            E.mve(
-                info="Output frequency",
-                unit="1/s",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(4, 2, 2)]),
-                name="upc.frequency.out",
-            ),
-            E.mve(
-                info="Input line voltage",
-                unit="V",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(3, 2, 1)]),
-                name="upc.voltage.in.line",
-            ),
-            E.mve(
-                info="Input line voltage max",
-                unit="V",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(3, 2, 2)]),
-                name="upc.voltage.in.line_max",
-            ),
-            E.mve(
-                info="Input line voltage min",
-                unit="V",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(3, 2, 3)]),
-                name="upc.voltage.in.line_min",
-            ),
-            E.mve(
-                info="Output voltage",
-                unit="V",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(4, 2, 1)]),
-                name="upc.voltage.out",
-            ),
-            E.mve(
-                info="Output load",
-                unit="%",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(4, 2, 3)]),
-                name="upc.load.out",
-            ),
-            E.mve(
-                info="Output current",
-                unit="A",
-                base="1",
-                v_type="i",
-                value="{:d}".format(res_dict[(4, 2, 4)]),
-                name="upc.ampere.out",
-            ),
-        ])
-
-
 class snmp_job(object):
-    def __init__(self, id_str, ip, snmp_scheme, snmp_version, snmp_read_community, **kwargs):
+    def __init__(self, id_str, ip, snmp_schemes, snmp_version, snmp_read_community, **kwargs):
         self.id_str = id_str
         snmp_job.add_job(self)
         self.ip = ip
         self.snmp_version = snmp_version
-        self.snmp_scheme = snmp_scheme
+        self.snmp_schemes = snmp_schemes
         self.snmp_read_community = snmp_read_community
         self.device_name = kwargs.get("device_name", "")
         self.uuid = kwargs.get("uuid", "")
@@ -254,56 +111,59 @@ class snmp_job(object):
         self.running = False
         # to remove from list
         self.to_remove = False
-        self._init_scheme_object()
+        self._init_snmp_handlers()
         self.check()
 
-    def _init_scheme_object(self):
+    def _init_snmp_handlers(self):
         # get snmp scheme object
-        scheme_name = "{}_scheme".format(self.snmp_scheme)
-        if scheme_name in globals():
-            self.snmp_scheme_object = globals()[scheme_name]()
-            self.log(
-                "new SNMP {}, ip is {} (V{:d}, {}), valid scheme {}".format(
-                    self.id_str,
-                    self.ip,
-                    self.snmp_version,
-                    self.snmp_read_community,
-                    self.snmp_scheme
-                )
+        self.snmp_handlers = snmp_job.snmp_sink.get_handlers(self.snmp_schemes)
+        self.log(
+            "new SNMP {}, ip is {} (V{:d}, {}), {}".format(
+                self.id_str,
+                self.ip,
+                self.snmp_version,
+                self.snmp_read_community,
+                logging_tools.get_plural("valid scheme", len(self.snmp_handlers)),
             )
-        else:
-            self.snmp_scheme_object = None
-            self.log(
-                "new SNMP {}, ip is {} (V{:d}, {}), invalid scheme {}".format(
-                    self.id_str,
-                    self.ip,
-                    self.snmp_version,
-                    self.snmp_read_community,
-                    self.snmp_scheme
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
+        )
+        return
+        self.log(
+            "new SNMP {}, ip is {} (V{:d}, {}), invalid scheme {}".format(
+                self.id_str,
+                self.ip,
+                self.snmp_version,
+                self.snmp_read_community,
+                self.snmp_scheme
+            ),
+            logging_tools.LOG_LEVEL_CRITICAL
+        )
 
     def update_attribute(self, attr_name, attr_value):
-        if getattr(self, attr_name) != attr_value:
-            self.log(
-                "changed attribute {} from '{}' to '{}'".format(
-                    attr_name,
-                    getattr(self, attr_name),
-                    attr_value,
-                )
-            )
-            setattr(self, attr_name, attr_value)
-            if attr_name == "snmp_scheme":
+        if attr_name == "snmp_schemes":
+            _new_pks = set([_val.pk for _val in attr_value])
+            _old_pks = set([_val.pk for _val in self.snmp_schemes])
+            if _new_pks != _old_pks:
+                self.snmp_schemes = attr_value
                 self._init_scheme_object()
+        else:
+            if getattr(self, attr_name) != attr_value:
+                self.log(
+                    "changed attribute {} from '{}' to '{}'".format(
+                        attr_name,
+                        getattr(self, attr_name),
+                        attr_value,
+                    )
+                )
+                setattr(self, attr_name, attr_value)
 
     def _start_snmp_batch(self):
-        if self.snmp_scheme_object:
+        if len(self.snmp_handlers):
             self.counter += 1
             self.last_start = time.time()
             self.running = True
             self.waiting_for = "{}_{:d}".format(self.uuid, self.counter)
             # see proc_data in snmp_relay_schemes
+            fetch_list = sum([_handler.collect_fetch() for _handler in self.snmp_handlers], [])
             self.bg_proc.spc.start_batch(
                 self.snmp_version,
                 self.ip,
@@ -311,15 +171,8 @@ class snmp_job(object):
                 self.waiting_for,
                 True,
                 10,
-                *self.snmp_scheme_object.get_oid_list()
+                *fetch_list
             )
-            # self.bg_proc.spc.start_batch(
-            #    self.waiting_for,
-            #    self.ip,
-            #    self.snmp_version,
-            #    self.snmp_read_community,
-            #    self.snmp_scheme_object.get_oid_list()
-            # )
 
     def feed(self, *res_list):
         self.waiting_for = None
@@ -328,9 +181,22 @@ class snmp_job(object):
         if error_list:
             self.log("error fetching SNMP data from {}".format(self.device_name), logging_tools.LOG_LEVEL_ERROR)
         else:
-            _tree, _mon_info = self.snmp_scheme_object.build(self, res_dict)
+            headers = {
+                "name": self.device_name,
+                "uuid": self.uuid,
+                "time": "{:d}".format(int(self.last_start))
+            }
+            mv_tree = E.machine_vector(
+                simple="0",
+                **headers
+            )
+            mon_info = E.monitor_info(
+                **headers
+            )
+            for _handler in self.snmp_handlers:
+                _handler.collect_feed(res_dict, mv_tree=mv_tree, mon_info=mon_info)
             # graphing
-            self.bg_proc.feed_data(etree.tostring(_tree))  # @UndefinedVariable
+            self.bg_proc.feed_data(etree.tostring(mv_tree))  # @UndefinedVariable
 
     def check_for_timeout(self):
         diff_time = int(abs(time.time() - self.last_start))
@@ -371,6 +237,7 @@ class snmp_job(object):
         snmp_job.run_idx = 0
         snmp_job.bg_proc = bg_proc
         snmp_job.ref_dict = {}
+        snmp_job.snmp_sink = SNMPSink(bg_proc.log)
 
     @staticmethod
     def add_job(new_job):
