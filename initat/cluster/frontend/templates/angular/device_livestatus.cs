@@ -20,6 +20,57 @@ map_template = """
         >
         </image>
         <devnode ng-repeat="dml in loc_gfx.dml_list"></devnode>
+        <!--<g>
+            <defs>
+                <linearGradient id="MyGradient">
+                    <stop offset="0%" stop-color="#ff6000" />
+                    <stop offset="100%" stop-color="#00ff0f" />
+                </linearGradient>
+                <marker id='start' orient='auto' markerWidth='30' markerHeight='30'
+                    refX='15' refY='15'
+                    markerUnits="userSpaceOnUse"
+                >
+                    <path d='M0,0 L30,15 L0,30 Z' fill="#00ff0f"/>
+                </marker>
+                <marker id='starts' orient='auto' markerWidth='30' markerHeight='30'
+                    refX='15' refY='15'
+                    markerUnits="userSpaceOnUse"
+                >
+                    <path d='M0,0 L30,15 L0,30 Z' fill="none" stroke="black" stroke-width="2"/>
+                </marker>
+            </defs>
+            <path
+                d="M10,20 S 200,100 300,300"
+                marker-end="url(#starts)"
+                stroke="black"
+                stroke-width="12"
+                stroke-linecap="round""
+                fill="none"
+            />
+            <path
+                d="M10,20 S 200,100 300,300" 
+                marker-end="url(#start)"
+                stroke="url(#MyGradient)"
+                stroke-width="10"
+                stroke-linecap="round"
+                fill="none"
+            />
+            <g transform="translate(100,100)">
+                <rect x="-20" y="-10" width="40" height="20"
+                    fill="none" stroke="black" stroke-width="2">
+                </rect>
+                <rect x="-20" y="-10" width="40" height="20"
+                    fill="white">
+                </rect>
+                <text
+                    text-anchor="middle"
+                    alignment-baseline="middle"
+                    fill="black"
+                >
+                in/out
+                </text>
+            </g>
+        </g>-->
     </g>
 </svg>
 """
@@ -28,15 +79,6 @@ devnode_template = """
 <g ng-attr-transform="{{ transform }}" ng-switch="data_source">
     <g ng-switch-when="">
         <circle r='20' fill='grey' stroke='black' stroke-width='1'></circle>
-        <text text-anchor="middle" alignment-baseline="middle" stroke="white" font-weight="bold" stroke-width="2">{{ dml.device_name }}</text>
-        <text text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold" stroke-width="0">{{ dml.device_name }}</text>
-    </g>
-    <g ng-switch-when="sdd">
-        <path d="M-40,0 a40,40 0 0,1 80,0 z"
-            fill="red" stroke="black" stroke-width="1"
-        />
-        <circle ng-show="any_services()" r='30' ng-attr-fill='{{ service_status_color() }}' stroke='black' stroke-width='1'></circle>
-        <circle r='15' ng-attr-fill='{{ host_status_color() }}' stroke='black' stroke-width='1'></circle>
         <text text-anchor="middle" alignment-baseline="middle" stroke="white" font-weight="bold" stroke-width="2">{{ dml.device_name }}</text>
         <text text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold" stroke-width="0">{{ dml.device_name }}</text>
     </g>
