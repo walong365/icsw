@@ -22,11 +22,12 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
-    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed, snmp_schemes
+    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed
 from initat.discovery_server.config import global_config
 from initat.snmp_relay.snmp_process import simple_snmp_oid, simplify_dict
 from initat.snmp.struct import ResultNode
 from initat.snmp.sink import SNMPSink
+from initat.snmp.databasemap import Schemes
 import base64
 import bz2
 import config_tools
@@ -79,7 +80,7 @@ class snmp_batch(object):
 
     def start_run(self):
         if self.command == "snmp_basic_scan":
-            _all_schemes = snmp_schemes()
+            _all_schemes = Schemes(self.log)
             self.new_run(
                 True,
                 20,
@@ -158,7 +159,7 @@ class snmp_batch(object):
                 self.finish()
 
     def handle_snmp_initial_scan(self, errors, found, res_dict):
-        _all_schemes = snmp_schemes()
+        _all_schemes = Schemes(self.log)
         _found_struct = {}
         # reorganize oids to dict with scheme -> {..., oid_list, ...}
         for _oid in found:
@@ -189,7 +190,7 @@ class snmp_batch(object):
         self.finish()
 
     def handle_snmp_basic_scan(self, errors, found, res_dict):
-        _all_schemes = snmp_schemes()
+        _all_schemes = Schemes(self.log)
         if found:
             # any found, delete all present schemes
             self.device.snmp_schemes.clear()
