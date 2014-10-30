@@ -31,7 +31,7 @@ from initat.collectd.aggregate import aggregate_process
 from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
-from initat.snmp_relay.snmp_process import snmp_process_container
+from initat.snmp.process import snmp_process_container
 from lxml import etree
 from lxml.builder import E  # @UnresolvedImports
 import cluster_location
