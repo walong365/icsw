@@ -24,8 +24,8 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed
 from initat.discovery_server.config import global_config
-from initat.snmp_relay.snmp_process import simple_snmp_oid, simplify_dict
-from initat.snmp.struct import ResultNode
+from initat.snmp.struct import ResultNode, simple_snmp_oid
+from initat.snmp.functions import simplify_dict, oid_to_str
 from initat.snmp.sink import SNMPSink
 from initat.snmp.databasemap import Schemes
 import base64
@@ -172,7 +172,7 @@ class snmp_batch(object):
                         "oids": set(),
                         "full_name": _found_scheme.full_name,
                     }
-                _found_struct[_key]["oids"].add(_all_schemes.oid_to_str(_oid))
+                _found_struct[_key]["oids"].add(oid_to_str(_oid))
         _handler = SNMPSink(self.log)
         result = ResultNode(error=errors)
         for _key in sorted(_found_struct, reverse=True):

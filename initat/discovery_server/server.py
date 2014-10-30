@@ -21,17 +21,17 @@
 
 from django.db import connection
 from django.db.models import Q
+from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.discovery_server.config import global_config, IPC_SOCK_SNMP
 from initat.discovery_server.discovery import discovery_process
-from initat.snmp_relay.snmp_process import snmp_process_container
-from initat.cluster.backbone.models import device
+from initat.snmp.process import snmp_process_container
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import cluster_location
-import pprint  # @UnusedImport
 import configfile
 import logging_tools
+import pprint  # @UnusedImport
 import process_tools
 import server_command
 import threading_tools
