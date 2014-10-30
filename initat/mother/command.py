@@ -26,7 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, devicelog, user
 from initat.mother.command_tools import simple_command
-from initat.snmp_relay.snmp_process import simple_snmp_oid
+from initat.snmp.struct import simple_snmp_oid
 from initat.mother.config import global_config
 import config_tools
 import logging_tools

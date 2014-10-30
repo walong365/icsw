@@ -26,7 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import network, status
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.mother.config import global_config
-from initat.snmp_relay.snmp_process import snmp_process
+from initat.snmp.process import snmp_process
 from lxml import etree  # @UnresolvedImports
 import cluster_location
 import configfile
