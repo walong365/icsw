@@ -27,7 +27,12 @@ from initat.cluster.backbone.models import DeviceSNMPInfo
 
 class handler(SNMPHandler):
     class Meta:
-        oids = ["generic.base"]
+        # oids = ["generic.base"]
+        description = "basic SNMP info"
+        vendor_name = "generic"
+        name = "base"
+        tl_oids = ["1.3.6.1.2.1.1"]
+        initial = True
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
         try:

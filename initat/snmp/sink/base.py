@@ -19,10 +19,8 @@
 #
 """ SNMP base sink """
 
-from ..handler.base import SNMPHandler
 from ..struct import ResultNode
 from ..handler.instances import handlers
-import inspect
 import logging_tools
 import process_tools
 
@@ -30,8 +28,8 @@ import process_tools
 class SNMPSink(object):
     def __init__(self, log_com):
         self.__log_com = log_com
-        # possible handlers
-        self.__handlers = handlers
+        # possible handlers, build instance list (not only classes)
+        self.__handlers = [_handler(self.__log_com) for _handler in handlers]
         # registered handlers
         self.__reg_handlers = {}
         self.log("init ({} found)".format(logging_tools.get_plural("handler", len(self.__handlers))))
@@ -39,20 +37,23 @@ class SNMPSink(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SS] {}".format(what), log_level)
 
+    def get_handlers(self, schemes):
+        return [_val for _val in [self.get_handler(_scheme) for _scheme in schemes] if _val is not None]
+
     def get_handler(self, scheme):
         full_name, full_name_version = (scheme.full_name, scheme.full_name_version)
         if full_name_version not in self.__reg_handlers:
             # search for full name with version
             _v_found, _found = ([], [])
             for _handler in self.__handlers:
-                if full_name_version in _handler.Meta.oids:
+                if full_name_version in _handler.Meta.lookup_keys:
                     _v_found.append(_handler)
-                if full_name in _handler.Meta.oids:
+                if full_name in _handler.Meta.lookup_keys:
                     _found.append(_handler)
             if _v_found:
-                self.__reg_handlers[full_name_version] = _v_found[0](self.__log_com)
+                self.__reg_handlers[full_name_version] = _v_found[0]
             elif _found:
-                self.__reg_handlers[full_name_version] = _found[0](self.__log_com)
+                self.__reg_handlers[full_name_version] = _found[0]
             else:
                 self.log("no handlers found for {} or {}".format(full_name_version, full_name), logging_tools.LOG_LEVEL_ERROR)
                 self.__reg_handlers[full_name_version] = None

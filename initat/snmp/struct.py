@@ -108,3 +108,8 @@ class snmp_ip(object):
     def __repr__(self):
         return "{}/{}".format(self.address, self.netmask)
 
+
+def oid_to_str(oid):
+    if type(oid) == tuple:
+        oid = ".".join(["{:d}".format(_p) for _p in oid])
+    return oid

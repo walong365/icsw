@@ -30,7 +30,12 @@ import ipvx_tools
 
 class handler(SNMPHandler):
     class Meta:
-        oids = ["generic.netip"]
+        # oids = ["generic.netip"]
+        description = "network settings (IP addresses)"
+        vendor_name = "generic"
+        name = "netip"
+        tl_oids = ["1.3.6.1.2.1.4.20"]
+        initial = True
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
         # ip dict

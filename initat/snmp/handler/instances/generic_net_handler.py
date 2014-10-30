@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" SNMP handler instances """
+""" SNMP handler for basic network stuff (netdevices) """
 
 from ...struct import ResultNode, snmp_if
 from ..base import SNMPHandler
@@ -29,7 +29,13 @@ from django.db.models import Q
 
 class handler(SNMPHandler):
     class Meta:
-        oids = ["generic.net"]
+        description = "network settings (devices)"
+        vendor_name = "generic"
+        name = "net"
+        version = 1
+        tl_oids = ["1.3.6.1.2.1.2"]
+        priority = 64
+        initial = True
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
         _if_dict = {key: snmp_if(value) for key, value in simplify_dict(result_dict["1.3.6.1.2.1.2"], (2, 1)).iteritems()}
