@@ -19,8 +19,8 @@
 #
 """ SNMP handler for APC rack PDUs """
 
+from ...struct import simple_snmp_oid
 from ..base import SNMPHandler
-from initat.snmp_relay.snmp_process import simple_snmp_oid
 from lxml.builder import E
 
 

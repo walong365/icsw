@@ -21,7 +21,7 @@
 
 from initat.cluster.backbone.models import snmp_scheme_vendor, snmp_scheme
 from initat.snmp.handler.instances import handlers
-from .struct import oid_to_str
+from .functions import oid_to_str
 import logging_tools
 
 

@@ -19,12 +19,12 @@
 #
 """ SNMP handler instances """
 
+from ...functions import simplify_dict
 from ...struct import ResultNode, snmp_ip
 from ..base import SNMPHandler
 from django.db.models import Q
 from initat.cluster.backbone.models import network, netdevice, domain_tree_node, \
     network_type, net_ip
-from initat.snmp_relay.snmp_process import simplify_dict
 import ipvx_tools
 
 

@@ -19,9 +19,9 @@
 #
 """ SNMP handler instances """
 
+from ...functions import simplify_dict
 from ...struct import ResultNode
 from ..base import SNMPHandler
-from initat.snmp_relay.snmp_process import simplify_dict
 from initat.cluster.backbone.models import DeviceSNMPInfo
 
 

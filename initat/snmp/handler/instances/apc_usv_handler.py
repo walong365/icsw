@@ -20,7 +20,8 @@
 """ SNMP handler for APC USVs """
 
 from ..base import SNMPHandler
-from initat.snmp_relay.snmp_process import simplify_dict, simple_snmp_oid, flatten_dict
+from ...struct import simple_snmp_oid
+from ...functions import simplify_dict, flatten_dict
 from lxml.builder import E
 
 

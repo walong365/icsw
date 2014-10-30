@@ -19,8 +19,9 @@
 #
 """ handler structures """
 
+from ..functions import oid_to_str
+from ..struct import ResultNode
 import logging_tools
-from ..struct import ResultNode, oid_to_str
 
 
 class SNMPHandler(object):

@@ -19,9 +19,9 @@
 #
 """ SNMP handler for basic network stuff (netdevices) """
 
-from ...struct import ResultNode, snmp_if
+from ...struct import ResultNode, snmp_if, simple_snmp_oid
 from ..base import SNMPHandler
-from initat.snmp_relay.snmp_process import simplify_dict
+from ...functions import simplify_dict
 from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
     peer_information
 from django.db.models import Q

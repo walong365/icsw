@@ -109,7 +109,52 @@ class snmp_ip(object):
         return "{}/{}".format(self.address, self.netmask)
 
 
-def oid_to_str(oid):
-    if type(oid) == tuple:
-        oid = ".".join(["{:d}".format(_p) for _p in oid])
-    return oid
+class simple_snmp_oid(object):
+    def __init__(self, *oid, **kwargs):
+        self._target_value = kwargs.get("target_value", None)
+        if type(oid[0]) in [tuple, list] and len(oid) == 1:
+            oid = oid[0]
+        if type(oid) == tuple and len(oid) == 1 and isinstance(oid[0], basestring):
+            oid = oid[0]
+        # store oid in tuple-form
+        if isinstance(oid, basestring):
+            self._oid = tuple([int(val) for val in oid.split(".")])
+        else:
+            self._oid = oid
+        self._oid_len = len(self._oid)
+        self._str_oid = ".".join(["{:d}".format(i_val) if type(i_val) in [int, long] else i_val for i_val in self._oid])
+
+    def has_max_oid(self):
+        return False
+
+    def __str__(self):
+        return self._str_oid
+
+    def __repr__(self):
+        return "OID {}".format(self._str_oid)
+
+    def __iter__(self):
+        # reset iteration idx
+        self.__idx = -1
+        return self
+
+    def next(self):
+        self.__idx += 1
+        if self.__idx == self._oid_len:
+            raise StopIteration
+        else:
+            return self._oid[self.__idx]
+
+    def get_value(self, p_mod):
+        if self._target_value is not None:
+            if isinstance(self._target_value, basestring):
+                return p_mod.OctetString(self._target_value)
+            elif type(self._target_value) in [int, long]:
+                return p_mod.Integer(self._target_value)
+            else:
+                return p_mod.Null("")
+        else:
+            return p_mod.Null("")
+
+    def as_tuple(self):
+        return self._oid
