@@ -18,7 +18,7 @@
 """ SNMP schemes for SNMP relayer """
 
 from initat.host_monitoring import limits
-from initat.snmp_relay.snmp_process import simple_snmp_oid
+from initat.snmp.struct import simple_snmp_oid
 import cStringIO
 import logging_tools
 import optparse

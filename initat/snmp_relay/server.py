@@ -20,7 +20,7 @@
 from initat.host_monitoring import limits
 from initat.snmp_relay import snmp_relay_schemes
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
-from initat.snmp_relay.snmp_process import snmp_process_container
+from initat.snmp.process import snmp_process_container
 import configfile
 import difflib
 import logging_tools
