@@ -19,6 +19,7 @@
 #
 """ creates the cluster fixtures """
 
+# from lxml.builder import E # @UnresolvedImport
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils.crypto import get_random_string
@@ -27,7 +28,7 @@ from initat.cluster.backbone.management.commands.fixtures import add_fixtures
 from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, log_source, \
     get_related_models
 from lxml import etree  # @UnresolvedImport
-# from lxml.builder import E # @UnresolvedImport
+import logging_tools
 import os
 import sys
 
@@ -312,70 +313,37 @@ SNMP_NET_TYPES = [
 
 
 def _add_snmp_fixtures():
+    def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        print "[{:d}] {}".format(log_level, what)
+
     # SNMP Network types
     for _if_type, _if_label in SNMP_NET_TYPES:
         factories.SNMPNetworkType(if_type=_if_type, if_label=_if_label)
     # SNMP fixtures
-    gen_vendor = factories.SNMPSchemeVendor(name="generic", company_info="generic schemes")
-    apc_vendor = factories.SNMPSchemeVendor(name="apc", company_info="American Power Conversion")
-    # Rack PDUs
-    rpdu_scheme = factories.SNMPScheme(
-        name="rpdu",
-        version=1,
-        description="rackable power distribution unit",
-        collect=True,
-        snmp_scheme_vendor=apc_vendor,
-    )
-    factories.SNMPSchemeTLOID(
-        oid="1.3.6.1.4.1.318.1.1.12",
-        snmp_scheme=rpdu_scheme,
-    )
-    # USV
-    usv_scheme = factories.SNMPScheme(
-        name="usv",
-        version=1,
-        description="USV",
-        collect=True,
-        snmp_scheme_vendor=apc_vendor,
-    )
-    factories.SNMPSchemeTLOID(
-        oid="1.3.6.1.4.1.318.1.1.1",
-        snmp_scheme=usv_scheme,
-    )
-    base_scheme = factories.SNMPScheme(
-        name="base",
-        version=1,
-        initial=True,
-        snmp_scheme_vendor=gen_vendor,
-    )
-    factories.SNMPSchemeTLOID(
-        oid="1.3.6.1.2.1.1",
-        snmp_scheme=base_scheme,
-    )
-    net_scheme = factories.SNMPScheme(
-        name="net",
-        description="network settings (devices)",
-        version=1,
-        collect=True,
-        initial=True,
-        priority=64,
-        snmp_scheme_vendor=gen_vendor,
-    )
-    factories.SNMPSchemeTLOID(
-        oid="1.3.6.1.2.1.2",
-        snmp_scheme=net_scheme,
-    )
-    netip_scheme = factories.SNMPScheme(
-        name="netip",
-        description="network settings (IPs)",
-        version=1,
-        initial=True,
-        snmp_scheme_vendor=gen_vendor,
-    )
-    factories.SNMPSchemeTLOID(
-        oid="1.3.6.1.2.1.4.20",
-        snmp_scheme=netip_scheme,
-    )
+    factories.SNMPSchemeVendor(name="generic", company_info="generic schemes")
+    factories.SNMPSchemeVendor(name="apc", company_info="American Power Conversion")
+    try:
+        from initat.snmp.handler.instances import handlers
+    except ImportError:
+        # not snmp handler instances found, ignore
+        pass
+    else:
+        handlers = [_h(dummy_log) for _h in handlers]
+        for _handler in handlers:
+            cur_scheme = factories.SNMPScheme(
+                name=_handler.Meta.name,
+                version=_handler.Meta.version,
+                description=_handler.Meta.description,
+                collect=_handler.Meta.collect,
+                initial=_handler.Meta.initial,
+                priority=_handler.Meta.priority,
+                snmp_scheme_vendor=factories.SNMPSchemeVendor(name=_handler.Meta.vendor_name),
+            )
+            for tl_oid in _handler.Meta.tl_oids:
+                factories.SNMPSchemeTLOID(
+                    oid=tl_oid,
+                    snmp_scheme=cur_scheme,
+                )
 
 
 class Command(BaseCommand):

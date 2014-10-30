@@ -345,7 +345,7 @@ class DeviceVariable(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def local_copy_ok(self, create, extracted, **kwargs):
-        extracted = extracted or True
+        extracted = extracted or False
         if self.local_copy_ok != extracted:
             self.local_copy_ok = extracted
             self.save()
@@ -376,14 +376,14 @@ class SNMPScheme(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def collect(self, create, extracted, **kwargs):
-        extracted = extracted or True
+        extracted = extracted or False
         if self.collect != extracted:
             self.collect = extracted
             self.save()
 
     @factory.post_generation
     def initial(self, create, extracted, **kwargs):
-        extracted = extracted or True
+        extracted = extracted or False
         if self.initial != extracted:
             self.initial = extracted
             self.save()
