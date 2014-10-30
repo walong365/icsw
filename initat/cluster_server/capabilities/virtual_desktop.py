@@ -145,7 +145,7 @@ class vncserver(virtual_desktop_server):
         cmd_line += " -geometry {} ".format(self.vdus.screen_size)
         cmd_line += " -rfbport {}".format(self.vdus.effective_port)
         cmd_line += " -rfbauth {}".format(self.pwd_file)
-        cmd_line += " -extension RANDR"  # this prevents the window manager from changing the resolution, c.f. https://bugzilla.redhat.com/show_bug.cgi?id=847442
+        cmd_line += " -extension RANDR"  # this prevents the window manager from changing the resolution,c.f. https://bugzilla.redhat.com/show_bug.cgi?id=847442
 
         websockify_cmd_line = "/opt/python-init/bin/websockify {} localhost:{}".format(self.vdus.websockify_effective_port, self.vdus.effective_port)
 
@@ -187,7 +187,7 @@ class vncserver(virtual_desktop_server):
 
                 # pids are read in _call below such that we don't have to wait now
 
-        # make sure not to interfere with db 
+        # make sure not to interfere with db
         from django.db import connection
         connection.close()
 
@@ -288,7 +288,9 @@ class virtual_desktop_stuff(bg_stuff):
 
                     s = klass(self.log, vdus)
 
-                    if (not is_first_run) and (timezone.now() - vdus.last_start_attempt) < datetime.timedelta(minutes=5):
+                    do_start = True
+                    if (timezone.now() - vdus.last_start_attempt) < datetime.timedelta(minutes=5):
+                        do_start = False
                         # check if pid file has appeared and contains valid pid
                         pid = s.get_pid_from_file()
                         self.log("Last start attempt was earlier than 5 minutes, found pid: {}".format(pid))
@@ -313,9 +315,14 @@ class virtual_desktop_stuff(bg_stuff):
                                 vdus.process_name = psutil.Process(pid=pid).name()
                                 vdus.save()
                                 self.log("Virtual desktop server startup successful")
-                        else:
+                            elif is_first_run:
+                                do_start = True  # if we just restart, we don't want to wait, but still not start the server if it's already running now
+                        else:  # server not running
                             self.log("No valid pid found, waiting for it to become available or timeout")
-                    else:
+                            if is_first_run:
+                                do_start = True  # if we just restart, we don't want to wait, but still not start the server if it's already running now
+
+                    if do_start:
                         # start
                         self.log("Virtual desktop session {} {} should be running but isn't, starting".format(vdus.virtual_desktop_protocol.name,
                                                                                                               vdus.window_manager.name))
