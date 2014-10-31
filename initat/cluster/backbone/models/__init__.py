@@ -383,7 +383,7 @@ class device_config(models.Model):
 
 class DeviceSNMPInfo(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
-    device = models.OneToOneField("backbone.device", related_name="DeviceSNMPInfo")
+    device = models.OneToOneField("backbone.device", related_name="DeviceSNMPInfo", null=True)
     description = models.CharField(default="", max_length=512)
     contact = models.CharField(default="", max_length=512)
     name = models.CharField(default="", max_length=512)
