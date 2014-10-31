@@ -26,7 +26,7 @@ def oid_to_str(oid):
     return oid
 
 
-def simplify_dict(in_dict, start_tuple):
+def simplify_dict(in_dict, start_tuple, sub_key_filter=[]):
     # check in_dict for all keys starting with start_tuple and return a reordered dict for faster
     # processing
     _slist = list(start_tuple)
@@ -34,16 +34,27 @@ def simplify_dict(in_dict, start_tuple):
     _ref_keys = set([_key for _key in in_dict.iterkeys() if list(_key)[:len(start_tuple)] == _slist])
     # the last entry is the reference idx
     _result = {}
-    for _key in _ref_keys:
-        _s_key = _key[len(start_tuple):]
-        if len(_s_key) == 2:
-            # integer as key
-            _result.setdefault(_s_key[1], {})[_s_key[0]] = in_dict[_key]
-        elif _s_key:
-            # tuple as key
-            _result.setdefault(tuple(list(_s_key[1:])), {})[_s_key[0]] = in_dict[_key]
-        else:
-            _result[None] = in_dict[_key]
+    if sub_key_filter:
+        for _key in _ref_keys:
+            _s_key = _key[len(start_tuple):]
+            if _s_key[0] in sub_key_filter:
+                if len(_s_key) == 2:
+                    # integer as key
+                    _result.setdefault(_s_key[1], {})[_s_key[0]] = in_dict[_key]
+                elif _s_key:
+                    # tuple as key
+                    _result.setdefault(tuple(list(_s_key[1:])), {})[_s_key[0]] = in_dict[_key]
+    else:
+        for _key in _ref_keys:
+            _s_key = _key[len(start_tuple):]
+            if len(_s_key) == 2:
+                # integer as key
+                _result.setdefault(_s_key[1], {})[_s_key[0]] = in_dict[_key]
+            elif _s_key:
+                # tuple as key
+                _result.setdefault(tuple(list(_s_key[1:])), {})[_s_key[0]] = in_dict[_key]
+            else:
+                _result[None] = in_dict[_key]
     return _result
 
 

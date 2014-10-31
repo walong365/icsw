@@ -25,6 +25,9 @@ from ...functions import simplify_dict
 from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
     peer_information
 from django.db.models import Q
+import pprint
+import time
+from lxml.builder import E
 
 
 class handler(SNMPHandler):
@@ -133,3 +136,68 @@ class handler(SNMPHandler):
                 _removed,
             )
         )
+
+    def collect_fetch(self):
+        return [
+            (
+                "T",
+                [
+                    simple_snmp_oid("1.3.6.1.2.1.2.2")
+                ]
+            )
+        ]
+
+    def collect_feed(self, result_dict, **kwargs):
+        result_dict = self.filter_results(result_dict, keys_are_strings=False)
+        if result_dict:
+            # take result tree
+            result_dict = result_dict.values()[0]
+            # reorder
+            result_dict = simplify_dict(result_dict, (1,), sub_key_filter=set([2, 1, 10, 11, 12, 13, 14, 16, 117, 18, 19, 20]))
+            mv_tree = kwargs["mv_tree"]
+            _vc = kwargs["vc"]
+            for _if_idx, _if in result_dict.iteritems():
+                _prefix = "net.snmp_{:d}".format(_if_idx)
+                _name = _if[2] or "idx#{:d}".format(_if_idx)
+                # check if cache is present and set internal values
+                if _vc.is_set(_if_idx):
+                    mv_tree.append(
+                        # machine vector line, holds more than one entry
+                        E.mvl(
+                            E.value(
+                                info="OctetsIn on {}".format(_name),
+                                value="{:f}".format(_vc.get_value(_if, 10)),
+                                key="rx",
+                                v_type="f",
+                                unit="Byte/s",
+                                base="1024",
+                            ),
+                            E.value(
+                                info="OctetsOut on {}".format(_name),
+                                value="{:f}".format(_vc.get_value(_if, 16)),
+                                key="tx",
+                                v_type="f",
+                                unit="Byte/s",
+                                base="1024",
+                            ),
+                            E.value(
+                                info="Discards on {}".format(_name),
+                                value="{:f}".format(_vc.get_value(_if, 13) + _vc.get_value(_if, 19)),
+                                key="dsc",
+                                v_type="f",
+                                unit="1/s",
+                            ),
+                            E.value(
+                                info="erros on {}".format(_name),
+                                value="{:f}".format(_vc.get_value(_if, 14) + _vc.get_value(_if, 20)),
+                                key="errors",
+                                v_type="f",
+                                unit="1/s",
+                            ),
+                            # used for file lookup
+                            name=_prefix,
+                            info=_name,
+                            timeout="{:d}".format(int(time.time()) + 120)
+                        )
+                    )
+                _vc.set(_if_idx, _if)
