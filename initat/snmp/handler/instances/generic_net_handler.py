@@ -19,15 +19,20 @@
 #
 """ SNMP handler for basic network stuff (netdevices) """
 
-from ...struct import ResultNode, snmp_if, simple_snmp_oid
-from ..base import SNMPHandler
 from ...functions import simplify_dict
+from ...struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs
+from ..base import SNMPHandler
+from django.db.models import Q
 from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
     peer_information
-from django.db.models import Q
-import pprint
-import time
 from lxml.builder import E
+import pprint  # @UnusedImport
+import time
+
+# if base
+IF_BASE = "1.3.6.1.2.1.2"
+# highspeed base
+HS_BASE = "1.3.6.1.2.1.31.1.1.1"
 
 
 class handler(SNMPHandler):
@@ -36,12 +41,17 @@ class handler(SNMPHandler):
         vendor_name = "generic"
         name = "net"
         version = 1
-        tl_oids = ["1.3.6.1.2.1.2"]
+        tl_oids = [IF_BASE, HS_BASE]
         priority = 64
         initial = True
 
     def update(self, dev, scheme, result_dict, oid_list, flags):
-        _if_dict = {key: snmp_if(value) for key, value in simplify_dict(result_dict["1.3.6.1.2.1.2"], (2, 1)).iteritems()}
+        _if_dict = {key: snmp_if(value) for key, value in simplify_dict(result_dict[IF_BASE], (2, 1)).iteritems()}
+        if HS_BASE in result_dict:
+            _hs_dict = {key: snmp_hs(value) for key, value in simplify_dict(result_dict[HS_BASE], ()).iteritems()}
+            # pprint.pprint(_hs_dict)
+        else:
+            _hs_dict = {}
         snmp_type_dict = {_value.if_type: _value for _value in snmp_network_type.objects.all()}
         speed_dict = {}
         for _entry in netdevice_speed.objects.all().order_by("-check_via_ethtool", "-full_duplex"):
@@ -142,62 +152,94 @@ class handler(SNMPHandler):
             (
                 "T",
                 [
-                    simple_snmp_oid("1.3.6.1.2.1.2.2")
+                    simple_snmp_oid(IF_BASE),
+                    simple_snmp_oid(HS_BASE),
                 ]
             )
         ]
 
+    def _build_if_mvl(self, vector, if_name, **kwargs):
+        return E.mvl(
+            E.value(
+                info="OctetsIn on {}".format(if_name),
+                value="{:f}".format(vector[0]),
+                key="rx",
+                v_type="f",
+                unit="Byte/s",
+                base="1024",
+            ),
+            E.value(
+                info="OctetsOut on {}".format(if_name),
+                value="{:f}".format(vector[1]),
+                key="tx",
+                v_type="f",
+                unit="Byte/s",
+                base="1024",
+            ),
+            E.value(
+                info="Discards on {}".format(if_name),
+                value="{:f}".format(vector[2]),
+                key="dsc",
+                v_type="f",
+                unit="1/s",
+            ),
+            E.value(
+                info="Errors on {}".format(if_name),
+                value="{:f}".format(vector[3]),
+                key="errors",
+                v_type="f",
+                unit="1/s",
+            ),
+            # used for file lookup
+            ** kwargs
+        )
+
     def collect_feed(self, result_dict, **kwargs):
-        result_dict = self.filter_results(result_dict, keys_are_strings=False)
-        if result_dict:
+        result_dict = self.filter_results(result_dict, keys_are_strings=True)  # False)
+        if IF_BASE in result_dict:
             # take result tree
-            result_dict = result_dict.values()[0]
+            _base_dict = simplify_dict(result_dict[IF_BASE], (2, 1), sub_key_filter=set([2, 1, 10, 11, 12, 13, 14, 16, 117, 18, 19, 20]))
+            if HS_BASE in result_dict:
+                _hi_dict = simplify_dict(result_dict[HS_BASE], (), sub_key_filter=set([6, 10]))
+            else:
+                _hi_dict = {}
+            # pprint.pprint(result_dict)
             # reorder
-            result_dict = simplify_dict(result_dict, (1,), sub_key_filter=set([2, 1, 10, 11, 12, 13, 14, 16, 117, 18, 19, 20]))
             mv_tree = kwargs["mv_tree"]
             _vc = kwargs["vc"]
-            for _if_idx, _if in result_dict.iteritems():
+            _sum_vector = [0., 0., 0., 0.]
+            for _if_idx, _if in _base_dict.iteritems():
+                if _if_idx in _hi_dict and _hi_dict[_if_idx].get(6, 0):
+                    # replace values from hi_dict
+                    _if[10] = _hi_dict[_if_idx][6]
+                    _if[16] = _hi_dict[_if_idx][10]
                 _prefix = "net.snmp_{:d}".format(_if_idx)
                 _name = _if[2] or "idx#{:d}".format(_if_idx)
                 # check if cache is present and set internal values
                 if _vc.is_set(_if_idx):
+                    _vector = [
+                        _vc.get_value(_if, 10),
+                        _vc.get_value(_if, 16),
+                        _vc.get_value(_if, 13) + _vc.get_value(_if, 19),
+                        _vc.get_value(_if, 14) + _vc.get_value(_if, 20),
+                    ]
+                    _sum_vector = [a + b for a, b in zip(_vector, _sum_vector)]
                     mv_tree.append(
-                        # machine vector line, holds more than one entry
-                        E.mvl(
-                            E.value(
-                                info="OctetsIn on {}".format(_name),
-                                value="{:f}".format(_vc.get_value(_if, 10)),
-                                key="rx",
-                                v_type="f",
-                                unit="Byte/s",
-                                base="1024",
-                            ),
-                            E.value(
-                                info="OctetsOut on {}".format(_name),
-                                value="{:f}".format(_vc.get_value(_if, 16)),
-                                key="tx",
-                                v_type="f",
-                                unit="Byte/s",
-                                base="1024",
-                            ),
-                            E.value(
-                                info="Discards on {}".format(_name),
-                                value="{:f}".format(_vc.get_value(_if, 13) + _vc.get_value(_if, 19)),
-                                key="dsc",
-                                v_type="f",
-                                unit="1/s",
-                            ),
-                            E.value(
-                                info="erros on {}".format(_name),
-                                value="{:f}".format(_vc.get_value(_if, 14) + _vc.get_value(_if, 20)),
-                                key="errors",
-                                v_type="f",
-                                unit="1/s",
-                            ),
-                            # used for file lookup
+                        self._build_if_mvl(
+                            _vector,
+                            _name,
                             name=_prefix,
                             info=_name,
                             timeout="{:d}".format(int(time.time()) + 120)
                         )
                     )
                 _vc.set(_if_idx, _if)
+            mv_tree.append(
+                self._build_if_mvl(
+                    _sum_vector,
+                    "all",
+                    name="net.snmp_all",
+                    info="all",
+                    timeout="{:d}".format(int(time.time()) + 120)
+                )
+            )

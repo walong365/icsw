@@ -97,6 +97,34 @@ class snmp_if(object):
         )
 
 
+class snmp_hs_counter(object):
+    def __init__(self, multicast_pkts, broadcast_pkts, octets):
+        self.multicast_pkts = multicast_pkts
+        self.broadcast_pkts = broadcast_pkts
+        self.octets = octets
+
+
+class snmp_hs(object):
+    # high speed counter
+    def __init__(self, in_dict):
+        self.name = in_dict[1]
+        self.in_counter = snmp_hs_counter(in_dict[2], in_dict[3], in_dict.get(6, 0))
+        self.out_counter = snmp_hs_counter(in_dict[4], in_dict[5], in_dict.get(10, 0))
+        self.trap_enable = in_dict.get(14, 2) == 1
+        self.highspeed = in_dict[15]
+        self.promiscious_mode = in_dict[16] == 1
+        self.connector_present = in_dict[17] == 1
+        self.alias = in_dict[18]
+        self.counter_discontinuity_time = in_dict[19]
+
+    def __repr__(self):
+        return "hs {} ({}), {}".format(
+            self.name,
+            self.alias or "---",
+            "connector present" if self.connector_present else "no connector present",
+        )
+
+
 class snmp_ip(object):
     def __init__(self, in_dict):
         self.address = ".".join(["{:d}".format(ord(_val)) for _val in in_dict[1]])
