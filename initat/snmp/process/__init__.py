@@ -31,6 +31,7 @@ rfc1155.TimeTicks.clone = counter_clone_hack
 rfc1902.TimeTicks.clone = counter_clone_hack
 rfc1155.Counter.clone = counter_clone_hack
 rfc1902.Counter32.clone = counter_clone_hack
+rfc1902.Counter64.clone = counter_clone_hack
 
 from batch import snmp_batch
 from process import snmp_process
