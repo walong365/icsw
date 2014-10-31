@@ -251,8 +251,10 @@ class data_store(object):
                 in_vector.attrib["name"]))
             self.store_name = in_vector.attrib["name"]
             self.xml_vector.attrib["store_name"] = self.store_name
-        old_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
+        old_mve_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
+        old_mvl_keys = set(self.xml_vector.xpath(".//mvl/@name", smart_strings=False))
         rrd_dir = global_config["RRD_DIR"]
+        # MVEs
         for entry in in_vector.findall("mve"):
             cur_name = entry.attrib["name"]
             cur_entry = self.xml_vector.find(".//mve[@name='%s']" % (cur_name))
@@ -260,16 +262,38 @@ class data_store(object):
                 cur_entry = E.mve(
                     name=cur_name,
                     sane_name=cur_name.replace("/", "_sl_"),
-                    init_time="%d" % (time.time()),
+                    init_time="{:d}".format(int(time.time())),
                 )
                 self.xml_vector.append(cur_entry)
-            self._update_entry(cur_entry, entry, rrd_dir)
-        new_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
-        c_keys = old_keys ^ new_keys
-        if c_keys:
-            self.log("mve: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
-        else:
-            self.log("mve: %d keys total" % (len(new_keys)))
+            self._update_mve_entry(cur_entry, entry, rrd_dir)
+        # MVLs
+        for entry in in_vector.findall("mvl"):
+            cur_name = entry.attrib["name"]
+            cur_entry = self.xml_vector.find(".//mvl[@name='%s']" % (cur_name))
+            if cur_entry is None:
+                cur_entry = E.mvl(
+                    name=cur_name,
+                    sane_name=cur_name.replace("/", "_sl_"),
+                    init_time="{:d}".format(int(time.time())),
+                )
+                for _cur_idx, _value in enumerate(entry):
+                    cur_entry.append(
+                        E.value(
+                            key=_value.get("key"),
+                        )
+                    )
+                self.xml_vector.append(cur_entry)
+            self._update_mvl_entry(cur_entry, entry, rrd_dir)
+        new_mve_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
+        new_mvl_keys = set(self.xml_vector.xpath(".//mvl/@name", smart_strings=False))
+        self.log(
+            "mve: {:d} keys total {:d} changed, mvl: {:d} keys total, {:d} changed".format(
+                len(new_mve_keys),
+                len(new_mve_keys ^ old_mve_keys),
+                len(new_mvl_keys),
+                len(new_mvl_keys ^ old_mvl_keys),
+            )
+        )
         self.store()
 
     def feed_pd(self, host_name, pd_type, pd_info, file_name):
@@ -291,7 +315,7 @@ class data_store(object):
                 name=pd_type,
                 host=host_name,
                 type_instance=pd_info.get("type_instance", ""),
-                init_time="%d" % (time.time()),
+                init_time="{:d}".format(int(time.time())),
             )
             for _cur_idx, entry in enumerate(pd_info):
                 cur_entry.append(
@@ -327,8 +351,17 @@ class data_store(object):
                 ]:
                     cur_value.attrib[key] = src_value.get(key, def_value)
                 cur_value.attrib["key"] = src_value.get("key", cur_value.attrib["name"])
+        else:
+            self.log("number of pd entries differ: {:d} != {:d}".format(len(entry), len(src_entry)), logging_tools.LOG_LEVEL_CRITICAL)
 
-    def _update_entry(self, entry, src_entry, rrd_dir):
+    def _update_mve_entry(self, entry, src_entry, rrd_dir):
+        # last update time
+        entry.attrib["last_update"] = "{:d}".format(int(time.time()))
+        entry.attrib["active"] = "1"
+        # if "file_name" in src_entry.attrib:
+        entry.attrib["file_name"] = src_entry.attrib["file_name"]
+        # else:
+        #    entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-{}.rrd".format(entry.attrib["sane_name"]))
         for key, def_value in [
             ("info", None),
             ("v_type", None),
@@ -338,13 +371,33 @@ class data_store(object):
             ("factor", "1")
         ]:
             entry.attrib[key] = src_entry.get(key, def_value)
-        # last update time
+
+    def _update_mvl_entry(self, entry, src_entry, rrd_dir):
         entry.attrib["last_update"] = "{:d}".format(int(time.time()))
         entry.attrib["active"] = "1"
-        if "file_name" in src_entry.attrib:
-            entry.attrib["file_name"] = src_entry.attrib["file_name"]
+        if "info" in src_entry.attrib:
+            entry.attrib["info"] = src_entry.attrib["info"]
         else:
-            entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-{}.rrd".format(entry.attrib["sane_name"]))
+            del entry.attrib["info"]
+        entry.attrib["file_name"] = src_entry.attrib["file_name"]
+        if len(entry) == len(src_entry):
+            for _v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
+                for key, def_value in [
+                    ("info", None),
+                    ("v_type", "f"),
+                    ("unit", "1"),
+                    ("key", None),
+                    ("base", "1"),
+                    ("factor", "1")
+                ]:
+                    cur_value.attrib[key] = src_value.get(key, def_value)
+                cur_value.attrib["key"] = src_value.attrib["key"]
+        else:
+            self.log("number of mvl entries differ: {:d} != {:d}, replacing childs".format(len(entry), len(src_entry)), logging_tools.LOG_LEVEL_ERROR)
+            for _val in entry:
+                entry.remove(_val)
+            for _val in src_entry:
+                entry.append(_val)
 
     def store(self):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))  # @UndefinedVariable
@@ -421,10 +474,6 @@ class data_store(object):
             if struct_ent:
                 parent.append(struct_ent[0])
             parent.remove(struct_ent)
-            # pprint.pprint(struct_ent)
-        # print etree.tostring(xml_vect, pretty_print=True)
-        # print xml_vect.xpath(".//*/@name")
-        # print etree.tostring(xml_vect, pretty_print=True)
         # add pde entries
         pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde[@active='1']")])
         # add performance data entries
@@ -445,6 +494,26 @@ class data_store(object):
                 if graph_mode:
                     new_val.attrib["file_name"] = pde_node.attrib["file_name"]
                 sr_node.append(new_val)
+        # add mvl entries
+        mvl_keys = sorted([(mvl_node.attrib["name"], mvl_node) for mvl_node in cur_xml.findall("mvl[@active='1']")])
+        # add performance data entries
+        for mvl_key, mvl_node in mvl_keys:
+            if len(mvl_node):
+                for sub_val in mvl_node:
+                    new_val = copy.deepcopy(sub_val)
+                    v_key = sub_val.attrib["key"]
+                    sr_node = self._create_struct(xml_vect, "{}.{}".format(mvl_key, v_key))
+                    new_val.attrib["part"] = new_val.attrib["key"]
+                    new_val.attrib["name"] = "mvl:{}.{}".format(
+                        mvl_key,
+                        v_key,
+                    )
+                    if graph_mode:
+                        new_val.attrib["file_name"] = mvl_node.attrib["file_name"]
+                    sr_node.append(new_val)
+                # set display string of structural entry
+                # not working right now, todo
+                # sr_node.attrib["display"] = mvl_node.attrib["info"]
         # print etree.tostring(xml_vect, pretty_print=True)
         return xml_vect
 
@@ -480,6 +549,7 @@ class data_store(object):
                 # build a list of all structural entries
                 all_keys = set()
                 for cur_node in res_list:
+                    # print etree.tostring(cur_node, pretty_print=True)
                     for entry in cur_node[0].xpath(".//entry", smart_strings=False):
                         parts = []
                         _parent = entry
@@ -501,12 +571,12 @@ class data_store(object):
                 # add entries
                 for cur_node in res_list:
                     # print etree.tostring(cur_node, pretty_print=True)
-                    for val_el in cur_node[0].xpath(".//value|.//mve|.//cve", smart_strings=False):
+                    for val_el in cur_node[0].xpath(".//value|.//mve|.//cve|.//mvl", smart_strings=False):
                         # build unique key and distinguish between MV and PD values
                         # (machine vector and performance data)
                         _name = val_el.get("name")
                         if val_el.tag == "value":
-                            # remove pde: prefix
+                            # remove pde:/mvl: prefix
                             _name = _name.split(":", 1)[1]
                         _key = "{}:{}".format(
                             val_el.tag,

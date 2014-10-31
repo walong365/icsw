@@ -770,6 +770,9 @@ class RRDGraph(object):
                             if graph_key.startswith("pde:"):
                                 # performance data from icinga
                                 def_xml = dev_vector.find(".//value[@name='{}']".format(graph_key))
+                            elif graph_key.startswith("mvl:"):
+                                # machine vector list data
+                                def_xml = dev_vector.find(".//value[@name='{}']".format(graph_key))
                             elif graph_key.startswith("{}.".format(COMPOUND_KEY)):
                                 def_xml = dev_vector.find(".//cve[@name='{}']".format(graph_key))
                             else:
