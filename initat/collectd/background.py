@@ -112,7 +112,11 @@ class value_cache(object):
             return False
 
     def get_value(self, cur_dict, sub_key):
-        return (cur_dict[sub_key] - self.__cur_value[sub_key]) / (self.__dt)
+        _val = (cur_dict[sub_key] - self.__cur_value[sub_key]) / (self.__dt)
+        if _val < 0:
+            # wrap around
+            _val = 0
+        return _val
 
 
 class snmp_job(object):
