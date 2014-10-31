@@ -24,7 +24,6 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config
-from initat.rrd_grapher.config_static import CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.struct import data_store
 from lxml.builder import E  # @UnresolvedImport
@@ -37,7 +36,6 @@ import server_command
 import stat
 import threading_tools
 import time
-import uuid_tools
 import zmq
 try:
     import rrdtool  # @UnresolvedImport
@@ -242,17 +240,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         # self._collectd_sockets = {}
         # collectd_hosts = ["127.0.0.1"]
         # [self._open_collectd_socket(_host) for _host in collectd_hosts]
-
-    # def _open_collectd_socket(self, _ch):
-    #    if _ch in self._collectd_sockets:
-    #        self._collectd_sockets[_ch].close()
-    #        del self._collectd_sockets[_ch]
-    #    _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
-    #    _cs = process_tools.get_socket(self.zmq_context, "DEALER", identity=self.bind_id)
-    #    _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
-    #    self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
-    #    _cs.connect(_conn_str)
-    #    self._collectd_sockets[_ch] = _cs
 
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
