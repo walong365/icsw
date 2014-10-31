@@ -462,7 +462,6 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         ).filter(
             Q(enabled=True) &
             Q(device_group__enabled=True) &
-            Q(curl__istartswith="snmp://") &
             Q(enable_perfdata=True) &
             Q(snmp_schemes__collect=True)
         ).prefetch_related(
@@ -635,43 +634,41 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self.__hosts[_dev.uuid].update_ov(_xml)
         return self.__hosts[_dev.uuid]
 
-    def feed_data(self, data):
-        self._process_data(data)
-
     def _recv_data(self, in_sock):
         in_data = in_sock.recv()
-        self._process_data(in_data)
-        if abs(time.time() - self.__start_time) > 300:
-            # periodic log stats
-            self._log_stats()
-
-    def _process_data(self, in_tree):
         # adopt tree format for faster handling in collectd loop
         try:
-            _xml = etree.fromstring(in_tree)  # @UndefinedVariable
+            _xml = etree.fromstring(in_data)  # @UndefinedVariable
         except:
             self.log(
                 "cannot parse tree: {}".format(
                     process_tools.get_except_info()
-                ), logging_tools.LOG_LEVEL_ERROR
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            xml_tag = _xml.tag.split("}")[-1]
-            handle_name = "_handle_{}".format(xml_tag)
-            if hasattr(self, handle_name):
-                try:
-                    # loop
-                    for p_data in getattr(self, handle_name)(_xml, len(in_tree)):
-                        self.handle_raw_data(p_data)
-                except:
-                    exc_info = process_tools.exception_info()
-                    for _line in exc_info.log_lines:
-                        self.log(
-                            _line,
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-            else:
-                self.log("unknown handle_name '{}'".format(handle_name), logging_tools.LOG_LEVEL_ERROR)
+            self.process_data_xml(_xml, len(in_data))
+        if abs(time.time() - self.__start_time) > 300:
+            # periodic log stats
+            self._log_stats()
+
+    def process_data_xml(self, _xml, data_len):
+        xml_tag = _xml.tag.split("}")[-1]
+        handle_name = "_handle_{}".format(xml_tag)
+        if hasattr(self, handle_name):
+            try:
+                # loop
+                for p_data in getattr(self, handle_name)(_xml, data_len):
+                    self.handle_raw_data(p_data)
+            except:
+                exc_info = process_tools.exception_info()
+                for _line in exc_info.log_lines:
+                    self.log(
+                        _line,
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+        else:
+            self.log("unknown handle_name '{}'".format(handle_name), logging_tools.LOG_LEVEL_ERROR)
 
     def _handle_machine_vector(self, _xml, data_len):
         self.__trees_read += 1
@@ -918,7 +915,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                                         name="rrd.operations.{}".format(_key),
                                     ),
                                 )
-                            self._process_data(etree.tostring(_tree))  # @UndefinedVariable
+                            self.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         self.__cached_stats, self.__cached_time = (_dict, cur_time)
                 if _dict is None:
                     self.log("error parsing stats {}".format("; ".join(_lines)), logging_tools.LOG_LEVEL_ERROR)

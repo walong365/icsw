@@ -29,6 +29,7 @@ from lxml.builder import E  # @UnresolvedImports
 import logging_tools
 import server_command
 import time
+import process_tools
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
 
@@ -92,6 +93,28 @@ def parse_ipmi(in_lines):
     return result
 
 
+class value_cache(object):
+    def __init__(self):
+        # timestamp dict, defaults to None
+        self.__ts_dict = {}
+        self.__values = {}
+
+    def set(self, key, _dict):
+        self.__ts_dict[key] = time.time()
+        self.__values[key] = _dict
+
+    def is_set(self, key):
+        if key in self.__ts_dict:
+            self.__cur_value = self.__values[key]
+            self.__dt = max(abs(time.time() - self.__ts_dict[key]), 1)
+            return True
+        else:
+            return False
+
+    def get_value(self, cur_dict, sub_key):
+        return (cur_dict[sub_key] - self.__cur_value[sub_key]) / (self.__dt)
+
+
 class snmp_job(object):
     def __init__(self, id_str, ip, snmp_schemes, snmp_version, snmp_read_community, **kwargs):
         self.id_str = id_str
@@ -112,6 +135,8 @@ class snmp_job(object):
         # to remove from list
         self.to_remove = False
         self._init_snmp_handlers()
+        # for storing values :-)
+        self.__vcache = value_cache()
         self.check()
 
     def _init_snmp_handlers(self):
@@ -194,9 +219,18 @@ class snmp_job(object):
                 **headers
             )
             for _handler in self.snmp_handlers:
-                _handler.collect_feed(res_dict, mv_tree=mv_tree, mon_info=mon_info)
+                try:
+                    _handler.collect_feed(res_dict, mv_tree=mv_tree, mon_info=mon_info, vc=self.__vcache)
+                except:
+                    self.log(
+                        "error feeding for handler {}: {}".format(
+                            unicode(_handler),
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
             # graphing
-            self.bg_proc.feed_data(etree.tostring(mv_tree))  # @UndefinedVariable
+            self.bg_proc.process_data_xml(mv_tree, len(etree.tostring(mv_tree)))  # @UndefinedVariable
 
     def check_for_timeout(self):
         diff_time = int(abs(time.time() - self.last_start))
@@ -418,7 +452,7 @@ class bg_job(object):
                     if self.builder is not None:
                         _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
                         # graphing
-                        bg_job.bg_proc.feed_data(etree.tostring(_tree))  # @UndefinedVariable
+                        bg_job.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         # monitoring
                         bg_job.bg_proc.send_to_md(unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info)))
                     else:

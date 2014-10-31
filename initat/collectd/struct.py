@@ -62,6 +62,7 @@ class file_creator(object):
         return name.replace("/", "_sl_")
 
     def get_mve_file_path(self, uuid, entry):
+        # file path for mve entries
         _targ_dir = os.path.join(
             self.__main_dir,
             uuid,
@@ -72,7 +73,20 @@ class file_creator(object):
         )
         return _targ_dir
 
+    def get_mvl_file_path(self, uuid, entry):
+        # file path for mvl entries
+        _targ_dir = os.path.join(
+            self.__main_dir,
+            uuid,
+            "mvl",
+            "part-{}.rrd".format(
+                entry.attrib["name"],
+            )
+        )
+        return _targ_dir
+
     def get_pd_file_path(self, uuid, pd_tuple):
+        # file path for pd entries
         _targ_dir = os.path.join(
             self.__main_dir,
             uuid,
@@ -84,7 +98,7 @@ class file_creator(object):
         )
         return _targ_dir
 
-    def create_target_file(self, _path, **kwargs):
+    def _create_target_file(self, _path, **kwargs):
         v_type = kwargs.get("v_type", "icval")
         # print "v_type=", v_type
         if _path not in self.__created:
@@ -101,7 +115,7 @@ class file_creator(object):
                 if not os.path.isdir(_base_dir):
                     self.log("creating base_dir {}".format(_base_dir))
                     os.makedirs(_base_dir)
-                _ds_list = self.get_ds_spec(v_type, _step, _heartbeat)
+                _ds_list = self.get_ds_spec(v_type, _step, _heartbeat, cols=kwargs.get("cols", None))
                 if _ds_list:
                     _rra_list = self.get_rra_spec(_step, _heartbeat)
                     try:
@@ -126,10 +140,16 @@ class file_creator(object):
             self.__created[_path] = True
         return _path if _path in self.__created else None
 
-    def get_ds_spec(self, v_type, _step, _heartbeat):
+    def get_ds_spec(self, v_type, _step, _heartbeat, **kwargs):
         # get datasource spec
         if v_type == "icval":
-            _rv = ["v:GAUGE:U:U"]
+            cols = kwargs.get("cols", None)
+            if cols:
+                _rv = [
+                    "{}:GAUGE:U:U".format(_name) for _name in cols
+                ]
+            else:
+                _rv = ["v:GAUGE:U:U"]
         else:
             if v_type.startswith("ipd_"):
                 _tn = "{}_pdata".format(v_type[4:])
@@ -381,6 +401,8 @@ class host_info(object):
         self.name = _dev.full_name
         self.uuid = _dev.uuid
         self.__dict = {}
+        # width of target files (not set for mve entries, set for name of entries for mvl entries)
+        self.__width = {}
         self.last_update = None
         self.updates = 0
         self.stores = 0
@@ -423,7 +445,7 @@ class host_info(object):
     def target_file(self, name, **kwargs):
         _tf, _exists = self.__target_files[name]
         if not _exists:
-            _created = host_info.fc.create_target_file(_tf, **kwargs)
+            _created = host_info.fc._create_target_file(_tf, cols=self.__width.get(name, None), **kwargs)
             if _created:
                 self.__target_files[name] = (_tf, True)
                 return _tf
@@ -469,6 +491,7 @@ class host_info(object):
     def update(self, _xml, _fc):
         cur_time = time.time()
         old_keys = set(self.__dict.keys())
+        # machine vector entries
         for entry in _xml.findall("mve"):
             cur_name = entry.attrib["name"]
             if cur_name not in self.__dict:
@@ -479,6 +502,29 @@ class host_info(object):
             _tf = _fc.get_mve_file_path(self.uuid, entry)
             self.__target_files[cur_name] = (_tf, False)
             entry.attrib["file_name"] = _tf
+        # machine vector lines
+        for entry in _xml.findall("mvl"):
+            # get timeout value (valid until)
+            timeout = int(entry.get("timeout", int(cur_time) + 120))
+            entry_name = entry.attrib["name"]
+            _tf = _fc.get_mvl_file_path(self.uuid, entry)
+            self.__target_files[entry_name] = (_tf, False)
+            self.__width[entry_name] = []
+            for _val in entry.findall("value"):
+                val_key = _val.attrib["key"]
+                cur_name = "{}.{}".format(entry_name, val_key)
+                if cur_name not in self.__dict:
+                    self.__dict[cur_name] = value(cur_name)
+                # update value
+                self.__dict[cur_name].update(_val, cur_time)
+                self.__dict[cur_name].timeout = timeout
+                self.__width[entry_name].append(val_key)
+            entry.attrib["file_name"] = _tf
+
+        # check for timeout
+        to_keys = set([key for key, _value in self.__dict.iteritems() if _value.timeout and _value.timeout < cur_time])
+        for to_key in to_keys:
+            del self.__dict[to_key]
         self._store_json_to_memcached()
         new_keys = set(self.__dict.keys())
         c_keys = old_keys ^ new_keys
@@ -528,7 +574,32 @@ class host_info(object):
         else:
             tag_name, name_name, value_name = ("mve", "name", "value")
         cur_time = time.time()
-        values = [self.transform(entry.attrib[name_name], entry.attrib[value_name], cur_time) for entry in _xml.findall(tag_name)]
+        values = [
+            self.transform(
+                entry.attrib[name_name],
+                entry.attrib[value_name],
+                cur_time
+            ) for entry in _xml.findall(tag_name)
+        ]
+        if not simple:
+            for entry in _xml.findall("mvl"):
+                entry_name = entry.attrib["name"]
+                values.append(
+                    (
+                        entry_name,
+                        ":".join(
+                            [
+                                str(
+                                    self.transform(
+                                        "{}.{}".format(entry_name, _val.attrib["key"]),
+                                        _val.attrib["value"],
+                                        cur_time
+                                    )[1]
+                                ) for _val in entry.findall("value")
+                            ]
+                        )
+                    )
+                )
         return values
 
     def __unicode__(self):
