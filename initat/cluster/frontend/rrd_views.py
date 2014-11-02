@@ -24,6 +24,7 @@
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
@@ -40,27 +41,21 @@ logger = logging.getLogger("cluster.rrd")
 
 class device_rrds(View):
     @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="get_node_rrd")
-        dev_pks = json.loads(request.POST["pks"])
+        dev_pks = request.POST.getlist("pks[]")
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in dev_pks],
             merge_results="1"
         )
-        result = contact_server(request, "grapher", srv_com, timeout=30)
+        result, _log_lines = contact_server(request, "grapher", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(".//node_results", smart_strings=False)
+            node_results = result.xpath(".//ns:result", smart_strings=False)
             if len(node_results):
-                node_results = node_results[0]
-                if len(node_results):
-                    # first device
-                    node_result = node_results[0]
-                    request.xml_response["result"] = node_result
-                else:
-                    request.xml_response.error("no node_results", logger=logger)
-            else:
-                request.xml_response.error("no node_results", logger=logger)
+                return HttpResponse(node_results[0].text, content_type="application/json")
+            return HttpResponse(json.dumps({"error": "no node results"}), content_type="application/json")
+        else:
+            return HttpResponse(json.dumps({"error": ", ".join([_line for _level, _line in _log_lines])}), content_type="application/json")
 
 
 class graph_rrds(View):
@@ -72,7 +67,10 @@ class graph_rrds(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="graph_rrd")
-        pk_list, graph_keys = (json.loads(_post["pks"]), json.loads(_post["keys"]))
+        pk_list, graph_keys = (
+            json.loads(_post["pks"]),
+            json.loads(_post["keys"])
+        )
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in pk_list]
         )
