@@ -813,7 +813,11 @@ class RRDGraph(object):
                                     def_xmls = []
                             else:
                                 # machine vector entry
-                                def_xmls = [dev_vector.find(".//mve[@name='{}']".format(_key))]
+                                def_xml = dev_vector.find(".//mve[@name='{}']".format(_key))
+                                if def_xml is None:
+                                    def_xmls = []
+                                else:
+                                    def_xmls = [def_xml]
                             for def_xml in def_xmls:
                                 _take = True
                                 if "file_name" in def_xml.attrib:
