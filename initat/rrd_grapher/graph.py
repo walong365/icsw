@@ -45,8 +45,6 @@ import uuid
 
 FLOAT_FMT = "{:.6f}"
 
-COMPOUND_KEY = "compound"
-
 
 def rrd_escape(in_str):
     return in_str.replace(":", "\:")
@@ -525,15 +523,18 @@ class RRDGraph(object):
     def _create_graph_keys(self, graph_keys):
         # graph_keys ... list of keys
         _compounds = False
-        first_level_keys = set([key.split(".")[0].split(":")[-1] for key in graph_keys])
-        if COMPOUND_KEY in first_level_keys:
-            # we have compound graphs
-            _compounds = True
-            first_level_keys.remove(COMPOUND_KEY)
-        g_key_dict = {flk: sorted([key for key in graph_keys if key.split(".")[0].split(":")[-1] == flk]) for flk in first_level_keys}
-        if _compounds:
-            # add compound keys (each compound a separate graph)
-            g_key_dict.update({key: [key] for key in graph_keys if key.startswith("{}.".format(COMPOUND_KEY))})
+        first_level_keys = set()
+        top_level_types = set()
+        g_key_dict = {}
+        for key in graph_keys:
+            _type, _key = key.split(":", 1)
+            _flk = _key.split(".")[0]
+            first_level_keys.add(_flk)
+            top_level_types.add(_type)
+            if _flk == "compound":
+                g_key_dict.setdefault(key, [key])
+            else:
+                g_key_dict.setdefault(_flk, []).append(key)
         return g_key_dict
 
     def _get_jobs(self, dev_dict):
@@ -681,7 +682,7 @@ class RRDGraph(object):
         # print etree.tostring(cve_xml, pretty_print=True)
         _res = []
         _color_tables = {}
-        for _entry in cve_xml.findall("cve_entry"):
+        for _entry in cve_xml:
             _ref_xml = dev_vector.find(".//mve[@name='{}']".format(_entry.get("key")))
             if _ref_xml is not None:
                 _new_entry = copy.deepcopy(_ref_xml)
@@ -693,10 +694,9 @@ class RRDGraph(object):
                         _val = _color_tables[_val].color
                     _new_entry.attrib[_attr] = _val
                 _res.append(_new_entry)
-
         return _res
 
-    def graph(self, vector_dict, dev_pks, graph_keys):
+    def graph(self, vector_dict, compound_dict, dev_pks, graph_keys):
         timeframe = abs((self.para_dict["end_time"] - self.para_dict["start_time"]).total_seconds())
         graph_size = self.para_dict["size"]
         graph_width, graph_height = [int(value) for value in graph_size.split("x")]
@@ -767,24 +767,52 @@ class RRDGraph(object):
                     for graph_key in sorted(_graph_target.graph_keys):
                         for _cur_id, cur_pk in _graph_target.dev_list:
                             dev_vector = vector_dict[cur_pk]
-                            if graph_key.startswith("pde:"):
+                            dev_compound = compound_dict[cur_pk]
+                            _type, _key = graph_key.split(":", 1)
+                            if _type == "pde":
+                                _split = _key.split(".")
                                 # performance data from icinga
-                                def_xml = dev_vector.find(".//value[@name='{}']".format(graph_key))
-                            elif graph_key.startswith("mvl:"):
+                                def_xmls = dev_vector.xpath(
+                                    ".//pde[@name='{}']/value[@key='{}']".format(".".join(_split[:len(_split) - 1]), _split[-1]),
+                                    smart_strings=False
+                                )
+                                if len(def_xmls):
+                                    _parent = def_xmls[0].getparent()
+                                    def_xml = copy.deepcopy(def_xmls[0])
+                                    def_xml.attrib["file_name"] = _parent.get("file_name")
+                                    def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
+                                    def_xml.attrib["part"] = def_xml.attrib["key"]
+                                    def_xmls = [def_xml]
+                                else:
+                                    def_xmls = []
+                            elif _type == "mvl":
+                                _split = _key.split(".")
                                 # machine vector list data
-                                def_xml = dev_vector.find(".//value[@name='{}']".format(graph_key))
-                            elif graph_key.startswith("{}.".format(COMPOUND_KEY)):
-                                def_xml = dev_vector.find(".//cve[@name='{}']".format(graph_key))
+                                def_xmls = dev_vector.xpath(
+                                    ".//mvl[@name='{}']/value[@key='{}']".format(".".join(_split[:len(_split) - 1]), _split[-1]),
+                                    smart_strings=False
+                                )
+                                if len(def_xmls):
+                                    _parent = def_xmls[0].getparent()
+                                    def_xml = copy.deepcopy(def_xmls[0])
+                                    def_xml.attrib["file_name"] = _parent.get("file_name")
+                                    def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
+                                    def_xml.attrib["part"] = def_xml.attrib["key"]
+                                    def_xmls = [def_xml]
+                                else:
+                                    def_xmls = []
+                            elif _type == "compound":
+                                if dev_compound is not None:
+                                    def_xml = dev_compound.find(".//cve[@name='{}']".format(_key))
+                                    if def_xml is not None:
+                                        def_xmls = self._expand_cve(def_xml, dev_vector)
+                                    else:
+                                        def_xmls = []
+                                else:
+                                    def_xmls = []
                             else:
                                 # machine vector entry
-                                def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
-                            if def_xml is not None:
-                                if def_xml.tag == "cve":
-                                    def_xmls = self._expand_cve(def_xml, dev_vector)
-                                else:
-                                    def_xmls = [def_xml]
-                            else:
-                                def_xmls = []
+                                def_xmls = [dev_vector.find(".//mve[@name='{}']".format(_key))]
                             for def_xml in def_xmls:
                                 _take = True
                                 if "file_name" in def_xml.attrib:
@@ -817,7 +845,6 @@ class RRDGraph(object):
                     if _graph_target.defs:
                         draw_it = True
                         removed_keys = set()
-                        # print "**", draw_keys
                         while draw_it:
                             rrd_args = rrd_pre_args + sum([_graph_target.defs[_key] for _key in _graph_target.draw_keys], [])
                             rrd_args.extend(_graph_target.rrd_post_args)
@@ -935,6 +962,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         self.register_func("graph_rrd", self._graph_rrd)
         self.register_func("xml_info", self._xml_info)
         self.vector_dict = {}
+        self.compound_dict = {}
         self.graph_root = global_config["GRAPH_ROOT"]
         self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]
         self.log("graphs go into {} for non-debug calls and into {} for debug calls".format(self.graph_root, self.graph_root_debug))
@@ -1003,6 +1031,10 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
 
     def _xml_info(self, *args, **kwargs):
         dev_id, xml_str = (args[0], etree.fromstring(args[1]))  # @UndefinedVariable
+        if args[2]:
+            self.compound_dict[dev_id] = etree.fromstring(args[2])  # @UndefinedVariable
+        else:
+            self.compound_dict[dev_id] = None
         self.vector_dict[dev_id] = xml_str  # self._struct_vector(xml_str)
 
     def _graph_rrd(self, *args, **kwargs):
@@ -1017,7 +1049,13 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
-        for key, _default in [("hide_empty", "0"), ("merge_devices", "1"), ("scale_y", "0"), ("include_zero", "0"), ("debug_mode", "0")]:
+        for key, _default in [
+            ("hide_empty", "0"),
+            ("merge_devices", "1"),
+            ("scale_y", "0"),
+            ("include_zero", "0"),
+            ("debug_mode", "0")
+        ]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
         self._open_rrdcached_socket()
         graph_list = RRDGraph(
@@ -1026,7 +1064,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
             self.colorizer,
             para_dict,
             self
-        ).graph(self.vector_dict, dev_pks, graph_keys)
+        ).graph(self.vector_dict, self.compound_dict, dev_pks, graph_keys)
         self._close_rrdcached_socket()
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()

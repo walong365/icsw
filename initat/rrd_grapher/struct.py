@@ -53,6 +53,7 @@ class compound_entry(object):
     def match(self, in_list):
         # returns a list of matching keys
         _success = False
+        # print [x for x in in_list if x.count("net")]
         # print "-"*20
         # print self.__name
         if self.__re_list:
@@ -85,6 +86,7 @@ class compound_entry(object):
             # keys="||".join(m_list),
             name="compound.{}".format(self.__name),
             part=self.__name,
+            key=self.__name,
             info="{} ({:d})".format(
                 self.__name,
                 len(m_list),
@@ -181,6 +183,11 @@ class compound_tree(object):
             <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
+    <compound name="netsnmp">
+        <key_list>
+            <key match="^net\.snmp_all\.rx$" required="1" color="green" draw_type="AREA1"></key>
+        </key_list>
+    </compound>
 </compounds>
         """
         _ng = etree.RelaxNG(etree.fromstring(COMPOUND_NG))  # @UndefinedVariable
@@ -246,9 +253,12 @@ class data_store(object):
     def feed(self, in_vector):
         # self.xml_vector = in_vector
         if self.store_name != in_vector.attrib["name"]:
-            self.log("changing store_name from '%s' to '%s'" % (
-                self.store_name,
-                in_vector.attrib["name"]))
+            self.log(
+                "changing store_name from '{}' to '{}'".format(
+                    self.store_name,
+                    in_vector.attrib["name"]
+                )
+            )
             self.store_name = in_vector.attrib["name"]
             self.xml_vector.attrib["store_name"] = self.store_name
         old_mve_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
@@ -257,7 +267,7 @@ class data_store(object):
         # MVEs
         for entry in in_vector.findall("mve"):
             cur_name = entry.attrib["name"]
-            cur_entry = self.xml_vector.find(".//mve[@name='%s']" % (cur_name))
+            cur_entry = self.xml_vector.find(".//mve[@name='{}']".format(cur_name))
             if cur_entry is None:
                 cur_entry = E.mve(
                     name=cur_name,
@@ -269,7 +279,7 @@ class data_store(object):
         # MVLs
         for entry in in_vector.findall("mvl"):
             cur_name = entry.attrib["name"]
-            cur_entry = self.xml_vector.find(".//mvl[@name='%s']" % (cur_name))
+            cur_entry = self.xml_vector.find(".//mvl[@name='{}']".format(cur_name))
             if cur_entry is None:
                 cur_entry = E.mvl(
                     name=cur_name,
@@ -305,9 +315,9 @@ class data_store(object):
         type_instance = pd_info.get("type_instance", "")
         # only one entry
         if type_instance:
-            cur_entry = self.xml_vector.xpath(".//pde[@name='%s' and @type_instance='%s']" % (pd_type, type_instance), smart_strings=False)
+            cur_entry = self.xml_vector.xpath(".//pde[@name='{}' and @type_instance='{}']".format(pd_type, type_instance), smart_strings=False)
         else:
-            cur_entry = self.xml_vector.xpath(".//pde[@name='%s']" % (pd_type), smart_strings=False)
+            cur_entry = self.xml_vector.xpath(".//pde[@name='{}']".format(pd_type), smart_strings=False)
         cur_entry = cur_entry[0] if cur_entry else None
         if cur_entry is None:
             # create new entry
@@ -405,20 +415,28 @@ class data_store(object):
         self.sync_to_grapher()
 
     def sync_to_grapher(self):
+        _compound = self.compound_xml_vector()
+        if _compound is not None:
+            _compound = etree.tostring(_compound)  # @UndefinedVariable
         data_store.process.send_to_process(
             "graph",
             "xml_info",
             self.pk,
-            etree.tostring(self.struct_xml_vector("graph"))  # @UndefinedVariable
+            etree.tostring(self.xml_vector),  # @UndefinedVariable
+            _compound  # @UndefinedVariable
         )
 
     def data_file_name(self):
-        return os.path.join(data_store.store_dir, "%s_%d.info.xml" % (self.name, self.pk))
+        return os.path.join(data_store.store_dir, "{}_{:d}.info.xml".format(self.name, self.pk))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        data_store.process.log("[ds %s] %s" % (
-            self.name,
-            what), log_level)
+        data_store.process.log(
+            "[ds {}] {}".format(
+                self.name,
+                what
+            ),
+            log_level
+        )
 
     @staticmethod
     def has_rrd_xml(dev_pk):
@@ -428,26 +446,24 @@ class data_store(object):
     def present_pks():
         return data_store.__devices.keys()
 
-    def struct_xml_vector(self, mode):
-        """
-        rebuild the flat tree to a structured tree
-        """
-        # mode is one of web or graph
-        if mode not in ["web", "graph"]:
-            raise ValueError("mode '{}' is not correct".format(mode))
-        # web mode: show tree in webfrontend
-        web_mode = mode == "web"
-        # graph mode: sent shortened representation to graph process
-        graph_mode = mode == "graph"
+    def compound_xml_vector(self):
         cur_xml = self.xml_vector
+        # remove current compound, should never happen (only when wrong data is written to disk)
+        while True:
+            _cc = cur_xml.find(".//compound")
+            if _cc is not None:
+                print "del", _cc, etree.tostring(_cc)
+                _cc.getparent().remove(_cc)
+            else:
+                break
         _ct = compound_tree()
         all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name", smart_strings=False))
-        xml_vect, lu_dict = (E.machine_vector(), {})
-        compound_top = self._create_struct(xml_vect, "{}.{}".format("compound", ""))
+        compound_top = E.compound(name="compound")
         any_added = _ct.append_compounds(compound_top, all_keys)
-        if not any_added:
-            # remove compound
-            compound_top.getparent().remove(compound_top)
+        if any_added:
+            return E.machine_vector(compound_top)
+        else:
+            return None
         for key in sorted(all_keys):
             parts = key.split(".")
             s_dict, s_xml = (lu_dict, xml_vect)
@@ -457,7 +473,7 @@ class data_store(object):
                     s_xml.append(new_el)
                     s_dict[part] = (new_el, {})
                 s_xml, s_dict = s_dict[part]
-            add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='%s']" % (key)))
+            add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='{}']".format(key)))
             # remove unneded entries, depending on mode
             if web_mode:
                 for rem_attr in ["file_name", "last_update", "sane_name"]:
@@ -496,7 +512,7 @@ class data_store(object):
                 sr_node.append(new_val)
         # add mvl entries
         mvl_keys = sorted([(mvl_node.attrib["name"], mvl_node) for mvl_node in cur_xml.findall("mvl[@active='1']")])
-        # add performance data entries
+        # add performance da    ta entries
         for mvl_key, mvl_node in mvl_keys:
             if len(mvl_node):
                 for sub_val in mvl_node:
@@ -528,80 +544,6 @@ class data_store(object):
             top_node = cur_node
         return cur_node
 
-    @staticmethod
-    def merge_node_results(res_list):
-        if len(res_list) > 1:
-            # print etree.tostring(res_list, pretty_print=True)
-            # remove empty node_results
-            empty_nodes = []
-            for entry in res_list:
-                if len(entry) == 0:
-                    # attrib is fairly empty (only pk)
-                    empty_nodes.append(entry.attrib)
-                    entry.getparent().remove(entry)
-            data_store.g_log(
-                "merging {} ({} empty)".format(
-                    logging_tools.get_plural("node result", len(res_list)),
-                    logging_tools.get_plural("entry", len(empty_nodes))
-                )
-            )
-            if len(res_list):
-                # build a list of all structural entries
-                all_keys = set()
-                for cur_node in res_list:
-                    # print etree.tostring(cur_node, pretty_print=True)
-                    for entry in cur_node[0].xpath(".//entry", smart_strings=False):
-                        parts = []
-                        _parent = entry
-                        while _parent.tag == "entry":
-                            parts.insert(0, _parent.attrib["part"])
-                            _parent = _parent.getparent()
-                        all_keys.add(".".join(parts))
-                merged_mv = E.machine_vector()
-                key_dict = {}
-                # build structural part of machine_vector and lookup dict (key_dict)
-                for key in sorted(all_keys):
-                    add_key = key.split(".")[-1]
-                    key_dict[key] = E.entry(part=add_key)
-                    if add_key == key:
-                        merged_mv.append(key_dict[key])
-                    else:
-                        key_dict[key[:-(len(add_key) + 1)]].append(key_dict[key])
-                # print etree.tostring(merged_mv, pretty_print=True)
-                # add entries
-                for cur_node in res_list:
-                    # print etree.tostring(cur_node, pretty_print=True)
-                    for val_el in cur_node[0].xpath(".//value|.//mve|.//cve|.//mvl", smart_strings=False):
-                        # build unique key and distinguish between MV and PD values
-                        # (machine vector and performance data)
-                        _name = val_el.get("name")
-                        if val_el.tag == "value":
-                            # remove pde:/mvl: prefix
-                            _name = _name.split(":", 1)[1]
-                        _key = "{}:{}".format(
-                            val_el.tag,
-                            _name,
-                        )
-                        _add_key = ".".join(_name.split(".")[:-1])
-                        if _key not in key_dict:
-                            key_dict[_key] = val_el
-                            key_dict[_add_key].append(val_el)
-                        else:
-                            val_el = key_dict[_key]
-                            cur_devc = int(val_el.attrib.get("devices", "1")) + 1
-                            val_el.attrib["devices"] = "{:d}".format(cur_devc)
-                            _parent = val_el.getparent()
-                            # iterate
-                            while _parent.tag == "entry":
-                                _parent.attrib["devices"] = "{:d}".format(max(cur_devc, int(_parent.get("attributes", "1"))))
-                                _parent = _parent.getparent()
-                # print etree.tostring(merged_mv, pretty_print=True)
-                return E.node_results(E.node_result(merged_mv, devices="{:d}".format(len(res_list))))
-            else:
-                return E.node_results()
-        else:
-            return res_list
-
     def _expand_info(self, entry):
         info = entry.attrib["info"]
         parts = entry.attrib["name"].split(".")
@@ -610,12 +552,12 @@ class data_store(object):
         return info
 
     @staticmethod
-    def get_rrd_xml(dev_pk, mode=None):
-        if mode:
-            return data_store.__devices[dev_pk].struct_xml_vector(mode=mode)
-        else:
-            # do a deepcopy (just to be sure)
-            return copy.deepcopy(data_store.__devices[dev_pk].xml_vector)
+    def get_rrd_xml(dev_pk):
+        return data_store.__devices[dev_pk].xml_vector
+
+    @staticmethod
+    def get_rrd_compound_xml(dev_pk):
+        return data_store.__devices[dev_pk].compound_xml_vector()
 
     @staticmethod
     def get_instance(pk):
@@ -640,22 +582,28 @@ class data_store(object):
                     new_ds = data_store(device.objects.get(Q(pk=pk)))
                     new_ds.restore()
                 except:
-                    data_store.g_log("cannot initialize data_store for %s: %s" % (
-                        full_name,
-                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    data_store.g_log(
+                        "cannot initialize data_store for {}: {}".format(
+                            full_name,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
                     data_store.__devices[pk] = new_ds
                     data_store.g_log(
-                        "recovered info for %s from disk (pk %d, memory usage now %s)" % (
+                        "recovered info for {} from disk (pk {:d}, memory usage now {})".format(
                             full_name,
                             pk,
-                            logging_tools.get_size_str(process_tools.get_mem_info())))
+                            logging_tools.get_size_str(process_tools.get_mem_info())
+                        )
+                    )
             else:
-                data_store.g_log("ignoring direntry '%s'" % (entry), logging_tools.LOG_LEVEL_WARN)
+                data_store.g_log("ignoring direntry '{}'".format(entry), logging_tools.LOG_LEVEL_WARN)
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        data_store.process.log("[ds] %s" % (what), log_level)
+        data_store.process.log("[ds] {}".format(what), log_level)
 
     @staticmethod
     def feed_perfdata(name, pd_type, pd_info, file_name):
@@ -683,13 +631,13 @@ class data_store(object):
                 match_mode = "name"
         if match_dev:
             if data_store.debug:
-                data_store.g_log("found device %s (%s) for pd_type=%s" % (unicode(match_dev), match_mode, pd_type))
+                data_store.g_log("found device {} ({}) for pd_type={}".format(unicode(match_dev), match_mode, pd_type))
             if match_dev.pk not in data_store.__devices:
                 data_store.__devices[match_dev.pk] = data_store(match_dev)
             data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info, file_name)
         else:
             data_store.g_log(
-                "no device found (name=%s, pd_type=%s)" % (name, pd_type),
+                "no device found (name={}, pd_type={})".format(name, pd_type),
                 logging_tools.LOG_LEVEL_ERROR)
 
     @staticmethod
@@ -738,9 +686,10 @@ class data_store(object):
             else:
                 data_store.g_log("no name in vector for %s, discarding" % (unicode(match_dev)), logging_tools.LOG_LEVEL_ERROR)
         else:
-            data_store.g_log("no device found (%s: %s)" % (
-                logging_tools.get_plural("key", len(in_vector.attrib)),
-                ", ".join(["%s=%s" % (key, str(value)) for key, value in in_vector.attrib.iteritems()])
-            ),
-            logging_tools.LOG_LEVEL_ERROR
-        )
+            data_store.g_log(
+                "no device found (%s: %s)" % (
+                    logging_tools.get_plural("key", len(in_vector.attrib)),
+                    ", ".join(["{}={}".format(key, str(value)) for key, value in in_vector.attrib.iteritems()])
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
