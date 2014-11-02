@@ -20,44 +20,65 @@
 """ module to parse the drbd status """
 
 import os
-import server_command
 import stat
 
+
 class drbd_config(object):
-    def __init__(self, config_name="/etc/drbd.conf", status_name="/proc/drbd", **args):
+    def __init__(self, config_name="/etc/drbd.conf", config_dir="/etc/drbd.d", status_name="/proc/drbd", **kwargs):
         self.__config_name = config_name
+        self.__config_dir = config_dir
         self.__status_name = status_name
-        if args.has_key("data"):
-            self.__config_dict = server_command.net_to_sys(args["data"])
-        else:
-            self._init()
-            self._parse_all()
+        self._init()
+        self._parse_all()
+
+    def _get_resource_list(self):
+        return [os.path.join(self.__config_dir, _entry) for _entry in os.listdir(self.__config_dir) if _entry.endswith(".res")]
+
     def _parse_all(self):
         if os.path.isfile(self.__config_name):
             self.__config_dict["config_present"] = True
-            mod_time = os.stat(self.__config_name)[stat.ST_MTIME]
+            if os.path.isdir(self.__config_dir):
+                _res_list = self._get_resource_list()
+            else:
+                _res_list = []
+            mod_time = max([os.stat(_entry)[stat.ST_MTIME] for _entry in [self.__config_name] + _res_list])
             if mod_time != self.__config_dict["last_check"]:
                 self.__config_dict["last_check"] = mod_time
                 self._parse_config()
         else:
             self.__config_dict["config_present"] = False
         self._parse_status()
+
     def _init(self):
         # config dict with empty timestamp
-        self.__config_dict = {"last_check"     : 0,
-                              "config_present" : False,
-                              "status_present" : False}
+        self.__config_dict = {
+            "last_check": 0,
+            "config_present": False,
+            "status_present": False
+        }
+
     def __nonzero__(self):
         return True if self.__config_dict["last_check"] else False
+
     def _parse_config(self):
         # config dict
         c_dict = self.__config_dict
         # clear config_dict
         c_dict["resources"] = {}
         c_dict["devices"] = {}
-        stream = (" ".join([line.strip() for line in file(self.__config_name, "r").read().split("\n") if not line.lstrip().startswith("#")])).strip()
+        _c_files = [self.__config_name] + self._get_resource_list()
+        streams = [
+            (
+                " ".join(
+                    [
+                        line.strip() for line in file(_entry, "r").read().split("\n") if not line.lstrip().startswith("#")
+                    ]
+                )
+            ).strip() for _entry in _c_files
+        ]
+        stream = "".join(streams)
         if stream.count("{") != stream.count("}"):
-            raise SyntaxError, "cannot parse stream from {}".format(self.__config_name)
+            raise SyntaxError("cannot parse stream from {}".format(self.__config_name))
         # add depth info
         c_list, act_depth, sub_stream = ([], 0, "")
         for char in stream:
@@ -102,15 +123,20 @@ class drbd_config(object):
         res_keys = [key for key in c_dict.iterkeys() if key.startswith("resource ")]
         for key in res_keys:
             res_name = key.split(None, 1)[1]
-            c_dict[key]["hosts"] = {}
-            host_keys = [sub_key for sub_key in c_dict[key].keys() if sub_key.startswith("on ")]
+            _loc_config = c_dict[key]
+            _loc_config["hosts"] = {}
+            host_keys = [sub_key for sub_key in _loc_config.keys() if sub_key.startswith("on ")]
             for host_key in host_keys:
-                c_dict[key]["hosts"][host_key.split()[1]] = c_dict[key][host_key]
-                del c_dict[key][host_key]
-            c_dict[key]["localhost"] = c_dict[key]["hosts"][hostname]
-            c_dict["devices"][c_dict[key]["localhost"]["device"]] = res_name
+                _loc_config["hosts"][host_key.split()[1]] = _loc_config[host_key]
+                del _loc_config[host_key]
+            _loc_config["localhost"] = _loc_config["hosts"][hostname]
+            if "device" in _loc_config["localhost"]:
+                c_dict["devices"][_loc_config["localhost"]["device"]] = res_name
+            else:
+                c_dict["devices"][_loc_config["device"]] = res_name
             c_dict["resources"][res_name] = c_dict[key]
             del c_dict[key]
+
     def _parse_status(self):
         if os.path.isfile(self.__status_name):
             self.__config_dict["status_present"] = True
@@ -152,6 +178,7 @@ class drbd_config(object):
                     # pprint.pprint(act_device)
         else:
             self.__config_dict["status_present"] = True
+
     def _split_enhanced(self, in_str, split_char, escape_chars=['"']):
         parts, act_stream, escaped = ([], "", False)
         for char in in_str:
@@ -165,14 +192,14 @@ class drbd_config(object):
                 act_stream = "{}{}".format(act_stream, char)
         parts.append(act_stream)
         return parts
+
     def __getitem__(self, key):
         return self.__config_dict[key]
+
     def get_config_dict(self):
         return self.__config_dict
-    def get_net_data(self):
-        return server_command.sys_to_net(self.__config_dict)
 
-def _test_code():
+
+if __name__ == "__main__":
     dc = drbd_config()
-    print len(dc.get_net_data())
-
+    print dc.get_net_data()
