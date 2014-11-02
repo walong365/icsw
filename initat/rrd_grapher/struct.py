@@ -26,7 +26,6 @@ from initat.cluster.backbone.models import device
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
-import copy
 import logging_tools
 import os
 import pprint  # @UnusedImport
@@ -243,6 +242,14 @@ class data_store(object):
             for fix_el in self.xml_vector.xpath(".//*[@file_name and not(@active)]", smart_strings=False):
                 fix_el.attrib["active"] = "1"
                 changed = True
+            while True:
+                _cc = self.xml_vector.find(".//compound")
+                if _cc is not None:
+                    _cc.getparent().remove(_cc)
+                    self.log("remove compound entry from on-disk storage", logging_tools.LOG_LEVEL_WARN)
+                    changed = True
+                else:
+                    break
             if changed:
                 self.log("vector was changed on load, storing")
                 self.store()
@@ -452,7 +459,6 @@ class data_store(object):
         while True:
             _cc = cur_xml.find(".//compound")
             if _cc is not None:
-                print "del", _cc, etree.tostring(_cc)
                 _cc.getparent().remove(_cc)
             else:
                 break
@@ -464,74 +470,6 @@ class data_store(object):
             return E.machine_vector(compound_top)
         else:
             return None
-        for key in sorted(all_keys):
-            parts = key.split(".")
-            s_dict, s_xml = (lu_dict, xml_vect)
-            for part in parts:
-                if part not in s_dict:
-                    new_el = E.entry(part=part)
-                    s_xml.append(new_el)
-                    s_dict[part] = (new_el, {})
-                s_xml, s_dict = s_dict[part]
-            add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='{}']".format(key)))
-            # remove unneded entries, depending on mode
-            if web_mode:
-                for rem_attr in ["file_name", "last_update", "sane_name"]:
-                    if rem_attr in add_entry.attrib:
-                        del add_entry.attrib[rem_attr]
-            if "info" in add_entry.attrib:
-                add_entry.attrib["info"] = self._expand_info(add_entry)
-            s_xml.append(add_entry)
-        # remove structural entries with only one mve-child
-        for struct_ent in xml_vect.xpath(".//entry[not(@name) = 'compound' and not(entry)]", smart_strings=False):
-            # print "*", struct_ent.attrib
-            parent = struct_ent.getparent()
-            # print etree.tostring(parent, pretty_print=True)
-            if struct_ent:
-                parent.append(struct_ent[0])
-            parent.remove(struct_ent)
-        # add pde entries
-        pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde[@active='1']")])
-        # add performance data entries
-        for pde_key, type_inst, pde_node in pde_keys:
-            ti_str = "/{}".format(type_inst) if type_inst else ""
-            for sub_val in pde_node:
-                new_val = copy.deepcopy(sub_val)
-                v_key = sub_val.get("key", sub_val.get("name"))
-                sr_node = self._create_struct(xml_vect, "{}.{}".format(pde_key, v_key))
-                new_val.attrib["part"] = new_val.attrib["name"]
-                new_val.attrib["name"] = "pde:{}.{}{}".format(
-                    sr_node.get("name", sr_node.get("part")),
-                    new_val.get("name"),
-                    ti_str,
-                )
-                new_val.attrib["type_instance"] = type_inst
-                new_val.attrib["info"] += " [PD]"
-                if graph_mode:
-                    new_val.attrib["file_name"] = pde_node.attrib["file_name"]
-                sr_node.append(new_val)
-        # add mvl entries
-        mvl_keys = sorted([(mvl_node.attrib["name"], mvl_node) for mvl_node in cur_xml.findall("mvl[@active='1']")])
-        # add performance da    ta entries
-        for mvl_key, mvl_node in mvl_keys:
-            if len(mvl_node):
-                for sub_val in mvl_node:
-                    new_val = copy.deepcopy(sub_val)
-                    v_key = sub_val.attrib["key"]
-                    sr_node = self._create_struct(xml_vect, "{}.{}".format(mvl_key, v_key))
-                    new_val.attrib["part"] = new_val.attrib["key"]
-                    new_val.attrib["name"] = "mvl:{}.{}".format(
-                        mvl_key,
-                        v_key,
-                    )
-                    if graph_mode:
-                        new_val.attrib["file_name"] = mvl_node.attrib["file_name"]
-                    sr_node.append(new_val)
-                # set display string of structural entry
-                # not working right now, todo
-                # sr_node.attrib["display"] = mvl_node.attrib["info"]
-        # print etree.tostring(xml_vect, pretty_print=True)
-        return xml_vect
 
     def _create_struct(self, top_node, full_key):
         parts = full_key.split(".")[:-1]

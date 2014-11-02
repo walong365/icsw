@@ -766,6 +766,7 @@ class RRDGraph(object):
                     _graph_target.reset_keys()
                     for graph_key in sorted(_graph_target.graph_keys):
                         for _cur_id, cur_pk in _graph_target.dev_list:
+                            # improvement: resolve iteratively (for compounds), beautify code
                             dev_vector = vector_dict[cur_pk]
                             dev_compound = compound_dict[cur_pk]
                             _type, _key = graph_key.split(":", 1)
