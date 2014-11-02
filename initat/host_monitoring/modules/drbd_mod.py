@@ -19,6 +19,7 @@
 from initat.host_monitoring import hm_classes, limits
 import logging_tools
 import server_command
+import json
 try:
     import drbd_tools
 except ImportError:
@@ -38,7 +39,8 @@ class drbd_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         if drbd_tools:
             self.module.drbd_config._parse_all()
-            srv_com["drbd_status"] = self.module.drbd_config.get_config_dict()
+            srv_com["drbd_status_format"] = "json"
+            srv_com["drbd_status"] = json.dumps(self.module.drbd_config.get_config_dict())
         else:
             srv_com.set_result(
                 "no drbd_tools found",
@@ -46,7 +48,10 @@ class drbd_status_command(hm_classes.hm_command):
             )
 
     def interpret(self, srv_com, cur_ns):
-        return self._interpret(srv_com["drbd_status"], cur_ns)
+        if "drbd_status_format" in srv_com:
+            return self._interpret(json.loads(srv_com["*drbd_status"]), cur_ns)
+        else:
+            return self._interpret(srv_com["drbd_status"], cur_ns)
 
     def interpret_old(self, result, cur_ns):
         drbd_conf = hm_classes.net_to_sys(result[3:])
@@ -57,7 +62,9 @@ class drbd_status_command(hm_classes.hm_command):
             if drbd_conf["status_present"] and drbd_conf["config_present"]:
                 res_dict = drbd_conf["resources"]
                 res_keys = sorted(res_dict.keys())
-                state_dict = {"total": res_keys}
+                state_dict = {
+                    "total": res_keys
+                }
                 dev_states, ret_strs = ([], [])
                 for key in res_keys:
                     loc_dict = res_dict[key]["localhost"]
@@ -82,14 +89,17 @@ class drbd_status_command(hm_classes.hm_command):
                         dev_state = limits.nag_STATE_CRITICAL
                     if dev_state != limits.nag_STATE_OK:
                         # pprint.pprint(loc_dict)
-                        ret_strs.append("{} ({}, protocol '{}'{}): cs {}, {}, ds {}".format(
-                            key,
-                            loc_dict["device"],
-                            loc_dict.get("protocol", "???"),
-                            ", {}%".format(loc_dict["resync_percentage"]) if "resync_percentage" in loc_dict else "",
-                            c_state,
-                            "/".join(loc_dict.get("state", ["???"])),
-                            "/".join(loc_dict.get("data_state", ["???"]))))
+                        ret_strs.append(
+                            "{} ({}, protocol '{}'{}): cs {}, {}, ds {}".format(
+                                key,
+                                loc_dict["device"],
+                                loc_dict.get("protocol", "???"),
+                                ", {}%".format(loc_dict["resync_percentage"]) if "resync_percentage" in loc_dict else "",
+                                c_state,
+                                "/".join(loc_dict.get("state", ["???"])),
+                                "/".join(loc_dict.get("data_state", ["???"]))
+                            )
+                        )
                     dev_states.append(dev_state)
                     # pprint.pprint(res_dict[key]["localhost"])
                 # pprint.pprint(state_dict)
