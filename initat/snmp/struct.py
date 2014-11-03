@@ -84,8 +84,14 @@ class snmp_if(object):
         self.admin_status = in_dict[7]
         self.oper_status = in_dict[8]
         self.last_change = in_dict[9]
-        self.in_counter = snmp_if_counter(in_dict[10], in_dict[11], in_dict[12], in_dict[13], in_dict[14])
-        self.out_counter = snmp_if_counter(in_dict[16], in_dict[17], in_dict[18], in_dict[19], in_dict[20])
+        if 10 in in_dict:
+            self.in_counter = snmp_if_counter(in_dict[10], in_dict[11], in_dict[12], in_dict[13], in_dict[14])
+        else:
+            self.in_counter = None
+        if 16 in in_dict:
+            self.out_counter = snmp_if_counter(in_dict[16], in_dict[17], in_dict[18], in_dict[19], in_dict[20])
+        else:
+            self.out_counter = None
         self.in_unknown_protos = in_dict[15]
 
     def __repr__(self):
@@ -108,8 +114,14 @@ class snmp_hs(object):
     # high speed counter
     def __init__(self, in_dict):
         self.name = in_dict[1]
-        self.in_counter = snmp_hs_counter(in_dict[2], in_dict[3], in_dict.get(6, 0))
-        self.out_counter = snmp_hs_counter(in_dict[4], in_dict[5], in_dict.get(10, 0))
+        if 2 in in_dict:
+            self.in_counter = snmp_hs_counter(in_dict[2], in_dict[3], in_dict.get(6, 0))
+        else:
+            self.in_counter = None
+        if 4 in in_dict:
+            self.out_counter = snmp_hs_counter(in_dict[4], in_dict[5], in_dict.get(10, 0))
+        else:
+            self.out_counter = None
         self.trap_enable = in_dict.get(14, 2) == 1
         self.highspeed = in_dict[15]
         self.promiscious_mode = in_dict[16] == 1

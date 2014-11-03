@@ -209,7 +209,9 @@ class handler(SNMPHandler):
             _vc = kwargs["vc"]
             _sum_vector = [0., 0., 0., 0.]
             for _if_idx, _if in _base_dict.iteritems():
-                if _if_idx in _hi_dict and _hi_dict[_if_idx].get(6, 0):
+                if 10 not in _if:
+                    continue
+                if _if_idx in _hi_dict and 6 in _hi_dict[_if_idx].get(6, 0):
                     # replace values from hi_dict
                     _if[10] = _hi_dict[_if_idx][6]
                     _if[16] = _hi_dict[_if_idx][10]
