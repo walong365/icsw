@@ -527,6 +527,7 @@ class RRDGraph(object):
             "merge_devices": True,
             "job_mode": "none",
             "selected_job": 0,
+            "merge_cd": False,
         }
         self.dt_1970 = dateutil.parser.parse("1970-01-01 00:00 +0000")
         self.para_dict.update(para_dict)
@@ -790,13 +791,31 @@ class RRDGraph(object):
                 _pk
             ) for _idx, _pk in enumerate(dev_pks)
         ]
-        # one device per graph
         if self.para_dict["merge_devices"]:
+            # one device per graph
             graph_key_list = [
                 [
                     GraphTarget(g_key, enumerated_dev_pks, v_list)
                 ] for g_key, v_list in s_graph_key_dict.iteritems()
             ]
+        elif self.para_dict["merge_cd"]:
+            graph_key_list = []
+            # merge controlling devices with devices on a single graph
+            for _dev in device.objects.filter(Q(pk__in=dev_pks)):
+                _slave_pks = set(_dev.slave_connections.all().values_list("pk", flat=True))
+                # do we have any controlling devices ?
+                if _slave_pks:
+                    _merged_pks = set([_dev.pk]) | (_slave_pks & set(dev_pks))
+                    for g_key, v_list in sorted(s_graph_key_dict.iteritems()):
+                        graph_key_list.append(
+                            [
+                                GraphTarget(
+                                    g_key,
+                                    [(dev_id, dev_pk) for dev_id, dev_pk in enumerated_dev_pks if dev_pk in _merged_pks],
+                                    v_list
+                                )
+                            ]
+                        )
         else:
             graph_key_list = []
             for g_key, v_list in sorted(s_graph_key_dict.iteritems()):
@@ -1101,7 +1120,8 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
             ("merge_devices", "1"),
             ("scale_y", "0"),
             ("include_zero", "0"),
-            ("debug_mode", "0")
+            ("debug_mode", "0"),
+            ("merge_cd", "0"),
         ]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
         self._open_rrdcached_socket()
