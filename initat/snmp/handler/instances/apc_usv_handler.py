@@ -53,7 +53,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(3, 2, 4, 0)]),
-                name="upc.frequency.in",
+                name="usv.frequency.in",
             ),
             E.mve(
                 info="Output frequency",
@@ -61,7 +61,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(4, 2, 2, 0)]),
-                name="upc.frequency.out",
+                name="usv.frequency.out",
             ),
             E.mve(
                 info="Input line voltage",
@@ -69,7 +69,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(3, 2, 1, 0)]),
-                name="upc.voltage.in.line",
+                name="usv.voltage.in.line",
             ),
             E.mve(
                 info="Input line voltage max",
@@ -77,7 +77,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(3, 2, 2, 0)]),
-                name="upc.voltage.in.line_max",
+                name="usv.voltage.in.line_max",
             ),
             E.mve(
                 info="Input line voltage min",
@@ -85,7 +85,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(3, 2, 3, 0)]),
-                name="upc.voltage.in.line_min",
+                name="usv.voltage.in.line_min",
             ),
             E.mve(
                 info="Output voltage",
@@ -93,7 +93,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(4, 2, 1, 0)]),
-                name="upc.voltage.out",
+                name="usv.voltage.out",
             ),
             E.mve(
                 info="Output load",
@@ -101,7 +101,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(4, 2, 3, 0)]),
-                name="upc.load.out",
+                name="usv.load.out",
             ),
             E.mve(
                 info="Output current",
@@ -109,7 +109,7 @@ class handler(SNMPHandler):
                 base="1",
                 v_type="i",
                 value="{:d}".format(res_dict[(4, 2, 4, 0)]),
-                name="upc.ampere.out",
+                name="usv.ampere.out",
             ),
         ])
 
