@@ -397,7 +397,7 @@ class netdevice(models.Model):
     vlan_id = models.IntegerField(null=True, blank=True, default=0)
     # for VLAN devices
     master_device = models.ForeignKey("self", null=True, related_name="vlan_slaves", blank=True)
-    # enabled, in fact admin enabled
+    # enabled for monitoring
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     # maximum transfer unit

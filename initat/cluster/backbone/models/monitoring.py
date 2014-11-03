@@ -94,6 +94,8 @@ class snmp_scheme(models.Model):
     collect = models.BooleanField(default=False)
     # when found make an initial lookup call
     initial = models.BooleanField(default=False)
+    # moncheck
+    mon_check = models.BooleanField(default=False)
     # priority for handling, schemes with higher priority will be handled first
     priority = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
@@ -318,6 +320,7 @@ class host_check_command(models.Model):
 class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
+    info = models.CharField(max_length=64, default="")
     command_line = models.CharField(max_length=256, default="")
     description = models.CharField(max_length=256, default="")
     is_active = models.BooleanField(default=True)
