@@ -101,15 +101,22 @@ rrd_graph_template = """
             </div>&nbsp;
             <div class="form-group">
                 <div class="input-group-btn">
-                    <button type="button" ng-class="hide_empty && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
+                    <button type="button" ng-class="hide_empty && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
                         <span class="glyphicon glyphicon-ban-circle"></span>
                     </button>
                 </div>
             </div>&nbsp;
             <div class="form-group">
                 <div class="input-group-btn">
-                    <button type="button" ng-class="include_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
+                    <button type="button" ng-class="include_zero && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
                         <span class="glyphicon glyphicon-download"></span>
+                    </button>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
+                        <span class="glyphicon glyphicon-off"></span>
                     </button>
                 </div>
             </div>&nbsp;
@@ -362,6 +369,8 @@ add_rrd_directive = (mod) ->
             $scope.job_mode = $scope.job_modes[0]
             $scope.selected_job = 0
             $scope.include_zero = true
+            $scope.cds_already_merged = false
+            $scope.merge_cd = false
             $scope.scale_y = true
             $scope.merge_devices = false
             $scope.show_tree = true
@@ -424,6 +433,19 @@ add_rrd_directive = (mod) ->
                 $scope.devsel_list = _dev_sel
                 $scope.reload()
 
+            $scope.toggle_merge_cd = () ->
+                $scope.merge_cd = !$scope.merge_cd
+                if $scope.merge_cd and not $scope.cds_already_merged
+                    $scope.cds_already_merged = true
+                    call_ajax
+                        url  : "{% url 'rrd:merge_cds' %}"
+                        data : {
+                            "pks" : $scope.devsel_list
+                        }
+                        dataType: "json"
+                        success : (json) =>
+                            $scope.feed_rrd_json(json)
+
             $scope.reload = () ->
                 $scope.vector_valid = false
                 call_ajax
@@ -433,43 +455,47 @@ add_rrd_directive = (mod) ->
                     }
                     dataType: "json"
                     success : (json) =>
-                        if "error" of json
-                            noty
-                                text : json["error"]
-                                type : "error"
+                        $scope.feed_rrd_json(json)
+            
+            $scope.feed_rrd_json = (json) ->
+                if "error" of json
+                    noty
+                        text : json["error"]
+                        type : "error"
+                else
+                    if $scope.auto_select_keys.length
+                        $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
+                    else
+                        $scope.auto_select_re = null
+                    # to machine vector
+                    $scope.num_devices = 0
+                    root_node = $scope.init_machine_vector()
+                    $scope.num_struct = 0
+                    $scope.num_mve = 0
+                    for dev in json._nodes
+                        if dev._nodes?
+                            mv = dev._nodes[0]
+                            $scope.add_machine_vector(root_node, dev.pk, mv)
+                            if dev._nodes.length > 1
+                                # compound
+                                $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
+                            $scope.num_devices++
+                    $scope.is_loading = false
+                    $scope.$apply(
+                        $scope.vector_valid = if $scope.num_struct then true else false
+                        if $scope.vector_valid
+                            $scope.error_string = ""
+                            $scope.num_mve_sel = 0
+                            if $scope.auto_select_re or $scope.cur_selected.length
+                                # recalc tree when an autoselect_re is present
+                                $scope.g_tree.show_selected(false)
+                                $scope.selection_changed()
+                                if $scope.draw_on_init and $scope.num_mve_sel
+                                    $scope.draw_graph()
                         else
-                            if $scope.auto_select_keys.length
-                                $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
-                            else
-                                $scope.auto_select_re = null
-                            # to machine vector
-                            $scope.num_devices = 0
-                            root_node = $scope.init_machine_vector()
-                            $scope.num_struct = 0
-                            $scope.num_mve = 0
-                            for dev in json._nodes
-                                if dev._nodes?
-                                    mv = dev._nodes[0]
-                                    $scope.add_machine_vector(root_node, dev.pk, mv)
-                                    if dev._nodes.length > 1
-                                        # compound
-                                        $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
-                                    $scope.num_devices++
-                            $scope.is_loading = false
-                            $scope.$apply(
-                                $scope.vector_valid = if $scope.num_struct then true else false
-                                if $scope.vector_valid
-                                    $scope.error_string = ""
-                                    $scope.num_mve_sel = 0
-                                    if $scope.auto_select_re
-                                        # recalc tree when an autoselect_re is present
-                                        $scope.g_tree.show_selected(false)
-                                        $scope.selection_changed()
-                                        if $scope.draw_on_init and $scope.num_mve_sel
-                                            $scope.draw_graph()
-                                else
-                                    $scope.error_string = "No vector found"
-                            )
+                            $scope.error_string = "No vector found"
+                    )
+
             $scope._add_structural_entry = (entry, lut, parent) =>
                 _latest_is_entry = entry._tag in ["mve", "cve"]
                 parts = entry.name.split(".")
@@ -484,7 +510,6 @@ add_rrd_directive = (mod) ->
                         if $scope.mv_dev_pk not in cur_node._dev_pks
                             cur_node._dev_pks.push($scope.mv_dev_pk)
                         if pn == entry.name and _latest_is_entry
-                            #console.log "dup", cur_node._dev_pks
                             true
                     else
                         if pn == entry.name and _latest_is_entry
@@ -536,8 +561,10 @@ add_rrd_directive = (mod) ->
                 else
                     # mve or cve, graph_key is entry.name
                     g_key = "#{entry._tag}:#{entry.name}"
-                if $scope.auto_select_re
-                    _sel = $scope.auto_select_re.test(xml_node.attr("name"))
+                if $scope.cur_selected.length
+                    _sel = g_key in $scope.cur_selected
+                else if $scope.auto_select_re
+                    _sel = $scope.auto_select_re.test(g_key)
                 else
                     _sel = false
                 if g_key of lut
@@ -562,6 +589,7 @@ add_rrd_directive = (mod) ->
             
             $scope.init_machine_vector = () =>
                 $scope.lut = {}
+                $scope.g_tree.clear_root_nodes()
                 root_node = $scope.g_tree.new_node({
                     folder : true
                     expand : true
@@ -649,6 +677,9 @@ add_rrd_directive = (mod) ->
                         "job_mode"      : $scope.job_mode
                         "selected_job"  : $scope.selected_job 
                         "include_zero"  : $scope.include_zero
+                        "merge_cd"      : $scope.merge_cd
+                        # flag if the controlling devices are shown in the rrd tree
+                        "cds_already_merged" : $scope.cds_already_merged
                         "scale_y"       : $scope.scale_y
                         "merge_devices" : $scope.merge_devices
                         "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
