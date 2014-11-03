@@ -337,7 +337,7 @@ def _add_snmp_fixtures():
                 collect=_handler.Meta.collect,
                 initial=_handler.Meta.initial,
                 priority=_handler.Meta.priority,
-                mon_check=_handler.Meta.mon_check,
+                mon_check=getattr(_handler.Meta, "mon_check", False),
                 snmp_scheme_vendor=factories.SNMPSchemeVendor(name=_handler.Meta.vendor_name),
             )
             for tl_oid in _handler.Meta.tl_oids:
