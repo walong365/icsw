@@ -416,7 +416,8 @@ class load_scheme(snmp_scheme):
         return ret_state, "load 1/5/15: %.2f / %.2f / %.2f" % (
             load_array[0],
             load_array[1],
-            load_array[2])
+            load_array[2]
+        )
 
 
 def k_str(i_val):
@@ -444,15 +445,22 @@ class linux_memory_scheme(snmp_scheme):
                 "allocation_units": use_dict[(4, key)],
                 "size": use_dict[(5, key)],
                 "used": use_dict.get((6, key), None)
-            } for key in [key[1] for key in use_dict.keys() if key[0] == 1] if not use_dict[(3, key)].startswith("/")}
+            } for key in [
+                _key[1] for _key in use_dict.keys() if _key[0] == 1
+            ] if not use_dict[(3, key)].startswith("/")
+        }
         # pprint.pprint(use_dict)
-        phys_total, phys_used = (use_dict["physical memory"]["size"],
-                                 use_dict["physical memory"]["used"])
+        phys_total, phys_used = (
+            use_dict["physical memory"]["size"],
+            use_dict["physical memory"]["used"]
+        )
         # cached = use_dict["cached memory"]["size"]
         # buffers = use_dict["memory buffers"]["size"]
         # cb_size = cached + buffers
-        swap_total, swap_used = (use_dict["swap space"]["size"],
-                                 use_dict["swap space"]["used"])
+        swap_total, swap_used = (
+            use_dict["swap space"]["size"],
+            use_dict["swap space"]["used"]
+        )
         # sub buffers and cache from phys_used
         # phys_used -= cb_size
         all_used = phys_used + swap_used
@@ -527,16 +535,18 @@ class qos_cfg(object):
 class check_snmp_qos_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "check_snmp_qos", **kwargs)
-        self.oid_dict = {"if_name": (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1),
-                         "if_alias": (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 18),
-                         "cb_qos_policy_direction": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 1, 1, 1, 3),
-                         # qos_idx -> if_index
-                         "cb_qos_if_index": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 1, 1, 1, 4),
-                         "cb_qos_config_index": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 5, 1, 1, 2),
-                         # QoS classes
-                         "cb_qos_cmname": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 7, 1, 1, 1),
-                         "cb_qos_bit_rate": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 15, 1, 1, 11),
-                         "cb_qos_dropper_rate": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 15, 1, 1, 18)}
+        self.oid_dict = {
+            "if_name": (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1),
+            "if_alias": (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 18),
+            "cb_qos_policy_direction": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 1, 1, 1, 3),
+            # qos_idx -> if_index
+            "cb_qos_if_index": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 1, 1, 1, 4),
+            "cb_qos_config_index": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 5, 1, 1, 2),
+            # QoS classes
+            "cb_qos_cmname": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 7, 1, 1, 1),
+            "cb_qos_bit_rate": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 15, 1, 1, 11),
+            "cb_qos_dropper_rate": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 15, 1, 1, 18)
+        }
         self.parser.add_option("-k", type="str", dest="key", help="QOS keys [%default]", default="1")
         self.parser.add_option("-z", type="str", dest="qos_ids", help="QOS Ids [%default]", default="")
         self.parse_options(kwargs["options"])
@@ -1683,5 +1693,5 @@ class environment_knurr_scheme(snmp_scheme):
             8: "PSB",
         }
         return cur_state, ", ".join([
-            "{}: {}".format(info_dict[key], {0: "OK", 1: "faild"}[new_dict[key]]) for key in sorted(new_dict.keys())
+            "{}: {}".format(info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(new_dict.keys())
         ])
