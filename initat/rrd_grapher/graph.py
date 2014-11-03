@@ -532,8 +532,10 @@ class RRDGraph(object):
             first_level_keys.add(_flk)
             top_level_types.add(_type)
             if _flk == "compound":
+                # compound, one graph per key
                 g_key_dict.setdefault(key, [key])
             else:
+                # no compound, one graph per top level key
                 g_key_dict.setdefault(_flk, []).append(key)
         return g_key_dict
 
@@ -677,14 +679,15 @@ class RRDGraph(object):
                     )
         return _ext_args
 
-    def _expand_cve(self, cve_xml, dev_vector):
+    def _expand_cve(self, cve_xml, vector, compound):
         # expand compund vector entry
         # print etree.tostring(cve_xml, pretty_print=True)
-        _res = []
         _color_tables = {}
         for _entry in cve_xml:
-            _ref_xml = dev_vector.find(".//mve[@name='{}']".format(_entry.get("key")))
-            if _ref_xml is not None:
+            for _ref_xml in self._resolve_key(_entry.get("key"), vector, compound):
+                # print "*", _ref_xml
+                # _ref_xml = vector.find(".//mve[@name='{}']".format(_entry.get("key").split(":")[1]))
+                # if _ref_xml is not None:
                 _new_entry = copy.deepcopy(_ref_xml)
                 for _attr in ["color", "draw_type", "invert"]:
                     _val = _entry.attrib[_attr]
@@ -693,8 +696,42 @@ class RRDGraph(object):
                             _color_tables[_val] = self.colorizer.simple_color_table(_val)
                         _val = _color_tables[_val].color
                     _new_entry.attrib[_attr] = _val
-                _res.append(_new_entry)
-        return _res
+                yield _new_entry
+        raise StopIteration
+
+    def _resolve_key(self, graph_key, vector, compound):
+        _type, _key = graph_key.split(":", 1)
+        _split = _key.split(".")
+        if _type in ["pde", "mvl"]:
+            # performance data from icinga or vector list data
+            def_xmls = vector.xpath(
+                ".//{}[@name='{}']/value[@key='{}']".format(
+                    _type,
+                    ".".join(_split[:len(_split) - 1]),
+                    _split[-1]
+                ),
+                smart_strings=False
+            )
+            if len(def_xmls):
+                _parent = def_xmls[0].getparent()
+                # needed ?
+                def_xml = copy.deepcopy(def_xmls[0])
+                def_xml.attrib["file_name"] = _parent.get("file_name")
+                def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
+                def_xml.attrib["part"] = def_xml.attrib["key"]
+                yield def_xml
+        elif _type == "cve":
+            if compound is not None:
+                def_xml = compound.find(".//cve[@name='{}']".format(_key))
+                if def_xml is not None:
+                    for def_xml in self._expand_cve(def_xml, vector, compound):
+                        yield def_xml
+        else:
+            # machine vector entry
+            def_xml = vector.find(".//mve[@name='{}']".format(_key))
+            if def_xml is not None:
+                yield def_xml
+        raise StopIteration
 
     def graph(self, vector_dict, compound_dict, dev_pks, graph_keys):
         timeframe = abs((self.para_dict["end_time"] - self.para_dict["start_time"]).total_seconds())
@@ -769,56 +806,7 @@ class RRDGraph(object):
                             # improvement: resolve iteratively (for compounds), beautify code
                             dev_vector = vector_dict[cur_pk]
                             dev_compound = compound_dict[cur_pk]
-                            _type, _key = graph_key.split(":", 1)
-                            if _type == "pde":
-                                _split = _key.split(".")
-                                # performance data from icinga
-                                def_xmls = dev_vector.xpath(
-                                    ".//pde[@name='{}']/value[@key='{}']".format(".".join(_split[:len(_split) - 1]), _split[-1]),
-                                    smart_strings=False
-                                )
-                                if len(def_xmls):
-                                    _parent = def_xmls[0].getparent()
-                                    def_xml = copy.deepcopy(def_xmls[0])
-                                    def_xml.attrib["file_name"] = _parent.get("file_name")
-                                    def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
-                                    def_xml.attrib["part"] = def_xml.attrib["key"]
-                                    def_xmls = [def_xml]
-                                else:
-                                    def_xmls = []
-                            elif _type == "mvl":
-                                _split = _key.split(".")
-                                # machine vector list data
-                                def_xmls = dev_vector.xpath(
-                                    ".//mvl[@name='{}']/value[@key='{}']".format(".".join(_split[:len(_split) - 1]), _split[-1]),
-                                    smart_strings=False
-                                )
-                                if len(def_xmls):
-                                    _parent = def_xmls[0].getparent()
-                                    def_xml = copy.deepcopy(def_xmls[0])
-                                    def_xml.attrib["file_name"] = _parent.get("file_name")
-                                    def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
-                                    def_xml.attrib["part"] = def_xml.attrib["key"]
-                                    def_xmls = [def_xml]
-                                else:
-                                    def_xmls = []
-                            elif _type == "compound":
-                                if dev_compound is not None:
-                                    def_xml = dev_compound.find(".//cve[@name='{}']".format(_key))
-                                    if def_xml is not None:
-                                        def_xmls = self._expand_cve(def_xml, dev_vector)
-                                    else:
-                                        def_xmls = []
-                                else:
-                                    def_xmls = []
-                            else:
-                                # machine vector entry
-                                def_xml = dev_vector.find(".//mve[@name='{}']".format(_key))
-                                if def_xml is None:
-                                    def_xmls = []
-                                else:
-                                    def_xmls = [def_xml]
-                            for def_xml in def_xmls:
+                            for def_xml in self._resolve_key(graph_key, dev_vector, dev_compound):
                                 _take = True
                                 if "file_name" in def_xml.attrib:
                                     try:

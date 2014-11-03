@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -38,6 +36,8 @@ class compound_entry(object):
     def __init__(self, _xml):
         self.__re_list = []
         self.__name = _xml.attrib["name"]
+        self.__info = _xml.attrib["info"]
+        self.__order_key = _xml.get("order_key", None)
         for _key in _xml.findall("key_list/key"):
             _req = True if int(_key.get("required", "1")) else False
             self.__re_list.append(
@@ -50,11 +50,16 @@ class compound_entry(object):
             )
 
     def match(self, in_list):
+        if self.__order_key:
+            for _entry in self._match_multi(in_list):
+                yield _entry
+        else:
+            for _entry in self._match_single(in_list):
+                yield _entry
+
+    def _match_single(self, in_list):
         # returns a list of matching keys
         _success = False
-        # print [x for x in in_list if x.count("net")]
-        # print "-"*20
-        # print self.__name
         if self.__re_list:
             _res = []
             _success = True
@@ -67,13 +72,58 @@ class compound_entry(object):
                     _success = False
                 _res.extend([(key, _xml) for key in _found])
         if _success and _res:
-            return _res
-        else:
-            return []
+            yield (_res, {})
+        raise StopIteration
 
-    def entry(self, m_list):
+    def _match_multi(self, in_list):
+        # returns a list of matching keys
+        _success = False
+        if self.__re_list:
+            _res = []
+            _success = True
+            for _req, _pos_re, _neg_re, _xml in self.__re_list:
+                _found = [(key, _pos_re.match(key)) for key in in_list if _pos_re.match(key)]
+                if _neg_re is not None:
+                    _ignore = [key for key in in_list if _neg_re.match(key)]
+                    _found = [(key, _bla) for key, _bla in _found if key not in _ignore]
+                if _req and not _found:
+                    _success = False
+                _res.extend([(key, _xml, _match.groupdict()) for key, _match in _found])
+        _ok = self.__order_key
+        _all_keys = set([_gd[_ok] for key, _xml, _gd in _res if _ok in _gd])
+        for _key in _all_keys:
+            yield (
+                [
+                    (key, _xml) for key, _xml, _gd in _res if _gd.get(_ok) == _key
+                ],
+                {
+                    _ok: _key
+                }
+            )
+        raise StopIteration
+
+    def _resolve_key(self, key, dev_xml):
+        _type, _key = key.split(":", 1)
+        _split = _key.split(".")
+        if _type in ["pde", "mvl"]:
+            _node = dev_xml.xpath(".//{}[@name='{}']".format(_type, ".".join(_split[:len(_split) - 1])))[0]
+            return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
+        elif _type == "mve":
+            _node = dev_xml.xpath(".//mve[@name='{}']".format(_key))[0]
+            return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
+        else:
+            return {}
+
+    def entry(self, result, dev_xml):
+        m_list, gd = result
+        for _key in [key for key, _xml in m_list]:
+            # update dict with attribute dicts from the top-level nodes
+            gd.update(self._resolve_key(_key, dev_xml))
+        # expand according to dict
+        _name = self.__name.format(**gd)
+        _info = self.__info.format(**gd)
         # cve: compount vector entry
-        return E.cve(
+        _node = E.cve(
             *[
                 E.cve_entry(
                     key=_key,
@@ -83,20 +133,27 @@ class compound_entry(object):
                 ) for _key, _xml in m_list
             ],
             # keys="||".join(m_list),
-            name="compound.{}".format(self.__name),
-            part=self.__name,
-            key=self.__name,
+            name="compound.{}".format(_name),
+            part=_name,
+            key=_name,
             info="{} ({:d})".format(
-                self.__name,
+                _info,
                 len(m_list),
             )
         )
+        return _node
 
 
 COMPOUND_NG = """
 <element name="compound" xmlns="http://relaxng.org/ns/structure/1.0">
     <attribute name="name">
     </attribute>
+    <attribute name="info">
+    </attribute>
+    <optional>
+        <attribute name="order_key">
+        </attribute>
+    </optional>
     <element name="key_list">
         <oneOrMore>
             <element name="key">
@@ -132,59 +189,61 @@ class compound_tree(object):
         self.__compounds = []
         compound_xml = """
 <compounds>
-    <compound name="load">
+    <compound name="load" info="load">
         <key_list>
-            <key match="^load\.1$" required="1" color="#ff0000"></key>
-            <key match="^load\.5$" color="#4444cc"></key>
-            <key match="^load\.15$" required="1" color="#44aa44" draw_type="LINE2"></key>
+            <key match="^mve:load\.1$" required="1" color="#ff0000"></key>
+            <key match="^mve:load\.5$" color="#4444cc"></key>
+            <key match="^mve:load\.15$" required="1" color="#44aa44" draw_type="LINE2"></key>
         </key_list>
     </compound>
-    <compound name="cpu">
+    <compound name="cpu" info="CPU">
         <key_list>
-            <key match="^vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1"></key>
-            <key match="^vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
-            <key match="^vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
-            <key match="^vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
-            <key match="^vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
-            <key match="^vms\.steal$" required="0" color="#fbd462" draw_type="AREA1STACK"></key>
-            <key match="^vms\.nice$" required="0" color="#fccde5" draw_type="AREA1STACK"></key>
-            <key match="^vms\.idle$" required="1" color="#b3de69" draw_type="AREA1STACK"></key>
-            <key match="^vms\.guest$" required="0" color="#ff0000" draw_type="LINE2"></key>
-            <key match="^vms\.guest_nice$" required="0" color="#ffff00" draw_type="LINE2"></key>
+            <key match="^mve:vms\.iowait$" required="0" color="#8dd3c7" draw_type="AREA1"></key>
+            <key match="^mve:vms\.sys(tem)*$" required="1" color="#ffffb3" draw_type="AREA1STACK"></key>
+            <key match="^mve:vms\.irq$" required="1" color="#bebada" draw_type="AREA1STACK"></key>
+            <key match="^mve:vms\.softirq$" required="1" color="#fb8072" draw_type="AREA1STACK"></key>
+            <key match="^mve:vms\.user$" required="1" color="#80b1d3" draw_type="AREA1STACK"></key>
+            <key match="^mve:vms\.steal$" required="0" color="#fbd462" draw_type="AREA1STACK"></key>
+            <key match="^mve:vms\.nice$" required="0" color="#fccde5" draw_type="AREA1STACK"></key>
+            <key match="^mve:vms\.idle$" required="1" color="#b3de69" draw_type="AREA1STACK"></key>
+            <key match="^mve:vms\.guest$" required="0" color="#ff0000" draw_type="LINE2"></key>
+            <key match="^mve:vms\.guest_nice$" required="0" color="#ffff00" draw_type="LINE2"></key>
         </key_list>
     </compound>
-    <compound name="processes">
+    <compound name="sys.processes" info="Processes">
         <key_list>
-            <key match="^proc\..*$" nomatch="proc\.(sleeping|total)" required="1" color="set312" draw_type="LINE1"></key>
+            <key match="^mve:proc\..*$" nomatch="proc\.(sleeping|total)" required="1" color="set312" draw_type="LINE1"></key>
         </key_list>
     </compound>
-    <compound name="memory">
+    <compound name="sys.memory" info="Memory">
         <key_list>
-            <key match="mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
-            <key match="mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
-            <key match="mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
-            <key match="mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
-            <!--<key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="AREASTACK"></key>-->
-            <!--<key match="mem\.free\.swap$" required="0" color="#55ee55" draw_type="AREA1STACK"></key>-->
-            <key match="mem\.used\.swap$" required="0" color="#ff4444" draw_type="LINE2"></key>
+            <key match="mve:mem\.used\.phys$" required="1" color="#eeeeee" draw_type="AREA1"></key>
+            <key match="mve:mem\.used\.buffers" required="1" color="#66aaff" draw_type="AREASTACK"></key>
+            <key match="mve:mem\.used\.cached" required="1" color="#eeee44" draw_type="AREASTACK"></key>
+            <key match="mve:mem\.free\.phys$" required="1" color="#44ff44" draw_type="AREA1STACK"></key>
+            <!--<key match="mve:mem\.used\.swap$" required="0" color="#ff4444" draw_type="AREASTACK"></key>-->
+            <!--<key match="mve:mem\.free\.swap$" required="0" color="#55ee55" draw_type="AREA1STACK"></key>-->
+            <key match="mve:mem\.used\.swap$" required="0" color="#ff4444" draw_type="LINE2"></key>
         </key_list>
     </compound>
-    <compound name="io">
+    <compound name="io" info="IO">
         <key_list>
-            <key match="^net\.all\.rx$" required="1" color="#44ffffa0" draw_type="AREA1"></key>
-            <key match="^net\.all\.tx$" required="1" invert="1" color="#ff4444a0" draw_type="AREA1"></key>
-            <key match="^io\.total\.bytes\.read$" required="1" color="#4444ffa0" draw_type="AREA1"></key>
-            <key match="^io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
+            <key match="^mve:net\.all\.rx$" required="1" color="#44ffffa0" draw_type="AREA1"></key>
+            <key match="^mve:net\.all\.tx$" required="1" invert="1" color="#ff4444a0" draw_type="AREA1"></key>
+            <key match="^mve:io\.total\.bytes\.read$" required="1" color="#4444ffa0" draw_type="AREA1"></key>
+            <key match="^mve:io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
         </key_list>
     </compound>
-    <compound name="icsw memory">
+    <compound name="icsw memory" info="CORVUS Memory">
         <key_list>
-            <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
+            <key match="^mve:mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
-    <compound name="netsnmp">
+    <compound name="net.snmp_{key}" info="SNMP {info}" order_key="key">
         <key_list>
-            <key match="^net\.snmp_all\.rx$" required="1" color="green" draw_type="AREA1"></key>
+            <key match="^mvl:net\.snmp_(?P&lt;key&gt;.*)\.rx$" required="1" color="#00dd00" draw_type="AREA"></key>
+            <key match="^mvl:net\.snmp_(?P&lt;key&gt;.*)\.tx$" required="1" color="#0000ff" draw_type="LINE1"></key>
+            <key match="^mvl:net\.snmp_(?P&lt;key&gt;.*)\.errors$" required="1" color="#ff0000" draw_type="LINE2"></key>
         </key_list>
     </compound>
 </compounds>
@@ -198,16 +257,36 @@ class compound_tree(object):
             else:
                 print("compound is invalid: {}".format(str(_ng.error_log)))
 
-    def append_compounds(self, top_el, in_list):
+    def append_compounds(self, dev_xml):
+        # machine vector entries
+        all_keys = set()
+        for _mve_entry in dev_xml.xpath(".//mve[@active='1']"):
+            all_keys.add(
+                "mve:{}".format(_mve_entry.attrib["name"])
+            )
+        # performance data or wide machine vector entries
+        for _pde_mvl_entry in dev_xml.xpath(".//pde[@active='1']|.//mvl[@active='1']"):
+            _name = _pde_mvl_entry.attrib["name"]
+            _info = _pde_mvl_entry.get("info")
+            for _value in _pde_mvl_entry.findall("value"):
+                all_keys.add(
+                    "{}:{}.{}".format(
+                        _pde_mvl_entry.tag,
+                        _name,
+                        _value.attrib["key"],
+                    )
+                )
+        top_el = E.machine_vector()
         _added = 0
         # print "*", len(in_list)
         for _comp in self.__compounds:
-            m_list = _comp.match(in_list)
-            if m_list:
-                top_el.append(_comp.entry(m_list))
+            for _result in _comp.match(all_keys):
+                top_el.append(_comp.entry(_result, dev_xml))
                 _added += 1
-        return _added
-    # print "*", etree.tostring(top_el)
+        if _added:
+            return top_el
+        else:
+            return None
 
 
 class data_store(object):
@@ -410,7 +489,13 @@ class data_store(object):
                     cur_value.attrib[key] = src_value.get(key, def_value)
                 cur_value.attrib["key"] = src_value.attrib["key"]
         else:
-            self.log("number of mvl entries differ: {:d} != {:d}, replacing childs".format(len(entry), len(src_entry)), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "number of mvl entries differ: {:d} != {:d}, replacing childs".format(
+                    len(entry),
+                    len(src_entry)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             for _val in entry:
                 entry.remove(_val)
             for _val in src_entry:
@@ -462,14 +547,7 @@ class data_store(object):
                 _cc.getparent().remove(_cc)
             else:
                 break
-        _ct = compound_tree()
-        all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name", smart_strings=False))
-        compound_top = E.compound(name="compound")
-        any_added = _ct.append_compounds(compound_top, all_keys)
-        if any_added:
-            return E.machine_vector(compound_top)
-        else:
-            return None
+        return compound_tree().append_compounds(cur_xml)
 
     def _create_struct(self, top_node, full_key):
         parts = full_key.split(".")[:-1]
@@ -488,14 +566,6 @@ class data_store(object):
         for idx in xrange(len(parts)):
             info = info.replace("$%d" % (idx + 1), parts[idx])
         return info
-
-    @staticmethod
-    def get_rrd_xml(dev_pk):
-        return data_store.__devices[dev_pk].xml_vector
-
-    @staticmethod
-    def get_rrd_compound_xml(dev_pk):
-        return data_store.__devices[dev_pk].compound_xml_vector()
 
     @staticmethod
     def get_instance(pk):
@@ -537,7 +607,12 @@ class data_store(object):
                         )
                     )
             else:
-                data_store.g_log("ignoring direntry '{}'".format(entry), logging_tools.LOG_LEVEL_WARN)
+                data_store.g_log(
+                    "ignoring dir entry '{}'".format(
+                        entry
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -569,14 +644,21 @@ class data_store(object):
                 match_mode = "name"
         if match_dev:
             if data_store.debug:
-                data_store.g_log("found device {} ({}) for pd_type={}".format(unicode(match_dev), match_mode, pd_type))
+                data_store.g_log(
+                    "found device {} ({}) for pd_type={}".format(
+                        unicode(match_dev),
+                        match_mode,
+                        pd_type
+                    )
+                )
             if match_dev.pk not in data_store.__devices:
                 data_store.__devices[match_dev.pk] = data_store(match_dev)
             data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info, file_name)
         else:
             data_store.g_log(
                 "no device found (name={}, pd_type={})".format(name, pd_type),
-                logging_tools.LOG_LEVEL_ERROR)
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     @staticmethod
     def feed_vector(in_vector):

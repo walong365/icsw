@@ -256,8 +256,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             cur_res = E.node_result(pk="{:d}".format(dev_pk))
             if data_store.has_rrd_xml(dev_pk):
                 # web mode (sorts entries)
-                cur_res.append(data_store.get_rrd_xml(dev_pk))
-                _compound = data_store.get_rrd_compound_xml(dev_pk)
+                cur_res.append(data_store.get_instance(dev_pk).xml_vector)
+                _compound = data_store.get_instance(dev_pk).compound_xml_vector()
                 if _compound is not None:
                     cur_res.append(_compound)
             else:
