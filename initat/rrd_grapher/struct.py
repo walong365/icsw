@@ -32,6 +32,19 @@ import re
 import time
 
 
+def resolve_key(dev_xml, key):
+    _type, _key = key.split(":", 1)
+    _split = _key.split(".")
+    if _type in ["pde", "mvl"]:
+        _node = dev_xml.xpath(".//{}[@name='{}']".format(_type, ".".join(_split[:len(_split) - 1])))[0]
+        return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
+    elif _type == "mve":
+        _node = dev_xml.xpath(".//mve[@name='{}']".format(_key))[0]
+        return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
+    else:
+        return {}
+
+
 class compound_entry(object):
     def __init__(self, _xml):
         self.__re_list = []
@@ -102,23 +115,11 @@ class compound_entry(object):
             )
         raise StopIteration
 
-    def _resolve_key(self, key, dev_xml):
-        _type, _key = key.split(":", 1)
-        _split = _key.split(".")
-        if _type in ["pde", "mvl"]:
-            _node = dev_xml.xpath(".//{}[@name='{}']".format(_type, ".".join(_split[:len(_split) - 1])))[0]
-            return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
-        elif _type == "mve":
-            _node = dev_xml.xpath(".//mve[@name='{}']".format(_key))[0]
-            return {_ak: _av for _ak, _av in _node.attrib.iteritems()}
-        else:
-            return {}
-
     def entry(self, result, dev_xml):
         m_list, gd = result
         for _key in [key for key, _xml in m_list]:
             # update dict with attribute dicts from the top-level nodes
-            gd.update(self._resolve_key(_key, dev_xml))
+            gd.update(resolve_key(dev_xml, _key))
         # expand according to dict
         _name = self.__name.format(**gd)
         _info = self.__info.format(**gd)

@@ -387,8 +387,11 @@ class graph_var(object):
 
 class GraphTarget(object):
     def __init__(self, g_key, dev_list, graph_keys):
+        # can also be a short key (for instance 'load')
         self.graph_key = g_key
         self.dev_list = dev_list
+        self.__headers = []
+        # list of full keys (<type>:<root>.<leaf>)
         self.graph_keys = graph_keys
         self.graph_name = "gfx_{}_{}_{:d}.png".format(self.graph_key, uuid.uuid4(), int(time.time()))  #
         self.rel_file_loc = os.path.join(
@@ -404,6 +407,18 @@ class GraphTarget(object):
     def reset_keys(self):
         self.__draw_keys = []
         self.__unique = 0
+
+    @property
+    def header(self):
+        # hacky but working
+        if self.graph_keys:
+            if self.graph_keys[0].startswith("mve"):
+                # top-level key for machine vector entries
+                return self.graph_keys[0].split(":")[1].split(".")[0]
+            else:
+                return self.__headers[0]
+        else:
+            return "???"
 
     @property
     def draw_keys(self):
@@ -444,9 +459,10 @@ class GraphTarget(object):
     def get_def_idx(self):
         return len(self.defs) + 1
 
-    def add_def(self, key, g_var, **kwargs):
+    def add_def(self, key, g_var, header_str, **kwargs):
         self.__unique += 1
         self.__draw_keys.append((self.__unique, key))
+        self.__headers.append(header_str)
         self.defs[(self.__unique, key)] = g_var.graph_def(self.__unique, **kwargs)
         self.file_names.add(g_var["file_name"])
 
@@ -679,12 +695,12 @@ class RRDGraph(object):
                     )
         return _ext_args
 
-    def _expand_cve(self, cve_xml, vector, compound):
+    def _expand_gk(self, cve_xml, vector, compound):
         # expand compund vector entry
         # print etree.tostring(cve_xml, pretty_print=True)
         _color_tables = {}
         for _entry in cve_xml:
-            for _ref_xml in self._resolve_key(_entry.get("key"), vector, compound):
+            for _info_str, _ref_xml in self._resolve_key(_entry.get("key"), vector, compound):
                 # print "*", _ref_xml
                 # _ref_xml = vector.find(".//mve[@name='{}']".format(_entry.get("key").split(":")[1]))
                 # if _ref_xml is not None:
@@ -719,18 +735,18 @@ class RRDGraph(object):
                 def_xml.attrib["file_name"] = _parent.get("file_name")
                 def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
                 def_xml.attrib["part"] = def_xml.attrib["key"]
-                yield def_xml
+                yield (_parent.get("info"), def_xml)
         elif _type == "cve":
             if compound is not None:
                 def_xml = compound.find(".//cve[@name='{}']".format(_key))
                 if def_xml is not None:
-                    for def_xml in self._expand_cve(def_xml, vector, compound):
-                        yield def_xml
+                    for sub_xml in self._expand_gk(def_xml, vector, compound):
+                        yield (def_xml.attrib["info"], sub_xml)
         else:
             # machine vector entry
             def_xml = vector.find(".//mve[@name='{}']".format(_key))
             if def_xml is not None:
-                yield def_xml
+                yield (def_xml.attrib["info"], def_xml)
         raise StopIteration
 
     def graph(self, vector_dict, compound_dict, dev_pks, graph_keys):
@@ -750,22 +766,49 @@ class RRDGraph(object):
         self.log(
             "found {}: {}".format(
                 logging_tools.get_plural("device", len(dev_pks)),
-                ", ".join(["{:d} ({})".format(pk, dev_dict.get(pk, "unknown")) for pk in dev_pks])))
-        self.log("graph keys: {}".format(", ".join(graph_keys)))
+                ", ".join(
+                    [
+                        "{:d} ({})".format(pk, dev_dict.get(pk, "unknown")) for pk in dev_pks
+                    ]
+                )
+            )
+        )
+        self.log(
+            "graph keys: {}".format(
+                ", ".join(graph_keys)
+            )
+        )
         self.log(
             "top level keys: {:d}; {}".format(
                 len(s_graph_key_dict),
                 ", ".join(sorted(s_graph_key_dict)),
             )
         )
-        enumerated_dev_pks = [("{:d}.{:d}".format(_idx, _pk), _pk) for _idx, _pk in enumerate(dev_pks)]
+        enumerated_dev_pks = [
+            (
+                "{:d}.{:d}".format(_idx, _pk),
+                _pk
+            ) for _idx, _pk in enumerate(dev_pks)
+        ]
         # one device per graph
         if self.para_dict["merge_devices"]:
-            graph_key_list = [[GraphTarget(g_key, enumerated_dev_pks, v_list)] for g_key, v_list in s_graph_key_dict.iteritems()]
+            graph_key_list = [
+                [
+                    GraphTarget(g_key, enumerated_dev_pks, v_list)
+                ] for g_key, v_list in s_graph_key_dict.iteritems()
+            ]
         else:
             graph_key_list = []
             for g_key, v_list in sorted(s_graph_key_dict.iteritems()):
-                graph_key_list.append([GraphTarget(g_key, [(dev_id, dev_pk)], v_list) for dev_id, dev_pk in enumerated_dev_pks])
+                graph_key_list.append(
+                    [
+                        GraphTarget(
+                            g_key,
+                            [(dev_id, dev_pk)],
+                            v_list
+                        ) for dev_id, dev_pk in enumerated_dev_pks
+                    ]
+                )
         self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
         graph_list = E.graph_list()
         _job_add_dict = self._get_jobs(dev_dict)
@@ -790,7 +833,7 @@ class RRDGraph(object):
                         # "-nDEFAULT:8:",
                         "-w {:d}".format(graph_width),
                         "-h {:d}".format(graph_height),
-                        "-aPNG",  # image forma
+                        "-aPNG",  # image format
                         # "--daemon", "unix:{}".format(global_config["RRD_CACHED_SOCKET"]),  # rrd caching daemon address
                         "-W {} by init.at".format(settings.INIT_PRODUCT_NAME),  # title
                         "--slope-mode",  # slope mode
@@ -806,12 +849,17 @@ class RRDGraph(object):
                             # improvement: resolve iteratively (for compounds), beautify code
                             dev_vector = vector_dict[cur_pk]
                             dev_compound = compound_dict[cur_pk]
-                            for def_xml in self._resolve_key(graph_key, dev_vector, dev_compound):
+                            for header_str, def_xml in self._resolve_key(graph_key, dev_vector, dev_compound):
                                 _take = True
                                 if "file_name" in def_xml.attrib:
                                     try:
                                         if os.stat(def_xml.attrib["file_name"])[stat.ST_SIZE] < 100:
-                                            self.log("skipping {} (file is too small)".format(def_xml.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                                            self.log(
+                                                "skipping {} (file is too small)".format(
+                                                    def_xml.attrib["file_name"]
+                                                ),
+                                                logging_tools.LOG_LEVEL_ERROR
+                                            )
                                             _take = False
                                     except:
                                         self.log(
@@ -833,6 +881,7 @@ class RRDGraph(object):
                                             graph_key,
                                             dev_dict[cur_pk]
                                         ),
+                                        header_str,
                                         timeshift=self.para_dict["timeshift"]
                                     )
                     if _graph_target.defs:
@@ -841,17 +890,22 @@ class RRDGraph(object):
                         while draw_it:
                             rrd_args = rrd_pre_args + sum([_graph_target.defs[_key] for _key in _graph_target.draw_keys], [])
                             rrd_args.extend(_graph_target.rrd_post_args)
-                            rrd_args.extend([
-                                "--title",
-                                "{} on {} (tf: {})".format(
-                                    _graph_target.graph_key,
-                                    dev_dict.get(
-                                        _graph_target.dev_list[0][1], "unknown"
-                                    ) if len(_graph_target.dev_list) == 1 else logging_tools.get_plural(
-                                        "device", len(_graph_target.dev_list)
-                                    ),
-                                    logging_tools.get_diff_time_str(timeframe)),
-                            ])
+                            rrd_args.extend(
+                                [
+                                    "--title",
+                                    "{} on {} (tf: {})".format(
+                                        _graph_target.header,
+                                        dev_dict.get(
+                                            _graph_target.dev_list[0][1],
+                                            "unknown"
+                                        ) if len(_graph_target.dev_list) == 1 else logging_tools.get_plural(
+                                            "device",
+                                            len(_graph_target.dev_list)
+                                        ),
+                                        logging_tools.get_diff_time_str(timeframe)
+                                    )
+                                ]
+                            )
                             rrd_args.extend(self._create_job_args(_graph_target.dev_list, _job_add_dict))
                             self.proc.flush_rrdcached(_graph_target.file_names)
                             try:
