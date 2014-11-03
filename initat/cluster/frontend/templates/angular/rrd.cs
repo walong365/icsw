@@ -471,7 +471,7 @@ add_rrd_directive = (mod) ->
                                     $scope.error_string = "No vector found"
                             )
             $scope._add_structural_entry = (entry, lut, parent) =>
-                _latest_is_entry = entry._tag == "mve"
+                _latest_is_entry = entry._tag in ["mve", "cve"]
                 parts = entry.name.split(".")
                 _pn = ""
                 for _part in parts
@@ -491,8 +491,8 @@ add_rrd_directive = (mod) ->
                             # value entry
                             $scope._add_value_entry(entry, lut, parent)
                         else
-                            # override name
-                            if entry.display_name?
+                            # override name if display_name is set and this is the structural entry at the bottom
+                            if entry.display_name? and pn == entry.name
                                 display_name = entry.display_name
                             else
                                 display_name = _part
@@ -534,8 +534,8 @@ add_rrd_directive = (mod) ->
                     # pde or mvl, graph_key is top.name + local node name
                     g_key = "#{top._tag}:#{top.name}.#{entry.key}"
                 else
-                    # mve, graph_key is entry.name
-                    g_key = "mve:#{entry.name}"
+                    # mve or cve, graph_key is entry.name
+                    g_key = "#{entry._tag}:#{entry.name}"
                 if $scope.auto_select_re
                     _sel = $scope.auto_select_re.test(xml_node.attr("name"))
                 else
@@ -576,27 +576,22 @@ add_rrd_directive = (mod) ->
                 lut = $scope.lut
                 for entry in mv._nodes
                     _tag = entry._tag
-                    if _tag in ["mve"]
-                        # add machine vector entry
+                    if _tag in ["mve", "cve"]
+                        # add machine vector entry or compound data
                         $scope._add_structural_entry(entry, lut, root_node)
                     else if _tag in ["pde", "mvl"]
                         # add performance data header
                         if _tag == "mvl" and entry.info and entry.name.match(/\.snmp_/g)
                             # hack to beautify snmp network entries
-                            entry.display_name = "[S]   #{entry.info}"
+                            entry.display_name = "[S] #{entry.info}"
                         _pde_mvl = $scope._add_structural_entry(entry, lut, root_node)
                         # add performance data values
                         for _sub in entry._nodes
                             $scope._add_value_entry(_sub, lut, _pde_mvl, entry)
-                    else if _tag in ["compound"]
-                        # add compound data header
-                        _comp = $scope._add_structural_entry(entry, lut, root_node)
-                        for _sub in entry._nodes
-                            $scope._add_value_entry(_sub, lut, _comp, entry)
                     else
                         # unhandled entry
                         true
-                        #console.log entry
+                        console.log entry
 
             $scope.update_search = () ->
                 if $scope.cur_search_to

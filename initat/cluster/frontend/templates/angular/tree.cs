@@ -223,7 +223,9 @@ class tree_config
         @_node_idx++
         new_node = new tree_node(args)
         new_node._is_root_node = false
-        new_node._show_select = true
+        if not new_node._show_select?
+            # only set _show_select if _show_select is not already set
+            new_node._show_select = true
         new_node._idx = @_node_idx
         new_node._depth = 0
         new_node.config = @
