@@ -245,3 +245,6 @@ class handler(SNMPHandler):
                     timeout="{:d}".format(int(time.time()) + 120)
                 )
             )
+
+    def config_mon_check(self):
+        print "*"

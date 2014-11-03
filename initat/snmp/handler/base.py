@@ -44,6 +44,7 @@ class SNMPHandler(object):
                 raise KeyError("key {} missing from SNMPHandler Meta {}".format(_key, str(self)))
         # set flags
         self.Meta.collect = hasattr(self, "collect_fetch")
+        self.Meta.mon_check = hasattr(self, "config_mon_check")
         # set lookup keys
         self.Meta.lookup_keys = [
             "{}.{}_v{:d}".format(
