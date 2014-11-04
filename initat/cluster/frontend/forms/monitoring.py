@@ -1152,7 +1152,7 @@ class mon_check_command_form(ModelForm):
             Field(
                 "mon_check_command_special",
                 repeat="value.idx as value in mccs_list",
-                display="name",
+                display="info",
                 placeholder="please select a special command",
                 filter="{name:$select.search}",
                 null=True,

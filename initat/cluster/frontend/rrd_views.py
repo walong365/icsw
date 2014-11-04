@@ -51,6 +51,7 @@ class device_rrds(View):
 class merge_cds(View):
     @method_decorator(login_required)
     def post(self, request):
+        # return the RRD tree with selected controlling devices
         dev_pks = [_pk for _pk in request.POST.getlist("pks[]")]
         devs = device.objects.filter(Q(pk__in=dev_pks))
         cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=devs)).values_list("pk", flat=True))
