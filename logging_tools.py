@@ -132,12 +132,14 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     )
 
 
-def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True):
+def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True, per_second=False):
     if isinstance(in_s, basestring):
         _len_in_s = len(in_s)
     else:
         _len_in_s = in_s
     b_str = long_format and "Byte" or "B"
+    if per_second:
+        b_str = "{}/s".format(b_str)
     pf_f, pf_str = (["k", "M", "G", "T", "P", "E"], "")
     while in_s > divider:
         in_s = in_s / float(divider)
@@ -145,7 +147,8 @@ def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long
     ret_str = "{} {}{}".format(
         pf_str and "{:6.2f}".format(float(in_s)) or "{:4d}".format(int(in_s)),
         pf_str,
-        b_str)
+        b_str
+    )
     if strip_spaces:
         ret_str = " ".join(ret_str.split())
     return ret_str
