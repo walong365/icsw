@@ -1373,7 +1373,9 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 scope._edit_obj.start_automatically = false
 
             scope.delete_virtual_desktop_user_setting = (vdus) ->
-                vdus.remove().then( () ->
+                vdus["to_delete"] = true
+                #vdus.remove()
+                vdus.put().then( () ->
                     # also remove locally
                     index = scope.virtual_desktop_user_setting.indexOf(vdus)
                     scope.virtual_desktop_user_setting.splice(index, 1)
