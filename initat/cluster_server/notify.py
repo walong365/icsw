@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from initat.cluster.backbone.models.user import virtual_desktop_user_setting
 """ notify mixin for server processes """
 
 from django.db import connection
@@ -36,6 +37,7 @@ import server_command
 BGJ_CM = {
     "sync_users": True,
     "change_bootsetting": True,
+    "reload_virtual_desktop_dispatcher": True
 }
 
 
@@ -137,6 +139,31 @@ class notify_mixin(object):
             cur_bg.state = "done"
             cur_bg.save()
             self.log("{} finished".format(unicode(cur_bg)))
+
+    def _bgjp_reload_virtual_desktop_dispatcher(self, cur_bg):
+        '''
+        Find actual cluster-server of virtual desktop and reload/restart there
+        :param cur_bg:
+        '''
+        _src_com = server_command.srv_command(source=cur_bg.command_xml)
+        vdus = virtual_desktop_user_setting.objects.get(Q(pk=_src_com.xpath(".//ns:object/@pk")[0]))
+
+        srv_com = server_command.srv_command(command="reload_virtual_desktop")
+        srv_com["vdus"] = vdus.pk
+
+        to_run = [
+            (
+                background_job_run(
+                    background_job=cur_bg,
+                    server=vdus.device,
+                    command_xml=unicode(srv_com),
+                    start=cluster_timezone.localize(datetime.datetime.now()),
+                ),
+                srv_com,
+                "server",
+            )
+        ]
+        self._run_bg_jobs(cur_bg, to_run)
 
     def _bgjp_change_bootsetting(self, cur_bg):
         _src_com = server_command.srv_command(source=cur_bg.command_xml)

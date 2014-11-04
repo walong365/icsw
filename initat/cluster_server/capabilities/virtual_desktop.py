@@ -36,14 +36,10 @@ import multiprocessing
 import socket
 import random
 import string
-try:
-    from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, virtual_desktop_user_setting
-except ImportError:
-    virtual_desktop_protocol = None
-    virtual_desktop_user_setting = None
-    window_manager = None
+from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, virtual_desktop_user_setting
 
 
+# utility classes for virtual desktop handling. They are located here but don't have any dependency here.
 class virtual_desktop_server(object):
     uses_websockify = False
 
@@ -61,11 +57,20 @@ class virtual_desktop_server(object):
         self.logger(msg)
 
     @classmethod
-    def get_class_for_protocol(cls, proto):
+    def get_class_for_vdus(cls, vdus):
+        proto = vdus.virtual_desktop_protocol.name
         if proto == "vnc":
             return vncserver
         else:
             raise Exception("Unknown virtual desktop protocol: {}".format(proto))
+
+    @classmethod
+    def get_instance_for_vdus(cls, vdus, log):
+        '''
+        @return virtual_desktop_server
+        '''
+        klass = cls.get_class_for_vdus(vdus)
+        return klass(log, vdus)
 
 
 class vncserver(virtual_desktop_server):
@@ -87,8 +92,8 @@ class vncserver(virtual_desktop_server):
         self.websockify_pid_file = "{}/websockify.pid".format(self.vnc_dir)
         self.vncstartup_file = "{}/xstartup".format(self.vnc_dir)
 
-    def setup(self):
-        # must be called once before first start
+    def _setup(self):
+        # must be called once before first start and not do any harm if called multiple times
         vnc_user_uid = self.vdus.user.uid
 
         # set up files and directories needed for vncserver to start
@@ -130,6 +135,8 @@ class vncserver(virtual_desktop_server):
         os.chmod(self.pwd_file, 0600)
 
     def start(self):
+        self._setup()
+
         # create pw for session
         self.vdus.password = "".join(random.choice(string.ascii_letters + string.digits) for _i in xrange(20))
         self._write_password_file(self.vdus.password)
@@ -138,8 +145,10 @@ class vncserver(virtual_desktop_server):
         self.vdus.effective_port = self.vdus.port if self.vdus.port != 0 else random.randint(*self.PORT_RANGE)
         self.vdus.websockify_effective_port = self.vdus.websockify_port if self.vdus.websockify_port != 0 else self.vdus.effective_port + 1
 
+        self.vdus.last_start_attempt = timezone.now()
+
         # no vdus change below this line
-        self.vdus.save()
+        self.vdus.save_without_signals()
 
         cmd_line = "vncserver"
         cmd_line += " -geometry {} ".format(self.vdus.screen_size)
@@ -275,83 +284,77 @@ class virtual_desktop_stuff(bg_stuff):
                 if _wm_update:
                     wm.save()
 
-        # check if services are running as desired
         for vdus in virtual_desktop_user_setting.objects.filter(device=self.__effective_device):
-            if vdus.is_running:
-                # check if actually running and start in case
-                if not _check_vdus_running(vdus):
-                    try:
-                        klass = virtual_desktop_server.get_class_for_protocol(vdus.virtual_desktop_protocol.name)
-                    except Exception as e:
-                        self.log(e)
-                        continue
+            self.check_vdus_running(vdus, ignore_last_start_attempt=is_first_run)
 
-                    s = klass(self.log, vdus)
+    def check_vdus_running(self, vdus, ignore_last_start_attempt=False):
+        # check if services are running as desired
 
-                    do_start = True
-                    if (timezone.now() - vdus.last_start_attempt) < datetime.timedelta(minutes=5):
-                        do_start = False
-                        # check if pid file has appeared and contains valid pid
-                        pid = s.get_pid_from_file()
-                        self.log("Last start attempt was earlier than 5 minutes, found pid: {}".format(pid))
-                        if pid and _check_process_running(pid):
-                            # startup successful, save pid so we know it's running
+        try:
+            klass = virtual_desktop_server.get_class_for_vdus(vdus)
+        except Exception as e:
+            self.log(e)
+            return  # this is the only early return here
 
-                            websockify_success = False
-                            if s.uses_websockify:
-                                # this server uses websockify and we must track it
-                                websockify_pid = s.get_websockify_pid_from_file()
+        if vdus.is_running:
+            # check if actually running and start in case
+            if not _check_vdus_running(vdus):
+                s = klass(self.log, vdus)
 
-                                self.log("Found websocket pid: {}".format(websockify_pid))
-                                if websockify_pid and _check_process_running(websockify_pid):
-                                    # now we really have everything we need
-                                    vdus.websockify_pid = websockify_pid
-                                    vdus.websockify_process_name = psutil.Process(pid=websockify_pid).name()
-                                    vdus.save()
-                                    websockify_success = True
+                do_start = True
+                if (timezone.now() - vdus.last_start_attempt) < datetime.timedelta(minutes=5):
+                    do_start = False
+                    # check if pid file has appeared and contains valid pid
+                    pid = s.get_pid_from_file()
+                    self.log("Last start attempt was earlier than 5 minutes, found pid: {}".format(pid))
+                    if pid and _check_process_running(pid):
+                        # startup successful, save pid so we know it's running
 
-                            if s.uses_websockify and websockify_success:
-                                vdus.pid = pid
-                                vdus.process_name = psutil.Process(pid=pid).name()
-                                vdus.save()
-                                self.log("Virtual desktop server startup successful")
-                            elif is_first_run:
-                                do_start = True  # if we just restart, we don't want to wait, but still not start the server if it's already running now
-                        else:  # server not running
+                        websockify_success = False
+                        if s.uses_websockify:
+                            # this server uses websockify and we must track it
+                            websockify_pid = s.get_websockify_pid_from_file()
+
+                            if websockify_pid and _check_process_running(websockify_pid):
+                                # now we really have everything we need
+                                vdus.websockify_pid = websockify_pid
+                                vdus.websockify_process_name = psutil.Process(pid=websockify_pid).name()
+                                vdus.save_without_signals()
+                                websockify_success = True
+
+                            self.log("Found websocket pid {}, pid valid: {}".format(websockify_pid, websockify_success))
+
+                        if s.uses_websockify and websockify_success:
+                            vdus.pid = pid
+                            vdus.process_name = psutil.Process(pid=pid).name()
+                            vdus.save_without_signals()
+                            self.log("Virtual desktop server startup successful")
+                        elif ignore_last_start_attempt:
+                            do_start = True  # if we just restart, we don't want to wait, but still not start the server if it's already running now
+                    else:  # server not running
+                        if ignore_last_start_attempt:
+                            do_start = True  # if we just restart, we don't want to wait, but still not start the server if it's already running now
+                        else:
                             self.log("No valid pid found, waiting for it to become available or timeout")
-                            if is_first_run:
-                                do_start = True  # if we just restart, we don't want to wait, but still not start the server if it's already running now
 
-                    if do_start:
-                        # start
-                        self.log("Virtual desktop session {} {} should be running but isn't, starting".format(vdus.virtual_desktop_protocol.name,
-                                                                                                              vdus.window_manager.name))
+                if do_start:
+                    # start
+                    self.log("starting virtual desktop session {} {}".format(vdus.virtual_desktop_protocol.name, vdus.window_manager.name))
 
-                        # for vnc: make sure that both vnc and websockify are not running before starting
-                        s.stop()
-                        s.setup()
-                        s.start()
-                        vdus.last_start_attempt = timezone.now()
-                        vdus.save()
-            else:
-                # check if really not running and stop in case
-                if _check_vdus_running(vdus):
-                    self.log("Virtual desktop session {} {} should not be running but is, stopping".format(vdus.virtual_desktop_protocol.name,
-                                                                                                           vdus.window_manager.name))
-                    try:
-                        klass = virtual_desktop_server.get_class_for_protocol(vdus.virtual_desktop_protocol.name)
-                    except Exception as e:
-                        self.log(e)
-                        continue
-
-                    s = klass(self.log, vdus)
                     s.stop()
+                    s.start()
+        else:
+            # check if really not running and stop in case
+            if _check_vdus_running(vdus):
+                self.log("stopping virtual desktop session {} {}".format(vdus.virtual_desktop_protocol.name, vdus.window_manager.name))
+                s = klass(self.log, vdus)
+                s.stop()
 
 
 def _check_vdus_running(vdus):
     if not _check_process_running(vdus.pid, vdus.process_name):
         return False
-    if virtual_desktop_server.get_class_for_protocol(vdus.virtual_desktop_protocol.name).uses_websockify:
+    if virtual_desktop_server.get_class_for_vdus(vdus).uses_websockify:
         # check websockify
         if not _check_process_running(vdus.websockify_pid, vdus.websockify_process_name):
             return False
