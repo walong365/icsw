@@ -176,7 +176,7 @@ class netdevice_form(ModelForm):
     show_hardware = BooleanField(required=False)
     show_mac = BooleanField(required=False)
     show_vlan = BooleanField(required=False)
-    routing = BooleanField(required=False, label="routing target")
+    routing = BooleanField(required=False, label="network topology central node")
     inter_device_routing = BooleanField(required=False)
     enabled = BooleanField(required=False)
     helper.layout = Layout(
@@ -346,7 +346,7 @@ class peer_information_form(ModelForm):
         HTML("""
 {%verbatim%}
 <h2>
-Peer information from {{ get_peer_src_info(_edit_obj) }}
+Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  (<span ng-show='source_is_local'>source</span><span ng-show='!source_is_local'>destination</span>)
 </h2>
 {% endverbatim %}
@@ -372,7 +372,7 @@ Peer information from {{ get_peer_src_info(_edit_obj) }}
     </div>
     <div class='form-group'>
         <label class='control-label col-sm-2'>
-            Destination
+            Network topology central node
         </label>
         <div class='col-sm-9'>
             <ui-select ng-model="_edit_obj.d_netdevice" ng-required="true">

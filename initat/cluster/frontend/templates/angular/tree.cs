@@ -131,11 +131,15 @@ class tree_node
                         first = false
                     cur_p._sel_descendants += diff
                     cur_p = cur_p.parent
-    add_child: (child) =>
+    add_child: (child, sort_func) =>
         child.parent = @
         child._depth = @_depth + 1
         @_num_childs++
-        @children.push(child)
+        if sort_func?
+            idx = sort_func(@children, child)
+            @children.splice(idx, 0, child)
+        else
+            @children.push(child)
         cur_p = @
         while cur_p
             cur_p._num_descendants += 1 + child._num_descendants
@@ -219,7 +223,9 @@ class tree_config
         @_node_idx++
         new_node = new tree_node(args)
         new_node._is_root_node = false
-        new_node._show_select = true
+        if not new_node._show_select?
+            # only set _show_select if _show_select is not already set
+            new_node._show_select = true
         new_node._idx = @_node_idx
         new_node._depth = 0
         new_node.config = @

@@ -137,7 +137,7 @@ dev_row_template = """
             <ul class="dropdown-menu">
                 <li ng-click="create_netdevice(ndip_obj, $event)"><a href="#">Netdevice</a></li>
                 <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a href="#">IP Address</a></li>
-                <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Peer</a></li>
+                <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Topology central node</a></li>
             </ul>
         </div>
             <button type="button" class="btn btn-warning btn-xs"
@@ -212,7 +212,7 @@ nd_row_template = """
         </button>
         <ul class="dropdown-menu">
             <li ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
-            <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Peer</a></li>
+            <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
         </ul>
     </div>
 </td>

@@ -11,136 +11,167 @@ root = exports ? this
 rrd_graph_template = """
 <div>
     <p class="text-danger">{{ error_string }}</p>
-    <h3 ng-show="vector_valid">
-        Vector info:
-        <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
-        <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
-        <button type="button" ng-class="show_tree && 'btn btn-sm btn-primary' || 'btn btn-sm'" ng-click="show_tree=!show_tree">
-            <span class="glyphicon glyphicon-align-left"></span>
-            tree
-        </button>
-        <button type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" ng-click="show_options=!show_options">
-            <span class="glyphicon glyphicon-wrench"></span>
-            options
-        </button>
-    </h3>
-    <div class="input-group form-inline" ng-show="show_options">
-        <div class="input-group-btn">
-            <button type="button" class="btn btn-xs btn-success" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
-                <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
-             </button>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <div class="btn-group">
-                <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                <span class="glyphicon glyphicon-zoom-in"></span>
-                    {{ cur_dim }} <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                </ul>
+    <h4 ng-show="vector_valid">
+        <div class="input-group form-inline">
+            <div class="form-group">
+                Vector info:
+                <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
+                <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
             </div>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <div class="btn-group">
-                <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                    <span class="glyphicon glyphicon-time"></span>
-                    timerange <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                </ul>
-            </div>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <div class="btn-group">
-                <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
-                    <span class="glyphicon glyphicon-dashboard"></span>
-                    timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
-                </ul>
-            </div>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <div class="btn-group">
-                <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
-                    <span class="glyphicon glyphicon-tasks"></span>
-                    {{ get_job_mode(job_mode) }}<span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
-                </ul>
-            </div>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
-                <span class="glyphicon glyphicon-step-forward"></span>
-            </button>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
-                <span class="glyphicon glyphicon-fast-forward"></span>
-            </button>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <button type="button" ng-class="hide_empty && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
-                <span class="glyphicon glyphicon-ban-circle"></span>
-            </button>
-        </div>&nbsp;
-        <div class="input-group-btn">
-            <button type="button" ng-class="include_zero && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
-                <span class="glyphicon glyphicon-download"></span>
-            </button>
-        </div>&nbsp;
-        <div class="input-group-btn" ng-show="devsel_list.length > 1">
-            <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y" title="scale ordinate to be able to compare graphs">
-                <span class="glyphicon glyphicon-sort"></span>
-            </button>
-        </div>
-        <span ng-show="devsel_list.length > 1">&nbsp;</span>
-        <div class="input-group-btn" ng-show="devsel_list.length > 1">
-            <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
-                <span class="glyphicon glyphicon-th"></span>
-            </button>
-        </div>
-        <span ng-show="devsel_list.length > 1">&nbsp;</span>
-        <div class="input-group">
-            <span class="input-group-addon">
-                 from
-            </span>
-            <input type="text" class="form-control" ng-model="from_date_mom">
-            </input>
-            <span class="dropdown-toggle input-group-addon">
-                <div class="dropdown">
-                    <button class="btn dropdown-toggle btn-xs">
-                         <i class="glyphicon glyphicon-calendar"></i>
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="show_tree=!show_tree">
+                        <span class="glyphicon glyphicon-align-left"></span>
+                        tree
                     </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                    </ul>
                 </div>
-            </span>
-        </div>
-        <div class="input-group">
-            <span class="input-group-addon">
-                 to
-            </span>
-            <input type="text" class="form-control" ng-model="to_date_mom">
-            </input>
-            <span class="dropdown-toggle input-group-addon">
-                <div class="dropdown">
-                    <button class="btn dropdown-toggle btn-xs">
-                         <i class="glyphicon glyphicon-calendar"></i>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" class="btn btn-xs btn-success" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
+                        <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+                     </button>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-zoom-in"></span>
+                            {{ cur_dim }} <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-time"></span>
+                            timerange <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-dashboard"></span>
+                            timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
+                            <span class="glyphicon glyphicon-tasks"></span>
+                            {{ get_job_mode(job_mode) }}<span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
+                        <span class="glyphicon glyphicon-step-forward"></span>
                     </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                    </ul>
                 </div>
-            </span>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
+                        <span class="glyphicon glyphicon-fast-forward"></span>
+                    </button>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="hide_empty && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
+                        <span class="glyphicon glyphicon-ban-circle"></span>
+                    </button>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="include_zero && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
+                        <span class="glyphicon glyphicon-download"></span>
+                    </button>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
+                        <span class="glyphicon glyphicon-off"></span>
+                    </button>
+                </div>
+            </div>&nbsp;
+            <div class="form-group" ng-show="devsel_list.length > 1">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y" title="scale ordinate to be able to compare graphs">
+                        <span class="glyphicon glyphicon-sort"></span>
+                    </button>
+                </div>
+                <div class="input-group-btn">
+                    <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
+                        <span class="glyphicon glyphicon-th"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="input-group">
+                    <span class="input-group-addon">
+                         from
+                    </span>
+                    <input type="text" class="form-control" ng-model="from_date_mom">
+                    </input>
+                    <span class="dropdown-toggle input-group-addon">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle btn-xs">
+                                 <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                            <ul class="dropdown-menu" role="menu">
+                                <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                            </ul>
+                        </div>
+                    </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="input-group">
+                    <span class="input-group-addon">
+                         to
+                    </span>
+                    <input type="text" class="form-control" ng-model="to_date_mom">
+                    </input>
+                    <span class="dropdown-toggle input-group-addon">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle btn-xs">
+                                 <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                            <ul class="dropdown-menu" role="menu">
+                                <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                            </ul>
+                        </div>
+                    </span>
+                </div>
+            </div>
         </div>
-    </div>
+    </h4>
     <div class="row">
         <div class="col-md-3" ng-show="show_tree">  
             <div class="input-group">
@@ -253,16 +284,12 @@ class rrd_tree extends tree_config
     get_name : (t_entry) ->
         if t_entry._node_type == "h"
             return "vector"
-        else if t_entry._node_type == "s"
-            if t_entry.node.attr("devices")?
-                return t_entry._name + " (" + t_entry.node.attr("devices") + ")"
-            else
-                return t_entry._name
         else
-            if t_entry.node.attr("devices")?
-                return t_entry._name + " (" + t_entry.node.attr("devices") + ")"
+            node_name = t_entry._display_name
+            if t_entry._dev_pks.length > 1
+                return "#{node_name} (#{t_entry._dev_pks.length})"
             else
-                return t_entry._name
+                return node_name
     get_title: (t_entry) ->
         if t_entry._node_type == "e"
             return t_entry._g_key
@@ -342,9 +369,10 @@ add_rrd_directive = (mod) ->
             $scope.job_mode = $scope.job_modes[0]
             $scope.selected_job = 0
             $scope.include_zero = true
+            $scope.cds_already_merged = false
+            $scope.merge_cd = false
             $scope.scale_y = true
             $scope.merge_devices = false
-            $scope.show_options = false
             $scope.show_tree = true
             $scope.g_tree = new rrd_tree($scope)
             $scope.$watch("from_date_mom", (new_val) ->
@@ -404,85 +432,195 @@ add_rrd_directive = (mod) ->
             $scope.new_devsel = (_dev_sel, _devg_sel) ->
                 $scope.devsel_list = _dev_sel
                 $scope.reload()
+
+            $scope.toggle_merge_cd = () ->
+                $scope.merge_cd = !$scope.merge_cd
+                if $scope.merge_cd and not $scope.cds_already_merged
+                    $scope.cds_already_merged = true
+                    call_ajax
+                        url  : "{% url 'rrd:merge_cds' %}"
+                        data : {
+                            "pks" : $scope.devsel_list
+                        }
+                        dataType: "json"
+                        success : (json) =>
+                            $scope.feed_rrd_json(json)
+
             $scope.reload = () ->
                 $scope.vector_valid = false
                 call_ajax
                     url  : "{% url 'rrd:device_rrds' %}"
                     data : {
-                        "pks" : angular.toJson($scope.devsel_list)
+                        "pks" : $scope.devsel_list
                     }
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            $scope.vector = $(xml).find("machine_vector")
-                            if $scope.vector.length
-                                # we only get one vector at most (due to merge_results=1 in rrd_views.py)
-                                # node_result
-                                num_devs = parseInt($(xml).find("node_result").attr("devices") ? "1")
-                                if $scope.auto_select_keys.length
-                                    $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
-                                else
-                                    $scope.auto_select_re = null
-                                $scope.add_nodes(undefined, $scope.vector)
-                                $scope.is_loading = false
-                                $scope.$apply(
-                                    $scope.vector_valid = true
-                                    $scope.num_struct = $scope.vector.find("entry").length
-                                    $scope.num_devices = num_devs
-                                    $scope.num_mve = $scope.vector.find("mve").length
-                                    $scope.num_mve_sel = 0
-                                    if $scope.auto_select_re
-                                        # recalc tree when an autoselect_re is present
-                                        $scope.g_tree.show_selected(false)
-                                        $scope.selection_changed()
-                                        if $scope.draw_on_init and $scope.num_mve_sel
-                                            $scope.draw_graph()
-                                ) 
-                            else
-                                $scope.error_string = "No vector found"
-                                $scope.$digest()
-            $scope.add_nodes = (p_node, xml_node) =>
-                if p_node == undefined
-                    cur_node = $scope.g_tree.new_node({
-                        folder : true
-                        expand : true
-                        _node_type : "h"
-                    })
-                    cur_node._show_select = false
-                    $scope.g_tree.add_root_node(cur_node)
+                    dataType: "json"
+                    success : (json) =>
+                        $scope.feed_rrd_json(json)
+            
+            $scope.feed_rrd_json = (json) ->
+                if "error" of json
+                    noty
+                        text : json["error"]
+                        type : "error"
                 else
-                    _tag = xml_node.prop("tagName")
-                    if _tag == "entry"
-                        # structural
-                        cur_node = $scope.g_tree.new_node({
-                            folder : true,
-                            expand : false
-                            node   : xml_node
-                            _name  : xml_node.attr("part")
-                            _node_type : "s"
-                        })
-                        cur_node._show_select = false
-                    else if _tag == "cve_entry"
-                        # ignore cve entries
-                        cur_node = null
+                    if $scope.auto_select_keys.length
+                        $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
                     else
-                        if $scope.auto_select_re
-                            _sel = $scope.auto_select_re.test(xml_node.attr("name"))
+                        $scope.auto_select_re = null
+                    # to machine vector
+                    $scope.num_devices = 0
+                    root_node = $scope.init_machine_vector()
+                    $scope.num_struct = 0
+                    $scope.num_mve = 0
+                    for dev in json._nodes
+                        if dev._nodes?
+                            mv = dev._nodes[0]
+                            $scope.add_machine_vector(root_node, dev.pk, mv)
+                            if dev._nodes.length > 1
+                                # compound
+                                $scope.add_machine_vector(root_node, dev.pk, dev._nodes[1])
+                            $scope.num_devices++
+                    $scope.is_loading = false
+                    $scope.$apply(
+                        $scope.vector_valid = if $scope.num_struct then true else false
+                        if $scope.vector_valid
+                            $scope.error_string = ""
+                            $scope.num_mve_sel = 0
+                            if $scope.auto_select_re or $scope.cur_selected.length
+                                # recalc tree when an autoselect_re is present
+                                $scope.g_tree.show_selected(false)
+                                $scope.selection_changed()
+                                if $scope.draw_on_init and $scope.num_mve_sel
+                                    $scope.draw_graph()
                         else
-                            _sel = false
-                        # value
-                        cur_node = $scope.g_tree.new_node({
-                            folder : false
-                            expand : false
-                            selected : _sel
-                            node   : xml_node
-                            _g_key : xml_node.attr("name")
-                            _name  : xml_node.attr("info")
-                            _node_type : "e"
-                        })
-                    if cur_node
-                        p_node.add_child(cur_node)
-                for sub_node in xml_node.children()
-                    $scope.add_nodes(cur_node, $(sub_node))
+                            $scope.error_string = "No vector found"
+                    )
+
+            $scope._add_structural_entry = (entry, lut, parent) =>
+                _latest_is_entry = entry._tag in ["mve", "cve"]
+                parts = entry.name.split(".")
+                _pn = ""
+                for _part in parts
+                    if pn
+                        pn = "#{pn}.#{_part}"
+                    else
+                        pn = _part
+                    if pn of lut
+                        cur_node = lut[pn]
+                        if $scope.mv_dev_pk not in cur_node._dev_pks
+                            cur_node._dev_pks.push($scope.mv_dev_pk)
+                        if pn == entry.name and _latest_is_entry
+                            true
+                    else
+                        if pn == entry.name and _latest_is_entry
+                            # value entry
+                            $scope._add_value_entry(entry, lut, parent)
+                        else
+                            # override name if display_name is set and this is the structural entry at the bottom
+                            if entry.display_name? and pn == entry.name
+                                display_name = entry.display_name
+                            else
+                                display_name = _part
+                            # structural
+                            cur_node = $scope.g_tree.new_node({
+                                folder : true,
+                                expand : false
+                                _name  : _part
+                                _display_name: display_name
+                                _mult : 1
+                                _dev_pks : [$scope.mv_dev_pk]
+                                _node_type : "s"
+                                _show_select: false
+                            })
+                            $scope.num_struct++
+                            lut[pn] = cur_node
+                            parent.add_child(cur_node, $scope._child_sort)
+                    parent = cur_node
+                return parent
+            
+            $scope._child_sort = (list, new_node) ->
+                _idx = 0
+                for _entry in list
+                    if _entry._display_name > new_node._display_name
+                        break
+                    _idx++
+                return _idx
+                
+            $scope._expand_info = (info, g_key) =>
+                _num = 0
+                for _var in g_key.split(":")[1].split(".")
+                    _num++
+                    info = info.replace("$#{_num}", _var)
+                return info
+                
+            $scope._add_value_entry = (entry, lut, parent, top) =>
+                # top is the parent node from the machine vector (or undefined)
+                if top?
+                    # pde or mvl, graph_key is top.name + local node name
+                    g_key = "#{top._tag}:#{top.name}.#{entry.key}"
+                else
+                    # mve or cve, graph_key is entry.name
+                    g_key = "#{entry._tag}:#{entry.name}"
+                if $scope.cur_selected.length
+                    _sel = g_key in $scope.cur_selected
+                else if $scope.auto_select_re
+                    _sel = $scope.auto_select_re.test(g_key)
+                else
+                    _sel = false
+                if g_key of lut
+                    cur_node = lut[g_key]
+                else
+                    cur_node = $scope.g_tree.new_node({
+                        folder : false
+                        expand : false
+                        node   : entry
+                        selected: _sel
+                        _dev_pks: []
+                        _name  : entry.info
+                        _display_name: $scope._expand_info(entry.info, g_key)
+                        _node_type : "e"
+                        _show_select: true
+                        _g_key : g_key
+                    })
+                    $scope.num_mve++
+                    lut[g_key] = cur_node
+                    parent.add_child(cur_node, $scope._child_sort)
+                cur_node._dev_pks.push($scope.mv_dev_pk)
+            
+            $scope.init_machine_vector = () =>
+                $scope.lut = {}
+                $scope.g_tree.clear_root_nodes()
+                root_node = $scope.g_tree.new_node({
+                    folder : true
+                    expand : true
+                    _node_type : "h"
+                    _show_select : false
+                })
+                $scope.g_tree.add_root_node(root_node)
+                return root_node
+
+            $scope.add_machine_vector = (root_node, dev_pk, mv) =>
+                $scope.mv_dev_pk = dev_pk
+                lut = $scope.lut
+                for entry in mv._nodes
+                    _tag = entry._tag
+                    if _tag in ["mve", "cve"]
+                        # add machine vector entry or compound data
+                        $scope._add_structural_entry(entry, lut, root_node)
+                    else if _tag in ["pde", "mvl"]
+                        # add performance data header
+                        if _tag == "mvl" and entry.info and entry.name.match(/\.snmp_/g)
+                            # hack to beautify snmp network entries
+                            entry.display_name = "[S] #{entry.info}"
+                        _pde_mvl = $scope._add_structural_entry(entry, lut, root_node)
+                        # add performance data values
+                        for _sub in entry._nodes
+                            $scope._add_value_entry(_sub, lut, _pde_mvl, entry)
+                    else
+                        # unhandled entry
+                        true
+                        console.log entry
+
             $scope.update_search = () ->
                 if $scope.cur_search_to
                     $timeout.cancel($scope.cur_search_to)
@@ -539,6 +677,9 @@ add_rrd_directive = (mod) ->
                         "job_mode"      : $scope.job_mode
                         "selected_job"  : $scope.selected_job 
                         "include_zero"  : $scope.include_zero
+                        "merge_cd"      : $scope.merge_cd
+                        # flag if the controlling devices are shown in the rrd tree
+                        "cds_already_merged" : $scope.cds_already_merged
                         "scale_y"       : $scope.scale_y
                         "merge_devices" : $scope.merge_devices
                         "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
