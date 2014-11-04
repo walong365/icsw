@@ -24,6 +24,7 @@
 from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.struct import ext_com
 from initat.snmp.sink import SNMPSink
+from initat.snmp.struct import value_cache
 from lxml import etree  # @UnresolvedImports
 from lxml.builder import E  # @UnresolvedImports
 import logging_tools
@@ -91,32 +92,6 @@ def parse_ipmi(in_lines):
                     limits = {key: l_val for key, l_val in zip(IPMI_LIMITS, [{"na": ""}.get(value, value) for value in parts[4:10]])}
                     result[key] = (float(parts[1]), info, unit, base, limits)
     return result
-
-
-class value_cache(object):
-    def __init__(self):
-        # timestamp dict, defaults to None
-        self.__ts_dict = {}
-        self.__values = {}
-
-    def set(self, key, _dict):
-        self.__ts_dict[key] = time.time()
-        self.__values[key] = _dict
-
-    def is_set(self, key):
-        if key in self.__ts_dict:
-            self.__cur_value = self.__values[key]
-            self.__dt = max(abs(time.time() - self.__ts_dict[key]), 1)
-            return True
-        else:
-            return False
-
-    def get_value(self, cur_dict, sub_key):
-        _val = (cur_dict[sub_key] - self.__cur_value[sub_key]) / (self.__dt)
-        if _val < 0:
-            # wrap around
-            _val = 0
-        return _val
 
 
 class snmp_job(object):
