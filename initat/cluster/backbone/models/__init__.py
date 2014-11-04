@@ -65,7 +65,7 @@ from initat.cluster.backbone.models.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.models.partition import *  # @UnusedWildImport
 from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
-    bootsettings_changed
+    bootsettings_changed, virtual_desktop_user_setting_changed
 
 
 # do not use, problems with import
@@ -130,6 +130,11 @@ def user_changed(*args, **kwargs):
 @receiver(group_changed)
 def group_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["group"])
+
+
+@receiver(virtual_desktop_user_setting_changed)
+def vdus_changed(*args, **kwargs):
+    _insert_bg_job("reload_virtual_desktop_dispatcher", kwargs["cause"], kwargs["vdus"])
 
 
 @receiver(bootsettings_changed)

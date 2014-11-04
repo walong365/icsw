@@ -30,7 +30,8 @@ from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
-from initat.cluster.backbone.signals import user_changed, group_changed
+from initat.cluster.backbone.signals import user_changed, group_changed, \
+    virtual_desktop_user_setting_changed
 import base64
 import crypt
 import django.core.serializers
@@ -1193,6 +1194,31 @@ class virtual_desktop_user_setting(models.Model):
     process_name = models.CharField(max_length=256, default="", blank=True)
 
     last_start_attempt = models.DateTimeField(default=datetime.datetime.fromtimestamp(0), blank=True)
+
+    def __init__(self, *args, **kwargs):
+        super(virtual_desktop_user_setting, self).__init__(*args, **kwargs)
+        self._send_signals = True  # query this is handlers
+
+    def save_without_signals(self):
+        self._send_signals = False
+        self.save()
+        self._send_signals = True
+
+
+@receiver(signals.post_save, sender=virtual_desktop_user_setting)
+def virtual_desktop_user_setting_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        if _cur_inst._send_signals:
+            virtual_desktop_user_setting_changed.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
+
+
+@receiver(signals.post_delete, sender=virtual_desktop_user_setting)
+def virtual_desktop_user_setting_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        if _cur_inst._send_signals:
+            virtual_desktop_user_setting_changed.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_delete")
 
 
 class virtual_desktop_protocol(models.Model):
