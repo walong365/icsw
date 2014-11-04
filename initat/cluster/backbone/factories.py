@@ -369,6 +369,12 @@ class SNMPNetworkType(factory.django.DjangoModelFactory):
         django_get_or_create = ("if_type",)
 
 
+def _check_boolean(obj, new_val, attr_name):
+    if getattr(obj, attr_name) != new_val:
+        setattr(obj, attr_name, new_val)
+        obj.save()
+
+
 class SNMPScheme(factory.django.DjangoModelFactory):
     class Meta:
         model = snmp_scheme
@@ -376,17 +382,15 @@ class SNMPScheme(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def collect(self, create, extracted, **kwargs):
-        extracted = extracted or False
-        if self.collect != extracted:
-            self.collect = extracted
-            self.save()
+        _check_boolean(self, extracted or False, "collect")
 
     @factory.post_generation
     def initial(self, create, extracted, **kwargs):
-        extracted = extracted or False
-        if self.initial != extracted:
-            self.initial = extracted
-            self.save()
+        _check_boolean(self, extracted or False, "initial")
+
+    @factory.post_generation
+    def mon_check(self, create, extracted, **kwargs):
+        _check_boolean(self, extracted or False, "mon_check")
 
     @factory.post_generation
     def description(self, create, extracted, **kwargs):

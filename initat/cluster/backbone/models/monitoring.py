@@ -325,6 +325,10 @@ class mon_check_command_special(models.Model):
     description = models.CharField(max_length=256, default="")
     is_active = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+    # triggers other commands
+    meta = models.BooleanField(default=False)
+    # for commands from a meta-command
+    parent = models.ForeignKey("self", null=True)
 
     @property
     def md_name(self):
