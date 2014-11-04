@@ -18,10 +18,10 @@
 """ SNMP schemes for SNMP relayer """
 
 from initat.host_monitoring import limits
-from initat.snmp.struct import simple_snmp_oid
+from initat.snmp.struct import snmp_oid, value_cache
 import cStringIO
 import logging_tools
-import optparse
+import argparse
 import process_tools
 import socket
 import sys
@@ -45,45 +45,15 @@ class net_object(object):
         # self.__oid_times = {}
         # self.__time_steps = {}
         self.__oid_cache_defaults = {}
+        # partially taken from collectd / background
+        self.value_cache = value_cache()
         log_com(
-            "init new host_object (%s, %s, %d)" % (
+            "init new host_object ({}, {}, {:d})".format(
                 self.name,
                 self.snmp_community,
                 self.snmp_version
             )
         )
-
-    def register_oids(self, log_com, oid_list):
-        # to get a sense for the required cache-timing, not used right now
-        return
-        # act_time = time.time()
-        # if self.__verbose_level > 1:
-        #    self.log(log_com, "need %s" % (logging_tools.get_plural("oid", len(oid_list))))
-        # for oid in oid_list:
-        #    act_list = self.__oid_times.setdefault(oid, [])
-        #    act_list.append(act_time)
-        #    if len(act_list) > 10:
-        #        act_list.pop(0)
-        #    print act_list
-        #    if len(act_list) > 2:
-        #        # 3 values are enough, calculate the mean time between different calls
-        #        self.__time_steps[oid] = sum([act_list[idx + 1] - act_list[idx] for idx in xrange(len(act_list) - 1)]) / (len(act_list) - 1)
-        #        if False:
-        #            self.log(
-        #                log_com,
-        #                "timestream info (%d entries, oid %s, time_steps: %d): %s" % (
-        #                    len(act_list),
-        #                    str(oid),
-        #                    self.__time_steps[oid],
-        #                    ", ".join(["%d" % (cur_value - act_list[0]) for cur_value in act_list])))
-        #        if oid in self.__oid_cache_defaults and self.__time_steps[oid] > self.__oid_cache_defaults[oid]["timeout"]:
-        #            # do we really need this ?
-        #            # log and modify
-        #            self.log(log_com, "modifying timeout for %s from %d to %d" % (
-        #                str(oid),
-        #                self.__oid_cache_defaults[oid]["timeout"],
-        #                self.__time_steps[oid] + 10))
-        #            self.__oid_cache_defaults[oid]["timeout"] = self.__time_steps[oid] + 10
 
     def log(self, log_com, what, log_level=logging_tools.LOG_LEVEL_OK):
         log_com("[%s] %s" % (self.name, what), log_level)
@@ -130,35 +100,10 @@ class net_object(object):
         return self.__cache_tree[oid]["tree"]
 
 
-class snmp_oid(simple_snmp_oid):
-    def __init__(self, *oid, **kwargs):
-        simple_snmp_oid.__init__(self, *oid)
-        self.single_value = kwargs.get("single_value", False)
-        # store oid in tuple-form
-        self._max_oid = kwargs.get("max_oid", None)
-        if self._max_oid:
-            self._max_oid_len = len(self._max_oid)
-            self._str_max_oid = ".".join(["{:d}".format(i_val) for i_val in self._max_oid])
-        else:
-            self._max_oid_len, self._str_max_oid = (0, "")
-        self.cache_it = kwargs.get("cache", False)
-        if self.cache_it:
-            # time after which cache invalidates
-            self.cache_timeout = kwargs.get("cache_timeout", 60)
-            # timer after which cache should be refreshed
-            self.refresh_timeout = kwargs.get("refresh_timeout", self.cache_timeout / 2)
-
-    def has_max_oid(self):
-        return True if self._max_oid else False
-
-    def get_max_oid(self):
-        return self._str_max_oid
-
-
 class snmp_scheme(object):
     def __init__(self, name, **kwargs):
         self.name = name
-        self.parser = optparse.OptionParser(usage="", prog=self.name)
+        self.parser = argparse.ArgumentParser(usage="", prog=self.name)
         self.__init_time = kwargs["init_time"]
         # public stuff
         self.snmp_dict = {}
@@ -194,29 +139,21 @@ class snmp_scheme(object):
         act_io = cStringIO.StringIO()
         sys.stdout = act_io
         sys.stderr = act_io
-        self.opts, self.args = ({}, [])
+        one_integer_ok = kwargs.get("one_integer_arg_allowed", False)
+        if one_integer_ok:
+            self.parser.add_argument("iarg", type=int, default=0)
+        self.opts = argparse.Namespace()
         try:
-            self.opts, self.args = self.parser.parse_args(options)
+            self.opts = self.parser.parse_args(options)
         except SystemExit:
             self.__errors.append(act_io.getvalue())
         except:
             self.__errors.append(act_io.getvalue())
         finally:
-            sys.stdout, sys.stderr = (old_stdout,
-                                      old_stderr)
-        one_integer_ok = kwargs.get("one_integer_arg_allowed", False)
-        args_ok = kwargs.get("add_args_ok", False) or one_integer_ok
-        if self.args:
-            if not args_ok:
-                self.__errors.append("no additional arguments allowed")
-            if one_integer_ok:
-                if len(self.args) == 1:
-                    if self.args[0].isdigit():
-                        self.args = [int(self.args[0])]
-                    else:
-                        self.__errors.append("only one integer argument allowed")
-                else:
-                    self.__errors.append("only one integer argument allowed")
+            sys.stdout, sys.stderr = (
+                old_stdout,
+                old_stderr
+            )
 
     def get_missing_headers(self):
         # for subclasses
@@ -236,7 +173,6 @@ class snmp_scheme(object):
             act_oids, _pending_oids = (set(self.__hv_mapping.keys()), set())
             # check for caching and already pending requests
             # self.net_obj.lock()
-            self.net_obj.register_oids(log_com, act_oids)
             cache_ok = all(
                 [
                     True if oid_struct.cache_it and self.net_obj.snmp_tree_valid(wf_oid) else False for wf_oid, oid_struct in self.__hv_mapping.iteritems()
@@ -250,8 +186,10 @@ class snmp_scheme(object):
             else:
                 num_cached = 0
             # check for oids already pending (no need for double fetch)
-            pending, hot_enough = (self.net_obj.get_pending_requests(act_oids, log_com),
-                                   self.net_obj.cache_still_hot_enough(act_oids, log_com))
+            pending, hot_enough = (
+                self.net_obj.get_pending_requests(act_oids, log_com),
+                self.net_obj.cache_still_hot_enough(act_oids, log_com)
+            )
             act_oids -= pending
             # also remove oids for which the cache needs no upgrade
             act_oids -= hot_enough
@@ -274,15 +212,23 @@ class snmp_scheme(object):
     def snmp_start(self):
         if self.__act_oids:
             # order requests
-            request_list = [(key, [oid for oid in self.requests if oid.single_value == single_value and tuple(oid) in self.__act_oids])
-                            for (key, single_value) in [("V", True), ("T", False)]]
+            request_list = [
+                (
+                    key,
+                    [
+                        oid for oid in self.requests if oid.single_value == single_value and tuple(oid) in self.__act_oids
+                    ]
+                ) for (key, single_value) in [
+                    ("V", True),
+                    ("T", False)
+                ]
+            ]
         else:
             request_list = []
         # print "3", request_list
         return request_list
 
     def snmp_end(self, log_com):
-        self.parser.destroy()
         # remove all waiting headers from pending_list
         # self.net_obj.lock()
         self.net_obj.remove_from_pending_requests(self.__waiting_for)
@@ -310,7 +256,7 @@ class snmp_scheme(object):
         self.__errors.append(what)
 
     def process_return(self):
-        return limits.nag_STATE_CRITICAL, "process_return() not implemented for %s" % (self.name)
+        return limits.nag_STATE_CRITICAL, "process_return() not implemented for {}".format(self.name)
 
     def _send_cache_warn(self):
         act_state = limits.nag_STATE_WARNING
@@ -324,7 +270,9 @@ class snmp_scheme(object):
                 limits.nag_STATE_CRITICAL,
                 "error in process_return() for {}: {}".format(
                     self.name,
-                    process_tools.get_except_info()))
+                    process_tools.get_except_info()
+                )
+            )
         self.send_return(act_state, act_str)
 
     def error(self):
@@ -347,8 +295,6 @@ class snmp_scheme(object):
                 self.return_tuple[1],
                 self.return_tuple[0],
             )
-    # self.ret_queue.put(("snmp_result", (self.__pid, self.__init_time, ret_state, ret_str, log_it)))
-    # helper functions
 
     def _simplify_keys(self, in_dict):
         # changes all keys from (x,) to x
@@ -404,8 +350,8 @@ class load_scheme(snmp_scheme):
         snmp_scheme.__init__(self, "load", **kwargs)
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.4.1.2021.10.1.3", cache=True)
-        self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=5.0)
-        self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=10.0)
+        self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=5.0)
+        self.parser.add_argument("-c", type=float, dest="crit", help="critical value [%(default)s]", default=10.0)
         self.parse_options(kwargs["options"])
 
     def process_return(self):
@@ -547,8 +493,8 @@ class check_snmp_qos_scheme(snmp_scheme):
             "cb_qos_bit_rate": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 15, 1, 1, 11),
             "cb_qos_dropper_rate": (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 15, 1, 1, 18)
         }
-        self.parser.add_option("-k", type="str", dest="key", help="QOS keys [%default]", default="1")
-        self.parser.add_option("-z", type="str", dest="qos_ids", help="QOS Ids [%default]", default="")
+        self.parser.add_argument("-k", type=str, dest="key", help="QOS keys [%(default)s]", default="1")
+        self.parser.add_argument("-z", type=str, dest="qos_ids", help="QOS Ids [%(default)s]", default="")
         self.parse_options(kwargs["options"])
         self.transform_single_key = True
         if self.opts.key.count(","):
@@ -1103,8 +1049,8 @@ class eonstor_proto_scheme(snmp_scheme):
         return self._generate_return(self.handle_dict(pre_dict))
 
     def _generate_return(self, dev_dict):
-        if self.args:
-            dev_idx = self.args[0]
+        if "iarg" in self.opts:
+            dev_idx = self.opts["iarg"]
         else:
             dev_idx = 0
         ret_state, ret_field = (limits.nag_STATE_OK, [])
@@ -1258,7 +1204,7 @@ class port_info_scheme(snmp_scheme):
         self.requests = [
             snmp_oid(self.__th_mac, cache=True, cache_timeout=240),
             snmp_oid(self.__th_type, cache=True, cache_timeout=240)]
-        self.parser.add_option("--arg0", type="int", dest="p_num", help="port number [%default]", default=0)
+        self.parser.add_argument("--arg0", type=int, dest="p_num", help="port number [%(default)s]", default=0)
         self.parse_options(kwargs["options"])
 
     def _transform_macs(self, mac_list):
@@ -1440,8 +1386,8 @@ class usv_apc_battery_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "usv_apc_battery", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 2, 2), cache=True)
-        self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=35.0)
-        self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=40.0)
+        self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=35.0)
+        self.parser.add_argument("-c", type=float, dest="crit", help="critical value [%(default)s]", default=40.0)
         self.parse_options(kwargs["options"])
 
     def process_return(self):
@@ -1570,8 +1516,8 @@ class temperature_probe_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "temperature_probe_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 1), cache=True)
-        self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=35.0)
-        self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=40.0)
+        self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=35.0)
+        self.parser.add_argument("-c", type=float, dest="crit", help="critical value [%(default)s]", default=40.0)
         self.parse_options(kwargs["options"])
 
     def process_return(self):
@@ -1594,8 +1540,8 @@ class temperature_probe_hum_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "temperature_probe_hum_scheme", **kwargs)
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 2), cache=True)
-        self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=80.0)
-        self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=95.0)
+        self.parser.add_argument("-w", type=float, dest="warn", help="warning value [%(default)s]", default=80.0)
+        self.parser.add_argument("-c", type=float, dest="crit", help="critical value [%(default)s]", default=95.0)
         self.parse_options(kwargs["options"])
 
     def process_return(self):
@@ -1617,7 +1563,14 @@ class temperature_probe_hum_scheme(snmp_scheme):
 class temperature_knurr_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "temperature_knurr_scheme", **kwargs)
-        self.parser.add_option("--type", type="choice", dest="sensor_type", choices=["outlet", "inlet"], help="temperature probe [%default]", default="outlet")
+        self.parser.add_argument(
+            "--type",
+            type="choice",
+            dest="sensor_type",
+            choices=["outlet", "inlet"],
+            help="temperature probe [%(default)s]",
+            default="outlet"
+        )
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 1), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
 
@@ -1695,3 +1648,15 @@ class environment_knurr_scheme(snmp_scheme):
         return cur_state, ", ".join([
             "{}: {}".format(info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(new_dict.keys())
         ])
+
+
+class SNMPGenScheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        self.handler = kwargs.pop("handler")
+        snmp_scheme.__init__(self, self.handler.Meta.name, **kwargs)
+        self.handler.parser_setup(self.parser)
+        self.parse_options(kwargs["options"])
+        self.requests = self.handler.mon_start(self)
+
+    def process_return(self):
+        return self.handler.mon_result(self)

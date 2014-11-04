@@ -21,6 +21,7 @@ from initat.host_monitoring import limits
 from initat.snmp_relay import snmp_relay_schemes
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 from initat.snmp.process import snmp_process_container
+from initat.snmp.sink import SNMPSink
 import configfile
 import difflib
 import logging_tools
@@ -72,13 +73,21 @@ class server_process(threading_tools.process_pool):
             self.__log_cache.append((lev, what))
 
     def _check_schemes(self):
-        self.__all_schemes = {}
+        self.__local_schemes = {}
         glob_keys = dir(snmp_relay_schemes)
         for glob_key in sorted(glob_keys):
             if glob_key.endswith("_scheme") and glob_key != "snmp_scheme":
                 glob_val = getattr(snmp_relay_schemes, glob_key)
                 if issubclass(glob_val, snmp_relay_schemes.snmp_scheme):
-                    self.__all_schemes[glob_key[:-7]] = glob_val
+                    self.__local_schemes[glob_key[:-7]] = glob_val
+        # add snmp sink schemes
+        self.snmp_sink = SNMPSink(self.log)
+        _mon_handlers = [_handler for _handler in self.snmp_sink.handlers if _handler.Meta.mon_check]
+        self.log("found {} with monitoring capability".format(logging_tools.get_plural("SNMP handler", len(_mon_handlers))))
+        self.__gen_schemes = {}
+        for _mh in _mon_handlers:
+            for _mc in _mh.config_mon_check():
+                self.__gen_schemes["SS:{}".format(_mc.Meta.name)] = _mc
 
     def _init_host_objects(self):
         self.__host_objects = {}
@@ -123,14 +132,6 @@ class server_process(threading_tools.process_pool):
         self.__msi_block.save_block()
         process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
 
-    # def _get_unique_process_name(self, loc_name):
-    #    self.__snmp_process_id += 1
-    #    self.__snmp_process_id %= 1000
-    #    full_name = "snmp_{:d}".format(self.__snmp_process_id)
-    #    self.__process_mapping[full_name] = loc_name
-    #    self.log("process mapping: {} => {}".format(full_name, loc_name))
-    #    return full_name
-
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
         if host_tuple not in self.__host_objects:
@@ -164,19 +165,6 @@ class server_process(threading_tools.process_pool):
         # msi_block.heartbeat_timeout = 120
         msi_block.save_block()
         self.__msi_block = msi_block
-
-    # def process_start(self, src_process, src_pid):
-    #    print "PS"
-    #    _loc_name = self.__process_mapping[src_process]
-    #    proc_struct = self.__process_dict[_loc_name]
-    #    # set state to running
-    #    proc_struct["state"] = "running"
-    #    proc_struct["calls_done"] = 0
-    #    proc_struct["calls_init"] = 0
-    #    process_tools.append_pids(self.__pid_name, src_pid, mult=3)
-    #    if self.__msi_block:
-    #        self.__msi_block.add_actual_pid(src_pid, mult=3, fuzzy_ceiling=3, process_name=_loc_name)
-    #        self.__msi_block.save_block()
 
     def _int_error(self, err_cause):
         self.log("_int_error() called, cause %s" % (str(err_cause)), logging_tools.LOG_LEVEL_WARN)
@@ -283,25 +271,7 @@ class server_process(threading_tools.process_pool):
                 self.log("ip resolving: %s -> %s" % (orig_target, ip_addr))
         return ip_addr
 
-    # def process_exit(self, p_name, p_pid):
-    #    _loc_name = self.__process_mapping[p_name]
-    #    if not self["exit_requested"]:
-    #        process_tools.remove_pids(self.__pid_name, pid=p_pid)
-    #        self.__msi_block.remove_actual_pid(p_pid)
-    #        self.__msi_block.save_block()
-    #        self.log("helper process {} (=={}) stopped, restarting".format(p_name, _loc_name))
-    #        del self.__process_mapping[p_name]
-    #        proc_struct = self.__process_dict[_loc_name]
-    #        full_name = self._get_unique_process_name(_loc_name)
-    #        proc_struct["process_name"] = full_name
-    #        conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
-    #        proc_struct["socket"] = self.add_process(snmp_process(full_name, conf_dict=conf_dict), start=True)
-
     def _snmp_finished(self, data):  # src_proc, src_pid, *args, **kwargs):
-        # _loc_name = self.__process_mapping[src_proc]
-        # proc_struct = self.__process_dict[_loc_name]
-        # proc_struct["in_use"] = False
-        # proc_struct["calls_done"] += 1
         envelope, error_list, _received, snmp_dict = data["args"]
         cur_scheme = self.__pending_schemes[envelope]
         cur_scheme.snmp = snmp_dict
@@ -398,7 +368,7 @@ class server_process(threading_tools.process_pool):
                         com_part = cur_str[cur_size + 1:]
                         arg_list.append(cur_str[:cur_size].decode("utf-8"))
                     if com_part:
-                        raise ValueError("not fully parsed (%s)" % (com_part))
+                        raise ValueError("not fully parsed ({})".format(com_part))
                 except:
                     self.log("error parsing %s" % (body), logging_tools.LOG_LEVEL_ERROR)
                     arg_list = []
@@ -417,47 +387,70 @@ class server_process(threading_tools.process_pool):
                 self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
             else:
                 self.__ret_dict[envelope] = time.time()
-                act_scheme = self.__all_schemes.get(scheme, None)
-                if act_scheme:
+                if scheme in self.__local_schemes:
+                    act_scheme, s_type = (self.__local_schemes[scheme], "L")
+                elif scheme in self.__gen_schemes:
+                    act_handler, s_type = (self.__gen_schemes[scheme], "G")
+                else:
+                    s_type = None
+                if s_type:
                     host = self._resolve_address(host)
                     host_obj = self._get_host_object(host, snmp_community, snmp_version)
                     if self.__verbose:
-                        self.log("got request for scheme %s (host %s, community %s, version %d, envelope %s, timeout %d)" % (
-                            scheme,
-                            host,
-                            snmp_community,
-                            snmp_version,
-                            envelope,
-                            timeout,
-                            ))
+                        self.log(
+                            "got request for scheme {} (host {}, community {}, version {:d}, envelope  {}, timeout {:d})".format(
+                                scheme,
+                                host,
+                                snmp_community,
+                                snmp_version,
+                                envelope,
+                                timeout,
+                            )
+                        )
                     try:
-                        act_scheme = act_scheme(
-                            net_obj=host_obj,
-                            # ret_queue=self.get_thread_queue(),
-                            # pid=pid,
-                            envelope=envelope,
-                            options=comline_split,
-                            xml_input=xml_input,
-                            srv_com=srv_com,
-                            init_time=time.time(),
-                            timeout=timeout,
+                        if s_type == "L":
+                            act_scheme = act_scheme(
+                                net_obj=host_obj,
+                                envelope=envelope,
+                                options=comline_split,
+                                xml_input=xml_input,
+                                srv_com=srv_com,
+                                init_time=time.time(),
+                                timeout=timeout,
+                            )
+                        else:
+                            act_scheme = snmp_relay_schemes.SNMPGenScheme(
+                                net_obj=host_obj,
+                                envelope=envelope,
+                                options=comline_split,
+                                xml_input=xml_input,
+                                srv_com=srv_com,
+                                init_time=time.time(),
+                                timeout=timeout,
+                                handler=act_handler,
                             )
                     except IOError:
-                        err_str = "error while creating scheme %s: %s" % (scheme,
-                                                                          process_tools.get_except_info())
+                        err_str = "error while creating scheme {}: {}".format(
+                            scheme,
+                            process_tools.get_except_info()
+                        )
                         self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
                     else:
                         if act_scheme.get_errors():
-                            err_str = "problem in creating scheme %s: %s" % (scheme,
-                                                                             ", ".join(act_scheme.get_errors()))
+                            err_str = "problem in creating scheme {}: {}".format(
+                                scheme,
+                                ", ".join(act_scheme.get_errors())
+                            )
                             self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
                         else:
                             self._start_snmp_fetch(act_scheme)
+
                 else:
-                    guess_list = ", ".join(difflib.get_close_matches(scheme, self.__all_schemes.keys()))
-                    err_str = "got unknown scheme '%s'%s" % (
+                    guess_list = ", ".join(difflib.get_close_matches(scheme, self.__local_schemes.keys() + self.__gen_schemes.keys()))
+                    err_str = "got unknown scheme '{}'{}".format(
                         scheme,
-                        ", maybe one of %s" % (guess_list) if guess_list else ", no similar scheme found")
+                        ", maybe one of {}".format(guess_list) if guess_list else ", no similar scheme found"
+                    )
                     self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
         elif not xml_input:
             self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error")
@@ -466,20 +459,25 @@ class server_process(threading_tools.process_pool):
             self.log("recv() done")
         if not self.__num_messages % 100:
             cur_mem = process_tools.get_mem_info(self.__msi_block.get_unique_pids() if self.__msi_block else 0)
-            self.log("memory usage is %s after %s" % (
-                logging_tools.get_size_str(cur_mem),
-                logging_tools.get_plural("message", self.__num_messages)))
+            self.log(
+                "memory usage is {} after {}".format(
+                    logging_tools.get_size_str(cur_mem),
+                    logging_tools.get_plural("message", self.__num_messages)
+                )
+            )
         if not self.__num_messages % 50:
             # log process usage
             self.log(self.spc.get_usage())
 
     def _send_return(self, envelope, ret_state, ret_str):
         if self.__verbose > 3:
-            self.log("_send_return, envelope is {} ({:d}, {})".format(
-                envelope,
-                ret_state,
-                ret_str,
-            ))
+            self.log(
+                "_send_return, envelope is {} ({:d}, {})".format(
+                    envelope,
+                    ret_state,
+                    ret_str,
+                )
+            )
         self._check_ret_dict(envelope)
         self.sender_socket.send(envelope, zmq.SNDMORE)  # @UndefinedVariable
         self.sender_socket.send_unicode(u"%d\0%s" % (ret_state, ret_str))
