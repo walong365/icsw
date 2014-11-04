@@ -28,6 +28,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency, \
     mon_build_unreachable, parse_commandline
 from initat.md_config_server.version import VERSION_STRING
+from initat.snmp.sink import SNMPSink
 from lxml.builder import E  # @UnresolvedImport
 import ConfigParser
 import base64
@@ -1120,11 +1121,14 @@ class main_config(object):
                         ),
                         (
                             "service_perfdata_file_template",
-                            "<rec type='service' uuid='$_HOSTUUID$' time='$TIMET$' host='$HOSTNAME$' sdesc='$SERVICEDESC$' perfdata='$SERVICEPERFDATA$' com='$SERVICECHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$' ss='$SERVICESTATE$' sstype='$SERVICESTATETYPE$'/>"
+                            "<rec type='service' uuid='$_HOSTUUID$' time='$TIMET$' host='$HOSTNAME$' sdesc='$SERVICEDESC$' "
+                            "perfdata='$SERVICEPERFDATA$' com='$SERVICECHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$' "
+                            "ss='$SERVICESTATE$' sstype='$SERVICESTATETYPE$'/>"
                         ),
                         (
                             "host_perfdata_file_template",
-                            "<rec type='host' uuid='$_HOSTUUID$' time='$TIMET$' host='$HOSTNAME$' perfdata='$HOSTPERFDATA$' com='$HOSTCHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$'/>"
+                            "<rec type='host' uuid='$_HOSTUUID$' time='$TIMET$' host='$HOSTNAME$' perfdata='$HOSTPERFDATA$' "
+                            "com='$HOSTCHECKCOMMAND$' hs='$HOSTSTATE$' hstype='$HOSTSTATETYPE$'/>"
                         ),
                     ]
                 )
@@ -1182,7 +1186,7 @@ class main_config(object):
                                is_host_file=True,
                                values=main_values)
         for log_descr, en in [
-            ("notifications" , 1),
+            ("notifications", 1),
             ("service_retries", 1),
             ("host_retries", 1),
             ("event_handlers", 1),
@@ -1207,9 +1211,10 @@ class main_config(object):
             ("high_host", 20.0)
         ]:
             main_cfg["%s_flap_threshold" % (th_descr)] = th
+        _uo = user.objects  # @UndefinedVariable
         admin_list = list(
             [
-                cur_u.login for cur_u in user.objects.filter(
+                cur_u.login for cur_u in _uo.filter(
                     Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)
                 ) if cur_u.has_perm("backbone.device.all_devices")
             ]
@@ -1535,7 +1540,7 @@ class base_config(object):
         if self.__name in ["uwsgi"]:
             return "/opt/cluster/etc/uwsgi/icinga.wsgi.ini"
         else:
-            return os.path.normpath(os.path.join(etc_dir, "%s.cfg" % (self.__name)))
+            return os.path.normpath(os.path.join(etc_dir, "{}.cfg".format(self.__name)))
 
     def __setitem__(self, key, value):
         if key.startswith("*"):
@@ -1603,15 +1608,22 @@ class mon_config(dict):
 
 
 class content_emitter(object):
+    def ignore_content(self, in_dict):
+        return False
+
     def _emit_content(self, dest_type, in_dict):
-        _content = ["define {} {{".format(dest_type)] + \
-            [
-                "  {} {}".format(
-                    act_key,
-                    self._build_value_string(act_key, in_dict[act_key]),
-                ) for act_key in sorted(in_dict.iterkeys())
-            ] + \
-            ["}", ""]
+        if self.ignore_content(in_dict):
+            return []
+        _content = [
+            "define {} {{".format(dest_type)
+        ] + [
+            "  {} {}".format(
+                act_key,
+                self._build_value_string(act_key, in_dict[act_key])
+            ) for act_key in sorted(in_dict.iterkeys())
+        ] + [
+            "}", ""
+        ]
         return _content
 
     def _build_value_string(self, _key, in_list):
@@ -1738,6 +1750,8 @@ class build_cache(object):
                     _tdo = [_do for _do in deps[_name][_devpk] if _do.pk == _pk][0]
                     _tdo.master_list.append(_entry.device_id)
         self.__dependencies = deps
+        # init snmp sink
+        self.snmp_sink = SNMPSink(log_com)
         e_time = time.time()
         self.log("init build_cache in {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
 
@@ -1946,7 +1960,7 @@ class unique_list(object):
         else:
             add_idx = 1
             while True:
-                _name = "%s_%d" % (name, add_idx)
+                _name = "{}_{:d}".format(name, add_idx)
                 if _name not in self._list:
                     break
                 else:
@@ -1965,6 +1979,10 @@ class all_commands(host_type_config):
         self.__obj_list, self.__dict = ([], {})
         self._add_notify_commands()
         self._add_commands_from_db(gen_conf)
+
+    def ignore_content(self, in_dict):
+        # ignore commands with empty command line (== meta commands)
+        return ("".join(in_dict.get("command_line", [""]))).strip() == ""
 
     def get_name(self):
         return "command"
@@ -1991,8 +2009,10 @@ class all_commands(host_type_config):
         else:
             send_mail_prog = "/usr/local/bin/send_mail.py"
         send_sms_prog = "/opt/icinga/bin/sendsms"
-        from_addr = "%s@%s" % (global_config["MD_TYPE"],
-                               global_config["FROM_ADDR"])
+        from_addr = "{}@{}".format(
+            global_config["MD_TYPE"],
+            global_config["FROM_ADDR"]
+        )
 
         self._str_repl_dict = {
             "$INIT_MONITOR_INFO$": "{} {}".format(md_type, md_vers),
@@ -2009,14 +2029,14 @@ class all_commands(host_type_config):
         )
         for cur_not in mon_notification.objects.filter(Q(enabled=True)):
             if cur_not.channel == "mail":
-                command_line = r"%s -f '%s' -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
+                command_line = r"{} -f '{}' -s '{}' -t $CONTACTEMAIL$ -- '{}'".format(
                     send_mail_prog,
                     from_addr,
                     self._expand_str(cur_not.subject),
                     self._expand_str(cur_not.content),
                 )
             else:
-                command_line = r"%s $CONTACTPAGER$ '%s'" % (
+                command_line = r"{} $CONTACTPAGER$ '{}'".format(
                     send_sms_prog,
                     self._expand_str(cur_not.content),
                 )
@@ -2045,9 +2065,14 @@ class all_commands(host_type_config):
             # self.__dict[cur_nc["command_name"]] = cur_nc
             command_names.add(hc_com.name)
         check_coms = list(
-            mon_check_command.objects.all()
-            .prefetch_related("categories", "exclude_devices")
-            .select_related("mon_service_templ", "config", "event_handler").order_by("name")
+            mon_check_command.objects.all().prefetch_related(
+                "categories",
+                "exclude_devices"
+            ).select_related(
+                "mon_service_templ",
+                "config",
+                "event_handler"
+            ).order_by("name")
         )
         enable_perfd = global_config["ENABLE_COLLECTD"]
         if enable_perfd and gen_conf.master:
@@ -2056,16 +2081,16 @@ class all_commands(host_type_config):
                     name="process-service-perfdata-file",
                     command_line="/opt/cluster/sbin/send_collectd_zmq {}/service-perfdata".format(
                         gen_conf.var_dir
-                        ),
-                    description="Process service performance data",
                     ),
+                    description="Process service performance data",
+                ),
                 mon_check_command(
                     name="process-host-perfdata-file",
                     command_line="/opt/cluster/sbin/send_collectd_zmq {}/host-perfdata".format(
                         gen_conf.var_dir
-                        ),
-                    description="Process host performance data",
                     ),
+                    description="Process host performance data",
+                ),
             ]
         all_mccs = mon_check_command_special.objects.all()
         check_coms += [
@@ -2073,8 +2098,8 @@ class all_commands(host_type_config):
                 name=ccs.md_name,
                 command_line=ccs.command_line or "/bin/true",
                 description=ccs.description,
-                ) for ccs in all_mccs
-            ]
+            ) for ccs in all_mccs
+        ]
         check_coms += [
             mon_check_command(
                 name="ochp-command",
@@ -2082,33 +2107,40 @@ class all_commands(host_type_config):
                     "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
                 ),
                 description="OCHP Command"
-                ),
+            ),
             mon_check_command(
                 name="ocsp-command",
                 command_line="$USER2$ -m DIRECT -s ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
                     "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
                 ),
                 description="OCSP Command"
-                ),
+            ),
             mon_check_command(
                 name="check_service_cluster",
                 command_line="/opt/cluster/bin/check_icinga_cluster.py --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
                 description="Check Service Cluster"
-                ),
+            ),
             mon_check_command(
                 name="check_host_cluster",
                 command_line="/opt/cluster/bin/check_icinga_cluster.py --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
                 description="Check Host Cluster"
-                ),
+            ),
         ]
         safe_names = global_config["SAFE_NAMES"]
+        mccs_dict = {mccs.pk: mccs for mccs in mon_check_command_special.objects.all()}
         for ngc in check_coms:
             # pprint.pprint(ngc)
             # build / extract ngc_name
             ngc_name = ngc.name
             _ngc_name = cc_command_names.add(ngc_name)
             if _ngc_name != ngc_name:
-                self.log("rewrite %s to %s" % (ngc_name, _ngc_name), logging_tools.LOG_LEVEL_WARN)
+                self.log(
+                    "rewrite {} to {}".format(
+                        ngc_name,
+                        _ngc_name
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
                 ngc_name = _ngc_name
             _nag_name = command_names.add(ngc_name)
             if ngc.pk:
@@ -2118,9 +2150,13 @@ class all_commands(host_type_config):
             else:
                 cats = [TOP_MONITORING_CATEGORY]
                 cat_pks = []
+            if ngc.mon_check_command_special_id:
+                com_line = mccs_dict[ngc.mon_check_command_special_id].command_line
+            else:
+                com_line = ngc.command_line
             cc_s = check_command(
                 ngc_name,
-                ngc.command_line,
+                com_line,
                 ngc.config.name if ngc.config_id else None,
                 ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
                 build_safe_name(ngc.description) if safe_names else ngc.description,
@@ -2596,7 +2632,8 @@ class check_command(object):
             "command",
             self.__nag_name,
             command_name=self.__nag_name,
-            command_line=self.md_command_line)
+            command_line=self.md_command_line
+        )
 
     def __getitem__(self, key):
         if key == "command_name":
@@ -2736,3 +2773,19 @@ class service_templates(dict):
             )
             act_key = self.__default.pk
         return super(service_templates, self).__getitem__(act_key)
+
+
+class SimpleCounter(object):
+    def __init__(self):
+        self.num_ok = 0
+        self.num_warning = 0
+        self.num_error = 0
+
+    def error(self, num=1):
+        self.num_error += num
+
+    def warning(self, num=1):
+        self.num_warning += num
+
+    def ok(self, num=1):
+        self.num_ok += num

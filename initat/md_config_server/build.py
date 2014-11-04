@@ -30,7 +30,7 @@ from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_services, config_dir, device_templates, service_templates, mon_config, \
-    all_host_dependencies, build_cache, build_safe_name
+    all_host_dependencies, build_cache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES
 from initat.md_config_server.mixins import version_check_mixin
 from lxml.builder import E  # @UnresolvedImport
@@ -712,7 +712,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             "{:3d}".format(d_map[host.pk]) if d_map.get(host.pk) >= 0 else "---",
         )
         self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.full_name)
-        num_ok, num_warning, num_error = (0, 0, 0)
+        _counter = SimpleCounter()
         if host.valid_ips:
             net_devices = host.valid_ips
         elif host.invalid_ips:
@@ -730,12 +730,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            num_error += 1
+            _counter.error()
             net_devices = {}
         use_host_deps, use_service_deps = (
             self.gc["USE_HOST_DEPENDENCIES"],
             self.gc["USE_SERVICE_DEPENDENCIES"],
-            )
+        )
         if net_devices:
             # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
@@ -744,7 +744,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             else:
                 valid_ips, traces = self._get_target_ip_info(_bc, my_net_idxs, net_devices, _bc.get_host(host.pk))
                 if not valid_ips:
-                    num_error += 1
+                    _counter.error()
             act_def_dev = _bc.dev_templates[host.mon_device_templ_id or 0]
             if _bc.single_build:
                 if not valid_ips:
@@ -763,7 +763,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if valid_ips and act_def_dev:
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
-                # print "***", valid_ips
                 host.valid_ip = valid_ip
                 self.mach_log(
                     "Found {} for host {} : {}, mon_resolve_name is {}, using {}".format(
@@ -933,7 +932,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 map_h.close()
                         # check for notification options
                         not_a = []
-                        for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u"), ("nflapping", "f"), ("nplanned_downtime", "s")]:
+                        for what, shortcut in [
+                            ("nrecovery", "r"),
+                            ("ndown", "d"),
+                            ("nunreachable", "u"),
+                            ("nflapping", "f"),
+                            ("nplanned_downtime", "s")
+                        ]:
                             if getattr(act_def_dev, what):
                                 not_a.append(shortcut)
                         if not not_a:
@@ -965,76 +970,24 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # cluster config names
                         cconf_names = set([_sc.mon_check_command.name for _sc in _bc.get_cluster("sc", host.pk)])
                         # build lut
-                        conf_dict = {
-                            cur_c["command_name"]: cur_c for cur_c in cur_gc["command"].values() if not cur_c.is_event_handler and (
-                                (
-                                    (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
-                                ) or cur_c["command_name"] in cconf_names
-                            )
-                        }
+                        conf_names = sorted(
+                            [
+                                cur_c["command_name"] for cur_c in cur_gc["command"].values() if not cur_c.is_event_handler and (
+                                    (
+                                        (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
+                                    ) or cur_c["command_name"] in cconf_names
+                                )
+                            ]
+                        )
                         # list of already used checks
                         used_checks = set()
-                        conf_names = sorted(conf_dict.keys())
+                        # print "*", conf_names
+                        # print _bc.get_vars(host)
                         for conf_name in conf_names:
-                            s_check = conf_dict[conf_name]
-                            if s_check.name in used_checks:
-                                self.mach_log(
-                                    "{} ({}) already used, ignoring .... (CHECK CONFIG !)".format(
-                                        s_check.get_description(),
-                                        s_check["command_name"],
-                                    ),
-                                    logging_tools.LOG_LEVEL_WARN
-                                )
-                                num_warning += 1
-                            else:
-                                used_checks.add(s_check.name)
-                                if s_check.mccs_id:
-                                    # map to mccs
-                                    mccs = mccs_dict[s_check.mccs_id]
-                                    # rewrite command name to mccs
-                                    s_check["command_name"] = mccs.md_name
-                                    # print dir(s_check)
-                                    # s_check["check_command"] = mccs.md_name
-                                    sc_array = []
-                                    try:
-                                        cur_special = getattr(special_commands, "special_{}".format(mccs.name))(
-                                            self,
-                                            # get mon_check_command (we need arg_ll)
-                                            cur_gc["command"][mccs.md_name],
-                                            host,
-                                            self.gc,
-                                            cache_mode=cur_gc.cache_mode,
-                                        )
-                                    except:
-                                        self.log(
-                                            "unable to initialize special '{}': {}".format(
-                                                mccs.name,
-                                                process_tools.get_except_info()
-                                            ),
-                                            logging_tools.LOG_LEVEL_CRITICAL
-                                        )
-                                    else:
-                                        # calling handle to return a list of checks with format
-                                        # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
-                                        try:
-                                            sc_array = cur_special()
-                                        except:
-                                            exc_info = process_tools.exception_info()
-                                            self.log("error calling special {}:".format(mccs.name),
-                                                     logging_tools.LOG_LEVEL_CRITICAL)
-                                            for line in exc_info.log_lines:
-                                                self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
-                                            sc_array = []
-                                        finally:
-                                            cur_special.cleanup()
-                                else:
-                                    sc_array = [special_commands.arg_template(s_check, s_check.get_description())]
-                                    # contact_group is only written if contact_group is responsible for the host and the service_template
-                                serv_temp = _bc.serv_templates[s_check.get_template(act_def_serv.name)]
-                                serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
-                                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc)
-                                host_config_list.extend(sc_list)
-                                num_ok += len(sc_list)
+                            self._add_config(
+                                host, act_host, conf_name, used_checks, _counter, _bc,
+                                mccs_dict, cur_gc, act_def_serv, host_groups, checks_are_active, host_config_list
+                            )
                         # add cluster checks
                         mhc_checks = _bc.get_cluster("hc", host.pk)
                         if len(mhc_checks):
@@ -1067,7 +1020,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         serv_temp,
                                         cur_gc)
                                     host_config_list.extend(sub_list)
-                                    num_ok += len(sub_list)
+                                    _counter.ok(len(sub_list))
                                 else:
                                     self.mach_log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
                         # add service checks
@@ -1118,7 +1071,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                             cur_gc,
                                         )
                                         host_config_list.extend(sub_list)
-                                        num_ok += len(sub_list)
+                                        _counter.ok(len(sub_list))
                                     else:
                                         self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
                                 else:
@@ -1254,18 +1207,104 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             else:
                 self.mach_log("No valid IPs found or no default_device_template found", logging_tools.LOG_LEVEL_ERROR)
         info_str = "{:3d} ok, {:3d} w, {:3d} e ({:3d} {}) in {}".format(
-            num_ok,
-            num_warning,
-            num_error,
+            _counter.num_ok,
+            _counter.num_warning,
+            _counter.num_error,
             self.get_num_mach_logs(),
-            "l " if num_error == 0 else "lw",
+            "l " if _counter.num_error == 0 else "lw",
             logging_tools.get_diff_time_str(time.time() - start_time))
         glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
-        if num_error > 0:
+        if _counter.num_error > 0:
             _write_logs = True
         self.close_mach_log(write_logs=_write_logs)
+
+    def _add_config(
+        self, host, act_host, conf_name, used_checks, _counter, _bc, mccs_dict, cur_gc,
+        act_def_serv, host_groups, checks_are_active, host_config_list
+    ):
+        s_check = cur_gc["command"][conf_name]
+        if s_check.name in used_checks:
+            self.mach_log(
+                "{} ({}) already used, ignoring .... (CHECK CONFIG !)".format(
+                    s_check.get_description(),
+                    s_check["command_name"],
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
+            _counter.warning()
+        else:
+            used_checks.add(s_check.name)
+            if s_check.mccs_id:
+                # map to mccs
+                mccs = mccs_dict[s_check.mccs_id]  #
+                # store name of mccs (for parenting)
+                mccs_name = mccs.name
+                if mccs.parent_id:
+                    # to get the correct command_line
+                    com_mccs = mccs
+                    # link to parent
+                    mccs = mccs_dict[mccs.parent_id]
+                else:
+                    com_mccs = mccs
+                # create lut entry to rewrite command name to mccs
+                _rewrite_lut = {"check_command": mccs.md_name}
+                sc_array = []
+                try:
+                    cur_special = getattr(special_commands, "special_{}".format(mccs.name))(
+                        self.mach_log,
+                        self,
+                        # get mon_check_command (we need arg_ll)
+                        cur_gc["command"][com_mccs.md_name],
+                        host,
+                        self.gc,
+                        _bc,
+                        cache_mode=cur_gc.cache_mode,
+                    )
+                except:
+                    self.log(
+                        "unable to initialize special '{}': {}".format(
+                            mccs.name,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                else:
+                    # calling handle to return a list of checks with format
+                    # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
+                    try:
+                        if mccs_name != mccs.name:
+                            sc_array = cur_special(instance=mccs_name)
+                        else:
+                            sc_array = cur_special()
+                    except:
+                        exc_info = process_tools.exception_info()
+                        self.log("error calling special {}:".format(mccs.name),
+                                 logging_tools.LOG_LEVEL_CRITICAL)
+                        for line in exc_info.log_lines:
+                            self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
+                        sc_array = []
+                    finally:
+                        cur_special.cleanup()
+                    if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
+                        _com_names = [mccs_dict[_entry].check_command_name for _entry in sc_array]
+                        for _com_name in _com_names:
+                            self._add_config(
+                                host, act_host, _com_name, used_checks, _counter, _bc,
+                                mccs_dict, cur_gc, act_def_serv, host_groups, checks_are_active, host_config_list
+                            )
+                        sc_array = []
+            else:
+                _rewrite_lut = {}
+                sc_array = [special_commands.arg_template(s_check, s_check.get_description())]
+                # contact_group is only written if contact_group is responsible for the host and the service_template
+            if sc_array:
+                serv_temp = _bc.serv_templates[s_check.get_template(act_def_serv.name)]
+                serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
+                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, **_rewrite_lut)
+                host_config_list.extend(sc_list)
+                _counter.ok(len(sc_list))
 
     def _get_cc_name(self, in_str):
         if self.__safe_cc_name:
@@ -1312,9 +1351,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         """
         start_time = time.time()
         # get contacts with access to all devices
+        _uo = user.objects  # @UndefinedVariable
         all_access = list(
             [
-                cur_u.login for cur_u in user.objects.filter(
+                cur_u.login for cur_u in _uo.filter(
                     Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)
                 ) if cur_u.has_perm("backbone.device.all_devices")
             ]
@@ -1433,6 +1473,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 del host_nc[host.full_name]
         # mccs dict
         mccs_dict = {mccs.pk: mccs for mccs in mon_check_command_special.objects.all()}
+        for _value in list(mccs_dict.values()):
+            mccs_dict[_value.name] = _value
+        for value in cur_gc["command"].values():
+            if value.mccs_id:
+                # add links back to check_command_names
+                mccs_dict[value.mccs_id].check_command_name = value.name
         # caching object
         # build lookup-table
         self.send_pool_message("build_info", "device_count", cur_gc.monitor_server.full_name, len(host_names), target="syncer")
@@ -1612,15 +1658,17 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
         )
 
-    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc):
+    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, **kwargs):
         ev_defined = True if s_check.event_handler else False
-        self.mach_log("  adding check %-30s (%2d p), template %s, %s, %s" % (
-            s_check["command_name"],
-            len(sc_array),
-            s_check.get_template(act_def_serv.name),
-            "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs",
-            "no evh" if not ev_defined else "evh is %s (%s)" % (s_check.event_handler.name, "enabled" if s_check.event_handler_enabled else "disabled"),
-            ))
+        self.mach_log(
+            "  adding check {:<30s} ({:2d} p), template {}, {}, {}".format(
+                s_check["command_name"],
+                len(sc_array),
+                s_check.get_template(act_def_serv.name),
+                "cg: {}".format(", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs",
+                "no evh" if not ev_defined else "evh is {} ({})".format(s_check.event_handler.name, "enabled" if s_check.event_handler_enabled else "disabled"),
+            )
+        )
         ret_field = []
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
@@ -1676,7 +1724,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["_cat_pks"] = s_check.servicegroup_pks
                 act_serv["servicegroups"] = s_check.servicegroup_names
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
-            act_serv["check_command"] = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
+            # command_name may be altered when using a special-command
+            act_serv["check_command"] = "!".join(
+                [
+                    kwargs.get("command_name", s_check["command_name"])
+                ] + s_check.correct_argument_list(arg_temp, host.dev_variables)
+            )
             # add addon vars
             for key, value in arg_temp.addon_dict.iteritems():
                 act_serv[key] = value
@@ -1714,5 +1767,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
             valid_ips = []
         else:
-            valid_ips = sum([net_devices[nd_pk] for _val, nd_pk, _loc_trace in traces], [])
+            valid_ips = []
+            _nd_added = set()
+            for _val, nd_pk, _loc_trace in traces:
+                if nd_pk not in _nd_added:
+                    _nd_added.add(nd_pk)
+                    valid_ips.extend(net_devices[nd_pk])
+            # old code, produces a lot of dups
+            # valid_ips = sum([net_devices[nd_pk] for _val, nd_pk, _loc_trace in traces], [])
         return valid_ips, traces

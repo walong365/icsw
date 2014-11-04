@@ -160,17 +160,15 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             if key.startswith("special_"):
                 if inspect.isclass(_entry) and _entry != special_commands.special_base:
                     if issubclass(_entry, special_commands.special_base):
-                        _inst = _entry()
-                        try:
-                            cur_mccs = mon_check_command_special.objects.get(Q(name=_inst.Meta.name))
-                        except mon_check_command_special.DoesNotExist:
-                            cur_mccs = mon_check_command_special(name=_inst.Meta.name)
-                        cur_mccs.command_line = _inst.Meta.command
-                        cur_mccs.description = _inst.Meta.description
-                        cur_mccs.is_active = _inst.Meta.is_active
-                        cur_mccs.save()
+                        _inst = _entry(self.log)
+                        cur_mccs = self._check_mccs(_inst.Meta)
                         mccs_dict[cur_mccs.name] = cur_mccs
                         pks_found.add(cur_mccs.pk)
+                        if cur_mccs.meta:
+                            for _sub_com in _inst.get_commands():
+                                sub_mccs = self._check_mccs(_sub_com.Meta, parent=cur_mccs)
+                                mccs_dict[sub_mccs.name] = sub_mccs
+                                pks_found.add(sub_mccs.pk)
         # delete stale
         del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
         if del_mccs:
@@ -186,6 +184,17 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 to_rewrite.save()
             else:
                 self.log("key {} not found in dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
+
+    def _check_mccs(self, mdef, parent=None):
+        try:
+            cur_mccs = mon_check_command_special.objects.get(Q(name=mdef.name))
+        except mon_check_command_special.DoesNotExist:
+            cur_mccs = mon_check_command_special(name=mdef.name)
+        for attr_name in ["command_line", "info", "description", "is_active", "meta"]:
+            setattr(cur_mccs, attr_name, getattr(mdef, attr_name))
+        cur_mccs.parent = parent
+        cur_mccs.save()
+        return cur_mccs
 
     def _check_notification(self):
         cur_not = mon_notification.objects.all().count()

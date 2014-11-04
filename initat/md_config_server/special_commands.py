@@ -22,6 +22,7 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import partition, netdevice, lvm_lv, monitoring_hint, \
     cluster_timezone
+from initat.snmp.sink import SNMPSink
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
 from initat.md_config_server.constants import DEFAULT_CACHE_MODE
@@ -47,12 +48,15 @@ class special_base(object):
         server_contact = False
         # is active ?
         is_active = True
-        # command
-        command = ""
+        # command line
+        command_line = ""
         # description
         description = "no description available"
+        # meta, triggers a cascade of checks
+        meta = False
 
-    def __init__(self, build_proc=None, s_check=None, host=None, global_config=None, **kwargs):
+    def __init__(self, log_com, build_proc=None, s_check=None, host=None, global_config=None, build_cache=None, **kwargs):
+        self.__log_com = log_com
         for key in dir(special_base.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(special_base.Meta, key))
@@ -63,6 +67,7 @@ class special_base(object):
         self.build_process = build_proc
         self.s_check = s_check
         self.host = host
+        self.build_cache = build_cache
 
     def _store_cache(self):
         self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__hint_list))))
@@ -122,7 +127,7 @@ class special_base(object):
         self.build_process = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.build_process.mach_log("[sc] {}".format(what), log_level)
+        self.__log_com("[sc] {}".format(what), log_level)
 
     def collrelay(self, command, *args, **kwargs):
         return self._call_server(
@@ -243,7 +248,7 @@ class special_base(object):
         self.__call_idx += 1
         return hint_list
 
-    def __call__(self):
+    def __call__(self, **kwargs):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log("starting {} for {}, cache_mode is {}".format(s_name, self.host.name, self.cache_mode))
         s_time = time.time()
@@ -265,7 +270,7 @@ class special_base(object):
             self.__server_contact_ok, self.__server_contacts = (True, 0)
             # init result list and number of server calls
             self.__hint_list, self.__call_idx = ([], 0)
-        cur_ret = self._call()
+        cur_ret = self._call(**kwargs)
         e_time = time.time()
         if self.Meta.server_contact and not self.__use_cache:
             self.log(
@@ -323,10 +328,10 @@ class arg_template(dict):
                 key = "arg{:d}".format(len(self.argument_names) + 1 - int(l_key[4:]))
             if key.upper() not in self.argument_names:
                 raise KeyError(
-                    "key '{}' not defined in arg_list ({}, {})".format(
+                    "key '{}' not defined in arg_list (info='{}', {})".format(
                         key,
                         self.info,
-                        ", ".join(self.argument_names)
+                        ", ".join(self.argument_names) or "no argument names"
                     )
                 )
             else:
@@ -352,7 +357,8 @@ class arg_template(dict):
 class special_openvpn(special_base):
     class Meta:
         server_contact = True
-        command = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
+        info = "OpenVPN check"
+        command_line = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
         description = "checks for running OpenVPN instances"
 
     def to_hint(self, srv_reply):
@@ -369,8 +375,8 @@ class special_openvpn(special_base):
                                 value_string="used",
                                 info="Client {} on instance {}".format(c_name, inst_name),
                                 persistent=True,
-                                )
                             )
+                        )
         return _hints
 
     def _call(self):
@@ -406,7 +412,8 @@ class special_openvpn(special_base):
 class special_supermicro(special_base):
     class Meta:
         server_contact = True
-        command = "$USER2$ -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
+        info = "SuperMicro"
+        command_line = "$USER2$ -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
         description = "queries IPMI Bladecenters via the collserver on the localhost"
 
     def to_hint(self, srv_reply):
@@ -460,7 +467,8 @@ class special_supermicro(special_base):
 
 class special_disc_all(special_base):
     class Meta:
-        command = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
+        info = "report fullest disc"
+        command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the collserver on the target system for the partition with the lowest space"
 
     def _call(self):
@@ -468,16 +476,40 @@ class special_disc_all(special_base):
         return sc_array
 
 
+class special_snmp_general(special_base):
+    class Meta:
+        info = "all configured SNMP checks"
+        description = "Enable all checks related to found SNMP schemes"
+        meta = True
+
+    def _call(self, instance=None):
+        if not instance:
+            _retf = []
+            for _scheme in self.host.snmp_schemes.filter(Q(mon_check=True)):
+                _handler = self.build_cache.snmp_sink.get_handler(_scheme)
+                if _handler:
+                    _retf.extend([_com.Meta.name for _com in _handler.config_mon_check()])
+            return _retf
+        else:
+            return self.build_cache.snmp_sink.get_handler_from_mon(instance).config_call(self)
+
+    def get_commands(self):
+        snmp_sink = SNMPSink(self.log)
+        return sum([_handler.config_mon_check() for _handler in snmp_sink.handlers if _handler.Meta.mon_check], [])
+
+
 class special_disc(special_base):
     class Meta:
-        command = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
+        info = "Discs via collserver"
+        command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the partition on the target system via collserver"
 
     def _call(self):
         part_dev = self.host.partdev
         first_disc = None
         part_list = []
-        for part_p in partition.objects.filter(
+        _po = partition.objects  # @UndefinedVariable
+        for part_p in _po.filter(
             Q(partition_disc__partition_table=self.host.act_partition_table)
         ).select_related(
             "partition_fs"
@@ -551,7 +583,8 @@ class special_disc(special_base):
 
 class special_net(special_base):
     class Meta:
-        command = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
+        info = "configured Netdevices vi collserer"
+        command_line = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
         description = "queries all configured network devices"
 
     def _call(self):
@@ -590,7 +623,8 @@ class special_net(special_base):
 class special_libvirt(special_base):
     class Meta:
         server_contact = True
-        command = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
+        info = "libvirt"
+        command_line = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
         description = "checks running virtual machines on the target host via libvirt"
 
     def to_hint(self, srv_reply):
@@ -625,7 +659,8 @@ class special_libvirt(special_base):
 class special_ipmi(special_base):
     class Meta:
         server_contact = True
-        command = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} " \
+        info = "IPMI checks"
+        command_line = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} " \
             "--lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
         description = "queries the IPMI sensors of the underlying IPMI interface of the target device"
 
@@ -668,8 +703,9 @@ class special_ipmi(special_base):
 
 class special_ipmi_ext(special_base):
     class Meta:
-        command = ""
+        command_line = "/bin/true"
         is_active = False
+        info = "IPMI via collserver"
         description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
 
     def _call(self):
@@ -692,7 +728,8 @@ class special_eonstor(special_base):
     class Meta:
         retries = 2
         server_contact = True
-        command = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
+        info = "Eonstor checks"
+        command_line = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
         description = "checks the eonstore disc chassis via SNMP"
 
     def to_hint(self, srv_reply):
@@ -728,13 +765,23 @@ class special_eonstor(special_base):
                     idx = int(srv_reply["*arg_list"])
                     env_dict_name = _com.split("_")[1]
                     if env_dict_name == "ups" and act_state & 128:
-                        self.log("disabling psu because not present",
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "disabling psu because not present",
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     elif env_dict_name == " bbu" and act_state & 128:
-                        self.log("disabling bbu because not present",
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "disabling bbu because not present",
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
-                        _hints.append(self._get_env_check(self.info_dict["ent_dict"][env_dict_name][idx], "eonstor_{}_info".format(env_dict_name), idx))
+                        _hints.append(
+                            self._get_env_check(
+                                self.info_dict["ent_dict"][env_dict_name][idx],
+                                "eonstor_{}_info".format(env_dict_name),
+                                idx
+                            )
+                        )
         return _hints
 
     def _get_env_check(self, info, key, idx):
