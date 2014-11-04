@@ -19,8 +19,10 @@
 #
 """ basic structures """
 
+from initat.host_monitoring import limits
 import ipvx_tools
 import server_command
+import time
 
 
 class ResultNode(object):
@@ -62,6 +64,47 @@ class ResultNode(object):
         else:
             _state = server_command.SRV_REPLY_STATE_OK
         return unicode(self), _state
+
+
+class MonCheckDefinition(object):
+    class Meta:
+        name = "notset"
+        meta = False
+        is_active = True
+
+    def __init__(self, handler):
+        # copy keys when needed
+        _keys = ["meta", "is_active", "name", "description", "info", "command_line"]
+        for _key in _keys:
+            if not hasattr(self.Meta, _key) and hasattr(MonCheckDefinition.Meta, _key):
+                # copy key from default Meta
+                setattr(self.Meta, _key, getattr(MonCheckDefinition.Meta, _key))
+            if not hasattr(self.Meta, _key):
+                raise KeyError("key {} missing from SNMPHandler Meta {}".format(_key, str(self)))
+        self.Meta.name = "{}-{}".format(handler.Meta.full_name, self.Meta.short_name)
+        self._rewrite()
+
+    def _rewrite(self):
+        if self.Meta.command_line.startswith("*"):
+            self.Meta.command_line = "$USER3$ -m $HOSTADDRESS$ -C ${{ARG1:SNMP_COMMUNITY:public}} -V ${{ARG2:SNMP_VERSION:2}} SS:{}{}".format(
+                self.Meta.name,
+                self.Meta.command_line[1:],
+            )
+
+    def config_call(self, s_com):
+        return []
+
+    def parser_setup(self, parser):
+        pass
+
+    def mon_start(self, scheme):
+        return []
+
+    def mon_result(self, scheme):
+        return limits.nag_STATE_CRITICAL, "not implemented"
+
+    def __repr__(self):
+        return self.Meta.name
 
 
 class snmp_if_counter(object):
@@ -198,3 +241,55 @@ class simple_snmp_oid(object):
 
     def as_tuple(self):
         return self._oid
+
+
+class snmp_oid(simple_snmp_oid):
+    def __init__(self, *oid, **kwargs):
+        simple_snmp_oid.__init__(self, *oid)
+        self.single_value = kwargs.get("single_value", False)
+        # store oid in tuple-form
+        self._max_oid = kwargs.get("max_oid", None)
+        if self._max_oid:
+            self._max_oid_len = len(self._max_oid)
+            self._str_max_oid = ".".join(["{:d}".format(i_val) for i_val in self._max_oid])
+        else:
+            self._max_oid_len, self._str_max_oid = (0, "")
+        self.cache_it = kwargs.get("cache", False)
+        if self.cache_it:
+            # time after which cache invalidates
+            self.cache_timeout = kwargs.get("cache_timeout", 60)
+            # timer after which cache should be refreshed
+            self.refresh_timeout = kwargs.get("refresh_timeout", self.cache_timeout / 2)
+
+    def has_max_oid(self):
+        return True if self._max_oid else False
+
+    def get_max_oid(self):
+        return self._str_max_oid
+
+
+# for value caching
+class value_cache(object):
+    def __init__(self):
+        # timestamp dict, defaults to None
+        self.__ts_dict = {}
+        self.__values = {}
+
+    def set(self, key, _dict):
+        self.__ts_dict[key] = time.time()
+        self.__values[key] = _dict
+
+    def is_set(self, key):
+        if key in self.__ts_dict:
+            self.__cur_value = self.__values[key]
+            self.__dt = max(abs(time.time() - self.__ts_dict[key]), 1)
+            return True
+        else:
+            return False
+
+    def get_value(self, cur_dict, sub_key):
+        _val = (cur_dict[sub_key] - self.__cur_value[sub_key]) / (self.__dt)
+        if _val < 0:
+            # wrap around
+            _val = 0
+        return _val

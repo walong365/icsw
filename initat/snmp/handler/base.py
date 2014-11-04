@@ -42,6 +42,11 @@ class SNMPHandler(object):
                 setattr(self.Meta, _key, getattr(SNMPHandler.Meta, _key))
             if not hasattr(self.Meta, _key):
                 raise KeyError("key {} missing from SNMPHandler Meta {}".format(_key, str(self)))
+        self.Meta.full_name = "{}.{}_v{:d}".format(
+            self.Meta.vendor_name,
+            self.Meta.name,
+            self.Meta.version,
+        )
         # set flags
         self.Meta.collect = hasattr(self, "collect_fetch")
         self.Meta.mon_check = hasattr(self, "config_mon_check")

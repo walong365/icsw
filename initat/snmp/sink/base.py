@@ -30,15 +30,37 @@ class SNMPSink(object):
         self.__log_com = log_com
         # possible handlers, build instance list (not only classes)
         self.__handlers = [_handler(self.__log_com) for _handler in handlers]
+
+        # print [_h.Meta.mon_check for _h in self.__handlers]
         # registered handlers
         self.__reg_handlers = {}
+        # lut for mon_commands
+        self.__mon_com_lut = {}
+
         self.log("init ({} found)".format(logging_tools.get_plural("handler", len(self.__handlers))))
+
+    @property
+    def handlers(self):
+        return self.__handlers
+
+    def info(self):
+        print self.__reg_handlers
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[SS] {}".format(what), log_level)
 
     def get_handlers(self, schemes):
         return [_val for _val in [self.get_handler(_scheme) for _scheme in schemes] if _val is not None]
+
+    def get_handler_from_mon(self, mon_name):
+        if mon_name not in self.__mon_com_lut:
+            self.__mon_com_lut[mon_name] = None
+            for handler in self.__handlers:
+                if handler.Meta.mon_check:
+                    _found = [_check for _check in handler.config_mon_check() if _check.Meta.name == mon_name]
+                    if _found:
+                        self.__mon_com_lut[mon_name] = _found[0]
+        return self.__mon_com_lut[mon_name]
 
     def get_handler(self, scheme):
         full_name, full_name_version = (scheme.full_name, scheme.full_name_version)

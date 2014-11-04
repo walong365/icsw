@@ -20,14 +20,16 @@
 """ SNMP handler for basic network stuff (netdevices) """
 
 from ...functions import simplify_dict
-from ...struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs
+from ...struct import ResultNode, snmp_if, simple_snmp_oid, snmp_hs, MonCheckDefinition, snmp_oid
 from ..base import SNMPHandler
 from django.db.models import Q
 from initat.cluster.backbone.models import snmp_network_type, netdevice, netdevice_speed, \
     peer_information
+from initat.host_monitoring import limits
 from lxml.builder import E
 import pprint  # @UnusedImport
 import time
+import logging_tools
 
 # if base
 IF_BASE = "1.3.6.1.2.1.2"
@@ -247,4 +249,92 @@ class handler(SNMPHandler):
             )
 
     def config_mon_check(self):
-        print "*"
+        return [
+            if_mon(self),
+        ]
+
+
+class if_mon(MonCheckDefinition):
+    class Meta:
+        short_name = "if"
+        command_line = "* $ARG3$"
+        info = "SNMP Interface check"
+        description = "SNMP Interface check, source is Database"
+
+    def parser_setup(self, parser):
+        parser.add_argument("if_idx", type=int, help="interface idx [%(default)d]", default=0)
+
+    def config_call(self, s_com):
+        dev = s_com.host
+        _field = []
+        for net_dev in dev.netdevice_set.filter(Q(enabled=True) & Q(snmp_idx__gt=0)):
+            _field.append(
+                s_com.get_arg_template(
+                    net_dev.devname,
+                    arg1=dev.dev_variables["SNMP_READ_COMMUNITY"],
+                    arg2=dev.dev_variables["SNMP_VERSION"],
+                    arg3="{:d}".format(net_dev.snmp_idx)
+                )
+            )
+        return _field
+
+    def mon_start(self, scheme):
+        return [
+            snmp_oid(
+                "{}.2.1.{:d}.{:d}".format(
+                    IF_BASE,
+                    _idx,
+                    scheme.opts.if_idx
+                ),
+                single_value=True
+            ) for _idx in [10, 16, 13, 14, 19, 20]
+        ]
+        #     + [
+        #    snmp_oid(
+        #        "{}.{:d}.{:d}".format(
+        #            HS_BASE,
+        #            _idx,
+        #            scheme.opts.if_idx
+        #        ),
+        #        single_value=True
+        #    ) for _idx in [6, 10]
+        # ]
+
+    def mon_result(self, scheme):
+        _net_obj = scheme.net_obj
+        _val_dict = {list(_key)[-2]: _value for _key, _value in scheme.snmp.iteritems()}
+        _key = "network-if-{:d}".format(scheme.opts.if_idx)
+        _vc = _net_obj.value_cache
+        if _vc.is_set(_key):
+            _vector = [
+                _vc.get_value(_val_dict, 10),
+                _vc.get_value(_val_dict, 16),
+                _vc.get_value(_val_dict, 13) + _vc.get_value(_val_dict, 19),
+                _vc.get_value(_val_dict, 14) + _vc.get_value(_val_dict, 20),
+            ]
+        else:
+            _vector = None
+        _vc.set(_key, _val_dict)
+        if _vector is None:
+            return limits.nag_STATE_WARNING, "only one value read out"
+        else:
+            ret_state = limits.nag_STATE_OK
+            r_f = [
+                "rx (in): {}".format(
+                    logging_tools.get_size_str(_vector[0], strip_spaces=True, per_second=True),
+                ),
+                "tx (out): {}".format(
+                    logging_tools.get_size_str(_vector[1], strip_spaces=True, per_second=True),
+                )
+            ]
+            if _vector[2]:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                r_f.append("discards: {}".format(
+                    logging_tools.get_size_str(_vector[2], strip_spaces=True, per_second=True),
+                ))
+            if _vector[3]:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                r_f.append("errors: {}".format(
+                    logging_tools.get_size_str(_vector[3], strip_spaces=True, per_second=True),
+                ))
+            return ret_state, ", ".join(r_f)
