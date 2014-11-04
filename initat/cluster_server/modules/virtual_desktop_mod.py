@@ -29,10 +29,16 @@ class reload_virtual_desktop(cs_base_class.server_com):
         :param com_instance cur_inst:
         '''
         vdus_pk = cur_inst.srv_com["*vdus"]
-        cur_inst.log("restarting virtual desktop {}".format(vdus_pk))
+        cur_inst.log("updating virtual desktop {}".format(vdus_pk))
         vdus = virtual_desktop_user_setting.objects.get(Q(pk=vdus_pk))
 
         control = virtual_desktop_server.get_instance_for_vdus(vdus, cur_inst.log)
         control.stop()
-        if vdus.is_running:
+
+        if not vdus.to_delete and vdus.is_running:
             control.start()
+
+        if vdus.to_delete:
+            cur_inst.log("removing virtual desktop {}".format(vdus_pk))
+            vdus.delete()
+
