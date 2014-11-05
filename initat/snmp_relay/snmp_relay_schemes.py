@@ -103,7 +103,7 @@ class net_object(object):
 class snmp_scheme(object):
     def __init__(self, name, **kwargs):
         self.name = name
-        self.parser = argparse.ArgumentParser(usage="", prog=self.name)
+        self.parser = argparse.ArgumentParser(prog=self.name)
         self.__init_time = kwargs["init_time"]
         # public stuff
         self.snmp_dict = {}
@@ -1656,7 +1656,8 @@ class SNMPGenScheme(snmp_scheme):
         snmp_scheme.__init__(self, self.handler.Meta.name, **kwargs)
         self.handler.parser_setup(self.parser)
         self.parse_options(kwargs["options"])
-        self.requests = self.handler.mon_start(self)
+        if not self.get_errors():
+            self.requests = self.handler.mon_start(self)
 
     def process_return(self):
         return self.handler.mon_result(self)
