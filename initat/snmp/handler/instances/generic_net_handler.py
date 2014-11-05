@@ -267,7 +267,7 @@ class if_mon(MonCheckDefinition):
         description = "SNMP Interface check, source is Database"
 
     def parser_setup(self, parser):
-        parser.add_argument("if_idx", type=int, help="interface idx [%(default)d]", default=0)
+        parser.add_argument("if_idx", nargs=1, type=int, help="interface idx")
 
     def config_call(self, s_com):
         dev = s_com.host
@@ -289,7 +289,7 @@ class if_mon(MonCheckDefinition):
                 "{}.2.1.{:d}.{:d}".format(
                     IF_BASE,
                     _idx,
-                    scheme.opts.if_idx
+                    scheme.opts.if_idx[0]
                 ),
                 single_value=True
             ) for _idx in [10, 16, 13, 14, 19, 20]
@@ -308,7 +308,7 @@ class if_mon(MonCheckDefinition):
     def mon_result(self, scheme):
         _net_obj = scheme.net_obj
         _val_dict = {list(_key)[-2]: _value for _key, _value in scheme.snmp.iteritems()}
-        _key = "network-if-{:d}".format(scheme.opts.if_idx)
+        _key = "network-if-{:d}".format(scheme.opts.if_idx[0])
         _vc = _net_obj.value_cache
         if _vc.is_set(_key):
             _vector = [
