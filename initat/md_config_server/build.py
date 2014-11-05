@@ -1288,7 +1288,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     finally:
                         cur_special.cleanup()
                     if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
-                        _com_names = [mccs_dict[_entry].check_command_name for _entry in sc_array]
+                        # check for configs not really configured
+                        _dead_coms = [_entry for _entry in sc_array if not hasattr(mccs_dict[_entry], "check_command_name")]
+                        if _dead_coms:
+                            self.log("unconfigured checks: {}".format(", ".join(sorted(_dead_coms))), logging_tools.LOG_LEVEL_CRITICAL)
+                        _com_names = [mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms]
                         for _com_name in _com_names:
                             self._add_config(
                                 host, act_host, _com_name, used_checks, _counter, _bc,
