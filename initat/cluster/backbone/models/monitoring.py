@@ -390,11 +390,12 @@ def parse_commandline(com_line):
                 m_dict["pre_text"] or "",
                 m_dict["post_text"] or ""
             )
-            cur_line = "%s%s$%s$%s" % (
+            cur_line = "{}{}${}${}".format(
                 cur_line[:s_idx],
                 pre_text,
                 arg_name,
-                post_text)
+                post_text
+            )
             s_idx += len(pre_text) + len(arg_name) + 2
             if prev_part:
                 arg_lut[prev_part] = arg_name
