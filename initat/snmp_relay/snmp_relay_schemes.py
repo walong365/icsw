@@ -1050,7 +1050,7 @@ class eonstor_proto_scheme(snmp_scheme):
 
     def _generate_return(self, dev_dict):
         if "iarg" in self.opts:
-            dev_idx = self.opts["iarg"]
+            dev_idx = self.opts.iarg
         else:
             dev_idx = 0
         ret_state, ret_field = (limits.nag_STATE_OK, [])
