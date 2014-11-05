@@ -202,8 +202,9 @@ class snmp_job(object):
                     _handler.collect_feed(res_dict, mv_tree=mv_tree, mon_info=mon_info, vc=self.__vcache)
                 except:
                     self.log(
-                        "error feeding for handler {}: {}".format(
+                        "error feeding for handler {} (IP {}): {}".format(
                             unicode(_handler),
+                            self.ip,
                             process_tools.get_except_info(),
                         ),
                         logging_tools.LOG_LEVEL_CRITICAL
