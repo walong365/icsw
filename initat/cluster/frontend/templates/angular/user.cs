@@ -1528,6 +1528,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
 ]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window) ->
         $scope.index_view = $window.INDEX_VIEW
+        $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.searchstr = ""
         $scope.search_ok = true
         $scope.is_loading = true
@@ -1652,7 +1653,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     $scope.rest_data_set()
                 )
         # load from server
-        $scope.reload()
+        if $scope.is_authenticated
+            $scope.reload()
         $scope.get_tc = (short) ->
             return {"g" : $scope.tc_devices, "f" : $scope.tc_fqdns, "c" : $scope.tc_categories}[short]
         $scope.set_active_selection = (t_type, new_sel) ->
@@ -1678,24 +1680,25 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
             $scope.search_ok = true
             $scope.selection_changed()
         $scope.activate_tab = (t_type) ->
-            if $scope.hidden_tabs[t_type]
-                $scope.hidden_tabs[t_type] = false
-                switch t_type
-                    when "g"
-                        $scope.s_tc_devices = $scope.tc_devices
-                    when "f"
-                        $scope.s_tc_fqdns = $scope.tc_fqdns
-                    when "c"
-                        $scope.s_tc_categories = $scope.tc_categories
-            cur_sel = $scope.get_active_selection($scope.active_tab)
-            $scope.set_active_selection(t_type, cur_sel)
-            $scope.active_tab = t_type
-            call_ajax
-                url  : "{% url 'user:set_user_var' %}"
-                data : 
-                    key   : "sidebar_mode"
-                    value : {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab]
-                    type  : "str"
+            if $scope.is_authenticated
+                if $scope.hidden_tabs[t_type]
+                    $scope.hidden_tabs[t_type] = false
+                    switch t_type
+                        when "g"
+                            $scope.s_tc_devices = $scope.tc_devices
+                        when "f"
+                            $scope.s_tc_fqdns = $scope.tc_fqdns
+                        when "c"
+                            $scope.s_tc_categories = $scope.tc_categories
+                cur_sel = $scope.get_active_selection($scope.active_tab)
+                $scope.set_active_selection(t_type, cur_sel)
+                $scope.active_tab = t_type
+                call_ajax
+                    url  : "{% url 'user:set_user_var' %}"
+                    data : 
+                        key   : "sidebar_mode"
+                        value : {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab]
+                        type  : "str"
         $scope.selection_changed = () ->
             cur_sel = $scope.get_active_selection($scope.active_tab)
             # cast to string to compare the arrays
@@ -1811,6 +1814,22 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 cur_tc.show_selected()
             $scope.is_loading = false
             $scope.call_devsel_func(true)
+]).controller("sidebar_sep", ["$scope", "$window",
+    ($scope, $window) ->
+        # init display of sidebar
+        $scope.is_authenticated = $window.IS_AUTHENTICATED
+        _wrapper = $("div#icsw_wrapper")
+        if $scope.is_authenticated
+            _wrapper.removeClass("toggled")
+        else
+            _wrapper.addClass("toggled")
+        $scope.sep_click = () ->
+            _wrapper = $("div#icsw_wrapper")
+            if _wrapper.hasClass("toggled")
+                _wrapper.removeClass("toggled")
+            else
+                _wrapper.addClass("toggled")
+            return false
 ])
 
 root.angular_add_password_controller = angular_add_password_controller

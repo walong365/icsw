@@ -54,7 +54,7 @@ class device_info
         else
             @dev_div.simplemodal
                 opacity      : 50
-                position     : [@event.pageY, @event.pageX]
+                position     : [@event.clientY - 50, @event.clientX - 50]
                 autoResize   : true
                 autoPosition : true
                 minWidth     : "800px"

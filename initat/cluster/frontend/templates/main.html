@@ -28,7 +28,7 @@
 
     <style type="text/css">
     body { padding-top: 54px; }
-    #wrapper {
+    #ics_wrapper {
         padding-left: 0;
         -webkit-transition: all 0.5s ease;
         -moz-transition: all 0.5s ease;
@@ -36,7 +36,7 @@
         transition: all 0.5s ease;
     }
     
-    #wrapper.toggled {
+    #icsw_wrapper.toggled {
         padding-left: 250px;
     }
     
@@ -49,30 +49,30 @@
         margin-left: -350px;
         overflow-y: auto;
         background-color: rgba(255, 255, 255, 1);
-        -webkit-transition: all 0.5s ease;
-        -moz-transition: all 0.5s ease;
-        -o-transition: all 0.5s ease;
-        transition: all 0.5s ease;
+        -webkit-transition: all 0.2s ease;
+        -moz-transition: all 0.2s ease;
+        -o-transition: all 0.2s ease;
+        transition: all 0.2s ease;
     }
     
     #sidebar-sep {
         z-index: 1000;
         position: fixed;
         left: 350px;
-        width: 6px;
+        width: 8px;
         height: 100%;
         margin-left: 1px;
         margin-right: 1px;
         overflow-y: auto;
         background-color: #dddddd;
         border:1px solid #888888;
-        -webkit-transition: all 0.5s ease;
-        -moz-transition: all 0.5s ease;
-        -o-transition: all 0.5s ease;
-        transition: all 0.5s ease;
+        -webkit-transition: all 0.2s ease;
+        -moz-transition: all 0.2s ease;
+        -o-transition: all 0.2s ease;
+        transition: all 0.2s ease;
     }
     
-    #wrapper.toggled #sidebar-wrapper {
+    #icsw_wrapper.toggled #sidebar-wrapper {
         width: 350px;
     }
     
@@ -81,28 +81,33 @@
         padding: 2px;
     }
     
-    #wrapper.toggled #page-content-wrapper {
+    #icsw_wrapper.toggled #page-content-wrapper {
         position: absolute;
         margin-right: -356px;
     }
     
     @media(min-width:400px) {
-        #wrapper {
-            padding-left: 356px;
+        #icsw_wrapper {
+            padding-left: 350px;
         }
-        #wrapper.toggled {
-            padding-left: 0;
+        #icsw_wrapper.toggled {
+            padding-left: 4px;
         }
         #sidebar-wrapper {
             width: 350px;
         }
-        #wrapper.toggled #sidebar-wrapper {
+        #icsw_wrapper.toggled #sidebar-wrapper {
             width: 0;
         }
+        #icsw_wrapper.toggled #sidebar-sep {
+            left: 0px;
+            width: 14px;
+        }
+    
         #page-content-wrapper {
             padding: 2px;
         }
-        #wrapper.toggled #page-content-wrapper {
+        #icsw_wrapper.toggled #page-content-wrapper {
             position: relative;
             margin-right: 0;
         }
@@ -156,6 +161,7 @@
         window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }}
         window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }}
         window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
+        window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
         {% endinlinecoffeescript %}
         </script>
         {% compressed_js 'js_base' %}
@@ -183,21 +189,14 @@
 <body>
     <!--[if lt IE 8]><p class=chromeframe>Your browser is <em>ancient!</em> <a href="http://browsehappy.com/">Upgrade to a different browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.</p><![endif]-->
     <header>
-    {% block header %}
-    {% endblock %}
+        {% block header %}
+        {% endblock %}
     </header>
 
-    {% if user.is_authenticated %}
-        {% include "menu.html" %}
-    {% endif %}
-    <div id="wrapper" {% if not user.is_authenticated %}class="toggled"{% endif %}>
+    {% include "menu.html" %}
+    <div id="icsw_wrapper">
 
-        {% if user.is_authenticated %}
-            <div id="sidebar-wrapper">
-                {% include 'sidebar.html' %}
-            </div>
-            <div id="sidebar-sep"></div>
-        {% endif %}
+        {% include 'sidebar.html' %}
 
         <div id="page-content-wrapper">
             <div class="container-fluid">

@@ -1,33 +1,38 @@
 {% load i18n coffeescript %}
 
 <div id="icsw.sidebar" ng-cloack>
-    <div id="icsw.sidebar.ctrl" ng-controller="sidebar_base">
-        <div class="input-group">
-            <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
-                <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+    <div id="sidebar-wrapper" ng-controller="sidebar_base" ng-show="is_authenticated">
+        <div>
+            <div>
+                <div class="input-group">
+                    <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
+                        <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+                    </div>
+                    <span class="input-group-btn">
+                        <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length || icsw_devsel.selection.clients">
+                            <span title="use selection" class="glyphicon glyphicon-chevron-right"></span>
+                        </button>
+                        <button class="btn btn-danger" type="button" ng-click="clear_selection()">
+                            <span title="clear selection" class="glyphicon glyphicon-ban-circle"></span>
+                        </button>
+                    </span>  
+                </div>
+                <tabset>
+                    <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
+                        <tree treeconfig="s_tc_devices" single="true"></tree>
+                    </tab>
+                    <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
+                        <tree treeconfig="s_tc_fqdns"></tree>
+                    </tab>
+                    <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
+                        <tree treeconfig="s_tc_categories"></tree>
+                    </tab>
+                </tabset>
             </div>
-            <span class="input-group-btn">
-                <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length || icsw_devsel.selection.clients">
-                    <span title="use selection" class="glyphicon glyphicon-chevron-right"></span>
-                </button>
-                <button class="btn btn-danger" type="button" ng-click="clear_selection()">
-                    <span title="clear selection" class="glyphicon glyphicon-ban-circle"></span>
-                </button>
-            </span>  
+            <div id="ajax_info"></div> 
         </div>
-        <tabset>
-            <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
-                <tree treeconfig="s_tc_devices" single="true"></tree>
-            </tab>
-            <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
-                <tree treeconfig="s_tc_fqdns"></tree>
-            </tab>
-            <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
-                <tree treeconfig="s_tc_categories"></tree>
-            </tab>
-        </tabset>
     </div>
-    <div id="ajax_info"></div> 
+    <div id="sidebar-sep" ng-controller="sidebar_sep" ng-click="sep_click()" ng-show="is_authenticated"></div>
 </div>
 
 <script type="text/javascript">

@@ -1,6 +1,6 @@
 {% load i18n coffeescript staticfiles %}
 
-<nav class="navbar navbar-default navbar-fixed-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base" ng-cloak>
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base" ng-cloak ng-show="is_authenticated">
     <ul class="nav navbar-nav">
         <li>
             <a href="{% url 'main:index' %}"><span class="glyphicon glyphicon-home"></span></a>
@@ -136,9 +136,7 @@
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Session" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
                 <li><a href="{% url 'user:account_info' %}"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;{% trans "Account Info" %}</a></li>
-                {% if csw_perms.backbone.user.admin %}
-                    <li><a href="{% url 'admin:index' %}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;{% trans "Admin" %}</a></li>
-                {% endif %}
+                <li ng-show="check_perm('backbone.user.admin')"><a href="{% url 'admin:index' %}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;{% trans "Admin" %}</a></li>
                 {% if user.is_superuser %}
                     <li><a href="{% url 'user:global_settings' %}"><span class="glyphicon glyphicon-pencil"></span>&nbsp;{% trans "Settings" %}</a></li>
                 {% endif %}
@@ -164,6 +162,7 @@ menu_module = angular.module("icsw.menu_app", ["ngSanitize", "ui.bootstrap"])
 
 menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$window",
     ($scope, $timeout, $window) ->
+        $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
         $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
@@ -259,7 +258,6 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
                         $scope.progress_iters = 5
                         $scope.update_progress_bar()
         $scope.show_time()
-        #$scope.update_progress_bar()
 ])
 
 # bootstrap angular

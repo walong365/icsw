@@ -144,16 +144,19 @@ def _login(request, _user_object, login_form=None):
 
 class sess_login(View):
     def get(self, request):
-        if user.objects.all().count():  # @UndefinedVariable
-            if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:  # @UndefinedVariable
-                first_user = authenticate(
-                    username=user.objects.all().values_list("login", flat=True)[0],  # @UndefinedVariable
-                    password="AUTO_LOGIN"
-                )
-                if first_user is not None:
-                    _login(request, first_user)
-                    return HttpResponseRedirect(reverse("user:account_info"))
-        return login_page(request, next=request.GET.get("next", ""))
+        if request.user.is_authenticated():
+            return HttpResponseRedirect(reverse("main:index"))
+        else:
+            if user.objects.all().count():  # @UndefinedVariable
+                if user.objects.all().aggregate(total_logins=Sum("login_count"))["total_logins"] == 0:  # @UndefinedVariable
+                    first_user = authenticate(
+                        username=user.objects.all().values_list("login", flat=True)[0],  # @UndefinedVariable
+                        password="AUTO_LOGIN"
+                    )
+                    if first_user is not None:
+                        _login(request, first_user)
+                        return HttpResponseRedirect(reverse("user:account_info"))
+            return login_page(request, next=request.GET.get("next", ""))
 
     def post(self, request):
         _post = request.POST
