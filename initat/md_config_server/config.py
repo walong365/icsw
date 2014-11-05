@@ -1855,7 +1855,21 @@ class host_type_config(content_emitter):
     def get_xml(self):
         res_xml = getattr(E, "{}_list".format(self.get_name()))()
         for act_le in self.get_object_list():
-            res_xml.append(getattr(E, self.get_name())(**dict([(key, self._build_value_string(key, act_le[key])) for key in sorted(act_le.iterkeys())])))
+            if self.ignore_content(act_le):
+                continue
+            new_node = getattr(
+                E, self.get_name()
+            )(
+                **dict(
+                    [
+                        (
+                            key,
+                            self._build_value_string(key, act_le[key])
+                        ) for key in sorted(act_le.iterkeys())
+                    ]
+                )
+            )
+            res_xml.append(new_node)
         return [res_xml]
 
 

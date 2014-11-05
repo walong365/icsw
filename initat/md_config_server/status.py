@@ -86,9 +86,12 @@ class live_socket(object):
             s.send(request)
             s.shutdown(socket.SHUT_WR)
             csv_lines = csv.DictReader(s.makefile(), columns, delimiter=';')
-            return list(csv_lines)
+            _result = list(csv_lines)
+        except:
+            _result = []
         finally:
             s.close()
+        return _result
 
 
 class status_process(threading_tools.process_obj):
