@@ -622,7 +622,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope)
                     $scope.edit_div.simplemodal
                         #opacity      : 50
-                        position     : [event.pageY, event.pageX]
+                        position     : [event.clientY - 50, event.clientX - 50]
                         #autoResize   : true
                         #autoPosition : true
                         onShow: (dialog) => 
@@ -941,7 +941,7 @@ class angular_edit_mixin
             )
             @edit_div.simplemodal
                 #opacity      : 50
-                position     : [event.pageY - 50, event.pageX - 50]
+                position     : [event.clientY - 50, event.clientX - 50]
                 minWidth : @min_width
                 #autoResize   : true
                 #autoPosition : true
@@ -1083,7 +1083,7 @@ class angular_modal_mixin
         @edit_div = @compile(@templateCache.get(@template))(@scope)
         @edit_div.simplemodal
             #opacity      : 50
-            position     : [event.pageY - 50, event.pageX - 50]
+            position     : [event.clientY - 50, event.clientX - 50]
             minWidth : @min_width
             #autoResize   : true
             #autoPosition : true
