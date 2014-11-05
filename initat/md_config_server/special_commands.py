@@ -549,8 +549,14 @@ class special_disc(special_base):
                         "{:d}".format(warn_level if warn_level else 85),
                         "{:d}".format(crit_level if crit_level else 95))
                     if part_p.mountpoint.strip():
-                        part_list.append((part_p.mountpoint,
-                                          check_part, warn_level_str, crit_level_str))
+                        part_list.append(
+                            (
+                                part_p.mountpoint,
+                                check_part,
+                                warn_level_str,
+                                crit_level_str
+                            )
+                        )
                 else:
                     self.log("Diskcheck on host %s requested an illegal partition %s -> skipped" % (self.host["name"], act_part), logging_tools.LOG_LEVEL_WARN)
         # LVM-partitions

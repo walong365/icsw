@@ -1725,11 +1725,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["servicegroups"] = s_check.servicegroup_names
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             # command_name may be altered when using a special-command
-            act_serv["check_command"] = "!".join(
-                [
-                    kwargs.get("command_name", s_check["command_name"])
-                ] + s_check.correct_argument_list(arg_temp, host.dev_variables)
-            )
+            _com_parts = [
+                kwargs.get("command_name", s_check["command_name"])
+            ] + s_check.correct_argument_list(arg_temp, host.dev_variables)
+            if any([_part is None for _part in _com_parts]) and self.gc["DEBUG"]:
+                self.log("none found: {}".format(str(_com_parts)), logging_tools.LOG_LEVEL_CRITICAL)
+            else:
+                act_serv["check_command"] = "!".join(_com_parts)
             # add addon vars
             for key, value in arg_temp.addon_dict.iteritems():
                 act_serv[key] = value
