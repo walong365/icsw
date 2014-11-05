@@ -2702,21 +2702,27 @@ class device_templates(dict):
             if dev_templ.is_default:
                 self.__default = dev_templ
         self.log(
-            "Found %s (%s)" % (logging_tools.get_plural("device_template", len(self.keys())),
-                               ", ".join([cur_dt.name for cur_dt in self.itervalues()])))
+            "Found {} ({})".format(
+                logging_tools.get_plural("device_template", len(self.keys())),
+                ", ".join([cur_dt.name for cur_dt in self.itervalues()])
+            )
+        )
         if self.__default:
             self.log(
-                "Found default device_template named '%s'" % (self.__default.name))
+                "Found default device_template named '%s'" % (self.__default.name)
+            )
         else:
             if self.keys():
                 self.__default = self.values()[0]
                 self.log(
                     "No default device_template found, using '%s'" % (self.__default.name),
-                    logging_tools.LOG_LEVEL_WARN)
+                    logging_tools.LOG_LEVEL_WARN
+                )
             else:
                 self.log(
                     "No device_template founds, skipping configuration....",
-                    logging_tools.LOG_LEVEL_ERROR)
+                    logging_tools.LOG_LEVEL_ERROR
+                )
 
     def is_valid(self):
         return self.__default and True or False
