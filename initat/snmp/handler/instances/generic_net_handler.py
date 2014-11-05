@@ -37,6 +37,10 @@ IF_BASE = "1.3.6.1.2.1.2"
 HS_BASE = "1.3.6.1.2.1.31.1.1.1"
 
 
+def safe_string(in_str):
+    return "".join([_char for _char in in_str if ord(_char) >= 32])
+
+
 class handler(SNMPHandler):
     class Meta:
         description = "network settings (devices)"
@@ -161,6 +165,7 @@ class handler(SNMPHandler):
         ]
 
     def _build_if_mvl(self, vector, if_name, **kwargs):
+        # to remove binary data from strings (yeah windows)
         return E.mvl(
             E.value(
                 info="OctetsIn on {}".format(if_name),
@@ -218,7 +223,7 @@ class handler(SNMPHandler):
                     _if[10] = _hi_dict[_if_idx][6]
                     _if[16] = _hi_dict[_if_idx][10]
                 _prefix = "net.snmp_{:d}".format(_if_idx)
-                _name = _if[2] or "idx#{:d}".format(_if_idx)
+                _name = safe_string(_if[2] or "idx#{:d}".format(_if_idx))
                 # check if cache is present and set internal values
                 if _vc.is_set(_if_idx):
                     _vector = [
