@@ -223,7 +223,7 @@ class license_process(threading_tools.process_obj):
             if self._track_in_db:
                 self._write_db_entries(act_site, self.__elo_obj, lic_xml)
         else:
-            self.log("no actual site defined, no license tracking". logging_tools.LOG_LEVEL_ERROR)
+            self.log("no actual site defined, no license tracking", logging_tools.LOG_LEVEL_ERROR)
 
     def _update_lic(self, elo_obj):
         elo_obj.read()
