@@ -205,14 +205,17 @@ class snmp_process_container(object):
             self.__snmp_dict[snmp_idx]["done"] += 1
             self._event("finished", data)
             if self.__snmp_dict[snmp_idx]["jobs"] > self.max_snmp_jobs:
-                self.__snmp_dict[snmp_idx]["stopping"] = True
-                self.log(
-                    "stopping SNMP process {:d} ({:d} > {:d})".format(
-                        snmp_idx,
-                        self.__snmp_dict[snmp_idx]["jobs"],
-                        self.max_snmp_jobs,
+                if self.__snmp_dict[snmp_idx]["stopping"]:
+                    self.log("SNMP process {:d} already stopped".format(snmp_idx), logging_tools.LOG_LEVEL_WARN)
+                else:
+                    self.__snmp_dict[snmp_idx]["stopping"] = True
+                    self.log(
+                        "stopping SNMP process {:d} ({:d} > {:d})".format(
+                            snmp_idx,
+                            self.__snmp_dict[snmp_idx]["jobs"],
+                            self.max_snmp_jobs,
+                        )
                     )
-                )
-                self.send("snmp_{:d}".format(snmp_idx), "exit")
+                    self.send("snmp_{:d}".format(snmp_idx), "exit")
         else:
             self.log("unknown type {} from {}".format(data["type"], src_proc), logging_tools.LOG_LEVEL_ERROR)
