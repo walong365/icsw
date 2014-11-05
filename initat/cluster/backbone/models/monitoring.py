@@ -354,13 +354,15 @@ def parse_commandline(com_line):
 
     ${ARG#:var_name:default}
     ${ARG#:var_name:default}$
+    ${ARG#:*var_name}
+    ${ARG#:*var_name}$
     ${ARG#:default}
     ${ARG#:default}$
     $ARG#$
 
     """
     com_re = re.compile(
-        "^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(?P<var_name>[^:^}]+?)(\:(?P<default>[^}]+))*}\$*)|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$"
+        "^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(((?P<var_name>[^:^}]+?)\:(?P<default_vn>[^}]+?)}\$*)|(?P<default>[^}]+?)}\$*))|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$"
     )
     cur_line = com_line
     # where to start the match to avoid infinite loop
@@ -377,16 +379,17 @@ def parse_commandline(com_line):
                 prev_part = None
             if m_dict["arg_num_2"] is not None:
                 # short form
-                arg_name = "ARG%s" % (m_dict["arg_num_2"])
+                arg_name = "ARG{}".format(m_dict["arg_num_2"])
             else:
-                arg_name = "ARG%s" % (m_dict["arg_num_1"])
-                var_name, default_value = (m_dict["var_name"], m_dict["default"])
-                if var_name:
-                    _default_values[arg_name] = (var_name, default_value)
-                elif default_value is not None:
-                    _default_values[arg_name] = default_value
-            pre_text, post_text = (m_dict["pre_text"] or "",
-                                   m_dict["post_text"] or "")
+                arg_name = "ARG{}".format(m_dict["arg_num_1"])
+                if m_dict["var_name"]:
+                    _default_values[arg_name] = (m_dict["var_name"], m_dict["default_vn"])
+                elif m_dict["default"]:
+                    _default_values[arg_name] = m_dict["default"]
+            pre_text, post_text = (
+                m_dict["pre_text"] or "",
+                m_dict["post_text"] or ""
+            )
             cur_line = "%s%s$%s$%s" % (
                 cur_line[:s_idx],
                 pre_text,
