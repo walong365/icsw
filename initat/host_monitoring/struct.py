@@ -128,6 +128,7 @@ class host_connection(object):
             sndhwm=host_connection.backlog_size,
             rcvhwm=host_connection.backlog_size,
             backlog=host_connection.backlog_size,
+            immediate=True,
         )
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)  # @UndefinedVariable
@@ -195,7 +196,7 @@ class host_connection(object):
             else:
                 self.__open = True
                 # make a short nap to let 0MQ settle things down
-                time.sleep(0.2)
+                # time.sleep(0.2)
         return self.__open
 
     def _close(self):
@@ -214,7 +215,8 @@ class host_connection(object):
         except:
             self.return_error(
                 host_mes,
-                "error parsing arguments: {}".format(process_tools.get_except_info()))
+                "error parsing arguments: {}".format(process_tools.get_except_info())
+            )
         else:
             if not self.tcp_con:
                 try:
@@ -228,39 +230,27 @@ class host_connection(object):
                         )
                     )
                 else:
-                    if False and self.__backlog_counter == host_connection.backlog_size:
-                        # no stupid backlog counting
+                    send_str = unicode(host_mes.srv_com)
+                    try:
+                        host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
+                        host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
+                    except:
                         self.return_error(
                             host_mes,
-                            "connection error (backlog full [{:d}.{:d}]) for '{}'".format(
-                                self.__backlog_counter,
-                                host_connection.backlog_size,
-                                self.__conn_str
-                            )
+                            "connection error ({})".format(process_tools.get_except_info()),
                         )
-                        # self._close()
                     else:
-                        send_str = unicode(host_mes.srv_com)
-                        try:
-                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
-                            host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)  # @UndefinedVariable
-                        except:
-                            self.return_error(
-                                host_mes,
-                                "connection error ({})".format(process_tools.get_except_info()),
-                            )
-                        else:
-                            # self.__backlog_counter += 1
-                            self.sr_probe.send = len(send_str)
-                            host_mes.sr_probe = self.sr_probe
-                            host_mes.sent = True
+                        self.sr_probe.send = len(send_str)
+                        host_mes.sr_probe = self.sr_probe
+                        host_mes.sent = True
             else:
                 # send to socket-thread for old clients
                 host_connection.relayer_process.send_to_process(
                     "socket",
                     "connection",
                     host_mes.src_id,
-                    unicode(host_mes.srv_com))
+                    unicode(host_mes.srv_com)
+                )
 
     def send_result(self, host_mes, result=None):
         host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)  # @UndefinedVariable
@@ -306,7 +296,6 @@ class host_connection(object):
         cur_mes = self.messages[mes_id]
         if cur_mes.sent:
             cur_mes.sent = False
-            # self.__backlog_counter -= 1
         if len(result.xpath(".//ns:raw", smart_strings=False)):
             # raw response, no interpret
             cur_mes.srv_com = result
