@@ -24,10 +24,10 @@
 
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.config import global_config
-from initat.host_monitoring.discovery import id_discovery
 from initat.host_monitoring.constants import MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
-from initat.host_monitoring.struct import host_connection, host_message
+from initat.host_monitoring.discovery import id_discovery
 from initat.host_monitoring.hm_direct import socket_process
+from initat.host_monitoring.struct import host_connection, host_message
 from initat.host_monitoring.tools import my_cached_file
 from initat.host_monitoring.version import VERSION_STRING
 from lxml import etree  # @UnresolvedImport
