@@ -1,0 +1,58 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript %}
+
+{% block title %}{% trans "License Overview" %}{% endblock %}
+
+{% block angular %}{% include "angular/rms.cs" %}{% endblock %}
+
+{% block content %}
+
+{% verbatim %}
+
+<div id="icsw.rms">
+    <div ng-controller="lic_ctrl">
+        <table>
+            <tr><th>Lics:</th></tr>
+            <tr ng-repeat="li in ext_license_list">
+                <td> {{ li.name }} </td>
+            </tr>
+        </table>
+    
+        <p>&nbsp;</p>
+
+        <form class="form-inline">
+            <div class="form-group">
+                <label class="control-label">License:</label>
+                <select class="form-control input-sm" ng-model="cur_lic">
+                    <option ng-repeat="li in ext_license_list" value="{{ li.idx }}">{{ li.name }}</option>
+                </select>
+            </div>
+        </form>
+
+        <p>&nbsp;</p>
+    
+        <div ng-if="cur_lic">
+            <licgraph lic="{{cur_lic}}"></licgraph>
+        </div>
+        
+            
+    </div>
+</div>
+
+{% endverbatim %}
+
+ <script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.rms']"), ["icsw.rms"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}
+

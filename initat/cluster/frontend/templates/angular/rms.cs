@@ -431,6 +431,18 @@ change_pri_template = """
     <button class="btn btn-primary" ng-click="ok()" ng-show="priform.$valid">Modify</button>
     <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
 </div>
+""" 
+
+licgraph_template = """ 
+	cur lic: {{ cur_lic }}
+    <p>&nbsp;</p>
+    <ul>
+        <li ng-repeat="d in data"> {{ d }} </li>
+    </ul>
+    
+    <p>&nbsp;</p>
+    data:
+    {{data }}
 """
 
 {% endverbatim %}
@@ -860,7 +872,36 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     $scope.header_filter_set = true
                 )
                 $scope.reload()
-]).directive("running", ($templateCache) ->
+]).controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$resource"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, $resource) -> 
+        wait_list = restDataSource.add_sources([
+            ["{% url 'rest:device_list' %}", {}],
+            ["{% url 'rest:ext_license_list' %}", {}],
+        ])
+        $q.all(wait_list).then( (data) ->
+            $scope.device_list = data[0]
+            $scope.ext_license_list = data[1]
+        )
+        $scope.myResource = $resource("{% url 'rest:license_data_list' %}", {})
+        $scope.data = []
+]).directive("licgraph", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("licgraph.html")
+        link : (scope, el, attrs) ->
+            scope.$watch(attrs.cur_lic, (new_val) ->
+                 console.log "new val", attrs.cur_lic
+                 console.log "new val 2 ", new_val
+                 if new_val
+                     scope.myResource.get({'lic_id':new_val}, (new_data) ->
+                         console.log "data: ", new_data
+                         scope.$apply(
+                             scope.data = new_data
+                         )
+                     )
+            )
+    }
+).directive("running", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("running_table.html")
@@ -1250,6 +1291,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("job_action.html", jobaction)
     $templateCache.put("files_info.html", filesinfo)
     $templateCache.put("change_pri.html", change_pri_template)
+    $templateCache.put("licgraph.html", licgraph_template)
 )
 
 add_rrd_directive(rms_module)

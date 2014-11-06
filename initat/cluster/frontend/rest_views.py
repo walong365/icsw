@@ -29,10 +29,11 @@ from django.db.models import Q
 from initat.cluster.backbone import serializers as model_serializers
 from initat.cluster.backbone.models import get_related_models, get_change_reset_list, device, \
     domain_name_tree, category_tree, device_selection, device_config, home_export_list, \
-    csw_permission, netdevice, cd_connection
+    csw_permission, netdevice, cd_connection, ext_license_state_coarse, ext_license_check_coarse
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
+    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer, \
+    ext_license_state_coarse_serializer
 from initat.cluster.frontend import forms
 from initat.core.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -40,6 +41,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import exception_handler, APIView
+from rest_framework.generics import ListAPIView
 import json
 import logging
 import logging_tools
@@ -48,6 +50,7 @@ import pprint  # @UnusedImport
 import process_tools
 import time
 import types
+import datetime
 
 logger = logging.getLogger("cluster.rest")
 
@@ -812,3 +815,29 @@ for src_mod, obj_name in REST_LIST:
                 "serializer_class": ser_class
             }
         )
+
+
+class license_data_list(ListAPIView):
+
+    serializer_class = ext_license_state_coarse_serializer
+
+    def list(self, request, *args, **kwargs):
+        lic_id = request.GET["lic_id"]
+
+        start = datetime.datetime(year=2014, month=10, day=1)
+        end = datetime.datetime(year=2014, month=11, day=1)
+        data = ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
+                                                       ext_license_check_coarse__duration_type=ext_license_check_coarse.Duration.Day.ID,
+                                                       ext_license_check_coarse__start_date__range=(start, end))
+
+        self.object_list = data
+
+        # Switch between paginated or standard style responses
+        page = self.paginate_queryset(self.object_list)
+        if page is not None:
+            serializer = self.get_pagination_serializer(page)
+        else:
+            serializer = self.get_serializer(self.object_list, many=True)
+
+        return Response(serializer.data)
+

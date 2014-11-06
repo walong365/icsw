@@ -7,7 +7,7 @@ import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views
-from initat.cluster.rms import rms_views
+from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 
 handler404 = main_views.index.as_view()
@@ -35,6 +35,12 @@ rms_patterns = patterns(
     url(r"set_user_setting", rms_views.set_user_setting.as_view(), name="set_user_setting"),
     url(r"get_user_setting", rms_views.get_user_setting.as_view(), name="get_user_setting"),
     url(r"change_job_pri$", rms_views.change_job_priority.as_view(), name="change_job_priority"),
+)
+
+# license overview
+lic_patterns = patterns(
+    "initat.cluster.rms",
+    url(r"overview", lic_views.overview.as_view(), name="overview"),
 )
 
 
@@ -193,6 +199,7 @@ rpl.extend([
     url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get": "list"}), name="netdevice_peer_list"),
     url("^fetch_forms$", rest_views.fetch_forms.as_view({"get": "list"}), name="fetch_forms"),
     url("^min_access_levels$", rest_views.min_access_levels.as_view({"get": "list"}), name="min_access_levels"),
+    url("^license_data_list$", rest_views.license_data_list.as_view(), name="license_data_list"),
 ])
 
 rest_patterns = patterns(
@@ -224,6 +231,7 @@ my_url_patterns = patterns(
     url(r"^session/", include(session_patterns, namespace="session")),
     url(r"^config/", include(config_patterns, namespace="config")),
     url(r"^rms/", include(rms_patterns, namespace="rms")),
+    url(r"^lic/", include(lic_patterns, namespace="lic")),
     url(r"^main/", include(main_patterns, namespace="main")),
     url(r"^device/", include(device_patterns, namespace="device")),
     url(r"^network/", include(network_patterns, namespace="network")),
