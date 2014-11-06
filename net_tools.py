@@ -22,6 +22,7 @@
 """ network middleware """
 
 import operator
+import process_tools
 import server_command
 import sys
 import time
@@ -39,7 +40,8 @@ def get_except_info(exc_info=None):
 
 class zmq_connection(object):
     def __init__(self, identity_str, **kwargs):
-        if "context" in kwargs:
+        self.__ext_context = "context" in kwargs
+        if self.__ext_context:
             self.context = kwargs["context"]
         else:
             self.context = zmq.Context()
@@ -71,14 +73,12 @@ class zmq_connection(object):
         self.poller.unregister(zmq_socket)
 
     def add_connection(self, conn_str, command, **kwargs):
-        new_sock = self.context.socket(zmq.DEALER)
-        new_sock.setsockopt(zmq.LINGER, self.__linger_time)
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        # print new_sock.getsockopt(zmq.NOBLOCK)
-        # new_sock.setsockopt(zmq.NOBLOCK, 1)
-        # print new_sock.getsockopt(zmq.NOBLOCK)
-        new_sock.setsockopt(zmq.IDENTITY, self.identity)
+        new_sock = process_tools.get_socket(
+            self.context,
+            "DEALER",
+            linger=self.__linger_time,
+            identity=self.identity,
+        )
         if isinstance(command, server_command.srv_command):
             c_type = "sc"
         else:
@@ -94,8 +94,8 @@ class zmq_connection(object):
             self.__results[cur_fd] = unicode(_result)
         else:
             # self.register_poller(new_sock, zmq.POLLOUT, self.__show)
-            sock_fd = new_sock.getsockopt(zmq.FD)
-            self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)
+            sock_fd = new_sock.getsockopt(zmq.FD)  # @UndefinedVariable
+            self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)  # @UndefinedVariable
             # self.register_poller(new_sock, sock_fd, zmq.POLLERR, self.__show)
             self.__socket_dict[sock_fd] = new_sock
             self.__results[sock_fd] = None
@@ -125,6 +125,7 @@ class zmq_connection(object):
                     self._close_socket(sock_fd)
             if not self.__pending:
                 break
+        self.close()
         # self.context.term()
         return [self._interpret_result(com_type, self.__results[cur_fd]) for cur_fd, com_type in self.__add_list]
 
@@ -144,10 +145,13 @@ class zmq_connection(object):
         return in_bytes
 
     def __receive(self, sock):
-        sock_fd = sock.getsockopt(zmq.FD)
+        sock_fd = sock.getsockopt(zmq.FD)  # @UndefinedVariable
         self.__results[sock_fd] = sock.recv()
         self._close_socket(sock_fd)
 
     def close(self):
         for sock_fd in list(self.__pending):
             self._close_socket(sock_fd)
+        if not self.__ext_context and self.context is not None:
+            self.context.term()
+            self.context = None
