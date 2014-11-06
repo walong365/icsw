@@ -20,7 +20,7 @@
 
 """ rms-server, license monitoring part """
 
-from django.db import connection
+from django.db import connection, models
 from django.db.models import Max, Min, Avg, Q, Count
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
@@ -238,25 +238,24 @@ class license_process(threading_tools.process_obj):
         '''
         Updates archive data (coarse data) from raw data in database
         '''
-        last_day = ext_license_check_coarse.objects.filter(Q(duration_type=ext_license_check_coarse.Duration.DAY)).aggregate(Max('start_date'))
 
-        def create_timespan_entry_from_raw_data(start, end, site):
-            last_earlier_time = ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
-            last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
+        def create_timespan_entry_from_raw_data(start, end, duration_type, site):
+            #last_earlier_time = ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            #last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
 
-            first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
-            first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
+            #first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            #first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
 
             timespan_state_data = ext_license_state.objects.prefetch_related('ext_license_check').filter(
-                ext_license_check__date__range=(start, end))
+                ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
 
             timespan_version_state_data = ext_license_version_state.objects.prefetch_related('ext_license_check').filter(
-                ext_license_check__date__range=(start, end))
+                ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
 
             # this indirection is 10 times faster than using timespan_version_state_data as possible indices for ext_license_version_state
-            timespan_usage_data = ext_license_usage.objects.filter(ext_license_version_state__ext_license_check__date__range=(start, end))
+            timespan_usage_data = ext_license_usage.objects.filter(ext_license_version_state__ext_license_check__date__range=(start, end),
+                                                                   ext_license_version_state__ext_license_check__ext_license_site=site)
 
-            pprint(timespan_state_data)
             print("num checks: {}, fst: {}".format(len(ext_license_check.objects.filter(date__range=(start, end))),
                   ext_license_check.objects.filter(date__range=(start, end))[0].pk)  )
             print("found {} state entries from {} to {}".format(len(timespan_state_data), start, end))
@@ -267,9 +266,11 @@ class license_process(threading_tools.process_obj):
                 start_date=start,
                 end_date=end,
                 duration=(end-start).total_seconds(),
-                duration_type=ext_license_check_coarse.Duration.DAY,
+                duration_type=duration_type.ID,
                 ext_license_site=site,
             )
+
+            print 'created coarse with start {}'.format(check_coarse.start_date)
 
             _freq_cnt_sanity = 0
             for lic in timespan_state_data.values("ext_license").distinct():
@@ -303,7 +304,7 @@ class license_process(threading_tools.process_obj):
 
                 for vendor_lic_version in timespan_version_state_data.filter(ext_license_state__ext_license_id=lic_id).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
                     freq = vendor_lic_version['frequency']
-                    ext_lic_id = pk=vendor_lic_version['ext_license_version']
+                    ext_lic_id = vendor_lic_version['ext_license_version']
                     vendor_id = vendor_lic_version['vendor']
                     version_state_coarse = ext_license_version_state_coarse.objects.create(
                         ext_license_check_coarse=check_coarse,
@@ -331,20 +332,47 @@ class license_process(threading_tools.process_obj):
                             frequency=usage_data['frequency']
                         )
 
-                        print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
+                        #print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
 
             print 'state freq counted: ', _freq_cnt_sanity
             if _freq_cnt_sanity != len(timespan_version_state_data):
                 self.log("Warning: Lost version time entries ({}, {}), start: {}, end: {}".format(_freq_cnt_sanity, len(timespan_version_state_data), start, end))
 
+        # check which data to collect
+        for site in ext_license_site.objects.all():
 
-        # TODO: check what to create
-        # TODO: create
-        site = ext_license_site.objects.get(idx=1) # TODO
-        for i in xrange(1):
-            start = datetime.date(2014, 10, i+1)
-            end = datetime.date(2014, 10, i+2)
-            create_timespan_entry_from_raw_data(start, end, site=site)
+            for duration_type in (ext_license_check_coarse.Duration.Month, ext_license_check_coarse.Duration.Day):
+                try:
+                    # make sure to only get date from db to stay consistent with its timezone
+                    last_day = ext_license_check_coarse.objects.filter(duration_type=duration_type.ID, ext_license_site=site).latest('start_date')
+                    next_start_time = last_day.end_date
+                except ext_license_check_coarse.DoesNotExist:
+                    # first run
+                    self.log("No archive data found, creating")
+                    earliest_datetime = ext_license_check.objects.filter(ext_license_site=site).earliest('date')
+                    print earliest_datetime
+                    next_start_time = duration_type.get_time_frame_start(earliest_datetime.date)
+                    print next_start_time
+
+                do_loop = True
+                while do_loop:
+                    # check if we can calculate next day
+                    next_end_time = duration_type.get_end_time_for_start(next_start_time)
+                    print 'end', next_end_time
+                    try:
+                        first_later_check = ext_license_check.objects.filter(date__gt=next_end_time, ext_license_site=site).earliest('date')
+                    except ext_license_check.DoesNotExist:
+                        # no check later then the end time found, we have to wait until first next check is ehre
+                        first_later_check = None
+                        do_loop = False
+                        self.log("No data after {} found, not archiving further".format(next_end_time))
+
+                    if first_later_check:
+                        self.log("creating entry for day {}".format(next_start_time))
+                        print("creating entry for day {}".format(next_start_time))
+                        create_timespan_entry_from_raw_data(next_start_time, next_end_time, ext_license_check_coarse.Duration.Day, site)
+
+                        next_start_time = next_end_time
 
     def _update_lic(self, elo_obj):
         elo_obj.read()
