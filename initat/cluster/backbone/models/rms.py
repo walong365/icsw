@@ -47,6 +47,10 @@ __all__ = [
     "ext_license_state",
     "ext_license_version_state",
     "ext_license_usage",
+    "ext_license_check_coarse",
+    "ext_license_version_state_coarse",
+    "ext_license_state_coarse",
+    "ext_license_usage_coarse",
 ]
 
 
@@ -273,6 +277,10 @@ class ext_license(ext_license_base):
 
 
 class ext_license_version(ext_license_base):
+    '''
+    License version as reported by server (different from what is used and reported by client.)
+    This is probably the import one.
+    '''
     ext_license = models.ForeignKey("backbone.ext_license")
     version = models.CharField(max_length=64, default="")
 
@@ -332,6 +340,9 @@ class ext_license_version_state(models.Model):
 
 
 class ext_license_client_version(ext_license_base):
+    '''
+    License version as reported by client (different from what is used and reported by server.)
+    '''
     ext_license = models.ForeignKey("backbone.ext_license")
     client_version = models.CharField(default="", max_length=64)
 
@@ -346,7 +357,109 @@ class ext_license_usage(models.Model):
     ext_license_user = models.ForeignKey("backbone.ext_license_user")
     ext_license_client_version = models.ForeignKey("backbone.ext_license_client_version", null=True)
     checkout_time = models.IntegerField(default=0)
-    num = models.IntegerField(default=0)
+    num = models.IntegerField(default=0)  # number of licenses of a single instance of a program
+
+    class Meta:
+        app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
+
+
+'''
+The models above are too fine-grained for fast access, so we use the ones
+below for displaying them. Here, the data is aggregated using dynamic durations.
+'''
+
+
+class ext_license_check_coarse(models.Model):
+    idx = models.AutoField(primary_key=True)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    duration = models.IntegerField()  # seconds
+    duration_type = models.IntegerField()  # Durations enum below
+    ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
+
+    class Duration(object):
+        class Day(object):
+            ID = 1
+
+            @classmethod
+            def get_time_frame_start(cls, timepoint):
+                return timepoint.date()
+
+            @classmethod
+            def get_end_time_for_start(cls, starttime):
+                return starttime + datetime.timedelta(days=1)
+
+        class Month(object):
+            ID = 2
+
+            @classmethod
+            def get_time_frame_start(cls, timepoint):
+                return datetime.datetime(year=timepoint.year, month=timepoint.month, day=1)
+
+            @classmethod
+            def get_end_time_for_start(cls, starttime):
+                return cls.get_time_frame_start(starttime + datetime.timedelta(days=35))  # take beginning of next month
+
+    class Meta:
+        app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
+
+
+class ext_license_state_coarse(models.Model):
+    idx = models.AutoField(primary_key=True)
+    ext_license_check_coarse = models.ForeignKey("backbone.ext_license_check_coarse")  # "pk"
+
+    ext_license = models.ForeignKey("backbone.ext_license")  # grouped by this
+
+    # free is issued - used; reserved field might be added later
+    used = models.FloatField(default=0.0)  # smartly aggregated value
+    used_min = models.IntegerField(default=0)
+    used_max = models.IntegerField(default=0)
+    issued = models.FloatField(default=0.0)  # smartly aggregated value
+    issued_min = models.IntegerField(default=0)
+    issued_max = models.IntegerField(default=0)
+    data_points = models.IntegerField()  # number of measurements used for calculating this
+
+    class Meta:
+        app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
+
+
+class ext_license_version_state_coarse(models.Model):
+    idx = models.AutoField(primary_key=True)
+    ext_license_check_coarse = models.ForeignKey("backbone.ext_license_check_coarse")  # "pk"
+    ext_license_state_coarse = models.ForeignKey("backbone.ext_license_state_coarse")  # "pk"
+
+    ext_license_version = models.ForeignKey("backbone.ext_license_version")  # grouped by this
+    vendor = models.ForeignKey("backbone.ext_license_vendor")  # grouped by this
+
+    frequency = models.IntegerField()  # number of times this license_version and vendor combination occurred, grouped by check and state
+
+    class Meta:
+        app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
+
+
+class ext_license_usage_coarse(models.Model):
+    idx = models.AutoField(primary_key=True)
+    ext_license_version_state_coarse = models.ForeignKey("backbone.ext_license_version_state_coarse")  # "pk"
+
+    ext_license_client = models.ForeignKey("backbone.ext_license_client")  # grouped by this
+    ext_license_user = models.ForeignKey("backbone.ext_license_user")  # grouped by this
+    # client version currently deemed not necessary, possibly add later
+    # ext_license_client_version = models.ForeignKey("backbone.ext_license_client_version", null=True)
+    num = models.IntegerField(default=0)  # number of licenses of a single instance of a program
+
+    frequency = models.IntegerField()  # number of times this client/user/num combination occurred for this version_state
 
     class Meta:
         app_label = "backbone"
