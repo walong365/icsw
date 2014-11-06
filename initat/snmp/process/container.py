@@ -39,6 +39,7 @@ class snmp_process_container(object):
         self.__run_flag = True
         self.__snmp_dict = {}
         self.__used_proc_ids = set()
+        self.__buffer = []
         self._socket = None
         self.log("init with a maximum of {:d} processes ({:d} jobs per process)".format(self.max_procs, self.max_snmp_jobs))
         self.log("{} in default config dict:".format(logging_tools.get_plural("key", len(self.conf_dict))))
@@ -106,8 +107,10 @@ class snmp_process_container(object):
         )
         if idle_procs:
             proc_id = idle_procs[0][1]
-        else:
+        elif running_procs:
             proc_id = running_procs[0][1]
+        else:
+            proc_id = None
         return proc_id
 
     def stop(self):
@@ -134,9 +137,25 @@ class snmp_process_container(object):
     def start_batch(self, vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, **kwargs):
         # see proc_data in snmp_relay_schemes
         snmp_id = self.get_free_snmp_id()
-        self.__snmp_dict[snmp_id]["jobs"] += 1
-        self.__snmp_dict[snmp_id]["pending"] += 1
-        self.send("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, VERBOSE=0, **kwargs)
+        if snmp_id:
+            _snmp_id = "snmp_{:d}".format(snmp_id)
+            if self.__buffer:
+                # send buffer to free process
+                self.log("sending buffer ({}) to {}".format(logging_tools.get_plural("entry", len(self.__buffer)), _snmp_id))
+                for _vers, _ip, _com, _batch_id, _single_key_transform, _timeout, _oid_list, _kwargs in self.__buffer:
+                    self.__snmp_dict[snmp_id]["jobs"] += 1
+                    self.__snmp_dict[snmp_id]["pending"] += 1
+                    self.send(
+                        _snmp_id, "fetch_snmp", _vers, _ip, _com, _batch_id, _single_key_transform, _timeout,
+                        *_oid_list, VERBOSE=0, **_kwargs
+                    )
+                self.__buffer = []
+            self.__snmp_dict[snmp_id]["jobs"] += 1
+            self.__snmp_dict[snmp_id]["pending"] += 1
+            self.send(_snmp_id, "fetch_snmp", vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, VERBOSE=0, **kwargs)
+        else:
+            self.__buffer.append((vers, ip, com, batch_id, single_key_transform, timeout, oid_list, kwargs))
+            self.log("no free SNMP processes, buffering ({:d})...".format(len(self.__buffer)), logging_tools.LOG_LEVEL_WARN)
 
     def send(self, target, m_type, *args, **kwargs):
         _iter = 0
@@ -187,7 +206,6 @@ class snmp_process_container(object):
             self.__used_proc_ids.remove(self.__snmp_dict[snmp_idx]["npid"])
             # self.log(str(self.__used_proc_ids))
             self.__snmp_dict[snmp_idx]["proc"].join()
-            del self.__snmp_dict[snmp_idx]
             self._event(
                 "process_exit",
                 pid=data["pid"],
@@ -196,10 +214,11 @@ class snmp_process_container(object):
             if self.__run_flag:
                 # spawn new processes
                 self.check()
-            else:
-                if not self.__snmp_dict:
-                    self.log("all SNMP processes stopped")
-                    self._event("all_stopped")
+            # remove process from dict after new process was spanned (to make endpoints unique)
+            del self.__snmp_dict[snmp_idx]
+            if not self.__run_flag and not self.__snmp_dict:
+                self.log("all SNMP processes stopped")
+                self._event("all_stopped")
         elif data["type"] == "snmp_finished":
             self.__snmp_dict[snmp_idx]["pending"] -= 1
             self.__snmp_dict[snmp_idx]["done"] += 1
