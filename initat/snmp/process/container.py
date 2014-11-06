@@ -172,8 +172,10 @@ class snmp_process_container(object):
             except zmq.error.ZMQError:
                 _iter += 1
                 time.sleep(0.1)
-                if _iter > 10:
-                    logging_tools.my_syslog("unable to send to {}".format(target))
+                if _iter > 20:
+                    self.log("stopped trying to send to {} after {;d}".format(target, _iter), logging_tools.LOG_LEVEL_CRITICAL)
+                elif _iter > 10:
+                    self.log("unable to send to {}, iter={:d}".format(target, _iter), logging_tools.LOG_LEVEL_ERROR)
             else:
                 break
 
