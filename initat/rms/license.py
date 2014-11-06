@@ -253,11 +253,15 @@ class license_process(threading_tools.process_obj):
             timespan_version_state_data = ext_license_version_state.objects.prefetch_related('ext_license_check').filter(
                 ext_license_check__date__range=(start, end))
 
+            # this indirection is 10 times faster than using timespan_version_state_data as possible indices for ext_license_version_state
+            timespan_usage_data = ext_license_usage.objects.filter(ext_license_version_state__ext_license_check__date__range=(start, end))
+
             pprint(timespan_state_data)
             print("num checks: {}, fst: {}".format(len(ext_license_check.objects.filter(date__range=(start, end))),
                   ext_license_check.objects.filter(date__range=(start, end))[0].pk)  )
             print("found {} state entries from {} to {}".format(len(timespan_state_data), start, end))
             print("found {} version state entries from {} to {}".format(len(timespan_version_state_data), start, end))
+            print("found {} usage entries".format(len(timespan_usage_data)))
 
             check_coarse = ext_license_check_coarse.objects.create(
                 start_date=start,
@@ -270,10 +274,8 @@ class license_process(threading_tools.process_obj):
             _freq_cnt_sanity = 0
             for lic in timespan_state_data.values("ext_license").distinct():
                 lic_id = lic["ext_license"]
-                lic_obj = ext_license.objects.get(pk=lic_id)
 
                 lic_state_data = timespan_state_data.filter(ext_license=lic_id)
-
 
                 print("\nfound {} lic {} state entries".format(len(lic_state_data), lic_id))
 
@@ -289,7 +291,7 @@ class license_process(threading_tools.process_obj):
 
                 state_coarse = ext_license_state_coarse.objects.create(
                     ext_license_check_coarse=check_coarse,
-                    ext_license=lic_obj,
+                    ext_license_id=lic_id,
                     used=used,
                     used_min=used_min,
                     used_max=used_max,
@@ -299,54 +301,41 @@ class license_process(threading_tools.process_obj):
                     data_points=len(lic_state_data),
                 )
 
-                #for lic_ver in timespan_version_state_data.values("ext_license_version").distinct():
-                #    lic_ver = lic_ver.itervalues().next()
-
-                #    version_state_lic_data = timespan_version_state_data.filter(ext_license_version_id=lic_ver)
-                #    print 'data for lic v', lic_ver, ' ', len(version_state_lic_data)
-                #    print 'all data for timespan ver stat', len(timespan_version_state_data)
-                #    """
-                #    #pprint( version_state_lic_data.aggregate(Count('vendor'), Count('ext_license_version')) )
-                #    pprint(version_state_lic_data.values("vendor", "ext_license_version").annotate(vendor_count=Count("vendor")))
-                #    pprint(version_state_lic_data.values("vendor", "ext_license_version"))
-
-                #    pprint(version_state_lic_data.values("vendor", "ext_license_version").annotate(vendor_count=Count("ext_license_version"), x=Count('vendor')))
-                #    #pprint(ext_license_version_state.objects.all().values("vendor", "ext_license_version").annotate(vendor_count=Count("ext_license_version",'vendor')))
-
-                #    #for vend_lic in version_state_lic_data.objects.all().values("vendor", "ext_license_version").annotate(
-                #    #        vendor_count=Count("ext_license_version"), ext_license_version_count=Count('vendor')):
-
-                #    print 'here'
-                #    #pprint(version_state_lic_data.distinct("vendor", "ext_license_version"))
-                #    pprint( ext_license_usage_coarse.objects.all().values("num", "ext_license_client"))
-                #    pprint( ext_license_usage_coarse.objects.all().values("num", "ext_license_client").annotate(x=Count("pk")))
-                #    pprint( ext_license_usage_coarse.objects.all().values("num", "ext_license_client").annotate(num_c=Count("num"), li_count="ext_license_client") ) 
-                #    """
-
-                for vendor_lic_version in timespan_version_state_data.filter(ext_license_state__ext_license=lic_obj).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
+                for vendor_lic_version in timespan_version_state_data.filter(ext_license_state__ext_license_id=lic_id).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
                     freq = vendor_lic_version['frequency']
-                    ext_license_version_state_coarse.objects.create(
+                    ext_lic_id = pk=vendor_lic_version['ext_license_version']
+                    vendor_id = vendor_lic_version['vendor']
+                    version_state_coarse = ext_license_version_state_coarse.objects.create(
                         ext_license_check_coarse=check_coarse,
                         ext_license_state_coarse=state_coarse,
-                        ext_license_version=ext_license_version.objects.get(pk=vendor_lic_version['ext_license_version']),
-                        vendor=ext_license_vendor.objects.get(pk=vendor_lic_version['vendor']),
+                        ext_license_version_id=ext_lic_id,
+                        vendor_id=vendor_id,
                         frequency=freq,
-                        #total_count=len(version_state_lic_data),
                     )
 
-                    #print 'ici'
-                    #pprint(timespan_version_state_data.filter(ext_license_state__ext_license=lic_obj))
-                    #pprint([(x.pk, x.ext_license_state.ext_license.pk) for x in (timespan_version_state_data.filter(ext_license_state__ext_license=lic_obj, ext_license_version=vendor_lic_version['ext_license_version'])[0:10])])
                     print 'version_state:', 'ver', vendor_lic_version['ext_license_version'], 'vendor', vendor_lic_version['vendor'], 'freq', vendor_lic_version['frequency']
                     _freq_cnt_sanity += freq
                     if freq == 0 and used_max != 0:
                         self.log("Warning: No license state state entries for license which is used. version: {}, license: {}, start: {}, end: {}".format(
                             vendor_lic_version['ext_license_version'], lic_id, start, end))
-                        
 
+                    # usage:
+                    version_state_usage_data = timespan_usage_data.filter(ext_license_version_state__ext_license_version_id=ext_lic_id,
+                                                                          ext_license_version_state__vendor_id=vendor_id)
+                    for usage_data in version_state_usage_data.values("ext_license_client", "ext_license_user", "num").annotate(frequency=Count("pk")):
+                        ext_license_usage_coarse.objects.create(
+                            ext_license_version_state_coarse=version_state_coarse,
+                            ext_license_client_id=usage_data['ext_license_client'],
+                            ext_license_user_id=usage_data['ext_license_user'],
+                            num=usage_data['num'],
+                            frequency=usage_data['frequency']
+                        )
+
+                        print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
 
             print 'state freq counted: ', _freq_cnt_sanity
-            
+            if _freq_cnt_sanity != len(timespan_version_state_data):
+                self.log("Warning: Lost version time entries ({}, {}), start: {}, end: {}".format(_freq_cnt_sanity, len(timespan_version_state_data), start, end))
 
 
         # TODO: check what to create
