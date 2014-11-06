@@ -246,10 +246,10 @@ class license_process(threading_tools.process_obj):
             #first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
             #first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
 
-            timespan_state_data = ext_license_state.objects.prefetch_related('ext_license_check').filter(
+            timespan_state_data = ext_license_state.objects.filter(
                 ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
 
-            timespan_version_state_data = ext_license_version_state.objects.prefetch_related('ext_license_check').filter(
+            timespan_version_state_data = ext_license_version_state.objects.filter(
                 ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
 
             # this indirection is 10 times faster than using timespan_version_state_data as possible indices for ext_license_version_state
@@ -346,31 +346,35 @@ class license_process(threading_tools.process_obj):
                     # make sure to only get date from db to stay consistent with its timezone
                     last_day = ext_license_check_coarse.objects.filter(duration_type=duration_type.ID, ext_license_site=site).latest('start_date')
                     next_start_time = last_day.end_date
+                    self.log("Last archive data for duration {}: {}".format(duration_type.__name__, next_start_time))
                 except ext_license_check_coarse.DoesNotExist:
                     # first run
-                    self.log("No archive data found, creating")
+                    self.log("No archive data found for duration {}, creating".format(duration_type.__name__))
                     earliest_datetime = ext_license_check.objects.filter(ext_license_site=site).earliest('date')
                     print earliest_datetime
                     next_start_time = duration_type.get_time_frame_start(earliest_datetime.date)
                     print next_start_time
 
                 do_loop = True
+                last_time = time.time()
                 while do_loop:
+                    print 'took ', time.time() - last_time 
+                    last_time = time.time()
                     # check if we can calculate next day
                     next_end_time = duration_type.get_end_time_for_start(next_start_time)
                     print 'end', next_end_time
                     try:
                         first_later_check = ext_license_check.objects.filter(date__gt=next_end_time, ext_license_site=site).earliest('date')
                     except ext_license_check.DoesNotExist:
-                        # no check later then the end time found, we have to wait until first next check is ehre
+                        # no check later then the end time found, we have to wait until first next check is here
                         first_later_check = None
                         do_loop = False
                         self.log("No data after {} found, not archiving further".format(next_end_time))
 
                     if first_later_check:
-                        self.log("creating entry for day {}".format(next_start_time))
-                        print("creating entry for day {}".format(next_start_time))
-                        create_timespan_entry_from_raw_data(next_start_time, next_end_time, ext_license_check_coarse.Duration.Day, site)
+                        self.log("creating entry for {} {}".format(duration_type.__name__, next_start_time))
+                        print("creating entry for {} {}".format(duration_type.__name__, next_start_time))
+                        create_timespan_entry_from_raw_data(next_start_time, next_end_time, duration_type=duration_type, site=site)
 
                         next_start_time = next_end_time
 
