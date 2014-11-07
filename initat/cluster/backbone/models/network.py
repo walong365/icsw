@@ -608,6 +608,14 @@ class netdevice_speed(models.Model):
     def info_string(self):
         return unicode(self)
 
+    @staticmethod
+    def build_lut():
+        speed_dict = {}
+        for _entry in netdevice_speed.objects.all().order_by("-check_via_ethtool", "-full_duplex"):
+            if _entry.speed_bps not in speed_dict:
+                speed_dict[_entry.speed_bps] = _entry
+        return speed_dict
+
     def __unicode__(self):
         if self.speed_bps:
             _s_str, lut_idx = ("", 0)
