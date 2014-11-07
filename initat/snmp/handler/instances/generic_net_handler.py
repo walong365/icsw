@@ -59,15 +59,13 @@ class handler(SNMPHandler):
         else:
             _hs_dict = {}
         snmp_type_dict = {_value.if_type: _value for _value in snmp_network_type.objects.all()}
-        speed_dict = {}
-        for _entry in netdevice_speed.objects.all().order_by("-check_via_ethtool", "-full_duplex"):
-            if _entry.speed_bps not in speed_dict:
-                speed_dict[_entry.speed_bps] = _entry
         _added, _updated, _removed = (0, 0, 0)
         # found and used database ids (for deletion)
         _found_nd_ids = set()
         # all present netdevices
         present_nds = netdevice.objects.filter(Q(device=dev))
+        # build speed lut
+        ND_SPEED_LUT = netdevice_speed.build_lut()
         # lut
         pnd_lut = {}
         for entry in present_nds:
@@ -104,7 +102,7 @@ class handler(SNMPHandler):
                     pnd_lut[if_struct.name].delete()
                 _dev_nd.snmp_idx = if_idx
                 _dev_nd.devname = if_struct.name
-                _dev_nd.netdevice_speed = speed_dict.get(if_struct.speed, speed_dict[0])
+                _dev_nd.netdevice_speed = ND_SPEED_LUT.get(if_struct.speed, ND_SPEED_LUT[0])
                 _dev_nd.snmp_network_type = snmp_type_dict[if_struct.if_type]
                 _dev_nd.mtu = if_struct.mtu
                 _dev_nd.macaddr = if_struct.macaddr
@@ -263,23 +261,25 @@ class handler(SNMPHandler):
 class if_mon(MonCheckDefinition):
     class Meta:
         short_name = "if"
-        command_line = "* $ARG3$"
+        command_line = "* --speed $ARG3$ $ARG4$"
         info = "SNMP Interface check"
         description = "SNMP Interface check, source is Database"
 
     def parser_setup(self, parser):
+        parser.add_argument("--speed", type=int, dest="speed", help="target interface speed")
         parser.add_argument("if_idx", nargs=1, type=int, help="interface idx")
 
     def config_call(self, s_com):
         dev = s_com.host
         _field = []
-        for net_dev in dev.netdevice_set.filter(Q(enabled=True) & Q(snmp_idx__gt=0)):
+        for net_dev in dev.netdevice_set.select_related("netdevice_speed").filter(Q(enabled=True) & Q(snmp_idx__gt=0)):
             _field.append(
                 s_com.get_arg_template(
                     net_dev.devname,
                     arg1=dev.dev_variables["SNMP_READ_COMMUNITY"],
                     arg2=dev.dev_variables["SNMP_VERSION"],
-                    arg3="{:d}".format(net_dev.snmp_idx)
+                    arg3="{:d}".format(net_dev.netdevice_speed.speed_bps),
+                    arg4="{:d}".format(net_dev.snmp_idx),
                 )
             )
         return _field
@@ -293,7 +293,7 @@ class if_mon(MonCheckDefinition):
                     scheme.opts.if_idx[0]
                 ),
                 single_value=True
-            ) for _idx in [10, 16, 13, 14, 19, 20]
+            ) for _idx in [5, 10, 16, 13, 14, 19, 20]
         ]
         #     + [
         #    snmp_oid(
@@ -309,6 +309,7 @@ class if_mon(MonCheckDefinition):
     def mon_result(self, scheme):
         _net_obj = scheme.net_obj
         _val_dict = {list(_key)[-2]: _value for _key, _value in scheme.snmp.iteritems()}
+        # print ND_SPEED_LUT
         _key = "network-if-{:d}".format(scheme.opts.if_idx[0])
         _vc = _net_obj.value_cache
         if _vc.is_set(_key):
@@ -335,12 +336,23 @@ class if_mon(MonCheckDefinition):
             ]
             if _vector[2]:
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                r_f.append("discards: {}".format(
-                    logging_tools.get_size_str(_vector[2], strip_spaces=True, per_second=True),
+                r_f.append("discards: {:.2f} /sec".format(
+                    _vector[2]
                 ))
             if _vector[3]:
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                r_f.append("errors: {}".format(
-                    logging_tools.get_size_str(_vector[3], strip_spaces=True, per_second=True),
+                r_f.append("errors: {:.2f} / sec".format(
+                    _vector[3],
                 ))
+            if scheme.opts.speed or _val_dict[5]:
+                if scheme.opts.speed == _val_dict[5]:
+                    r_f.append("speed is {}".format(logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000)))
+                else:
+                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    r_f.append(
+                        "measured speed {} differs from target speed {}".format(
+                            logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000),
+                            logging_tools.get_size_str(scheme.opts.speed, strip_spaces=True, per_second=True, divider=1000),
+                        )
+                    )
             return ret_state, ", ".join(r_f)
