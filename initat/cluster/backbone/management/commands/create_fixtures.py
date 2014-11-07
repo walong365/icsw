@@ -449,8 +449,12 @@ class Command(BaseCommand):
         factories.NetDeviceSpeed(speed_bps=10000000, check_via_ethtool=True, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=100000000, check_via_ethtool=True, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=100000000, check_via_ethtool=True, full_duplex=False)
+        # 1GBit / se
         factories.NetDeviceSpeed(speed_bps=1000000000, check_via_ethtool=False, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=1000000000, check_via_ethtool=True, full_duplex=True)
+        # Trunks with 2 and 4 GB/sec
+        factories.NetDeviceSpeed(speed_bps=2000000000, check_via_ethtool=True, full_duplex=True)
+        factories.NetDeviceSpeed(speed_bps=4000000000, check_via_ethtool=True, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=10000000000, check_via_ethtool=True, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=40000000000, check_via_ethtool=True, full_duplex=True)
         factories.NetDeviceSpeed(speed_bps=56000000000, check_via_ethtool=True, full_duplex=True)
