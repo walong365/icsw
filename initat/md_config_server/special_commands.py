@@ -606,7 +606,7 @@ class special_net(special_base):
                     net_dev.devname,
                     " ({})".format(net_dev.description) if net_dev.description else "")
                 cur_temp = self.get_arg_template(
-                    name_with_descr,
+                    "{} [HM]".format(name_with_descr),
                     w="{:.0f}".format(net_dev.netdevice_speed.speed_bps * 0.9),
                     c="{:.0f}".format(net_dev.netdevice_speed.speed_bps * 0.95),
                     arg_1=net_dev.devname,

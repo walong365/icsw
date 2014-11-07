@@ -25,7 +25,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
     mon_contactgroup, netdevice, network_type, user, config, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    mon_check_command_special
+    mon_check_command_special, mon_check_command
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
@@ -318,6 +318,32 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.log("removing {} empty mon_service_dependencies".format(num_empty_msd))
             mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
 
+    def _check_for_snmp_container(self):
+        _co = config.objects  # @UndefinedVariable
+        try:
+            _container = _co.get(Q(name="SNMP container"))  # @UndefinedVariable
+        except config.DoesNotExist:  # @UndefinedVariable
+            self.log("created SNMP container class")
+            _container = _co.create(
+                name="SNMP container",
+                system_config=True,
+                server_config=True,
+                enabled=False,
+                description="container for all SNMP checks",
+            )
+        _present_coms = set(_container.mon_check_command_set.all().values_list("name", flat=True))
+        _specials = {_special.name: _special for _special in mon_check_command_special.objects.all()}
+        _new = set(["snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general(self.log).get_commands()])
+        _to_create = set(_specials.keys()) & (_new - _present_coms)
+        for _name in _to_create:
+            _new_mcc = mon_check_command.objects.create(
+                name="snmp {}".format(_name),
+                description="auto created SNMP check entry",
+                config=_container,
+                mon_check_command_special=_specials[_name],
+                command_line="/bin/true",
+            )
+
     def _rebuild_config(self, *args, **kwargs):
         single_build = True if len(args) > 0 else False
         if not single_build:
@@ -325,6 +351,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self._check_md_version()
             self._check_relay_version()
             self._cleanup_db()
+            # check for SNMP container config
+            self._check_for_snmp_container()
         # copy from global_config (speedup)
         self.gc = configfile.gc_proxy(global_config)
         hdep_from_topo = self.gc["USE_HOST_DEPENDENCIES"] and self.gc["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
