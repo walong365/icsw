@@ -163,7 +163,7 @@ def _insert_bg_job(cmd, cause, obj):
         except device.DoesNotExist:
             _local_pk = 0
     # we need local_pk and a valid user (so we have to be called via webfrontend)
-    if _local_pk and thread_local_middleware().user:
+    if _local_pk and thread_local_middleware().user and isinstance(thread_local_middleware().user, user):
         srv_com = server_command.srv_command(
             command=cmd,
         )
