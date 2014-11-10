@@ -599,28 +599,31 @@ class special_net(special_base):
         # never check duplex and stuff for a loopback-device
         nd_list = netdevice.objects.filter(
             Q(device=self.host) &
-            Q(enabled=True)).select_related("netdevice_speed")
+            Q(enabled=True)
+        ).select_related("netdevice_speed")
         for net_dev in nd_list:
             if not virt_check.match(net_dev.devname):
                 name_with_descr = "{}{}".format(
                     net_dev.devname,
                     " ({})".format(net_dev.description) if net_dev.description else "")
+                _bps = net_dev.netdevice_speed.speed_bps
                 cur_temp = self.get_arg_template(
                     "{} [HM]".format(name_with_descr),
-                    w="{:.0f}".format(net_dev.netdevice_speed.speed_bps * 0.9),
-                    c="{:.0f}".format(net_dev.netdevice_speed.speed_bps * 0.95),
+                    w="{:.0f}".format(_bps * 0.9) if _bps else "-",
+                    c="{:.0f}".format(_bps * 0.95) if _bps else "-",
                     arg_1=net_dev.devname,
                 )
                 if net_dev.netdevice_speed.check_via_ethtool and net_dev.devname != "lo":
                     cur_temp["duplex"] = net_dev.netdevice_speed.full_duplex and "full" or "half"
-                    cur_temp["s"] = "{:d}".format(net_dev.netdevice_speed.speed_bps)
+                    cur_temp["s"] = "{:d}".format(_bps)
                 else:
                     cur_temp["duplex"] = "-"
                     cur_temp["s"] = "-"
                 self.log(" - netdevice {} with {}: {}".format(
                     name_with_descr,
                     logging_tools.get_plural("option", len(cur_temp.argument_names)),
-                    ", ".join(cur_temp.argument_names)))
+                    ", ".join(cur_temp.argument_names))
+                )
                 sc_array.append(cur_temp)
                 # sc_array.append((name_with_descr, eth_opts))
         return sc_array
