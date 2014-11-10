@@ -65,7 +65,7 @@ class argus_proc(object):
         self.interface = interface
         _now = datetime.datetime.now()
         self.target_file = os.path.join(ARGUS_TARGET, _now.strftime("argus_%%s_%Y-%m-%d_%H:%M:%S") % (self.interface))
-        self.command = "%s -i %s -w %s" % (arg_path, interface, self.target_file)
+        self.command = "{} -i {} -w {}".format(arg_path, interface, self.target_file)
         self.create_day = _now.day
         self.popen = None
         self.proc = proc
@@ -1112,8 +1112,12 @@ class net_command(hm_classes.hm_command):
         max_rxtx = max([value_dict["rx"], value_dict["tx"]])
         if cur_ns.warn:
             cur_ns.warn = self._parse_speed_str(cur_ns.warn)
+            if cur_ns.warn == -1:
+                cur_ns.warn = None
         if cur_ns.crit:
             cur_ns.crit = self._parse_speed_str(cur_ns.crit)
+            if cur_ns.crit == -1:
+                cur_ns.crit = None
         add_errors, add_oks, ret_state = (
             [],
             [],
@@ -1184,9 +1188,9 @@ class net_command(hm_classes.hm_command):
             # add ib info
             cur_state = ibv_dict.get("state", "no state set")
             if cur_state.lower().count("port_active"):
-                add_oks.append("IB state: %s" % (cur_state))
+                add_oks.append("IB state: {}".format(cur_state))
             else:
-                add_errors.append("IB state: %s" % (cur_state))
+                add_errors.append("IB state: {}".format(cur_state))
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state, "%s, %s rx; %s tx%s%s | rx=%d tx=%d" % (
             dev_name,
@@ -1393,8 +1397,10 @@ class net_command(hm_classes.hm_command):
                     try:
                         targ_duplex = parse_duplex_str(parsed_coms.duplex)
                     except ValueError:
-                        return limits.nag_STATE_CRITICAL, "Error parsing target_duplex '%s' for net: %s" % (parsed_coms.duplex,
-                                                                                                            process_tools.get_except_info())
+                        return limits.nag_STATE_CRITICAL, "Error parsing target_duplex '{}' for net: {}".format(
+                            parsed_coms.duplex,
+                            process_tools.get_except_info()
+                        )
                     else:
                         if targ_duplex == parse_duplex_str(ethtool_stuff["duplex"]):
                             add_oks.append("duplex_mode is %s" % (ethtool_stuff["duplex"]))
@@ -1403,7 +1409,7 @@ class net_command(hm_classes.hm_command):
                                 if parse_duplex_str(ethtool_stuff["duplex"]) == "unknown":
                                     connected = False
                                 else:
-                                    add_errors.append("duplex_mode differ: %s != %s" % (parsed_coms.duplex, ethtool_stuff["duplex"]))
+                                    add_errors.append("duplex_mode differ: {} != {}".format(parsed_coms.duplex, ethtool_stuff["duplex"]))
                                 ret_state = limits.nag_STATE_CRITICAL
                 else:
                     add_errors.append("Cannot check duplex mode: no ethtool information")
@@ -1416,9 +1422,9 @@ class net_command(hm_classes.hm_command):
             device,
             b_str(result[rx_str]),
             b_str(result[tx_str]),
-            add_oks and "; %s" % ("; ".join(add_oks)) or "",
-            add_errors and "; %s" % ("; ".join(add_errors)) or "",
-            report_device != device and "; reporting device is %s" % (report_device) or ""
+            add_oks and "; {}".format("; ".join(add_oks)) or "",
+            add_errors and "; {}".format("; ".join(add_errors)) or "",
+            report_device != device and "; reporting device is %s" % (report_device) or "",
         )
 
 
