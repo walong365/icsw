@@ -724,7 +724,7 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
         )
-        fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice"]
+        fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo"]
 
     class Meta:
         db_table = u'device'
