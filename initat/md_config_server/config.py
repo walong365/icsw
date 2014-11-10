@@ -1805,7 +1805,16 @@ class build_cache(object):
             _match_trace = _match_traces[0]
             if json.loads(_match_trace.traces) != traces:
                 _match_trace.set_trace(traces)
-                _match_trace.save()
+                try:
+                    _match_trace.save()
+                except:
+                    self.log(
+                        "error saving trace {}: {}".format(
+                            str(traces),
+                            process_tools.get_except_info(),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
         else:
             _new_trace = mon_trace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
             self.__host_traces.setdefault(host.pk, []).append(_new_trace)
