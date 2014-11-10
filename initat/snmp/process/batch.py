@@ -23,6 +23,7 @@ from pysnmp.carrier.asynsock.dgram import udp  # @UnresolvedImport
 from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher  # @UnresolvedImport
 from pysnmp.proto import rfc1155, rfc1902, api  # @UnresolvedImport
 from pysnmp.smi import exval  # @UnresolvedImport
+from pysnmp.smi.exval import noSuchInstance
 import logging_tools
 import pprint  # @UnusedImport
 import pyasn1  # @UnresolvedImport
@@ -272,6 +273,8 @@ class snmp_batch(object):
                         #    self.snmp = (tuple(act_h), tuple(name), float(value))
                         elif isinstance(value, pyasn1.type.univ.ObjectIdentifier):  # @UndefinedVariable
                             self.snmp = (tuple(act_h), tuple(name), tuple(value))
+                        elif value == noSuchInstance:
+                            pass
                         else:
                             self.snmp = (tuple(act_h), tuple(name), str(value))
                         if self._stop_after_first:

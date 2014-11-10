@@ -344,7 +344,7 @@ class if_mon(MonCheckDefinition):
                 r_f.append("errors: {:.2f} / sec".format(
                     _vector[3],
                 ))
-            if scheme.opts.speed or _val_dict[5]:
+            if scheme.opts.speed is not None and (scheme.opts.speed or _val_dict[5]):
                 if scheme.opts.speed == _val_dict[5]:
                     r_f.append("speed is {}".format(logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000)))
                 else:
