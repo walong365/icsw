@@ -221,7 +221,7 @@ class server_code(threading_tools.process_pool):
                                         else:
                                             self.log("wrote {:d} to {}".format(num_pages, pages_file))
             else:
-                self.log("huge_dir '%s' not found" % (huge_dir), logging_tools.LOG_LEVEL_ERROR)
+                self.log("huge_dir '{}' not found".format(huge_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("hugepages not touched")
 
@@ -233,7 +233,7 @@ class server_code(threading_tools.process_pool):
             ("net.core.wmem_default", 524288),
             ("net.core.wmem_max", 5242880)
         ]:
-            f_path = "/proc/sys/%s" % (sys_name.replace(".", "/"))
+            f_path = "/proc/sys/{}".format(sys_name.replace(".", "/"))
             if os.path.isfile(f_path):
                 cur_value = int(open(f_path, "r").read().strip())
                 if cur_value < sys_value:
@@ -308,16 +308,16 @@ class server_code(threading_tools.process_pool):
             else:
                 if my_0mq_id != hm_0mq_id:
                     self.log(
-                        "0MQ id from cluster ({}) differs from host-monitoring 0MQ id ({})" % (
+                        "0MQ id from cluster ({}) differs from host-monitoring 0MQ id ({})".format(
                             my_0mq_id,
                             hm_0mq_id
                         )
                     )
                     create_0mq = True
                 else:
-                    self.log("0MQ id from cluster ({}) matchces host-monitoring 0MQid" % (my_0mq_id))
+                    self.log("0MQ id from cluster ({}) matches host-monitoring 0MQid".format(my_0mq_id))
         if create_0mq:
-            self.log("creating host-monitoring 0MQ id file %s" % (zmq_id_name))
+            self.log("creating host-monitoring 0MQ id file {}".format(zmq_id_name))
             zmq_id_xml = E.bind_info(
                 E.zmq_id(my_0mq_id, bind_address="*"))
             file(zmq_id_name, "w").write(etree.tostring(zmq_id_xml, pretty_print=True, xml_declaration=True, encoding="utf-8"))  # @UndefinedVariable
@@ -362,7 +362,7 @@ class server_code(threading_tools.process_pool):
                         zmq_id_dict[target_ip] = (wc_urn, wc_virtual)
         ref_id = "*" if "*" in zmq_id_dict else "127.0.0.1"
         self.zeromq_id = zmq_id_dict[ref_id][0].split(":")[-1]
-        self.log("0MQ bind info (global 0MQ id is %s)" % (self.zeromq_id))
+        self.log("0MQ bind info (global 0MQ id is {})".format(self.zeromq_id))
         for key in sorted(zmq_id_dict.iterkeys()):
             self.log("bind address %-15s: %s%s" % (
                 key,
