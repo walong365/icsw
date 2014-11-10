@@ -332,12 +332,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 description="container for all SNMP checks",
             )
         _present_coms = set(_container.mon_check_command_set.all().values_list("name", flat=True))
-        _specials = {_special.name: _special for _special in mon_check_command_special.objects.all()}
+        _specials = {"snmp {}".format(_special.name): _special for _special in mon_check_command_special.objects.all()}
         _new = set(["snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general(self.log).get_commands()])
         _to_create = set(_specials.keys()) & (_new - _present_coms)
         for _name in _to_create:
             _new_mcc = mon_check_command.objects.create(
-                name="snmp {}".format(_name),
+                name=_name,
                 description="auto created SNMP check entry",
                 config=_container,
                 mon_check_command_special=_specials[_name],
