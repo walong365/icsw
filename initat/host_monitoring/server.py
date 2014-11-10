@@ -297,20 +297,25 @@ class server_code(threading_tools.process_pool):
                     smart_strings=False
                 )[0].text
             except:
-                self.log("error reading from %s: %s" % (zmq_id_name, process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error reading from  {}: {}".format(
+                        zmq_id_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 create_0mq = True
             else:
                 if my_0mq_id != hm_0mq_id:
                     self.log(
-                        "0MQ id from cluster (%s) differs from host-monitoring 0MQ id (%s)" % (
+                        "0MQ id from cluster ({}) differs from host-monitoring 0MQ id ({})" % (
                             my_0mq_id,
                             hm_0mq_id
                         )
                     )
                     create_0mq = True
                 else:
-                    self.log("0MQ id from cluster (%s) matchces host-monitoring 0MQid" % (my_0mq_id))
+                    self.log("0MQ id from cluster ({}) matchces host-monitoring 0MQid" % (my_0mq_id))
         if create_0mq:
             self.log("creating host-monitoring 0MQ id file %s" % (zmq_id_name))
             zmq_id_xml = E.bind_info(
@@ -439,15 +444,17 @@ class server_code(threading_tools.process_pool):
             client.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
             client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
             client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
+            _conn_str = "tcp://{}:{:d}".format(
+                bind_ip,
+                global_config["COM_PORT"]
+            )
             try:
-                client.bind("tcp://%s:%d" % (
-                    bind_ip,
-                    global_config["COM_PORT"]))
+                client.bind(_conn_str)
             except zmq.ZMQError:
                 self.log(
-                    "error binding to %s:%d: %s" % (
-                        "virtual %s" % (bind_ip) if is_virtual else bind_ip,
-                        global_config["COM_PORT"],
+                    "error binding to {}{}: {}".format(
+                        "virtual " if is_virtual else "",
+                        _conn_str,
                         process_tools.get_except_info()
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL
