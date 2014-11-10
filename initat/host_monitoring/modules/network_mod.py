@@ -65,7 +65,7 @@ class argus_proc(object):
         self.interface = interface
         _now = datetime.datetime.now()
         self.target_file = os.path.join(ARGUS_TARGET, _now.strftime("argus_%%s_%Y-%m-%d_%H:%M:%S") % (self.interface))
-        self.command = "{} -i {} -w {}".format(arg_path, interface, self.target_file)
+        self.command = "{} -P 0 -i {} -w {}".format(arg_path, interface, self.target_file)
         self.create_day = _now.day
         self.popen = None
         self.proc = proc
@@ -279,7 +279,7 @@ class _general(hm_classes.hm_module):
         _new_if = _current_if - self.__argus_interfaces
         if self._check_free_space():
             for new_if in _new_if:
-                _operstate = "/sys/class/net/%s/operstate" % (new_if)
+                _operstate = "/sys/class/net/{}/operstate".format(new_if)
                 if os.path.isfile(_operstate) and file(_operstate, "r").read().strip() not in ["down"]:
                     self.__argus_map[new_if] = argus_proc(self, new_if, self.__argus_path)
                     self.__argus_interfaces.add(new_if)
@@ -300,15 +300,18 @@ class _general(hm_classes.hm_module):
                 self._compress_files()
         if self.__compress_jobs:
             _done = [entry for entry in self.__compress_jobs if entry.finished() is not None]
-            self.log("%s, %d done" % (
-                logging_tools.get_plural("compress job", len(self.__compress_jobs)),
-                len(_done)))
+            self.log(
+                "{}, {:d} done".format(
+                    logging_tools.get_plural("compress job", len(self.__compress_jobs)),
+                    len(_done)
+                )
+            )
             for _cj in _done:
                 self._handle_ended_job(_cj)
             self.__compress_jobs = [entry for entry in self.__compress_jobs if entry.result is None]
         if _failed:
             for _entry in _failed:
-                self.log("removed interface %s" % (_entry), logging_tools.LOG_LEVEL_WARN)
+                self.log("removed interface {}".format(_entry), logging_tools.LOG_LEVEL_WARN)
                 del self.__argus_map[_entry]
                 self.__argus_interfaces.remove(_entry)
 

@@ -379,17 +379,18 @@ class _general(hm_classes.hm_module):
         else:
             _out = self._exec_command(". -L")
         self.__gpus = {}
-        for _line in _out.split("\n"):
-            self.log("parsing line {}".format(_line))
-            try:
-                _parts = _line.strip().split()
-                _idx = int(_parts[1][:-1])
-                new_gpu = NVidiaGPU(self, _idx, _parts)
-                self.__gpus[_idx] = new_gpu
-            except:
-                self.log("error creating GPU: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-            else:
-                new_gpu.init_machine_vector(mv)
+        if _out:
+            for _line in _out.split("\n"):
+                self.log("parsing line {}".format(_line))
+                try:
+                    _parts = _line.strip().split()
+                    _idx = int(_parts[1][:-1])
+                    new_gpu = NVidiaGPU(self, _idx, _parts)
+                    self.__gpus[_idx] = new_gpu
+                except:
+                    self.log("error creating GPU: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    new_gpu.init_machine_vector(mv)
 
     def update_machine_vector(self, mv):
         if not self.__mv_init:
