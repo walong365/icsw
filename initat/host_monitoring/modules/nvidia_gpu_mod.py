@@ -371,10 +371,13 @@ class _general(hm_classes.hm_module):
         return out
 
     def init_machine_vector(self, mv):
+        self.__mv_init = False
+
+    def _init_mv(self, mv):
         if _DEBUG:
             _out = "GPU 0: Tesla K20m (UUID: GPU-215abf8a-9057-fd09-9b71-0efe081ca639)\n"
         else:
-            _out = self._exec_command("-L")
+            _out = self._exec_command(". -L")
         self.__gpus = {}
         for _line in _out.split("\n"):
             self.log("parsing line {}".format(_line))
@@ -389,12 +392,14 @@ class _general(hm_classes.hm_module):
                 new_gpu.init_machine_vector(mv)
 
     def update_machine_vector(self, mv):
+        if not self.__mv_init:
+            self._init_mv(mv)
         if self.__smi_command:
             try:
                 if _DEBUG:
                     out = TEST_OUT
                 else:
-                    out = self._exec_command("-q -x")
+                    out = self._exec_command(". -q -x")
                 _tree = etree.fromstring(out)  # @UndefinedVariable
             except:
                 self.log("error parsing {}: {}".format(out, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
