@@ -448,11 +448,8 @@ class server_process(threading_tools.process_pool):
             if new_exports:
                 open(exp_file, "a").write("\n".join(["{:<30s} {}".format(x, y) for x, y in new_exports.iteritems()] + [""]))
                 # hm, dangerous, FIXME
-                at_command = "/etc/init.d/nfsserver restart"
-                at_stat, add_log_lines = process_tools.submit_at_command(at_command)
-                self.log("starting the at-command '{}' gave {:d}:".format(at_command, at_stat))
-                for log_line in add_log_lines:
-                    self.log(log_line)
+                _command = "/etc/init.d/nfsserver restart"
+                process_tools.call_command(_command, self.log, close_fds=True)
 
     def _enable_syslog_config(self):
         syslog_exe_dict = {value.pid: value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
@@ -514,10 +511,7 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("no syslog script found, reloading via systemd")
             restart_com = "/usr/bin/systemctl restart syslog.service"
-        stat, out_f = process_tools.submit_at_command(restart_com, 0)
-        self.log("submitting %s gave %d:" % (restart_com, stat))
-        for line in out_f:
-            self.log(line)
+        process_tools.call_command(restart_com, log_com=self.log, close_fds=True)
 
     def _check_netboot_functionality(self):
         global_config.add_config_entries([

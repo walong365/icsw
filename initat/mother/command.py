@@ -86,11 +86,14 @@ class hc_command(object):
         command = xml_struct.get("command")
         self.user = user.objects.get(Q(pk=user_id)) if user_id else None  # @UndefinedVariable
         self.curl_base = self.cd_obj.parent.curl.split(":")[0]
-        self.log("got command %s for %s (curl is '%s', target: %s)" % (
-            command,
-            unicode(cur_cd.parent),
-            cur_cd.parent.curl,
-            unicode(cur_cd.child)))
+        self.log(
+            "got command {} for {} (curl is '{}', target: {})".format(
+                command,
+                unicode(cur_cd.parent),
+                cur_cd.parent.curl,
+                unicode(cur_cd.child)
+            )
+        )
         # better use subclasses, FIXME
         var_list = {
             "ipmi": [
@@ -98,31 +101,37 @@ class hc_command(object):
                 ("IPMI_PASSWORD", "admin"),
                 ("IPMI_INTERFACE", ""),
                 ],
-            "ilo4": [
-                ("ILO_USERNAME", "Administrator"),
-                ("ILO_PASSWORD", "passwd"),
-                ],
             "snmp": [
                 ("SNMP_SCHEME", None),
                 ("SNMP_VERSION", 2),
                 ("SNMP_WRITE_COMMUNITY", "private"),
-                ],
-            }.get(self.curl_base, [])
+            ],
+        }.get(self.curl_base, [])
         var_dict = dict([(key, self.get_var(key, def_val)) for key, def_val in var_list])
         for key in sorted(var_dict):
-            self.log(" var %-20s : %s" % (
-                key,
-                str(var_dict[key])))
+            self.log(
+                " var {:<20s}: {}".format(
+                    key,
+                    str(var_dict[key])
+                )
+            )
         com_ip = self.get_ip_to_host(self.cd_obj.parent, router_obj)
         if not com_ip:
-            self.log("cannot reach device %s" % (unicode(self.cd_obj.parent)),
-                     logging_tools.LOG_LEVEL_ERROR,
-                     dev=cur_cd.child)
+            self.log(
+                "cannot reach device %s".format(unicode(self.cd_obj.parent)),
+                logging_tools.LOG_LEVEL_ERROR,
+                dev=cur_cd.child
+            )
         else:
             if self.curl_base in ["ipmi"]:
                 com_str = self._build_com_str(var_dict, com_ip, command)
-                self.log("com_str is '%s'" % (com_str))
-                self.log("sending com_str to '%s'" % (unicode(self.cd_obj.parent)), dev=self.cd_obj.child)
+                self.log(
+                    "sending com_str '{}' to '{}'".format(
+                        com_str,
+                        unicode(self.cd_obj.parent)
+                    ),
+                    dev=self.cd_obj.child
+                )
                 simple_command(com_str,
                                short_info="True",
                                done_func=self.hc_done,
@@ -157,14 +166,18 @@ class hc_command(object):
                         target="snmp_process",
                     )
             else:
-                self.log("cannot handle curl_base '%s' for %s" % (
-                    self.curl_base,
-                    unicode(self.cd_obj.parent),
-                ), logging_tools.LOG_LEVEL_CRITICAL, dev=self.cd_obj.child)
+                self.log(
+                    "cannot handle curl_base '{}' for {}".format(
+                        self.curl_base,
+                        unicode(self.cd_obj.parent),
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL,
+                    dev=self.cd_obj.child
+                )
 
     def _build_com_str(self, var_dict, com_ip, command):
         if self.curl_base == "ipmi":
-            com_str = "%s %s -H %s -U %s -P %s chassis power %s" % (
+            com_str = "{} {} -H {} -U {} -P {} chassis power {}".format(
                 process_tools.find_file("ipmitool"),
                 # add ipmi interface if defined
                 "-I %s" % (var_dict["IPMI_INTERFACE"]) if var_dict.get("IPMI_INTERFACE", "") else "",
@@ -177,17 +190,6 @@ class hc_command(object):
                     "cycle": "cycle"
                 }.get(command, "status")
             )
-        # ilo4 is no longer supported, use ipmi with IPMI_INTERFACE=lanplus
-        # elif self.curl_base == "ilo4":
-        #    com_str = "%s -I lanplus -H %s -U %s -P %s chassis power %s" % (
-        #        process_tools.find_file("ipmitool"),
-        #        com_ip,
-        #        var_dict["ILO_USERNAME"],
-        #        var_dict["ILO_PASSWORD"],
-        #        {"on"    : "on",
-        #         "off"   : "off",
-        #         "cycle" : "cycle"}.get(command, "status")
-        #    )
         return com_str
 
     def hc_done(self, hc_sc):
@@ -197,7 +199,14 @@ class hc_command(object):
             len(cur_out)))
         for line_num, line in enumerate(cur_out.split("\n")):
             if line.strip():
-                self.log(" %3d %s" % (line_num + 1, line), logging_tools.LOG_LEVEL_ERROR if hc_sc.result else logging_tools.LOG_LEVEL_OK, dev=self.cd_obj.child)
+                self.log(
+                    " {:3d} {}".format(
+                        line_num + 1,
+                        line
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR if hc_sc.result else logging_tools.LOG_LEVEL_OK,
+                    dev=self.cd_obj.child
+                )
         hc_sc.terminate()
 
     def get_var(self, var_name, default_val=None):
@@ -261,10 +270,13 @@ class hc_command(object):
         if args[0] in hc_command.hc_lut:
             hc_command.hc_lut[args[0]].snmp_finished(*args)
         else:
-            hc_command.g_log("unknown id '%s' for snmp_result (%s)" % (
-                args[0],
-                str(args),
-                ), logging_tools.LOG_LEVEL_ERROR)
+            hc_command.g_log(
+                "unknown id '{}' for snmp_result ({})".format(
+                    args[0],
+                    str(args),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dev=None):
         hc_command.process.log("[hc] %s" % (what), log_level)
@@ -273,7 +285,7 @@ class hc_command(object):
                 dev,
                 global_config["LOG_SOURCE_IDX"],
                 log_level,
-                "[hc] %s" % (what),
+                "[hc] {}".format(what),
                 user=self.user,
             )
 
@@ -290,10 +302,10 @@ class external_command_process(threading_tools.process_obj):
         connection.close()
         simple_command.setup(self)
         self.router_obj = config_tools.router_object(self.log)
-        self.sc = config_tools.server_check(server_type="mother")
+        self.sc = config_tools.server_check(server_type="mother_server")
         if "b" in self.sc.identifier_ip_lut:
             self.__kernel_ip = self.sc.identifier_ip_lut["b"][0].ip
-            self.log("IP address in boot-net is %s" % (self.__kernel_ip))
+            self.log("IP address in boot-net is {}".format(self.__kernel_ip))
         else:
             self.__kernel_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)

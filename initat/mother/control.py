@@ -1612,7 +1612,7 @@ class node_control_process(threading_tools.process_obj):
         self.sc = config_tools.server_check(server_type="mother_server")
         if "b" in self.sc.identifier_ip_lut:
             self.server_ip = self.sc.identifier_ip_lut["b"][0].ip
-            self.log("IP address in boot-net is %s" % (self.server_ip))
+            self.log("IP address in boot-net is {}".format(self.server_ip))
         else:
             self.server_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
