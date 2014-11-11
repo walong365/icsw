@@ -668,7 +668,7 @@ class special_libvirt(special_base):
 class special_ipmi(special_base):
     class Meta:
         server_contact = True
-        info = "IPMI checks"
+        info = "IPMI checks via collserver"
         command_line = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} " \
             "--lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
         description = "queries the IPMI sensors of the underlying IPMI interface of the target device"
@@ -714,7 +714,7 @@ class special_ipmi_ext(special_base):
     class Meta:
         command_line = "/bin/true"
         is_active = False
-        info = "IPMI via collserver"
+        info = "IPMI as passive checks via collectd"
         description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
 
     def _call(self):
