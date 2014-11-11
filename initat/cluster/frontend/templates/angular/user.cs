@@ -64,11 +64,11 @@ vncwebviewer_template = """
                             {{vdus.viewer_cmd_line}}
                         </p>
                     </td>
+                </tr>
+                <tr>
                     <td>
                           <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">open in new tab</button>
                     </td>
-                </tr>
-                <tr>
                     <td colspan="2">
 
                         <accordion close-others="false">
