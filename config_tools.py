@@ -520,8 +520,8 @@ class server_check(object):
         elif self.device:
             # we need at least a device to check
             # fetch ip_info
-            self._fetch_network_info()
             self._db_check_ip()
+            self._fetch_network_info()
 
     def fetch_config_vars(self):
         self.__config_vars.update(get_config_var_list(self.config, self.effective_device))
