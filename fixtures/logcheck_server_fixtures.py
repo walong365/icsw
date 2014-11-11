@@ -23,7 +23,17 @@
 
 from initat.cluster.backbone import factories
 
+
 def add_fixtures(**kwargs):
-    factories.Config(name="logcheck_server", description="store and check node logs",
-        server_config=True, system_config=True,
-        )
+    factories.Config(
+        name="logcheck_server",
+        description="store and check node logs",
+        server_config=True,
+        system_config=True,
+    )
+    factories.Config(
+        name="syslog_server",
+        description="store and check node logs (for stage2)",
+        server_config=True,
+        system_config=True,
+    )
