@@ -171,9 +171,13 @@ class server_process(threading_tools.process_pool, notify_mixin):
         my_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         file_uuid = uuid_tools.get_uuid().get_urn().split(":")[2]
         if file_uuid != my_dev.uuid:
-            self.log("UUID differs from DB entry ({} [file] != {} [DB]), correcting DB entry".format(
-                file_uuid,
-                my_dev.uuid), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "UUID differs from DB entry ({} [file] != {} [DB]), correcting DB entry".format(
+                    file_uuid,
+                    my_dev.uuid
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             my_dev.uuid = file_uuid
             my_dev.save()
         # uuid is also stored as device variable

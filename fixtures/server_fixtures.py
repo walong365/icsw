@@ -49,3 +49,10 @@ def add_fixtures(**kwargs):
         server_config=True,
         system_config=True,
     )
+    factories.Config(
+        name="auto_etc_hosts",
+        description="/etc/hosts file can be created from local cluster-server",
+        server_config=True,
+        system_config=True,
+    )
+
