@@ -177,14 +177,17 @@ def _salt_addons(request):
 def _fetch_rms_info(request):
     # get rms info needed by several views
     # call my_sge_info.update() before calling this!
-    run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
-    wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
+    if sge_tools:
+        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
+        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
 
-    if RMS_ADDONS:
-        for change_obj in RMS_ADDONS:
-            change_obj.modify_running_jobs(my_sge_info, run_job_list)
-            change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
-    return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])(run_job_list, wait_job_list)
+        if RMS_ADDONS:
+            for change_obj in RMS_ADDONS:
+                change_obj.modify_running_jobs(my_sge_info, run_job_list)
+                change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
+        return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])(run_job_list, wait_job_list)
+    else:
+        return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])([], [])
 
 
 class get_rms_json(View):

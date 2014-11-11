@@ -441,7 +441,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 cur_re = new RegExp("^$", "gi")
             $scope.active_configs = []
             for entry in $scope.configs
-                entry.show = if entry.name.match(cur_re) then true else false
+                entry.show = if (entry.enabled and entry.name.match(cur_re)) then true else false
                 if $scope.only_selected and entry.show
                     sel = false
                     for cur_dev in $scope.all_devices
@@ -451,12 +451,15 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 if entry.show
                     $scope.active_configs.push(entry)
             if change_expand_state
+                num_show = $scope.active_configs.length
                 active_ids = (_c.idx for _c in $scope.active_configs)
                 # check expansion state of meta devices
                 for idx, dev of $scope.meta_devices
-                    dev.expanded = if (true for _loc_c in dev.local_selected when _loc_c in active_ids).length then true else false
+                    #dev.expanded = if (true for _loc_c in dev.local_selected when _loc_c in active_ids).length then true else false
+                    dev.expanded = if num_show > 0 then true else false
                 for dev in $scope.devices
-                    dev.expanded = if (true for _loc_c in dev.local_selected when _loc_c in active_ids).length then true else false
+                    #dev.expanded = if (true for _loc_c in dev.local_selected when _loc_c in active_ids).length then true else false
+                    dev.expanded = if num_show > 0 then true else false
                     if not dev.expanded and dev.device_type_identifier != "MD"
                         dev.expanded = $scope.meta_devices[$scope.devg_md_lut[dev.device_group]].expanded
             $scope.set_line_list()
