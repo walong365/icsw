@@ -395,6 +395,7 @@ PIPELINE_JS = {
             # "js/libs/angular-strap.min.js",
             # "js/libs/angular-strap.tpl.min.js",
             "js/angular-noVNC.js",
+            "js/libs/angular-dimple.js",
         },
         "output_filename": "pipeline/js/extra1.js"
     },
