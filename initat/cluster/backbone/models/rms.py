@@ -392,6 +392,10 @@ class ext_license_check_coarse(models.Model):
             def get_end_time_for_start(cls, starttime):
                 return starttime + datetime.timedelta(days=1)
 
+            @classmethod
+            def get_display_date(cls, timepoint):
+                return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
+
         class Month(object):
             ID = 2
 
@@ -402,6 +406,23 @@ class ext_license_check_coarse(models.Model):
             @classmethod
             def get_end_time_for_start(cls, starttime):
                 return cls.get_time_frame_start(starttime + datetime.timedelta(days=35))  # take beginning of next month
+
+            @classmethod
+            def get_display_date(cls, timepoint):
+                return u"{}-{:02d}".format(timepoint.year, timepoint.month)
+
+        @classmethod
+        def get_class(cls, ident):
+            if ident == cls.Day.ID:
+                return cls.Day
+            elif ident == cls.Month.ID:
+                return cls.Month
+            else:
+                raise Exception() 
+
+    def get_display_start_date(self):
+        klass = ext_license_check_coarse.Duration.get_class(self.duration_type)
+        return klass.get_display_date(self.start_date)
 
     class Meta:
         app_label = "backbone"
@@ -430,6 +451,9 @@ class ext_license_state_coarse(models.Model):
 
     class CSW_Meta:
         backup = False
+
+    def get_display_start_date(self):
+        return self.ext_license_check_coarse.get_display_start_date()
 
 
 class ext_license_version_state_coarse(models.Model):
