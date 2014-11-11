@@ -211,7 +211,7 @@ nd_row_template = """
             Create new <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
-            <li ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
+            <li ng-show="networks.length" ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
             <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
         </ul>
     </div>
