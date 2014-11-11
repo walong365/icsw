@@ -33,6 +33,7 @@ from initat.cluster.backbone.models import config, device, net_ip, device_config
 import array
 import configfile
 import logging_tools
+import netifaces
 import networkx
 import process_tools
 import sys
@@ -487,13 +488,14 @@ class server_check(object):
             except device.DoesNotExist:
                 self.device = None
             else:
+                _co = config.objects  # @UndefinedVariable
                 try:
-                    self.config = config.objects.get(
+                    self.config = _co.get(
                         Q(name=self.__server_type) & Q(device_config__device=self.device)
                     )
                 except config.DoesNotExist:  # @UndefinedVariable
                     try:
-                        self.config = config.objects.get(
+                        self.config = _co.get(
                             Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") &
                             Q(device_config__device__device_group=self.device.device_group_id)
                         )
@@ -579,13 +581,24 @@ class server_check(object):
 
     def _db_check_ip(self):
         # get local ip-addresses
-        my_ips = set(net_ip.objects.exclude(
-            Q(network__network_type__identifier='l')
-        ).filter(
-            Q(netdevice__device=self.device)
-        ).select_related(
-            "netdevice", "network", "network__network_type"
-        ).values_list("ip", flat=True))
+        # my_ips = set(net_ip.objects.exclude(
+        #    Q(network__network_type__identifier='l')
+        # ).filter(
+        #    Q(netdevice__device=self.device)
+        # ).select_related(
+        #    "netdevice", "network", "network__network_type"
+        # ).values_list("ip", flat=True))
+        ipv4_dict = {
+            cur_if_name: [
+                ip_tuple["addr"] for ip_tuple in value[2]
+            ] for cur_if_name, value in [
+                (
+                    if_name,
+                    netifaces.ifaddresses(if_name)
+                ) for if_name in netifaces.interfaces()
+            ] if 2 in value
+        }
+        my_ips = set(sum(ipv4_dict.values(), []))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
         dev_list = device.objects.filter(Q(device_config__config__name=self.__server_type))
@@ -711,7 +724,7 @@ class device_with_config(dict):
         # print "*** %s=%s" % (self.__match_str, self.__m_config_name)
         direct_list = device_config.objects.filter(
             Q(**{
-                "config__%s" % (self.__match_str): self.__m_config_name,
+                "config__{}".format(self.__match_str): self.__m_config_name,
                 "device__enabled": True,
                 "device__device_group__enabled": True,
             })

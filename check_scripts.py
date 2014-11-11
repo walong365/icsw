@@ -372,8 +372,8 @@ def check_system(opt_ns):
         entry.append(
             E.pids(
                 *[E.pid("{:d}".format(cur_pid), count="{:d}".format(act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
-                )
             )
+        )
         if entry.attrib["runs_on"] == "server":
             if dev_config is not None:
                 srv_type_list = [_e.replace("-", "_") for _e in entry.xpath(".//config_names/config_name/text()", smart_strings=False)]
@@ -395,7 +395,7 @@ def check_system(opt_ns):
         if type(sql_info) == str:
             entry.append(
                 E.sql_info(str(sql_info))
-                )
+            )
         else:
             entry.append(
                 E.sql_info("{} ({})".format(
