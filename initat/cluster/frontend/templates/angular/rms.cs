@@ -433,21 +433,10 @@ change_pri_template = """
 </div>
 """ 
 
-licgraph_template = """ 
-	cur lic: {{ cur_lic }}
-    <p>&nbsp;</p>
-    <ul>
-        <li ng-repeat="d in data"> {{ d }} </li>
-    </ul>
-    
-    <p>&nbsp;</p>
-    data:
-    {{data }}
-"""
-
 {% endverbatim %}
 
-rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror"])
+rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angular-dimple", "icsw.d3", "icsw.dimple", "ui.bootstrap.datetimepicker"])
+
 
 angular_module_setup([rms_module])
 
@@ -586,7 +575,7 @@ class slot_info
         
 DT_FORM = "D. MMM YYYY, HH:mm:ss"
 
-rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", 
+rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$dimple", "$d3" 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce) ->
         access_level_service.install($scope)
         $scope.rms_headers = {{ RMS_HEADERS | safe }}
@@ -872,8 +861,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     $scope.header_filter_set = true
                 )
                 $scope.reload()
-]).controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$resource"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, $resource) -> 
+]).controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$resource", "d3_service", "dimple_service"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, $resource, d3_service, dimple_service) -> 
         wait_list = restDataSource.add_sources([
             ["{% url 'rest:device_list' %}", {}],
             ["{% url 'rest:ext_license_list' %}", {}],
@@ -882,26 +871,110 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.device_list = data[0]
             $scope.ext_license_list = data[1]
         )
-        $scope.myResource = $resource("{% url 'rest:license_data_list' %}", {})
-        $scope.data = []
-]).directive("licgraph", ($templateCache) ->
+        $scope.dimpleLoaded = false
+        d3_service.d3().then( (d3) ->
+            dimple_service.dimple().then( (dimple) ->
+                $scope.dimpleLoaded = true
+            )
+        )
+        $scope.license_select_change = () ->
+            $scope.ext_license_selected = []
+            if $scope.ext_license_list
+                for lic in $scope.ext_license_list
+                    if lic.selected
+                        $scope.ext_license_selected.push(lic)
+        $scope.license_select_change()  # init by empty list 
+        
+        $scope.get_li_sel_class = (li) ->
+            if li.selected
+                return "btn btn-small btn-success"
+            else
+                return "btn btn-small"
+        $scope.toggle_li_sel = (li) ->
+            li.selected = !li.selected
+            $scope.license_select_change()
+        $scope.set_timerange = (tr) ->
+            $scope.cur_timerange = tr
+        $scope.set_timerange("week")
+        $scope.lic_date_range_start = moment().startOf("day")
+            
+]).directive("licgraph", ["$templateCache", "$resource", ($templateCache, $resource) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("licgraph.html")
+        template : """
+{% verbatim %}
+        <!--
+        old svg version:
+<svg ng-show="data" ng-attr-width="{{ width }}" ng-attr-height="{{ height }}"
+    <g>
+        <polyline
+             ng-attr-points="{{ used_svg_points }}"
+             stroke="black"
+             fill="none"
+             stroke-width="0.5"
+        ></polyline>
+        <polyline
+             ng-attr-points="{{ issued_svg_points }}"
+             stroke="black"
+             fill="none"
+             stroke-width="0.5"
+        ></polyline>
+    </g>
+</svg>
+-->
+<div ng-if="dimpleLoaded">
+    <graph data="licData" width="500" height="300">
+        <x field="date" order-by="idx" title="null"></x>
+        <y field="usage" title="License usage"></y>
+        <!--
+        <line field="type"></line>
+        <stacked-area field="date"/>
+        -->
+        <stacked-area field="type"/>
+        <legend></legend>
+    </graph>
+</div>
+{% endverbatim %}
+"""
+        scope : true
         link : (scope, el, attrs) ->
-            scope.$watch(attrs.cur_lic, (new_val) ->
-                 console.log "new val", attrs.cur_lic
-                 console.log "new val 2 ", new_val
+            scope.$watch(attrs.lic, (new_val) ->
                  if new_val
-                     scope.myResource.get({'lic_id':new_val}, (new_data) ->
-                         console.log "data: ", new_data
-                         scope.$apply(
-                             scope.data = new_data
-                         )
+                     lic_resource = $resource("{% url 'rest:license_data_list' %}", {})
+                     lic_resource.query({'lic_id':new_val}, (new_data) ->
+                         # prepare data for dimple
+                         licData = []
+                         for entry in new_data
+                             common = {"idx": entry.idx, "date": entry.display_start_date, "full_date": entry.full_start_date}
+
+                             used = _.clone(common)
+                             used["usage"] = entry.used
+                             used["type"] = "used"
+                             licData.push(used)
+
+                             issued = _.clone(common)
+                             issued["usage"] = entry.issued - entry.used
+                             issued["type"] = "issued"
+                             licData.push(issued)
+                         scope.licData = licData
                      )
             )
-    }
-).directive("running", ($templateCache) ->
+            scope.recalculate = () ->
+                # only used for svg version
+                max_y = _.max(scope.data, (d)->d.issued_max).issued_max  # max of issued max is upper value
+                step_x = scope.width / scope.data.length
+
+                scope.used_svg_points = ""
+                scope.issued_svg_points = ""
+                # dont start at 0 but leave equal space here and at the end
+                cur_x = step_x / 2
+                for entry in scope.data
+                    used_y = (entry["used"] / max_y) * scope.height
+                    issued_y = (entry["issued"] / max_y) * scope.height
+                    scope.used_svg_points += "#{cur_x},#{used_y} "
+                    scope.issued_svg_points += "#{cur_x},#{issued_y} "
+                    cur_x += step_x
+}]).directive("running", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("running_table.html")
@@ -1291,7 +1364,6 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("job_action.html", jobaction)
     $templateCache.put("files_info.html", filesinfo)
     $templateCache.put("change_pri.html", change_pri_template)
-    $templateCache.put("licgraph.html", licgraph_template)
 )
 
 add_rrd_directive(rms_module)

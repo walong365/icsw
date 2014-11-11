@@ -832,12 +832,7 @@ class license_data_list(ListAPIView):
 
         self.object_list = data
 
-        # Switch between paginated or standard style responses
-        page = self.paginate_queryset(self.object_list)
-        if page is not None:
-            serializer = self.get_pagination_serializer(page)
-        else:
-            serializer = self.get_serializer(self.object_list, many=True)
+        serializer = self.get_serializer(self.object_list, many=True)
 
         return Response(serializer.data)
 

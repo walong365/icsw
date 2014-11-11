@@ -10,32 +10,66 @@
 
 {% verbatim %}
 
+<h2>License Overview</h2>
 <div id="icsw.rms">
     <div ng-controller="lic_ctrl">
-        <table>
-            <tr><th>Lics:</th></tr>
-            <tr ng-repeat="li in ext_license_list">
-                <td> {{ li.name }} </td>
-            </tr>
-        </table>
-    
         <p>&nbsp;</p>
-
-        <form class="form-inline">
-            <div class="form-group">
-                <label class="control-label">License:</label>
-                <select class="form-control input-sm" ng-model="cur_lic">
-                    <option ng-repeat="li in ext_license_list" value="{{ li.idx }}">{{ li.name }}</option>
-                </select>
-            </div>
-        </form>
-
-        <p>&nbsp;</p>
-    
-        <div ng-if="cur_lic">
-            <licgraph lic="{{cur_lic}}"></licgraph>
-        </div>
         
+            <div class="col-xs-2">
+            TODO: make this into a panel
+
+                <h3>Time range</h3>
+
+
+                <div class="form-group">
+                    <div class="input-group">
+                        <input type="text" class="form-control" ng-model="lic_date_range_start"></input>
+                        <span class="dropdown-toggle input-group-addon">
+                            <div class="dropdown">
+                                 <button class="btn dropdown-toggle btn-xs">
+                                 <i class="glyphicon glyphicon-calendar"></i>
+                                 </button>
+                                 <ul class="dropdown-menu" role="menu">
+                                     <datetimepicker ng-model="lic_date_range_start"
+                                         data-datetimepicker-config="{ startView:'day', minView:'day' }" />
+                                 </ul>
+                            </div>
+                        </span>
+                    </div>
+                    <div class="input-group-btn">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-time"></span>
+                                {{cur_timerange}} <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-click="set_timerange('day')"><a href="#">day</a></li>
+                                <li ng-click="set_timerange('week')"><a href="#">week</a></li>
+                                <li ng-click="set_timerange('month')"><a href="#">month</a></li>
+                                <!-- use values supported by moment.startOf(.) -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+
+                <h3>Available licenses</h3>
+                <ul>
+                <li ng-repeat="li in ext_license_list">
+                    <input type="button" ng-class="get_li_sel_class(li)" ng-click="toggle_li_sel(li)" value="sel">
+                    <!-- <input type="checkbox" id="cb_{{li.idx}}" ng-model="li.selected" ng-change="license_select_change()"> -->
+                    <label for="cb_{{li.idx}}">{{li.name}}</label>
+                    </input>
+                </li> 
+                </ul>
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 well well-sm" ng-repeat="li in ext_license_selected">
+                    <h3>{{li.name}}</h3>
+                    <licgraph lic="li.idx"></licgraph>
+                </div>
+             </div>
             
     </div>
 </div>
