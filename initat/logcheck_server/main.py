@@ -74,8 +74,10 @@ def main():
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="syslog_server")
     if not sql_info.effective_device:
-        print "not a syslog_server"
-        sys.exit(5)
+        sql_info = config_tools.server_check(server_type="logcheck_server")
+        if not sql_info.effective_device:
+            print "not a syslog_server"
+            sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
     if sql_info.device:
