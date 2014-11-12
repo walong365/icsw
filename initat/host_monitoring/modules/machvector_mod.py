@@ -274,8 +274,11 @@ class machine_vector(object):
                     mv_target.get("target", "127.0.0.1"),
                     int(mv_target.get("port", "8002")))
                 self.log("creating zmq.PUSH socket for {}".format(target_str))
-                t_sock.connect(target_str)
-                self.__socket_dict[send_id] = t_sock
+                try:
+                    t_sock.connect(target_str)
+                    self.__socket_dict[send_id] = t_sock
+                except:
+                    self.log("error connecting: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         self.__xml_struct = xml_struct
 
     def reload(self):
