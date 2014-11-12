@@ -26,7 +26,8 @@
 from initat.cluster.backbone.models import rms_project, rms_department, rms_queue, \
     rms_pe, rms_job, rms_job_run, rms_pe_info, ext_license, ext_license_check, \
     ext_license_client, ext_license_state, ext_license_usage, ext_license_user, \
-    ext_license_version, ext_license_version_state, ext_license_vendor, ext_license_site
+    ext_license_version, ext_license_version_state, ext_license_vendor, ext_license_site, \
+    ext_license_state_coarse
 from rest_framework import serializers
 
 __all__ = [
@@ -47,6 +48,7 @@ __all__ = [
     "ext_license_state_serializer",
     "ext_license_version_state_serializer",
     "ext_license_usage_serializer",
+    "ext_license_state_coarse_serializer",
 ]
 
 
@@ -161,3 +163,13 @@ class ext_license_version_state_serializer(serializers.ModelSerializer):
 class ext_license_usage_serializer(serializers.ModelSerializer):
     class Meta:
         model = ext_license_usage
+
+
+class ext_license_state_coarse_serializer(serializers.ModelSerializer):
+    display_start_date = serializers.Field(source="get_display_start_date")
+    full_start_date = serializers.Field(source="ext_license_check_coarse.start_date")
+
+    class Meta:
+        model = ext_license_state_coarse
+
+
