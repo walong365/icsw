@@ -189,11 +189,14 @@ class server_process(threading_tools.process_pool, notify_mixin):
         )
         # recognize for which devices i am responsible
         dev_r = cluster_location.device_recognition()
+        self.device_r = dev_r
         if dev_r.device_dict:
             self.log(
                 " - i am also host for {}: {}".format(
                     logging_tools.get_plural("virtual device", len(dev_r.device_dict.keys())),
-                    ", ".join(sorted([cur_dev.name for cur_dev in dev_r.device_dict.itervalues()]))))
+                    ", ".join(sorted([cur_dev.name for cur_dev in dev_r.device_dict.itervalues()]))
+                )
+            )
             for cur_dev in dev_r.device_dict.itervalues():
                 cluster_location.db_device_variable(cur_dev, "device_uuid", description="UUID of device", value=uuid_tools.get_uuid().get_urn())
                 cluster_location.db_device_variable(cur_dev, "is_virtual", description="Flag set for Virtual Machines", value=1)
@@ -203,6 +206,10 @@ class server_process(threading_tools.process_pool, notify_mixin):
             if self.com_socket:
                 self.log("closing socket")
                 self.com_socket.close()
+            for _virt in self.virtual_sockets:
+                self.log("closing virtual socket")
+                _virt.close()
+            self.virtual_sockets = []
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -216,24 +223,55 @@ class server_process(threading_tools.process_pool, notify_mixin):
         # connections to other servers
         self.__other_server_dict = {}
         self.bind_id = get_server_uuid("server")
+        self.virtual_sockets = []
         if self.__run_command:
             client = None
+            self.com_socket = None
         else:
-            client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=self.bind_id)
-            try:
-                client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
-            except zmq.ZMQError:
-                self.log(
-                    "error binding to {:d}: {}".format(
-                        global_config["COM_PORT"],
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_CRITICAL
-                )
-                raise
+            # create bind list
+            if self.device_r.device_dict:
+                # complex bind
+                master_bind_list = [
+                    (
+                        True,
+                        ["tcp://{}:{:d}".format(_local_ip, global_config["COM_PORT"]) for _local_ip in self.device_r.local_ips]
+                        , self.bind_id
+                    )
+                ] + [
+                    (
+                        False,
+                        [
+                            "tcp://{}:{:d}".format(_virtual_ip, global_config["COM_PORT"]) for _virtual_ip in _ip_list
+                        ],
+                        # ignore local device
+                        get_server_uuid("server", _dev.uuid)) for _dev, _ip_list in self.device_r.ip_r_lut.iteritems() if _dev.pk != self.device_r.device.pk
+                ]
             else:
-                self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
-        self.com_socket = client
+                # simple bind
+                master_bind_list = [
+                    (True, ["tcp://*:{:d}".format(global_config["COM_PORT"])], self.bind_id)
+                ]
+            for master_bind, bind_list, bind_id in master_bind_list:
+                client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=bind_id)
+                for _bind_str in bind_list:
+                    try:
+                        client.bind(_bind_str)
+                    except zmq.ZMQError:
+                        self.log(
+                            "error binding to {}: {}".format(
+                                _bind_str,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_CRITICAL
+                        )
+                        raise
+                    else:
+                        self.log("bound to {} with id {}".format(_bind_str, bind_id))
+                        self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+                if master_bind:
+                    self.com_socket = client
+                else:
+                    self.virtual_sockets.append(client)
 
     def _recv_command(self, zmq_sock):
         data = []
@@ -285,6 +323,8 @@ class server_process(threading_tools.process_pool, notify_mixin):
 
     def _execute_command(self, srv_com):
         com_name = srv_com["command"].text
+        # set executed flag to distinguish between calls to virtual server and result calls
+        srv_com["executed"] = "1"
         if com_name in initat.cluster_server.modules.command_dict:
             srv_com.set_result(
                 "no reply set",
@@ -314,7 +354,8 @@ class server_process(threading_tools.process_pool, notify_mixin):
                         srv_com.set_result(
                             "error option keys found ({}) != needed ({})".format(
                                 ", ".join(sorted(list(set(found_keys)))) or "none",
-                                ", ".join(sorted(list(set(com_obj.Meta.needed_option_keys))))),
+                                ", ".join(sorted(list(set(com_obj.Meta.needed_option_keys))))
+                            ),
                             server_command.SRV_REPLY_STATE_CRITICAL
                         )
                     else:
@@ -396,11 +437,14 @@ class server_process(threading_tools.process_pool, notify_mixin):
         t_0mq_id = result["zmq_id"].text
         conn_str = result["conn_str"].text
         bc_com = result["broadcast_command"].text
-        self.log("got 0MQ_id '{}' for discovery_id '{}'.format(connection string {}, bc_command {})".format(
-            t_0mq_id,
-            discovery_id,
-            conn_str,
-            bc_com))
+        self.log(
+            "got 0MQ_id '{}' for discovery_id '{}'.format(connection string {}, bc_command {})".format(
+                t_0mq_id,
+                discovery_id,
+                conn_str,
+                bc_com
+            )
+        )
         self.__connection_dict[conn_str] = t_0mq_id
         self.log("closing discovery socket for {}".format(conn_str))
         self.unregister_poller(self.__discovery_dict[discovery_id], zmq.POLLIN)  # @UndefinedVariable
@@ -418,8 +462,10 @@ class server_process(threading_tools.process_pool, notify_mixin):
             self.log(
                 "error connecting to {}: {}".format(
                     conn_str,
-                    process_tools.get_except_info()),
-                logging_tools.LOG_LEVEL_ERROR)
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             self.log("connected to {}".format(conn_str))
 

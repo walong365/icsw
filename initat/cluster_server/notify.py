@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-server
@@ -19,18 +17,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from initat.cluster.backbone.models.user import virtual_desktop_user_setting
+
 """ notify mixin for server processes """
 
 from django.db import connection
-from initat.cluster.backbone.routing import srv_type_routing, get_server_uuid
-from initat.cluster.backbone.models import background_job, user, background_job_run, device, \
-    cluster_timezone
 from django.db.models import Q
-import logging_tools
-import datetime
-import process_tools
+from initat.cluster.backbone.models import background_job, user, background_job_run, device, \
+    cluster_timezone, virtual_desktop_user_setting
+from initat.cluster.backbone.routing import srv_type_routing, get_server_uuid
 import config_tools
+import datetime
+import logging_tools
+import process_tools
 import server_command
 
 # background job command mapping
@@ -110,7 +108,8 @@ class notify_mixin(object):
 
     def notify_waiting_for_job(self, srv_com):
         _waiting = False
-        if "bgjrid" in srv_com:
+        # we only accept to srv_com if bgjrid and executed are set
+        if "bgjrid" in srv_com and "executed" in srv_com:
             _id = int(srv_com["*bgjrid"])
             if _id in self.__waiting_ids:
                 _waiting = True
@@ -120,12 +119,14 @@ class notify_mixin(object):
         _str, _state = srv_com.get_log_tuple()
         _id = int(srv_com["*bgjrid"])
         self.__waiting_ids.remove(_id)
-        self.log("got result for bgjrid {:d} ({:d}): {}".format(
-            _id,
-            _state,
-            _str,
+        self.log(
+            "got result for bgjrid {:d} ({:d}): {}".format(
+                _id,
+                _state,
+                _str,
             ),
-            _state)
+            _state
+        )
         _run_job = background_job_run.objects.select_related("background_job").get(Q(pk=_id))
         _run_job.state = _state
         _run_job.result = _str
@@ -189,11 +190,14 @@ class notify_mixin(object):
 
     def _bgjp_sync_users(self, cur_bg):
         # step 1: create user homes
-        create_user_list = user.objects.exclude(
+        _uo = user.objects  # @UndefinedVariable
+        create_user_list = _uo.exclude(
             Q(export=None)
         ).filter(
             Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)
-        ).select_related("export__device")
+        ).select_related(
+            "export__device"
+        )
         to_run = []
         if create_user_list.count():
             self.log("{} to create".format(logging_tools.get_plural("user home", len(create_user_list))))
