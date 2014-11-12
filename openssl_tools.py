@@ -352,7 +352,7 @@ class ca(object):
                 file(_ext_file, "w").close()
                 if "device" in kwargs:
                     _dev = kwargs["device"]
-                    _add_list = ["DNS:{}".format(_dns) for _dns in _dev.all_dns()] + ["IP:{}".format(_ip) for _ip in _dev.all_ips()]
+                    _add_list = ["DNS:{}".format(_dns) for _dns in _dev.all_dns()] + ["IP:{}".format(_ip) for _ip in _dev.all_ips() if _ip]
                     if _add_list:
                         file(_ext_file, "w").write("subjectAltName={}".format(",".join(_add_list)))
                 _success, _out = self.call_openssl(
