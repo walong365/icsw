@@ -285,10 +285,9 @@ class device_recognition(object):
     def __init__(self, **kwargs):
         self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         try:
-            self.device = device.objects.get(Q(name=self.short_host_name)).pk
+            self.device = device.objects.get(Q(name=self.short_host_name))
         except device.DoesNotExist:
             self.device = None
-        self.device_dict = {}
         # get IP-adresses (from IP)
         self.local_ips = net_ip.objects.filter(Q(netdevice__device__name=self.short_host_name)).values_list("ip", flat=True)
         # get configured IP-Adresses
@@ -302,8 +301,30 @@ class device_recognition(object):
             ] if 2 in value
         }
         self_ips = sum(ipv4_dict.values(), [])
+        self.ip_lut = {}
+        self.ip_r_lut = {}
         if self_ips:
-            self.device_dict = {cur_dev.pk: cur_dev for cur_dev in device.objects.filter(Q(netdevice__net_ip__ip__in=self_ips))}
+            _do = device.objects  # @UndefinedVariable
+            self.device_dict = {
+                cur_dev.pk: cur_dev for cur_dev in _do.exclude(
+                    Q(netdevice__net_ip__network__network_type__identifier="l")
+                ).filter(
+                    Q(netdevice__net_ip__ip__in=self_ips)
+                ).prefetch_related(
+                    "netdevice_set__net_ip_set"
+                )
+            }
+            for _ip in self.local_ips:
+                self.ip_lut[_ip] = self.device
+            self.ip_r_lut[self.device] = self.local_ips
+            # build lut
+            for _dev in self.device_dict.itervalues():
+                _dev_ips = sum([[_nip.ip for _nip in _ndev.net_ip_set.all()] for _ndev in _dev.netdevice_set.all()], [])
+                for _dev_ip in _dev_ips:
+                    self.ip_lut[_dev_ip] = _dev
+                self.ip_r_lut[_dev] = _dev_ips
+        else:
+            self.device_dict = {}
 
 
 def is_server(server_type, long_mode=False, report_real_idx=False, short_host_name="", **kwargs):
