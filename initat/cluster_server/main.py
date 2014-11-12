@@ -168,6 +168,7 @@ def main():
         ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
         ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
         ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
+        ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, info="raise an error if not all bind() calls are successfull")),
     ])
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     if not global_config["DEBUG"] and not global_config["COMMAND"]:
