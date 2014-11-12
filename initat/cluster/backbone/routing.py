@@ -217,18 +217,21 @@ class srv_type_routing(object):
                                     _penalty,
                                 )
                             )
-                            self.logger.debug("adding device '{}' (IP {}, {:d}) to srv_type {}".format(
-                                _dev.effective_device.full_name,
-                                _first_ip,
-                                _dev.effective_device.pk,
-                                _srv_type,
+                            self.logger.debug(
+                                "adding device '{}' (IP {}, {:d}) to srv_type {}".format(
+                                    _dev.effective_device.full_name,
+                                    _first_ip,
+                                    _dev.effective_device.pk,
+                                    _srv_type,
                                 )
                             )
                         else:
-                            self.logger.error("no route to device '{}' found (srv_type {})".format(
-                                _dev.effective_device.full_name,
-                                _srv_type,
-                            ))
+                            self.logger.error(
+                                "no route to device '{}' found (srv_type {})".format(
+                                    _dev.effective_device.full_name,
+                                    _srv_type,
+                                )
+                            )
         # missing routes
         _missing_srv = set(_SRV_NAME_TYPE_MAPPING.keys()) - set(_resolv_dict.keys())
         if _missing_srv:
