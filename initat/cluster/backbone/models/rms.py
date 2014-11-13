@@ -381,16 +381,17 @@ class ext_license_check_coarse(models.Model):
     ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
 
     class Duration(object):
+        # NOTE: don't use timezone info here
         class Day(object):
             ID = 1
 
             @classmethod
             def get_time_frame_start(cls, timepoint):
-                return timepoint.date()
+                return timepoint.replace(hour=0, minute=0, second=0, microsecond=0)
 
             @classmethod
             def get_end_time_for_start(cls, starttime):
-                return starttime + datetime.timedelta(days=1)
+                return starttime + datetime.timedelta(days=1) - datetime.timedelta(seconds=1)
 
             @classmethod
             def get_display_date(cls, timepoint):
@@ -401,7 +402,7 @@ class ext_license_check_coarse(models.Model):
 
             @classmethod
             def get_time_frame_start(cls, timepoint):
-                return datetime.datetime(year=timepoint.year, month=timepoint.month, day=1)
+                return timepoint.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
             @classmethod
             def get_end_time_for_start(cls, starttime):
@@ -411,14 +412,27 @@ class ext_license_check_coarse(models.Model):
             def get_display_date(cls, timepoint):
                 return u"{}-{:02d}".format(timepoint.year, timepoint.month)
 
+        class Hour(object):
+            ID = 3
+
+            @classmethod
+            def get_time_frame_start(cls, timepoint):
+                return timepoint.replace(minute=0, second=0, microsecond=0)
+
+            @classmethod
+            def get_end_time_for_start(cls, starttime):
+                return starttime + datetime.timedelta(seconds=60*60) - datetime.timedelta(seconds=1)
+
+            @classmethod
+            def get_display_date(cls, timepoint):
+                return u"{:02d}:{:02d}".format(timepoint.hour, timepoint.minute)
+
         @classmethod
         def get_class(cls, ident):
-            if ident == cls.Day.ID:
-                return cls.Day
-            elif ident == cls.Month.ID:
-                return cls.Month
-            else:
-                raise Exception() 
+            for klass in cls.Hour, cls.Day, cls.Month:
+                if ident == klass.ID:
+                    return klass
+            raise Exception()
 
     def get_display_start_date(self):
         klass = ext_license_check_coarse.Duration.get_class(self.duration_type)
