@@ -871,10 +871,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.device_list = data[0]
             $scope.ext_license_list = data[1]
         )
-        $scope.dimpleLoaded = false
+        $scope.dimpleloaded = false
         d3_service.d3().then( (d3) ->
             dimple_service.dimple().then( (dimple) ->
-                $scope.dimpleLoaded = true
+                $scope.dimpleloaded = true
             )
         )
         $scope.license_select_change = () ->
@@ -894,86 +894,92 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             li.selected = !li.selected
             $scope.license_select_change()
         $scope.set_timerange = (tr) ->
-            $scope.cur_timerange = tr
+            $scope.timerange = tr
         $scope.set_timerange("week")
-        $scope.lic_date_range_start = moment().startOf("day")
-            
+        $scope.licdaterangestart = moment().startOf("day")
+        # for testing:
+        #$scope.licdaterangestart = moment("Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)")
+        $scope.multi_view = false
+        $scope.cur_time = moment().format()
+        #$scope.cur_time = "Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)"
 ]).directive("licgraph", ["$templateCache", "$resource", ($templateCache, $resource) ->
     return {
         restrict : "EA"
         template : """
 {% verbatim %}
-        <!--
-        old svg version:
-<svg ng-show="data" ng-attr-width="{{ width }}" ng-attr-height="{{ height }}"
-    <g>
-        <polyline
-             ng-attr-points="{{ used_svg_points }}"
-             stroke="black"
-             fill="none"
-             stroke-width="0.5"
-        ></polyline>
-        <polyline
-             ng-attr-points="{{ issued_svg_points }}"
-             stroke="black"
-             fill="none"
-             stroke-width="0.5"
-        ></polyline>
-    </g>
-</svg>
--->
-<div ng-if="dimpleLoaded">
-    <graph data="licData" width="500" height="300">
-        <x field="date" order-by="idx" title="null"></x>
-        <y field="usage" title="License usage"></y>
-        <!--
-        <line field="type"></line>
-        <stacked-area field="date"/>
-        -->
-        <stacked-area field="type"/>
-        <legend></legend>
-    </graph>
+<div ng-if="dimpleloaded">
+    <div ng-if="licData.length > 0">
+        <graph data="licData" width="500" height="300">
+            <x field="date" order-by="idx" title="null"></x>
+            <y field="usage" title="License usage"></y>
+            <!--
+            <line field="type"></line>
+            <stacked-area field="date"/>
+            -->
+            <stacked-area field="type"/>
+            <!--
+            the data is meant differently than displayed in legend currently
+            <legend></legend>
+            -->
+        </graph>
+    </div>
+    <div ng-if="licData.length == 0">
+        no data available
+    </div>
 </div>
 {% endverbatim %}
 """
-        scope : true
+        scope : {
+            timerange: '='
+            dimpleloaded: '='
+            licdaterangestart: '='
+        }
         link : (scope, el, attrs) ->
-            scope.$watch(attrs.lic, (new_val) ->
-                 if new_val
-                     lic_resource = $resource("{% url 'rest:license_data_list' %}", {})
-                     lic_resource.query({'lic_id':new_val}, (new_data) ->
-                         # prepare data for dimple
-                         licData = []
-                         for entry in new_data
-                             common = {"idx": entry.idx, "date": entry.display_start_date, "full_date": entry.full_start_date}
+            # can't reuse other attributes as they are shared with parent scope
+            scope.fixed_range = attrs.fixedtimerange? && attrs.fixedlicdaterangestart?
+            scope.lic_id = attrs.lic
+            scope.update_lic_data = () ->
+                if scope.lic_id
+                    lic_resource = $resource("{% url 'rest:license_data_list' %}", {})
 
-                             used = _.clone(common)
-                             used["usage"] = entry.used
-                             used["type"] = "used"
-                             licData.push(used)
+                    tr = if scope.fixed_range then attrs.fixedtimerange else scope.timerange
+                    start_date = if scope.fixed_range then attrs.fixedlicdaterangestart else scope.licdaterangestart
+                    query_data = {
+                        'lic_id': scope.lic_id
+                        'duration_type' : tr
+                        'date' : moment(start_date).utc().unix()  # ask server in utc
+                    }
+                    lic_resource.query(query_data, (new_data) ->
+                        # prepare data for dimple
+                        licData = []
+                        for entry in new_data
+                            common = {"idx": entry.idx, "date": entry.display_start_date, "full_date": entry.full_start_date}
 
-                             issued = _.clone(common)
-                             issued["usage"] = entry.issued - entry.used
-                             issued["type"] = "issued"
-                             licData.push(issued)
-                         scope.licData = licData
-                     )
-            )
-            scope.recalculate = () ->
-                # only used for svg version
-                max_y = _.max(scope.data, (d)->d.issued_max).issued_max  # max of issued max is upper value
-                step_x = scope.width / scope.data.length
+                            used = _.clone(common)
+                            used["usage"] = entry.used
+                            used["type"] = "used"
+                            licData.push(used)
 
-                scope.used_svg_points = ""
-                scope.issued_svg_points = ""
-                # dont start at 0 but leave equal space here and at the end
-                cur_x = step_x / 2
-                for entry in scope.data
-                    used_y = (entry["used"] / max_y) * scope.height
-                    issued_y = (entry["issued"] / max_y) * scope.height
-                    scope.used_svg_points += "#{cur_x},#{used_y} "
-                    scope.issued_svg_points += "#{cur_x},#{issued_y} "
-                    cur_x += step_x
+                            issued = _.clone(common)
+                            issued["usage"] = entry.issued - entry.used
+                            issued["type"] = "issued"
+                            licData.push(issued)
+                        scope.licData = licData
+                    )
+
+            if !scope.fixed_range
+                # need to watch by string and not by var, probably because var originates from parent scope
+                scope.$watch('timerange', (unused) -> 
+                    console.log "tr update"
+                    scope.update_lic_data()
+                )
+                scope.$watch('licdaterangestart', (unused) -> 
+                    console.log "daterange update"
+                    scope.update_lic_data()
+                )
+            else
+                # no updates for fixed range
+                scope.update_lic_data()
 }]).directive("running", ($templateCache) ->
     return {
         restrict : "EA"

@@ -51,6 +51,7 @@ import process_tools
 import time
 import types
 import datetime
+import dateutil.tz
 
 logger = logging.getLogger("cluster.rest")
 
@@ -823,11 +824,32 @@ class license_data_list(ListAPIView):
 
     def list(self, request, *args, **kwargs):
         lic_id = request.GET["lic_id"]
+        in_duration_type = request.GET["duration_type"]
+        # input date is utc, must add tz=utc below
+        date = datetime.datetime.fromtimestamp(int(request.GET["date"]), tz=dateutil.tz.tzutc())
 
-        start = datetime.datetime(year=2014, month=10, day=1)
-        end = datetime.datetime(year=2014, month=11, day=1)
+        if in_duration_type == "day":
+            duration_type = ext_license_check_coarse.Duration.Hour.ID
+            start = ext_license_check_coarse.Duration.Day.get_time_frame_start(date)
+            end = ext_license_check_coarse.Duration.Day.get_end_time_for_start(start)
+        elif in_duration_type == "week":
+            duration_type = ext_license_check_coarse.Duration.Day.ID
+            date_as_date = date.date()  # forget time
+            date_day = datetime.datetime(year=date_as_date.year, month=date_as_date.month, day=date_as_date.day)
+            start = date_day - datetime.timedelta(days=date_day.weekday()-1)
+            end = start + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
+        elif in_duration_type == "month":
+            duration_type = ext_license_check_coarse.Duration.Day.ID
+            start = ext_license_check_coarse.Duration.Month.get_time_frame_start(date)
+            end = ext_license_check_coarse.Duration.Month.get_end_time_for_start(start)
+        elif in_duration_type == "year":
+            duration_type = ext_license_check_coarse.Duration.Month.ID
+            start = datetime.datetime(year=date.year, month=1, day=1)
+            end = datetime.datetime(year=date.year+1, month=1, day=1)
+
+        logger.debug("retrieving data for license {} for {} from {} to {}, type {}".format(lic_id, date, start, end, duration_type))
         data = ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
-                                                       ext_license_check_coarse__duration_type=ext_license_check_coarse.Duration.Day.ID,
+                                                       ext_license_check_coarse__duration_type=duration_type,
                                                        ext_license_check_coarse__start_date__range=(start, end))
 
         self.object_list = data
@@ -835,4 +857,3 @@ class license_data_list(ListAPIView):
         serializer = self.get_serializer(self.object_list, many=True)
 
         return Response(serializer.data)
-
