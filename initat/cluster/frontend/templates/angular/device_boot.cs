@@ -140,7 +140,7 @@ device_row_template = """
                 <li ng-click="soft_control(dev, 'poweroff')"><a href="#">poweroff</a></li>
             </ul>
         </div>
-        <span class='glyphicon glyphicon-ban-circle' ng-show="!valid_net_state()"></span>"
+        <span class='glyphicon glyphicon-ban-circle' ng-show="!valid_net_state()"></span>
     </td>
     <td ng-show="bo_enabled['h']">
         <div class="btn-group" ng-repeat="cd_con in dev.slave_connections">
