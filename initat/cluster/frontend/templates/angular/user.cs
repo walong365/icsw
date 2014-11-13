@@ -1282,7 +1282,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 )
                 scope.current_vdus = null
             scope.get_virtual_desktop_user_setting_of_user = (user_obj) ->
-                return scope.virtual_desktop_user_setting.filter( (vdus) -> vdus.user == user_obj.idx )
+                return scope.virtual_desktop_user_setting.filter( (vdus) -> vdus.user == user_obj.idx && vdus.to_delete == false )
                 
             scope.virtual_desktop_devices = () ->
                 # devices which support both some kind of virtual desktop and window manager
@@ -1416,7 +1416,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 scope.object = new_val
                     
                 if scope.object?
-                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx)
+                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx && vdus.to_delete == false)
                     # get all ips
                     scope.retrieve_device_ip vdus.device for vdus in scope.virtual_desktop_sessions
 
