@@ -305,9 +305,11 @@ class device_recognition(object):
         self.ip_r_lut = {}
         if self_ips:
             _do = device.objects  # @UndefinedVariable
+            # get IPs
             self.device_dict = {
                 cur_dev.pk: cur_dev for cur_dev in _do.exclude(
-                    Q(netdevice__net_ip__network__network_type__identifier="l")
+                    Q(netdevice__net_ip__network__network_type__identifier="l") |
+                    Q(netdevice__net_ip__ip__startswith="127.")
                 ).filter(
                     Q(netdevice__net_ip__ip__in=self_ips)
                 ).prefetch_related(
