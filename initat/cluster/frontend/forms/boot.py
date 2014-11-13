@@ -155,7 +155,7 @@ class boot_single_form(Form):
             ),
             Field(
                 "partition_table",
-                repeat="value.idx as value in partition",
+                repeat="value.idx as value in partitions",
                 display="name",
                 placeholder="partition table",
                 filter="{name:$select.search}",
@@ -297,7 +297,7 @@ class boot_many_form(Form):
                 (
                     "partition_table",
                     {
-                        "repeat": "value.idx as value in partition",
+                        "repeat": "value.idx as value in partitions",
                         "display": "name",
                         "placeholder": "partition table",
                         "filter": "{name:$select.search}",

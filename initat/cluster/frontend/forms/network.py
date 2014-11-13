@@ -449,7 +449,7 @@ class device_network_scan_form(Form):
     scan_address = CharField(max_length=128)
     snmp_address = CharField(max_length=128)
     snmp_community = CharField(max_length=128)
-    snmp_version = ChoiceField(choices=[(1, "1"), (2, "2c")])
+    snmp_version = ChoiceField(choices=[(1, "1"), (2, "2")])
     strict_mode = BooleanField(required=False)
     remove_not_found = BooleanField(required=False)
     helper.layout = Layout(
