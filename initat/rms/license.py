@@ -95,11 +95,8 @@ class license_process(threading_tools.process_obj):
         # job stop/start info
         self.__elo_obj = None
         self.register_timer(self._update, 30, instant=True)
-        
-        # for proper use:
-        #self.register_timer(self._update_coarse_data, 60*15, instant=True)
-        # for testing:
-        self._update_coarse_data()
+
+        self.register_timer(self._update_coarse_data, 60*15, instant=True)
 
     def _init_sge_info(self):
         self._license_base = global_config["LICENSE_BASE"]
@@ -341,7 +338,7 @@ class license_process(threading_tools.process_obj):
         # check which data to collect
         for site in ext_license_site.objects.all():
 
-            for duration_type in (ext_license_check_coarse.Duration.Month, ext_license_check_coarse.Duration.Day):
+            for duration_type in (ext_license_check_coarse.Duration.Month, ext_license_check_coarse.Duration.Day, ext_license_check_coarse.Duration.Hour):
                 try:
                     # make sure to only get date from db to stay consistent with its timezone
                     last_day = ext_license_check_coarse.objects.filter(duration_type=duration_type.ID, ext_license_site=site).latest('start_date')
@@ -358,7 +355,7 @@ class license_process(threading_tools.process_obj):
                 do_loop = True
                 last_time = time.time()
                 while do_loop:
-                    print 'took ', time.time() - last_time 
+                    print 'took ', time.time() - last_time
                     last_time = time.time()
                     # check if we can calculate next day
                     next_end_time = duration_type.get_end_time_for_start(next_start_time)
