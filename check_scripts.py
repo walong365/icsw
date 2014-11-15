@@ -38,6 +38,7 @@ import psutil
 import stat
 import subprocess
 import time
+
 try:
     import django
     django.setup()
@@ -237,11 +238,17 @@ def check_system(opt_ns):
                 key, level_list = line.split(None, 1)
                 level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
                 stat_dict[key.lower()] = level_list
+    _prev_db_check = None
     for entry in instance_xml.xpath("instance[@to_check='1']"):
+        dev_config = []
         if config_tools and not opt_ns.no_database and entry.find(".//config_names/config_name") is not None:
-            dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
-        else:
-            dev_config = None
+            # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
+            _conf_names = [_entry.text for _entry in entry.findall(".//config_names/config_name")]
+            for _conf_name in _conf_names:
+                _cr = config_tools.server_check(server_type=_conf_name, prev_check=_prev_db_check)
+                _prev_db_check = _cr
+                if _cr.effective_device:
+                    dev_config.append(_cr)
         name = entry.attrib["name"]
         entry.attrib["checked"] = "1"
         if entry.attrib["init_script_name"] in stat_dict:
@@ -375,21 +382,11 @@ def check_system(opt_ns):
             )
         )
         if entry.attrib["runs_on"] == "server":
-            if dev_config is not None:
-                srv_type_list = [_e.replace("-", "_") for _e in entry.xpath(".//config_names/config_name/text()", smart_strings=False)]
-                found = False
-                for srv_type in srv_type_list:
-                    if srv_type in dev_config:
-                        found = True
-                        sql_info = dev_config[srv_type][0]
-                        if not sql_info.effective_device:
-                            # FIXME ?
-                            act_state = 5
-                        break
-                if not found:
-                    sql_info = "not set ({})".format(", ".join(srv_type_list))
+            if dev_config:  # is not None:
+                sql_info = ", ".join([_dc.server_info_str for _dc in dev_config])
             else:
-                sql_info = "no db_con"
+                act_state = 5
+                sql_info = "not configured"
         else:
             sql_info = "node"
         if type(sql_info) == str:

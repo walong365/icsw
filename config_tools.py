@@ -428,6 +428,8 @@ class server_check(object):
         # self.__hc_cache = in_cache
 
     def _check(self, **kwargs):
+        # src device, queried via name
+        self.src_device = None
         # device from database or None
         self.device = None
         # device for which the config is set
@@ -467,24 +469,32 @@ class server_check(object):
         if "device" in kwargs:
             # got device, no need to query
             self.config = kwargs["config"]
+            self.src_device = kwargs["device"]
             self.device = kwargs["device"]
             self.effective_device = kwargs.get("effective_device", kwargs["device"])
         else:
             try:
-                if self.host_name:
-                    # search with full host name
-                    self.device = device.objects.prefetch_related(
-                        "netdevice_set__net_ip_set__network__network_type"
-                    ).get(
-                        Q(name=self.short_host_name) & Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1])
-                    )
+                if kwargs.get("prev_check", None):
+                    # copy device from previous check
+                    self.src_device = kwargs["prev_check"].src_device
+                    # may be altered
+                    self.device = kwargs["prev_check"].src_device
                 else:
-                    # search with short host name
-                    self.device = device.objects.prefetch_related(
-                        "netdevice_set__net_ip_set__network__network_type"
-                    ).get(
-                        Q(name=self.short_host_name)
-                    )
+                    if self.host_name:
+                        # search with full host name
+                        self.device = device.objects.prefetch_related(
+                            "netdevice_set__net_ip_set__network__network_type"
+                        ).get(
+                            Q(name=self.short_host_name) & Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1])
+                        )
+                    else:
+                        # search with short host name
+                        self.device = device.objects.prefetch_related(
+                            "netdevice_set__net_ip_set__network__network_type"
+                        ).get(
+                            Q(name=self.short_host_name)
+                        )
+                    self.src_device = self.device
             except device.DoesNotExist:
                 self.device = None
             else:
@@ -496,14 +506,16 @@ class server_check(object):
                 except config.DoesNotExist:  # @UndefinedVariable
                     try:
                         self.config = _co.get(
-                            Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") &
+                            Q(name=self.__server_type) &
+                            Q(device_config__device__device_type__identifier="MD") &
                             Q(device_config__device__device_group=self.device.device_group_id)
                         )
                     except config.DoesNotExist:  # @UndefinedVariable
                         self.config = None
                     else:
                         self.effective_device = device.objects.get(
-                            Q(device_group=self.device.device_group_id) & Q(device_type__identifier="MD")
+                            Q(device_group=self.device.device_group_id) &
+                            Q(device_type__identifier="MD")
                         )
                 else:
                     self.effective_device = self.device
@@ -518,6 +530,7 @@ class server_check(object):
                 # fetch ip_info only if needed
                 self._fetch_network_info()
         elif self.device:
+            # no direct config found, check for matching IP
             # we need at least a device to check
             # fetch ip_info
             self._db_check_ip()
