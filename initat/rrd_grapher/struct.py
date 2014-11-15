@@ -243,7 +243,7 @@ class data_store(object):
         web_mode = mode == "web"
         graph_mode = mode == "graph"
         cur_xml = self.xml_vector
-        all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name", smart_strings=False))
+        all_keys = set(cur_xml.xpath(".//mve[@active]/@name", smart_strings=False))
         xml_vect, lu_dict = (E.machine_vector(), {})
         for key in sorted(all_keys):
             parts = key.split(".")
@@ -270,7 +270,7 @@ class data_store(object):
             parent.remove(struct_ent)
         # print etree.tostring(xml_vect, pretty_print=True)
         # add pde entries
-        pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde[@active='1']")])
+        pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde[@active]")])
         for pde_key, type_inst, pde_node in pde_keys:
             ti_str = "/%s" % (type_inst) if type_inst else ""
             for sub_val in pde_node:
