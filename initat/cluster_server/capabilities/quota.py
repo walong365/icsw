@@ -161,13 +161,13 @@ class quota_line(object):
 
 class quota_stuff(bg_stuff):
     class Meta:
-        name = "quota"
+        name = "quota_scan"
 
     def init_bg_stuff(self):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
         self.__track_all_quotas = global_config["TRACK_ALL_QUOTAS"]
-        self.__effective_device = device.objects.get(Q(pk=global_config["EFFECTIVE_DEVICE_IDX"]))
+        self.__effective_device = self.sql_info.effective_device
         self.log(u"effective device for quota tracking is {}".format(unicode(self.__effective_device)))
         # user/group cache
         self.__user_dict = {}

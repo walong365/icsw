@@ -27,13 +27,14 @@ class bg_stuff(object):
         min_time_between_runs = 30
         creates_machvector = False
 
-    def __init__(self, srv_process):
+    def __init__(self, srv_process, sql_info):
         # copy Meta keys
         for key in dir(bg_stuff.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(bg_stuff.Meta, key))
         # self.__name = name
         self.server_process = srv_process
+        self.sql_info = sql_info
         self.init_bg_stuff()
         self.__last_call = None
 

@@ -33,7 +33,13 @@ def add_fixtures(**kwargs):
     )
     factories.Config(
         name="quota_scan",
-        description="device has quotas enabled",
+        description="scan quotas for all users when device has quotas enabled",
+        server_config=True,
+        system_config=True,
+    )
+    factories.Config(
+        name="user_scan",
+        description="scan user dirs for all users found on this device",
         server_config=True,
         system_config=True,
     )

@@ -78,18 +78,29 @@ class capability_process(threading_tools.process_obj):
             self.log("doing database backup, ignoring capabilities", logging_tools.LOG_LEVEL_WARN)
         else:
             self.log("init server capabilities")
-            self.__server_cap_dict = {
-                "usv_server": usv_server.usv_server_stuff(self),
-                "quota_scan": quota.quota_stuff(self),
-                "virtual_desktop": virtual_desktop.virtual_desktop_stuff(self),
-                "user_scan": user_scan.user_scan_stuff(self),
-                # "dummy"      : dummy_stuff(self),
-                }
-            for key, _value in self.__server_cap_dict.iteritems():
-                _sql_info = config_tools.server_check(server_type=key)
+            SRV_CAPS = [
+                usv_server.usv_server_stuff,
+                quota.quota_stuff,
+                virtual_desktop.virtual_desktop_stuff,
+                user_scan.user_scan_stuff,
+            ]
+            self.log("checking {}".format(logging_tools.get_plural("capability", len(SRV_CAPS))))
+            self.__server_cap_dict = {}
+            self.__cap_list = []
+            for _srv_cap in SRV_CAPS:
+                cap_name = _srv_cap.Meta.name
+                _sql_info = config_tools.server_check(server_type=cap_name)
                 if _sql_info.effective_device:
-                    self.__cap_list.append(key)
-                self.log("capability {}: {}".format(key, "enabled" if key in self.__cap_list else "disabled"))
+                    self.__cap_list.append(cap_name)
+                    self.__server_cap_dict[cap_name] = _srv_cap(self, _sql_info)
+                    self.log(
+                        "capability {} is enabled on {}".format(
+                            cap_name,
+                            unicode(_sql_info.effective_device),
+                        )
+                    )
+                else:
+                    self.log("capability {} is disabled".format(cap_name))
 
     def _update(self):
         cur_time = time.time()
