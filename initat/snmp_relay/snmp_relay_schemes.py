@@ -1379,6 +1379,7 @@ class temperature_probe_scheme(snmp_scheme):
             cur_temp,
             cur_temp)
 
+
 class temperature_probe_hum_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "temperature_probe_hum_scheme", **kwargs)
@@ -1401,6 +1402,7 @@ class temperature_probe_hum_scheme(snmp_scheme):
             cur_hum,
             cur_hum)
 
+# Emerson CoolTherm rack
 class temperature_knurr_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "temperature_knurr_scheme", **kwargs)
@@ -1443,6 +1445,7 @@ class humidity_knurr_scheme(snmp_scheme):
             high_crit,
             cur_val)
 
+
 class environment_knurr_scheme(snmp_scheme):
     def __init__(self, **kwargs):
         snmp_scheme.__init__(self, "environment_knurr_scheme", **kwargs)
@@ -1465,5 +1468,90 @@ class environment_knurr_scheme(snmp_scheme):
             8 : "PSB",
             }
         return cur_state, ", ".join([
-            "%s: %s" % (info_dict[key], {0 : "OK", 1 : "faild"}[new_dict[key]]) for key in sorted(new_dict.keys())])
+            "%s: %s" % (info_dict[key], {0 : "OK", 1 : "failed"}[new_dict[key]]) for key in sorted(info_dict.keys())])
+
+
+# new version of Emerson/Knuerr CoolCon rack (APP 1.15.10, HMI 1.15.10)
+class environment2_knurr_scheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "environment2_knurr_scheme", **kwargs)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 9, 1), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+    def process_return(self):
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+        del new_dict[4]
+        if max(new_dict.values()) == 0:
+            cur_state = limits.nag_STATE_OK
+        else:
+            cur_state = limits.nag_STATE_CRITICAL
+        info_dict = {
+            1 : "fan1",
+            2 : "fan2",
+            3 : "fan3",
+            5 : "water",
+            6 : "smoke",
+            7 : "PSA",
+            8 : "PSB",
+            }
+        return cur_state, ", ".join([
+            "%s: %s" % (info_dict[key], {0 : "OK", 1 : "failed"}[new_dict[key]]) for key in sorted(info_dict.keys())])
+
+# US version of Emerson/Liebert MPH Rack 3-Phase PDU
+class current_pdu_emerson_scheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "current_pdu_emerson_scheme", **kwargs)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 476, 1, 42, 3, 8, 30, 40, 1, 22, 1, 1), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+    def process_return(self):
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+
+        cur_state = limits.nag_STATE_OK
+
+        info_dict = {
+            1 : "L1",
+            2 : "L2",
+            3 : "L3",
+            }
+        return cur_state, ", ".join([
+            "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())])
+
+class currentLLG_pdu_emerson_scheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "currentLLG_pdu_emerson_scheme", **kwargs)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 476, 1, 42, 3, 8, 40, 20, 1, 130, 1), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+    def process_return(self):
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+
+        cur_state = limits.nag_STATE_OK
+
+        info_dict = {
+            1 : "L1-L2",
+            2 : "L1-L2",
+            3 : "L2-L3",
+            4 : "L2-L3",
+            5 : "L3-L1",
+            6 : "L3-L1",
+            }
+        return cur_state, ", ".join([
+            "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())])
+
+
+class voltageLL_pdu_emerson_scheme(snmp_scheme):
+    def __init__(self, **kwargs):
+        snmp_scheme.__init__(self, "voltageLL_pdu_emerson_scheme", **kwargs)
+        self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 476, 1, 42, 3, 8, 30, 40, 1, 61, 1, 1), cache=True, cache_timeout=10)
+        self.parse_options(kwargs["options"])
+    def process_return(self):
+        new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
+
+        cur_state = limits.nag_STATE_OK
+
+        info_dict = {
+            1 : "L1-L2",
+            2 : "L2-L3",
+            3 : "L3-L1",
+            }
+        return cur_state, ", ".join([
+            "%s: %sV" % (info_dict[key], float(new_dict[key]) * 0.1) for key in sorted(info_dict.keys())])
 
