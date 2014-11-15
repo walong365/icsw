@@ -174,6 +174,7 @@ if DEBUG:
     STATIC_ROOT = STATIC_ROOT_DEBUG
 else:
     STATIC_ROOT = "/srv/www/htdocs/icsw/static"
+
 if not os.path.isdir(STATIC_ROOT_DEBUG):
     try:
         os.makedirs(STATIC_ROOT_DEBUG)
