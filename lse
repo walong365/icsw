@@ -123,10 +123,10 @@ def main():
         new_file_name = "%s_%s.tar.bz2" % (
             err_file_name,
             time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))
-        print "taring %s to %s ..." % (err_file_name, new_file_name)
-        stat, out = commands.getstatusoutput("tar cpsjf %s %s" % (new_file_name, err_file_name))
+        print("taring {} to {} ...".format(err_file_name, new_file_name))
+        stat, out = commands.getstatusoutput("tar cpjf %s %s" % (new_file_name, err_file_name))
         if stat:
-            print "*** error (%d): %s" % (stat, out)
+            print("*** error (%d): %s" % (stat, out))
         else:
             os.unlink(err_file_name)
         sys.exit(stat)
