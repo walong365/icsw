@@ -211,13 +211,18 @@ class quota_stuff(bg_stuff):
                     act_dict["lastname"] or "<last_name not set>",
                     act_dict["email"] or "<email not set>"
                 )
-        missing_uids = [key for key in uid_list if key not in self.__user_dict]
+        missing_uids = set(uid_list) - set(self.__user_dict.keys())
         for missing_uid in missing_uids:
             try:
                 pw_stuff = pwd.getpwuid(missing_uid)
             except:
-                self.log("Cannot get information for uid %d" % (missing_uid),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "Cannot get information for uid {:d}: {}".format(
+                        missing_uid,
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 self.__user_dict[missing_uid] = {
                     "info": "user not found in SQL or pwd"
                 }
@@ -265,15 +270,20 @@ class quota_stuff(bg_stuff):
                     act_dict["lastname"] or "<last_name not set>",
                     act_dict["email"] or "<email not set>"
                 )
-        missing_gids = [key for key in gid_list if key not in self.__group_dict]
+        missing_gids = set(gid_list) - set(self.__group_dict.keys())
         for missing_gid in missing_gids:
             try:
                 grp_stuff = grp.getgrgid(missing_gid)
             except:
-                self.log("Cannot get information for gid {:d}".format(missing_gid),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "Cannot get information for gid {:d}: {}".format(
+                        missing_gid,
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 self.__group_dict[missing_gid] = {
-                    "info": "groiup not found in SQL or grp"
+                    "info": "group not found in SQL or grp"
                 }
             else:
                 self.__group_dict[missing_gid] = {
@@ -568,7 +578,7 @@ class quota_stuff(bg_stuff):
                     _idict = self._get_gid_info(num_id, {})
                 else:
                     _idict = self._get_uid_info(num_id, {})
-                if _idict["source"] == "SQL":
+                if _idict.get("source", None) == "SQL":
                     # only tracke usage of users from DB
                     _key = (_idict["db_rec"].pk, qcb_pk)
                     _loc_dict = qs_dict[obj_type]
@@ -605,31 +615,40 @@ class quota_stuff(bg_stuff):
                 name = self._get_uid_info(num_id, {}).get("login", "unknown")
             block_dict = stuff.get_block_dict()
             pfix = "quota.{}.{}.{}".format(obj_type, name, dev_name)
-            my_vector.append(hm_classes.mvect_entry(
-                "{}.soft".format(pfix),
-                info="Soft Limit for $2 $3 on $4",
-                default=0,
-                value=block_dict["soft"],
-                factor=1000,
-                base=1000,
-                valid_until=valid_until,
-                unit="B").build_xml(builder))
-            my_vector.append(hm_classes.mvect_entry(
-                "{}.hard".format(pfix),
-                info="Hard Limit for $2 $3 on $4",
-                default=0,
-                value=block_dict["hard"],
-                factor=1000,
-                base=1000,
-                valid_until=valid_until,
-                unit="B").build_xml(builder))
-            my_vector.append(hm_classes.mvect_entry(
-                "{}.used".format(pfix),
-                info="Used quota for $2 $3 on $4",
-                default=0,
-                value=block_dict["used"],
-                factor=1000,
-                base=1000,
-                valid_until=valid_until,
-                unit="B").build_xml(builder))
+            my_vector.append(
+                hm_classes.mvect_entry(
+                    "{}.soft".format(pfix),
+                    info="Soft Limit for $2 $3 on $4",
+                    default=0,
+                    value=block_dict["soft"],
+                    factor=1000,
+                    base=1000,
+                    valid_until=valid_until,
+                    unit="B"
+                ).build_xml(builder)
+            )
+            my_vector.append(
+                hm_classes.mvect_entry(
+                    "{}.hard".format(pfix),
+                    info="Hard Limit for $2 $3 on $4",
+                    default=0,
+                    value=block_dict["hard"],
+                    factor=1000,
+                    base=1000,
+                    valid_until=valid_until,
+                    unit="B"
+                ).build_xml(builder)
+            )
+            my_vector.append(
+                hm_classes.mvect_entry(
+                    "{}.used".format(pfix),
+                    info="Used quota for $2 $3 on $4",
+                    default=0,
+                    value=block_dict["used"],
+                    factor=1000,
+                    base=1000,
+                    valid_until=valid_until,
+                    unit="B"
+                ).build_xml(builder)
+            )
         return my_vector

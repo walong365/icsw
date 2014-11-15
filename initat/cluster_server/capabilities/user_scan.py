@@ -161,7 +161,6 @@ class user_scan_stuff(bg_stuff):
                     )
                 )
         except UnicodeDecodeError:
-            raise
             self.log(
                 u"UnicodeDecode: {}, _last_dir is '{}'".format(
                     process_tools.get_except_info(),
@@ -169,6 +168,8 @@ class user_scan_stuff(bg_stuff):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            if global_config["DEBUG"]:
+                raise
         # store current
         _size_dict.create_db_entries(new_run)
         _e_time = time.time()
