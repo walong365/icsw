@@ -216,7 +216,10 @@ class home_export_list(object):
             Q(device__device_type__identifier="H")
         ).prefetch_related(
             "config__config_str_set"
-        ).select_related("device", "device__domain_tree_node")
+        ).select_related(
+            "device",
+            "device__domain_tree_node"
+        )
         home_exp_dict = {}
         for entry in exp_entries:
             dev_name, dev_name_full, act_pk = (
