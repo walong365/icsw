@@ -38,10 +38,14 @@ import psutil
 import stat
 import subprocess
 import time
+from django.conf import settings
 
 try:
-    import django
-    django.setup()
+    if settings.SATTELITE_MODE:
+        config_tools = None
+    else:
+        import django
+        django.setup()
 except:
     config_tools = None
 else:
