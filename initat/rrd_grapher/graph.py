@@ -800,13 +800,14 @@ class RRDGraph(object):
             ]
         elif self.para_dict["merge_cd"]:
             graph_key_list = []
+            # slave: controlling device(s)
             # merge controlling devices with devices on a single graph
             _all_slaves = set(device.objects.filter(Q(master_connections__in=dev_pks)).values_list("pk", flat=True))
+            # all slaves now holds all controlling devices
             for _dev in device.objects.filter(Q(pk__in=dev_pks)):
                 _slave_pks = set(_dev.slave_connections.all().values_list("pk", flat=True))
-                # device has any controlling devices or
-                # device is not controlling device
-                if _dev.pk not in _all_slaves or not _slave_pks:
+                # device is no controlling device
+                if _dev.pk not in _all_slaves:
                     _merged_pks = set([_dev.pk]) | (_slave_pks & set(dev_pks))
                     for g_key, v_list in sorted(s_graph_key_dict.iteritems()):
                         graph_key_list.append(
