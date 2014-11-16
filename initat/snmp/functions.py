@@ -58,6 +58,15 @@ def simplify_dict(in_dict, start_tuple, sub_key_filter=[]):
     return _result
 
 
+def reorder_dict(in_dict):
+    # take in dict an reorder it using the following method:
+    # in_dict: {key:value} where key has the form (idx, key[::])
+    r_dict = {}
+    for key, value in in_dict.iteritems():
+        r_dict.setdefault(key[1:], {})[key[0]] = value
+    return r_dict
+
+
 def flatten_dict(in_dict):
     _changed = True
     while _changed:

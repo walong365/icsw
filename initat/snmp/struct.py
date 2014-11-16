@@ -169,7 +169,7 @@ class snmp_hs(object):
         self.highspeed = in_dict[15]
         self.promiscious_mode = in_dict[16] == 1
         self.connector_present = in_dict.get(17, 0) == 1
-        self.alias = in_dict[18]
+        self.alias = in_dict.get(18, "")
         self.counter_discontinuity_time = in_dict[19]
 
     def __repr__(self):
