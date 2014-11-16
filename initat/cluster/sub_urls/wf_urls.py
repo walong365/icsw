@@ -9,6 +9,7 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
     base_views, setup_views, doc_views
 from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
+from django.conf.urls.static import static
 
 handler404 = main_views.index.as_view()
 
@@ -252,4 +253,4 @@ url_patterns = patterns(
     url(r"^$", session_views.redirect_to_main.as_view()),
 )
 
-url_patterns += staticfiles_urlpatterns()
+url_patterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
