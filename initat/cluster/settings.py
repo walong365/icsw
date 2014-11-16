@@ -64,22 +64,27 @@ NEW_CONF_FILE = "/etc/sysconfig/cluster/db.cf"
 OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
 
 SLAVE_MODE = os.path.exists("/etc/sysconfig/cluster/is_slave")
+SATELLITE_MODE = os.path.exists("/etc/sysconfig/cluster/is_satellite")
 if not SLAVE_MODE:
     SLAVE_MODE = not os.path.exists("/opt/python-init/lib/python/site-packages/initat/cluster/frontend")
 
-if os.path.isfile(NEW_CONF_FILE):
-    try:
-        conf_content = file(NEW_CONF_FILE, "r").read()
-    except IOError:
-        raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(NEW_CONF_FILE))
+if SATELLITE_MODE:
+    # satellite mode, no database configured
+    conf_content = ""
 else:
-    if not os.path.isfile(OLD_CONF_FILE):
-        raise ImproperlyConfigured("config '{}' and '{}' not found".format(NEW_CONF_FILE, OLD_CONF_FILE))
-    else:
+    if os.path.isfile(NEW_CONF_FILE):
         try:
-            conf_content = file(OLD_CONF_FILE, "r").read()
+            conf_content = file(NEW_CONF_FILE, "r").read()
         except IOError:
-            raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(OLD_CONF_FILE))
+            raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(NEW_CONF_FILE))
+    else:
+        if not os.path.isfile(OLD_CONF_FILE):
+            raise ImproperlyConfigured("config '{}' and '{}' not found".format(NEW_CONF_FILE, OLD_CONF_FILE))
+        else:
+            try:
+                conf_content = file(OLD_CONF_FILE, "r").read()
+            except IOError:
+                raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(OLD_CONF_FILE))
 
 sql_dict = {
     key.split("_")[1]: value for key, value in [
