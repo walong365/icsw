@@ -624,28 +624,30 @@ class eonstor_object(object):
 
 
 class eonstor_disc(eonstor_object):
-    lu_dict = {0: ("New Drive", limits.nag_STATE_OK),
-               1: ("On-Line Drive", limits.nag_STATE_OK),
-               2: ("Used Drive", limits.nag_STATE_OK),
-               3: ("Spare Drive", limits.nag_STATE_OK),
-               4: ("Drive Initialization in Progress", limits.nag_STATE_WARNING),
-               5: ("Drive Rebuild in Progress", limits.nag_STATE_WARNING),
-               6: ("Add Drive to Logical Drive in Progress", limits.nag_STATE_WARNING),
-               9: ("Global Spare Drive", limits.nag_STATE_OK),
-               int("11", 16): ("Drive is in process of Cloning another Drive", limits.nag_STATE_WARNING),
-               int("12", 16): ("Drive is a valid Clone of another Drive", limits.nag_STATE_OK),
-               int("13", 16): ("Drive is in process of Copying from another Drive", limits.nag_STATE_WARNING),
-               int("3f", 16): ("Drive Absent", limits.nag_STATE_OK),
-               # int("8x", 16) : "SCSI Device (Type x)",
-               int("fc", 16): ("Missing Global Spare Drive", limits.nag_STATE_CRITICAL),
-               int("fd", 16): ("Missing Spare Drive", limits.nag_STATE_CRITICAL),
-               int("fe", 16): ("Missing Drive", limits.nag_STATE_CRITICAL),
-               int("ff", 16): ("Failed Drive", limits.nag_STATE_CRITICAL)}
+    lu_dict = {
+        0: ("New Drive", limits.nag_STATE_OK),
+        1: ("On-Line Drive", limits.nag_STATE_OK),
+        2: ("Used Drive", limits.nag_STATE_OK),
+        3: ("Spare Drive", limits.nag_STATE_OK),
+        4: ("Drive Initialization in Progress", limits.nag_STATE_WARNING),
+        5: ("Drive Rebuild in Progress", limits.nag_STATE_WARNING),
+        6: ("Add Drive to Logical Drive in Progress", limits.nag_STATE_WARNING),
+        9: ("Global Spare Drive", limits.nag_STATE_OK),
+        int("11", 16): ("Drive is in process of Cloning another Drive", limits.nag_STATE_WARNING),
+        int("12", 16): ("Drive is a valid Clone of another Drive", limits.nag_STATE_OK),
+        int("13", 16): ("Drive is in process of Copying from another Drive", limits.nag_STATE_WARNING),
+        int("3f", 16): ("Drive Absent", limits.nag_STATE_OK),
+        # int("8x", 16) : "SCSI Device (Type x)",
+        int("fc", 16): ("Missing Global Spare Drive", limits.nag_STATE_CRITICAL),
+        int("fd", 16): ("Missing Spare Drive", limits.nag_STATE_CRITICAL),
+        int("fe", 16): ("Missing Drive", limits.nag_STATE_CRITICAL),
+        int("ff", 16): ("Failed Drive", limits.nag_STATE_CRITICAL)
+    }
 
     def __init__(self, in_dict):
         eonstor_object.__init__(self, "disc", in_dict, state_key=11)
         disk_num = int(in_dict[13])
-        self.name = "Disc%d" % (disk_num)
+        self.name = "Disc{:d}".format(disk_num)
         if self.state in self.lu_dict:
             state_str, state_val = self.lu_dict[self.state]
             if state_val == limits.nag_STATE_WARNING:
@@ -653,18 +655,25 @@ class eonstor_disc(eonstor_object):
             elif state_val == limits.nag_STATE_CRITICAL:
                 self.set_error(state_str)
         elif self.state & int("80", 16) == int("80", 16):
-            self.name = "SCSI Disc %d" % (self.state & ~int("80", 16))
+            self.name = "SCSI Disc {:d}".format(self.state & ~int("80", 16))
         else:
-            self.set_warn("unknown state %d" % (self.state))
+            self.set_warn("unknown state {:d}".format(self.state))
         # generate long string
         # ignore SCSIid and SCSILun
-        disk_size = (2 ** int(in_dict[8])) * int(in_dict[7])
-        vers_str = "%s (%s)" % ((" ".join(in_dict[15].split())).strip(),
-                                in_dict[16].strip())
-        self.long_string = "%s, LC %d, PC %d, %s" % (logging_tools.get_size_str(disk_size, divider=1000),
-                                                     int(in_dict[2]),
-                                                     int(in_dict[3]),
-                                                     vers_str)
+        if 15 in in_dict:
+            disk_size = (2 ** int(in_dict[8])) * int(in_dict[7])
+            vers_str = "{} ({})".format(
+                (" ".join(in_dict[15].split())).strip(),
+                in_dict[16].strip()
+            )
+            self.long_string = "{}, LC {:d}, PC {:d}, {}".format(
+                logging_tools.get_size_str(disk_size, divider=1000),
+                int(in_dict[2]),
+                int(in_dict[3]),
+                vers_str
+            )
+        else:
+            self.long_string = "no disk"
 
     def __repr__(self):
         return "%s, state 0x%x (%d, %s)" % (
@@ -959,17 +968,26 @@ class eonstor_info_scheme(snmp_scheme):
         if not hasattr(net_obj, "eonstor_version"):
             net_obj.eonstor_version = 2
         if net_obj.eonstor_version == 1:
-            self.__th_system = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 9, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT)
-            self.__th_disc = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 6, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT)
+            self.__th_system = snmp_oid(
+                (1, 3, 6, 1, 4, 1, 1714, 1, 9, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT
+            )
+            self.__th_disc = snmp_oid(
+                (1, 3, 6, 1, 4, 1, 1714, 1, 6, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT
+            )
         else:
-            self.__th_system = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 1, 9, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT)
+            self.__th_system = snmp_oid(
+                (1, 3, 6, 1, 4, 1, 1714, 1, 1, 9, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT
+            )
             self.__th_disc = snmp_oid(
                 (1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1),
                 cache=True,
                 cache_timeout=EONSTOR_TIMEOUT,
-                max_oid=(1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1, 20))
-        self.requests = [self.__th_system,
-                         self.__th_disc]
+                max_oid=(1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1, 20)
+            )
+        self.requests = [
+            self.__th_system,
+            self.__th_disc
+        ]
 
     def error(self):
         if len(self.get_missing_headers()) == 2:
@@ -1002,7 +1020,7 @@ class eonstor_info_scheme(snmp_scheme):
                 # voltage
                 dev_dict[dev_idx] = eonstor_voltage(dev_stuff)
         for disc_idx, disc_stuff in self._reorder_dict(self.snmp_dict[tuple(self.__th_disc)]).iteritems():
-            dev_dict["d%d" % (disc_idx)] = eonstor_disc(disc_stuff)
+            dev_dict["d{:d}".format(disc_idx)] = eonstor_disc(disc_stuff)
         ret_state, ret_field = (limits.nag_STATE_OK, [])
         for key in sorted(dev_dict.keys()):
             value = dev_dict[key]
@@ -1509,7 +1527,12 @@ class ibm_bc_storage_status_scheme(snmp_scheme):
             ret_state = max(ret_state, loc_state)
         return ret_state, "%s, %s" % (
             logging_tools.get_plural("item", len(store_dict)),
-            "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
+            "; ".join(
+                [
+                    "%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()
+                ]
+            )
+        )
 
 
 class temperature_probe_scheme(snmp_scheme):
@@ -1533,7 +1556,8 @@ class temperature_probe_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_OK
         return cur_state, "temperature %.2f C | temp=%.2f" % (
             cur_temp,
-            cur_temp)
+            cur_temp
+        )
 
 
 class temperature_probe_hum_scheme(snmp_scheme):
@@ -1557,7 +1581,8 @@ class temperature_probe_hum_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_OK
         return cur_state, "humidity %.2f %% | hum=%.2f%%" % (
             cur_hum,
-            cur_hum)
+            cur_hum
+        )
 
 
 class temperature_knurr_scheme(snmp_scheme):
@@ -1593,7 +1618,8 @@ class temperature_knurr_scheme(snmp_scheme):
             cur_state = limits.nag_STATE_OK
         return cur_state, "temperature %.2f C | temp=%.2f" % (
             cur_val,
-            cur_val)
+            cur_val
+        )
 
 
 class humidity_knurr_scheme(snmp_scheme):
@@ -1645,9 +1671,11 @@ class environment_knurr_scheme(snmp_scheme):
             7: "PSA",
             8: "PSB",
         }
-        return cur_state, ", ".join([
-            "{}: {}".format(info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(new_dict.keys())
-        ])
+        return cur_state, ", ".join(
+            [
+                "{}: {}".format(info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(new_dict.keys())
+            ]
+        )
 
 
 class SNMPGenScheme(snmp_scheme):
@@ -1686,8 +1714,11 @@ class environment2_knurr_scheme(snmp_scheme):
             7: "PSA",
             8: "PSB",
         }
-        return cur_state, ", ".join([
-            "%s: %s" % (info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(info_dict.keys())])
+        return cur_state, ", ".join(
+            [
+                "%s: %s" % (info_dict[key], {0: "OK", 1: "failed"}[new_dict[key]]) for key in sorted(info_dict.keys())
+            ]
+        )
 
 
 # US version of Emerson/Liebert MPH Rack 3-Phase PDU
@@ -1707,8 +1738,11 @@ class current_pdu_emerson_scheme(snmp_scheme):
             2: "L2",
             3: "L3",
         }
-        return cur_state, ", ".join([
-            "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())])
+        return cur_state, ", ".join(
+            [
+                "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())
+            ]
+        )
 
 
 class currentLLG_pdu_emerson_scheme(snmp_scheme):
@@ -1730,8 +1764,11 @@ class currentLLG_pdu_emerson_scheme(snmp_scheme):
             5: "L3-L1",
             6: "L3-L1",
         }
-        return cur_state, ", ".join([
-            "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())])
+        return cur_state, ", ".join(
+            [
+                "%s: %sA" % (info_dict[key], float(new_dict[key]) * 0.01) for key in sorted(info_dict.keys())
+            ]
+        )
 
 
 class voltageLL_pdu_emerson_scheme(snmp_scheme):
@@ -1750,5 +1787,8 @@ class voltageLL_pdu_emerson_scheme(snmp_scheme):
             2: "L2-L3",
             3: "L3-L1",
         }
-        return cur_state, ", ".join([
-            "%s: %sV" % (info_dict[key], float(new_dict[key]) * 0.1) for key in sorted(info_dict.keys())])
+        return cur_state, ", ".join(
+            [
+                "%s: %sV" % (info_dict[key], float(new_dict[key]) * 0.1) for key in sorted(info_dict.keys())
+            ]
+        )
