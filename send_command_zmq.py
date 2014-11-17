@@ -71,8 +71,8 @@ class send_com(object):
             self.identity_str = process_tools.zmq_identity_str(self.args.identity_substring)
         s_type = "DEALER" if not self.args.split else "PUSH"
         client = self.zmq_context.socket(getattr(zmq, s_type))
-        client.setsockopt(zmq.IDENTITY, self.identity_str)
-        client.setsockopt(zmq.LINGER, self.args.timeout)
+        client.setsockopt(zmq.IDENTITY, self.identity_str)  # @UndefinedVariable
+        client.setsockopt(zmq.LINGER, self.args.timeout)  # @UndefinedVariable
         if self.args.protocoll == "ipc":
             if self.args.root:
                 process_tools.ALLOW_MULTIPLE_INSTANCES = False
@@ -81,9 +81,9 @@ class send_com(object):
             conn_str = "{}://{}:{:d}".format(self.args.protocoll, self.args.host, self.args.port)
         if self.args.split:
             recv_conn_str = "{}".format(process_tools.get_zmq_ipc_name(self.args.split, s_name=self.args.server_name, connect_to_root_instance=self.args.root))
-            recv_sock = self.zmq_context.socket(zmq.ROUTER)
-            recv_sock.setsockopt(zmq.IDENTITY, self.identity_str)
-            recv_sock.setsockopt(zmq.LINGER, self.args.timeout)
+            recv_sock = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
+            recv_sock.setsockopt(zmq.IDENTITY, self.identity_str)  # @UndefinedVariable
+            recv_sock.setsockopt(zmq.LINGER, self.args.timeout)  # @UndefinedVariable
         else:
             recv_conn_str = None
             recv_sock = None
@@ -190,7 +190,7 @@ class send_com(object):
         r_client = self.send_sock if not self.recv_sock else self.recv_sock
         if r_client.poll(self.args.timeout * 1000):
             recv_str = r_client.recv()
-            if r_client.getsockopt(zmq.RCVMORE):
+            if r_client.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
                 recv_id = recv_str
                 recv_str = r_client.recv()
             else:
@@ -231,14 +231,15 @@ class send_com(object):
         else:
             self.verbose("\nXML response (id: '{}'):\n{}\n".format(recv_id, srv_reply.pretty_print()))
             if "result" in srv_reply:
+                _result = srv_reply["result"]
                 if not self.args.quiet:
-                    print(srv_reply["result"].attrib["reply"])
-                self.ret_state = int(srv_reply["result"].attrib["state"])
+                    print(srv_reply["result"].attrib.get("reply", "no reply attribute in result node"))
+                self.ret_state = int(srv_reply["result"].attrib.get("state", server_command.SRV_REPLY_STATE_UNSET))
             elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
                 print(srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text)
                 self.ret_state = 0
             else:
-                print("no result tag found in reply")
+                print("no result node found in reply")
                 self.ret_state = 2
 
 
