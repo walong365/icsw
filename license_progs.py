@@ -64,7 +64,6 @@ def _lic_show(opts, act_conf):
     for _t_type in ["simple", "complex"]:
         for _name in sorted(elo.licenses.keys()):
             _lic = elo.licenses[_name]
-            print _lic, type(_lic), etree.tostring(_lic.get_xml())
             if _lic.license_type == _t_type:
                 out_list.append(_lic.get_info_line())
     print unicode(out_list)

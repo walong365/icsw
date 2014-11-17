@@ -207,7 +207,7 @@ class sge_license(object):
         # return number of available licenses for sge
         return self.total - max(self.external_used, self.limit)
 
-    def get_xml(self):
+    def get_xml(self, with_usage=False):
         base_lic = E.license(
             full_name=self.full_name,
             name=self.name,
@@ -220,6 +220,17 @@ class sge_license(object):
             added=self.added,
             in_use="1" if self.is_used else "0",
         )
+        if with_usage:
+            base_lic.attrib.update(
+                {
+                    "used": "{:d}".format(self.used),
+                    "free": "{:d}".format(self.free),
+                    "sge_used": "{:d}".format(self.sge_used),
+                    "sge_used_requested": "{:d}".format(self.sge_used_requested),
+                    "sge_used_issued": "{:d}".format(self.sge_used_issued),
+                    "external_used": "{:d}".format(self.external_used),
+                }
+            )
         if self.license_type == "simple":
             base_lic.attrib.update(
                 {
@@ -724,16 +735,20 @@ class license_check(object):
                     pass
                 else:
                     _lic_name = lparts[2][:-1]
-                    if license_names is None or _lic_name in license_names:
-                        cur_lic = E.license(
-                            name=_lic_name,
-                            issued=lparts[5],
-                            used=lparts[10],
-                            reserved="0",
-                            free="{:d}".format(int(lparts[5]) - int(lparts[10])),
-                            source="server",
-                        )
-                        ret_struct.find("licenses").append(cur_lic)
+                    if lparts[3] == "cannot":
+                        # error reading, ignore
+                        pass
+                    else:
+                        if license_names is None or _lic_name in license_names:
+                            cur_lic = E.license(
+                                name=_lic_name,
+                                issued=lparts[5],
+                                used=lparts[10],
+                                reserved="0",
+                                free="{:d}".format(int(lparts[5]) - int(lparts[10])),
+                                source="server",
+                            )
+                            ret_struct.find("licenses").append(cur_lic)
             if cur_lic is not None:
                 if "\"{}\"".format(cur_lic.attrib["name"]) == lparts[0]:
                     cur_lic_version = E.version(
