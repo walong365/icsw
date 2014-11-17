@@ -25,7 +25,6 @@
 
 from lxml import etree
 import argparse
-import license_tool
 import logging_tools
 import os
 import process_tools
@@ -65,6 +64,7 @@ def _lic_show(opts, act_conf):
     for _t_type in ["simple", "complex"]:
         for _name in sorted(elo.licenses.keys()):
             _lic = elo.licenses[_name]
+            print _lic, type(_lic), etree.tostring(_lic.get_xml())
             if _lic.license_type == _t_type:
                 out_list.append(_lic.get_info_line())
     print unicode(out_list)
@@ -72,7 +72,7 @@ def _lic_show(opts, act_conf):
 
 def _lic_fetch(opts, act_conf):
     # query license server and update licenses
-    _cur_lic = license_tool.license_check(
+    _cur_lic = sge_license_tools.license_check(
         log_com=_log,
         lmutil_path=act_conf["LMUTIL_PATH"],
         license_file=act_conf["LICENSE_FILE"],
