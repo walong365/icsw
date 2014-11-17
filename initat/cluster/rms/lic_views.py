@@ -22,35 +22,16 @@
 
 """ License views """
 
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
-from django.db.models import Q
-from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device, user_variable, rms_job_run
 from initat.cluster.backbone.render import render_me
-from initat.cluster.backbone.serializers import rms_job_run_serializer
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
-    update_session_object
-from initat.cluster.backbone.models.rms import ext_license_state_coarse,\
-    ext_license_check_coarse
-from rest_framework.generics import ListAPIView
-from rest_framework.response import Response
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
 from lxml import etree  # @UnresolvedImport @UnusedImport
-from lxml.builder import E  # @UnresolvedImport
-import json
-import logging
-import logging_tools
+import json  # @UnusedImport
 import pprint  # @UnusedImport
 import server_command
-import sys
-import threading
-import time
-import datetime
-from collections import namedtuple
 
 
 class overview(View):
@@ -58,3 +39,34 @@ class overview(View):
     def get(self, request):
         return render_me(request, "lic_overview.html")()
 
+
+def _dump_xml(s_node):
+    return (
+        s_node.tag.split("}")[-1],
+        {
+            _key: int(_value) if _value.isdigit() else _value for _key, _value in s_node.attrib.iteritems()
+        },
+        [
+            _dump_xml(_child) for _child in s_node
+        ]
+    )
+
+
+class license_liveview(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(request, "rms_license_liveview.html")
+
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        srv_com = server_command.srv_command(command="get_license_usage")
+        result = contact_server(request, "rms", srv_com, timeout=10).tree
+
+        _start_node = result.xpath(".//*[local-name() = 'license_usage']")
+        if len(_start_node):
+            _lic_dump = _dump_xml(_start_node[0])
+        else:
+            _lic_dump = {}
+        request.xml_response["result"] = result

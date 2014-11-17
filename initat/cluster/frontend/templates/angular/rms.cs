@@ -1352,7 +1352,27 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             else
                 scope.jfiles = []
     }
-).run(($templateCache) ->
+).controller("lic_liveview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
+        $scope.servers = []
+        $scope.licenses = []
+        $scope.server_open = false
+        $scope.update = () ->
+            call_ajax
+                url      : "{% url 'lic:license_liveview' %}"
+                dataType : "xml"
+                success  : (xml) =>
+                    $scope.$apply(() ->
+                        _open_list = (_license.name for _license in $scope.licenses when _license.open)
+                        $scope.servers = (new license_server($(_entry)) for _entry in $(xml).find("license_servers > server"))
+                        $scope.licenses = (new license($(_entry)) for _entry in $(xml).find("licenses > license"))
+                        for _lic in $scope.licenses
+                            if _lic.name in _open_list
+                                _lic.open = true
+                        $scope.cur_timeout = $timeout($scope.update, 30000)
+                    )
+        $scope.update()
+]).run(($templateCache) ->
     $templateCache.put("running_table.html", running_table)
     $templateCache.put("waiting_table.html", waiting_table)
     $templateCache.put("done_table.html", done_table)
@@ -1372,9 +1392,43 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("change_pri.html", change_pri_template)
 )
 
+class license_server
+    constructor : (@xml) ->
+        @info = @xml.attr("info")
+        @port = parseInt(@xml.attr("port"))
+        @address = @xml.attr("address")
+
+class license
+    constructor : (@xml) ->
+        @open = false
+        @name = @xml.attr("name")
+        @key = @name
+        for _lc in ["used", "reserved", "free", "issued"]
+            @[_lc] = parseInt(@xml.attr(_lc))
+        @versions = (new license_version($(sub_xml), @) for sub_xml in @xml.find("version"))
+        @all_usages = []
+        for version in @versions
+            for usage in version.usages
+                @all_usages.push(usage)
+
+class license_version
+    constructor : (@xml, @license) ->
+        @vendor = @xml.attr("vendor")
+        @version = @xml.attr("version")
+        @key = @license.key + "." + @version
+        @usages = (new license_usage($(sub_xml), @) for sub_xml in @xml.find("usages > usage"))
+
+class license_usage
+    constructor: (@xml, @version) ->
+        for _ta in ["client_long", "client_short", "user", "client_version"]
+            @[_ta] = @xml.attr(_ta)
+        @num = parseInt(@xml.attr("num"))
+        @checkout_time = moment.unix(parseInt(@xml.attr("checkout_time")))
+        @absolute_co = @checkout_time.format("dd, Do MM YYYY, hh:mm:ss")
+        @relative_co = @checkout_time.fromNow()
+
 add_rrd_directive(rms_module)
 
 {% endinlinecoffeescript %}
 
 </script>
-

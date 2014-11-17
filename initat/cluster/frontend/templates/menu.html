@@ -87,7 +87,8 @@
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "RMS" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
                 <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
-                <li><a href="{% url 'lic:overview' %}">{% trans "License overview" %}</a></li>
+                <li><a href="{% url 'lic:overview' %}" ng-show="0">{% trans "License overview" %}</a></li>
+                <li><a href="{% url 'lic:license_liveview' %}">{% trans "License LiveView" %}</a></li>
             </ul>
         </li>
         {% for add_menu in settings.ADDITIONAL_MENU_FILES %}

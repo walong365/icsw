@@ -42,6 +42,7 @@ rms_patterns = patterns(
 lic_patterns = patterns(
     "initat.cluster.rms",
     url(r"overview", lic_views.overview.as_view(), name="overview"),
+    url(r"license_liveview$", lic_views.license_liveview.as_view(), name="license_liveview"),
 )
 
 
