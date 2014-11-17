@@ -62,11 +62,12 @@ class license_liveview(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="get_license_usage")
-        result = contact_server(request, "rms", srv_com, timeout=10).tree
+        result = contact_server(request, "rms", srv_com, timeout=10)
+        _lic_dump = {}
+        if result is not None:
+            result = result.tree
 
-        _start_node = result.xpath(".//*[local-name() = 'license_usage']")
-        if len(_start_node):
-            _lic_dump = _dump_xml(_start_node[0])
-        else:
-            _lic_dump = {}
+            _start_node = result.xpath(".//*[local-name() = 'license_usage']")
+            if len(_start_node):
+                _lic_dump = _dump_xml(_start_node[0])
         request.xml_response["result"] = result
