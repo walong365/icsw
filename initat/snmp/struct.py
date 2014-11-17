@@ -123,7 +123,10 @@ class snmp_if(object):
         self.if_type = in_dict[3]
         self.mtu = in_dict[4]
         self.speed = in_dict[5]
-        self.macaddr = ":".join(["{:02x}".format(ord(_val)) for _val in in_dict[6]])
+        if 6 in in_dict:
+            self.macaddr = ":".join(["{:02x}".format(ord(_val)) for _val in in_dict[6]])
+        else:
+            self.macaddr = ""
         self.admin_status = in_dict[7]
         self.oper_status = in_dict[8]
         self.last_change = in_dict[9]
