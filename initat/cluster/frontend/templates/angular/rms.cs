@@ -435,7 +435,7 @@ change_pri_template = """
 
 {% endverbatim %}
 
-rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angular-dimple", "icsw.d3", "icsw.dimple", "ui.bootstrap.datetimepicker"])
+rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "icsw.d3", "icsw.dimple", "angular-dimple", "ui.bootstrap.datetimepicker"])
 
 
 angular_module_setup([rms_module])
@@ -575,7 +575,7 @@ class slot_info
         
 DT_FORM = "D. MMM YYYY, HH:mm:ss"
 
-rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$dimple", "$d3" 
+rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce) ->
         access_level_service.install($scope)
         $scope.rms_headers = {{ RMS_HEADERS | safe }}
