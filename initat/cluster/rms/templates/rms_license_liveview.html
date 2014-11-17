@@ -12,21 +12,63 @@
 
 <div id="icsw.rms">
     <div ng-controller="lic_liveview_ctrl">
-        <h2>Licenses: {{ licenses.length }}</h2>
+        <accordion close-others="no" ng-show="lic_overview.length">
+            <accordion-group is-open="overview_open">
+                <accordion-heading>
+                    <div class="row">
+                        <div class="col-md-2">
+                            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': overview_open, 'glyphicon-chevron-right': !overview_open}"></i>
+                            License overview ({{ lic_overview.length }} entries)
+                        </div>
+                        <div class="col-md-8">
+                        </div>
+                    </div>
+                </accordion-heading>
+                <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="lic_overview.length">
+                    <thead>
+                        <tr>
+                            <th>License</th>
+                            <th>Flags</th>
+                            <th>used</th>
+                            <th>reserved</th>
+                            <th>free</th>
+                            <th>total</th>
+                            <th>Cluster</th>
+                            <th>external</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="ov in lic_overview">
+                            <td>{{ ov.name }}</td>
+                            <td>
+                                <span class="label label-primary" ng-show="ov.sge_used">RMS</span>
+                            </td>
+                            <td class="text-right">{{ ov.used }}</td>
+                            <td class="text-right">{{ ov.reserved }}</td>
+                            <td class="text-right">{{ ov.free }}</td>
+                            <td class="text-right">{{ ov.total }}</td>
+                            <td class="text-right">{{ ov.sge_used }}</td>
+                            <td class="text-right">{{ ov.external_used }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </accordion-group>
+        </accordion>
+        <h2>Licenses from Licenseserver: {{ licenses.length }}</h2>
         <accordion close-others="no" ng-show="licenses.length">
             <accordion-group ng-repeat="license in licenses" is-open="license.open">
                 <accordion-heading>
                     <div class="row">
                         <div class="col-md-2">
-                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
-                    {{ license.name }}
-                    </div>
-                    <div class="col-md-8">
-                    <span class="label label-warning" ng-show="license.used">{{ license.used }} used</span>
-                    <span class="label label-success" ng-show="license.free">{{ license.free }} free</span>
-                    <span class="label label-critical" ng-show="license.reserved">{{ license.reserved }} free</span>
-                    <span class="label label-primary">{{ license.issued }} issued</span>
-                    </div>
+                        <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
+                        {{ license.name }}
+                        </div>
+                        <div class="col-md-8">
+                            <span class="label label-warning" ng-show="license.used">{{ license.used }} used</span>
+                            <span class="label label-success" ng-show="license.free">{{ license.free }} free</span>
+                            <span class="label label-critical" ng-show="license.reserved">{{ license.reserved }} free</span>
+                            <span class="label label-primary">{{ license.issued }} issued</span>
+                        </div>
                     </div>
                 </accordion-heading>
                 <h4 ng-show="!license.used">No licenses in use</h4>

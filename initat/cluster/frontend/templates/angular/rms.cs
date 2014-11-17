@@ -1356,21 +1356,25 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
         $scope.servers = []
         $scope.licenses = []
+        $scope.lic_overview = []
         $scope.server_open = false
+        $scope.overview_open = true
         $scope.update = () ->
             call_ajax
                 url      : "{% url 'lic:license_liveview' %}"
                 dataType : "xml"
                 success  : (xml) =>
-                    $scope.$apply(() ->
-                        _open_list = (_license.name for _license in $scope.licenses when _license.open)
-                        $scope.servers = (new license_server($(_entry)) for _entry in $(xml).find("license_servers > server"))
-                        $scope.licenses = (new license($(_entry)) for _entry in $(xml).find("licenses > license"))
-                        for _lic in $scope.licenses
-                            if _lic.name in _open_list
-                                _lic.open = true
-                        $scope.cur_timeout = $timeout($scope.update, 30000)
-                    )
+                    if parse_xml_response(xml)
+                        $scope.$apply(() ->
+                            _open_list = (_license.name for _license in $scope.licenses when _license.open)
+                            $scope.servers = (new license_server($(_entry)) for _entry in $(xml).find("license_info > license_servers > server"))
+                            $scope.licenses = (new license($(_entry)) for _entry in $(xml).find("license_info > licenses > license"))
+                            $scope.lic_overview = (new license_overview($(_entry)) for _entry in $(xml).find("license_overview > licenses > license"))
+                            for _lic in $scope.licenses
+                                if _lic.name in _open_list
+                                    _lic.open = true
+                            $scope.cur_timeout = $timeout($scope.update, 30000)
+                        )
         $scope.update()
 ]).run(($templateCache) ->
     $templateCache.put("running_table.html", running_table)
@@ -1392,6 +1396,17 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("change_pri.html", change_pri_template)
 )
 
+class license_overview
+    constructor : (@xml) ->
+        for _sa in ["name", "attribute"]
+            @[_sa] = @xml.attr(_sa)
+        for _si in ["sge_used_issued", "external_used", "used",
+                    "reserved", "in_use", "free", "limit", "sge_used_requested",
+                    "total", "sge_used"]
+            @[_si] = parseInt(@xml.attr(_si))
+        @is_used = if parseInt(@xml.attr("in_use")) then true else false
+        @show = if parseInt(@xml.attr("show")) then true else false
+        
 class license_server
     constructor : (@xml) ->
         @info = @xml.attr("info")
