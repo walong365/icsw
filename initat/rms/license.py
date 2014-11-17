@@ -20,18 +20,19 @@
 
 """ rms-server, license monitoring part """
 
+# from initat.cluster.backbone.models.functions import cluster_timezone
 from django.db import connection, models
 from django.db.models import Max, Min, Avg, Q, Count
-from initat.host_monitoring import hm_classes
-from initat.rms.config import global_config
-from lxml import etree  # @UnresolvedImport @UnusedImport
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
 from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
     ext_license_version, ext_license_state, ext_license_version_state, ext_license_vendor, \
     ext_license_usage, ext_license_client_version, ext_license_client, ext_license_user, \
     ext_license_check_coarse, ext_license_version_state_coarse, ext_license_state_coarse, \
     ext_license_usage_coarse
-# from initat.cluster.backbone.models.functions import cluster_timezone
+from initat.host_monitoring import hm_classes
+from initat.rms.config import global_config
+from lxml import etree  # @UnresolvedImport @UnusedImport
+from lxml.builder import E  # @UnresolvedImport @UnusedImport
+from pprint import pprint  # @UnusedImport
 import commands
 import datetime
 import logging_tools
@@ -42,7 +43,6 @@ import sge_license_tools
 import threading_tools
 import time
 import zmq
-from pprint import pprint
 
 
 EL_LUT = {
@@ -95,8 +95,8 @@ class license_process(threading_tools.process_obj):
         # job stop/start info
         self.__elo_obj = None
         self.register_timer(self._update, 30, instant=True)
-
-        self.register_timer(self._update_coarse_data, 60*15, instant=True)
+        self.register_func("get_license_usage", self.get_license_usage)
+        # self.register_timer(self._update_coarse_data, 60 * 15, instant=True)
 
     def _init_sge_info(self):
         self._license_base = global_config["LICENSE_BASE"]
@@ -231,17 +231,31 @@ class license_process(threading_tools.process_obj):
         else:
             self.log("no actual site defined, no license tracking", logging_tools.LOG_LEVEL_ERROR)
 
+    def get_license_usage(self, *args, **kwargs):
+        src_id, srv_com_str = args
+        srv_com = server_command.srv_command(source=srv_com_str)
+        if self.__elo_obj:
+            srv_com["license_usage"] = self._update_lic(self.__elo_obj)
+            srv_com.set_result("set license information")
+        else:
+            srv_com.set_result(
+                "no elo object defined",
+                server_command.SRV_REPLY_STATE_ERROR
+            )
+        self.send_pool_message("command_result", src_id, unicode(srv_com))
+        del srv_com
+
     def _update_coarse_data(self):
         '''
         Updates archive data (coarse data) from raw data in database
         '''
 
         def create_timespan_entry_from_raw_data(start, end, duration_type, site):
-            #last_earlier_time = ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
-            #last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
+            # last_earlier_time = ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            # last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
 
-            #first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
-            #first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
+            # first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            # first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
 
             timespan_state_data = ext_license_state.objects.filter(
                 ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
@@ -254,7 +268,7 @@ class license_process(threading_tools.process_obj):
                                                                    ext_license_version_state__ext_license_check__ext_license_site=site)
 
             print("num checks: {}, fst: {}".format(len(ext_license_check.objects.filter(date__range=(start, end))),
-                  ext_license_check.objects.filter(date__range=(start, end))[0].pk)  )
+                  ext_license_check.objects.filter(date__range=(start, end))[0].pk))
             print("found {} state entries from {} to {}".format(len(timespan_state_data), start, end))
             print("found {} version state entries from {} to {}".format(len(timespan_version_state_data), start, end))
             print("found {} usage entries".format(len(timespan_usage_data)))
@@ -262,7 +276,7 @@ class license_process(threading_tools.process_obj):
             check_coarse = ext_license_check_coarse.objects.create(
                 start_date=start,
                 end_date=end,
-                duration=(end-start).total_seconds(),
+                duration=(end - start).total_seconds(),
                 duration_type=duration_type.ID,
                 ext_license_site=site,
             )
@@ -329,7 +343,7 @@ class license_process(threading_tools.process_obj):
                             frequency=usage_data['frequency']
                         )
 
-                        #print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
+                        # print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
 
             print 'state freq counted: ', _freq_cnt_sanity
             if _freq_cnt_sanity != len(timespan_version_state_data):

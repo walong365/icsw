@@ -176,6 +176,8 @@ class server_process(threading_tools.process_pool):
                     "up and running",
                     server_command.SRV_REPLY_STATE_OK)
                 self._send_result(src_id, srv_com)
+            elif cur_com == "get_license_usage":
+                self.send_to_process("license", "get_license_usage", src_id, unicode(srv_com))
             elif cur_com == "file_watch_content":
                 self.send_to_process("rms_mon", "file_watch_content", src_id, unicode(srv_com))
             elif cur_com in ["pe_start", "pe_end", "job_start", "job_end"]:
