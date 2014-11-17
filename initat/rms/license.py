@@ -21,7 +21,7 @@
 """ rms-server, license monitoring part """
 
 # from initat.cluster.backbone.models.functions import cluster_timezone
-from django.db import connection, models
+from django.db import connection
 from django.db.models import Max, Min, Avg, Q, Count
 from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
     ext_license_version, ext_license_state, ext_license_version_state, ext_license_vendor, \
@@ -235,7 +235,12 @@ class license_process(threading_tools.process_obj):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
         if self.__elo_obj:
-            srv_com["license_usage"] = self._update_lic(self.__elo_obj)
+            srv_com["server_usage"] = self._update_lic(self.__elo_obj)
+            srv_com["license_usage"] = E.license_overview(
+                E.licenses(
+                    *[_lic.get_xml(with_usage=True) for _lic in self.__elo_obj.licenses.itervalues()]
+                )
+            )
             srv_com.set_result("set license information")
         else:
             srv_com.set_result(
