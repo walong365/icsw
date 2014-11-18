@@ -307,17 +307,24 @@ class NVidiaGPU(object):
         return "mem.gpu.gpu{:d}.{}".format(self.__idx, name)
 
     def _parse_memory(self, in_str):
-        try:
-            _num, _sstr = in_str.strip().split()
-            _num = int(_num) * {"k": 1024, "m": 1024 * 1024, "g": 1024 * 1024 * 1024}[_sstr[0].lower()]
-        except:
-            self.log("error parsing {}: {}".format(in_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        if in_str.lower() in ["n/a"]:
             _num = 0
+        else:
+            try:
+                _num, _sstr = in_str.strip().split()
+                _num = int(_num) * {"k": 1024, "m": 1024 * 1024, "g": 1024 * 1024 * 1024}[_sstr[0].lower()]
+            except:
+                self.log("error parsing {}: {}".format(in_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                _num = 0
         return _num
 
-    def _parse_util(self, in_str):
-        if in_str is not None and in_str.lower().strip() not in ["n/a"]:
-            return int(float(in_str.strip().split()[0]))
+    def _parse_to_int(self, in_str, via_float=False):
+        if in_str.lower().strip() not in ["n/a"]:
+            _first = in_str.strip().split()[0]
+            if via_float:
+                return int(float(_first))
+            else:
+                return int(_first)
         else:
             return 0
 
@@ -335,10 +342,10 @@ class NVidiaGPU(object):
                 _key = "{}.{}".format(_pf, _part)
                 mv[_key] = self._parse_memory(memory_el.findtext(_part))
             for _util in UTIL_LIST:
-                mv["{}.{}".format(self.gpu_key, _util)] = self._parse_util(tree.findtext("utilization/{}".format(_util)))
+                mv["{}.{}".format(self.gpu_key, _util)] = self._parse_to_int(tree.findtext("utilization/{}".format(_util)), via_float=True)
             mv[self.processes_key] = len(tree.xpath(".//compute_processes/process_info"))
-            mv[self.temperature_key] = int(tree.findtext(".//temperature/gpu_temp").split()[0])
-            mv[self.power_key] = int(float(tree.findtext(".//power_readings/power_draw").split()[0]))
+            mv[self.temperature_key] = self._parse_to_int(tree.findtext(".//temperature/gpu_temp"))
+            mv[self.power_key] = self._parse_to_int(tree.findtext(".//power_readings/power_draw"), via_float=True)
 
 
 class _general(hm_classes.hm_module):
