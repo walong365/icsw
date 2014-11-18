@@ -81,8 +81,10 @@
                 </div>
 
                 <div class="panel-body">
-                    <button type="button" ng-class="show_min_max && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_min_max = !show_min_max" title="show minimal and maximal usage values">min/max</button>
-                
+                    <button type="button" ng-class="(view_mode == 'show_min_max') && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_min_max')" title="show minimal and maximal usage values">min/max</button>
+                    <button type="button" ng-class="(view_mode == 'show_version') && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_version')" title="show license versions">version</button>
+                    <button type="button" ng-class="(view_mode == 'show_user')    && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_user')" title="show license user">user</button>
+                    <button type="button" ng-class="(view_mode == 'show_device')  && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_device')" title="show device using license">device</button>
                 </div>
                 
             </div>
@@ -118,7 +120,7 @@
                 <div ng-if="!multi_view">
                     <div class="well well-sm" style="width:550px">
                         <!-- <h3>License: {{li.name}}</h3> -->
-                        <licgraph lic="{{li.idx}}" licname="{{li.name}}" dimpleloaded="dimpleloaded" timerange="timerange" licdaterangestart="licdaterangestart" showminmax="show_min_max"></licgraph>
+                        <licgraph lic="{{li.idx}}" licname="{{li.name}}" dimpleloaded="dimpleloaded" timerange="timerange" licdaterangestart="licdaterangestart" viewmode="view_mode"></licgraph>
                     </div>
                 </div>
                 <div ng-if="multi_view">
@@ -126,13 +128,13 @@
                         <h3>License: {{li.name}}</h3>
                         <table><tr> <!-- force single (overlong) line  -->
                             <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}" showminmax="show_min_max"></licgraph>
+                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
                             </td>
                             <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="month" fixedlicdaterangestart="{{cur_time}}" showminmax="show_min_max"></licgraph>
+                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="month" fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
                             </td>
                             <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="day"   fixedlicdaterangestart="{{cur_time}}" showminmax="show_min_max"></licgraph>
+                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="day"   fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
                             </td>
                         </tr></table>
                     </div>

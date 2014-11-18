@@ -872,8 +872,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.ext_license_list = data[1]
             
             # for testing:
-            # $scope.ext_license_list[1].selected = true
-            # $scope.license_select_change()
+            #$scope.ext_license_list[1].selected = true
+            #$scope.license_select_change()
 
             $scope.update_lic_overview_data()
         )
@@ -881,6 +881,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.$watch('timerange', (unused) -> $scope.update_lic_overview_data())
         $scope.$watch('licdaterangestart', (unused) -> $scope.update_lic_overview_data())
         $scope.$watch('multi_view', (unused) -> $scope.update_lic_overview_data())
+        
+        $scope.view_mode = 'default'
+        
+        $scope.set_view_mode = (mode) ->
+            if mode == $scope.view_mode
+                $scope.view_mode = 'default'
+            else
+                $scope.view_mode = mode
         
         $scope.update_lic_overview_data = () ->
             if $scope.ext_license_list
@@ -941,7 +949,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     <div ng-if="lic_data_show.length > 0">
         <graph data="lic_data_show" width="500" height="300">
             <x field="date" order-by="idx" title="null"></x>
-            <y field="usage" title="License usage"></y>
+            <y field="value" title="License usage"></y>
             <stacked-area field="type"/>
             <!--
             the data is meant differently than displayed in legend currently
@@ -959,18 +967,23 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             timerange: '='
             dimpleloaded: '='
             licdaterangestart: '='
-            showminmax: '='
+            viewmode: '='
         }
         link : (scope, el, attrs) ->
             # can't reuse other attributes as they are shared with parent scope
             scope.fixed_range = attrs.fixedtimerange? && attrs.fixedlicdaterangestart?
             scope.lic_id = attrs.lic
             scope.lic_name = attrs.licname
-            scope.show_min_max = true
 
             scope.set_lic_data = () ->
-                if scope.showminmax
+                if scope.viewmode == "show_min_max"
                     scope.lic_data_show = scope.lic_data_min_max
+                else if scope.viewmode == "show_user"
+                    scope.lic_data_show = []
+                else if scope.viewmode == "show_device"
+                    scope.lic_data_show = []
+                else if scope.viewmode == "show_version"
+                    scope.lic_data_show = []
                 else
                     scope.lic_data_show = scope.lic_data
             scope.update_lic_data = () ->
@@ -986,12 +999,12 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             common = {"idx": entry.idx, "date": entry.display_start_date, "full_date": entry.full_start_date}
 
                             used = _.clone(common)
-                            used["usage"] = entry.used
+                            used["value"] = entry.used
                             used["type"] = "used"
                             used["order"] = 1
 
                             issued = _.clone(common)
-                            issued["usage"] = entry.issued - entry.used
+                            issued["value"] = entry.issued - entry.used
                             issued["type"] = "unused"
                             issued["order"] = 2
 
@@ -1036,7 +1049,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             else
                 # no updates for fixed range
                 scope.update_lic_data()
-            scope.$watch('showminmax', (unused) -> scope.set_lic_data())
+            scope.$watch('viewmode', (unused) -> scope.set_lic_data())
 }]).directive("running", ($templateCache) ->
     return {
         restrict : "EA"
