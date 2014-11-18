@@ -316,7 +316,7 @@ class NVidiaGPU(object):
         return _num
 
     def _parse_util(self, in_str):
-        if in_str is not None:
+        if in_str is not None and in_str.lower().strip() not in ["n/a"]:
             return int(float(in_str.strip().split()[0]))
         else:
             return 0
