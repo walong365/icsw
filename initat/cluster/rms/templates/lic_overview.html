@@ -24,13 +24,15 @@
             <div class="panel panel-default">
 
                 <div class="panel-heading">
-                    <h3>Time range</h3>
+                    <h3 class="panel-title">
+                        Time range
+                    </h3>
                 </div>
 
                 <div class="panel-body">
 
                     <p>
-                        <button type="button" ng-class="multi_view && 'btn btn-small btn-warning' || 'btn btn-small'" ng-click="multi_view = !multi_view">Multi view</button>
+                        <button type="button" ng-class="multi_view && 'btn btn-small btn-warning' || 'btn btn-small'" ng-click="multi_view = !multi_view" title="show data for current year, month and day side by side">Multi view</button>
                     </p>
 
                     <div ng-show="!multi_view"> <!-- this must not be an ng-if, otherwise data binding breaks -->
@@ -70,11 +72,28 @@
                 </div>
             </div>
 
+            <div class="panel panel-default">
+
+                <div class="panel-heading">
+                    <h3 class="panel-title">
+                        Display options
+                    </h3>
+                </div>
+
+                <div class="panel-body">
+                    <button type="button" ng-class="show_min_max && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_min_max = !show_min_max" title="show minimal and maximal usage values">min/max</button>
+                
+                </div>
+                
+            </div>
+
  
             <div class="panel panel-default">
 
                 <div class="panel-heading">
-                    <h3>Licenses</h3>
+                    <h3 class="panel-title">
+                        Licenses
+                    </h3>
                 </div>
 
                 <div class="panel-body">
@@ -99,7 +118,7 @@
                 <div ng-if="!multi_view">
                     <div class="well well-sm" style="width:550px">
                         <!-- <h3>License: {{li.name}}</h3> -->
-                        <licgraph lic="{{li.idx}}" licname="{{li.name}}" dimpleloaded="dimpleloaded" timerange="timerange" licdaterangestart="licdaterangestart"></licgraph>
+                        <licgraph lic="{{li.idx}}" licname="{{li.name}}" dimpleloaded="dimpleloaded" timerange="timerange" licdaterangestart="licdaterangestart" showminmax="show_min_max"></licgraph>
                     </div>
                 </div>
                 <div ng-if="multi_view">
@@ -107,13 +126,13 @@
                         <h3>License: {{li.name}}</h3>
                         <table><tr> <!-- force single (overlong) line  -->
                             <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}"></licgraph>
+                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}" showminmax="show_min_max"></licgraph>
                             </td>
                             <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="month" fixedlicdaterangestart="{{cur_time}}"></licgraph>
+                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="month" fixedlicdaterangestart="{{cur_time}}" showminmax="show_min_max"></licgraph>
                             </td>
                             <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="day"   fixedlicdaterangestart="{{cur_time}}"></licgraph>
+                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="day"   fixedlicdaterangestart="{{cur_time}}" showminmax="show_min_max"></licgraph>
                             </td>
                         </tr></table>
                     </div>

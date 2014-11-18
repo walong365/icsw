@@ -871,6 +871,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.device_list = data[0]
             $scope.ext_license_list = data[1]
             
+            # for testing:
+            # $scope.ext_license_list[1].selected = true
+            # $scope.license_select_change()
+
             $scope.update_lic_overview_data()
         )
 
@@ -886,7 +890,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     else
                         do (lic) ->
                             lic_utils.get_lic_data($resource, lic.idx, $scope.timerange, $scope.licdaterangestart, (new_data) ->
-                                lic.usage = "(" + lic_utils.calc_avg_usage(new_data) + "%)"
+                                if new_data.length > 0
+                                    lic.usage = "(" + lic_utils.calc_avg_usage(new_data) + "%)"
+                                else
+                                    lic.usage = ""
                             )
        
         $scope.dimpleloaded = false
@@ -931,22 +938,18 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     <div ng-if="!fixed_range">
         <h3>License: {{ lic_name }} {{ header_addition }}</h3>
     </div>
-    <div ng-if="licData.length > 0">
-        <graph data="licData" width="500" height="300">
+    <div ng-if="lic_data_show.length > 0">
+        <graph data="lic_data_show" width="500" height="300">
             <x field="date" order-by="idx" title="null"></x>
             <y field="usage" title="License usage"></y>
-            <!--
-            <line field="type"></line>
-            <stacked-area field="date"/>
-            -->
             <stacked-area field="type"/>
             <!--
             the data is meant differently than displayed in legend currently
-            <legend></legend>
             -->
+            <legend></legend>
         </graph>
     </div>
-    <div ng-if="licData.length == 0">
+    <div ng-if="lic_data.length == 0">
         no data available
     </div>
 </div>
@@ -956,12 +959,20 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             timerange: '='
             dimpleloaded: '='
             licdaterangestart: '='
+            showminmax: '='
         }
         link : (scope, el, attrs) ->
             # can't reuse other attributes as they are shared with parent scope
             scope.fixed_range = attrs.fixedtimerange? && attrs.fixedlicdaterangestart?
             scope.lic_id = attrs.lic
             scope.lic_name = attrs.licname
+            scope.show_min_max = true
+
+            scope.set_lic_data = () ->
+                if scope.showminmax
+                    scope.lic_data_show = scope.lic_data_min_max
+                else
+                    scope.lic_data_show = scope.lic_data
             scope.update_lic_data = () ->
                 if scope.lic_id
                     tr = if scope.fixed_range then attrs.fixedtimerange else scope.timerange
@@ -969,21 +980,50 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     
                     lic_utils.get_lic_data($resource, scope.lic_id, tr, start_date, (new_data) -> 
                         # prepare data for dimple
-                        licData = []
+                        scope.lic_data = []
+                        scope.lic_data_min_max = []
                         for entry in new_data
                             common = {"idx": entry.idx, "date": entry.display_start_date, "full_date": entry.full_start_date}
 
                             used = _.clone(common)
-                            used["usage"] = entry.issued - entry.used
-                            used["type"] = "issued"
-                            licData.push(used)
+                            used["usage"] = entry.used
+                            used["type"] = "used"
+                            used["order"] = 1
 
                             issued = _.clone(common)
-                            issued["usage"] = entry.used
-                            issued["type"] = "used"
-                            licData.push(issued)
+                            issued["usage"] = entry.issued - entry.used
+                            issued["type"] = "unused"
+                            issued["order"] = 2
 
-                        scope.licData = licData
+                            scope.lic_data.push(used)
+                            scope.lic_data.push(issued)
+
+                            usedMin = _.clone(common)
+                            usedMin["usage"] = entry.used_min
+                            usedMin["type"] = "min used"
+                            usedMin["order"] = 1
+
+                            usedAvg = _.clone(common)
+                            usedAvg["usage"] = entry.used - entry.used_min
+                            usedAvg["type"] = "avg used"
+                            usedAvg["order"] = 2
+
+                            usedMax = _.clone(common)
+                            usedMax["usage"] = entry.used_max - entry.used
+                            usedMax["type"] = "max used"
+                            usedMax["order"] = 3
+
+                            issuedMinMax = _.clone(common)
+                            issuedMinMax["usage"] = entry.issued_max - entry.used_max  # use issued_max as used_max can be greater than issued
+                            issuedMinMax["type"] = "unused"
+                            issuedMinMax["order"] = 4
+
+                            scope.lic_data_min_max.push(usedMin)
+                            scope.lic_data_min_max.push(usedAvg)
+                            scope.lic_data_min_max.push(usedMax)
+                            scope.lic_data_min_max.push(issuedMinMax)
+                            
+                        scope.set_lic_data()
 
                         if new_data.length > 0
                             scope.header_addition = "(" + lic_utils.calc_avg_usage(new_data) + "% usage)"
@@ -991,15 +1031,12 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
 
             if !scope.fixed_range
                 # need to watch by string and not by var, probably because var originates from parent scope
-                scope.$watch('timerange', (unused) -> 
-                    scope.update_lic_data()
-                )
-                scope.$watch('licdaterangestart', (unused) -> 
-                    scope.update_lic_data()
-                )
+                scope.$watch('timerange', (unused) -> scope.update_lic_data())
+                scope.$watch('licdaterangestart', (unused) -> scope.update_lic_data())
             else
                 # no updates for fixed range
                 scope.update_lic_data()
+            scope.$watch('showminmax', (unused) -> scope.set_lic_data())
 }]).directive("running", ($templateCache) ->
     return {
         restrict : "EA"
@@ -1471,7 +1508,7 @@ lic_utils = {
         query_data = {
             'lic_id': lic_id
             'duration_type' : timerange
-            'date' : moment(start_date).utc().unix()  # ask server in utc
+            'date' : moment(start_date).unix()  # ask server in utc
         }
         lic_resource.query(query_data, (new_data) ->
             cont(new_data)
