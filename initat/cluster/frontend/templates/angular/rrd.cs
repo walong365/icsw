@@ -141,7 +141,7 @@ rrd_graph_template = """
                     </input>
                     <span class="dropdown-toggle input-group-addon">
                         <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs">
+                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                                  <i class="glyphicon glyphicon-calendar"></i>
                             </button>
                             <ul class="dropdown-menu" role="menu">
@@ -160,7 +160,7 @@ rrd_graph_template = """
                     </input>
                     <span class="dropdown-toggle input-group-addon">
                         <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs">
+                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                                  <i class="glyphicon glyphicon-calendar"></i>
                             </button>
                             <ul class="dropdown-menu" role="menu">
