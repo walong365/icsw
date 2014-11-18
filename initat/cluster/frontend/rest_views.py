@@ -857,3 +857,4 @@ class license_data_list(ListAPIView):
         serializer = self.get_serializer(self.object_list, many=True)
 
         return Response(serializer.data)
+

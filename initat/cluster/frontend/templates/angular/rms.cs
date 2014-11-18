@@ -870,7 +870,25 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $q.all(wait_list).then( (data) ->
             $scope.device_list = data[0]
             $scope.ext_license_list = data[1]
+            
+            $scope.update_lic_overview_data()
         )
+
+        $scope.$watch('timerange', (unused) -> $scope.update_lic_overview_data())
+        $scope.$watch('licdaterangestart', (unused) -> $scope.update_lic_overview_data())
+        $scope.$watch('multi_view', (unused) -> $scope.update_lic_overview_data())
+        
+        $scope.update_lic_overview_data = () ->
+            if $scope.ext_license_list
+                for lic in $scope.ext_license_list
+                    if $scope.multi_view
+                        lic.usage = ""
+                    else
+                        do (lic) ->
+                            lic_utils.get_lic_data($resource, lic.idx, $scope.timerange, $scope.licdaterangestart, (new_data) ->
+                                lic.usage = "(" + lic_utils.calc_avg_usage(new_data) + "%)"
+                            )
+       
         $scope.dimpleloaded = false
         d3_service.d3().then( (d3) ->
             dimple_service.dimple().then( (dimple) ->
@@ -893,21 +911,26 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.toggle_li_sel = (li) ->
             li.selected = !li.selected
             $scope.license_select_change()
+
         $scope.set_timerange = (tr) ->
             $scope.timerange = tr
         $scope.set_timerange("week")
         $scope.licdaterangestart = moment().startOf("day")
-        # for testing:
-        #$scope.licdaterangestart = moment("Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)")
         $scope.multi_view = false
         $scope.cur_time = moment().format()
+        # for testing:
+        #$scope.licdaterangestart = moment("Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)")
         #$scope.cur_time = "Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)"
+
 ]).directive("licgraph", ["$templateCache", "$resource", ($templateCache, $resource) ->
     return {
         restrict : "EA"
         template : """
 {% verbatim %}
 <div ng-if="dimpleloaded">
+    <div ng-if="!fixed_range">
+        <h3>License: {{ lic_name }} {{ header_addition }}</h3>
+    </div>
     <div ng-if="licData.length > 0">
         <graph data="licData" width="500" height="300">
             <x field="date" order-by="idx" title="null"></x>
@@ -938,43 +961,40 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             # can't reuse other attributes as they are shared with parent scope
             scope.fixed_range = attrs.fixedtimerange? && attrs.fixedlicdaterangestart?
             scope.lic_id = attrs.lic
+            scope.lic_name = attrs.licname
             scope.update_lic_data = () ->
                 if scope.lic_id
-                    lic_resource = $resource("{% url 'rest:license_data_list' %}", {})
-
                     tr = if scope.fixed_range then attrs.fixedtimerange else scope.timerange
                     start_date = if scope.fixed_range then attrs.fixedlicdaterangestart else scope.licdaterangestart
-                    query_data = {
-                        'lic_id': scope.lic_id
-                        'duration_type' : tr
-                        'date' : moment(start_date).utc().unix()  # ask server in utc
-                    }
-                    lic_resource.query(query_data, (new_data) ->
+                    
+                    lic_utils.get_lic_data($resource, scope.lic_id, tr, start_date, (new_data) -> 
                         # prepare data for dimple
                         licData = []
                         for entry in new_data
                             common = {"idx": entry.idx, "date": entry.display_start_date, "full_date": entry.full_start_date}
 
                             used = _.clone(common)
-                            used["usage"] = entry.used
-                            used["type"] = "used"
+                            used["usage"] = entry.issued - entry.used
+                            used["type"] = "issued"
                             licData.push(used)
 
                             issued = _.clone(common)
-                            issued["usage"] = entry.issued - entry.used
-                            issued["type"] = "issued"
+                            issued["usage"] = entry.used
+                            issued["type"] = "used"
                             licData.push(issued)
+
                         scope.licData = licData
+
+                        if new_data.length > 0
+                            scope.header_addition = "(" + lic_utils.calc_avg_usage(new_data) + "% usage)"
                     )
 
             if !scope.fixed_range
                 # need to watch by string and not by var, probably because var originates from parent scope
                 scope.$watch('timerange', (unused) -> 
-                    console.log "tr update"
                     scope.update_lic_data()
                 )
                 scope.$watch('licdaterangestart', (unused) -> 
-                    console.log "daterange update"
                     scope.update_lic_data()
                 )
             else
@@ -1441,6 +1461,29 @@ class license_usage
         @checkout_time = moment.unix(parseInt(@xml.attr("checkout_time")))
         @absolute_co = @checkout_time.format("dd, Do MM YYYY, hh:mm:ss")
         @relative_co = @checkout_time.fromNow()
+
+ 
+        
+# can't put this into the controller due to isolated scope
+lic_utils = {
+    get_lic_data: ($resource, lic_id, timerange, start_date, cont) ->
+        lic_resource = $resource("{% url 'rest:license_data_list' %}", {})
+        query_data = {
+            'lic_id': lic_id
+            'duration_type' : timerange
+            'date' : moment(start_date).utc().unix()  # ask server in utc
+        }
+        lic_resource.query(query_data, (new_data) ->
+            cont(new_data)
+        )
+    calc_avg_usage: (new_data) ->
+        sum_used = 0
+        sum_issued = 0
+        for entry in new_data
+            sum_used += entry.used
+            sum_issued += entry.issued
+        return Math.round( 100 * (sum_used / sum_issued) ) 
+}
 
 add_rrd_directive(rms_module)
 

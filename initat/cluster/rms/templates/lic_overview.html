@@ -11,7 +11,7 @@
 {% verbatim %}
 
 
-<h2>License Overview</h2>
+<h2 style="margin-bottom:1em">License Overview</h2>
 <div id="icsw.rms">
     <div ng-controller="lic_ctrl">
 
@@ -24,7 +24,7 @@
             <div class="panel panel-default">
 
                 <div class="panel-heading">
-                    <h4>Time range</h4>
+                    <h3>Time range</h3>
                 </div>
 
                 <div class="panel-body">
@@ -70,29 +70,41 @@
                 </div>
             </div>
 
+ 
+            <div class="panel panel-default">
 
-            <h3>Available licenses</h3>
-            <ul>
-                <li ng-repeat="li in ext_license_list">
-                    <input type="button" ng-class="get_li_sel_class(li)" ng-click="toggle_li_sel(li)" value="sel">
-                    <!-- <input type="checkbox" id="cb_{{li.idx}}" ng-model="li.selected" ng-change="license_select_change()"> -->
-                    <label for="cb_{{li.idx}}">{{li.name}}</label>
-                    </input>
-                </li>
-            </ul>
-        </div>
+                <div class="panel-heading">
+                    <h3>Licenses</h3>
+                </div>
+
+                <div class="panel-body">
+
+                    <ul>
+                        <li ng-repeat="li in ext_license_list">
+                            <input type="button" ng-class="get_li_sel_class(li)" ng-click="toggle_li_sel(li)" value="sel">
+                            <!-- <input type="checkbox" id="cb_{{li.idx}}" ng-model="li.selected" ng-change="license_select_change()"> -->
+                            <label for="cb_{{li.idx}}">{{li.name}} {{li.usage}}</label>
+                            </input>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div> <!-- left panel end -->
 
         <div class="col-md-10">
+            <div ng-if="ext_license_selected.length == 0">
+                <h4>Please select a time range and licenses in the panel to the left.</h4>
+            </div>
             <div class="row" ng-repeat="li in ext_license_selected">
                 <div ng-if="!multi_view">
                     <div class="well well-sm" style="width:550px">
-                        <h3>{{li.name}}</h3>
-                        <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" timerange="timerange" licdaterangestart="licdaterangestart"></licgraph>
+                        <!-- <h3>License: {{li.name}}</h3> -->
+                        <licgraph lic="{{li.idx}}" licname="{{li.name}}" dimpleloaded="dimpleloaded" timerange="timerange" licdaterangestart="licdaterangestart"></licgraph>
                     </div>
                 </div>
                 <div ng-if="multi_view">
                     <div class="well well-sm" style="width:1550px">
-                        <h3>{{li.name}}</h3>
+                        <h3>License: {{li.name}}</h3>
                         <table><tr> <!-- force single (overlong) line  -->
                             <td>
                                 <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}"></licgraph>
