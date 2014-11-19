@@ -36,7 +36,7 @@ from initat.cluster.backbone.models import get_related_models, get_change_reset_
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer, \
-    ext_license_state_coarse_serializer
+    ext_license_state_coarse_serializer, ext_license_version_state_coarse_serializer
 from initat.cluster.frontend import forms
 from initat.core.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -821,12 +821,9 @@ for src_mod, obj_name in REST_LIST:
         )
 
 
-class license_data_list(ListAPIView):
-
-    # TODO ?
-    serializer_class = ext_license_state_coarse_serializer
-
-    def _parse_duration(self, in_duration_type, date):
+class lic_utils(object):
+    @staticmethod
+    def _parse_duration(in_duration_type, date):
         if in_duration_type == "day":
             duration_type = ext_license_check_coarse.Duration.Hour.ID
             start = ext_license_check_coarse.Duration.Day.get_time_frame_start(date)
@@ -835,7 +832,7 @@ class license_data_list(ListAPIView):
             duration_type = ext_license_check_coarse.Duration.Day.ID
             date_as_date = date.date()  # forget time
             date_day = datetime.datetime(year=date_as_date.year, month=date_as_date.month, day=date_as_date.day)
-            start = date_day - datetime.timedelta(days=date_day.weekday()-1)
+            start = date_day - datetime.timedelta(days=date_day.weekday())
             end = start + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
         elif in_duration_type == "month":
             duration_type = ext_license_check_coarse.Duration.Day.ID
@@ -847,66 +844,45 @@ class license_data_list(ListAPIView):
             end = datetime.datetime(year=date.year+1, month=1, day=1)
         return (duration_type, start, end)
 
+
+class license_state_coarse_list(ListAPIView):
+
+    serializer_class = ext_license_state_coarse_serializer
+
     def list(self, request, *args, **kwargs):
         lic_id = request.GET["lic_id"]
         in_duration_type = request.GET["duration_type"]
-        # input date is utc, must add tz=utc below
-        date = datetime.datetime.fromtimestamp(int(request.GET["date"]), tz=dateutil.tz.tzutc())
+        date = datetime.datetime.fromtimestamp(int(request.GET["date"]))
 
-        (duration_type, start, end) = self._parse_duration(in_duration_type, date)
+        (duration_type, start, end) = lic_utils._parse_duration(in_duration_type, date)
 
         logger.debug("retrieving data for license {} for {} from {} to {}, type {}".format(lic_id, date, start, end, duration_type))
-        data = ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
+        self.object_list = ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
                                                        ext_license_check_coarse__duration_type=duration_type,
                                                        ext_license_check_coarse__start_date__range=(start, end))
 
-        self.object_list = data
-
         serializer = self.get_serializer(self.object_list, many=True)
-
         return Response(serializer.data)
 
-    def list_version(self, request, *args, **kwargs):
+
+class license_version_state_coarse_list(ListAPIView):
+
+    serializer_class = ext_license_version_state_coarse_serializer
+
+    def list(self, request, *args, **kwargs):
         lic_id = request.GET["lic_id"]
         # input date is utc, must add tz=utc below
         date = datetime.datetime.fromtimestamp(int(request.GET["date"]), tz=dateutil.tz.tzutc())
         in_duration_type = request.GET["duration_type"]
 
-        (duration_type, start, end) = self._parse_duration(in_duration_type, date)
+        (duration_type, start, end) = lic_utils._parse_duration(in_duration_type, date)
 
-        version_state_data = ext_license_version_state_coarse.objects.filter(ext_license_version__ext_license=lic_id,
-                                                                             ext_license_check_coarse__duration_type=duration_type,
-                                                                             ext_license_check_coarse__start_date__range=(start, end))
-
-  
-        from datetime import datetime
-        from django.db import connection as con
-        import sqlparse
-        def track_sql():
-            global start_time
-            global query_count
-            start_time = datetime.now()
-            query_count = len(con.queries)
-    
-        def print_sql(show_queries=True):
-            print "Total Run Time: %s"%(datetime.now()-start_time)
-            print "Total Postgres Time: %s"%sum([float(query['time']) for query in con.queries[query_count:]])
-            print "Queries: %s"%(len(con.queries)-query_count)
-    
-            if show_queries:
-                for query in con.queries[query_count:]:
-                    print "\nPostgres Time: %s"%query['time']
-                    print sqlparse.format(query['sql'], reindent=True, keyword_case='upper')
-
-        track_sql()
-        # version_state_data tells us the versions of the license involved in this usage period
-        # possible TODO: remove frequency in version state, as it only tells us the number of checks where this version is involved, but not the actual number we are interested in
-        # in usage_coarse, we find the frequency of each version
-        ext_license_usage_coarse.objects.filter(
-            ext_license_version_state_coarse__ext_license_version__ext_license=lic_id,
-            ext_license_version_state_coarse__ext_license_check_coarse__duration_type=duration_type,
-            ext_license_version_state_coarse__ext_license_check_coarse__start_date__range=(start, end)
+        self.object_list = ext_license_version_state_coarse.objects.filter(
+            ext_license_version__ext_license=lic_id,
+            ext_license_check_coarse__duration_type=duration_type,
+            ext_license_check_coarse__start_date__range=(start, end)
         )
-        print_sql()
 
+        serializer = self.get_serializer(self.object_list, many=True)
+        return Response(serializer.data)
 

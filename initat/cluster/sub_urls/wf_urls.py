@@ -201,7 +201,8 @@ rpl.extend([
     url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get": "list"}), name="netdevice_peer_list"),
     url("^fetch_forms$", rest_views.fetch_forms.as_view({"get": "list"}), name="fetch_forms"),
     url("^min_access_levels$", rest_views.min_access_levels.as_view({"get": "list"}), name="min_access_levels"),
-    url("^license_data_list$", rest_views.license_data_list.as_view(), name="license_data_list"),
+    url("^license_state_coarse_list$", rest_views.license_state_coarse_list.as_view(), name="license_state_coarse_list"),
+    url("^license_version_state_coarse_list$", rest_views.license_version_state_coarse_list.as_view(), name="license_version_state_coarse_list"),
 ])
 
 rest_patterns = patterns(

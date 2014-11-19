@@ -897,7 +897,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                         lic.usage = ""
                     else
                         do (lic) ->
-                            lic_utils.get_lic_data($resource, lic.idx, $scope.timerange, $scope.licdaterangestart, (new_data) ->
+                            lic_utils.get_lic_data($resource, 'default', lic.idx, $scope.timerange, $scope.licdaterangestart, (new_data) ->
                                 if new_data.length > 0
                                     lic.usage = "(" + lic_utils.calc_avg_usage(new_data) + "%)"
                                 else
@@ -976,6 +976,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.lic_name = attrs.licname
 
             scope.set_lic_data = () ->
+                # we get lic_data and lic_data_min_max by default
                 if scope.viewmode == "show_min_max"
                     scope.lic_data_show = scope.lic_data_min_max
                 else if scope.viewmode == "show_user"
@@ -983,20 +984,26 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else if scope.viewmode == "show_device"
                     scope.lic_data_show = []
                 else if scope.viewmode == "show_version"
-                    scope.lic_data_show = []
+                    if scope.lic_data_version
+                        scope.lic_data_show = scope.lic_data_version
+                    else
+                        scope.update_lic_data(scope.viewmode)
                 else
                     scope.lic_data_show = scope.lic_data
-            scope.update_lic_data = () ->
-                if scope.lic_id
-                    tr = if scope.fixed_range then attrs.fixedtimerange else scope.timerange
-                    start_date = if scope.fixed_range then attrs.fixedlicdaterangestart else scope.licdaterangestart
-                    
-                    lic_utils.get_lic_data($resource, scope.lic_id, tr, start_date, (new_data) -> 
-                        # prepare data for dimple
+            scope.update_lic_data = (viewmode) ->
+                # call with argument to allow obtaining general data when in view mode
+                tr = if scope.fixed_range then attrs.fixedtimerange else scope.timerange
+                start_date = if scope.fixed_range then attrs.fixedlicdaterangestart else scope.licdaterangestart
+                
+                # prepare data for dimple
+                # only define continuation function per mode
+                create_common = (entry) -> return {"idx": entry.idx, "date": entry.display_date, "full_date": entry.full_start_date}
+                if viewmode == 'default'
+                    cont = (new_data) ->
                         scope.lic_data = []
                         scope.lic_data_min_max = []
                         for entry in new_data
-                            common = {"idx": entry.idx, "date": entry.display_start_date, "full_date": entry.full_start_date}
+                            common = create_common(entry)
 
                             used = _.clone(common)
                             used["value"] = entry.used
@@ -1012,22 +1019,22 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             scope.lic_data.push(issued)
 
                             usedMin = _.clone(common)
-                            usedMin["usage"] = entry.used_min
+                            usedMin["value"] = entry.used_min
                             usedMin["type"] = "min used"
                             usedMin["order"] = 1
 
                             usedAvg = _.clone(common)
-                            usedAvg["usage"] = entry.used - entry.used_min
+                            usedAvg["value"] = entry.used - entry.used_min
                             usedAvg["type"] = "avg used"
                             usedAvg["order"] = 2
 
                             usedMax = _.clone(common)
-                            usedMax["usage"] = entry.used_max - entry.used
+                            usedMax["value"] = entry.used_max - entry.used
                             usedMax["type"] = "max used"
                             usedMax["order"] = 3
 
                             issuedMinMax = _.clone(common)
-                            issuedMinMax["usage"] = entry.issued_max - entry.used_max  # use issued_max as used_max can be greater than issued
+                            issuedMinMax["value"] = entry.issued_max - entry.used_max  # use issued_max as used_max can be greater than issued
                             issuedMinMax["type"] = "unused"
                             issuedMinMax["order"] = 4
 
@@ -1035,20 +1042,33 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             scope.lic_data_min_max.push(usedAvg)
                             scope.lic_data_min_max.push(usedMax)
                             scope.lic_data_min_max.push(issuedMinMax)
-                            
-                        scope.set_lic_data()
 
                         if new_data.length > 0
                             scope.header_addition = "(" + lic_utils.calc_avg_usage(new_data) + "% usage)"
-                    )
+                else if viewmode == 'show_version'
+                    cont = (new_data) ->
+                        scope.lic_data_version = []
+                        for entry in new_data
+                            common = create_common(entry)
+
+                            version = _.clone(common)
+                            version["value"] = entry.frequency
+                            version["type"] = "#{entry.ext_license_version_name} (#{entry.vendor_name})"
+                            version["order"] = 0
+                            scope.lic_data_version.push(version)
+                lic_utils.get_lic_data($resource, viewmode, scope.lic_id, tr, start_date, (new_data) ->
+                    #cont( _.sortBy(new_data, 'full_start_date') )
+                    cont(new_data)
+                    scope.set_lic_data()
+                )
 
             if !scope.fixed_range
                 # need to watch by string and not by var, probably because var originates from parent scope
-                scope.$watch('timerange', (unused) -> scope.update_lic_data())
-                scope.$watch('licdaterangestart', (unused) -> scope.update_lic_data())
+                scope.$watch('timerange', (unused) -> scope.update_lic_data(scope.viewmode))
+                scope.$watch('licdaterangestart', (unused) -> scope.update_lic_data(scope.viewmode))
             else
                 # no updates for fixed range
-                scope.update_lic_data()
+                scope.update_lic_data(scope.viewmode)
             scope.$watch('viewmode', (unused) -> scope.set_lic_data())
 }]).directive("running", ($templateCache) ->
     return {
@@ -1516,8 +1536,10 @@ class license_usage
         
 # can't put this into the controller due to isolated scope
 lic_utils = {
-    get_lic_data: ($resource, lic_id, timerange, start_date, cont) ->
-        lic_resource = $resource("{% url 'rest:license_data_list' %}", {})
+    get_lic_data: ($resource, viewmode, lic_id, timerange, start_date, cont) ->
+        lic_resource = switch
+            when viewmode == "show_version" then $resource("{% url 'rest:license_version_state_coarse_list' %}", {})
+            else $resource("{% url 'rest:license_state_coarse_list' %}", {})
         query_data = {
             'lic_id': lic_id
             'duration_type' : timerange
