@@ -391,7 +391,7 @@ class ext_license_check_coarse(models.Model):
 
             @classmethod
             def get_end_time_for_start(cls, starttime):
-                return starttime + datetime.timedelta(days=1) - datetime.timedelta(seconds=1)
+                return starttime + datetime.timedelta(days=1) 
 
             @classmethod
             def get_display_date(cls, timepoint):
@@ -421,7 +421,7 @@ class ext_license_check_coarse(models.Model):
 
             @classmethod
             def get_end_time_for_start(cls, starttime):
-                return starttime + datetime.timedelta(seconds=60*60) - datetime.timedelta(seconds=1)
+                return starttime + datetime.timedelta(seconds=60*60)
 
             @classmethod
             def get_display_date(cls, timepoint):
@@ -434,9 +434,10 @@ class ext_license_check_coarse(models.Model):
                     return klass
             raise Exception()
 
-    def get_display_start_date(self):
+    def get_display_date(self):
         klass = ext_license_check_coarse.Duration.get_class(self.duration_type)
-        return klass.get_display_date(self.start_date)
+        # border values easily create problems with timezones etc, hence use central values
+        return klass.get_display_date( self.start_date + ((self.end_date - self.start_date)/2) )  # @IgnorePep8
 
     class Meta:
         app_label = "backbone"
@@ -466,8 +467,8 @@ class ext_license_state_coarse(models.Model):
     class CSW_Meta:
         backup = False
 
-    def get_display_start_date(self):
-        return self.ext_license_check_coarse.get_display_start_date()
+    def get_display_date(self):
+        return self.ext_license_check_coarse.get_display_date()
 
 
 class ext_license_version_state_coarse(models.Model):
@@ -478,13 +479,16 @@ class ext_license_version_state_coarse(models.Model):
     ext_license_version = models.ForeignKey("backbone.ext_license_version")  # grouped by this
     vendor = models.ForeignKey("backbone.ext_license_vendor")  # grouped by this
 
-    frequency = models.IntegerField()  # number of times this license_version and vendor combination occurred, grouped by check and state
+    frequency = models.IntegerField()  # number of actual usages of this combination of license_version and vendor occurred, grouped by check and state
 
     class Meta:
         app_label = "backbone"
 
     class CSW_Meta:
         backup = False
+
+    def get_display_date(self):
+        return self.ext_license_check_coarse.get_display_date()
 
 
 class ext_license_usage_coarse(models.Model):
