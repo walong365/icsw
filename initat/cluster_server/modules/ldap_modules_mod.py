@@ -500,7 +500,7 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
                         for dn, _attrs in ld_read.search_s(base_dn, ldap.SCOPE_SUBTREE, "objectclass=sambaDomain"):
                             ok, err_str = self._delete_entry(ld_write,
                                                              dn)
-                            self.log("uremoved previous sambaDomain '{}'".format(dn))
+                            self.log("removed previous sambaDomain '{}'".format(dn))
                         self.log(
                             u"init SAMBA-structure (domainname is '{}', dn is '{}')".format(
                                 par_dict["sambadomain"],
@@ -646,9 +646,10 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     if "sambadomain" in par_dict:
                         g_stuff.attributes["objectClass"].append("sambaGroupMapping")
                         g_stuff.attributes["sambaGroupType"] = "2"
-                        g_stuff.attributes["sambaSID"] = "%s-%d" % (
+                        g_stuff.attributes["sambaSID"] = "{}-{:d}".format(
                             samba_sid,
-                            g_stuff.gid * 2 + 1)
+                            g_stuff.gid * 2 + 1
+                        )
                 for _u_idx, u_stuff in all_users.iteritems():
                     g_stuff = all_groups[u_stuff.group_id]
                     u_stuff.dn = self._expand_dn("user", u_stuff, g_stuff)
@@ -687,10 +688,13 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     }
                     if "sambadomain" in par_dict:
                         u_stuff.attributes["objectClass"].append("sambaSamAccount")
-                        u_stuff.attributes["sambaSID"] = "%s-%d" % (
-                            samba_sid,
-                            u_stuff.uid * 2)
-                        u_stuff.attributes["sambaAcctFlags"] = "[U          ]"
+                        u_stuff.attributes["sambaSID"] = [
+                            "{}-{:d}".format(
+                                samba_sid,
+                                u_stuff.uid * 2
+                            )
+                        ]
+                        u_stuff.attributes["sambaAcctFlags"] = ["[U          ]"]
                         u_stuff.attributes["sambaPwdLastSet"] = [u"{:d}".format(int(time.time()))]
                         u_stuff.attributes["sambaNTPassword"] = [u_stuff.nt_password]
                         u_stuff.attributes["sambaLMPassword"] = [u_stuff.lm_password]
@@ -737,7 +741,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 group_struct.change_list = ldap.modlist.modifyModlist(group_struct.orig_attributes, group_struct.attributes)
                                 if group_struct.change_list:
                                     # changing group
-                                    self.log(u"changing group {} (content differs)".format(group_name))
+                                    self.log(u"changing group {} (attributes differ)".format(group_name))
                                     groups_to_change.append(group_name)
                                 else:
                                     groups_ok.append(group_name)
@@ -835,17 +839,17 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 )
                                 if user_struct.change_list:
                                     # changing user
-                                    self.log("changing user %s (content differs)" % (user_name))
+                                    self.log("changing user {} (attributes differ)".format(user_name))
                                     users_to_change.append(user_name)
                                 else:
                                     users_ok.append(user_name)
                             else:
                                 # remove user (no longer active)
-                                self.log("removing user %s (not active or group not active or no group_homestart)" % (user_name))
+                                self.log("removing user {} (not active or group not active or no group_homestart)".format(user_name))
                                 users_to_remove.append(user_name)
                         else:
                             # remove user (not found in db)
-                            self.log("removing user %s (not found in db)" % (user_name))
+                            self.log("removing user {} (not found in db)".format(user_name))
                             users_to_remove.append(user_name)
                     else:
                         self.log(
