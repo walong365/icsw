@@ -56,6 +56,12 @@ def add_fixtures(**kwargs):
         system_config=True,
     )
     factories.Config(
+        name="virtual_desktop_client",
+        description="device has a virtual desktop client",
+        server_config=True,
+        system_config=True,
+    )
+    factories.Config(
         name="auto_etc_hosts",
         description="/etc/hosts file can be created from local cluster-server",
         server_config=True,

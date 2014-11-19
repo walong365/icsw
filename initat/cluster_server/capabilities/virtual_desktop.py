@@ -36,6 +36,7 @@ import multiprocessing
 import socket
 import random
 import string
+import tempfile
 from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, virtual_desktop_user_setting
 
 
@@ -103,7 +104,14 @@ class vncserver(virtual_desktop_server):
 
         # fresh dir for every start
         if os.path.exists(self.vnc_home_dir):
-            shutil.rmtree(self.vnc_home_dir)
+            try:
+                # might fail for broken mounts, device files, etc.
+                shutil.rmtree(self.vnc_home_dir)
+            except OSError:
+                # try to move file
+                self.log("Failed to remove dir {}, moving it".format(self.vnc_home_dir))
+                dir_path = tempfile.mkdtemp(dir=self.corvus_dir, prefix="vncsession-{}-dead-".format(self.vdus.pk))
+                shutil.move(self.vnc_home_dir, dir_path)
 
         os.mkdir(self.vnc_home_dir)
         os.chown(self.vnc_home_dir, vnc_user_uid, self._get_gid_of_uid(vnc_user_uid))
@@ -284,7 +292,7 @@ class virtual_desktop_stuff(bg_stuff):
                 if _wm_update:
                     wm.save()
 
-        for vdus in virtual_desktop_user_setting.objects.filter(device=self.__effective_device):
+        for vdus in virtual_desktop_user_setting.objects.filter(device=self.__effective_device, to_delete=False):
             self.check_vdus_running(vdus, ignore_last_start_attempt=is_first_run)
 
     def check_vdus_running(self, vdus, ignore_last_start_attempt=False):
@@ -315,7 +323,7 @@ class virtual_desktop_stuff(bg_stuff):
                             # this server uses websockify and we must track it
                             websockify_pid = s.get_websockify_pid_from_file()
 
-                            if websockify_pid and _check_process_running(websockify_pid):
+                            if websockify_pid and _check_process_running(websockify_pid, log=self.log):
                                 # now we really have everything we need
                                 vdus.websockify_pid = websockify_pid
                                 vdus.websockify_process_name = psutil.Process(pid=websockify_pid).name()
@@ -365,12 +373,19 @@ def _check_process_running(*args, **kwargs):
     return bool(_get_running_process(*args, **kwargs))
 
 
-def _get_running_process(pid, process_name=None):
+def _get_running_process(pid, process_name=None, log=None):
     try:
         p = psutil.Process(pid=pid)
+        if log:
+            log("Found process {}, running: {}".format(p, p.is_running))
         if p.is_running():
             if not process_name or p.name() == process_name:
                 return p
+            else:
+                if log:
+                    log("Found process with wrong name ({} vs {})".format(process_name, p.name()))
     except psutil.NoSuchProcess:
+        if log:
+            log("No such process {} {}".format(pid, process_name))
         pass
     return None
