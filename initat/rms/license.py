@@ -272,8 +272,7 @@ class license_process(threading_tools.process_obj):
             timespan_usage_data = ext_license_usage.objects.filter(ext_license_version_state__ext_license_check__date__range=(start, end),
                                                                    ext_license_version_state__ext_license_check__ext_license_site=site)
 
-            print("num checks: {}, fst: {}".format(len(ext_license_check.objects.filter(date__range=(start, end))),
-                  ext_license_check.objects.filter(date__range=(start, end))[0].pk))
+            print("num checks: {}".format(len(ext_license_check.objects.filter(date__range=(start, end)))))
             print("found {} state entries from {} to {}".format(len(timespan_state_data), start, end))
             print("found {} version state entries from {} to {}".format(len(timespan_version_state_data), start, end))
             print("found {} usage entries".format(len(timespan_usage_data)))
@@ -318,10 +317,26 @@ class license_process(threading_tools.process_obj):
                     data_points=len(lic_state_data),
                 )
 
+                _version_frequencies = {}
+
                 for vendor_lic_version in timespan_version_state_data.filter(ext_license_state__ext_license_id=lic_id).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
-                    freq = vendor_lic_version['frequency']
                     ext_lic_id = vendor_lic_version['ext_license_version']
                     vendor_id = vendor_lic_version['vendor']
+
+                    print 'version_state:', 'ver', vendor_lic_version['ext_license_version'], 'vendor', vendor_lic_version['vendor']
+
+                    # usage:
+                    version_state_usage_data = timespan_usage_data.filter(ext_license_version_state__ext_license_version_id=ext_lic_id,
+                                                                          ext_license_version_state__vendor_id=vendor_id)
+                    version_state_usage_data_values = version_state_usage_data.values("ext_license_client", "ext_license_user", "num").annotate(frequency=Count("pk"))
+
+                    # frequency of version_state is not number of entries (this would be the number of checks, where at this license version was involved in)
+                    # we are interested in the number of actual usages of this license version, which we only get via the usage table
+
+                    freq = sum((usage_data['num'] * usage_data['frequency']) for usage_data in version_state_usage_data_values)
+
+                    _version_frequencies[ext_lic_id] = freq
+
                     version_state_coarse = ext_license_version_state_coarse.objects.create(
                         ext_license_check_coarse=check_coarse,
                         ext_license_state_coarse=state_coarse,
@@ -330,16 +345,7 @@ class license_process(threading_tools.process_obj):
                         frequency=freq,
                     )
 
-                    print 'version_state:', 'ver', vendor_lic_version['ext_license_version'], 'vendor', vendor_lic_version['vendor'], 'freq', vendor_lic_version['frequency']
-                    _freq_cnt_sanity += freq
-                    if freq == 0 and used_max != 0:
-                        self.log("Warning: No license state state entries for license which is used. version: {}, license: {}, start: {}, end: {}".format(
-                            vendor_lic_version['ext_license_version'], lic_id, start, end))
-
-                    # usage:
-                    version_state_usage_data = timespan_usage_data.filter(ext_license_version_state__ext_license_version_id=ext_lic_id,
-                                                                          ext_license_version_state__vendor_id=vendor_id)
-                    for usage_data in version_state_usage_data.values("ext_license_client", "ext_license_user", "num").annotate(frequency=Count("pk")):
+                    for usage_data in version_state_usage_data_values:
                         ext_license_usage_coarse.objects.create(
                             ext_license_version_state_coarse=version_state_coarse,
                             ext_license_client_id=usage_data['ext_license_client'],
@@ -350,14 +356,29 @@ class license_process(threading_tools.process_obj):
 
                         # print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
 
-            print 'state freq counted: ', _freq_cnt_sanity
-            if _freq_cnt_sanity != len(timespan_version_state_data):
-                self.log("Warning: Lost version time entries ({}, {}), start: {}, end: {}".format(_freq_cnt_sanity, len(timespan_version_state_data), start, end))
+                # sanity check
+                estimated_usages = used * len(lic_state_data)
+                actual_usages = sum(_version_frequencies.itervalues())
+                # `used` is rounded, so might not be a perfect match
+                soft_limit = max((actual_usages + estimated_usages) * 0.001, 1)
+                hard_limit = max((actual_usages + estimated_usages) * 0.1, 1)
+                if abs(estimated_usages - actual_usages) > soft_limit:
+                    self.log(self, "Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
+                             logging_tools.LOG_LEVEL_WARN)
+                if abs(estimated_usages - actual_usages) > hard_limit:
+                    raise RuntimeError("Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages))
+
+                print self, "INFO for license {}  estim: {}, actual: {}".format(lic_id, estimated_usages, actual_usages)
+
+
+            #print 'state freq counted: ', _freq_cnt_sanity
+            #if _freq_cnt_sanity != len(timespan_version_state_data):
+            #    self.log("Warning: Lost version time entries ({}, {}), start: {}, end: {}".format(_freq_cnt_sanity, len(timespan_version_state_data), start, end))
 
         # check which data to collect
         for site in ext_license_site.objects.all():
 
-            for duration_type in (ext_license_check_coarse.Duration.Month, ext_license_check_coarse.Duration.Day, ext_license_check_coarse.Duration.Hour):
+            for duration_type in (ext_license_check_coarse.Duration.Day, ext_license_check_coarse.Duration.Month, ext_license_check_coarse.Duration.Hour):
                 try:
                     # make sure to only get date from db to stay consistent with its timezone
                     last_day = ext_license_check_coarse.objects.filter(duration_type=duration_type.ID, ext_license_site=site).latest('start_date')
