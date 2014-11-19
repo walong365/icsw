@@ -1,4 +1,4 @@
--{% load coffeescript %}
+{% load coffeescript %}
 
 <script type="text/javascript">
 
