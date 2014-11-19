@@ -308,8 +308,14 @@ class get_device_ip(View):
         to_dev_pk = int(_post["device"])
         to_dev = device.objects.get(Q(pk=to_dev_pk))
 
-        cur_routing = routing.srv_type_routing(force=True)
-        from_dev = cur_routing.local_device
+        # from-device is where virtual desktop client config is set
+        server_by_type = config_tools.server_check(server_type="virtual_desktop_client")
+        from_dev = server_by_type.effective_device
+
+        if from_dev is None:
+            # fall back to local device
+            cur_routing = routing.srv_type_routing(force=True)
+            from_dev = cur_routing.local_device
 
         from_server_check = config_tools.server_check(device=from_dev, config=None, server_type="node")
         to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")

@@ -58,11 +58,10 @@ vncwebviewer_template = """
                 </tr>
                 <tr>
                     <td>
-                        <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default">Show viewer command line</button>
-                        <br />
-                        <p>
+                        <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
+                        <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
                             {{vdus.viewer_cmd_line}}
-                        </p>
+                        </div>
                     </td>
                 </tr>
                 <tr>
@@ -202,8 +201,9 @@ virtual_desktop_settings_template = """
             <td> {{ vdus.screen_size }} </td>
             <td> {{ vdus.is_running | yesno2 }} </td>
             <td>
-                <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_virtual_desktop_user_setting(vdus)"></input>
-                <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_virtual_desktop_user_setting(vdus)"></input>
+                <button type="button" popover-placement="top" popover-title="Viewer command line" popover="{{ vdus.viewer_cmd_line }}" class="btn btn-xs btn-info">info</button>
+                <button type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_virtual_desktop_user_setting(vdus)">modify</button>
+                <button type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_virtual_desktop_user_setting(vdus)">delete</button>
             </td>
         </tr>
     </tbody>
@@ -672,6 +672,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 $scope.window_manager = data[8]
                 $scope.device = data[9]
                 $scope.virtual_desktop_user_setting = data[10]
+                for vdus in $scope.virtual_desktop_user_setting
+                    $scope.get_viewer_command_line(vdus)
         )
         $scope.sync_users = () ->
             $.blockUI()
@@ -913,8 +915,14 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
         $scope.push_virtual_desktop_user_setting = (new_obj, then_fun) ->
             url = "{% url 'rest:virtual_desktop_user_setting_list' %}".slice(1)
             Restangular.all(url).post(new_obj).then( then_fun )
-
-                
+        $scope.get_viewer_command_line = (vdus) ->
+            call_ajax
+                url      : "{% url 'user:get_device_ip' %}"
+                data     :
+                    "device" : vdus.device
+                dataType : "json"
+                success  : (json) =>
+                    vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, json.ip)
 ]).controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.virtual_desktop_user_setting = []
@@ -984,7 +992,6 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
         $scope.get_vdus = (idx) ->
-            $scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.idx == idx)
         $scope.update()
 ]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
@@ -1275,7 +1282,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 if scope.current_vdus == null
                     return "create"
                 else
-                    return"modify"
+                    return "modify"
             scope.cancel_virtual_desktop_user_setting = () ->
                 scope.$apply(
                         scope._edit_obj.device = undefined
@@ -1397,6 +1404,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 scope._edit_obj.virtual_desktop_protocol = vdus.virtual_desktop_protocol
 
                 scope._edit_obj.start_automatically = vdus.is_running
+            
 ).directive("vncwebviewer", ($compile, $templateCache, icswTools) ->
         restrict : "EA"
         template : $templateCache.get("vncwebviewer.html")
@@ -1437,7 +1445,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 url = "{% url 'main:virtual_desktop_viewer' %}"
                 window.open(url + "?vdus_index="+vdus.idx)
             scope.show_viewer_command_line = (vdus) ->
-                vdus.viewer_cmd_line = "echo \"#{vdus.password}\" | vncviewer -autopass #{scope.ips_for_devices[vdus.device] }:#{vdus.effective_port }\n"
+                vdus.show_viewer_command_line = !vdus.show_viewer_command_line
+                vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, scope.ips_for_devices[vdus.device]) 
             scope.retrieve_device_ip = (index) ->
                 # set some dummy value so that the vnc directive doesn't complain
                 dummy_ip = "0.0.0.0"
@@ -1831,6 +1840,11 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 _wrapper.addClass("toggled")
             return false
 ])
+
+virtual_desktop_utils = {
+    get_viewer_command_line: (vdus, ip) ->
+        return "echo \"#{vdus.password}\" | vncviewer -autopass #{ip}:#{vdus.effective_port }\n"
+}
 
 root.angular_add_password_controller = angular_add_password_controller
 
