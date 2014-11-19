@@ -17,7 +17,7 @@
 #
 """ NVidia GPU monitoring """
 
-from initat.host_monitoring import limits, hm_classes
+from initat.host_monitoring import hm_classes
 import commands
 import logging_tools
 import process_tools
@@ -386,6 +386,7 @@ class _general(hm_classes.hm_module):
         else:
             _out = self._exec_command(". -L")
         self.__gpus = {}
+        self.__mv_init = True
         if _out:
             for _line in _out.split("\n"):
                 self.log("parsing line {}".format(_line))
@@ -402,7 +403,7 @@ class _general(hm_classes.hm_module):
     def update_machine_vector(self, mv):
         if not self.__mv_init:
             self._init_mv(mv)
-        if self.__smi_command:
+        if self.__smi_command and self.__gpus:
             try:
                 if _DEBUG:
                     out = TEST_OUT
