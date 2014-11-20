@@ -425,7 +425,7 @@ class ext_license_check_coarse(models.Model):
 
             @classmethod
             def get_display_date(cls, timepoint):
-                return u"{:02d}:{:02d}".format(timepoint.hour, timepoint.minute)
+                return u"{:02d}:{:02d}".format(timepoint.hour, 0)
 
         @classmethod
         def get_class(cls, ident):
