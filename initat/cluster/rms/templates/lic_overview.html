@@ -99,15 +99,12 @@
                 </div>
 
                 <div class="panel-body">
-
-                    <ul>
-                        <li ng-repeat="li in ext_license_list">
-                            <input type="button" ng-class="get_li_sel_class(li)" ng-click="toggle_li_sel(li)" value="sel">
-                            <!-- <input type="checkbox" id="cb_{{li.idx}}" ng-model="li.selected" ng-change="license_select_change()"> -->
-                            <label for="cb_{{li.idx}}">{{li.name}} {{li.usage}}</label>
-                            </input>
-                        </li>
-                    </ul>
+                    <div ng-repeat="li in ext_license_list">
+                        <input type="button" ng-class="get_li_sel_class(li)" ng-click="toggle_li_sel(li)" value="sel">
+                        <!-- <input type="checkbox" id="cb_{{li.idx}}" ng-model="li.selected" ng-change="license_select_change()"> -->
+                        <label for="cb_{{li.idx}}">{{li.name}} {{li.usage}}</label>
+                        </input>
+                    </div>
                 </div>
             </div>
         </div> <!-- left panel end -->

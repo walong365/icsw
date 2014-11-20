@@ -872,8 +872,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.ext_license_list = data[1]
             
             # for testing:
-            #$scope.ext_license_list[1].selected = true
-            #$scope.license_select_change()
+            $scope.ext_license_list[1].selected = true
+            $scope.license_select_change()
 
             $scope.update_lic_overview_data()
         )
@@ -920,9 +920,9 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         
         $scope.get_li_sel_class = (li) ->
             if li.selected
-                return "btn btn-small btn-success"
+                return "btn btn-xs btn-success"
             else
-                return "btn btn-small"
+                return "btn btn-xs"
         $scope.toggle_li_sel = (li) ->
             li.selected = !li.selected
             $scope.license_select_change()
@@ -934,7 +934,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.multi_view = false
         $scope.cur_time = moment().format()
         # for testing:
-        #$scope.licdaterangestart = moment("Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)")
+        $scope.licdaterangestart = moment("Tue Oct 07 2014 00:00:00 GMT+0200 (CEST)")
         #$scope.cur_time = "Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)"
 
 ]).directive("licgraph", ["$templateCache", "$resource", ($templateCache, $resource) ->
@@ -948,7 +948,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     </div>
     <div ng-if="lic_data_show.length > 0">
         <graph data="lic_data_show" width="500" height="300">
-            <x field="date" order-by="idx" title="null"></x>
+            <x field="date" order-by="full_date" title="null"></x>
             <y field="value" title="License usage"></y>
             <stacked-area field="type"/>
             <!--
@@ -957,7 +957,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             <legend></legend>
         </graph>
     </div>
-    <div ng-if="lic_data.length == 0">
+    <div ng-if="lic_data_show.length == 0">
         no data available
     </div>
 </div>
@@ -978,94 +978,110 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.set_lic_data = () ->
                 # we get lic_data and lic_data_min_max by default
                 if scope.viewmode == "show_min_max"
-                    scope.lic_data_show = scope.lic_data_min_max
+                    list = "lic_data_min_max"
                 else if scope.viewmode == "show_user"
                     scope.lic_data_show = []
                 else if scope.viewmode == "show_device"
                     scope.lic_data_show = []
                 else if scope.viewmode == "show_version"
-                    if scope.lic_data_version
-                        scope.lic_data_show = scope.lic_data_version
-                    else
-                        scope.update_lic_data(scope.viewmode)
+                    list = "lic_data_version"
                 else
-                    scope.lic_data_show = scope.lic_data
-            scope.update_lic_data = (viewmode) ->
+                    list = "lic_data"
+
+                # set or retrieve
+                if scope[list] 
+                    console.log "use data", list, scope[list]
+                    console.log _.map(scope[list], (x) -> x.full_date)
+                    
+                    # this is not nice, but we sometimes need apply, and finding out whether we are in an apply is an anti-pattern
+                    scope.lic_data_show = scope[list]
+                    scope.$apply(
+                        scope.lic_data_show = scope[list]
+                    )
+                else
+                    console.log "retrieve data", list, scope.viewmode
+                    scope.update_lic_data(scope.viewmode)
+
+            scope.update_lic_data = (viewmode, reset=false) ->
+                if reset
+                    scope.lic_data = null
+                    scope.lic_data_min_max = null
+                    scope.lic_data_version = null
+
                 # call with argument to allow obtaining general data when in view mode
                 tr = if scope.fixed_range then attrs.fixedtimerange else scope.timerange
                 start_date = if scope.fixed_range then attrs.fixedlicdaterangestart else scope.licdaterangestart
                 
                 # prepare data for dimple
                 # only define continuation function per mode
-                create_common = (entry) -> return {"idx": entry.idx, "date": entry.display_date, "full_date": entry.full_start_date}
-                if viewmode == 'default'
-                    cont = (new_data) ->
+                create_common = (entry) -> return {"date": entry.display_date, "full_date": entry.full_start_date}
+                if viewmode == 'default' || viewmode == "show_min_max"
+                    cont = (new_data, dates) ->
+                        console.log "calc default data"
                         scope.lic_data = []
                         scope.lic_data_min_max = []
                         for entry in new_data
                             common = create_common(entry)
 
-                            used = _.clone(common)
-                            used["value"] = entry.used
-                            used["type"] = "used"
-                            used["order"] = 1
+                            # we have an entry for this
+                            _.remove(dates, (elem) -> elem.date == common.date)
 
-                            issued = _.clone(common)
-                            issued["value"] = entry.issued - entry.used
-                            issued["type"] = "unused"
-                            issued["order"] = 2
+                            scope.lic_data.push(_.merge({ "type" : "used", "value": entry.used, "order": 1 }, common))
+                            scope.lic_data.push(_.merge({ "type" : "unused", "value": entry.issued - entry.used, "order": 2 }, common))
 
-                            scope.lic_data.push(used)
-                            scope.lic_data.push(issued)
+                            scope.lic_data_min_max.push(_.merge({ "type": "min used", "value": entry.used_min, "order": 1 }, common))
+                            scope.lic_data_min_max.push(_.merge({ "type": "avg used", "value": entry.used - entry.used_min, "order": 2 }, common))
+                            scope.lic_data_min_max.push(_.merge({ "type": "max used", "value": entry.used_max - entry.used, "order": 3 }, common))
+                            scope.lic_data_min_max.push(_.merge({ "type": "unused", "value": entry.issued_max - entry.used_max, "order": 4 }, common))  # use issued_max as used_max can be greater than issued
 
-                            usedMin = _.clone(common)
-                            usedMin["value"] = entry.used_min
-                            usedMin["type"] = "min used"
-                            usedMin["order"] = 1
+                        if new_data.length != 0  # we have got data, add missing ones
+                            for date in dates
+                                console.log "adding date", date
+                                scope.lic_data.push({ "type" : "used",   "date": date.date, "full_date": date.full_date, "value" : 0,  "order" : 1 })
+                                scope.lic_data.push({ "type" : "unused", "date": date.date, "full_date": date.full_date, "value" : 0,  "order" : 2 })
 
-                            usedAvg = _.clone(common)
-                            usedAvg["value"] = entry.used - entry.used_min
-                            usedAvg["type"] = "avg used"
-                            usedAvg["order"] = 2
-
-                            usedMax = _.clone(common)
-                            usedMax["value"] = entry.used_max - entry.used
-                            usedMax["type"] = "max used"
-                            usedMax["order"] = 3
-
-                            issuedMinMax = _.clone(common)
-                            issuedMinMax["value"] = entry.issued_max - entry.used_max  # use issued_max as used_max can be greater than issued
-                            issuedMinMax["type"] = "unused"
-                            issuedMinMax["order"] = 4
-
-                            scope.lic_data_min_max.push(usedMin)
-                            scope.lic_data_min_max.push(usedAvg)
-                            scope.lic_data_min_max.push(usedMax)
-                            scope.lic_data_min_max.push(issuedMinMax)
+                                scope.lic_data_min_max.push({ "type" : "min used", "date" : date.date, "full_date": date.full_date, "value" : 0,  "order" : 1 })
+                                scope.lic_data_min_max.push({ "type" : "avg used", "date" : date.date, "full_date": date.full_date, "value" : 0,  "order" : 2 })
+                                scope.lic_data_min_max.push({ "type" : "max used", "date" : date.date, "full_date": date.full_date, "value" : 0,  "order" : 3 })
+                                scope.lic_data_min_max.push({ "type" : "unused",   "date" : date.date, "full_date": date.full_date, "value" : 0,  "order" : 4 })
 
                         if new_data.length > 0
                             scope.header_addition = "(" + lic_utils.calc_avg_usage(new_data) + "% usage)"
                 else if viewmode == 'show_version'
-                    cont = (new_data) ->
+                    cont = (new_data, dates) ->
+                        console.log "calc version data"
                         scope.lic_data_version = []
+                        types = []
                         for entry in new_data
                             common = create_common(entry)
 
-                            version = _.clone(common)
-                            version["value"] = entry.frequency
-                            version["type"] = "#{entry.ext_license_version_name} (#{entry.vendor_name})"
-                            version["order"] = 0
-                            scope.lic_data_version.push(version)
+                            type = "#{entry.ext_license_version_name} (#{entry.vendor_name})"
+                            types.push type
+                            scope.lic_data_version.push(_.merge({ "type" : type, "value" : entry.frequency, "order" : 0}, common))
+
+                        if new_data.length != 0  # we have got some data, add missing ones
+                            for type in _.uniq(types)
+                                for date in dates
+                                    if _.find(scope.lic_data_version, (elem) -> elem.date == date.date && elem.type == type) == undefined
+                                        console.log "adding date", date, "type", type
+                                        scope.lic_data_version.push({ "type" : type, "date": date.date, "value" : 0, "order" : 0 })
                 lic_utils.get_lic_data($resource, viewmode, scope.lic_id, tr, start_date, (new_data) ->
-                    #cont( _.sortBy(new_data, 'full_start_date') )
-                    cont(new_data)
-                    scope.set_lic_data()
+                    # also query all possible dates to check for missing ones (dimple needs all of them)
+                    call_ajax
+                        url: "{% url 'lic:get_license_overview_steps' %}"
+                        data:
+                            "date": moment(start_date).unix()  # ask server in utc
+                            "duration_type" : tr
+                        dataType : "json"
+                        success: (json) =>
+                            cont(new_data, json)
+                            scope.set_lic_data()
                 )
 
             if !scope.fixed_range
                 # need to watch by string and not by var, probably because var originates from parent scope
-                scope.$watch('timerange', (unused) -> scope.update_lic_data(scope.viewmode))
-                scope.$watch('licdaterangestart', (unused) -> scope.update_lic_data(scope.viewmode))
+                scope.$watch('timerange', (unused) -> scope.update_lic_data(scope.viewmode, true))
+                scope.$watch('licdaterangestart', (unused) -> scope.update_lic_data(scope.viewmode, true))
             else
                 # no updates for fixed range
                 scope.update_lic_data(scope.viewmode)

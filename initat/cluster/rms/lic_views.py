@@ -25,13 +25,16 @@
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from django.http.response import HttpResponse
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
+from initat.cluster.backbone.models import ext_license_check_coarse
 from lxml import etree  # @UnresolvedImport @UnusedImport
 import json  # @UnusedImport
 import pprint  # @UnusedImport
 import server_command
+import datetime
 
 
 class overview(View):
@@ -71,3 +74,62 @@ class license_liveview(View):
             if len(_start_node):
                 _lic_dump = _dump_xml(_start_node[0])
         request.xml_response["result"] = result
+
+
+#    @method_decorator(login_required)
+class get_license_overview_steps(View):
+    def post(self, request):
+        _post = request.POST
+        steps = lic_utils.get_steps(_post['duration_type'], _post['date'])
+        return HttpResponse(json.dumps(steps), content_type="application/json")
+
+    def get(self, request):
+
+        return HttpResponse(json.dumps(steps), content_type="application/json")
+
+class lic_utils(object):
+
+    @staticmethod
+    def parse_date(date):
+        return datetime.datetime.fromtimestamp(int(date))
+
+    @staticmethod
+    def parse_duration(in_duration_type, date):
+        '''
+        :param str in_duration_type:
+        :param str date: timestamp from request
+        :return: tuple (unit of data to display, start, end)
+        '''
+        date = lic_utils.parse_date(date)
+        if in_duration_type == "day":
+            duration_type = ext_license_check_coarse.Duration.Hour
+            start = ext_license_check_coarse.Duration.Day.get_time_frame_start(date)
+            end = ext_license_check_coarse.Duration.Day.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
+        elif in_duration_type == "week":
+            duration_type = ext_license_check_coarse.Duration.Day
+            date_as_date = date.date()  # forget time
+            date_day = datetime.datetime(year=date_as_date.year, month=date_as_date.month, day=date_as_date.day)
+            start = date_day - datetime.timedelta(days=date_day.weekday())
+            end = start + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
+        elif in_duration_type == "month":
+            duration_type = ext_license_check_coarse.Duration.Day
+            start = ext_license_check_coarse.Duration.Month.get_time_frame_start(date)
+            end = ext_license_check_coarse.Duration.Month.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
+        elif in_duration_type == "year":
+            duration_type = ext_license_check_coarse.Duration.Month
+            start = datetime.datetime(year=date.year, month=1, day=1)
+            end = datetime.datetime(year=date.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
+        return (duration_type, start, end)
+
+    @staticmethod
+    def get_steps(in_duration_type, date):
+        (duration_type, start, end) = lic_utils.parse_duration(in_duration_type, date)
+
+        steps = []
+        cur = start
+
+        while cur < end:
+            steps.append({"date": duration_type.get_display_date(cur), "full_date": cur.isoformat()})
+            cur = duration_type.get_end_time_for_start(cur) + datetime.timedelta(seconds=1)
+
+        return steps
