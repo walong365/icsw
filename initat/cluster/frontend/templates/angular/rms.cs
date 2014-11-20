@@ -947,7 +947,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         <h3>License: {{ lic_name }} {{ header_addition }}</h3>
     </div>
     <div ng-if="lic_data_show.length > 0">
-        <graph data="lic_data_show" width="500" height="300">
+        <graph data="lic_data_show" width="{{lic_graph_width}}" height="{{lic_graph_height}}">
             <x field="date" order-by="full_date" title="null"></x>
             <y field="value" title="License usage"></y>
             <stacked-area field="type"/>
@@ -977,16 +977,12 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
 
             scope.set_lic_data = () ->
                 # we get lic_data and lic_data_min_max by default
-                if scope.viewmode == "show_min_max"
-                    list = "lic_data_min_max"
-                else if scope.viewmode == "show_user"
-                    scope.lic_data_show = []
-                else if scope.viewmode == "show_device"
-                    scope.lic_data_show = []
-                else if scope.viewmode == "show_version"
-                    list = "lic_data_version"
-                else
-                    list = "lic_data"
+                list = switch
+                    when scope.viewmode == "show_min_max" then "lic_data_min_max"
+                    when scope.viewmode == "show_user"    then "lic_data_user"
+                    when scope.viewmode == "show_device"  then "lic_data_device"
+                    when scope.viewmode == "show_version" then "lic_data_version"
+                    else "lic_data"
 
                 # set or retrieve
                 if scope[list] 
@@ -995,6 +991,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     
                     # this is not nice, but we sometimes need apply, and finding out whether we are in an apply is an anti-pattern
                     scope.lic_data_show = scope[list]
+
                     scope.$apply(
                         scope.lic_data_show = scope[list]
                     )
@@ -1007,6 +1004,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     scope.lic_data = null
                     scope.lic_data_min_max = null
                     scope.lic_data_version = null
+                    scope.lic_data_user = null
+                    scope.lic_data_device = null
 
                 # call with argument to allow obtaining general data when in view mode
                 tr = if scope.fixed_range then attrs.fixedtimerange else scope.timerange
@@ -1015,6 +1014,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 # prepare data for dimple
                 # only define continuation function per mode
                 create_common = (entry) -> return {"date": entry.display_date, "full_date": entry.full_start_date}
+                scope.lic_graph_width = 500
+                scope.lic_graph_height = 300
                 if viewmode == 'default' || viewmode == "show_min_max"
                     cont = (new_data, dates) ->
                         console.log "calc default data"
@@ -1036,7 +1037,6 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
 
                         if new_data.length != 0  # we have got data, add missing ones
                             for date in dates
-                                console.log "adding date", date
                                 scope.lic_data.push({ "type" : "used",   "date": date.date, "full_date": date.full_date, "value" : 0,  "order" : 1 })
                                 scope.lic_data.push({ "type" : "unused", "date": date.date, "full_date": date.full_date, "value" : 0,  "order" : 2 })
 
@@ -1063,8 +1063,36 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             for type in _.uniq(types)
                                 for date in dates
                                     if _.find(scope.lic_data_version, (elem) -> elem.date == date.date && elem.type == type) == undefined
-                                        console.log "adding date", date, "type", type
-                                        scope.lic_data_version.push({ "type" : type, "date": date.date, "value" : 0, "order" : 0 })
+                                        scope.lic_data_version.push({ "type" : type, "date": date.date, "full_date": date.full_date, "value" : 0, "order" : 0 })
+                else if viewmode == 'show_user' || viewmode == 'show_device'
+                    list = switch
+                        when viewmode == 'show_user' then "lic_data_user"
+                        else "lic_data_device"
+                    cont = (new_data, dates) ->
+                        console.log "calc version "+viewmode
+                        scope[list] = []
+                        types = []
+                        for entry in new_data
+                            types.push entry.type
+                            common = create_common(entry)
+                            scope[list].push(_.merge({ "type" : entry.type, "value" : entry.val, "order" : 0}, common))
+                        
+                        
+                        # TODO: this does not work yet, the angular-dimple directive does not care about changes after initialisation
+                        if types.length > 6
+                            scope.lic_graph_width = 800
+                            scope.lic_graph_height = 600
+                        else
+                            scope.lic_graph_width = 500
+                            scope.lic_graph_height = 300
+        
+                        # TODO: extract into function together with code above
+                        if new_data.length != 0  # we have got some data, add missing ones
+                            for type in _.uniq(types)
+                                for date in dates
+                                    if _.find(scope[list], (elem) -> elem.date == date.date && elem.type == type) == undefined
+                                        scope[list].push({ "type" : type, "date": date.date, "full_date": date.full_date, "value" : 0, "order" : 0 })
+                   
                 lic_utils.get_lic_data($resource, viewmode, scope.lic_id, tr, start_date, (new_data) ->
                     # also query all possible dates to check for missing ones (dimple needs all of them)
                     call_ajax
@@ -1073,8 +1101,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             "date": moment(start_date).unix()  # ask server in utc
                             "duration_type" : tr
                         dataType : "json"
-                        success: (json) =>
-                            cont(new_data, json)
+                        success: (steps_json) =>
+                            cont(new_data, steps_json)
                             scope.set_lic_data()
                 )
 
@@ -1554,8 +1582,10 @@ class license_usage
 lic_utils = {
     get_lic_data: ($resource, viewmode, lic_id, timerange, start_date, cont) ->
         lic_resource = switch
-            when viewmode == "show_version" then $resource("{% url 'rest:license_version_state_coarse_list' %}", {})
-            else $resource("{% url 'rest:license_state_coarse_list' %}", {})
+            when viewmode == "show_version" then $resource("{% url 'lic:license_version_state_coarse_list' %}", {})
+            when viewmode == "show_user" then $resource("{% url 'lic:license_user_coarse_list' %}", {})
+            when viewmode == "show_device" then $resource("{% url 'lic:license_device_coarse_list' %}", {})
+            else $resource("{% url 'lic:license_state_coarse_list' %}", {})  # this is default and min_max
         query_data = {
             'lic_id': lic_id
             'duration_type' : timerange

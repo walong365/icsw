@@ -34,9 +34,7 @@ from initat.cluster.backbone.models import get_related_models, get_change_reset_
     ext_license_usage_coarse
 from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer, \
-    ext_license_state_coarse_serializer, ext_license_version_state_coarse_serializer
-from initat.cluster.rms.lic_views import lic_utils
+    partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
 from initat.cluster.frontend import forms
 from initat.core.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -44,17 +42,13 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import exception_handler, APIView
-from rest_framework.generics import ListAPIView
 import json
 import logging
 import logging_tools
 import operator
-import pprint  # @UnusedImport
 import process_tools
 import time
 import types
-import datetime
-import dateutil.tz
 
 logger = logging.getLogger("cluster.rest")
 
@@ -819,46 +813,3 @@ for src_mod, obj_name in REST_LIST:
                 "serializer_class": ser_class
             }
         )
-
-
-class license_state_coarse_list(ListAPIView):
-
-    serializer_class = ext_license_state_coarse_serializer
-
-    def list(self, request, *args, **kwargs):
-        lic_id = request.GET["lic_id"]
-        in_duration_type = request.GET["duration_type"]
-        date = request.GET["date"]
-
-        (duration_type, start, end) = lic_utils.parse_duration(in_duration_type, date)
-
-        logger.debug("retrieving data for license {} for {} from {} to {}, type {}".format(lic_id, date, start, end, duration_type))
-        self.object_list = ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
-                                                                   ext_license_check_coarse__duration_type=duration_type.ID,
-                                                                   ext_license_check_coarse__start_date__range=(start, end))
-
-        serializer = self.get_serializer(self.object_list, many=True)
-        return Response(serializer.data)
-
-
-class license_version_state_coarse_list(ListAPIView):
-
-    serializer_class = ext_license_version_state_coarse_serializer
-
-    def list(self, request, *args, **kwargs):
-        lic_id = request.GET["lic_id"]
-        # input date is utc, must add tz=utc below
-        date = request.GET["date"]
-        in_duration_type = request.GET["duration_type"]
-
-        (duration_type, start, end) = lic_utils.parse_duration(in_duration_type, date)
-
-        self.object_list = ext_license_version_state_coarse.objects.filter(
-            ext_license_version__ext_license=lic_id,
-            ext_license_check_coarse__duration_type=duration_type.ID,
-            ext_license_check_coarse__start_date__range=(start, end)
-        )
-
-        serializer = self.get_serializer(self.object_list, many=True)
-        return Response(serializer.data)
-

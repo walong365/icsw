@@ -44,6 +44,10 @@ lic_patterns = patterns(
     url(r"overview$", lic_views.overview.as_view(), name="overview"),
     url(r"license_liveview$", lic_views.license_liveview.as_view(), name="license_liveview"),
     url(r"get_license_overview_steps$", lic_views.get_license_overview_steps.as_view(), name="get_license_overview_steps"),
+    url("^license_state_coarse_list$", lic_views.license_state_coarse_list.as_view(), name="license_state_coarse_list"),
+    url("^license_version_state_coarse_list$", lic_views.license_version_state_coarse_list.as_view(), name="license_version_state_coarse_list"),
+    url("^license_user_coarse_list$", lic_views.license_user_coarse_list.as_view(), name="license_user_coarse_list"),
+    url("^license_device_coarse_list$", lic_views.license_device_coarse_list.as_view(), name="license_device_coarse_list"),
 )
 
 
@@ -202,8 +206,6 @@ rpl.extend([
     url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get": "list"}), name="netdevice_peer_list"),
     url("^fetch_forms$", rest_views.fetch_forms.as_view({"get": "list"}), name="fetch_forms"),
     url("^min_access_levels$", rest_views.min_access_levels.as_view({"get": "list"}), name="min_access_levels"),
-    url("^license_state_coarse_list$", rest_views.license_state_coarse_list.as_view(), name="license_state_coarse_list"),
-    url("^license_version_state_coarse_list$", rest_views.license_version_state_coarse_list.as_view(), name="license_version_state_coarse_list"),
 ])
 
 rest_patterns = patterns(
