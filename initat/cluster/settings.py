@@ -412,7 +412,7 @@ PIPELINE_JS = {
             # "js/ng-map.min.js",
         },
         "output_filename": "pipeline/js/gmaps.js"
-    }
+    },
 }
 
 # add all applications, including backbone
