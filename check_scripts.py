@@ -45,7 +45,7 @@ except:
     config_tools = None
 else:
     try:
-        if settings.SATTELITE_MODE:
+        if settings.SATELLITE_MODE:
             config_tools = None
         else:
             import django
@@ -411,8 +411,8 @@ def check_system(opt_ns):
         entry.append(
             E.memory_info(
                 "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
-                )
             )
+        )
         if "version_file" in entry.attrib and act_state != 5:
             entry.attrib["version_ok"] = "0"
             try:
