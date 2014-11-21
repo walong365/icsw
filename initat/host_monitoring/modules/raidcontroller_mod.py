@@ -25,7 +25,7 @@ import datetime
 import logging_tools
 import marshal
 import os
-import pprint
+import pprint  # @UnusedImport
 import re
 import server_command
 import stat
@@ -239,7 +239,7 @@ class ctrl_type_lsi(ctrl_type):
         # print ctrl_ids
 
     def process(self, ccs):
-        ctrl_id = "ioc%s" % (ccs.run_info["command"].split()[1])
+        ctrl_id = "ioc{}".format(ccs.run_info["command"].split()[1])
         ctrl_dict = self._dict[ctrl_id]
         cur_mode = None
         # pacify checker
@@ -292,10 +292,12 @@ class ctrl_type_lsi(ctrl_type):
         return
         # code mpt-status, not used any more
         ctrl_re = re.compile(
-            "^(?P<c_name>\S+) vol_id (?P<vol_id>\d+) type (?P<c_type>\S+), (?P<num_discs>\d+) phy, (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)"
+            "^(?P<c_name>\S+) vol_id (?P<vol_id>\d+) type (?P<c_type>\S+), (?P<num_discs>\d+) "
+            "phy, (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)"
         )
         disk_re = re.compile(
-            "^(?P<c_name>\S+) phy (?P<phy_id>\d+) scsi_id (?P<scsi_id>\d+) (?P<disk_info>.*), (?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)$"
+            "^(?P<c_name>\S+) phy (?P<phy_id>\d+) scsi_id (?P<scsi_id>\d+) (?P<disk_info>.*), "
+            "(?P<size>\S+) (?P<size_pfix>\S+), state (?P<state>\S+), flags (?P<flags>\S+)$"
         )
         to_int = ["num_discs", "vol_id", "phy_id", "scsi_id"]
         to_float = ["size"]
@@ -331,11 +333,11 @@ class ctrl_type_lsi(ctrl_type):
                     vol_dict = ctrl_dict["volumes"][vol_key]
                     vol_stat = vol_dict["status_of_volume"].split()[0]
                     vol_list.append(
-                        "vol%s, RAID%s, %s, %s" % (
+                        "vol{}, RAID{}, {}, {}".format(
                             vol_key,
                             vol_dict["raid_level"],
                             logging_tools.get_size_str(vol_dict["size"] * 1024 * 1024),
-                            vol_stat
+                            vol_stat,
                         )
                     )
                     if vol_stat.lower() != "okay":
@@ -406,7 +408,10 @@ class ctrl_type_tw(ctrl_type):
         unit_match = re.compile("^\s+Unit\s*(?P<num>\d+):\s*(?P<raid>.*)\s+(?P<size>\S+\s+\S+)\s+\(\s*(?P<blocks>\d+)\s+\S+\):\s*(?P<status>.*)$")
         port_match = re.compile("^\s+Port\s*(?P<num>\d+):\s*(?P<info>[^:]+):\s*(?P<status>.*)\(unit\s*(?P<unit>\d+)\)$")
         u2_0_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+.*$")
-        u2_1_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<rcmpl>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+(?P<avrfy>\S+)$")
+        u2_1_match = re.compile(
+            "^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<rcmpl>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)"
+            "\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+(?P<avrfy>\S+)$"
+        )
         p2_match = re.compile("^p(?P<num>\d+)\s+(?P<status>\S+)\s+u(?P<unit>\d+)\s+(?P<size>\S+\s+\S+)\s+(?P<blocks>\d+)\s+.*$")
         bbu_match = re.compile("^bbu\s+(?P<onlinestate>\S+)\s+(?P<ready>\S+)\s+(?P<status>\S+)\s+(?P<volt>\S+)\s+(?P<temp>\S+)\s+.*$")
         _com_line, com_type, ctrl_id = ccs.run_info["command"].strip().split()
@@ -544,9 +549,10 @@ class ctrl_type_tw(ctrl_type):
                                 "/".join(u_stuff["ports"]),
                                 u_stuff["status"],
                                 (
-                                    l_status.startswith("verify") or l_status.startswith("initia") or l_status.startswith("rebuild")) and " (%s %%)" % (u_stuff.get("cmpl", "???")) or ""
-                                )
+                                    l_status.startswith("verify") or l_status.startswith("initia") or l_status.startswith("rebuild")
+                                ) and " ({} %)".format(u_stuff.get("cmpl", "???")) or ""
                             )
+                        )
                     for p_num, p_stuff in ctrl_dict["ports"].iteritems():
                         if p_stuff["status"].lower() != "ok":
                             num_error += 1
@@ -834,7 +840,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             cur_mode = "adp"
                             count_dict = {
                                 "adp": count_dict.get("adp", -1) + 1,
-                                "virt":-1,
+                                "virt": int("-1"),
                                 "pd": 0
                             }
                         elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
@@ -865,10 +871,14 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             if line.startswith(" "):
                                 if cont_mode:
                                     cur_val = cur_dict["lines"][-1]
-                                    cur_dict["lines"][-1] = (cur_val[0], "%s%s%s" % (
+                                    cur_dict["lines"][-1] = (
+                                        cur_val[0],
+                                        "{}{}{}".format(
                                             cur_val[1],
                                             ", " if cur_val[1] else "",
-                                            " ".join(line.strip().split())))
+                                            " ".join(line.strip().split())
+                                        )
+                                    )
                             else:
                                 key = key.lower().strip().replace(" ", "_")
                                 if key in SAS_OK_KEYS[cur_mode]:
@@ -997,11 +1007,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             pd_dict = dict(log_stuff["pd"][pd_num]["lines"])
                             cur_state = pd_dict.get("firmware_state", "unknown")
                             if cur_state.lower() not in ["online, spun up"]:
-                                drive_stats.append("drive %d: %s" % (pd_num, cur_state))
+                                drive_stats.append("drive {:d}: {}".format(pd_num, cur_state))
                                 num_w += 1
                 if drives_missing:
                     num_e += 1
-                    drive_stats.append("drives missing: %s" % (", ".join(["%d" % (m_drive) for m_drive in drives_missing])))
+                    drive_stats.append("drives missing: {}".format(", ".join(["{:d}".format(m_drive) for m_drive in drives_missing])))
             if "virt" not in ctrl_stuff:
                 num_w += 1
             if "enclosures" in ctrl_stuff:
@@ -1027,25 +1037,37 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                         problem = True
                                     else:
                                         problem = False
-                                elif cur_stat.lower() in set(["ok", "not installed", "unknown", "medium speed", "normal speed", "low speed", "high speed"]):
+                                elif cur_stat.lower() in set(
+                                    [
+                                        "ok", "not installed", "unknown", "medium speed",
+                                        "normal speed", "low speed", "high speed", "not available"
+                                    ]
+                                ):
                                     problem = False
                                 else:
                                     problem = True
                                 if problem:
                                     loc_problems += 1
                                     num_e += 1
-                                    enc_fields.append("%s %d: %s" % (
-                                        s_key,
-                                        cur_idx,
-                                        cur_stat))
+                                    enc_fields.append(
+                                        "{} {:d}: {}".format(
+                                            s_key,
+                                            cur_idx,
+                                            cur_stat
+                                        )
+                                    )
                             if cur_num > loc_problems:
-                                enc_fields.append("%s ok" % (
-                                    logging_tools.get_plural(s_key, cur_num - loc_problems)
-                                ))
-                    drive_stats.append("enc%d: %s" % (
-                        enc_num,
-                        ", ".join(enc_fields)
-                    ))
+                                enc_fields.append(
+                                    "{} ok".format(
+                                        logging_tools.get_plural(s_key, cur_num - loc_problems)
+                                    )
+                                )
+                    drive_stats.append(
+                        "enc{:d}: {}".format(
+                            enc_num,
+                            ", ".join(enc_fields)
+                        )
+                    )
         if num_e:
             ret_state = limits.nag_STATE_CRITICAL
         elif num_w:
@@ -1475,7 +1497,7 @@ class ctrl_type_hpacu(ctrl_type):
                                 log_stuff["status_info"],
                                 log_stuff["raid_info"],
                             ))
-                for phys_num, phys_stuff in array_stuff["physicals"].iteritems():
+                for _phys_num, phys_stuff in array_stuff["physicals"].iteritems():
                     num_phys += 1
                     _pc = phys_stuff["config"]
                     size_phys += get_size(_pc["size"])
