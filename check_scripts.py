@@ -38,21 +38,25 @@ import psutil
 import stat
 import subprocess
 import time
-from django.conf import settings
-
 try:
-    if settings.SATTELITE_MODE:
-        config_tools = None
-    else:
-        import django
-        django.setup()
+    from django.conf import settings
 except:
+    settings = None
     config_tools = None
 else:
     try:
-        import config_tools
+        if settings.SATTELITE_MODE:
+            config_tools = None
+        else:
+            import django
+            django.setup()
     except:
         config_tools = None
+    else:
+        try:
+            import config_tools
+        except:
+            config_tools = None
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
