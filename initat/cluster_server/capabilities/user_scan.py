@@ -27,7 +27,7 @@ import stat
 import process_tools
 import time
 # might be fast but still has troubles with unicode names (https://github.com/benhoyt/scandir/issues/40)
-# import scandir
+import scandir
 
 
 def sub_sum(_dict):
@@ -130,7 +130,7 @@ class user_scan_stuff(bg_stuff):
         try:
             nfs_mounts, nfs_ignore = (set(), [])
             _last_dir = ""
-            for _main, _dirs, _files in os.walk(unicode(_start_dir)):
+            for _main, _dirs, _files in scandir.walk(unicode(_start_dir)):
                 if os.path.ismount(_main):
                     nfs_mounts.add(_main)
                     continue
