@@ -32,11 +32,12 @@ import logging_tools
 import os
 import process_tools
 import server_command
+import server_mixins
 import threading_tools
 import zmq
 
 
-class server_process(threading_tools.process_pool):
+class server_process(threading_tools.process_pool, server_mixins.network_bind_mixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
@@ -133,6 +134,7 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
+        self.network_unbind()
         for open_sock in self.socket_dict.itervalues():
             open_sock.close()
         self.__log_template.close()
@@ -184,7 +186,7 @@ class server_process(threading_tools.process_pool):
         del self.__delayed_struct[ext_id]
         self.log("sending delayed return for %s" % (unicode(srv_com)))
         srv_com.set_result(ret_str, ret_state)
-        zmq_sock = self.socket_dict["router"]
+        zmq_sock = self.main_socket
         zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)  # @UndefinedVariable
         zmq_sock.send_unicode(unicode(srv_com))
 
@@ -259,48 +261,21 @@ class server_process(threading_tools.process_pool):
             zmq_sock.send_unicode(unicode(srv_com))
 
     def _init_network_sockets(self):
-        my_0mq_id = get_server_uuid("package")
-        self.bind_id = my_0mq_id
         self.socket_dict = {}
-        # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
-        for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"], self._new_com),  # @UndefinedVariable
-        ]:
-            client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, self.bind_id)  # @UndefinedVariable
-            client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
-            client.setsockopt(zmq.RCVHWM, 256)  # @UndefinedVariable
-            client.setsockopt(zmq.SNDHWM, 256)  # @UndefinedVariable
-            client.setsockopt(zmq.BACKLOG, 1)  # @UndefinedVariable
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
-            # hm, this can be dangerous
-            # client.setsockopt(zmq.ROUTER_MANDATORY, 1)
-            conn_str = "tcp://*:%d" % (bind_port)
-            try:
-                client.bind(conn_str)
-            except zmq.ZMQError:
-                self.log(
-                    "error binding to %s{%d}: %s" % (
-                        conn_str,
-                        sock_type,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_CRITICAL)
-                client.close()
-            else:
-                self.log("bind to port %s{%d}, ID is %s" % (
-                    conn_str,
-                    sock_type,
-                    self.bind_id,
-                    ))
-                self.register_poller(client, zmq.POLLIN, target_func)  # @UndefinedVariable
-                self.socket_dict[key] = client
+        self.network_bind(
+            server_type="package",
+            bind_port=global_config["SERVER_PUB_PORT"],
+            need_all_binds=False,
+            pollin=self._new_com,
+        )
 
     def send_reply(self, t_uid, srv_com):
-        send_sock = self.socket_dict["router"]
-        send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
-        send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
+        send_sock = self.main_socket
+        try:
+            send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
+            send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
+        except:
+            self.log("error sending to {}".format(t_uid), logging_tools.LOG_LEVEL_ERROR)
 
     def _send_update(self, command="send_info", dev_list=[], **kwargs):
         send_list = dev_list or client.name_set
