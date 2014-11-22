@@ -22,15 +22,14 @@ from initat.host_monitoring import filesys_tools
 from initat.host_monitoring import limits, hm_classes
 import commands
 import logging_tools
-import net_tools
 import os
 import process_tools
 import server_command
 import stat
 import sys
 import tempfile
-import threading_tools
 import time
+
 
 class _general(hm_classes.hm_module):
     def _parse_ecd(self, in_str):
@@ -45,22 +44,26 @@ class _general(hm_classes.hm_module):
         else:
             start_str, end_str = (in_str.strip(), None)
         return (self._parse_ecd2(start_str), self._parse_ecd2(end_str))
+
     def _parse_ecd2(self, in_str):
         if in_str is None:
             return in_str
         else:
             if len(in_str) != 5 or not in_str.isdigit():
-                raise SyntaxError, "exclude_checkdate '%s' has wrong form (not WHHMM)" % (in_str)
-            weekday, hour, minute = (int(in_str[0]),
-                                     int(in_str[1:3]),
-                                     int(in_str[3:5]))
+                raise SyntaxError("exclude_checkdate '{}' has wrong form (not WHHMM)".format(in_str))
+            weekday, hour, minute = (
+                int(in_str[0]),
+                int(in_str[1:3]),
+                int(in_str[3:5])
+            )
             if weekday < 1 or weekday > 7:
-                raise SyntaxError, "exclude_checkdate '%s' has invalid weekday" % (in_str)
+                raise SyntaxError("exclude_checkdate '%s' has invalid weekday" % (in_str))
             if hour < 0 or hour > 23:
-                raise SyntaxError, "exclude_checkdate '%s' has invalid hour" % (in_str)
+                raise SyntaxError("exclude_checkdate '%s' has invalid hour" % (in_str))
             if minute < 0 or minute > 59:
-                raise SyntaxError, "exclude_checkdate '%s' has invalid minute" % (in_str)
+                raise SyntaxError("exclude_checkdate '%s' has invalid minute" % (in_str))
             return (weekday, hour, minute)
+
 
 class check_file_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -68,8 +71,9 @@ class check_file_command(hm_classes.hm_command):
         self.parser.add_argument("--mod", dest="mod_diff_time", type=int)
         self.parser.add_argument("--size", dest="min_file_size", type=int)
         self.parser.add_argument("--exclude-checkdate", dest="exclude_checkdate", type=str)
+
     def __call__(self, srv_com, cur_ns):
-        if not "arguments:arg0" in srv_com:
+        if "arguments:arg0" not in srv_com:
             srv_com.set_result("need filename", server_command.SRV_REPLY_STATE_ERROR)
         else:
             file_name = srv_com["arguments:arg0"].text.strip()
@@ -78,19 +82,23 @@ class check_file_command(hm_classes.hm_command):
                 stat_keys = [key for key in dir(f_stat) if key.startswith("st_")]
                 f_stat = dict([(key, getattr(f_stat, key)) for key in stat_keys])
                 srv_com["stat_result"] = {
-                    "file"       : file_name,
-                    "stat"       : f_stat,
-                    "local_time" : time.time()}
+                    "file": file_name,
+                    "stat": f_stat,
+                    "local_time": time.time()
+                }
             else:
-                srv_com.set_result("file '%s' not found" % (file_name), server_command.SRV_REPLY_STATE_ERROR)
+                srv_com.set_result("file '{}' not found".format(file_name), server_command.SRV_REPLY_STATE_ERROR)
+
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["stat_result"], cur_ns)
+
     def interpret_old(self, result, cur_ns):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
+
     def _interpret(self, f_dict, cur_ns):
         ret_state = limits.nag_STATE_OK
         file_stat = f_dict["stat"]
-        if type(file_stat) == type({}):
+        if type(file_stat) == dict:
             file_size = file_stat["st_size"]
             file_mtime = file_stat["st_mtime"]
         else:
@@ -133,66 +141,14 @@ class check_file_command(hm_classes.hm_command):
         return ret_state, "file %s %s" % (f_dict["file"],
                                           ", ".join(add_array))
 
-class config_subthread(threading_tools.thread_obj):
-    def __init__(self, loc_queue, logger):
-        self.__logger = logger
-        threading_tools.thread_obj.__init__(self, "config", queue_size=100, loop_function=self._run)
-        self.__loc_queue = loc_queue
-    def thread_running(self):
-        self.send_pool_message(("new_pid", os.getpid()))
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.__logger.log(lev, what)
-    def _run(self):
-        boot_server_name = "/etc/motherserver"
-        if os.path.isfile(boot_server_name):
-            try:
-                self.__boot_server = file(boot_server_name, "r").read().split("\n")[0].strip()
-            except:
-                init_message = "error unable to read motherserver from in %s" % (boot_server_name)
-                self.log("error reading motherserver from %s: %s" % (boot_server_name,
-                                                                     process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                init_message = "ok syncing config from %s" % (self.__boot_server)
-                self.log(init_message)
-        else:
-            init_message = "no motherserver defined via %s" % (boot_server_name)
-            self.log(init_message, logging_tools.LOG_LEVEL_ERROR)
-        self.__loc_queue.put(init_message)
-        # get target_sn
-        act_stat, act_out = self._net_command("get_target_sn")
-        if not act_stat:
-            act_stat, act_out = self._interpret_target_sn(act_out)
-            print act_out
-        self.get_thread_pool().stop_thread(self.name)
-    def _net_command(self, command, **args):
-        port = args.get("port", 8006)
-        timeout = args.get("timeout", 10)
-        s_time = time.time()
-        self.log("sending '%s' to %s (port %d)" % (command,
-                                                   self.__boot_server,
-                                                   port))
-        act_stat, act_out = net_tools.single_connection(mode="tcp",
-                                                        host=self.__boot_server,
-                                                        port=port,
-                                                        command=command,
-                                                        timeout=timeout,
-                                                        protocoll=1).iterate()
-        e_time = time.time()
-        self.log("  got result after %s (stat is %d)%s" % (logging_tools.get_diff_time_str(e_time - s_time),
-                                                           act_stat,
-                                                           ": %s" % (act_out) if act_stat else ""),
-                 logging_tools.LOG_LEVEL_ERROR if act_stat else logging_tools.LOG_LEVEL_OK)
-        return act_stat, act_out
-    def _interpret_target_sn(self, in_str):
-        return 1, in_str
 
-class resync_config_command(object): # s.hmb_command):
+class resync_config_command(object):  # s.hmb_command):
     def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "resync_config", **args)
+        # hm_classes.hmb_command.__init__(self, "resync_config", **args)
         self.help_str = "call /root/bin/resync_config.sh (if present)"
         self.timeout = 30
         self.net_only = True
+
     def server_call(self, cm):
         msock = None
         return self.module_info.start_resync()
@@ -341,19 +297,22 @@ class resync_config_command(object): # s.hmb_command):
                             else:
                                 ret_str = "ok %s generated" % (logging_tools.get_plural("object", len(generated)))
         return ret_str
+
     def client_call(self, result, parsed_coms):
         if result.startswith("error"):
             return limits.nag_STATE_CRITICAL, result
         else:
             return limits.nag_STATE_OK, result
 
+
 class call_script_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--at-time", dest="time", type=int, default=0)
         self.parser.add_argument("--use-at", dest="use_at", default=False, action="store_true")
+
     def __call__(self, srv_com, cur_ns):
-        if not "arguments:arg0" in srv_com:
+        if "arguments:arg0" not in srv_com:
             srv_com.set_result(
                 "call_script(): missing argument",
                 server_command.SRV_REPLY_STATE_ERROR,
@@ -389,115 +348,173 @@ class call_script_command(hm_classes.hm_command):
                 for line in map(lambda s_line: s_line.strip(), log_lines):
                     self.log("   - %s" % (line))
                 if c_stat:
-                    srv_com["result"].attrib.update({
-                        "reply" : "problem while executing %s: %s" % (script_name, ipl),
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                    srv_com.set_result(
+                        "problem while executing {}: {}".format(script_name, ipl),
+                        server_command.SRV_REPLY_STATE_ERROR
+                    )
                 else:
-                    srv_com["result"].attrib.update({
-                        "reply" : "script %s gave: %s" % (script_name, ipl),
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                    srv_com.set_result(
+                        "script {} gave: {}".format(script_name, ipl)
+                    )
             else:
-                srv_com["result"].attrib.update({
-                    "reply" : "script  %s not found" % (script_name),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com.set_result(
+                    "script {} not found".format(script_name),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
+
     def interpret(self, srv_com, cur_ns):
         return limits.nag_STATE_OK, srv_com["result"].attrib["reply"]
 
-class create_file(object): # hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "create_file", **args)
-        self.help_str = "creates a (preferable small) file"
-        self.short_client_info = "[KEY:value] file content"
-    def server_call(self, cm):
-        if len(cm) < 2:
-            return "error need at least filename and content"
-        file_content = cm.pop()
-        file_name = cm.pop()
-        if not file_name.startswith("/"):
-            return "error file_name has to start with '/'"
-        dir_name, file_name = (os.path.dirname(file_name),
-                               os.path.basename(file_name))
-        if not os.path.isdir(dir_name):
-            return "error directory '%s' does not exist" % (dir_name)
-        file_dict = {"uid"         : 0,
-                     "gid"         : 0,
-                     "overwrite"   : False,
-                     "add_newline" : False}
-        # parse keys
-        for key in cm:
-            if key.count(":"):
-                key, value = key.split(":", 1)
-            else:
-                value = True
-            if key not in file_dict:
-                return "error key '%s' not known (has to be one of: %s)" % (key,
-                                                                            ", ".join(sorted(file_dict.keys())))
-            orig_value = file_dict[key]
-            try:
-                if type(orig_value) == type(True):
-                    dest_type = "bool"
-                    value = bool(value)
-                elif type(orig_value) == type(0):
-                    dest_type = "int"
-                    value = int(value)
-                else:
-                    dest_type = "string"
-            except:
-                return "error casting value '%s' (type %s) of key %s" % (str(value),
-                                                                         dest_type,
-                                                                         key)
-            file_dict[key] = value
-        full_name = os.path.join(dir_name, file_name)
-        if os.path.exists(full_name) and not file_dict["overwrite"]:
-            return "error file '%s' already exists" % (full_name)
-        self.log("trying to create file '%s' (content is '%s'), dict has %s:" % (full_name,
-                                                                                 file_content,
-                                                                                 logging_tools.get_plural("key", len(file_dict.keys()))))
-        for key, entry in file_dict.iteritems():
-            self.log(" - %-20s: %s" % (key, str(entry)))
-        try:
-            file(full_name, "w").write("%s%s" % (file_content,
-                                                 "\n" if file_dict["add_newline"] else ""))
-        except:
-            err_str = "error creating file '%s': %s" % (full_name,
-                                                        process_tools.get_except_info())
-            self.log(err_str, logging_tools.LOG_LEVEL_ERROR)
-            return err_str
-        try:
-            os.chown(full_name, file_dict["uid"], file_dict["gid"])
-        except:
-            pass
-        return "ok created file '%s'" % (full_name)
-    def client_call(self, result, parsed_coms):
-        if result.startswith("error"):
-            return limits.nag_STATE_CRITICAL, result
-        else:
-            return limits.nag_STATE_OK, result
+
+# class create_file(object):  # hm_classes.hmb_command):
+#     def __init__(self, **args):
+#         hm_classes.hmb_command.__init__(self, "create_file", **args)
+#         self.help_str = "creates a (preferable small) file"
+#         self.short_client_info = "[KEY:value] file content"
+#
+#     def server_call(self, cm):
+#         if len(cm) < 2:
+#             return "error need at least filename and content"
+#         file_content = cm.pop()
+#         file_name = cm.pop()
+#         if not file_name.startswith("/"):
+#             return "error file_name has to start with '/'"
+#         dir_name, file_name = (os.path.dirname(file_name),
+#                                os.path.basename(file_name))
+#         if not os.path.isdir(dir_name):
+#             return "error directory '%s' does not exist" % (dir_name)
+#
+#         file_dict = {"uid"         : 0,
+#                      "gid"         : 0,
+#                      "overwrite"   : False,
+#                      "add_newline" : False}
+#         # parse keys
+#         for key in cm:
+#             if key.count(":"):
+#                 key, value = key.split(":", 1)
+#             else:
+#                 value = True
+#             if key not in file_dict:
+#                 return "error key '%s' not known (has to be one of: %s)" % (key,
+#                                                                             ", ".join(sorted(file_dict.keys())))
+#             orig_value = file_dict[key]
+#             try:
+#                 if type(orig_value) == type(True):
+#                     dest_type = "bool"
+#                     value = bool(value)
+#                 elif type(orig_value) == type(0):
+#                     dest_type = "int"
+#                     value = int(value)
+#                 else:
+#                     dest_type = "string"
+#             except:
+#                 return "error casting value '%s' (type %s) of key %s" % (str(value),
+#                                                                          dest_type,
+#                                                                          key)
+#             file_dict[key] = value
+#         full_name = os.path.join(dir_name, file_name)
+#         if os.path.exists(full_name) and not file_dict["overwrite"]:
+#             return "error file '%s' already exists" % (full_name)
+#         self.log("trying to create file '%s' (content is '%s'), dict has %s:" % (full_name,
+#                                                                                  file_content,
+#                                                                                  logging_tools.get_plural("key", len(file_dict.keys()))))
+#         for key, entry in file_dict.iteritems():
+#             self.log(" - %-20s: %s" % (key, str(entry)))
+#         try:
+#             file(full_name, "w").write("%s%s" % (file_content,
+#                                                  "\n" if file_dict["add_newline"] else ""))
+#         except:
+#             err_str = "error creating file '%s': %s" % (full_name,
+#                                                         process_tools.get_except_info())
+#             self.log(err_str, logging_tools.LOG_LEVEL_ERROR)
+#             return err_str
+#         try:
+#             os.chown(full_name, file_dict["uid"], file_dict["gid"])
+#         except:
+#             pass
+#         return "ok created file '%s'" % (full_name)
+#     def client_call(self, result, parsed_coms):
+#         if result.startswith("error"):
+#             return limits.nag_STATE_CRITICAL, result
+#         else:
+#             return limits.nag_STATE_OK, result
 
 
 class create_dir_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.create_dir(srv_com, self.log)
 
+
 class remove_dir_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.remove_dir(srv_com, self.log)
+
 
 class get_dir_tree_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_dir_tree(srv_com, self.log)
 
+
 class get_file_content_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.get_file_content(srv_com, self.log)
+
 
 class set_file_content_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         filesys_tools.set_file_content(srv_com, self.log)
 
+
+class check_mount_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        self.parser.add_argument("--type", default="nfs", type=str)
+
+    def __call__(self, srv_com, cur_ns):
+        if len(cur_ns.arguments) != 1:
+            srv_com.set_result(
+                "missing argument",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+        else:
+            path_name = cur_ns.arguments[0]
+            _dict = {_entry[1]: _entry for _entry in [_line.strip().split() for _line in file("/etc/mtab", "r").readlines() if _line.strip()]}
+            if path_name in _dict:
+                srv_com["mpinfo"] = _dict[path_name]
+            else:
+                srv_com.set_result(
+                    "path '{}' not found in mtab".format(path_name),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
+
+    def interpret(self, srv_com, cur_ns):
+        mount_info = srv_com["*mpinfo"]
+        # target_type
+        _errors, _warnings = ([], [])
+        t_type = cur_ns.type
+        _ret_f = ["from {}".format(mount_info[0])]
+        if mount_info[2] != t_type:
+            _warnings.append("type differs: {} != {}".format(mount_info[2], t_type))
+        else:
+            _ret_f.append("type is {}".format(t_type))
+        if _errors:
+            ret_state = limits.nag_STATE_CRITICAL
+            _ret_f.extend(_errors)
+        elif _warnings:
+            ret_state = limits.nag_STATE_WARNING
+            _ret_f.extend(_warnings)
+        else:
+            ret_state = limits.nag_STATE_OK
+        return ret_state, "mountpoint {}: {}".format(
+            mount_info[1],
+            ", ".join(_ret_f)
+        )
+
+
 class check_dir_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
     def __call__(self, srv_com, cur_ns):
         if len(cur_ns.arguments) != 1:
             srv_com.set_result(
@@ -512,18 +529,20 @@ class check_dir_command(hm_classes.hm_command):
                 dir_name = os.readlink(dir_name)
             if os.path.isdir(dir_name):
                 f_stat = os.stat(dir_name)
-                srv_com["result"].append(srv_com.builder(
-                    "dir_stat",
-                    directory=dir_name,
-                    local_time="%d" % (time.time()),
-                    link_followed="1" if link_followed else "0",
-                ))
-                srv_com["result:dir_result:stat"] = dict([(key, getattr(stat, key)) for key in dir(stat) if key.startswith("ST")])
+                srv_com["result"].append(
+                    srv_com.builder(
+                        "dir_stat",
+                        directory=dir_name,
+                        local_time="{}".format(time.time()),
+                        link_followed="1" if link_followed else "0",
+                    )
+                )
+                srv_com["result:dir_result:stat"] = {key: getattr(stat, key) for key in dir(f_stat) if key.startswith("ST")}
             else:
-                srv_com["result"].attrib.update({
-                    "reply" : "directory %s not found" % (dir_name),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-    def interpret(self, srv_com, cur_ns):
-        f_stat = srv_com["result:dir_result"]
-        return limits.nag_STATE_OK, "dir %s exists" % (srv_com["result:dir_stat"].attrib["directory"])
+                srv_com.set_result(
+                    "directory {} not found".format(dir_name),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
 
+    def interpret(self, srv_com, cur_ns):
+        return limits.nag_STATE_OK, "dir {} exists".format(srv_com["result:dir_stat"].attrib["directory"])

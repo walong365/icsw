@@ -72,7 +72,12 @@ def client_code(global_config):
                             int(error_result.attrib["state"]),
                             error_result.attrib["reply"])
                     else:
-                        ret_state, ret_str = com_struct.interpret(result, cur_ns)
+                        if hasattr(com_struct, "interpret"):
+                            ret_state, ret_str = com_struct.interpret(result, cur_ns)
+                        else:
+                            _result = result.xpath(".//ns:result", smart_strings=False)[0]
+                            ret_str = _result.attrib["reply"]
+                            ret_state = server_command.srv_reply_to_nag_state(int(_result.attrib["state"]))
                 else:
                     ret_str, ret_state = result.get_log_tuple()
                     if ret_state in [server_command.SRV_REPLY_STATE_CRITICAL, server_command.SRV_REPLY_STATE_ERROR, server_command.SRV_REPLY_STATE_UNSET]:
