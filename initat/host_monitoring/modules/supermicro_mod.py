@@ -75,7 +75,7 @@ class smcipmi_struct(hm_classes.subprocess_struct):
         hm_classes.subprocess_struct.__init__(
             self,
             srv_com,
-            "%s %s %s %s %s" % (
+            "{} {} {} {} {}".format(
                 SMCIPMI_BIN,
                 target_host,
                 login,
@@ -89,7 +89,10 @@ class smcipmi_struct(hm_classes.subprocess_struct):
     def process(self):
         if self.run_info["result"]:
             self.srv_com.set_result(
-                "error ({:d}): {}".format(self.run_info["result"], self.read().strip()),
+                "error ({:d}): {}".format(
+                    self.run_info["result"],
+                    self.read().strip()
+                ),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         else:
