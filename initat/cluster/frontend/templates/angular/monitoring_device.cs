@@ -59,4 +59,3 @@ monitoring_device_module.directive("mondevicerow", ($templateCache, $compile) ->
 {% endinlinecoffeescript %}
 
 </script>
-

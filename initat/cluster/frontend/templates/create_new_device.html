@@ -99,7 +99,7 @@
                     </div>
                 </div>
                 <div class="form-group" ng-show="any_peers()">
-                    <label class="control-label col-md-5">Connect to</label>
+                    <label class="control-label col-md-5">Connect to {{ device_data.peer }}</label>
                     <div class="controls col-md-6">
                         <select name="peer" class="form-control" ng-model="device_data.peer" ng-options="value.idx as value.info group by value.device_group_name for value in all_peers"></select>
                     </div>
@@ -152,9 +152,10 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
             {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
             {"short" : "peers", "url" : "{% url 'rest:netdevice_peer_list' %}" },
-            {"short" : "mon_ext_host"    , "url" : "{% url 'rest:mon_ext_host_list' %}"}
+            {"short" : "mon_ext_host", "url" : "{% url 'rest:mon_ext_host_list' %}"}
         ]
         $scope.rest_data = {}
+        $scope.all_peers = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
         $scope.reload = () ->
             $.blockUI()
             wait_list = []
@@ -172,10 +173,10 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
                 for entry in $scope.rest_data.peers
                     entry.info = "#{entry.devname} on #{entry.device_name}"
                 $scope.peers = (entry for entry in $scope.rest_data.peers when entry.routing)
-	            r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
-	            for entry in $scope.peers 
-	                r_list.push(entry)
-	            $scope.all_peers = r_list
+                r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
+                for entry in $scope.peers 
+                    r_list.push(entry)
+                $scope.all_peers = r_list
                 $.unblockUI()
             )
         $scope.get_image_src = () ->
