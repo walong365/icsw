@@ -29,7 +29,7 @@ import os
 import process_tools
 import server_command
 import stat
-import subprocess
+import subprocess  # @UnusedImport
 import threading_tools
 import time
 import zmq
