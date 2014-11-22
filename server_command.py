@@ -54,12 +54,28 @@ SRV_REPLY_STATE_CRITICAL = 3
 SRV_REPLY_STATE_UNSET = 4
 
 
+# copy from limits
+nag_STATE_CRITICAL = 2
+nag_STATE_WARNING = 1
+nag_STATE_OK = 0
+nag_STATE_UNKNOWN = -1
+nag_STATE_DEPENDENT = -2
+
+
 def srv_reply_to_log_level(srv_reply_state):
     return {
         SRV_REPLY_STATE_OK: logging_tools.LOG_LEVEL_OK,
         SRV_REPLY_STATE_WARN: logging_tools.LOG_LEVEL_WARN,
         SRV_REPLY_STATE_ERROR: logging_tools.LOG_LEVEL_ERROR,
     }.get(srv_reply_state, logging_tools.LOG_LEVEL_ERROR)
+
+
+def srv_reply_to_nag_state(srv_reply_state):
+    return {
+        SRV_REPLY_STATE_OK: nag_STATE_OK,
+        SRV_REPLY_STATE_WARN: nag_STATE_WARNING,
+        SRV_REPLY_STATE_ERROR: nag_STATE_CRITICAL,
+    }.get(srv_reply_state, nag_STATE_CRITICAL)
 
 
 def log_level_to_srv_reply(log_level):
