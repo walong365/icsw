@@ -43,6 +43,7 @@ import pprint
 import process_tools
 import re
 import server_command
+import server_mixins
 import socket
 import threading_tools
 import time
@@ -53,7 +54,7 @@ import zmq
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(threading_tools.process_pool, threading_tools.operational_error_mixin):
+class server_process(threading_tools.process_pool, server_mixins.operational_error_mixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]

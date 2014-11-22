@@ -20,19 +20,20 @@
 """ aggregation part of rrd-grapher service """
 
 from django.db import connection
-from initat.collectd.config import global_config
 from initat.cluster.backbone.models import device_group
+from initat.collectd.config import global_config
+from lxml import etree
+from lxml.builder import E
+import json
 import logging_tools
 import memcache
-import re
-import process_tools
 import pprint  # @UnusedImport
-import json
+import process_tools
+import re
+import server_mixins
 import threading_tools
 import time
 import zmq
-from lxml import etree
-from lxml.builder import E
 
 
 class ag_struct(object):
@@ -445,7 +446,7 @@ class ag_obj(object):
         return ag_sink(action=self.action)
 
 
-class aggregate_process(threading_tools.process_obj, threading_tools.operational_error_mixin):
+class aggregate_process(threading_tools.process_obj, server_mixins.operational_error_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
