@@ -834,7 +834,7 @@ class _general(hm_classes.hm_module):
                                     "hextype": "0x00",
                                     "info": ""
                                 }
-                                part_lut["/dev/%s" % (part_name)] = (dev_name, "%d" % (part_num))
+                                part_lut["/dev/{}".format(part_name)] = (dev_name, "{:d}".format(part_num))
                     # automount mointpoints
                     auto_mps = []
                     # drop unneeded entries
@@ -861,7 +861,7 @@ class _general(hm_classes.hm_module):
                             # already touched
                             continue
                         parts_found.append(part)
-                        if fstype in ["subfs", "autofs"]:
+                        if fstype in ["subfs", "autofs", "cifs"]:
                             continue
                         if part == "rootfs" or part.startswith("automount(") or part.count(":"):
                             if part.startswith("automount("):
@@ -932,14 +932,17 @@ class _general(hm_classes.hm_module):
                                         }
                                     else:
                                         if "lv" in self.local_lvm_info.lv_dict:
-                                            act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
-                                            act_lv["mount_options"] = {
-                                                "mountpoint": mp,
-                                                "fstype": fstype,
-                                                "options": opts,
-                                                "dump": dump,
-                                                "fsck": fsck
-                                            }
+                                            if lv_name in self.local_lvm_info.lv_dict:
+                                                act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
+                                                act_lv["mount_options"] = {
+                                                    "mountpoint": mp,
+                                                    "fstype": fstype,
+                                                    "options": opts,
+                                                    "dump": dump,
+                                                    "fsck": fsck
+                                                }
+                                            else:
+                                                self.log("lv_name '{}' not found in lv_dict".format(lv_name), logging_tools.LOG_LEVEL_CRITICAL)
                             else:
                                 dev, part_num = part_lut[part]
                                 dev_dict[dev][part_num]["mountpoint"] = mp
