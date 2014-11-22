@@ -558,7 +558,13 @@ class special_disc(special_base):
                             )
                         )
                 else:
-                    self.log("Diskcheck on host %s requested an illegal partition %s -> skipped" % (self.host["name"], act_part), logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "Diskcheck on host {} requested an illegal partition {} -> skipped".format(
+                            self.host["name"],
+                            act_part
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
         # LVM-partitions
         for lvm_part in lvm_lv.objects.filter(Q(lvm_vg__partition_table=self.host.act_partition_table)).select_related("lvm_vg").order_by("name"):
             if lvm_part.mountpoint:
@@ -828,5 +834,5 @@ class special_eonstor(special_base):
                     arg4="{:d}".format(hint.value_int),
                 )
             )
-        self.log("sc_array has %s" % (logging_tools.get_plural("entry", len(sc_array))))
+        self.log("sc_array has {}".format(logging_tools.get_plural("entry", len(sc_array))))
         return sc_array
