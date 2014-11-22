@@ -37,6 +37,7 @@ import re
 import rrdtool  # @UnresolvedImport
 import select
 import server_command
+import server_mixins
 import socket
 import stat
 import threading_tools
@@ -1018,7 +1019,7 @@ class RRDGraph(object):
         return graph_list
 
 
-class graph_process(threading_tools.process_obj, threading_tools.operational_error_mixin):
+class graph_process(threading_tools.process_obj, server_mixins.operational_error_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

@@ -34,6 +34,7 @@ import logging_tools
 import os
 import process_tools
 import server_command
+import server_mixins
 import stat
 import threading_tools
 import time
@@ -44,7 +45,7 @@ except ImportError:
     rrdtool = None
 
 
-class server_process(threading_tools.process_pool, threading_tools.operational_error_mixin):
+class server_process(threading_tools.process_pool, server_mixins.operational_error_mixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]
