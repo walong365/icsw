@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+# arch!/usr/bin/python-init -Otu
 #
 # Copyright (c) 2007,2008 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
@@ -47,20 +47,22 @@ class my_opt_parser(optparse.OptionParser):
             is_64_bit = False
         self._read_hpl_versions()
         target_dir = "/opt/cluster/hpl/"
-        self.set_defaults(fcompiler="GNU",
-                          hpl_version=self.highest_version,
-                          use_64_bit=is_64_bit,
-                          target_dir=target_dir,
-                          include_log=False,
-                          fcompiler_path="NOT_SET",
-                          mpi_path="NOT SET",
-                          goto_lib="NOT SET",
-                          ignore_libgoto=False,
-                          ignore_mpi=False,
-                          ignore_compiler=False,
-                          extra_settings="",
-                          verbose=False,
-                          arch="")
+        self.set_defaults(
+            fcompiler="GNU",
+            hpl_version=self.highest_version,
+            use_64_bit=is_64_bit,
+            target_dir=target_dir,
+            include_log=False,
+            fcompiler_path="NOT_SET",
+            mpi_path="NOT SET",
+            goto_lib="NOT SET",
+            ignore_libgoto=False,
+            ignore_mpi=False,
+            ignore_compiler=False,
+            extra_settings="",
+            verbose=False,
+            arch=self.mach_arch
+        )
         fc_choices = sorted(["GNU",
                              "INTEL",
                              "PATHSCALE"])
