@@ -125,16 +125,22 @@ class hp_health_bg(hm_classes.subprocess_struct):
     def __init__(self, log_com, srv_com, hp_com):
         self.__log_com = log_com
         self.__hp_com = hp_com
-        hm_classes.subprocess_struct.__init__(self, srv_com, ["%s -s '%s'" % (
-            HPASM_BIN,
-            hp_com.Meta.command,
-            )])
+        hm_classes.subprocess_struct.__init__(
+            self,
+            srv_com,
+            [
+                "{} -s '{}'".format(
+                    HPASM_BIN,
+                    hp_com.Meta.command,
+                )
+            ]
+        )
 
     def process(self):
         self.__hp_com.process(self)
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[hph] %s" % (what), level)
+        self.__log_com("[hph] {}".format(what), level)
 
 
 class hp_dimm_command(hm_classes.hm_command):
