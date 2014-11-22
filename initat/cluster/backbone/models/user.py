@@ -752,7 +752,7 @@ class user(models.Model):
             ("rms_operator", "change RMS settings", True),
         )
         # foreign keys to ignore
-        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "login_history"]
+        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "login_history", "user_quota_setting"]
 
     class Meta:
         db_table = u'user'
@@ -927,6 +927,7 @@ class group(models.Model):
         permissions = (
             ("group_admin", "Group administrator", True),
         )
+        fk_ignore_list = ["group_quota_setting"]
 
     class Meta:
         db_table = u'ggroup'
