@@ -1,0 +1,118 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2001-2007,2009-2014 Andreas Lang-Nevyjel, init.at
+#
+# this file is part of python-modules-base
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" usefull server mixins """
+
+import threading_tools
+import logging_tools
+from initat.cluster.backbone.routing import get_server_uuid
+import cluster_location
+import process_tools
+import zmq
+
+
+# exception mixin
+class operational_error_mixin(threading_tools.exception_handling_base):
+    def __init__(self):
+        self.register_exception("OperationalError", self._op_error)
+
+    def _op_error(self, info):
+        try:
+            from django.db import connection
+        except:
+            pass
+        else:
+            self.log("operational error, closing db connection", logging_tools.LOG_LEVEL_ERROR)
+            try:
+                connection.close()
+            except:
+                pass
+
+
+class network_bind_mixin(object):
+    def network_bind(self, **kwargs):
+        _need_all_binds = kwargs.get("need_all_binds", False)
+        pollin = kwargs.get("pollin", None)
+        bind_port = kwargs["bind_port"]
+        self.bind_id = get_server_uuid(kwargs["server_type"])
+        # device recognition
+        dev_r = cluster_location.device_recognition()
+        # virtual sockets
+        self.virtual_sockets = []
+        # main sockets
+        self.main_socket = None
+        # create bind list
+        if dev_r.device_dict:
+            # complex bind
+            master_bind_list = [
+                (
+                    True,
+                    [
+                        "tcp://{}:{:d}".format(_local_ip, bind_port) for _local_ip in dev_r.local_ips
+                    ],
+                    self.bind_id
+                )
+            ] + [
+                (
+                    False,
+                    [
+                        "tcp://{}:{:d}".format(_virtual_ip, bind_port) for _virtual_ip in _ip_list
+                    ],
+                    # ignore local device
+                    get_server_uuid("server", _dev.uuid)) for _dev, _ip_list in dev_r.ip_r_lut.iteritems() if _dev.pk != dev_r.device.pk
+            ]
+        else:
+            # simple bind
+            master_bind_list = [
+                (True, ["tcp://*:{:d}".format(bind_port)], self.bind_id)
+            ]
+        _errors = []
+        for master_bind, bind_list, bind_id in master_bind_list:
+            client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=bind_id)
+            for _bind_str in bind_list:
+                try:
+                    client.bind(_bind_str)
+                except zmq.ZMQError:
+                    self.log(
+                        "error binding to {}: {}".format(
+                            _bind_str,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                    _errors.append(_bind_str)
+                else:
+                    self.log("bound to {} with id {}".format(_bind_str, bind_id))
+                    if pollin:
+                        self.register_poller(client, zmq.POLLIN, pollin)  # @UndefinedVariable
+            if master_bind:
+                self.main_socket = client
+            else:
+                self.virtual_sockets.append(client)
+        if _errors and _need_all_binds:
+            raise ValueError("{} went wrong: {}".format(logging_tools.get_plural("bind", len(_errors)), ", ".join(_errors)))
+
+    def network_unbind(self):
+        if self.main_socket:
+            self.log("closing socket")
+            self.main_socket.close()
+        for _virt in self.virtual_sockets:
+            self.log("closing virtual socket")
+            _virt.close()
+        self.virtual_sockets = []

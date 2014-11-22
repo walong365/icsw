@@ -55,24 +55,6 @@ class exception_handling_base(object):
     pass
 
 
-# exception mixin
-class operational_error_mixin(exception_handling_base):
-    def __init__(self):
-        self.register_exception("OperationalError", self._op_error)
-
-    def _op_error(self, info):
-        try:
-            from django.db import connection
-        except:
-            pass
-        else:
-            self.log("operational error, closing db connection", logging_tools.LOG_LEVEL_ERROR)
-            try:
-                connection.close()
-            except:
-                pass
-
-
 # Exceptions
 class my_error(Exception):
     def __init__(self, args):
