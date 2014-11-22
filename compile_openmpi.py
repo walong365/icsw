@@ -63,21 +63,118 @@ class my_opt_parser(argparse.ArgumentParser):
                              "PGI",
                              "PATHSCALE"])
         self.cpu_id = cpu_database.get_cpuid()
-        self.add_argument("-c", type=str, dest="fcompiler", help="Set Compiler type [%(default)s]", action="store", choices=fc_choices, default="GNU")
-        self.add_argument("--fpath", type=str, dest="fcompiler_path", help="Compiler Base Path, for instance /opt/intel/compiler-9.1 [%(default)s]", default="NOT_SET")
-        self.add_argument("-o", type=str, dest="mpi_version", help="Choose MPI Version [%(default)s]", action="store", choices=self.version_dict.keys(), default=self.highest_version)
-        self.add_argument("-d", type=str, dest="target_dir", help="Sets target directory [%(default)s]", default=target_dir, action="store")
-        self.add_argument("--extra", type=str, dest="extra_settings", help="Sets extra options for configure, i.e. installation directory and package name [%(default)s]", action="store", default="")
-        self.add_argument("--extra-filename", type=str, dest="extra_filename", help="Sets extra filename string [%(default)s]", action="store", default="")
-        self.add_argument("--arch", type=str, dest="arch", help="Set package architecture [%(default)s]", default={"i686": "i586"}.get(os.uname()[4], os.uname()[4]))
-        self.add_argument("--log", dest="include_log", help="Include log of make-command in README [%(default)s]", action="store_true", default=False)
-        self.add_argument("-v", dest="verbose", help="Set verbose level [%(default)s]", action="store_true", default=False)
-        self.add_argument("--release", dest="release", type=str, help="Set release [%(default)s]", default="1")
-        self.add_argument("--module-dir", dest="module_dir", type=str, default="/opt/cluster/Modules/modulefiles", help="target dir for module file [%(default)s]")
-        self.add_argument("--without-mpi-selecter", dest="mpi_selector", default=True, action="store_false", help="disable support for MPI-Selector [%(default)s]")
-        self.add_argument("--without-module", dest="module_file", default=True, action="store_false", help="disable support for modules [%(default)s]")
-        self.add_argument("--without-hwloc", dest="hwloc", default=True, action="store_false", help="disable hwloc support [%(default)s]")
-        self.add_argument("--no-parallel-make", dest="pmake", default=True, action="store_false", help="disable parallel make [%(default)s]")
+        self.add_argument(
+            "-c",
+            type=str,
+            dest="fcompiler",
+            help="Set Compiler type [%(default)s]",
+            action="store",
+            choices=fc_choices,
+            default="GNU"
+        )
+        self.add_argument(
+            "--fpath",
+            type=str,
+            dest="fcompiler_path",
+            help="Compiler Base Path, for instance /opt/intel/compiler-9.1 [%(default)s]",
+            default="NOT_SET"
+        )
+        self.add_argument(
+            "-o",
+            type=str,
+            dest="mpi_version",
+            help="Choose MPI Version [%(default)s]",
+            action="store",
+            choices=self.version_dict.keys(),
+            default=self.highest_version
+        )
+        self.add_argument(
+            "-d",
+            type=str,
+            dest="target_dir",
+            help="Sets target directory [%(default)s]",
+            default=target_dir,
+            action="store"
+        )
+        self.add_argument(
+            "--extra",
+            type=str,
+            dest="extra_settings",
+            help="Sets extra options for configure, i.e. installation directory and package name [%(default)s]",
+            action="store",
+            default=""
+        )
+        self.add_argument(
+            "--extra-filename",
+            type=str,
+            dest="extra_filename",
+            help="Sets extra filename string [%(default)s]",
+            action="store",
+            default=""
+        )
+        self.add_argument(
+            "--arch",
+            type=str,
+            dest="arch",
+            help="Set package architecture [%(default)s]",
+            default={"i686": "i586"}.get(os.uname()[4], os.uname()[4])
+        )
+        self.add_argument(
+            "--log",
+            dest="include_log",
+            help="Include log of make-command in README [%(default)s]",
+            action="store_true",
+            default=False
+        )
+        self.add_argument(
+            "-v",
+            dest="verbose",
+            help="Set verbose level [%(default)s]",
+            action="store_true",
+            default=False
+        )
+        self.add_argument(
+            "--release",
+            dest="release",
+            type=str,
+            help="Set release [%(default)s]",
+            default="1"
+        )
+        self.add_argument(
+            "--module-dir",
+            dest="module_dir",
+            type=str,
+            default="/opt/cluster/Modules/modulefiles",
+            help="target dir for module file [%(default)s]"
+        )
+        self.add_argument(
+            "--without-mpi-selecter",
+            dest="mpi_selector",
+            default=True,
+            action="store_false",
+            help="disable support for MPI-Selector [%(default)s]"
+        )
+        self.add_argument(
+            "--without-module",
+            dest="module_file",
+            default=True,
+            action="store_false",
+            help="disable support for modules [%(default)s]"
+        )
+        self.add_argument(
+            "--without-hwloc",
+            dest="hwloc",
+            default=True,
+            action="store_false",
+            help="disable hwloc support [%(default)s]"
+        )
+        self.add_argument(
+            "--no-parallel-make",
+            dest="pmake",
+            default=True,
+            action="store_false",
+            help="disable parallel make [%(default)s]"
+        )
         if is_64_bit:
             # add option for 32-bit goto if machine is NOT 32 bit
             self.add_argument("--32", dest="use_64_bit", help="Set 32-Bit build [%(default)s]", action="store_false", default=True)
@@ -463,7 +560,7 @@ class mpi_builder(object):
             arch=self.parser.options.arch,
             description="MPI via {}".format(self.parser.mode),
             summary="{}".format(self.parser.mode),
-            )
+        )
         new_p = rpm_build_tools.build_package(dummy_args)
         new_p["inst_options"] = " -p "
         # set flag
