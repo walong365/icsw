@@ -1,6 +1,6 @@
 # arch!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007,2008 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2007-2008,2014 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of cbc-tools
 #
@@ -67,17 +67,81 @@ class my_opt_parser(optparse.OptionParser):
                              "INTEL",
                              "PATHSCALE"])
         self.cpu_id = cpu_database.get_cpuid()
-        self.add_option("-c", type="choice", dest="fcompiler", help="Set Compiler type, options are %s" % (", ".join(fc_choices)), action="store", choices=fc_choices)
-        self.add_option("--fpath", type="string", dest="fcompiler_path", help="Compiler Base Path, for instance /opt/intel/compiler-9.1")
-        self.add_option("--mpi-path", type="string", dest="mpi_path", help="MPI Base Path, for instance /opt/libs/openmpi-1.2.2-INTEL-9.1.045-32/")
-        self.add_option("--goto-lib", type="string", dest="goto_lib", help="libgoto to use, for instance /opt/libs/libgoto/libgoto-0_64k2M0_6.14.8.10-32-r1.13.a [%default]", default="")
-        self.add_option("--mkl-lib", type="string", dest="mkl_lib", help="directory of mkl use, for instance /opt/intel/Compiler/11.1/046/mkl/ [%default]", default="")
-        self.add_option("-H", type="choice", dest="hpl_version", help="Choose HPL Version, possible values are %s" % (", ".join(self.version_dict.keys())), action="store", choices=self.version_dict.keys())
-        self.add_option("--fflags", type="string", dest="compiler_fflags", help="Set flags for Fortran compiler", default="-fomit-frame-pointer -O3 -funroll-loops -W -Wall")
-        self.add_option("--cflags", type="string", dest="compiler_cflags", help="Set flags for C compiler", default="-fomit-frame-pointer -O3 -funroll-loops -W -Wall")
-        self.add_option("-d", type="string", dest="target_dir", help="Sets target directory, default is %s" % (target_dir), action="store")
-        self.add_option("--arch", type="str", dest="arch", help="Set package architecture")
-        self.add_option("--log", dest="include_log", help="Include log of make-command in README", action="store_true")
+        self.add_option(
+            "-c",
+            type="choice",
+            dest="fcompiler",
+            help="Set Compiler type, options are %s" % (", ".join(fc_choices)),
+            action="store",
+            choices=fc_choices
+        )
+        self.add_option(
+            "--fpath",
+            type="string",
+            dest="fcompiler_path",
+            help="Compiler Base Path, for instance /opt/intel/compiler-9.1"
+        )
+        self.add_option(
+            "--mpi-path",
+            type="string",
+            dest="mpi_path",
+            help="MPI Base Path, for instance /opt/libs/openmpi-1.2.2-INTEL-9.1.045-32/"
+        )
+        self.add_option(
+            "--goto-lib",
+            type="string",
+            dest="goto_lib",
+            help="libgoto to use, for instance /opt/libs/libgoto/libgoto-0_64k2M0_6.14.8.10-32-r1.13.a [%default]",
+            default=""
+        )
+        self.add_option(
+            "--mkl-lib",
+            type="string",
+            dest="mkl_lib",
+            help="directory of mkl use, for instance /opt/intel/Compiler/11.1/046/mkl/ [%default]",
+            default=""
+        )
+        self.add_option(
+            "-H",
+            type="choice",
+            dest="hpl_version",
+            help="Choose HPL Version, possible values are %s" % (", ".join(self.version_dict.keys())),
+            action="store",
+            choices=self.version_dict.keys()
+        )
+        self.add_option(
+            "--fflags",
+            type="string",
+            dest="compiler_fflags",
+            help="Set flags for Fortran compiler",
+            default="-fomit-frame-pointer -O3 -funroll-loops -W -Wall"
+        )
+        self.add_option(
+            "--cflags",
+            type="string",
+            dest="compiler_cflags",
+            help="Set flags for C compiler",
+            default="-fomit-frame-pointer -O3 -funroll-loops -W -Wall"
+        )
+        self.add_option(
+            "-d",
+            type="string",
+            dest="target_dir",
+            help="Sets target directory, default is %s" % (target_dir),
+            action="store"
+        )
+        self.add_option(
+            "--arch",
+            type="str",
+            dest="arch",
+            help="Set package architecture"
+        )
+        self.add_option(
+            "--log",
+            dest="include_log",
+            help="Include log of make-command in README",
+            action="store_true"
+        )
         self.add_option("--ignore-goto", dest="ignore_libgoto", help="Ignore Version of libgoto", action="store_true")
         self.add_option("--ignore-mpi", dest="ignore_mpi", help="Ignore Version of libmpi", action="store_true")
         self.add_option("--ignore-compiler", dest="ignore_compiler", help="Ignore Version of compiler", action="store_true")
@@ -300,7 +364,10 @@ class hpl_builder(object):
         return success
 
     def _generate_makefile(self):
-        mfile = "%s/hpl/Make.%s" % (self.tempdir, self.cpu_arch)
+        mfile = os.path.join(
+            self._hpl_dir,
+            "Make.{}".format(self.cpu_arch)
+        )
         make_list = [
             ("SHELL", "/bin/sh"),
             ("CD", "cd"),
@@ -310,7 +377,7 @@ class hpl_builder(object):
             ("RM", "/bin/rm -f"),
             ("TOUCH", "touch"),
             ("ARCH", self.cpu_arch),
-            ("TOPdir", "%s/hpl" % (self.tempdir)),
+            ("TOPdir", self._hpl_dir),
             ("INCdir", "$(TOPdir)/include"),
             ("BINdir", "$(TOPdir)/bin/$(ARCH)"),
             ("LIBdir", "$(TOPdir)/lib/$(ARCH)"),
@@ -355,7 +422,9 @@ class hpl_builder(object):
 
     def _compile_it(self):
         act_dir = os.getcwd()
-        os.chdir("%s/hpl" % (self.tempdir))
+        self._hpl_dir_name = os.listdir(self.tempdir)[0]
+        self._hpl_dir = os.path.join(self.tempdir, self._hpl_dir_name)
+        os.chdir(self._hpl_dir)
         print "Modifying environment"
         for env_name, env_value in self.parser.compiler_dict.iteritems():
             os.environ[env_name] = env_value
@@ -434,14 +503,23 @@ class hpl_builder(object):
         package_name, package_version, package_release = (self.parser.package_name,
                                                           self.parser.options.hpl_version,
                                                           "1")
-        hpl_base_dir = "%s/hpl/bin/%s" % (self.tempdir, self.cpu_arch)
+        hpl_base_dir = os.path.join(
+            self._hpl_dir,
+            "bin",
+            self.cpu_arch
+        )
         xhpl_file_name = "%s/xhpl" % (hpl_base_dir)
         if not os.path.isfile(xhpl_file_name):
             print "Cannot find %s" % (xhpl_file_name)
             success = False
         else:
             file("%s/xhpl" % (self.tempdir_2), "wb").write(file(xhpl_file_name, "rb").read())
-            file("%s/Make.%s" % (self.tempdir_2, self.parser.package_name), "wb").write(file("%s/hpl/Make.%s" % (self.tempdir, self.cpu_arch), "rb").read())
+            file("%s/Make.%s" % (self.tempdir_2, self.parser.package_name), "wb").write(
+                file(
+                    os.path.join(self._hpl_dir, "Make.{}".format(self.cpu_arch)),
+                    "rb"
+                ).read()
+            )
             file("%s/HPL.dat" % (self.tempdir_2), "wb").write(file("%s/HPL.dat" % (hpl_base_dir), "rb").read())
             os.chmod("%s/xhpl" % (self.tempdir_2), 0775)
             dummy_args = argparse.Namespace(
