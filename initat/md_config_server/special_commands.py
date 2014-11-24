@@ -584,11 +584,14 @@ class special_disc(special_base):
         # manual setting-dict for df
         sc_array = []
         for info_name, p_name, w_lev, c_lev in part_list:
-            self.log("  P: %-40s: %-40s (w: %-5s, c: %-5s)" % (
-                info_name,
-                p_name,
-                w_lev or "N/S",
-                c_lev or "N/S"))
+            self.log(
+                "  P: %-40s: %-40s (w: %-5s, c: %-5s)" % (
+                    info_name,
+                    p_name,
+                    w_lev or "N/S",
+                    c_lev or "N/S"
+                )
+            )
             sc_array.append(self.get_arg_template(info_name, arg3=p_name, w=w_lev, c=c_lev))
         return sc_array
 
