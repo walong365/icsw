@@ -132,7 +132,6 @@ class backup_process(threading_tools.process_obj):
                 "contenttypes",
                 "sessions",
                 "sites",
-                "messages",
                 "admin",
                 "backbone",
             ]
