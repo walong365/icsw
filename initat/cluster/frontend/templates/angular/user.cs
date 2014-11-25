@@ -48,41 +48,70 @@ vncwebviewer_template = """
 <table ng-if="(!show_single_vdus) && ips_loaded">
     <tr ng-repeat="vdus in virtual_desktop_sessions">
         <td>
-            <table>
-                <tr>
-                    <td colspan="2">
-                        <h4 class="ng-binding">
-                            {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
-                        </h4>
-                   </td>
-                </tr>
-                <tr>
-                    <td>
-                        <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
-                        <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
-                            {{vdus.viewer_cmd_line}}
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td>
-                          <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">open in new tab</button>
-                    </td>
-                    <td colspan="2">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h4 class="ng-binding panel-title">
+                        {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
+                    </h4>
+                </div>
+                <div class="panel-body">
 
-                        <accordion close-others="false">
-                           <accordion-group is-open="web_viewer">
-                               <accordion-heading>
-                                   Web viewer
-                                   <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
-                               </accordion-heading>
-                               <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
-                           </accordion-group>
-                           </accordion>
+                    <table class="table">
+                        <tr>
+                            <td>Address</td>
+                            <td>{{ips_for_devices[vdus.device]}}</td>
+                        </tr>
+                        <tr>
+                            <td>Port</td>
+                            <td>{{ vdus.effective_port }}</td>
+                        </tr>
+                        <tr>
+                            <td>Password</td>
+                            <td>{{ vdus.password }}</td>
+                        </tr>
+                        <tr>
+                            <td>Command line</td>
+                            <td>{{ vdus.viewer_cmd_line }}</td>
+                        </tr>
+
+                        <tr>
+                            <td colspan="2">
+                                <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">open in new tab</button>
+                            </td>
+                        </tr>
+                    </table>
+                    <table>
+                    <!--
+                        <tr>
+                            <td>
+                                <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
+                                <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
+                                    {{vdus.viewer_cmd_line}}
+                                </div>
+                            </td>
+                        </tr>
+                    -->
+                        <tr>
+                            <td>
+                            </td>
+                            <td colspan="2">
+
+                                <accordion close-others="false">
+                                   <accordion-group is-open="web_viewer">
+                                       <accordion-heading>
+                                           Web viewer
+                                           <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
+                                       </accordion-heading>
+                                       <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
+                                   </accordion-group>
+                                   </accordion>
       
-                    </td>
-                </tr>
-            </table
+                            </td>
+                        </tr>
+                    </table>
+
+                </div>
+           </div>
       </td>
     </tr>
 </table>
@@ -1475,7 +1504,6 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 window.open(url + "?vdus_index="+vdus.idx)
             scope.show_viewer_command_line = (vdus) ->
                 vdus.show_viewer_command_line = !vdus.show_viewer_command_line
-                vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, scope.ips_for_devices[vdus.device]) 
             scope.retrieve_device_ip = (index) ->
                 # set some dummy value so that the vnc directive doesn't complain
                 dummy_ip = "0.0.0.0"
@@ -1491,6 +1519,10 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                             if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
                                 # all are loaded
                                 scope.ips_loaded = true
+
+                                # calc command lines
+                                for vdus in scope.virtual_desktop_sessions
+                                    vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, scope.ips_for_devices[vdus.device]) 
                         )
                 
             scope.download_vdus_start_script = (vdus) ->
