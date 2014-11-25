@@ -317,7 +317,7 @@ class virtual_desktop_stuff(bg_stuff):
                     do_start = False
                     # check if pid file has appeared and contains valid pid
                     pid = s.get_pid_from_file()
-                    server_success = pid and _check_process_running(pid)
+                    server_success = bool(pid) and _check_process_running(pid)
                     if server_success:
                         # startup successful, save pid so we know it's running
                         vdus.pid = pid
@@ -345,7 +345,8 @@ class virtual_desktop_stuff(bg_stuff):
                         if ignore_last_start_attempt:
                             do_start = True  # if we just restart, we don't want to wait, but still not start the server if it's already running now
                         else:
-                            self.log("No successful virtual desktop start ({}, {}), waiting for it to become available or timeout".format(server_success, websockify_success))
+                            self.log("No successful virtual desktop start ({}, {}), waiting for it to become available or timeout".format(server_success,
+                                                                                                                                          websockify_success))
 
                 if do_start:
                     # start
