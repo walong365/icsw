@@ -281,10 +281,20 @@ quota_settings_template = """
             <td>{{ qs.qcb.mount_path }}</td>
             <td>{{ qs.qcb.size | get_size:1:1024 }}</td>
             <td class="center">{{ qs.quota_flags }}</td>
-            <td style="width:200px;">
-                <progress ng-show="qs.bytes_quota">
-                    <bar ng-repeat="stack in qs.bytes_stacked track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+            <td style="width:300px;">
+                <div class="row">
+                <div class="col-xs-2">
+                <span class="label label-primary" ng_click="qs.show_abs = !qs.show_abs"><span ng-show="qs.show_abs">Total:</span><span ng-show="!qs.show_abs">Relative:</span></span>
+                </div>
+                <div class="col-xs-10">
+                <progress ng-show="qs.bytes_quota && qs.show_abs">
+                    <bar ng-repeat="stack in qs.bytes_stacked_abs track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
                 </progress>
+                <progress ng-show="qs.bytes_quota && !qs.show_abs">
+                    <bar ng-repeat="stack in qs.bytes_stacked_rel track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+                </progress>
+                </div>
+                </div>
             </td>
             <td class="text-center">{{ qs.bytes_used | get_size:1:1024 }}</td>
             <td class="text-center">{{ get_bytes_limit(qs) }}</td>
@@ -1106,13 +1116,15 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                         scope.quota_settings = scope.object.group_quota_setting_set
                     if scope.quota_settings
                         for entry in scope.quota_settings
+                            entry.show_abs = true
                             # link
                             entry.qcb = scope.qcb_lut[entry.quota_capable_blockdevice]
                             entry.bytes_quota = if (entry.bytes_soft or entry.bytes_hard) then true else false
                             entry.files_quota = if (entry.files_soft or entry.files_hard) then true else false
                             # build stack
-                            entry.files_stacked = scope.build_stacked(entry, "files")
-                            entry.bytes_stacked = scope.build_stacked(entry, "bytes")
+                            entry.files_stacked = scope.build_stacked(entry, "files", true)
+                            entry.bytes_stacked_abs = scope.build_stacked(entry, "bytes", true)
+                            entry.bytes_stacked_rel = scope.build_stacked(entry, "bytes", false)
             )
             scope.get_bytes_limit = (qs) ->
                 if qs.bytes_soft or qs.bytes_hard
@@ -1132,7 +1144,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 else
                     _class = ""
                 return _class
-            scope.build_stacked = (qs, _type) ->
+            scope.build_stacked = (qs, _type, abs) ->
                 _used = qs["#{_type}_used"]
                 _soft = qs["#{_type}_soft"]
                 _hard = qs["#{_type}_hard"]
@@ -1141,48 +1153,65 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     if _type == "files"
                         _info1 = "files"
                         max_value = Math.max(_soft, _hard)
+                        used_str = icswTools.get_size_str(_used, 1000, "")
                     else
                         _info1 = "space"
-                        max_value = qs.qcb.size    
+                        if abs
+                            max_value = qs.qcb.size    
+                        else
+                            max_value = _hard
+                        used_str = icswTools.get_size_str(_used, 1024, "B")
                     _filled = parseInt(100 * _used / max_value)
                     r_stack.push(
                         {
                             "value" : _filled
                             "type" : "success"
                             "out" : "#{_filled}%"
-                            "title" : "#{_info1} used"
+                            "title" : "#{_info1} used (#{used_str})"
                         }
                     )
                     if _used < _soft
                         # soft limit not reached
                         _lsoft = parseInt(100 * (_soft - _used) / max_value)
+                        if _type == "files"
+                            lsoft_str = icswTools.get_size_str(_soft - _used, 1000, "")
+                        else
+                            lsoft_str = icswTools.get_size_str(_soft - _used, 1024, "B")
                         r_stack.push(
                             {
                                 "value" : _lsoft
                                 "type" : "warning"
                                 "out": "#{_lsoft}%"
-                                "title" : "#{_info1} left until soft limit is reached"
+                                "title" : "#{_info1} left until soft limit is reached (#{lsoft_str})"
                             }
                         )
                         if _hard > _soft
                             _sth = parseInt(100 * (_hard - _soft) / max_value)
+                            if _type == "files"
+                                sth_str = icswTools.get_size_str(_hard - _soft, 1000, "")
+                            else
+                                sth_str = icswTools.get_size_str(_hard - _soft, 1024, "B")
                             r_stack.push(
                                 {
                                     "value" : _sth
                                     "type" : "info"
                                     "out": "#{_sth}%"
-                                    "title" : "difference from soft to hard limit"
+                                    "title" : "difference from soft to hard limit (#{sth_str})"
                                 }
                             )
                     else
                         # soft limit reached
                         _lhard = parseInt(100 * (_hard - _used) / max_value)
+                        if _type == "files"
+                            sth_str = icswTools.get_size_str(_hard - _used, 1000, "")
+                        else
+                            sth_str = icswTools.get_size_str(_hard - _used, 1024, "B")
                         r_stack.push(
                             {
                                 "value" : _lhard
                                 "type" : if _soft then "danger" else "warning"
                                 "out": "#{_lhard}%"
-                                "title" : "#{_info1} left until hard limit is reached"
+                                "title" : "#{_info1} left until hard limit is reached (#{sth_str})"
                             }
                         )
                 return r_stack
