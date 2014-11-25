@@ -304,9 +304,11 @@ class virtual_desktop_stuff(bg_stuff):
             self.log(e)
             return  # this is the only early return here
 
+        self.log("checking virtual desktop servers")
+
         if vdus.is_running:
             # check if actually running and start in case
-            if not _check_vdus_running(vdus):
+            if not _check_vdus_running(vdus, log=self.log):
                 s = klass(self.log, vdus)
 
                 do_start = True
@@ -359,12 +361,16 @@ class virtual_desktop_stuff(bg_stuff):
                 s.stop()
 
 
-def _check_vdus_running(vdus):
-    if not _check_process_running(vdus.pid, vdus.process_name):
+def _check_vdus_running(vdus, log=None):
+    if not _check_process_running(vdus.pid, vdus.process_name, log=log):
+        if log:
+            log("Virtual desktop server not running {} {} ".format(vdus.pid, vdus.process_name))
         return False
     if virtual_desktop_server.get_class_for_vdus(vdus).uses_websockify:
         # check websockify
-        if not _check_process_running(vdus.websockify_pid, vdus.websockify_process_name):
+        if not _check_process_running(vdus.websockify_pid, vdus.websockify_process_name, log=log):
+            if log:
+                log("websockify not running {} {} ".format(vdus.pid, vdus.process_name))
             return False
     return True
 
@@ -377,7 +383,7 @@ def _get_running_process(pid, process_name=None, log=None):
     try:
         p = psutil.Process(pid=pid)
         if log:
-            log("Found process {}, running: {}".format(p, p.is_running))
+            log("Found process {}, running: {}".format(p, p.is_running()))
         if p.is_running():
             if not process_name or p.name() == process_name:
                 return p
