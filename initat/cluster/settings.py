@@ -200,7 +200,6 @@ SESSION_COOKIE_HTTPONLY = True
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_CONTEXT_PROCESSORS = (
-    "django.contrib.messages.context_processors.messages",
     "django.contrib.auth.context_processors.auth",
     "django.core.context_processors.i18n",
     "django.core.context_processors.request",
@@ -224,7 +223,6 @@ MIDDLEWARE_CLASSES = (
 
     # "django.middleware.transaction.TransactionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django.contrib.messages.middleware.MessageMiddleware",
 
     "initat.cluster.backbone.middleware.thread_local_middleware",
     # Uncomment the next line for simple clickjacking protection:
@@ -253,7 +251,6 @@ INSTALLED_APPS = (
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.sites",
-    "django.contrib.messages",
     "django.contrib.staticfiles",
     # Uncomment the next line to enable the admin:
     "django.contrib.admin",
