@@ -433,10 +433,15 @@ change_pri_template = """
 </div>
 """ 
 
+lic_graph_template = """
+<progress max="100">
+    <bar ng-repeat="stack in lic.license_stack track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+</progress>
+"""
+
 {% endverbatim %}
 
-rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "icsw.d3", "icsw.dimple", "angular-dimple", "ui.bootstrap.datetimepicker"])
-
+rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "icsw.d3", "icsw.dimple", "ui.bootstrap.datetimepicker"])
 
 angular_module_setup([rms_module])
 
@@ -1507,10 +1512,55 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             for _lic in $scope.licenses
                                 if _lic.name in _open_list
                                     _lic.open = true
+                            for _ov in $scope.lic_overview
+                                $scope.build_stack(_ov)
                             $scope.cur_timeout = $timeout($scope.update, 30000)
                         )
+        $scope.build_stack = (lic) ->
+            total = lic.total
+            stack = []
+            if lic.used
+                if lic.sge_used
+                    stack.push(
+                        {
+                            "value": 100 * lic.sge_used / lic.total
+                            "type": "primary"
+                            "out": "#{lic.sge_used}"
+                            "title": "#{lic.sge_used} used on cluster"
+                        }
+                    )
+                if lic.external_used
+                    stack.push(
+                        {
+                            "value": 100 * lic.external_used / lic.total
+                            "type": "danger"
+                            "out": "#{lic.external_used}"
+                            "title": "#{lic.external_used} used external"
+                        }
+                    )
+            if lic.free
+                stack.push(
+                    {
+                        "value": 100 * lic.free / lic.total
+                        "type": "success"
+                        "out": "#{lic.free}"
+                        "title": "#{lic.free} free"
+                    }
+                )
+            lic.license_stack = stack
         $scope.update()
-]).run(($templateCache) ->
+]).directive("ovlicgraph", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        scope: true
+        template : $templateCache.get("lic_graph.html")
+        link : (scope, el, attrs) ->
+            scope.$watch(attrs["license"], (new_val) ->
+                scope.lic = new_val
+                console.log new_val
+            )
+    }
+).run(($templateCache) ->
     $templateCache.put("running_table.html", running_table)
     $templateCache.put("waiting_table.html", waiting_table)
     $templateCache.put("done_table.html", done_table)
@@ -1528,6 +1578,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("job_action.html", jobaction)
     $templateCache.put("files_info.html", filesinfo)
     $templateCache.put("change_pri.html", change_pri_template)
+    $templateCache.put("lic_graph.html", lic_graph_template)
 )
 
 class license_overview
@@ -1559,13 +1610,21 @@ class license
         for version in @versions
             for usage in version.usages
                 @all_usages.push(usage)
+        usercount = {}
+        for usage in @all_usages
+            if usage.user not of usercount
+                usercount[usage.user] = 0
+            usercount[usage.user] += usage.num
+        for usage in @all_usages
+            usage.user_usage = usercount[usage.user]
+        @all_usages = _.sortBy(usage for usage in @all_usages, (entry) -> return entry.user)
 
 class license_version
     constructor : (@xml, @license) ->
         @vendor = @xml.attr("vendor")
         @version = @xml.attr("version")
         @key = @license.key + "." + @version
-        @usages = (new license_usage($(sub_xml), @) for sub_xml in @xml.find("usages > usage"))
+        @usages = _.sortBy(new license_usage($(sub_xml), @) for sub_xml in @xml.find("usages > usage"), (entry) -> return entry.user)
 
 class license_usage
     constructor: (@xml, @version) ->

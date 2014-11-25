@@ -35,6 +35,7 @@
                             <th>total</th>
                             <th>Cluster</th>
                             <th>external</th>
+                            <th>graph</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -49,6 +50,11 @@
                             <td class="text-right">{{ ov.total }}</td>
                             <td class="text-right">{{ ov.sge_used }}</td>
                             <td class="text-right">{{ ov.external_used }}</td>
+                            <td>
+                                <div style="width:200px;height:10px;margin-bottom:0px;" ng-show="ov.total">
+                                    <ovlicgraph license="ov"></ovlicgraph>
+                                </div>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -78,6 +84,7 @@
                             <th>Vendor</th>
                             <th>(Version)</th>
                             <th>User</th>
+                            <th>total licenses</th>
                             <th>Client</th>
                             <th>(Version)</th>
                             <th>#</th>
@@ -89,6 +96,7 @@
                             <td>{{ usage.version.vendor }}</td>
                             <td>{{ usage.version.version }}</td>
                             <td>{{ usage.user }}</td>
+                            <td class="text-right">{{ usage.user_usage }}</td>
                             <td>{{ usage.client_long }}</td>
                             <td>{{ usage.client_version }}</td>
                             <td>{{ usage.num }}</td>
