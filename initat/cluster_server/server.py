@@ -33,13 +33,14 @@ import logging_tools
 import os
 import process_tools
 import server_command
+import server_mixins
 import threading_tools
 import time
 import uuid_tools
 import zmq
 
 
-class server_process(threading_tools.process_pool, notify_mixin):
+class server_process(threading_tools.process_pool, notify_mixin, server_mixins.network_bind_mixin):
     def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
@@ -203,13 +204,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
 
     def loop_end(self):
         if not self.__run_command:
-            if self.com_socket:
-                self.log("closing socket")
-                self.com_socket.close()
-            for _virt in self.virtual_sockets:
-                self.log("closing virtual socket")
-                _virt.close()
-            self.virtual_sockets = []
+            self.network_unbind()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
@@ -223,59 +218,16 @@ class server_process(threading_tools.process_pool, notify_mixin):
         # connections to other servers
         self.__other_server_dict = {}
         self.bind_id = get_server_uuid("server")
-        _need_all_binds = global_config["NEED_ALL_NETWORK_BINDS"]
         self.virtual_sockets = []
         if self.__run_command:
-            client = None
-            self.com_socket = None
+            self.main_socket = None
         else:
-            # create bind list
-            if self.device_r.device_dict:
-                # complex bind
-                master_bind_list = [
-                    (
-                        True,
-                        ["tcp://{}:{:d}".format(_local_ip, global_config["COM_PORT"]) for _local_ip in self.device_r.local_ips]
-                        , self.bind_id
-                    )
-                ] + [
-                    (
-                        False,
-                        [
-                            "tcp://{}:{:d}".format(_virtual_ip, global_config["COM_PORT"]) for _virtual_ip in _ip_list
-                        ],
-                        # ignore local device
-                        get_server_uuid("server", _dev.uuid)) for _dev, _ip_list in self.device_r.ip_r_lut.iteritems() if _dev.pk != self.device_r.device.pk
-                ]
-            else:
-                # simple bind
-                master_bind_list = [
-                    (True, ["tcp://*:{:d}".format(global_config["COM_PORT"])], self.bind_id)
-                ]
-            _errors = []
-            for master_bind, bind_list, bind_id in master_bind_list:
-                client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=bind_id)
-                for _bind_str in bind_list:
-                    try:
-                        client.bind(_bind_str)
-                    except zmq.ZMQError:
-                        self.log(
-                            "error binding to {}: {}".format(
-                                _bind_str,
-                                process_tools.get_except_info()
-                            ),
-                            logging_tools.LOG_LEVEL_CRITICAL
-                        )
-                        _errors.append(_bind_str)
-                    else:
-                        self.log("bound to {} with id {}".format(_bind_str, bind_id))
-                        self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
-                if master_bind:
-                    self.com_socket = client
-                else:
-                    self.virtual_sockets.append(client)
-            if _errors and _need_all_binds:
-                raise ValueError("{} went wrong: {}".format(logging_tools.get_plural("bind", len(_errors)), ", ".join(_errors)))
+            self.network_bind(
+                server_type="server",
+                bind_port=global_config["COM_PORT"],
+                need_all_binds=global_config["NEED_ALL_NETWORK_BINDS"],
+                pollin=self._recv_command,
+            )
 
     def _recv_command(self, zmq_sock):
         data = []
@@ -426,10 +378,10 @@ class server_process(threading_tools.process_pool, notify_mixin):
             if conn_str not in self.__other_server_dict:
                 self.log("connecting to {} (uuid {})".format(conn_str, srv_uuid))
                 self.__other_server_dict = srv_uuid
-                self.com_socket.connect(conn_str)
+                self.main_socket.connect(conn_str)
             try:
-                self.com_socket.send_unicode(srv_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                self.com_socket.send_unicode(unicode(srv_com))
+                self.main_socket.send_unicode(srv_uuid, zmq.SNDMORE)  # @UndefinedVariable
+                self.main_socket.send_unicode(unicode(srv_com))
             except:
                 self.log("cannot send to {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                 _success = False
@@ -456,7 +408,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         del self.__discovery_dict[discovery_id]
         try:
             if self.__connection_dict[conn_str] != uuid_tools.get_uuid().get_urn():
-                self.com_socket.connect(conn_str)
+                self.main_socket.connect(conn_str)
             else:
                 self.log(
                     "no connection to self",

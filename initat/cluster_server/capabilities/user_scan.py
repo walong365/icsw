@@ -18,16 +18,15 @@
 """ cluster-server, user_scan capability """
 
 from django.db.models import Q
-from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster.backbone.models import home_export_list, user, user_scan_result, user_scan_run
+from initat.cluster_server.capabilities.base import bg_stuff
 from initat.cluster_server.config import global_config
 import logging_tools
 import os
-import stat
 import process_tools
+import scandir
+import stat
 import time
-# might be fast but still has troubles with unicode names (https://github.com/benhoyt/scandir/issues/40)
-# import scandir
 
 
 def sub_sum(_dict):
@@ -129,8 +128,8 @@ class user_scan_stuff(bg_stuff):
         _top_depth = _start_dir.count("/")
         try:
             nfs_mounts, nfs_ignore = (set(), [])
-            _last_dir = ""
-            for _main, _dirs, _files in os.walk(unicode(_start_dir)):
+            _last_dir = u""
+            for _main, _dirs, _files in scandir.walk(_start_dir):
                 if os.path.ismount(_main):
                     nfs_mounts.add(_main)
                     continue

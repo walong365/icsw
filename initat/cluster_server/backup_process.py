@@ -15,7 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from subprocess import CalledProcessError
 """ cluster-server, backup process """
 
 from django.conf import settings
@@ -26,8 +25,8 @@ from optparse import OptionParser
 import bz2
 import datetime
 import logging_tools
-import process_tools
 import os
+import process_tools
 import stat
 import subprocess
 import threading_tools
@@ -50,7 +49,7 @@ class backup_process(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
 
     def get_ignore_list(self):
-        from django.db.models import get_app, get_apps, get_model, get_models  # @UnresolvedImport
+        from django.db.models import get_apps, get_models  # @UnresolvedImport
         ignore_list = []
         for _app in get_apps():
             for _model in get_models(_app):
@@ -133,7 +132,6 @@ class backup_process(threading_tools.process_obj):
                 "contenttypes",
                 "sessions",
                 "sites",
-                "messages",
                 "admin",
                 "backbone",
             ]
