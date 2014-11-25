@@ -112,9 +112,9 @@ class Command(BaseCommand):
             raise e
 
     def _handle(self, *app_labels, **options):
-        from django.db.models import get_app, get_apps, get_model, get_models
+        from django.db.models import get_app, get_apps, get_model, get_models  # @UnresolvedImport
 
-        using = options.get('database')
+        _using = options.get('database')
         excludes = options.get('exclude')
         iterator = options.get("iterator")
         step_size = options.get("step_size")

@@ -1,26 +1,40 @@
+from django.db.models import get_app, get_apps, get_model, get_models  # @UnresolvedImport
 from django.core import serializers
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
-from django.db import router, DEFAULT_DB_ALIAS
-from django.db.models import ForeignKey, OneToOneField, Model
+from django.db import DEFAULT_DB_ALIAS
+from django.db.models import ForeignKey, OneToOneField
 from django.utils.datastructures import SortedDict
 from optparse import make_option
 
+
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
-        make_option('--format', default='json', dest='format',
-            help='Specifies the output serialization format for fixtures.'),
-        make_option('--indent', default=None, dest='indent', type='int',
-            help='Specifies the indent level to use when pretty-printing output'),
-        make_option('--database', action='store', dest='database',
-            default=DEFAULT_DB_ALIAS, help='Nominates a specific database to dump '
-                'fixtures from. Defaults to the "default" database.'),
-        make_option('-e', '--exclude', dest='exclude',action='append', default=[],
-            help='An appname or appname.ModelName to exclude (use multiple --exclude to exclude multiple apps/models).'),
-        make_option('-n', '--natural', action='store_true', dest='use_natural_keys', default=False,
-            help='Use natural keys if they are available.'),
-        make_option('-a', '--all', action='store_true', dest='use_base_manager', default=False,
-            help="Use Django's base manager to dump all models stored in the database, including those that would otherwise be filtered or modified by a custom manager."),
+        make_option(
+            '--format', default='json', dest='format',
+            help='Specifies the output serialization format for fixtures.'
+        ),
+        make_option(
+            '--indent', default=None, dest='indent', type='int',
+            help='Specifies the indent level to use when pretty-printing output'
+        ),
+        make_option(
+            '--database', action='store', dest='database',
+            default=DEFAULT_DB_ALIAS, help='Nominates a specific database to dump fixtures from. Defaults to the "default" database.'
+        ),
+        make_option(
+            '-e', '--exclude', dest='exclude', action='append', default=[],
+            help='An appname or appname.ModelName to exclude (use multiple --exclude to exclude multiple apps/models).'
+        ),
+        make_option(
+            '-n', '--natural', action='store_true', dest='use_natural_keys', default=False,
+            help='Use natural keys if they are available.'
+        ),
+        make_option(
+            '-a', '--all', action='store_true', dest='use_base_manager', default=False,
+            help="Use Django's base manager to dump all models stored in the database, "
+            "including those that would otherwise be filtered or modified by a custom manager."
+        ),
     )
     help = ("Output the contents of the database as a fixture of the given "
             "format (using each model's default manager unless --all is "
@@ -28,15 +42,14 @@ class Command(BaseCommand):
     args = '[appname appname.ModelName ...]'
 
     def handle(self, *app_labels, **options):
-        from django.db.models import get_app, get_apps, get_model, get_models
 
-        format = options.get('format')
+        _format = options.get('format')
         indent = options.get('indent')
         using = options.get('database')
         excludes = options.get('exclude')
         show_traceback = options.get('traceback')
         use_natural_keys = options.get('use_natural_keys')
-        use_base_manager = options.get('use_base_manager')
+        # use_base_manager = options.get('use_base_manager')
 
         excluded_apps = set()
         excluded_models = set()
@@ -89,13 +102,13 @@ class Command(BaseCommand):
 
         # Check that the serialization format exists; this is a shortcut to
         # avoid collating all the objects and _then_ failing.
-        if format not in serializers.get_public_serializer_formats():
-            raise CommandError("Unknown serialization format: %s" % format)
+        if _format not in serializers.get_public_serializer_formats():
+            raise CommandError("Unknown serialization format: %s" % _format)
 
         try:
-            serializers.get_serializer(format)
+            serializers.get_serializer(_format)
         except KeyError:
-            raise CommandError("Unknown serialization format: %s" % format)
+            raise CommandError("Unknown serialization format: %s" % _format)
 
         deps = Dependencies()
         models = set()
@@ -107,19 +120,17 @@ class Command(BaseCommand):
                 models.add(model)
         models = list(models)
 
-        file_list = []
         for model in models:
             if model in excluded_models:
                 continue
             deps.add_to_tree(model)
-            #many_to_many, file_name = self.dump_model(model)
-            #file_list.append(file_name)
-            #for m2m in many_to_many:
+            # many_to_many, file_name = self.dump_model(model)
+            # file_list.append(file_name)
+            # for m2m in many_to_many:
             #    if m2m not in models:
             #        models.append(m2m)
-        import pprint
         deps.generate_tree()
-        file_list = []
+
         def get_objects(models):
             for model in models:
                 if model in excluded_models:
@@ -129,12 +140,14 @@ class Command(BaseCommand):
 
         try:
             self.stdout.ending = None
-            serializers.serialize(format, get_objects(deps.tree), indent=indent,
-                    use_natural_keys=use_natural_keys, stream=self.stdout)
+            serializers.serialize(
+                _format, get_objects(deps.tree), indent=indent,
+                use_natural_keys=use_natural_keys, stream=self.stdout)
         except Exception as e:
             if show_traceback:
                 raise
             raise CommandError("Unable to serialize database: %s" % e)
+
 
 def sort_dependencies(app_list):
     """Sort a list of app,modellist pairs into a single list of models.
@@ -143,7 +156,6 @@ def sort_dependencies(app_list):
     is serialized before a normal model, and any model with a natural key
     dependency has it's dependencies serialized first.
     """
-    from django.db.models import get_model, get_models
     # Process the list of models, and get the list of dependencies
     model_dependencies = []
     models = set()
@@ -203,17 +215,26 @@ def sort_dependencies(app_list):
             else:
                 skipped.append((model, deps))
         if not changed:
-            raise CommandError("Can't resolve dependencies for %s in serialized app list." %
-                ', '.join('%s.%s' % (model._meta.app_label, model._meta.object_name)
-                for model, deps in sorted(skipped, key=lambda obj: obj[0].__name__))
+            raise CommandError(
+                "Can't resolve dependencies for {} in serialized app list.".format(
+                    ', '.join(
+                        [
+                            "{}.{}".format(
+                                model._meta.app_label,
+                                model._meta.object_name
+                            ) for model, deps in sorted(skipped, key=lambda obj: obj[0].__name__)
+                        ]
+                    )
+                )
             )
         model_dependencies = skipped
 
     return model_list
 
+
 class Dependencies(object):
     def __init__(self):
-        #self.done = set()
+        # self.done = set()
         self.__models = set()
         self.__dep_list = []
 
@@ -226,7 +247,7 @@ class Dependencies(object):
         model_list = []
         model_deps = self.__dep_list
         while model_deps:
-            #print "-" * 50, len(model_deps)
+            # print "-" * 50, len(model_deps)
             skipped, changed = ([], False)
             while model_deps:
                 model, s_deps, w_deps = model_deps.pop()
@@ -249,6 +270,7 @@ class Dependencies(object):
                 )
             model_deps = skipped
         self.tree = model_list
+
     @staticmethod
     def _get_fks(model_obj):
         strong_res, weak_res = ([], [])
