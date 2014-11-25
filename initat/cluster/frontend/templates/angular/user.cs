@@ -86,7 +86,7 @@ vncwebviewer_template = """
       </td>
     </tr>
 </table>
-"""		
+"""
 virtual_desktop_settings_template = """
 <fieldset  ng-show="true">
     <legend>Virtual Desktops</legend>
@@ -220,34 +220,34 @@ jobinfo_template = """
         </tr>
     </thead>
 
-	<tbody>
-	    <tr>
-	        <td> Jobs waiting </td>
-		    <td> {{ jobs_waiting.length }} </td>
-		    <td> {{ longListToString(jobs_waiting) }} </td>
-	    </tr>
-	    <tr>
-	        <td> Jobs running </td>
-		    <td> {{ jobs_running.length }} </td>
-		    <td> {{ longListToString(jobs_running) }} </td>
-	    </tr>
-	    <tr>
-	        <td>
-	            Jobs finished in 
-	            <div class="btn-group">
-		            <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-		                <span class="glyphicon glyphicon-dashboard"></span>
-		                {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
-		            </button>
-		            <ul class="dropdown-menu">
-		                <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
-		            </ul>
-		         </div>
-		    </td>
-		    <td>{{ jobs_finished.length }}</td>
-		    <td>{{ longListToString(jobs_finished) }}</td>
-		</tr>
-	</tbody>
+    <tbody>
+        <tr>
+            <td> Jobs waiting </td>
+            <td> {{ jobs_waiting.length }} </td>
+            <td> {{ longListToString(jobs_waiting) }} </td>
+        </tr>
+        <tr>
+            <td> Jobs running </td>
+            <td> {{ jobs_running.length }} </td>
+            <td> {{ longListToString(jobs_running) }} </td>
+        </tr>
+        <tr>
+            <td>
+                Jobs finished in 
+                <div class="btn-group">
+                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                        <span class="glyphicon glyphicon-dashboard"></span>
+                        {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
+                    </ul>
+                 </div>
+            </td>
+            <td>{{ jobs_finished.length }}</td>
+            <td>{{ longListToString(jobs_finished) }}</td>
+        </tr>
+    </tbody>
 </table>
 <h4 ng-show="!jobinfo_valid">waiting for jobinfo ...</h4>
 """
@@ -283,17 +283,17 @@ quota_settings_template = """
             <td class="center">{{ qs.quota_flags }}</td>
             <td style="width:300px;">
                 <div class="row">
-                <div class="col-xs-2">
-                <span class="label label-primary" ng_click="qs.show_abs = !qs.show_abs"><span ng-show="qs.show_abs">Total:</span><span ng-show="!qs.show_abs">Relative:</span></span>
-                </div>
-                <div class="col-xs-10">
-                <progress ng-show="qs.bytes_quota && qs.show_abs">
-                    <bar ng-repeat="stack in qs.bytes_stacked_abs track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
-                </progress>
-                <progress ng-show="qs.bytes_quota && !qs.show_abs">
-                    <bar ng-repeat="stack in qs.bytes_stacked_rel track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
-                </progress>
-                </div>
+                    <div class="col-xs-2">
+                        <span class="label label-primary" ng_click="qs.show_abs = !qs.show_abs"><span ng-show="qs.show_abs">Total:</span><span ng-show="!qs.show_abs">Relative:</span></span>
+                    </div>
+                    <div class="col-xs-10">
+                        <progress ng-show="qs.bytes_quota && qs.show_abs">
+                            <bar ng-repeat="stack in qs.bytes_stacked_abs track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+                        </progress>
+                        <progress ng-show="qs.bytes_quota && !qs.show_abs">
+                            <bar ng-repeat="stack in qs.bytes_stacked_rel track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+                        </progress>
+                    </div>
                 </div>
             </td>
             <td class="text-center">{{ qs.bytes_used | get_size:1:1024 }}</td>
