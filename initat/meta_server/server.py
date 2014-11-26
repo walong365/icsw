@@ -28,6 +28,7 @@ import mail_tools
 import os
 import process_tools
 import server_command
+import signal
 import stat
 import subprocess  # @UnusedImport
 import threading_tools
@@ -248,10 +249,17 @@ class main_process(threading_tools.process_pool):
                     _com = msi_block.stop_command
                     if not command.count("force"):
                         _com = _com.replace("force-stop", "stop")
+                    self._srv_com = srv_com
+                    self._force_stop = _com.replace("force-stop", "stop").replace("stop", "force-stop")
+                    if self._force_stop != _com:
+                        self.log("registering force-stop command {}".format(self._force_stop))
+                    else:
+                        self._force_stop = None
                     self._call_command(_com, srv_com)
                     # needed ?
                     time.sleep(0.5)
                     self._call_command(msi_block.start_command, srv_com, merge_reply=True)
+                    self._srv_com = None
                 else:
                     srv_com.set_result("no stop or start command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
 
@@ -259,15 +267,32 @@ class main_process(threading_tools.process_pool):
         for _com in act_commands:
             self._call_command(_com)
 
-    def _call_command(self, act_command, srv_com=None, merge_reply=False):
+    def _alarm(self, *args, **kwargs):
+        self.log("sigalarm called, starting force-stop", logging_tools.LOG_LEVEL_ERROR)
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+        if self._force_stop:
+            self._call_command(self._force_stop, self._srv_com, merge_reply=True, init_alarm=False)
+
+    def _call_command(self, act_command, srv_com=None, merge_reply=False, init_alarm=True):
         # call command directly
+        s_time = time.time()
+        if init_alarm:
+            signal.signal(signal.SIGALRM, self._alarm)
+            signal.alarm(7)
         if os.path.isfile(act_command.split()[0]):
             ret_code, _stdout, _stderr = process_tools.call_command(act_command, self.log)
         else:
             ret_code, _stdout, _stderr = (1, "", u"command '{}' does not exist".format(act_command))
+        if init_alarm:
+            signal.signal(signal.SIGALRM, signal.SIG_IGN)
+        e_time = time.time()
         if srv_com is not None:
             _r_str, _r_state = (
-                "returncode is {:d} for '{}'".format(ret_code, act_command),
+                "returncode is {:d} for '{}' in {}".format(
+                    ret_code,
+                    act_command,
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                ),
                 server_command.SRV_REPLY_STATE_OK if ret_code == 0 else server_command.SRV_REPLY_STATE_ERROR,
             )
             if merge_reply:
