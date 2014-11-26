@@ -93,37 +93,6 @@ class sync_users(View):
             _result = contact_server(request, "md-config", srv_com)
 
 
-class save_layout_state(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        if "user_vars" not in request.session:
-            request.session["user_vars"] = {}
-        user_vars = request.session["user_vars"]
-        for key, value in _post.iteritems():
-            if key.count("isClosed"):
-                value = True if value.lower() in ["true"] else False
-                if key in user_vars:
-                    if user_vars[key].value != value:
-                        user_vars[key].value = value
-                        user_vars[key].save()
-                else:
-                    # try to get var from DB
-                    try:
-                        user_vars[key] = user_variable.objects.get(Q(name=key) & Q(user=request.user))
-                    except user_variable.DoesNotExist:
-                        user_vars[key] = user_variable.objects.create(
-                            user=request.user,
-                            name=key,
-                            value=value)
-                    else:
-                        user_vars[key].value = value
-                        user_vars[key].save()
-        update_session_object(request)
-        request.session.save()
-
-
 class set_user_var(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -140,11 +109,13 @@ class set_user_var(View):
             value = int(value)
         elif v_type == "bool":
             value = True if value.lower() in ["true"] else False
-        logger.info("setting user_var '%s' to '%s' (type %s)" % (
-            key,
-            str(value),
-            v_type,
-            ))
+        logger.info(
+            "setting user_var '{}' to '{}' (type {})".format(
+                key,
+                str(value),
+                v_type,
+            )
+        )
         if key in user_vars:
             if user_vars[key].value != value:
                 user_vars[key].value = value
@@ -153,7 +124,8 @@ class set_user_var(View):
             user_vars[key] = user_variable.objects.create(
                 user=request.user,
                 name=key,
-                value=value)
+                value=value
+            )
         update_session_object(request)
         request.session.save()
 
@@ -327,6 +299,6 @@ class get_device_ip(View):
         if route:
             ip = route[0][3][1][0]
         else:
-            ip = "127.0.0.1" # try fallback (it might not work, but it will not make things more broken)
+            ip = "127.0.0.1"  # try fallback (it might not work, but it will not make things more broken)
 
         return HttpResponse(json.dumps({"ip": ip}), content_type="application/json")

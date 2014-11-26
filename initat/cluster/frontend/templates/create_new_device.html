@@ -99,7 +99,7 @@
                     </div>
                 </div>
                 <div class="form-group" ng-show="any_peers()">
-                    <label class="control-label col-md-5">Connect to {{ device_data.peer }}</label>
+                    <label class="control-label col-md-5">Connect to</label>
                     <div class="controls col-md-6">
                         <select name="peer" class="form-control" ng-model="device_data.peer" ng-options="value.idx as value.info group by value.device_group_name for value in all_peers"></select>
                     </div>

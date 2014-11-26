@@ -146,7 +146,6 @@ user_patterns = patterns(
     "initat.cluster.frontend",
     url("overview/$", user_views.overview.as_view(), name="overview"),
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
-    url("^save_layout_state$", user_views.save_layout_state.as_view(), name="save_layout_state"),
     url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
     url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),

@@ -161,6 +161,7 @@
         window.NUM_BACKGROUND_JOBS = {{ NUM_BACKGROUND_JOBS }}
         window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }}
         window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }}
+        window.USER_VARS = {{ USER_VARS | safe }}
         window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
         window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
         {% endinlinecoffeescript %}
