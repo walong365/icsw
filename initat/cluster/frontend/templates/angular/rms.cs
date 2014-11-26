@@ -1533,7 +1533,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     stack.push(
                         {
                             "value": 100 * lic.external_used / lic.total
-                            "type": "danger"
+                            "type": "warning"
                             "out": "#{lic.external_used}"
                             "title": "#{lic.external_used} used external"
                         }
