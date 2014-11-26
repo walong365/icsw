@@ -76,7 +76,11 @@ class render_me(object):
             op_dict = self.request.user.get_all_object_perms(None)
             self._unfold(gp_dict)
             self._unfold(op_dict)
-            _user = {"idx": self.request.user.pk, "pk": self.request.user.pk}
+            _user = {
+                "idx": self.request.user.pk,
+                "pk": self.request.user.pk
+            }
+            _vars = {_name: _var.value for _name, _var in self.request.session["user_vars"].iteritems()}
             _num_bg_jobs = background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()
             # routing info
             _service_types = {key: True for key in routing.srv_type_routing().service_types}
@@ -86,6 +90,7 @@ class render_me(object):
             _user = {}
             _num_bg_jobs = 0
             _service_types = {}
+            _vars = {"sidebar_open": True}
         # license cache
         cur_clc = cluster_license_cache()
         # pprint.pprint(gp_dict)
@@ -93,6 +98,7 @@ class render_me(object):
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
+        self.my_dict["USER_VARS"] = json.dumps(_vars)
         # store routing types as json
         self.my_dict["SERVICE_TYPES"] = json.dumps(_service_types)
         # add transformed dict ( md-config -> md_config )
@@ -107,14 +113,16 @@ class render_me(object):
         return render_to_response(
             self.template,
             self.my_dict,
-            context_instance=django.template.RequestContext(self.request))
+            context_instance=django.template.RequestContext(self.request)
+        )
 
 
 def render_string(request, template_name, in_dict=None):
     return unicode(render_to_string(
         template_name,
         in_dict if in_dict is not None else {},
-        django.template.RequestContext(request)))
+        django.template.RequestContext(request))
+    )
 
 
 class permission_required_mixin(object):
