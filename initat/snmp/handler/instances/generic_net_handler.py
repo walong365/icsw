@@ -348,11 +348,14 @@ class if_mon(MonCheckDefinition):
                 if scheme.opts.speed == _val_dict[5]:
                     r_f.append("speed is {}".format(logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000)))
                 else:
-                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
-                    r_f.append(
-                        "measured speed {} differs from target speed {}".format(
-                            logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000),
-                            logging_tools.get_size_str(scheme.opts.speed, strip_spaces=True, per_second=True, divider=1000),
+                    if _val_dict[5] in [2 ** 32 - 1, 2 ** 31 - 1]:
+                        pass
+                    else:
+                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        r_f.append(
+                            "measured speed {} differs from target speed {}".format(
+                                logging_tools.get_size_str(_val_dict[5], strip_spaces=True, per_second=True, divider=1000),
+                                logging_tools.get_size_str(scheme.opts.speed, strip_spaces=True, per_second=True, divider=1000),
+                            )
                         )
-                    )
             return ret_state, ", ".join(r_f)
