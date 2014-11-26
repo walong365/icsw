@@ -434,7 +434,7 @@ change_pri_template = """
 """ 
 
 lic_graph_template = """
-<progress max="100">
+<progress max="1000">
     <bar ng-repeat="stack in lic.license_stack track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
 </progress>
 """
@@ -1523,7 +1523,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 if lic.sge_used
                     stack.push(
                         {
-                            "value": 100 * lic.sge_used / lic.total
+                            "value": parseInt(lic.sge_used * 1000 / total)
                             "type": "primary"
                             "out": "#{lic.sge_used}"
                             "title": "#{lic.sge_used} used on cluster"
@@ -1532,7 +1532,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 if lic.external_used
                     stack.push(
                         {
-                            "value": 100 * lic.external_used / lic.total
+                            "value": parseInt(lic.external_used * 1000 / total)
                             "type": "warning"
                             "out": "#{lic.external_used}"
                             "title": "#{lic.external_used} used external"
@@ -1541,7 +1541,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             if lic.free
                 stack.push(
                     {
-                        "value": 100 * lic.free / lic.total
+                        "value": parseInt(lic.free * 1000 / total)
                         "type": "success"
                         "out": "#{lic.free}"
                         "title": "#{lic.free} free"
@@ -1557,7 +1557,6 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         link : (scope, el, attrs) ->
             scope.$watch(attrs["license"], (new_val) ->
                 scope.lic = new_val
-                console.log new_val
             )
     }
 ).run(($templateCache) ->
