@@ -4,7 +4,7 @@
 
 {% block title %}{% trans "License Overview" %}{% endblock %}
 
-{% block angular %}{% include "angular/rms.cs" %}{% endblock %}
+{% block angular %}{% include "angular/lic.cs" %}{% endblock %}
 
 {% block content %}
 
@@ -12,7 +12,7 @@
 
 
 <h2 style="margin-bottom:1em">License Overview</h2>
-<div id="icsw.rms">
+<div id="icsw.lic">
     <div ng-controller="lic_ctrl">
 
 
@@ -123,17 +123,19 @@
                 <div ng-if="multi_view">
                     <div class="well well-sm" style="width:1550px">
                         <h3>License: {{li.name}}</h3>
-                        <table><tr> <!-- force single (overlong) line  -->
-                            <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
-                            </td>
-                            <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="month" fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
-                            </td>
-                            <td>
-                                <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="day"   fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
-                            </td>
-                        </tr></table>
+                        <table>
+                            <tr> <!-- force single (overlong) line  -->
+                                <td>
+                                    <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
+                                </td>
+                                <td>
+                                    <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="month" fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
+                                </td>
+                                <td>
+                                    <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="day"   fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
+                                </td>
+                            </tr>
+                        </table>
                     </div>
                  <div>
              </div>
@@ -152,7 +154,7 @@
 {% inlinecoffeescript %}
 
 angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.rms']"), ["icsw.rms"])
+    angular.bootstrap($("div[id='icsw.lic']"), ["icsw.lic"])
 )
 
 {% endinlinecoffeescript %}

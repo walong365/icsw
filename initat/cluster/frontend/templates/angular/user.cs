@@ -102,7 +102,12 @@ vncwebviewer_template = """
                                            Web viewer
                                            <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
                                        </accordion-heading>
-                                       <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
+                                       <div ng-if="web_viewer">
+                                           <!--
+                                           ie10 warns about leaving the page if a vnc directive is in the dom, this way it is only the case if the user has explicitly opened it
+                                           -->
+                                           <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
+                                       </div>
                                    </accordion-group>
                                    </accordion>
       
