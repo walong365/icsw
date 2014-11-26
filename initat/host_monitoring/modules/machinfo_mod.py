@@ -35,6 +35,7 @@ import re
 import server_command
 import statvfs
 import sys
+import json
 import tempfile
 import time
 import uuid_tools
@@ -2134,6 +2135,89 @@ class uname_command(hm_classes.hm_command):
         for _idx, sub_el in enumerate(srv_com["uname"]):
             uname_list.append(sub_el.text)
         return limits.nag_STATE_OK, "%s, kernel %s" % (uname_list[0], uname_list[2])
+
+
+class cpufreq_info_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name)
+        self.parser.add_argument("--governor", dest="governor", type=str, default="")
+        self.parser.add_argument("--driver", dest="driver", type=str, default="")
+
+    def __call__(self, srv_com, cur_ns):
+        _TOP_DIR = "/sys/devices/system/cpu"
+        if os.path.isdir(_TOP_DIR):
+            _res_dict = {}
+            for _cpu in os.listdir(_TOP_DIR):
+                if _cpu.startswith("cpu") and _cpu[-1].isdigit():
+                    _cpu_dir = os.path.join(_TOP_DIR, _cpu)
+                    if os.path.isdir(_cpu_dir):
+                        _cpu_num = _cpu[3:]
+                        _freq_dir = os.path.join(_cpu_dir, "cpufreq")
+                        if os.path.isdir(_freq_dir):
+                            _res_dict[_cpu_num] = {
+                                _f_name: file(os.path.join(_freq_dir, _f_name), "r").read().strip() for _f_name in os.listdir(_freq_dir)
+                            }
+                        else:
+                            _res_dict[_cpu_num] = None
+            srv_com["cpu_info"] = json.dumps(_res_dict)
+        else:
+            srv_com.set_result("no cpu info dir {} found".format(_TOP_DIR), server_command.SRV_REPLY_STATE_ERROR)
+
+    def interpret(self, srv_com, cur_ns):
+        info_dict = json.loads(srv_com["*cpu_info"])
+        _num_cpus = len(info_dict.keys())
+        _unknown = [key for key, value in info_dict.iteritems() if value is None]
+        ret_state = limits.nag_STATE_OK
+        all_govs = set([value["scaling_governor"] for value in info_dict.itervalues() if value and "scaling_governor" in value])
+        all_drivers = set([value["scaling_driver"] for value in info_dict.itervalues() if value and "scaling_driver" in value])
+        ret_f = ["found {}".format(logging_tools.get_plural("CPU", _num_cpus))]
+        if _unknown:
+            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_f.append(
+                "{} without cpufreq info: {}".format(
+                    logging_tools.get_plural("CPU", len(_unknown)),
+                    ", ".join(_unknown),
+                )
+            )
+        if cur_ns.governor:
+            if all_govs == set([cur_ns.governor]):
+                ret_f.append("governor is {}".format(cur_ns.governor))
+            else:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_f.append(
+                    "found {}: {} != {}".format(
+                        logging_tools.get_plural("governor", len(all_govs)),
+                        ", ".join(all_govs) or "NONE",
+                        cur_ns.governor,
+                    )
+                )
+        else:
+            ret_f.append(
+                "found {}: {}".format(
+                    logging_tools.get_plural("governor", len(all_govs)),
+                    ", ".join(all_govs) or "NONE",
+                )
+            )
+        if cur_ns.driver:
+            if all_drivers == set([cur_ns.driver]):
+                ret_f.append("driver is {}".format(cur_ns.driver))
+            else:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_f.append(
+                    "found {}: {} != {}".format(
+                        logging_tools.get_plural("driver", len(all_drivers)),
+                        ", ".join(all_drivers) or "NONE",
+                        cur_ns.driver,
+                    )
+                )
+        else:
+            ret_f.append(
+                "found {}: {}".format(
+                    logging_tools.get_plural("driver", len(all_drivers)),
+                    ", ".join(all_drivers) or "NONE",
+                )
+            )
+        return ret_state, ", ".join(ret_f)
 
 
 class dmiinfo_command(hm_classes.hm_command):
