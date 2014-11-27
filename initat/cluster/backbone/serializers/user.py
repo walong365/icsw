@@ -176,6 +176,8 @@ class virtual_desktop_user_setting_serializer(serializers.ModelSerializer):
     class Meta:
         model = virtual_desktop_user_setting
 
+    vnc_obfuscated_password = serializers.Field(source="get_vnc_obfuscated_password")
+
 
 class virtual_desktop_protocol_serializer(serializers.ModelSerializer):
     class Meta:

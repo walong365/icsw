@@ -29,7 +29,8 @@ from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
+from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer,\
+    get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     virtual_desktop_user_setting_changed
 import base64
@@ -1208,6 +1209,8 @@ class virtual_desktop_user_setting(models.Model):
         self.save()
         self._send_signals = True
 
+    def get_vnc_obfuscated_password(self):
+        return get_vnc_enc(self.password)
 
 @receiver(signals.post_save, sender=virtual_desktop_user_setting)
 def virtual_desktop_user_setting_save(sender, **kwargs):
