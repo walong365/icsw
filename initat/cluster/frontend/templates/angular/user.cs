@@ -56,6 +56,10 @@ vncwebviewer_template = """
 
             <table class="table">
                 <tr>
+                    <td>Status</td>
+                    <td ng-class="(vdus.state == 1) && 'text-danger'">{{ vdus.state_description }}</td>
+                </tr>
+                <tr>
                     <td>Server</td>
                     <td>{{ips_for_devices[vdus.device]}}:{{ vdus.effective_port }}</td>
                 </tr>
@@ -68,7 +72,7 @@ vncwebviewer_template = """
                     <td>{{ vdus.viewer_cmd_line }}</td>
                 </tr>
 
-                <tr>
+                <tr ng-if="vdus.state != 1">
                     <td colspan="2">
                         <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">Open in new tab</button>
                         <button type="button" ng-click="download_vdus_start_script(vdus)" class="btn btn-default">Download .vnc configuration file</button>
@@ -86,7 +90,7 @@ vncwebviewer_template = """
                         </td>
                     </tr>
                 -->
-                <tr>
+                <tr ng-if="vdus.state != 1">
                     <td>
                     </td>
                     <td colspan="2">
@@ -197,7 +201,7 @@ virtual_desktop_settings_template = """
           <div class="controls col-lg-offset-0 col-sm-8">
               <label for="id_start_automatically" class="">
               <input class="checkboxinput checkbox" id="id_start_automatically" name="start_automatically" ng-model="_edit_obj.start_automatically" type="checkbox" />
-          Running (Check to make sure the server is always running)</label></div></div></div>
+          Enabled (Check to make sure the server is always running)</label></div></div></div>
   </div>
                
                
@@ -214,7 +218,8 @@ virtual_desktop_settings_template = """
             <th>Web VNC Port</th>
             <th>Window<br/>manager</th>
             <th>Screen size</th>
-            <th>Running</th>
+            <th>Enabled</th>
+            <th>State</th>
             <th>Action</th>
         </tr>
     </thead>
@@ -227,6 +232,7 @@ virtual_desktop_settings_template = """
             <td> {{ get_window_manager_by_index(vdus.window_manager).description }} </td>
             <td> {{ vdus.screen_size }} </td>
             <td> {{ vdus.is_running | yesno2 }} </td>
+            <td> {{ vdus.state_description }} </td>
             <td>
                 <button type="button" popover-placement="top" popover-title="Viewer command line" popover="{{ vdus.viewer_cmd_line }}" class="btn btn-xs btn-info">info</button>
                 <button type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_virtual_desktop_user_setting(vdus)">modify</button>
