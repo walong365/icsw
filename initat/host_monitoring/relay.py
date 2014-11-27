@@ -1096,6 +1096,7 @@ class relay_code(threading_tools.process_pool):
             ret_com.set_result("stored content")
         else:
             ret_com.set_result("cannot create file (please check logs on relayer)", server_command.SRV_REPLY_STATE_ERROR)
+        return ret_com
 
     def _file_content_bulk(self, srv_com):
         new_vers = int(srv_com["version"].text)
