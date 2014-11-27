@@ -36,7 +36,12 @@ class reload_virtual_desktop(cs_base_class.server_com):
         control.stop()
 
         if not vdus.to_delete and vdus.is_running:
+            # don't delete, just restart
             control.start()
+            vdus.update_state(virtual_desktop_user_setting.State.STARTING)
+        else:
+            # don't start anymore, either disabled or delete
+            vdus.update_state(virtual_desktop_user_setting.State.DISABLED)
 
         if vdus.to_delete:
             cur_inst.log("removing virtual desktop {}".format(vdus_pk))
