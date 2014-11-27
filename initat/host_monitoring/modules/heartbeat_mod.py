@@ -51,8 +51,10 @@ class corosync_status_command(hm_classes.hm_command):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
 
     def _parse_lines(self, lines):
-        r_dict = {"node_id": "???",
-                  "rings": {}}
+        r_dict = {
+            "node_id": "???",
+            "rings": {}
+        }
         for line in lines:
             line = line.rstrip()
             if line:
@@ -62,7 +64,8 @@ class corosync_status_command(hm_classes.hm_command):
                     ring_id = int(line.lower().split()[-1])
                     r_dict["rings"][ring_id] = {
                         "id": "...",
-                        "status": "unknown"}
+                        "status": "unknown"
+                    }
                     cur_ring_id = ring_id
                 elif ord(line[0]) == 9:
                     key, value = line.split("=", 1)
@@ -89,8 +92,13 @@ class corosync_status_command(hm_classes.hm_command):
                     out_f.append("ring {:d}: id {}, {}".format(
                         ring_key,
                         ring_dict["id"],
-                        ring_stat))
-                    if not ring_stat.lower().count("no faults"):
+                        ring_stat)
+                    )
+                    if ring_stat.lower().count("no faults"):
+                        pass
+                    elif ring_stat.lower().count("incrementing problem"):
+                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    else:
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
                 out_f.append("no rings defined")
