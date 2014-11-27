@@ -173,10 +173,13 @@ class virtual_desktop_user_setting_serializer(serializers.ModelSerializer):
     websockify_effective_port = serializers.IntegerField(read_only=True)
     password = serializers.CharField(read_only=True)
 
+    state = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = virtual_desktop_user_setting
 
     vnc_obfuscated_password = serializers.Field(source="get_vnc_obfuscated_password")
+    state_description = serializers.Field(source="get_state_description")
 
 
 class virtual_desktop_protocol_serializer(serializers.ModelSerializer):

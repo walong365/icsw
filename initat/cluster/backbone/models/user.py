@@ -1165,6 +1165,17 @@ class user_scan_result(models.Model):
 
 
 class virtual_desktop_user_setting(models.Model):
+
+    class State(object):
+        # NOTE: keep in sync with code in user.cs
+        DISABLED = 1
+        STARTING = 2
+        RUNNING = 3
+
+        @classmethod
+        def get_state_description(cls, state):
+            return {1: "Disabled", 2: "Starting", 3: "Running"}.get(state, "Undefined")
+
     idx = models.AutoField(primary_key=True)
     virtual_desktop_protocol = models.ForeignKey("backbone.virtual_desktop_protocol")
     window_manager = models.ForeignKey("backbone.window_manager")
@@ -1189,6 +1200,7 @@ class virtual_desktop_user_setting(models.Model):
 
     # whether this session should be running
     # TODO: rename this as soon as we have a proper way of doing manual migrations
+    # in the gui, this can be called "enabled"
     is_running = models.BooleanField(default=False)
 
     # data of running process
@@ -1199,6 +1211,8 @@ class virtual_desktop_user_setting(models.Model):
 
     # set when this is about to be deleted (this is necessary as only cluster-server may do it as soon as session is shut down)
     to_delete = models.BooleanField(default=False, blank=True)
+
+    state = models.IntegerField(default=State.DISABLED)
 
     def __init__(self, *args, **kwargs):
         super(virtual_desktop_user_setting, self).__init__(*args, **kwargs)
@@ -1211,6 +1225,15 @@ class virtual_desktop_user_setting(models.Model):
 
     def get_vnc_obfuscated_password(self):
         return get_vnc_enc(self.password)
+
+    def get_state_description(self):
+        return self.State.get_state_description(self.state)
+
+    def update_state(self, state):
+        if self.state != state:
+            self.state = state
+            self.save_without_signals()
+
 
 @receiver(signals.post_save, sender=virtual_desktop_user_setting)
 def virtual_desktop_user_setting_save(sender, **kwargs):
