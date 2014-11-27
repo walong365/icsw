@@ -1890,15 +1890,33 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         _wrapper = $("div#icsw_wrapper")
         if $scope.is_authenticated
-            _wrapper.removeClass("toggled")
+            if "sidebar_close" of $window.USER_VARS
+                if $window.USER_VARS.sidebar_close
+                    _close = true
+                else
+                    _close = false
+            else
+                _close = false
         else
+            _close = true
+        if _close
             _wrapper.addClass("toggled")
+        else
+            _wrapper.removeClass("toggled")
         $scope.sep_click = () ->
             _wrapper = $("div#icsw_wrapper")
             if _wrapper.hasClass("toggled")
                 _wrapper.removeClass("toggled")
+                _close = "false"
             else
                 _wrapper.addClass("toggled")
+                _close = "true"
+            call_ajax
+                url: "{% url 'user:set_user_var' %}"
+                data:
+                    key: "sidebar_close"
+                    value : _close
+                    type: "bool"
             return false
 ])
 
