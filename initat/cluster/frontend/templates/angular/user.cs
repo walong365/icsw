@@ -45,81 +45,74 @@ vncwebviewer_template = """
 <div ng-if="virtual_desktop_sessions.length == 0">
     No virtual desktop sessions 
 </div>
-<table ng-if="(!show_single_vdus) && ips_loaded">
-    <tr ng-repeat="vdus in virtual_desktop_sessions">
-        <td>
-            <div class="panel panel-primary">
-                <div class="panel-heading">
-                    <h4 class="ng-binding panel-title">
-                        {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
-                    </h4>
-                </div>
-                <div class="panel-body">
+<div ng-if="(!show_single_vdus) && ips_loaded">
+    <div class="panel panel-primary" ng-repeat="vdus in virtual_desktop_sessions" style="width:650px">
+        <div class="panel-heading">
+            <h4 class="ng-binding panel-title">
+                {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
+            </h4>
+        </div>
+        <div class="panel-body">
 
-                    <table class="table">
-                        <tr>
-                            <td>Address</td>
-                            <td>{{ips_for_devices[vdus.device]}}</td>
-                        </tr>
-                        <tr>
-                            <td>Port</td>
-                            <td>{{ vdus.effective_port }}</td>
-                        </tr>
-                        <tr>
-                            <td>Password</td>
-                            <td>{{ vdus.password }}</td>
-                        </tr>
-                        <tr>
-                            <td>Command line</td>
-                            <td>{{ vdus.viewer_cmd_line }}</td>
-                        </tr>
+            <table class="table">
+                <tr>
+                    <td>Server</td>
+                    <td>{{ips_for_devices[vdus.device]}}:{{ vdus.effective_port }}</td>
+                </tr>
+                <tr>
+                    <td>Password</td>
+                    <td>{{ vdus.password }}</td>
+                </tr>
+                <tr>
+                    <td>Command line</td>
+                    <td>{{ vdus.viewer_cmd_line }}</td>
+                </tr>
 
-                        <tr>
-                            <td colspan="2">
-                                <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">open in new tab</button>
-                            </td>
-                        </tr>
-                    </table>
-                    <table>
-                    <!--
-                        <tr>
-                            <td>
-                                <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
-                                <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
-                                    {{vdus.viewer_cmd_line}}
-                                </div>
-                            </td>
-                        </tr>
-                    -->
-                        <tr>
-                            <td>
-                            </td>
-                            <td colspan="2">
+                <tr>
+                    <td colspan="2">
+                        <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">Open in new tab</button>
+                        <button type="button" ng-click="download_vdus_start_script(vdus)" class="btn btn-default">Download .vnc configuration file</button>
+                    </td>
+                </tr>
+            </table>
+            <table>
+                <!--
+                    <tr>
+                        <td>
+                            <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
+                            <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
+                                {{vdus.viewer_cmd_line}}
+                            </div>
+                        </td>
+                    </tr>
+                -->
+                <tr>
+                    <td>
+                    </td>
+                    <td colspan="2">
 
-                                <accordion close-others="false">
-                                   <accordion-group is-open="web_viewer">
-                                       <accordion-heading>
-                                           Web viewer
-                                           <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
-                                       </accordion-heading>
-                                       <div ng-if="web_viewer">
-                                           <!--
-                                           ie10 warns about leaving the page if a vnc directive is in the dom, this way it is only the case if the user has explicitly opened it
-                                           -->
-                                           <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
-                                       </div>
-                                   </accordion-group>
-                                   </accordion>
-      
-                            </td>
-                        </tr>
-                    </table>
+                        <accordion close-others="false">
+                           <accordion-group is-open="web_viewer">
+                               <accordion-heading>
+                                   Web viewer
+                                   <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
+                               </accordion-heading>
+                               <div ng-if="web_viewer">
+                                   <!--
+                                   ie10 warns about leaving the page if a vnc directive is in the dom, this way it is only the case if the user has explicitly opened it
+                                   -->
+                                   <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
+                               </div>
+                           </accordion-group>
+                           </accordion>
 
-                </div>
-           </div>
-      </td>
-    </tr>
-</table>
+                    </td>
+                </tr>
+            </table>
+
+        </div>
+   </div>
+</div>
 """
 virtual_desktop_settings_template = """
 <fieldset  ng-show="true">
@@ -967,6 +960,11 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 dataType : "json"
                 success  : (json) =>
                     vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, json.ip)
+                    script = "notepad.exe\r\n"
+                    blob = new Blob([ script ], { type : 'application/x-bat' });
+                    console.log "blob", blob
+                    vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
+                    console.log "set testurl", vdus.testurl
 ]).controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.virtual_desktop_user_setting = []
@@ -1531,16 +1529,13 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                         )
                 
             scope.download_vdus_start_script = (vdus) ->
-                # currently unused
-                script = "#!/bin/sh\n"+
-                         "echo \"#{vdus.password}\" | vncviewer -autopass #{scope.get_device_by_index(vdus.device).name }:#{vdus.effective_port }\n"
-                blob = new Blob([ script ], { type : 'text/x-shellscript' });
-                url = (window.URL || window.webkitURL).createObjectURL( blob );
-                hidden = document.createElement('a')
-                hidden.href = url
-                hidden.target = "_blank"
-                hidden.download = "start_virtual_desktop_viewer.sh"
-                hidden.click()
+                # create .vnc file (supported by at least tightvnc and realvnc on windows)
+                content = ["[Connection]\n",
+                          "Host=#{ scope.ips_for_devices[vdus.device] }:#{ vdus.effective_port }\n",
+                          "Password=#{ vdus.vnc_obfuscated_password }\n"]
+                blob = new Blob(content, {type: "text/plain;charset=utf-8"});
+                # use FileSaver.js
+                saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)

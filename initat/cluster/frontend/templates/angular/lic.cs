@@ -31,8 +31,8 @@ lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.ext_license_list = data[1]
 
             # for testing:
-            #$scope.ext_license_list[1].selected = true
-            #$scope.license_select_change()
+            $scope.ext_license_list[1].selected = true
+            $scope.license_select_change()
 
             $scope.update_lic_overview_data()
         )
@@ -92,7 +92,7 @@ lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.multi_view = false
         $scope.cur_time = moment().format()
         # for testing:
-        #$scope.licdaterangestart = moment("Tue Oct 07 2014 00:00:00 GMT+0200 (CEST)")
+        $scope.licdaterangestart = moment("Tue Oct 07 2014 00:00:00 GMT+0200 (CEST)")
         #$scope.cur_time = "Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)"
 
 ]).directive("licgraph", ["$templateCache", "$resource", ($templateCache, $resource) ->
