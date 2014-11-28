@@ -337,6 +337,7 @@ PIPELINE_CSS = {
             # not used right now
             # "css/angular-block-ui.css",
             "js/libs/ui-select/select.css",
+            "css/ladda.min.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }
@@ -371,6 +372,9 @@ PIPELINE_JS = {
             "js/libs/angular.min.js",
             "js/libs/moment-with-locales.min.js",
             "js/libs/jquery.Jcrop.min.js",
+            "js/spin.min.js",
+            "js/ladda.min.js",
+            "js/angular-ladda.min.js",
         },
         "output_filename": "pipeline/js/base.js"
     },
