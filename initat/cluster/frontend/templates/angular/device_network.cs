@@ -101,6 +101,7 @@ dev_row_template = """
         ng-click="edit_boot_settings(ndip_obj, $event)">
     </input>
     <span ng-show="!get_num_bootips(ndip_obj)">N/A</span>
+    <!--<button class="btn btn-primary btn-xs" ladda="true" data-style="expand-left">xxx</button>-->
 </td>
 <td>
     {{ get_num_netdevices(ndip_obj) }}
@@ -273,7 +274,7 @@ net_cluster_info_template = """
 
 {% endverbatim %}
 
-device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select"])
+device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda"])
 
 angular_module_setup([device_network_module])
 
