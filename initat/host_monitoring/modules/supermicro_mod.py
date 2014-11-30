@@ -19,9 +19,10 @@
 
 from initat.host_monitoring import limits, hm_classes
 import logging_tools
+import process_tools
 import server_command
 
-SMCIPMI_BIN = "/sbin/SMCIPMITool"
+SMCIPMI_BIN = "SMCIPMITool"
 
 
 class _general(hm_classes.hm_module):
@@ -70,13 +71,13 @@ class smcipmi_struct(hm_classes.subprocess_struct):
         id_str = "supermicro"
         verbose = True
 
-    def __init__(self, log_com, srv_com, target_host, login, passwd, command):
+    def __init__(self, log_com, srv_com, check_bin, target_host, login, passwd, command):
         self.__log_com = log_com
         hm_classes.subprocess_struct.__init__(
             self,
             srv_com,
             "{} {} {} {} {}".format(
-                SMCIPMI_BIN,
+                check_bin,
                 target_host,
                 login,
                 passwd,
@@ -108,12 +109,19 @@ class smcipmi_command(hm_classes.hm_command):
         self.parser.add_argument("--user", dest="user", type=str, default="ADMIN")
         self.parser.add_argument("--passwd", dest="passwd", type=str, default="ADMIN")
         self.parser.add_argument("--ip", dest="ip", type=str)
+        self.__smcipmi_binary = process_tools.find_file(SMCIPMI_BIN)
 
     def __call__(self, srv_com, cur_ns):
         args = cur_ns.arguments
         if not len(args):
             srv_com.set_result(
                 "no arguments specified",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+            cur_smcc = None
+        elif not self.__smcipmi_binary:
+            srv_com.set_result(
+                "no {} binary found".format(SMCIPMI_BIN),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
             cur_smcc = None
@@ -135,6 +143,7 @@ class smcipmi_command(hm_classes.hm_command):
             cur_smcc = smcipmi_struct(
                 self.log,
                 srv_com,
+                self.__smcipmi_binary,
                 cur_ns.ip,
                 cur_ns.user,
                 cur_ns.passwd,
