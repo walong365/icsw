@@ -214,6 +214,7 @@ class procstat_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=int, default=0)
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
         self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
+        self.parser.add_argument("--cmdre", dest="cmdre", default="", type=str, help="regexp to match against the commandline")
 
     def __call__(self, srv_com, cur_ns):
         # s_time = time.time()
@@ -270,7 +271,14 @@ class procstat_command(hm_classes.hm_command):
             "zombie_ok": 0,
         }
         zombie_dict = {}
+        if cur_ns.cmdre:
+            _cmdre = re.compile(cur_ns.cmdre)
+        else:
+            _cmdre = None
         for _pid, value in result.iteritems():
+            if _cmdre and not _cmdre.match(" ".join(value["cmdline"])):
+                continue
+            print _pid, value
             if _form < 2:
                 _is_zombie = value["state"] == "Z"
             else:
@@ -298,11 +306,11 @@ class procstat_command(hm_classes.hm_command):
         if len(p_names) == 1 and len(result) == 1:
             found_name = result.values()[0]["name"]
             if found_name != p_names[0]:
-                p_names[0] = "%s instead of %s" % (found_name, p_names[0])
+                p_names[0] = "{} instead of {}".format(found_name, p_names[0])
             # print p_names, result
         zombie_dict = {key: len(value) for key, value in zombie_dict.iteritems()}
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
-        ret_str = "{} running ({}{}{})".format(
+        ret_str = "{} running ({}{}{}{})".format(
             " + ".join(
                 [
                     logging_tools.get_plural("{} process".format(key), res_dict[key]) for key in [
@@ -312,9 +320,10 @@ class procstat_command(hm_classes.hm_command):
             ", ".join(sorted(p_names)) if p_names else "all",
             ", {} [{}]".format(
                 logging_tools.get_plural("zombie", res_dict["fail"]),
-                ", ".join(["%s%s" % (key, " (x %d)" % (zombie_dict[key]) if zombie_dict[key] > 1 else "") for key in sorted(zombie_dict)]),
+                ", ".join(["%s%s" % (key, " (x {:d})".format(zombie_dict[key]) if zombie_dict[key] > 1 else "") for key in sorted(zombie_dict)]),
                 ) if res_dict["fail"] else "",
             ", {}".format(logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
+            ", cmdRE is {}".format(cur_ns.cmdre) if _cmdre else "",
         )
         return ret_state, ret_str
 
