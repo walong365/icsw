@@ -110,15 +110,18 @@ class ip_packet(object):
             self.checksum,
             self.src_addr,
             self.dst_addr,
-            _octets_to_hex(self.payload))
+            _octets_to_hex(self.payload)
+        )
 
 
 def _parse_ip_packet(data):
     """ parse received data as IP packet """
-    (ihlversion, tos, _tot_len,
-     ident, flags_fragment, ttl,
-     protocol, _checksum,
-     src_addr, dst_addr) = struct.unpack("!BBHHHBBH4s4s", data[:20])
+    (
+        ihlversion, tos, _tot_len,
+        ident, flags_fragment, ttl,
+        protocol, _checksum,
+        src_addr, dst_addr
+    ) = struct.unpack("!BBHHHBBH4s4s", data[:20])
     src_addr = socket.inet_ntoa(src_addr)
     dst_addr = socket.inet_ntoa(dst_addr)
     version = ihlversion & 0xF0
@@ -142,7 +145,7 @@ def _parse_ip_packet(data):
         flags_fragment,
         ttl,
         protocol,
-        )
+    )
 
 
 class icmp_datagram(object):
@@ -309,9 +312,10 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
                     self.__key_error_num = 0
         return dgram
 
-    def send_echo(self, addr, data="icmp_twisted.py data", ident=None):
+    def send_echo(self, addr, data="init.at NOCTUA/CORVUS ping data", ident=None):
         self.echo_seqno = (self.echo_seqno + 1) & 0x7fff
         if ident is None:
             ident = os.getpid() & 0x7FFF
         dgram = icmp_echo(data=data, ident=ident, seqno=self.echo_seqno)
+        s_time = time.time()
         self.socket.sendto(dgram.packed(), (str(addr), 0))

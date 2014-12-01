@@ -64,7 +64,7 @@ class my_error(Exception):
         return str(self.value)
 
     def __repr__(self):
-        return "my_exception: %s" % (str(self.value))
+        return "my_exception: {}".format(str(self.value))
 
 
 class term_error(my_error):
@@ -192,21 +192,21 @@ class debug_zmq_ctx(zmq.Context):
         for _s_type in ["XPUB", "XSUB", "REP", "REQ", "ROUTER", "SUB", "DEALER", "PULL", "PUB", "PUSH"]:
             if getattr(zmq, _s_type) == s_type:
                 l_type = _s_type
-        return "%d%s" % (s_type, "=%s" % (l_type) if l_type else "")
+        return "{:d}{}".format(s_type, "={}".format(l_type) if l_type else "")
 
     def socket(self, sock_type, *args, **kwargs):
         ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
         self._sockets_open.add(ret_socket.fd)
-        self.log("socket(%s) == %d, now open: %s" % (
+        self.log("socket({}) == {:d}, now open: {}".format(
             self._interpret_sock_type(sock_type),
             ret_socket.fd,
-            ", ".join(["%d" % (cur_fd) for cur_fd in self._sockets_open])))
+            ", ".join(["{:d}".format(cur_fd) for cur_fd in self._sockets_open])))
         ret_sock = debug_zmq_sock(ret_socket)
         ret_sock.register(self)
         return ret_sock
 
     def term(self):
-        self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
+        self.log("term, {} open".format(logging_tools.get_plural("socket", len(self._sockets_open))))
         del self._sockets_open
         super(debug_zmq_ctx, self).term()
 
@@ -319,6 +319,7 @@ class poller_obj(object):
         self.fd_lookup = {}
         self._socket_lut = {}
         self.__normal_sockets = False
+        # self.__waiting = 0
 
     def register_poller(self, zmq_socket, sock_type, callback):
         if self.debug_zmq:
@@ -372,9 +373,13 @@ class poller_obj(object):
         _list = self.poller.poll(timeout)
         self._handle_select_list(_list)
 
+    # @property
+    # def get_num_po_waiting(self):
+    #    return self.__waiting
     def _handle_select_list(self, in_list):
         # import select
         # print "**", in_list, zmq.POLLIN, zmq.POLLOUT, select.POLLIN, select.POLLOUT
+        # self.__waiting = len(in_list)
         for sock, c_type in in_list:
             if self.debug_zmq and type(sock) not in [int, long]:
                 sock = self.fd_lookup[sock]
@@ -524,6 +529,8 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         }
         # function table
         self.__func_table = {}
+        # option dict
+        self.__func_options = {}
         # ignore calls
         self.__ignore_funcs = []
         # busy loop
@@ -639,8 +646,9 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
             )
         )
 
-    def register_func(self, f_str, f_call):
+    def register_func(self, f_str, f_call, **kwargs):
         self.__func_table[f_str] = f_call
+        self.__func_options[f_str] = kwargs
 
     def add_ignore_func(self, f_str):
         if type(f_str) != list:
@@ -752,12 +760,26 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         src_pid = cur_mes["pid"]
         mes_type = cur_mes["type"]
         if mes_type in self.__func_table:
-            self.__func_table[mes_type](
-                *cur_mes["args"],
-                src_pid=src_pid,
-                src_process=src_process,
-                func_name=mes_type,
-                **cur_mes.get("kwargs", {}))
+            greedy = self.__func_options[mes_type].get("greedy", False)
+            if greedy:
+                r_list = [(src_process, cur_mes)]
+                while True:
+                    try:
+                        src_process = zmq_socket.recv_unicode(zmq.NOBLOCK)
+                    except:
+                        break
+                    else:
+                        cur_mes = zmq_socket.recv_pyobj()
+                        r_list.append((src_process, cur_mes))
+                self.__func_table[mes_type](r_list)
+            else:
+                self.__func_table[mes_type](
+                    *cur_mes["args"],
+                    src_pid=src_pid,
+                    src_process=src_process,
+                    func_name=mes_type,
+                    **cur_mes.get("kwargs", {})
+                )
             self.any_message_received()
         else:
             self.log(
@@ -1183,13 +1205,13 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                 signal.signal(sig_num, orig_h)
 
     def process_init(self):
-        self.log("process_init %d" % (os.getpid()))
+        self.log("process_init {:d}".format(os.getpid()))
 
     def loop_start(self):
-        self.log("loop_start %d" % (os.getpid()))
+        self.log("loop_start {:d}".format(os.getpid()))
 
     def loop_end(self):
-        self.log("loop_end %d" % (os.getpid()))
+        self.log("loop_end {:d}".format(os.getpid()))
 
     def loop_post(self):
         pass
@@ -1198,9 +1220,9 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         for mes in mes_list:
             if type(mes) == tuple:
                 mes, _in_stuff = mes
-                self.log("SRM: received message %s (with options)" % (mes))
+                self.log("SRM: received message {} (with options)".format(mes))
             else:
-                self.log("SRM: received message %s" % (mes))
+                self.log("SRM: received message {}".format(mes))
 
     def _tp_message_received(self, zmq_socket):
         src_process = zmq_socket.recv_unicode(zmq.SNDMORE)  # @UndefinedVariable
