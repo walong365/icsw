@@ -114,7 +114,7 @@ class ldap_mixin(object):
             return True, ""
         for key, value in in_dict.iteritems():
             if type(value) == list:
-                in_dict[key] = [str(sub_val) for sub_val in value]
+                in_dict[key] = [sub_val.encode("utf-8") for sub_val in value]
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
         except ldap.LDAPError:
