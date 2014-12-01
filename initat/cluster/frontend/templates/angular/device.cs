@@ -175,6 +175,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                         if parseInt($(xml).find("value[name='changed']").text())
                             $.simplemodal.close()
                             $scope.reload()
+                            reload_sidebar_tree()
         $scope.delete_many = (event) ->
             simple_modal($modal, $q, "Really delete " + $scope.num_selected() + " devices ?").then(
                 () ->
@@ -187,6 +188,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                         success : (xml) ->
                             if parse_xml_response(xml)
                                 $scope.reload()
+                                reload_sidebar_tree()
             )
         $scope.get_action_string = () ->
             return if $scope.create_mode then "Create" else "Modify"
@@ -198,12 +200,14 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                             text : "deleted #{a_name}"
                         if a_name == "device"
                             $scope.device_group_lut[obj.device_group].num_devices--
-                            remove_by_idx($scope.entries, obj.idx)
+                            # remove_by_idx($scope.entries, obj.idx), n
+                            reload_sidebar_tree()
                         else
                             remove_by_idx($scope.rest_data[a_name], obj.idx)
                             if a_name == "device_group"
-                                # remove meta device
-                                remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])
+                                # remove meta device, now handled via reload_sidebar
+                                # remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])
+                                reload_sidebar_tree()
                         $scope.pagSettings.set_entries($scope.entries)
                     )
             )
@@ -312,6 +316,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             if mod_obj.device_group != $scope.pre_edit_obj.device_group
                 # device group has changed, reload to fix all dependencies
                 $scope.reload()
+                reload_sidebar_tree()
         $scope.object_created = (new_obj) ->
             if $scope._array_name == "device"
                 new_obj.selected = true
@@ -331,6 +336,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
             else if $scope._array_name == "device_group"
                 $scope.reload()
+                reload_sidebar_tree()
         $scope.new_object = (a_name, parent_obj) ->
             new_obj = {"enabled" : true}
             if a_name == "device_group"

@@ -1281,7 +1281,7 @@ angular.module('ui.codemirror', []).constant('uiCodemirrorConfig', {}).directive
 ])
 
 reload_sidebar_tree = (pk_list) ->
-    sidebar_div = $("div[id='icsw.sidebar.ctrl']")
+    sidebar_div = $("div[id='icsw.sidebar'] > div[id='sidebar-wrapper']")
     # sidebar found ?
     if sidebar_div.length
         scope = angular.element(sidebar_div[0]).scope()
