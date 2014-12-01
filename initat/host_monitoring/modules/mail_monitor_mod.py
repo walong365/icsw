@@ -538,7 +538,7 @@ class mailq_command(hm_classes.hm_command):
 
 class ext_mailq_commandX(object):  # hm_classes.hmb_command):
     def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "ext_mailq", **args)
+        # hm_classes.hmb_command.__init__(self, "ext_mailq", **args)
         self.help_str = "checks the number of mails in a mail queue via the supplied command"
         self.short_client_info = " -w NUM1 -c NUM2"
         self.long_client_info = "warning and critical values for the mailsystem"

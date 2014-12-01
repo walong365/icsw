@@ -26,6 +26,7 @@ from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import TIME_FORMAT
 from initat.host_monitoring.hm_inotify import inotify_process
 from initat.host_monitoring.hm_direct import socket_process
+from initat.host_monitoring.hm_resolve import resolve_process
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import argparse
@@ -74,6 +75,7 @@ class server_code(threading_tools.process_pool):
         )
         self.renice(global_config["NICE_LEVEL"])
         self.add_process(socket_process("socket"), start=True)
+        self.add_process(resolve_process("resolve"), start=True)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -264,11 +266,11 @@ class server_code(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4)
+        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=4 if global_config["NO_INOTIFY"] else 5)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collserver")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4, process_name="manager")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4 if global_config["NO_INOTIFY"] else 5, process_name="manager")
         msi_block.start_command = "/etc/init.d/host-monitoring start"
         msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
         msi_block.kill_pids = True
@@ -291,8 +293,9 @@ class server_code(threading_tools.process_pool):
         else:
             # compare 0mq from cluster with host-monitoring 0mq_id
             my_0mq_id = uuid_tools.get_uuid().get_urn()
+            _etfs = etree.fromstring  # @UndefinedVariable
             try:
-                hm_0mq_id = etree.fromstring(file(zmq_id_name, "r").read()).xpath(
+                hm_0mq_id = _etfs(file(zmq_id_name, "r").read()).xpath(
                     ".//zmq_id[@bind_address='*']",
                     smart_strings=False
                 )[0].text
@@ -388,7 +391,7 @@ class server_code(threading_tools.process_pool):
                     self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             wait_iter = 0
             while os.path.exists(file_name) and wait_iter < 100:
-                self.log("socket %s still exists, waiting" % (sock_name))
+                self.log("socket {} still exists, waiting".format(sock_name))
                 time.sleep(0.1)
                 wait_iter += 1
             cur_socket = self.zmq_context.socket(sock_type)
@@ -399,7 +402,7 @@ class server_code(threading_tools.process_pool):
                 # client.bind("tcp://*:8888")
             except zmq.ZMQError:
                 self.log(
-                    "error binding %s: %s" % (
+                    "error binding {}: {}".format(
                         short_sock_name,
                         process_tools.get_except_info()
                     ),
@@ -407,7 +410,7 @@ class server_code(threading_tools.process_pool):
                 )
                 raise
             else:
-                setattr(self, "%s_socket" % (short_sock_name), cur_socket)
+                setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 _backlog_size = global_config["BACKLOG_SIZE"]
                 os.chmod(file_name, 0777)
                 cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
@@ -652,7 +655,7 @@ class server_code(threading_tools.process_pool):
                 cur_del.process(*args)
                 found = True
         if not found:
-            self.log("got ping_reply with unknown id '%s'" % (ping_id), logging_tools.LOG_LEVEL_WARN)
+            self.log("got ping_reply with unknown id '{}'".format(ping_id), logging_tools.LOG_LEVEL_WARN)
 
     def _show_config(self):
         try:

@@ -243,8 +243,9 @@ class relay_code(threading_tools.process_pool):
         self.master_ip = master_ip
         self.master_uuid = master_uuid
         self.master_port = master_port
+        _ets = etree.tostring  # @UndefinedVariable
         if write:
-            file(MASTER_FILE_NAME, "w").write(etree.tostring(
+            file(MASTER_FILE_NAME, "w").write(_ets(
                 E.master_data(
                     ip=self.master_ip,
                     uuid=self.master_uuid,
@@ -545,7 +546,14 @@ class relay_code(threading_tools.process_pool):
                 pass
             else:
                 # resolve full name
-                self.log("ip_addr {} resolved to '{}' ({}), {}".format(ip_addr, full_name, ", ".join(aliases) or "N/A", ", ".join(ip_addrs) or "N/A"))
+                self.log(
+                    "ip_addr {} resolved to '{}' ({}), {}".format(
+                        ip_addr,
+                        full_name,
+                        ", ".join(aliases) or "N/A",
+                        ", ".join(ip_addrs) or "N/A"
+                    )
+                )
                 try:
                     new_ip_addr = socket.gethostbyname(full_name)
                 except:
@@ -569,7 +577,7 @@ class relay_code(threading_tools.process_pool):
                     # should we use the new ip_addr ? dangerous, FIXME
                     # ip_addr = new_ip_addr
             if ip_addr not in self.__ip_lut:
-                self.log("resolved %s to %s" % (target, ip_addr))
+                self.log("resolved {} to {}".format(target, ip_addr))
                 self.__ip_lut[ip_addr] = target
             self.__forward_lut[target] = ip_addr
             self.log("ip resolving: {} -> {}" % (target, ip_addr))

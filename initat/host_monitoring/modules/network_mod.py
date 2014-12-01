@@ -813,7 +813,7 @@ class ping_sp_struct(hm_classes.subprocess_struct):
         hm_classes.subprocess_struct.__init__(self, srv_com, "")
         self.target_spec, self.num_pings, self.timeout = (target_spec, num_pings, timeout)
         ping_sp_struct.seq_num += 1
-        self.seq_str = "ping_%d" % (ping_sp_struct.seq_num)
+        self.seq_str = "ping_{:d}".format(ping_sp_struct.seq_num)
 
     def run(self):
         self.tart_time = time.time()

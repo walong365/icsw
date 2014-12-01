@@ -26,6 +26,7 @@ from initat.host_monitoring.config import global_config
 import icmp_class
 import logging_tools
 import process_tools
+import re
 import select
 import server_command
 import socket
@@ -90,7 +91,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         if self.__debug:
             self.log("ping to {} ({}; {:d}, {:.2f}) [{}]".format(
                 logging_tools.get_plural("target", len(target_list)),
-                ", ".join(target_list),
+                ", ".join([_entry or "<resolve error>" for _entry in target_list]),
                 num_pings, timeout,
                 seq_str))
         cur_time = time.time()
@@ -117,7 +118,16 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                 "recv_fail": 0,
                 "error_list": [],
                 "sent_list": {},
-                "recv_list": {}}
+                "recv_list": {}
+            }
+            if not target:
+                self[cur_seq_str].update(
+                    {
+                        "host": "<resolve error>",
+                        "num": 0,
+                        "error_list": ["resolve error"],
+                    }
+                )
             self.__pings_in_flight += 1
         if self.__debug:
             _wft = [key for key, value in self.__work_dict.iteritems() if key in self.__handled]
@@ -150,8 +160,10 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                         self.log(
                             "error sending to {}: {}".format(
                                 value["host"],
-                                ", ".join(value["error_list"])),
-                            logging_tools.LOG_LEVEL_ERROR)
+                                ", ".join(value["error_list"])
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
                         value["sent_list"][self.echo_seqno] = time.time()
                         value["next_send"] = cur_time + value["slide_time"]
@@ -162,7 +174,6 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                             # register final timeout
                             # print "reg_to", key, value["timeout"]
                             self.__process.register_timer(self._update, value["timeout"], oneshot=True, data=key)
-                            # reactor.callLater(value["timeout"], self._update, key)
             # check for timeout
             # print value["sent_list"]
             if not from_reply:
@@ -171,12 +182,17 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                     value["recv_fail"] += 1
                     value["recv_list"][seq_to] = None
             # check for ping finish
-            if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"] or abs(cur_time - value["start"]) > value["timeout"]):
-                all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
+            if value["error_list"] or (
+                value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"] or abs(cur_time - value["start"]) > value["timeout"]
+            ):
+                all_times = [
+                    value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in
+                    value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) is not None
+                ]
                 if key in self.__group_dict:
                     t_seq_str = self.__group_dict[key]
                     self.__group_dict[t_seq_str][key] = (value["host"], value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
-                    if len([t_key for t_key, value in self.__group_dict[t_seq_str].iteritems() if value == None]) == 0:
+                    if len([t_key for t_key, value in self.__group_dict[t_seq_str].iteritems() if value is None]) == 0:
                         # group done
                         self.__process.send_ping_result(t_seq_str, list(self.__group_dict[t_seq_str].itervalues()))
                         del self.__group_dict[t_seq_str]
@@ -216,7 +232,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                         logging_tools.LOG_LEVEL_WARN,
                     )
                 else:
-                    if not seqno in value["recv_list"]:
+                    if seqno not in value["recv_list"]:
                         value["recv_list"][seqno] = recv_time
                         # if seqno in value["sent_list"]:
                         #    print value["recv_list"][seqno] - value["sent_list"][seqno]
@@ -239,7 +255,7 @@ class tcp_con(object):
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
         # self.socket.setsockopt(socket.SOCK_STREAM, socket.SO_KEEPALIVE, 1)
-        self.__process.register_socket(self.socket, zmq.POLLOUT, self._send)
+        self.__process.register_socket(self.socket, zmq.POLLOUT, self._send)  # @UndefinedVariable
         self.__registered = True
         try:
             self.socket.connect((self._host, self._port))
@@ -313,7 +329,10 @@ class socket_process(threading_tools.process_obj):
             self.register_func("ping", self._ping)
         else:
             self.icmp_protocol = None
+        self.register_func("resolved", self._resolved)
         self.register_timer(self._check_timeout, 5)
+        self.__ip_re = re.compile("^\d+\.\d+\.\d+\.\d+$")
+        self.__pending_id, self.__pending_dict = (0, {})
 
     def _check_timeout(self):
         cur_time = time.time()
@@ -329,7 +348,21 @@ class socket_process(threading_tools.process_obj):
         tcp_con(self, src_id, srv_com)
 
     def _ping(self, *args, **kwargs):
-        self.icmp_protocol.ping(*args)
+        _addr_list = args[1]
+        if all([self.__ip_re.match(_addr) for _addr in _addr_list]):
+            self.icmp_protocol.ping(*args)
+        else:
+            self.__pending_id += 1
+            self.__pending_dict[self.__pending_id] = args
+            self.send_pool_message("resolve", self.__pending_id, args[1], target="resolve")
+            # self.icmp_protocol.ping(*args)
+
+    def _resolved(self, *args, **kwargs):
+        _id, _addr_list = args[:2]
+        # build new argument lis
+        new_args = tuple([self.__pending_dict[_id][0]] + [_addr_list] + list(self.__pending_dict[_id][2:]))
+        del self.__pending_dict[_id]
+        self.icmp_protocol.ping(*new_args)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
