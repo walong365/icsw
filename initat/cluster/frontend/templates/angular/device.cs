@@ -334,6 +334,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 if name_m
                     new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
                     $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
+                reload_sidebar_tree()
             else if $scope._array_name == "device_group"
                 $scope.reload()
                 reload_sidebar_tree()
