@@ -2227,17 +2227,21 @@ class all_contacts(host_type_config):
 
     def _add_contacts_from_db(self, gen_conf):
         all_nots = mon_notification.objects.all()
-        for contact in mon_contact.objects.all().select_related("user"):
+        for contact in mon_contact.objects.all().prefetch_related("notifications").select_related("user"):
             full_name = (u"{} {}".format(contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
             not_h_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled]
             # not_s_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="service") & Q(enabled=True)))
             not_s_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "service" and entry.enabled]
+            not_pks = [_not.pk for _not in contact.notifications.all()]
             if len(contact.user.pager) > 5:
                 # check for pager number
                 not_h_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "host" and entry.enabled])
                 not_s_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "service" and entry.enabled])
+            # filter
+            not_h_list = [entry for entry in not_h_list if entry.pk in not_pks]
+            not_s_list = [entry for entry in not_s_list if entry.pk in not_pks]
             if contact.mon_alias:
                 alias = contact.mon_alias
             elif contact.user.comment:
@@ -2284,23 +2288,6 @@ class all_contacts(host_type_config):
             nag_conf["pager"] = contact.user.pager or "----"
             self.__obj_list.append(nag_conf)
             self.__dict[contact.pk] = nag_conf
-        # add all contacts not used in mon_contacts but somehow related to a device (and active)
-# #        if False:
-# #            for std_user in user.objects.filter(Q(mon_contact=None) & (Q(active=True))):
-# #                devg_ok = len(std_user.allowed_device_groups.all()) > 0 or User.objects.get(Q(username=std_user.login)).has_perm("backbone.all_devices")
-# #                if devg_ok:
-# #                    full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
-# #                    nag_conf = mon_config(
-# #                        full_name,
-# #                        contact_name=std_user.login,
-# #                        alias=std_user.comment or full_name,
-# #                        host_notifications_enabled=0,
-# #                        service_notifications_enabled=0,
-# #                        host_notification_commands="host-notify-by-email",
-# #                        service_notification_commands="notify-by-email",
-# #                    )
-# #                    self.__obj_list.append(nag_conf)
-# #                    #self.__dict[contact.pk] = nag_conf
 
     def __getitem__(self, key):
         return self.__dict[key]
