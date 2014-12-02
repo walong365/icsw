@@ -20,18 +20,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" resolver """
+""" caching resolver """
 
 from initat.host_monitoring.config import global_config
-import icmp_class
 import logging_tools
 import process_tools
-import select
-import server_command
 import socket
 import threading_tools
 import time
-import zmq
 
 CACHE_TIMEOUT = 10
 
