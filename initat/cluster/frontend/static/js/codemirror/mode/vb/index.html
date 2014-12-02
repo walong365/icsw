@@ -15,12 +15,12 @@
       .CodeMirror pre { font-family: Inconsolata; font-size: 14px}
     </style>
 <div id=nav>
-  <a href="http://codemirror.net"><img id=logo src="../../doc/logo.png"></a>
+  <a href="http://codemirror.net"><h1>CodeMirror</h1><img id=logo src="../../doc/logo.png"></a>
 
   <ul>
     <li><a href="../../index.html">Home</a>
     <li><a href="../../doc/manual.html">Manual</a>
-    <li><a href="https://github.com/marijnh/codemirror">Code</a>
+    <li><a href="https://github.com/codemirror/codemirror">Code</a>
   </ul>
   <ul>
     <li><a href="../index.html">Language modes</a>
@@ -36,7 +36,7 @@ function test(golden, text) {
   var ok = true;
   var i = 0;
   function callback(token, style, lineNo, pos){
-		//console.log(String(token) + " " + String(style) + " " + String(lineNo) + " " + String(pos));
+  //console.log(String(token) + " " + String(style) + " " + String(lineNo) + " " + String(pos));
     var result = [String(token), String(style)];
     if (golden[i][0] != result[0] || golden[i][1] != result[1]){
       return "Error, expected: " + String(golden[i]) + ", got: " + String(result);
@@ -86,9 +86,9 @@ function init() {
     runTest();
 }
 function runTest() {
-	document.getElementById('testresult').innerHTML = testAll();
+ document.getElementById('testresult').innerHTML = testAll();
   initText(editor);
-	
+ 
 }
 document.body.onload = init;
 </script>

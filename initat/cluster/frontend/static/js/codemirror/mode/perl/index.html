@@ -9,12 +9,12 @@
 <script src="perl.js"></script>
 <style type="text/css">.CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}</style>
 <div id=nav>
-  <a href="http://codemirror.net"><img id=logo src="../../doc/logo.png"></a>
+  <a href="http://codemirror.net"><h1>CodeMirror</h1><img id=logo src="../../doc/logo.png"></a>
 
   <ul>
     <li><a href="../../index.html">Home</a>
     <li><a href="../../doc/manual.html">Manual</a>
-    <li><a href="https://github.com/marijnh/codemirror">Code</a>
+    <li><a href="https://github.com/codemirror/codemirror">Code</a>
   </ul>
   <ul>
     <li><a href="../index.html">Language modes</a>
@@ -37,7 +37,7 @@ our $s2 = q(multi-
               line);
 
 =item Something
-	Example.
+ Example.
 =cut
 
 my $html=<<'HTML'
@@ -49,13 +49,13 @@ HTML
 print "first,".join(',', 'second', qq~third~);
 
 if($s1 =~ m[(?<!\s)(l.ne)\z]o) {
-	$h->{$1}=$$.' predefined variables';
-	$s2 =~ s/\-line//ox;
-	$s1 =~ s[
-		  line ]
-		[
-		  block
-		]ox;
+ $h->{$1}=$$.' predefined variables';
+ $s2 =~ s/\-line//ox;
+ $s1 =~ s[
+    line ]
+  [
+    block
+  ]ox;
 }
 
 1; # numbers and comments
