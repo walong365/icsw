@@ -65,7 +65,8 @@
                             <option value="core" ng-if="acl_read(null, 'backbone.network.show_clusters')">core (non-trivial)</option>
                         </select>, mode:
                     </div>
-                    <div class="form-group" ng-if="acl_read(null, 'backbone.network.show_clusters')"> 
+                    <!-- disabled because not working -->
+                    <div ng-show="0" class="form-group" ng-if="acl_read(null, 'backbone.network.show_clusters')"> 
                         <select ng-model="graph_mode" class="form-control">
                             <option value="m">move</option>
                             <option value="c">connect</option>

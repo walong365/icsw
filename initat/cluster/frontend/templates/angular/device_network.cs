@@ -12,79 +12,103 @@ device_networks_template = """
 <h3>
     Network config for {{ devices.length }} devices ({{ get_nd_objects().length }} netdevices, {{ get_ip_objects().length }} IPs, {{ get_peer_objects().length }} peers)
 </h3>
-<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Device</th>
-            <th>bootinfo</th>
-            <th>#Ports</th>
-            <th>#IPs</th>
-            <th>#peers</th>
-            <th>SNMP schemes</th>
-            <th colspan="2">action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr devrow ng-repeat="ndip_obj in devices"></tr>
-    </tbody>
-</table>
-
-<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Device</th>
-            <th>idx</th>
-            <th>Port</th>
-            <th>#IPs</th>
-            <th>#peers</th>
-            <th>Bridge</th>
-            <th>MAC</th>
-            <th>Devtype</th>
-            <th>MTU</th>
-            <th>speed</th>
-            <th>penalty</th>
-            <th>flags</th>
-            <th>status</th>
-            <th colspan="4">action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr netdevicerow ng-repeat="ndip_obj in get_nd_objects()"></tr>
-    </tbody>
-</table>
-
-<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Device</th>
-            <th>Port</th>
-            <th>IP</th>
-            <th>Network</th>
-            <th>DTN</th>
-            <th>alias</th>
-            <th colspan="2">action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr netiprow ng-repeat="ndip_obj in get_ip_objects()"></tr>
-    </tbody>
-</table>
-
-<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Device</th>
-            <th>Port</th>
-            <th>cost</th>
-            <th>Dest</th>
-            <th>type</th>
-            <th colspan="2">action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr netpeerrow ng-repeat="ndip_obj in get_peer_objects()"></tr>
-    </tbody>
-</table>
+<accordion close-others="no">
+    <accordion-group is-open="device_open">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
+            {{ devices.length }} devices
+        </accordion-heading>
+        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>bootinfo</th>
+                    <th>#Ports</th>
+                    <th>#IPs</th>
+                    <th>#peers</th>
+                    <th>SNMP schemes</th>
+                    <th colspan="2">action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr devrow ng-repeat="ndip_obj in devices"></tr>
+            </tbody>
+        </table>
+    </accordion-group>
+    <accordion-group is-open="netdevice_open">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
+            {{ get_nd_objects().length }} netdevices
+        </accordion-heading>
+        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>idx</th>
+                    <th>Port</th>
+                    <th>#IPs</th>
+                    <th>#peers</th>
+                    <th>Bridge</th>
+                    <th>MAC</th>
+                    <th>Devtype</th>
+                    <th>MTU</th>
+                    <th>speed</th>
+                    <th>penalty</th>
+                    <th>flags</th>
+                    <th>status</th>
+                    <th colspan="4">action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr netdevicerow ng-repeat="ndip_obj in get_nd_objects()"></tr>
+            </tbody>
+        </table>
+    </accordion-group>
+    <accordion-group is-open="netip_open">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
+            {{ get_ip_objects().length }} IPs
+        </accordion-heading>
+        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Port</th>
+                    <th>IP</th>
+                    <th>Network</th>
+                    <th>DTN</th>
+                    <th>alias</th>
+                    <th colspan="2">action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr netiprow ng-repeat="ndip_obj in get_ip_objects()"></tr>
+            </tbody>
+        </table>
+    </accordion-group>
+    <accordion-group is-open="peer_open">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
+            {{ get_peer_objects().length }} peer connections
+        </accordion-heading>
+        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <thead>
+                <tr>
+                    <th>Device</th>
+                    <th>Port</th>
+                    <th>IPs</th>
+                    <th>cost</th>
+                    <th>Dest</th>
+                    <th>type</th>
+                    <th colspan="2">action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr netpeerrow ng-repeat="ndip_obj in get_peer_objects()"></tr>
+            </tbody>
+        </table>
+    </accordion-group>
+</accordion>
 """
 
 dev_row_template = """
@@ -238,6 +262,9 @@ peer_row_template = """
 <td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
 <td>{{ get_netdevice_name(ndip_obj.netdevice) }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
 <td>
+    <span ng-repeat="ip in get_ip_objects(nd_lut[ndip_obj.netdevice])">{{ ip.ip }}&nbsp;</span>
+</td>
+<td>
     with cost {{ ndip_obj.peer.penalty }}
     &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
 </td>
@@ -282,6 +309,11 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope) ->
         access_level_service.install($scope)
         $scope.enable_modal = true
+        # accordion flags
+        $scope.device_open = true
+        $scope.netdevice_open = true
+        $scope.netip_open = false
+        $scope.peer_open = false
         # mixins
         $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
         $scope.netdevice_edit.create_template = "netdevice_form.html"
@@ -462,11 +494,14 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 r_list = r_list.concat(ndev.net_ip_set)
                 r_list = r_list.concat(ndev.peers)
             return r_list
-        $scope.get_ip_objects = () ->
+        $scope.get_ip_objects = (src_obj) ->
             r_list = []
-            for dev in $scope.devices
-                for ndev in dev.netdevice_set
-                    r_list = r_list.concat(ndev.net_ip_set)
+            if src_obj and src_obj.devname?
+                r_list = src_obj.net_ip_set
+            else
+                for dev in $scope.devices
+                    for ndev in dev.netdevice_set
+                        r_list = r_list.concat(ndev.net_ip_set)
             return r_list
         $scope.get_nd_objects = () ->
             r_list = []
