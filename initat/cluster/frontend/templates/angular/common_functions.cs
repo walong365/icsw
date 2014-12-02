@@ -1238,7 +1238,7 @@ angular.module('ui.codemirror', []).constant('uiCodemirrorConfig', {}).directive
                             codeMirror.setOption(key, newValues[key])
                 updateOptions(opts)
                 if iAttrs.uiCodemirror
-                    scope.$watch(iAttrs.uiCodemirror, updateOptions, true);
+                    scope.$watch(iAttrs.uiCodemirror, updateOptions, true)
                 if ngModel
                     ngModel.$formatters.push((value) ->
                         if angular.isUndefined(value) || value is null
@@ -1253,7 +1253,9 @@ angular.module('ui.codemirror', []).constant('uiCodemirrorConfig', {}).directive
                         cur_cursor = codeMirror.doc.getCursor()
                         # not needed ?
                         cur_cinfo = codeMirror.getScrollInfo()
-                        #console.log cur_cursor, cur_cinfo
+                        if opts.reset_cursor_on_change?
+                            cur_cursor = {line: 0, ch: 0}
+                        # console.log cur_cursor, cur_cinfo
                         codeMirror.setValue(safeViewValue)
                         codeMirror.refresh()
                         codeMirror.doc.setCursor(cur_cursor)
