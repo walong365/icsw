@@ -46,7 +46,7 @@ vncwebviewer_template = """
     No virtual desktop sessions 
 </div>
 <div ng-if="(!show_single_vdus) && ips_loaded">
-    <div class="panel panel-primary" ng-repeat="vdus in virtual_desktop_sessions" style="width:650px">
+    <div class="panel panel-success" ng-repeat="vdus in virtual_desktop_sessions" style="width:650px">
         <div class="panel-heading">
             <h4 class="ng-binding panel-title">
                 {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
