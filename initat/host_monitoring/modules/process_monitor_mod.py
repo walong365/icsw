@@ -276,7 +276,7 @@ class procstat_command(hm_classes.hm_command):
         else:
             _cmdre = None
         for _pid, value in result.iteritems():
-            if _cmdre and not _cmdre.match(" ".join(value["cmdline"])):
+            if _cmdre and not _cmdre.search(" ".join(value["cmdline"])):
                 continue
             if _form < 2:
                 _is_zombie = value["state"] == "Z"
