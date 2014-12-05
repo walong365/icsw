@@ -1154,7 +1154,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                         scope.quota_settings = scope.object.group_quota_setting_set
                     if scope.quota_settings
                         for entry in scope.quota_settings
-                            entry.show_abs = true
+                            entry.show_abs = false
                             # link
                             entry.qcb = scope.qcb_lut[entry.quota_capable_blockdevice]
                             entry.bytes_quota = if (entry.bytes_soft or entry.bytes_hard) then true else false
