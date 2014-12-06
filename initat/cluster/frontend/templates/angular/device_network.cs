@@ -299,9 +299,475 @@ net_cluster_info_template = """
 </div>
 """
 
+chart_template = """
+<svg                                                                                                                                                                                                                                                                           
+  class="draggable-container"                                                                                                                                                                                                                                                  
+  xmlns="http://www.w3.org/2000/svg"                                                                                                                                                                                                                                           
+  ng-mousedown="mouseDown($event)"                                                                                                                                                                                                                                             
+  ng-mousemove="mouseMove($event)"                                                                                                                                                                                                                                             
+  >                                                                                                                                                                                                                                                                            
+  <defs>                                                                                                                                                                                                                                                                       
+    <linearGradient                                                                                                                                                                                                                                                            
+      spreadMethod="pad"                                                                                                                                                                                                                                                       
+      y2="0"                                                                                                                                                                                                                                                                   
+      x2="0"                                                                                                                                                                                                                                                                   
+      y1="1"                                                                                                                                                                                                                                                                   
+      x1="0"                                                                                                                                                                                                                                                                   
+      id="nodeBackgroundGradient"                                                                                                                                                                                                                                              
+      >                                                                                                                                                                                                                                                                        
+      <stop                                                                                                                                                                                                                                                                    
+        offset="0"                                                                                                                                                                                                                                                             
+        stop-opacity="0.99609"                                                                                                                                                                                                                                                 
+        stop-color="#56aaff"                                                                                                                                                                                                                                                   
+        />                                                                                                                                                                                                                                                                     
+        <stop 
+        offset="0.63934" 
+        stop-opacity="0.99219" 
+        stop-color="#d0d0e5"
+        />
+    </linearGradient>
+  </defs>
+  <g
+    ng-repeat="node in chart.nodes"
+    ng-mousedown="nodeMouseDown($event, node)"
+    ng-attr-transform="translate({{node.x()}}, {{node.y()}})"
+    >
+    <rect 
+      ng-attr-class="{{node.selected() && 'selected-node-rect' || (node == mouseOverNode && 'mouseover-node-rect' || 'node-rect')}}"
+      ry="10" 
+      rx="10" 
+      x="0" 
+      y="0" 
+      ng-attr-width="{{node.width()}}" 
+      ng-attr-height="{{node.height()}}" 
+      fill="url(#nodeBackgroundGradient)"
+      >
+
+    </rect>
+
+    <text
+      ng-attr-x="{{node.width()/2}}"
+      y="25"
+      text-anchor="middle"
+      alignment-baseline="middle"
+      >
+      {{node.name()}}
+    </text>
+
+    <g
+      ng-repeat="connector in node.inputConnectors"
+      ng-mousedown="connectorMouseDown($event, node, connector, $index, true)"
+      class="connector input-connector"
+      >
+      <text
+        ng-attr-x="{{connector.x() + 20}}"
+        ng-attr-y="{{connector.y()}}"
+        text-anchor="left"
+        alignment-baseline="middle"
+        >
+        {{connector.name()}}
+      </text>
+      
+      <circle       
+        ng-attr-class="{{connector == mouseOverConnector && 'mouseover-connector-circle' || 'connector-circle'}}"
+        ng-attr-r="{{connectorSize}}" 
+        ng-attr-cx="{{connector.x()}}"
+        ng-attr-cy="{{connector.y()}}"
+        />
+    </g>
+
+    <g
+      ng-repeat="connector in node.outputConnectors"
+      ng-mousedown="connectorMouseDown($event, node, connector, $index, false)"
+      class="connector output-connector"
+      >
+      <text
+        ng-attr-x="{{connector.x() - 20}}"
+        ng-attr-y="{{connector.y()}}"
+        text-anchor="end"
+        alignment-baseline="middle"
+        >
+        {{connector.name()}}
+      </text>
+
+      <circle             
+        ng-attr-class="{{connector == mouseOverConnector && 'mouseover-connector-circle' || 'connector-circle'}}"
+        ng-attr-r="{{connectorSize}}" 
+        ng-attr-cx="{{connector.x()}}"
+        ng-attr-cy="{{connector.y()}}"
+        />
+    </g>
+  </g>
+
+  <g>
+    <g
+      ng-repeat="connection in chart.connections"
+      class="connection"
+      ng-mousedown="connectionMouseDown($event, connection)"
+      >
+        <path
+          ng-attr-class="{{connection.selected() && 'selected-connection-line' || (connection == mouseOverConnection && 'mouseover-connection-line' || 'connection-line')}}"
+          ng-attr-d="M {{connection.sourceCoordX()}}, {{connection.sourceCoordY()}}
+                     C {{connection.sourceTangentX()}}, {{connection.sourceTangentY()}}
+                       {{connection.destTangentX()}}, {{connection.destTangentY()}}
+                       {{connection.destCoordX()}}, {{connection.destCoordY()}}"
+          >
+        </path>
+        <circle
+            ng-attr-class="{{connection.selected() && 'selected-connection-endpoint' || (connection == mouseOverConnection && 'mouseover-connection-endpoint' || 'connection-endpoint')}}"
+            r="5" 
+            ng-attr-cx="{{connection.sourceCoordX()}}" 
+            ng-attr-cy="{{connection.sourceCoordY()}}" 
+            >
+        </circle>
+
+        <circle
+            ng-attr-class="{{connection.selected() && 'selected-connection-endpoint' || (connection == mouseOverConnection && 'mouseover-connection-endpoint' || 'connection-endpoint')}}"
+            r="5" 
+            ng-attr-cx="{{connection.destCoordX()}}" 
+            ng-attr-cy="{{connection.destCoordY()}}" 
+            >
+        </circle>
+    </g>
+  </g>
+
+  <g
+    ng-if="draggingConnection"
+    >
+    <path
+      class="dragging-connection dragging-connection-line"
+      ng-attr-d="M {{dragPoint1.x}}, {{dragPoint1.y}}
+                 C {{dragTangent1.x}}, {{dragTangent1.y}}
+                   {{dragTangent2.x}}, {{dragTangent2.y}}
+                   {{dragPoint2.x}}, {{dragPoint2.y}}"
+      >
+    </path>
+
+    <circle
+        class="dragging-connection dragging-connection-endpoint"
+        r="4" 
+        ng-attr-cx="{{dragPoint1.x}}" 
+        ng-attr-cy="{{dragPoint1.y}}" 
+        >
+    </circle>
+
+    <circle
+        class="dragging-connection dragging-connection-endpoint"
+        r="4" 
+        ng-attr-cx="{{dragPoint2.x}}" 
+        ng-attr-cy="{{dragPoint2.y}}" 
+        >
+    </circle>
+  </g>
+
+  <rect
+      ng-if="dragSelecting"
+      class="drag-selection-rect"
+      ng-attr-x="{{dragSelectionRect.x}}"
+      ng-attr-y="{{dragSelectionRect.y}}"
+      ng-attr-width="{{dragSelectionRect.width}}"
+      ng-attr-height="{{dragSelectionRect.height}}"
+    >
+  </rect>
+  
+</svg>
+"""
+
 {% endverbatim %}
 
-device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda"])
+removeClassSVG = (obj, remove) ->
+    classes = obj.attr('class')
+    if !classes
+        return false
+    index = classes.search(remove);
+    if index == -1
+        return false
+    else
+        classes = classes.substring(0, index) + classes.substring((index + remove.length), classes.length)
+        obj.attr('class', classes)
+        return true
+
+has_class_svg = (obj, has) ->
+    classes = obj.attr('class')
+    if !classes
+        return false
+    return if classes.search(has) == -1 then false else true
+
+testchart = {
+     nodes : [
+        {
+            "name": "Example Node 1",
+            "id": 0,
+            "x": 26,
+            "y": 33,
+            "inputConnectors": [
+                {
+                    "name": "A"
+                },
+                {
+                    "name": "B"
+                },
+                {
+                    "name": "C"
+                }
+            ],
+            "outputConnectors": [
+                {
+                    "name": "A"
+                },
+                {
+                    "name": "B"
+                },
+                {
+                    "name": "C"
+                }
+            ]
+        },
+    ]
+}
+
+angular.module("mouseCapture", []).factory('mouseCapture', ($rootScope) ->
+    $element = document
+    mouseCaptureConfig = null
+    mouseMove = (event) ->
+        if mouseCaptureConfig and mouseCaptureConfig.mouseMove
+            mouseCaptureConfig.mouseMove(event)
+            $rootScope.$digest()
+    mouseUp = (event) ->
+        if mouseCaptureConfig and mouseCaptureConfig.mouseUp
+            mouseCaptureConfig.mouseUp(event)
+            $rootScope.$digest()
+    return {
+        registerElement: (element) ->
+            $element = element
+        acquire: (event, config) ->
+            this.release()
+            mouseCaptureConfig = config
+            $element.mousemove(mouseMove)
+            $element.mouseup(mouseUp)
+        release: () ->
+            if mouseCaptureConfig
+                if mouseCaptureConfig.released
+                    mouseCaptureConfig.released()
+                mouseCaptureConfig = null;
+                $element.unbind("mousemove", mouseMove)
+                $element.unbind("mouseup", mouseUp)
+    }
+).directive('mouseCapture', () ->
+    return {
+        restrict: "A"
+        controller: ($scope, $element, $attrs, mouseCapture) ->
+            mouseCapture.registerElement($element)
+    }
+)
+
+angular.module("dragging", ["mouseCapture"]
+).factory("dragging", ($rootScope, mouseCapture) ->
+    return {
+        startDrag: (event, threshold, config) ->
+            dragging = false
+            x = event.clientX
+            y = event.clientY
+            mouseMove = (event) ->
+                if !dragging
+                    if Math.abs(event.clientX - x) > threshold or Math.abs(event.clientY - y) > threshold
+                        dragging = true;
+                        if config.dragStarted
+                            config.dragStarted(x, y, event)
+                        if config.dragging
+                            config.dragging(event.clientX, event.clientY, event)
+                else 
+                    if config.dragging
+                        config.dragging(event.clientX, event.clientY, event);
+                    x = event.clientX
+                    y = event.clientY
+            released = () ->
+                if dragging
+                    if config.dragEnded
+                        config.dragEnded()
+                else 
+                    if config.clicked
+                        config.clicked()
+            mouseUp = (event) ->
+                mouseCapture.release()
+                event.stopPropagation()
+                event.preventDefault()
+            mouseCapture.acquire(event, {
+                mouseMove: mouseMove
+                mouseUp: mouseUp
+                released: released
+            })
+            event.stopPropagation()
+            event.preventDefault()
+    }
+)
+
+angular.module("flowChart", ["dragging"]
+).directive("flowChart", () ->
+    return {
+        restrict: "E"
+        template: chart_template
+        replace: true,
+        scope: 
+            chart: "=chart"
+        controller: "FlowChartController"
+    }
+).directive("chartJsonEdit", () ->
+    return {
+        restrict: "A"
+        scope: 
+            viewModel: "="
+        link: (scope, elem, attr) ->
+            updateJson = () ->
+                if scope.viewModel
+                    json = angular.toJson(scope.viewModel.data, null, 4)
+                    $(elem).val(json)
+            updateJson()
+            scope.$watch("viewModel.data", updateJson, true)
+            $(elem).bind("input propertychange", () ->
+                json = $(elem).val()
+                dataModel = angular.fromJson(json)
+                scope.viewModel = flowchart.ChartViewModel(dataModel)
+                scope.$digest()
+            )
+    }
+).controller("FlowChartController", ["$scope", "dragging", "$element",
+    FlowChartController = ($scope, dragging, $element) ->
+        controller = this
+        this.document = document
+        this.jQuery = (element) ->
+            return $(element)
+        $scope.draggingConnection = false
+        $scope.connectorSize = 10
+        $scope.dragSelecting = false
+        $scope.mouseOverConnector = null
+        $scope.mouseOverConnection = null
+        $scope.mouseOverNode = null
+        this.connectionClass = 'connection'
+        this.connectorClass = 'connector'
+        this.nodeClass = "node"
+        this.searchUp = (element, parentClass) ->
+            if element == null or element.length == 0
+                return null
+            if hasClassSVG(element, parentClass)
+                return element
+            return this.searchUp(element.parent(), parentClass)
+        this.hitTest = (clientX, clientY) ->
+            return this.document.elementFromPoint(clientX, clientY)
+        this.checkForHit = (mouseOverElement, whichClass) ->
+            hoverElement = this.searchUp(this.jQuery(mouseOverElement), whichClass)
+            if !hoverElement
+                return null
+            return hoverElement.scope()
+        this.translateCoordinates = (x, y) ->
+            svg_elem =  $element.get(0)
+            matrix = svg_elem.getScreenCTM()
+            point = svg_elem.createSVGPoint()
+            point.x = x
+            point.y = y
+            return point.matrixTransform(matrix.inverse())
+        $scope.mouseDown = (event) ->
+            $scope.chart.deselectAll()
+            dragging.startDrag(event, {
+                dragStarted: (x, y) ->
+                    $scope.dragSelecting = true;
+                    startPoint = controller.translateCoordinates(x, y)
+                    $scope.dragSelectionStartPoint = startPoint
+                    $scope.dragSelectionRect = {
+                        x: startPoint.x
+                        y: startPoint.y
+                        width: 0
+                        height: 0
+                    }
+                dragging: (x, y) ->
+                    startPoint = $scope.dragSelectionStartPoint
+                    curPoint = controller.translateCoordinates(x, y)
+    
+                    $scope.dragSelectionRect = {
+                        x: if curPoint.x > startPoint.x then startPoint.x else curPoint.x
+                        y: if curPoint.y > startPoint.y then startPoint.y else curPoint.y
+                        width: if curPoint.x > startPoint.x then curPoint.x - startPoint.x else startPoint.x - curPoint.x
+                        height: if curPoint.y > startPoint.y then curPoint.y - startPoint.y else startPoint.y - curPoint.y
+                    }
+                dragEnded: () ->
+                    $scope.dragSelecting = false
+                    $scope.chart.applySelectionRect($scope.dragSelectionRect)
+                    delete $scope.dragSelectionStartPoint
+                    delete $scope.dragSelectionRect
+            })
+        $scope.mouseMove = (event) ->
+            $scope.mouseOverConnection = null
+            $scope.mouseOverConnector = null
+            $scope.mouseOverNode = null
+            mouseOverElement = controller.hitTest(event.clientX, event.clientY)
+            if mouseOverElement == null
+                return
+            if !$scope.draggingConnection
+                scope = controller.checkForHit(mouseOverElement, controller.connectionClass)
+                $scope.mouseOverConnection = if (scope && scope.connection) then scope.connection else null
+                if $scope.mouseOverConnection
+                    return;
+            scope = controller.checkForHit(mouseOverElement, controller.connectorClass)
+            $scope.mouseOverConnector = if (scope && scope.connector) then scope.connector else null
+            if $scope.mouseOverConnector
+                return
+            scope = controller.checkForHit(mouseOverElement, controller.nodeClass)
+            $scope.mouseOverNode = if (scope && scope.node) then scope.node else null
+        $scope.nodeMouseDown = (event, node) ->
+            chart = $scope.chart
+            dragging.startDrag(event, {
+                dragStarted: (x, y) ->
+                    lastMouseCoords = controller.translateCoordinates(x, y)
+                    if !node.selected()
+                        chart.deselectAll()
+                        node.select()
+                dragging: (x, y) ->
+                    curCoords = controller.translateCoordinates(x, y)
+                    deltaX = curCoords.x - lastMouseCoords.x
+                    deltaY = curCoords.y - lastMouseCoords.y
+                    chart.updateSelectedNodesLocation(deltaX, deltaY)
+                    lastMouseCoords = curCoords
+                clicked: () ->
+                    chart.handleNodeClicked(node, event.ctrlKey)
+            })
+        $scope.connectionMouseDown = (event, connection) ->
+            chart = $scope.chart
+            chart.handleConnectionMouseDown(connection, event.ctrlKey)
+            event.stopPropagation()
+            event.preventDefault()
+        $scope.connectorMouseDown = (event, node, connector, connectorIndex, isInputConnector) ->
+            dragging.startDrag(event, {
+                dragStarted: (x, y) ->
+                    curCoords = controller.translateCoordinates(x, y)
+                    $scope.draggingConnection = true
+                    $scope.dragPoint1 = flowchart.computeConnectorPos(node, connectorIndex, isInputConnector)
+                    $scope.dragPoint2 = {
+                        x: curCoords.x
+                        y: curCoords.y
+                    }
+                    $scope.dragTangent1 = flowchart.computeConnectionSourceTangent($scope.dragPoint1, $scope.dragPoint2)
+                    $scope.dragTangent2 = flowchart.computeConnectionDestTangent($scope.dragPoint1, $scope.dragPoint2)
+                dragging: (x, y, event) ->
+                    startCoords = controller.translateCoordinates(x, y)
+                    $scope.dragPoint1 = flowchart.computeConnectorPos(node, connectorIndex, isInputConnector)
+                    $scope.dragPoint2 = {
+                        x: startCoords.x
+                        y: startCoords.y
+                    }
+                    $scope.dragTangent1 = flowchart.computeConnectionSourceTangent($scope.dragPoint1, $scope.dragPoint2)
+                    $scope.dragTangent2 = flowchart.computeConnectionDestTangent($scope.dragPoint1, $scope.dragPoint2)
+                dragEnded: () ->
+                    if $scope.mouseOverConnector and $scope.mouseOverConnector != connector
+                        $scope.chart.createNewConnection(connector, $scope.mouseOverConnector)
+                    $scope.draggingConnection = false
+                    delete $scope.dragPoint1
+                    delete $scope.dragTangent1
+                    delete $scope.dragPoint2
+                    delete $scope.dragTangent2
+            })
+])
+
+device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "dragging"])
 
 angular_module_setup([device_network_module])
 
@@ -946,85 +1412,149 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
             $scope.devices = _dev_sel
             $scope.$apply()
         install_devsel_link($scope.new_devsel, false)
-]).directive("networkgraph", ["d3_service", (d3_service) ->
+]).directive("hostnode", ["dragging", (dragging) ->
     return {
         restrict : "EA"
+        templateNamespace: "svg"
+        replace: true
+        scope: 
+            node: "=node"
+            redraw: "=redraw"
+        template: """
+{% verbatim %}
+<g class="node draggable" node_id="{{ node.id }}"
+    ng-mouseenter="mouse_enter()"
+    ng-mouseleave="mouse_leave()"
+    ng-click="mouse_click()"
+    ng-dblclick="double_click($event)"
+>
+    <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
+    <text text-anchor="middle" cursor="crosshair">{{ node.name }}</text>
+</g>       
+{% endverbatim %}
+"""
+        link : (scope, element, attrs) ->
+            scope.stroke_width = 1
+            scope.focus = true
+            scope.mousedown = false
+            scope.$watch("node", (new_val) ->
+                scope.node = new_val
+                scope.fill_color = "white"
+                scope.stroke_width = if new_val.num_nds then new_val.num_nds else 1
+                scope.stroke_color = if new_val.num_nds then "grey" else "red"
+            )
+            scope.$watch("redraw", () ->
+                scope.transform()
+            )
+            scope.transform= () ->
+                if scope.node.x?
+                    element.attr("transform", "translate(#{scope.node.x},#{scope.node.y})")
+                scope.fill_color = if scope.node.fixed then "red" else "white"
+            scope.mouse_click = () ->
+                if scope.node.ignore_click
+                    scope.node.ignore_click = false
+                else
+                    scope.node.fixed = !scope.node.fixed
+                    scope.fill_color = if scope.node.fixed then "red" else "white"
+            scope.mouse_enter = () ->
+                scope.focus = true
+                scope.stroke_width++
+            scope.mouse_leave = () ->
+                scope.focus = false
+                scope.mousedown = false
+                scope.stroke_width--
+            scope.double_click = (event) ->
+                cur_di = new device_info(event, scope.node.id)
+                cur_di.show()
+    }
+]).directive("hostlink", () ->
+    return {
+        restrict : "EA"
+        templateNamespace: "svg"
+        replace: true
+        scope: 
+            link: "=link"
+            redraw: "=redraw"
+        template: """
+{% verbatim %}
+<line stroke="#ff7788" stroke-width="2" opacity="1">
+</line>
+{% endverbatim %}
+"""
+        link : (scope, element, attrs) ->
+            scope.$watch("link", (new_val) ->
+                scope.link = new_val
+                #scope.stroke_width = if new_val.num_nds then new_val.num_nds else 1
+                #scope.stroke_color = if new_val.num_nds then "grey" else "red"
+            )
+            scope.$watch("redraw", () ->
+                element.attr("x1", scope.link.x1c)
+                element.attr("y1", scope.link.y1c)
+                element.attr("x2", scope.link.x2c)
+                element.attr("y2", scope.link.y2c)
+            )
+    }
+).directive("networkgraph", ["d3_service", "dragging", (d3_service, dragging) ->
+    return {
+        restrict : "EA"
+        templateNamespace: "svg"
+        replace: true
+        template: """
+{% verbatim %}
+<svg
+    class="draggable"
+    ng-attr-width="{{ size.width }}"
+    ng-attr-height="{{ size.height }}"
+    ng-attr-viewBox="0 0 {{ size.width }} {{ size.height }}"
+    preserveAspectRatio="xMidYMid"
+    style="width:100%;"
+    pointer-events: "all"
+    ng-mousedown="mouse_down($event)"
+>
+    <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }})">
+        <hostlink ng-repeat="link in links" link="link" redraw="redraw_nodes"></hostlink>
+        <hostnode ng-repeat="node in nodes" node="node" redraw="redraw_nodes"></hostnode>
+    </g>
+</svg>
+{% endverbatim %}
+""" 
         link : (scope, element, attrs) ->
             scope.cur_scale = 1.0
             scope.cur_trans = [0, 0]
+            scope.size = {
+                width: 1000
+                height: 800
+            }
+            scope.offset = {
+                x: 0
+                y: 0
+            }
+            scope.nodes = []
+            scope.redraw_nodes = 0
             d3_service.d3().then((d3) ->
-                width = d3.select(element[0]).node().offsetWidth
                 width = 1000
                 height = 800
-                svg = d3.select(element[0])
-                    .append("svg:svg")
-                    .style('width', '100%')
-                    .attr(
-                        "width" : width
-                        "height" : height
-                        "viewBox" : "0 0 #{width} #{height}"
-                        "pointer-events"      : "all"
-                        "preserveAspectRatio" : "xMidYMid"
-                    )
+                scope.svg_el = element[0]
+                svg = d3.select(scope.svg_el)
                 scope.svg = svg
-                scope.vis = d3.select(element[0])
-                svg.attr("height", height)
-                scope.vis = svg.append("svg:g")
-                    .call(d3.behavior.zoom().on("zoom", scope.rescale))
-                    .on("dblclick.zoom", null)
-                .append("svg:g")
-                    .on("mousemove", scope.mousemove)
-                    .on("mousedown", scope.mousedown)
-                    .on("mouseup", scope.mouseup)
-                scope.vis.append("rect").attr(
-                    "x"      : -width,
-                    "y"      : -height,
-                    "width"  : 3 * width,
-                    "height" : 3 * height,
-                    "fill"   : "white",
-                )
+                svg.attr("height", scope.size.height)
+                scope.vis = d3.select(element.find("g")[0])
                 scope.nodes = []
                 scope.links = []
                 scope.force = d3.layout.force().charge(-220).gravity(0.02).linkDistance(150).size([width, height])
                   .linkDistance((d) -> return 100).on("tick", scope.tick)
-                scope.drag_node = scope.force.drag()
-                    .on("dragstart", (d) ->
-                        scope.start_coords = [d.x, d.y]
-                        d.fixed = true
-                        if scope.selected == d
-                            # deselect
-                            scope.selected = undefined
-                            #$("span#selected_node").text("")
-                            d3.select(this).select("circle").classed("fixed", true)
-                        else
-                            # select
-                            scope.selected = d
-                            #$("span#selected_node").text(_this.selected.name)
-                            fixed = true
-                            d.fixed = fixed
-                            d3.select(@).select("circle").classed("fixed", fixed)
-                    )
-                    .on("dragend", (d) ->
-                        if d.x != scope.start_coords[0] or d.y != scope.start_coords[1]
-                            # node was moved, set fixed
-                            fixed = true
-                        else
-                            if scope.selected
-                                # a node is selected, set fixed flag
-                                fixed = true
-                            else
-                                # no node is selected, clear fixed flag
-                                fixed = false
-                        d.fixed = fixed
-                        d3.select(this).select("circle").classed("fixed", d.fixed)
-                    )
-                scope.selected = undefined
-                scope.connect_line = scope.vis.append("line").attr
-                    "class" : "connect_line"
-                    "x1"    : 0
-                    "y1"    : 0
-                    "x2"    : 0
-                    "y2"    : 0
+                scope.get_rel_coordinate = (x, y) ->
+                    screen_ctm = scope.svg_el.getScreenCTM()
+                    svg_point = scope.svg_el.createSVGPoint()
+                    svg_point.x = x
+                    svg_point.y = y
+                    first = svg_point.matrixTransform(screen_ctm.inverse())
+                    first.x -= scope.offset.x
+                    first.y -= scope.offset.y
+                    return first
+                    glob_to_local = event.target.getTransformToElement(scope.svg_el)
+                    second = first.matrixTransform(glob_to_local.inverse())
+                    return second
                 scope.fetch_data()
             scope.fetch_data = () ->
                 $.blockUI(
@@ -1042,119 +1572,90 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                         scope.vis.selectAll(".link").remove()
                         scope.draw_graph()
             )
-            scope.rescale = () ->
-                scope.cur_scale = d3.event.scale
-                scope.cur_trans = d3.event.translate
-                scope.vis.attr("transform",
-                    "translate(#{scope.cur_trans}) scale(#{scope.cur_scale})"
-                )
             scope.draw_graph = () ->
+                scope.iter = 0
                 scope.force.nodes(scope.json_data.nodes).links(scope.json_data.links)
-                scope.svg_nodes = scope.vis.selectAll(".node").data(scope.json_data.nodes)
-                scope.svg_links = scope.vis.selectAll(".link").data(scope.json_data.links)
-                scope.svg_links.enter().append("line")
-                    .attr
-                        "class" : "link"
-                    .style
-                        "stroke" : (d) ->
-                            if d.num_connections == 1
-                                return "#7788ff"
-                            else
-                                return "#2222ff"
-                        "stroke-opacity" : "1"
-                        "stroke-width"   : (d) ->
-                            if d.min_penalty == 1
-                                return 3
-                            else
-                                return 1
-                scope.svg_links.exit().remove()
-                centers = scope.svg_nodes.enter()
-                    .append("g").call(scope.drag_node)
-                    .attr
-                        "class"   : "node"
-                        "node_id" : (n) -> return n.id
-                    .on("mouseenter", (d) ->
-                        scope.svg.call(d3.behavior.zoom().on("zoom", null))
-                        d3.select(this).select("circle").attr("stroke-width", d.num_nds + 3)
-                    )
-                    .on("mouseleave", (d) ->
-                        scope.svg.call(d3.behavior.zoom().scale(scope.cur_scale).translate(scope.cur_trans).on("zoom", scope.rescale))
-                        d3.select(this).select("circle").attr("stroke-width", if d.num_nds then d.num_nds else 1).attr("stroke", if d.num_nds then "grey" else "red")
-                    )
-                    .on("mousedown", (d) ->
-                        if scope.graph_mode == "c"
-                            scope.mousedown_node = d
-                            cur_c = d3.select(this).select("circle")
-                            #cur_c.attr("stroke-width", 3)#parseInt(cur_c.attr("stroke-width")) + 3)
-                            scope.connect_line.attr
-                                "class" : "connect_line"
-                                "x1" : d.x
-                                "y1" : d.y
-                                "x2" : d.x
-                                "y2" : d.y
-                    )
-                    .on("mouseup", (d) ->
-                        if scope.mousedown_node
-                            scope.mouseup_node = d
-                            if scope.mouseup_node == scope.mousedown_node
-                                scope.reset_connection_parameters()
-                            else
-                                link = {
-                                    source : scope.mousedown_node
-                                    target : scope.mouseup_node
-                                    min_penalty : 1
-                                    num_connections : 1
-                                }
-                                line_idx = scope.json_data.links.push(link)
-                                scope.draw_graph()
-                                scope.reset_connection_parameters()
-                                cur_el = scope.vis.selectAll("line")[0][line_idx]
-                                # insert before first g element
-                                cur_el.parentNode.insertBefore(cur_el, cur_el.parentNode.firstChild.nextSibling.nextSibling)
-                    )
-                    .on("dblclick", (d) ->
-                        cur_ev = d3.event
-                        cur_di = new device_info(cur_ev, d.id)
-                        cur_di.show()
-                    )
-                centers.append("circle")
-                    .attr
-                        "r"       : (n) -> return 18
-                        "fill"    : "white"
-                        "stroke-width" : (n) -> return if n.num_nds then n.num_nds else 1
-                        "stroke"  : (n) -> return if n.num_nds then "grey" else "red"
-                        "cursor"  : "crosshair"
-                centers.append("text")
-                    .attr
-                        "text-anchor" : "middle"
-                        "cursor"      : "crosshair"
-                    .text((d) -> return d.name)
+                console.log scope.json_data.links
+                scope.$apply(() ->
+                    scope.node_lut = {}
+                    scope.nodes = scope.json_data.nodes
+                    scope.links = scope.json_data.links
+                    for node in scope.nodes
+                        node.fixed = false
+                        node.dragging = false
+                        node.ignore_click = false
+                        scope.node_lut[node.id] = node
+                    scope.redraw_nodes++
+                )
                 scope.force.start()
-            scope.reset_connection_parameters = () =>
-                scope.mousedown_node = undefined
-                scope.mouseup_node   = undefined
-                scope.connect_line.attr
-                    "class" : "connect_line_hidden"
-                    "x1"    : 0
-                    "y1"    : 0
-                    "x2"    : 0
-                    "y2"    : 0
-            scope.mousemove = (a) ->
-                if scope.mousedown_node
-                    scope.connect_line.attr
-                        "x1" : scope.mousedown_node.x
-                        "y1" : scope.mousedown_node.y
-                        "x2" : d3.mouse(scope.vis[0][0])[0]
-                        "y2" : d3.mouse(scope.vis[0][0])[1]
+            scope.find_element = (s_target) ->
+                if has_class_svg(s_target, "draggable")
+                    return s_target
+                s_target = s_target.parent()
+                if s_target.length
+                    return scope.find_element(s_target)
+                else
+                    return null
+            scope.mouse_down = (event) ->
+                drag_el = scope.find_element($(event.target))
+                if drag_el.length
+                    el_scope = angular.element(drag_el[0]).scope()
+                else
+                    el_scope = null
+                if el_scope
+                    drag_el_tag = drag_el.prop("tagName")
+                    if drag_el_tag == "svg"
+                        dragging.startDrag(event, 0, {
+                            dragStarted: (x, y, event) ->
+                                scope.sx = x - scope.offset.x
+                                scope.sy = y - scope.offset.y
+                            dragging: (x, y) ->
+                                scope.offset = {
+                                   x: x - scope.sx
+                                   y: y - scope.sy
+                                }
+                            dragEnded: () ->
+                        })
+                    else
+                        drag_node = el_scope.node
+                        scope.redraw_nodes++
+                        dragging.startDrag(event, 1, {
+                            dragStarted: (x, y, event) ->
+                                drag_node.dragging = true
+                                drag_node.fixed = true
+                                drag_node.ignore_click = true
+                                scope.start_drag_point = scope.get_rel_coordinate(x, y)
+                                scope.force.start()
+                            dragging: (x, y) ->
+                                cur_point = scope.get_rel_coordinate(x, y)
+                                drag_node.x = cur_point.x
+                                drag_node.y = cur_point.y
+                                drag_node.px = cur_point.x
+                                drag_node.py = cur_point.y
+                                scope.tick()
+                            dragEnded: () ->
+                                drag_node.dragging = false
+                        })
+            scope.iter = 0
             scope.tick = () ->
-                scope.svg_links.attr
-                    "x1" : (d) -> return d.source.x
-                    "y1" : (d) -> return d.source.y
-                    "x2" : (d) -> return d.target.x
-                    "y2" : (d) -> return d.target.y
-                scope.svg_nodes.attr
-                    "transform" : (d) -> 
-                        return "translate(#{d.x},#{d.y})"
+                scope.iter++
+                #console.log "t"
+                for node in scope.force.nodes()
+                    t_node = scope.node_lut[node.id]
+                    #if t_node.fixed
+                        #console.log "*", t_node
+                    #    t_node.x = node.x
+                    #    t_node.y = node.y
+                for link in scope.links
+                    s_node = scope.node_lut[link.source.id]
+                    d_node = scope.node_lut[link.target.id]
+                    link.x1c = s_node.x
+                    link.y1c = s_node.y
+                    link.x2c = d_node.x
+                    link.y2c = d_node.y
+                scope.$apply(() ->
+                    scope.redraw_nodes++
+                )
             scope.$watch("graph_mode", (new_val) ->
                 if scope.svg_nodes
                     if new_val == "c"
