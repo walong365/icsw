@@ -375,6 +375,7 @@ PIPELINE_JS = {
             "js/spin.min.js",
             "js/ladda.min.js",
             "js/angular-ladda.min.js",
+            "js/hamster.js",
         },
         "output_filename": "pipeline/js/base.js"
     },
@@ -403,7 +404,8 @@ PIPELINE_JS = {
             # "js/libs/angular-strap.tpl.min.js",
             "js/angular-noVNC.js",
             "js/libs/angular-dimple.js",
-            "js/libs/FileSaver.js"
+            "js/libs/FileSaver.js",
+            "js/mousewheel.js",
         },
         "output_filename": "pipeline/js/extra1.js"
     },
