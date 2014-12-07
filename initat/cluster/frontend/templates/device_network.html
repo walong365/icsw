@@ -65,18 +65,13 @@
                             <option value="core" ng-if="acl_read(null, 'backbone.network.show_clusters')">core (non-trivial)</option>
                         </select>, mode:
                     </div>
-                    <!-- disabled because not working -->
-                    <div ng-show="0" class="form-group" ng-if="acl_read(null, 'backbone.network.show_clusters')"> 
-                        <select ng-model="graph_mode" class="form-control">
-                            <option value="m">move</option>
-                            <option value="c">connect</option>
-                        </select>,
-                    </div>
                     <div class="form-group">
                         <input type="button" class="btn btn-sm btn-success" value="Redraw" ng-click="fetch_data()"/>
                     </div>              
                 </form>
-                <networkgraph mouse-capture></networkgraph>
+                <div mouse-capture>
+                <networkgraph></networkgraph>
+                </div>
             </div>
         </tab>
         <tab heading="clusters" ng-show="acl_read(null, 'backbone.network.show_clusters') && true || false" ng-controller="cluster_ctrl">
