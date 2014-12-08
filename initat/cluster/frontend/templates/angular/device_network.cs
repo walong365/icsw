@@ -1082,7 +1082,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
             scope.$watch("node", (new_val) ->
                 scope.node = new_val
                 scope.fill_color = "white"
-                scope.stroke_width = if new_val.num_nds then new_val.num_nds else 1
+                scope.stroke_width = Math.max(Math.min(new_val.num_nds, 3), 1)
                 scope.stroke_color = if new_val.num_nds then "grey" else "red"
             )
             scope.$watch("redraw", () ->

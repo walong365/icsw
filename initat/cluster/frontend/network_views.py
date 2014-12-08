@@ -78,11 +78,19 @@ class json_network(View):
         _post = request.POST
         graph_mode = _post["graph_sel"]
         dev_list = [int(value.split("__")[1]) for value in request.session.get("sel_list", [])]
-        logger.info("drawing network, mode is %s, %s" % (
+        logger.info(
+            "drawing network, mode is {}, {}".format(
+                graph_mode,
+                logging_tools.get_plural("device", len(dev_list)),
+            )
+        )
+        r_obj = config_tools.topology_object(
+            self.log,
             graph_mode,
-            logging_tools.get_plural("device", len(dev_list)),
-            ))
-        r_obj = config_tools.topology_object(self.log, graph_mode, dev_list=dev_list, only_allowed_device_groups=True, user=request.user)
+            dev_list=dev_list,
+            only_allowed_device_groups=True,
+            user=request.user
+        )
         r_obj.add_full_names()
         json_obj = json.dumps(json_graph.node_link_data(r_obj.nx))
         # import time
