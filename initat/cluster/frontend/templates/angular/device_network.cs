@@ -1054,117 +1054,6 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
             $scope.devices = _dev_sel
             $scope.$apply()
         install_devsel_link($scope.new_devsel, false)
-<<<<<<< HEAD
-]).directive("hostnode", () ->
-    return {
-        restrict : "EA"
-        templateNamespace: "svg"
-        replace: true
-        scope: 
-            node: "=node"
-            redraw: "=redraw"
-        template: """
-{% verbatim %}
-<g class="node" node_id="{{ node.id }}"
-    ng-mouseenter="mouse_enter()"
-    ng-mouseleave="mouse_leave()"
-    ng-click="mouse_click()"
-    ng-mousedown="mouse_down($event)"
-    ng-mouseup="mouse_up()"
-    ng-mousemove="mouse_move($event)"
->
-    <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
-    <text text-anchor="middle" cursor="crosshair">{{ node.name }}</text>
-</g>       
-{% endverbatim %}
-"""
-        link : (scope, element, attrs) ->
-            scope.stroke_width = 1
-            scope.focus = true
-            scope.mousedown = false
-            scope.svg = element.parent().parent()[0]
-            scope.screen_ctm = scope.svg.getScreenCTM()
-            scope.svg_point = scope.svg.createSVGPoint()
-            scope.$watch("node", (new_val) ->
-                scope.node = new_val
-                scope.fill_color = "white"
-                scope.stroke_width = if new_val.num_nds then new_val.num_nds else 1
-                scope.stroke_color = if new_val.num_nds then "grey" else "red"
-            )
-            scope.$watch("redraw", () ->
-                scope.transform()
-            )
-            scope.transform= () ->
-                element.attr("transform", "translate(#{scope.node.xc},#{scope.node.yc})")
-            scope.mouse_click = () ->
-                console.log "c", scope.node.fixed
-                scope.node.fixed = !scope.node.fixed
-                scope.fill_color = if scope.node.fixed then "red" else "white"
-            scope.mouse_down = (event) ->
-                #scope.svg.call(d3.behavior.zoom().on("zoom", null))
-                scope.mousedown = true
-                scope.mm_start = scope.get_rel_coordinate(event)
-            scope.mouse_up = () ->
-                scope.mousedown = false
-            scope.get_rel_coordinate = (event) ->
-                scope.svg_point.x = event.clientX
-                scope.svg_point.y = event.clientY
-                first = scope.svg_point.matrixTransform(scope.screen_ctm.inverse())
-                glob_to_local = event.target.getTransformToElement(scope.svg)
-                second = first.matrixTransform(glob_to_local.inverse())
-                return {"x": second.x, "y": second.y}
-            scope.mouse_move = (event) ->
-                if scope.mousedown
-                    scope.node.fixed = true
-                    scope.fill_color = "red"
-                    cur = scope.get_rel_coordinate(event)
-                    #console.log "mm", cur, scope.mm_start
-                    scope.node.xc += cur.x - scope.mm_start.x
-                    scope.node.yc += cur.y - scope.mm_start.y
-                    scope.node.x = scope.node.xc
-                    scope.node.y = scope.node.yc
-                    scope.transform()
-                    
-                event.preventDefault()
-                event.stopPropagation()
-            scope.mouse_enter = () ->
-                scope.focus = true
-                scope.stroke_width++
-            scope.mouse_leave = () ->
-                console.log "leave"
-                scope.focus = false
-                scope.mousedown = false
-                scope.stroke_width--
-    }
-).directive("hostlink", () ->
-    return {
-        restrict : "EA"
-        templateNamespace: "svg"
-        replace: true
-        scope: 
-            link: "=link"
-            redraw: "=redraw"
-        template: """
-{% verbatim %}
-<line stroke="#ff7788" stroke-width="2" opacity="1">
-</line>
-{% endverbatim %}
-"""
-        link : (scope, element, attrs) ->
-            scope.$watch("link", (new_val) ->
-                scope.link = new_val
-                #scope.stroke_width = if new_val.num_nds then new_val.num_nds else 1
-                #scope.stroke_color = if new_val.num_nds then "grey" else "red"
-            )
-            scope.$watch("redraw", () ->
-                element.attr("x1", scope.link.x1c)
-                element.attr("y1", scope.link.y1c)
-                element.attr("x2", scope.link.x2c)
-                element.attr("y2", scope.link.y2c)
-            )
-    }
-).directive("networkgraph", ["d3_service", (d3_service) ->
-=======
 ]).directive("hostnode", ["dragging", (dragging) ->
     return {
         restrict : "EA"
@@ -1288,7 +1177,6 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
             )
     }
 ).directive("networkgraph2", ["d3_service", "dragging", "svg_tools", (d3_service, dragging, svg_tools) ->
->>>>>>> vis
     return {
         restrict : "EA"
         templateNamespace: "svg"
