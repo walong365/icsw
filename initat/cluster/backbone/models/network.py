@@ -651,6 +651,9 @@ class peer_information(models.Model):
     d_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_d_netdevice")
     d_spec = models.CharField(default="", max_length=128, verbose_name="dest spec", blank=True)
     penalty = models.IntegerField(default=0, verbose_name="cost")
+    # true for peers created via SNMP
+    autocreated = models.BooleanField(default=False)
+    info = models.CharField(default="", max_length=256)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -671,8 +674,15 @@ def peer_information_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         try:
             _cur_peer = peer_information.objects.get(
-                (Q(s_netdevice=cur_inst.s_netdevice_id) & Q(d_netdevice=cur_inst.d_netdevice_id)) |
-                (Q(s_netdevice=cur_inst.d_netdevice_id) & Q(d_netdevice=cur_inst.s_netdevice_id)))
+                (
+                    Q(s_netdevice=cur_inst.s_netdevice_id) &
+                    Q(d_netdevice=cur_inst.d_netdevice_id)
+                ) |
+                (
+                    Q(s_netdevice=cur_inst.d_netdevice_id) &
+                    Q(d_netdevice=cur_inst.s_netdevice_id)
+                )
+            )
         except peer_information.DoesNotExist:
             pass
         else:

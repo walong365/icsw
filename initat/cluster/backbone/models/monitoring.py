@@ -520,17 +520,17 @@ class mon_contact(models.Model):
     user = models.ForeignKey("backbone.user")
     snperiod = models.ForeignKey("backbone.mon_period", related_name="service_n_period", verbose_name="service period")
     hnperiod = models.ForeignKey("backbone.mon_period", related_name="host_n_period", verbose_name="host period")
-    snrecovery = models.BooleanField(default=False)
-    sncritical = models.BooleanField(default=False)
-    snwarning = models.BooleanField(default=False)
-    snunknown = models.BooleanField(default=False)
-    sflapping = models.BooleanField(default=False)
-    splanned_downtime = models.BooleanField(default=False)
-    hnrecovery = models.BooleanField(default=False)
-    hndown = models.BooleanField(default=False)
-    hnunreachable = models.BooleanField(default=False)
-    hflapping = models.BooleanField(default=False)
-    hplanned_downtime = models.BooleanField(default=False)
+    snrecovery = models.BooleanField(default=False, verbose_name="Notify on service recovery")
+    sncritical = models.BooleanField(default=False, verbose_name="Notify on service critical")
+    snwarning = models.BooleanField(default=False, verbose_name="Notify on service warning")
+    snunknown = models.BooleanField(default=False, verbose_name="Notify on service unknown")
+    sflapping = models.BooleanField(default=False, verbose_name="Notify on service flapping")
+    splanned_downtime = models.BooleanField(default=False, verbose_name="Notify on service planned downtime")
+    hnrecovery = models.BooleanField(default=False, verbose_name="Notify on host recovery")
+    hndown = models.BooleanField(default=False, verbose_name="Notify on host down")
+    hnunreachable = models.BooleanField(default=False, verbose_name="Notify on host unreachable")
+    hflapping = models.BooleanField(default=False, verbose_name="Notify on host flapping")
+    hplanned_downtime = models.BooleanField(default=False, verbose_name="Notify on host planned downtime")
     date = models.DateTimeField(auto_now_add=True)
     notifications = models.ManyToManyField("backbone.mon_notification", blank=True)
     mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
@@ -565,9 +565,15 @@ class mon_notification(models.Model):
     channel = models.CharField(max_length=8, choices=[
         ("mail", "E-Mail"),
         ("sms", "SMS")], blank=False)
-    not_type = models.CharField(max_length=8, choices=[
-        ("host", "Host"),
-        ("service", "Service")], blank=False)
+    not_type = models.CharField(
+        max_length=8,
+        choices=[
+            ("host", "Host"),
+            ("service", "Service")
+        ],
+        blank=False,
+        verbose_name="Notification type"
+    )
     subject = models.CharField(max_length=140, blank=True)
     content = models.CharField(max_length=4096, blank=False)
     enabled = models.BooleanField(default=True)
@@ -644,11 +650,11 @@ class mon_device_templ(models.Model):
     # monitoring period
     mon_period = models.ForeignKey("backbone.mon_period", related_name="dev_check_period")
     # Notificiation Flags
-    nrecovery = models.BooleanField(default=False)
-    ndown = models.BooleanField(default=False)
-    nunreachable = models.BooleanField(default=False)
-    nflapping = models.BooleanField(default=False)
-    nplanned_downtime = models.BooleanField(default=False)
+    nrecovery = models.BooleanField(default=False, verbose_name="Notify on recovery")
+    ndown = models.BooleanField(default=False, verbose_name="Notify when down")
+    nunreachable = models.BooleanField(default=False, verbose_name="Notify when unreachable")
+    nflapping = models.BooleanField(default=False, verbose_name="Notify when flapping")
+    nplanned_downtime = models.BooleanField(default=False, verbose_name="Notify for planned downtime")
     is_default = models.BooleanField(default=False)
     low_flap_threshold = models.IntegerField(default=0)
     high_flap_threshold = models.IntegerField(default=0)
@@ -695,11 +701,11 @@ class mon_device_esc_templ(models.Model):
     mon_service_esc_templ = models.ForeignKey("backbone.mon_service_esc_templ")
     ninterval = models.IntegerField(default=1)
     esc_period = models.ForeignKey("backbone.mon_period")
-    nrecovery = models.BooleanField(default=False)
-    ndown = models.BooleanField(default=False)
-    nunreachable = models.BooleanField(default=False)
-    nflapping = models.BooleanField(default=False)
-    nplanned_downtime = models.BooleanField(default=False)
+    nrecovery = models.BooleanField(default=False, verbose_name="Notify on recovery")
+    ndown = models.BooleanField(default=False, verbose_name="Notify when down")
+    nunreachable = models.BooleanField(default=False, verbose_name="Notify when unreachable")
+    nflapping = models.BooleanField(default=False, verbose_name="Notify when flapping")
+    nplanned_downtime = models.BooleanField(default=False, verbose_name="Notify on planned downtime")
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -1004,12 +1010,12 @@ class mon_service_templ(models.Model):
     retry_interval = models.IntegerField(default=10)
     ninterval = models.IntegerField(default=5)
     nsn_period = models.ForeignKey("backbone.mon_period", related_name="service_notify_period")
-    nrecovery = models.BooleanField(default=False)
-    ncritical = models.BooleanField(default=False)
-    nwarning = models.BooleanField(default=False)
-    nunknown = models.BooleanField(default=False)
-    nflapping = models.BooleanField(default=False)
-    nplanned_downtime = models.BooleanField(default=False)
+    nrecovery = models.BooleanField(default=False, verbose_name="Notify on recovery")
+    ncritical = models.BooleanField(default=False, verbose_name="Notify when critical")
+    nwarning = models.BooleanField(default=False, verbose_name="Notify when warning")
+    nunknown = models.BooleanField(default=False, verbose_name="Notify when unknown")
+    nflapping = models.BooleanField(default=False, verbose_name="Notify when flapping")
+    nplanned_downtime = models.BooleanField(default=False, verbose_name="Notify when planned downtime")
     low_flap_threshold = models.IntegerField(default=0)
     high_flap_threshold = models.IntegerField(default=0)
     flap_detection_enabled = models.BooleanField(default=False)
@@ -1079,7 +1085,7 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
         for attr_name, min_val, max_val in [
             ("first_notification", 1, 10),
             ("last_notification", 1, 10),
-            ("ninterval", 0, 60)
+            ("ninterval", 0, 60),
         ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
