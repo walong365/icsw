@@ -76,7 +76,7 @@ class json_network(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
-        graph_mode = _post["graph_mode"]
+        graph_mode = _post["graph_sel"]
         dev_list = [int(value.split("__")[1]) for value in request.session.get("sel_list", [])]
         logger.info("drawing network, mode is %s, %s" % (
             graph_mode,
