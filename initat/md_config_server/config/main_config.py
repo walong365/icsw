@@ -21,11 +21,10 @@
 
 from django.conf import settings
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, user
 from initat.md_config_server.config.base_config import base_config
 from initat.md_config_server.config.config_dir import config_dir
 from initat.md_config_server.config.host_type_config import host_type_config
-from lxml.builder import E  # @UnresolvedImport
 import ConfigParser
 import base64
 import binascii
