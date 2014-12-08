@@ -1151,6 +1151,7 @@ class mon_check_command_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Check command '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+        HTML("<tabset><tab heading='basic setup'>"),
         Fieldset(
             "Basic settings",
             Field("name", wrapper_class="ng-class:form_error('name')"),
@@ -1240,13 +1241,15 @@ class mon_check_command_form(ModelForm):
                 css_class="row",
             ),
         ),
+        HTML("</tab><tab heading='Categories ({% verbatim %}{{ num_cats }}{% endverbatim %})' ng-show='num_cats'>"),
         Fieldset(
             "Categories",
             HTML("""
-<div ng-mouseenter='show_cat_tree()' ng-mouseleave='hide_cat_tree()' category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
+<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
 </div>
             """),
         ),
+        HTML("</tab></tabset>"),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         )

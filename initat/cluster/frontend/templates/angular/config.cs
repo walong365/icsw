@@ -962,6 +962,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         restrict : "EA"
         template : "<tree treeconfig='cat_tree'></tree></div>"
         link : (scope, el, attrs) ->
+            # start at -1 because we dont count the Top level category
+            scope.num_cats = -1
             scope.cat_tree = new cat_tree(scope)
             cat_tree_lut = {}
             if attrs["mode"] == "conf"
@@ -973,6 +975,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 top_cat_re = new RegExp(/^\/mon/)
             for entry in scope.categories
                 if entry.full_name.match(top_cat_re)
+                    scope.num_cats++
                     t_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_cat})
                     cat_tree_lut[entry.idx] = t_entry
                     if entry.parent and entry.parent of cat_tree_lut
@@ -985,11 +988,6 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             scope.cat_tree.show_selected(true)
             scope.new_selection = (new_sel) ->
                 scope._edit_obj.categories = new_sel
-            scope.show_cat_tree = () ->
-                scope.cat_tree.toggle_expand_tree(1, false)
-            scope.hide_cat_tree = () ->
-                scope.cat_tree.toggle_expand_tree(-1, false)
-            scope.hide_cat_tree()
     }
 ).directive("uploadinfo", ($templateCache, $compile, $modal, Restangular) ->
     return {
