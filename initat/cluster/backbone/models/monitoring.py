@@ -362,7 +362,8 @@ def parse_commandline(com_line):
 
     """
     com_re = re.compile(
-        "^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(((?P<var_name>[^:^}]+?)\:(?P<default_vn>[^}]+?)}\$*)|(?P<default>[^}]+?)}\$*))|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$"
+        "^(?P<pre_text>.*?)((\${ARG(?P<arg_num_1>\d+):(((?P<var_name>[^:^}]+?)\:(?P<default_vn>[^}]+?)}\$*)"
+        "|(?P<default>[^}]+?)}\$*))|(\$ARG(?P<arg_num_2>\d+)\$))+(?P<post_text>.*)$"
     )
     cur_line = com_line
     # where to start the match to avoid infinite loop
