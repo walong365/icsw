@@ -90,7 +90,13 @@ class mon_notification_form(ModelForm):
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
     channel = ChoiceField([("mail", "E-Mail"), ("sms", "SMS")])
-    not_type = ChoiceField([("host", "Host"), ("service", "Service")])
+    not_type = ChoiceField(
+        [
+            ("host", "Host"),
+            ("service", "Service")
+        ],
+        label="Notification type"
+    )
     content = CharField(widget=Textarea)
     helper.layout = Layout(
         HTML("<h2>Monitoring Notification</h2>"),

@@ -100,6 +100,8 @@ device_networks_template = """
                     <th>cost</th>
                     <th>Dest</th>
                     <th>type</th>
+                    <th>Autocreated</th>
+                    <th>Info</th>
                     <th colspan="2">action</th>
                 </tr>
             </thead>
@@ -273,6 +275,12 @@ peer_row_template = """
 </td>
 <td>
     {{ get_peer_type(ndip_obj) }}
+</td>
+<td class="text-center">
+    {{ ndip_obj.peer.autocreated | yesno2 }}
+</td>
+<td>
+    {{ ndip_obj.peer.info }}
 </td>
 <td>
     <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
@@ -734,7 +742,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     "netdevice" : (entry.idx for entry in obj.netdevice_set)[0]
                     "ip" : "0.0.0.0"
                     "network" : $scope.networks[0].idx
-                    "domain_tree_node" : $scope.domain_tree_node[0].idx
+                    "domain_tree_node" : obj.domain_tree_node #$scope.domain_tree_node[0].idx
                 } 
             $scope.netip_edit.create(event).then(
                 (new_obj) ->

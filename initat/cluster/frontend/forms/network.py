@@ -426,6 +426,20 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
             """),
             Field("s_spec"),
             Field("d_spec"),
+            Field("info"),
+            HTML("""
+{% verbatim %}
+<div class='form-group' ng-if="!create_mode">
+    <label class='control-label col-sm-2'>
+        Creation info
+    </label>
+    <div class='col-sm-9'>
+        <span ng-show="_edit_obj.autocreated" class="label label-warning">autocreated</span>
+        <span ng-show="!_edit_obj.autocreated" class="label label-success">manually created</span>
+    </div>
+</div>
+{% endverbatim %}
+"""),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -434,7 +448,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
 
     class Meta:
         model = peer_information
-        fields = ("penalty", "s_spec", "d_spec",)
+        fields = ("penalty", "s_spec", "d_spec", "info",)
 
 
 class device_network_scan_form(Form):

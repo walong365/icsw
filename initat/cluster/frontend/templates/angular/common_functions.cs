@@ -600,10 +600,15 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         text : "form validation problem"
                         type : "warning"
             $scope.form_error = (field_name) ->
-                if $scope.form[field_name].$valid
-                    return ""
+                # temporary fix, FIXME
+                # $scope.form should never be undefined
+                if $scope.form?
+                    if $scope.form[field_name].$valid
+                        return ""
+                    else
+                        return "has-error"
                 else
-                    return "has-error"
+                    return ""
             $scope.create = (event) ->
                 if typeof($scope.settings.new_object) == "function"
                     $scope.new_obj = $scope.settings.new_object($scope)

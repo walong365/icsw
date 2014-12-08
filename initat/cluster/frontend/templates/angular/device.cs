@@ -339,7 +339,12 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 $scope.reload()
                 reload_sidebar_tree()
         $scope.new_object = (a_name, parent_obj) ->
-            new_obj = {"enabled" : true}
+            new_obj = {
+                "enabled" : true
+                "enable_perfdata": true
+                "store_rrd_data": true
+                "flap_detection_enabled": true
+            }
             if a_name == "device_group"
                 new_obj.name = "nodes"
                 new_obj.description = "new devicegroup"

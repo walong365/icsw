@@ -822,9 +822,18 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.create_mon = (config, event) ->
             $scope.mon_edit.create_list = config.mon_check_command_set
             $scope.mon_edit.new_object = (scope) ->
+                c_name = "cc_#{config.name}"
+                c_idx = 1
+                cc_names = (cc.name for cc in config.mon_check_command_set)
+                while true
+                    if "#{c_name}_#{c_idx}" in cc_names
+                        c_idx++
+                    else
+                        break
+                c_name = "#{c_name}_#{c_idx}"
                 return {
                     "config" : config.idx
-                    "name" : "c_command"
+                    "name" : c_name
                     "description" : "Check command"
                     "command_line" : "$USER2$ -m $HOSTADDRESS$ uptime"
                     "categories" : []
