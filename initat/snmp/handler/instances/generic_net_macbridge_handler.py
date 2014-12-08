@@ -91,6 +91,7 @@ class handler(SNMPHandler):
                                 s_netdevice=my_nd_dict[_snmp_idx],
                                 d_netdevice=_nd,
                                 penalty=1,
+                                autocreated=True,
                             )
                         else:
                             self.log("snmp_idx {:d} not found in local network dict".format(_snmp_idx), logging_tools.LOG_LEVEL_WARN)
