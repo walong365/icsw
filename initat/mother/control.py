@@ -488,7 +488,7 @@ class host(machine):
                 )
                 self.device.etherboot_valid = True
             else:
-                self.log("Error: etherboot-directory (maint_ip) not defined")
+                self.log("etherboot-directory (maint_ip) not defined", logging_tools.LOG_LEVEL_ERROR)
                 self.device.etherboot_valid = False
             if self.maint_ip:
                 self.show_boot_netdriver()
