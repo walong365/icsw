@@ -166,7 +166,7 @@ class update_device(APIView):
                     if dev_data["new_state"]:
                         new_new_state = status.objects.get(Q(pk=dev_data["new_state"]))
                         if dev_data["prod_link"]:
-                            new_prod_link = network.objects.get(Q(pk=dev_data["prod_link"]))
+                            new_prod_link = network.objects.get(Q(pk=dev_data["prod_link"]))  # @UndefinedVariable
                     if new_new_state != cur_dev.new_state or new_prod_link != cur_dev.prod_link:
                         cur_dev.new_state = new_new_state
                         cur_dev.prod_link = new_prod_link
@@ -228,7 +228,10 @@ class update_device(APIView):
                 srv_com = server_command.srv_command(command=_mother_com)
                 srv_com["devices"] = srv_com.builder(
                     "devices",
-                    srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)))
+                    *[
+                        srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)) for cur_dev in all_devs
+                    ]
+                )
                 _res, _log_lines = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
                 # print "*", _mother_com, _log_lines
                 _lines.extend(_log_lines)
