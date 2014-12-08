@@ -15,7 +15,7 @@ __all__ = [
     "netdevice_speed_serializer",
     "peer_information_serializer",
     "snmp_network_type_serializer",
-    ]
+]
 
 logger = logging.getLogger(__name__)
 

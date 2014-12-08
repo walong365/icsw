@@ -653,7 +653,7 @@ class peer_information(models.Model):
     penalty = models.IntegerField(default=0, verbose_name="cost")
     # true for peers created via SNMP
     autocreated = models.BooleanField(default=False)
-    info = models.CharField(default="", max_length=256)
+    info = models.CharField(default="", max_length=256, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
