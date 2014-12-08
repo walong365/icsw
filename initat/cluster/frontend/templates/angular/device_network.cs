@@ -1149,6 +1149,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
 {% endverbatim %}
 """
         link: (scope, element, attrs) ->
+            scope.prev_size = {width:100, height:100}
             scope.get_element_dimensions = () ->
                 return {"h": element.height(), "w": element.width()}
             scope.size = {
@@ -1165,8 +1166,10 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
             scope.$watch(
                 scope.get_element_dimensions
                 (new_val) ->
+                    scope.prev_size = {width: scope.size.width, height:scope.size.height}
                     #scope.size.width = new_val["w"]
                     #scope.size.height = new_val["h"]
+                    #console.log scope.prev_size, scope.size
                 true
             )
             element.bind("resize", () ->
