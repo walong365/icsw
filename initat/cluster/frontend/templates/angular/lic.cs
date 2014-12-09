@@ -1,3 +1,5 @@
+{% include "angular/angular-dimple-init.cs" %}
+
 {% load coffeescript %}
 
 <script type="text/javascript">

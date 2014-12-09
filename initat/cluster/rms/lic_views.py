@@ -45,6 +45,7 @@ import collections
 
 logger = logging.getLogger("cluster.license")
 
+
 class overview(View):
     @method_decorator(login_required)
     def get(self, request):
