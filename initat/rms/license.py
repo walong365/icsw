@@ -21,6 +21,13 @@
 """ rms-server, license monitoring part """
 
 # from initat.cluster.backbone.models.functions import cluster_timezone
+import commands
+import datetime
+import os
+from pprint import pprint  # @UnusedImport
+import time
+import itertools
+
 from django.db import connection
 from django.db.models import Max, Min, Avg, Q, Count
 from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
@@ -32,16 +39,11 @@ from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
-from pprint import pprint  # @UnusedImport
-import commands
-import datetime
 import logging_tools
-import os
 import process_tools
 import server_command
 import sge_license_tools
 import threading_tools
-import time
 import zmq
 
 
@@ -54,6 +56,14 @@ EL_LUT = {
     "ext_license_client": ext_license_client,
     "ext_license_user": ext_license_user,
 }
+
+
+# itertools recipe
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return itertools.izip(a, b)
 
 
 def call_command(command, log_com=None):
@@ -97,6 +107,7 @@ class license_process(threading_tools.process_obj):
         self.register_timer(self._update, 30, instant=True)
         self.register_func("get_license_usage", self.get_license_usage)
         # self.register_timer(self._update_coarse_data, 60 * 15, instant=True)
+        # self._update_coarse_data()
 
     def _init_sge_info(self):
         self._license_base = global_config["LICENSE_BASE"]
@@ -256,11 +267,19 @@ class license_process(threading_tools.process_obj):
         '''
 
         def create_timespan_entry_from_raw_data(start, end, duration_type, site):
-            # last_earlier_time = ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
-            # last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
+            # last earlier need not exist
+            last_earlier_time = ext_license_check.objects.filter(date__lte=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            have_earlier_time = last_earlier_time is not None
+            if have_earlier_time:
+                last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
+                last_earlier_states = ext_license_state.objects.filter(ext_license_check__date=last_earlier_time,
+                                                                       ext_license_check__ext_license_site=site).select_related('ext_license_check')
 
-            # first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
-            # first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
+            # first later must exist
+            first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
+            first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
+            first_later_states = ext_license_state.objects.filter(ext_license_check__date=first_later_time,
+                                                                  ext_license_check__ext_license_site=site).select_related('ext_license_check')
 
             timespan_state_data = ext_license_state.objects.filter(
                 ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
@@ -287,37 +306,138 @@ class license_process(threading_tools.process_obj):
 
             print 'created coarse with start {}'.format(check_coarse.start_date)
 
+            total_timespan_seconds = (end - start).total_seconds()
+
             _freq_cnt_sanity = 0
             for lic in timespan_state_data.values("ext_license").distinct():
                 lic_id = lic["ext_license"]
 
                 lic_state_data = timespan_state_data.filter(ext_license=lic_id)
+                first_later_state = first_later_states.filter(ext_license=lic_id)
+                first_later_state = first_later_state[0] if first_later_state else None
+
+                if have_earlier_time:
+                    last_earlier_state = last_earlier_states.filter(ext_license=lic_id)
+                    last_earlier_state = last_earlier_state[0] if last_earlier_state else None
 
                 print("\nfound {} lic {} state entries".format(len(lic_state_data), lic_id))
 
-                # TODO: this is the cheap, wrong version for avg. implement proper one (integral) later
-                used = lic_state_data.aggregate(Avg('used')).itervalues().next()
+                used_avg = 0.0
+                issued_avg = 0.0
+
+                print 'from', lic_state_data[0].ext_license_check.date
+                print 'to', lic_state_data[-1].ext_license_check.date
+
+                if lic_state_data:
+                    # calc data from time spans where we have both start and end point in duration
+                    def calc_regular(attribute):
+                        retval = 0.0
+                        for entry1, entry2 in pairwise(lic_state_data):
+                            timespan_to_end = entry2.ext_license_check.date - entry1.ext_license_check.date 
+                            relative_weight = float(timespan_to_end.total_seconds()) / total_timespan_seconds 
+
+                            value = float(getattr(entry1, attribute) + getattr(entry2, attribute)) / 2.0
+
+                            retval += relative_weight * value
+                        return retval
+
+                    used_avg = calc_regular('used')
+                    issued_avg = calc_regular('issued')
+
+                    # calculate border values
+                    # we interpolate which value was the case at the actual start/end time
+
+                    # start
+                    def calc_start(attribute):
+                        entry2_start = lic_state_data[0]
+
+                        timespan_to_start = entry2_start.ext_license_check.date - start
+                        relative_weight = float(timespan_to_start.total_seconds()) / total_timespan_seconds
+
+                        first_measured_value = getattr(entry2_start, attribute)  # start with first value in and calculate backwards
+                        if have_earlier_time and last_earlier_state:
+                            timespan_to_last_earlier = entry2_start.ext_license_check.date - last_earlier_state.ext_license_check.date
+                            change_total = getattr(entry2_start, attribute) - getattr(last_earlier_state, attribute)
+                            change_portion = timespan_to_start.total_seconds() / timespan_to_last_earlier.total_seconds()
+                            change_to_start = - change_total * change_portion  # minus since we calculate backwards
+                            retval = (first_measured_value + (change_to_start/2)) * relative_weight
+                        else:
+                            # this is the first value, assume we have started at first measurement (usually starts happen some time in the day,
+                            # so we assume that in the time before, there just was no activity
+                            print ("first entry for lic {} for check {}".format(lic, entry2_start.ext_license_check.date))
+                            retval = 0.0
+
+                        return retval
+
+                    # end
+                    def calc_end(attribute):
+                        entry1_end = lic_state_data[-1]
+
+                        timespan_to_end = end - entry1_end.ext_license_check.date
+                        relative_weight = float(timespan_to_end.total_seconds()) / total_timespan_seconds 
+
+                        last_measured_value = getattr(entry1_end, attribute)  # start with last entry and calculate forward to end
+                        if first_later_state:
+                            timespan_to_first_later = (first_later_state.ext_license_check.date - entry1_end.ext_license_check.date)
+
+                            change_total = getattr(first_later_state, attribute) - getattr(entry1_end, attribute)
+                            change_portion = timespan_to_end.total_seconds() / timespan_to_first_later.total_seconds()
+                            change_to_end = (change_total * change_portion)
+                        else:
+                            print ("Warning: no state data for lic {} for check {}".format(lic, first_later_time))
+                            change_to_end = 0.0
+                        return (last_measured_value + (change_to_end/2)) * relative_weight
+
+                    used_start = calc_start('used')
+                    used_end = calc_end('used')
+                    print 'start ', used_start
+                    print 'end ', used_end
+                    used_avg += used_start + used_end
+
+                    iss_start = calc_start('issued')
+                    iss_end = calc_end('issued')
+                    print 'start ', iss_start
+                    print 'end ', iss_end
+                    issued_avg += iss_start + iss_end
+
+
+                print 'exact', used_avg
+                print 'exact iss', issued_avg
+
+
+                used_approximated = lic_state_data.aggregate(Avg('used')).itervalues().next()
+
+                if abs(used_approximated - used_avg) > max((abs(used_approximated)+abs(used_avg))*0.01, 0.0001):
+                    #if abs(1 - abs(used_approximated / (used_avg)) > 0.03:
+
+                    print 'used divergence: ', used_approximated, " ", used_avg, " at ", start, duration_type
+                print 'approx', used_approximated
                 used_min = lic_state_data.aggregate(Min('used')).itervalues().next()
                 used_max = lic_state_data.aggregate(Max('used')).itervalues().next()
 
-                # TODO
-                issued = lic_state_data.aggregate(Avg('issued')).itervalues().next()
+                issued_approximated = lic_state_data.aggregate(Avg('issued')).itervalues().next()
+                print 'approx iss', issued_approximated
                 issued_min = lic_state_data.aggregate(Min('issued')).itervalues().next()
                 issued_max = lic_state_data.aggregate(Max('issued')).itervalues().next()
+
+                myround = lambda x: round(x, 2)
 
                 state_coarse = ext_license_state_coarse.objects.create(
                     ext_license_check_coarse=check_coarse,
                     ext_license_id=lic_id,
-                    used=used,
-                    used_min=used_min,
-                    used_max=used_max,
-                    issued=issued,
-                    issued_min=issued_min,
-                    issued_max=issued_max,
+                    used=myround(used_avg),
+                    used_min=myround(used_min),
+                    used_max=myround(used_max),
+                    issued=myround(issued_avg),
+                    issued_min=myround(issued_min),
+                    issued_max=myround(issued_max),
                     data_points=len(lic_state_data),
                 )
 
                 _version_frequencies = {}
+
+                version_state_coarse_additions = []
+                usage_coarse_additions = []
 
                 for vendor_lic_version in timespan_version_state_data.filter(ext_license_state__ext_license_id=lic_id).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
                     ext_lic_id = vendor_lic_version['ext_license_version']
@@ -337,36 +457,42 @@ class license_process(threading_tools.process_obj):
 
                     _version_frequencies[ext_lic_id] = freq
 
-                    version_state_coarse = ext_license_version_state_coarse.objects.create(
+                    version_state_coarse = ext_license_version_state_coarse(
                         ext_license_check_coarse=check_coarse,
                         ext_license_state_coarse=state_coarse,
                         ext_license_version_id=ext_lic_id,
                         vendor_id=vendor_id,
                         frequency=freq,
                     )
+                    version_state_coarse_additions.append(version_state_coarse)
 
                     for usage_data in version_state_usage_data_values:
-                        ext_license_usage_coarse.objects.create(
-                            ext_license_version_state_coarse=version_state_coarse,
-                            ext_license_client_id=usage_data['ext_license_client'],
-                            ext_license_user_id=usage_data['ext_license_user'],
-                            num=usage_data['num'],
-                            frequency=usage_data['frequency']
+                        usage_coarse_additions.append(
+                            ext_license_usage_coarse(
+                                ext_license_version_state_coarse=version_state_coarse,
+                                ext_license_client_id=usage_data['ext_license_client'],
+                                ext_license_user_id=usage_data['ext_license_user'],
+                                num=usage_data['num'],
+                                frequency=usage_data['frequency']
+                            )
                         )
-
                         # print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
 
+                ext_license_version_state_coarse.objects.bulk_create(version_state_coarse_additions)
+                ext_license_usage_coarse.objects.bulk_create(usage_coarse_additions)
+
                 # sanity check
-                estimated_usages = used * len(lic_state_data)
+                estimated_usages = used_approximated * len(lic_state_data)
                 actual_usages = sum(_version_frequencies.itervalues())
                 # `used` is rounded, so might not be a perfect match
                 soft_limit = max((actual_usages + estimated_usages) * 0.001, 1)
                 hard_limit = max((actual_usages + estimated_usages) * 0.1, 1)
                 if abs(estimated_usages - actual_usages) > soft_limit:
-                    self.log(self, "Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
+                    self.log("Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
                              logging_tools.LOG_LEVEL_WARN)
                 if abs(estimated_usages - actual_usages) > hard_limit:
-                    raise RuntimeError("Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages))
+                    self.log("Usages for license {} appear divergent; estimated: {}, actual: {}".format(lic_id, estimated_usages, actual_usages),
+                             logging_tools.LOG_LEVEL_ERROR)
 
                 print self, "INFO for license {}  estim: {}, actual: {}".format(lic_id, estimated_usages, actual_usages)
 
