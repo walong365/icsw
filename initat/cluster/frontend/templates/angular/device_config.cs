@@ -26,15 +26,27 @@ devconftable_template = """
 <table ng-show="active_configs.length" class="table table-condensed table-hover table-bordered" style="width:auto;">
     <tbody>
         <tr ng-repeat="sub_list in line_list">
-            <td ng-repeat="conf_idx in sub_list" ng-class="get_td_class(conf_idx)" ng-click="click(conf_idx)">
-                <div ng-show="show_config(conf_idx)">
-                    <span ng-class="get_td_class_icon(conf_idx)"></span>&nbsp;{{ get_config_info(conf_idx) }}&nbsp;<span class="pull-right badge" ng-bind-html="get_config_type(conf_idx)"></span>
+            <td ng-repeat="conf_idx in sub_list" ng-class="get_td_class(obj, conf_idx, false)" ng-click="click(obj, conf_idx)">
+                <div ng-show="show_config(obj, conf_idx)">
+                    <span ng-class="get_config_class_icon(obj, conf_idx, false)"></span>&nbsp;{{ get_config_info(conf_idx) }}&nbsp;<span class="pull-right badge" ng-bind-html="get_config_type(conf_idx)"></span>
                 </div>
-                <span ng-show="!show_config(conf_idx) && config_exists(conf_idx)">---</span>
+                <span ng-show="!show_config(obj, conf_idx) && config_exists(conf_idx)">---</span>
             </td>
         </tr>
     </tbody>
 </table>
+"""
+
+devconftable_row_template = """
+   <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
+   <td class="text-center">{{ dev.local_selected.length }}</td>
+   <td class="text-center"><span ng-show="dev.device_type_identifier != 'MD'">{{ meta_devices[devg_md_lut[dev.device_group]].local_selected.length }}</span></td>
+   <td ng-repeat="conf in active_configs" class="text-center" ng-class="get_td_class(dev, conf.idx, true)" ng-click="click(dev, conf.idx)">
+        <div ng-show="show_config(dev, conf.idx)">
+           <span ng-class="get_config_class_icon(dev, conf.idx, true)"></span>
+        </div>
+        <span ng-show="!show_config(dev, conf.idx) && config_exists(conf.idx)"><span class="glyphicon glyphicon-remove-sign"></span></span>
+   </td>
 """
 
 device_location_template = """
@@ -132,23 +144,50 @@ device_config_template = """
         </div>
     </div>
 </div>
-<table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <th></th>
-            <th>Device</th>
-            <th>Group</th>
-            <th>Comment</th>
-            <th>Info</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr dcrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
-        <tr ng-repeat-end ng-if="obj.expanded">
-            <td colspan="9"><deviceconfigtable></deviceconfigtable></td>
-        </tr>
-    </tbody>
-</table>
+<accordion ng-show="devices.length" close-others="false">
+    <accordion-group heading="new style" is-open="1">
+        <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+            <thead>
+                <tr>
+                    <th colspan="3">&nbsp;</th>
+                    <th class="rotate" ng-repeat="conf in active_configs">
+                         <div><span>{{ get_config_info(conf.idx) }}</span></div>
+                    </th>
+                </tr>
+                <tr>
+                    <th>Type</th>
+                    <td>local</td>
+                    <td>meta</td>
+                    <th ng-repeat="conf in active_configs">
+                         <span class="badge">{{ get_config_type(conf.idx) }}</span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                 <tr deviceconfigrow deviceconfighelper ng-repeat="dev in devices"></tr>
+            </tbody>
+        </table>
+    </accordion-group>
+    <accordion-group heading="old style">
+        <table class="table table-condensed table-hover" style="width:auto;">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Device</th>
+                    <th>Group</th>
+                    <th>Comment</th>
+                    <th>Info</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr dcrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+                <tr ng-repeat-end ng-if="obj.expanded">
+                    <td colspan="9"><deviceconfigtable deviceconfighelper></deviceconfigtable></td>
+                </tr>
+            </tbody>
+        </table>
+    </accordion-group>
+</accordion>
 """
 
 devconf_vars_template = """
@@ -463,6 +502,21 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     if not dev.expanded and dev.device_type_identifier != "MD"
                         dev.expanded = $scope.meta_devices[$scope.devg_md_lut[dev.device_group]].expanded
             $scope.set_line_list()
+        $scope.get_config_info = (conf_idx) ->
+            if conf_idx != null
+                cur_conf = $scope.configs_lut[conf_idx]
+                return cur_conf.info_str
+        $scope.get_config_type = (conf_idx) ->
+            if conf_idx != null
+                r_v = []
+                cur_conf = $scope.configs_lut[conf_idx]
+                if cur_conf.server_config
+                    r_v.push("S")
+                if cur_conf.system_config
+                    r_v.push("Y")
+                return r_v.join("/")
+            else
+                return ""
         install_devsel_link($scope.new_devsel, true)
 ]).directive("dcrow", ($templateCache) ->
     return {
@@ -477,62 +531,43 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
             if attrs["devicepk"]?
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
-).directive("deviceconfigtable", ($templateCache, $compile, $modal, Restangular) ->
+).directive("deviceconfighelper", (Restangular) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("devconftable.html")
-        link : (scope) ->
-            scope.get_td_class = (conf_idx) ->
+        link: (scope, el, attrs) ->
+            scope.get_th_class = (dev) ->
                 _cls = ""
-                is_meta_dev = scope.obj.device_type_identifier == "MD"
-                meta_dev = scope.meta_devices[scope.devg_md_lut[scope.obj.device_group]]
+                is_meta_dev = dev.device_type_identifier == "MD"
+                if is_meta_dev
+                    return "warning"
+                else
+                    return ""
+            scope.get_td_class = (dev, conf_idx, single_line) ->
+                _cls = ""
+                is_meta_dev = dev.device_type_identifier == "MD"
+                meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
+                if single_line and not scope.show_config(dev, conf_idx) and scope.config_exists(conf_idx)
+                    _cls = "danger"
                 if conf_idx != null
-                    if conf_idx in scope.obj.local_selected
+                    if conf_idx in dev.local_selected
                         _cls = "success"
-                    if conf_idx in meta_dev.local_selected and not is_meta_dev
+                    else if conf_idx in meta_dev.local_selected and not is_meta_dev
                         _cls = "warn"
                 return _cls
-            scope.get_config_info = (conf_idx) ->
+            scope.show_config = (dev, conf_idx) ->
                 if conf_idx != null
                     cur_conf = scope.configs_lut[conf_idx]
-                    return cur_conf.info_str
-            scope.config_exists = (conf_idx) ->
-                return if conf_idx != null then true else false
-            scope.show_config = (conf_idx) ->
-                if conf_idx != null
-                    cur_conf = scope.configs_lut[conf_idx]
-                    if scope.obj.device_type_identifier == "MD" and cur_conf.server_config
+                    if dev.device_type_identifier == "MD" and cur_conf.server_config
                         return false
                     else
                         return true
                 else
                     return false
-            scope.get_config_type = (conf_idx) ->
-                if conf_idx != null
-                    r_v = []
-                    cur_conf = scope.configs_lut[conf_idx]
-                    if cur_conf.server_config
-                        r_v.push("S")
-                    if cur_conf.system_config
-                        r_v.push("Y")
-                    return r_v.join("/")
-                else
-                    return ""
-            scope.get_td_class_icon = (conf_idx) ->
-                _cls = "glyphicon"
-                is_meta_dev = scope.obj.device_type_identifier == "MD"
-                meta_dev = scope.meta_devices[scope.devg_md_lut[scope.obj.device_group]]
-                if conf_idx != null
-                    if conf_idx in scope.obj.local_selected
-                        _cls = "glyphicon glyphicon-ok"
-                    if conf_idx in meta_dev.local_selected and not is_meta_dev
-                        _cls = "glyphicon glyphicon-ok-circle"
-                return _cls
-            scope.click = (conf_idx) ->
-                if conf_idx != null and scope.acl_create(scope.obj, 'backbone.device.change_config') and scope.show_config(conf_idx)
-                    meta_dev = scope.meta_devices[scope.devg_md_lut[scope.obj.device_group]]
+            scope.click = (dev, conf_idx) ->
+                if conf_idx != null and scope.acl_create(dev, 'backbone.device.change_config') and scope.show_config(dev, conf_idx)
+                    meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
                     value = 1
-                    if conf_idx in scope.obj.local_selected
+                    if conf_idx in dev.local_selected
                         value = 0
                     if conf_idx in meta_dev.local_selected
                         value = 0
@@ -540,7 +575,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                         url  : "{% url 'config:alter_config_cb' %}"
                         data : {
                             "conf_pk" : conf_idx
-                            "dev_pk"  : scope.obj.idx
+                            "dev_pk"  : dev.idx
                             "value"   : value
                         },
                         success : (xml) =>
@@ -548,11 +583,11 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                             parse_xml_response(xml)
                             # at first remove all selections
                             for entry in scope.devices
-                                if entry.device_group == scope.obj.device_group
+                                if entry.device_group == dev.device_group
                                     if conf_idx in entry.local_selected
                                         entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx) 
                             for idx, entry of scope.meta_devices
-                                if entry.device_group == scope.obj.device_group
+                                if entry.device_group == dev.device_group
                                     if conf_idx in entry.local_selected
                                         entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx)
                             # set selection where needed 
@@ -567,10 +602,36 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                                         scope.device_lut[dev_pk].local_selected.push(conf_idx)
                             # force redraw
                             scope.$apply()
+            scope.get_config_class_icon = (dev, conf_idx, single_line) ->
+                if single_line
+                    _cls = "glyphicon glyphicon-minus"
+                else
+                    _cls = "glyphicon"
+                is_meta_dev = dev.device_type_identifier == "MD"
+                meta_dev = scope.meta_devices[scope.devg_md_lut[dev.device_group]]
+                if conf_idx != null
+                    if conf_idx in dev.local_selected
+                        _cls = "glyphicon glyphicon-ok"
+                    if conf_idx in meta_dev.local_selected and not is_meta_dev
+                        _cls = "glyphicon glyphicon-ok-circle"
+                return _cls
+            scope.config_exists = (conf_idx) ->
+                return if conf_idx != null then true else false
+    }
+).directive("deviceconfigrow", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("devconftablerow.html")
+    }
+).directive("deviceconfigtable", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("devconftable.html")
     }
 ).run(($templateCache) ->
     $templateCache.put("dc_row.html", dc_row_template)
     $templateCache.put("devconftable.html", devconftable_template)
+    $templateCache.put("devconftablerow.html", devconftable_row_template)
     $templateCache.put("device_config_template.html", device_config_template)
 )
 

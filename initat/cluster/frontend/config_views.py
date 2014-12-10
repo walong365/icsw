@@ -168,7 +168,7 @@ class alter_config_cb(View):
                                int(_post["id"].split("__")[3]))
         cur_dev, cur_conf = (
             device.objects.select_related("device_type").get(Q(pk=dev_id)),
-            config.objects.get(Q(pk=conf_id))
+            getattr(config, "objects").get(Q(pk=conf_id))
         )
         # is metadevice ?
         is_meta = cur_dev.device_type.identifier == "MD"
@@ -189,7 +189,7 @@ class alter_config_cb(View):
                 set_meta = True
                 if len(to_remove):
                     if any([True for del_obj in to_remove if get_related_models(del_obj)]):
-                        logger.xml_response.error("device configs are in use (hence protected)", logger)
+                        request.xml_response.error("device configs are in use (hence protected)", logger)
                         set_meta = False
                     else:
                         to_remove.delete()
@@ -394,7 +394,7 @@ class download_configs(View):
             ", ".join(["{:d}".format(val) for val in sorted(conf_ids)])))
         configs = []
         # res_xml.append(configs)
-        conf_list = config.objects.filter(Q(pk__in=conf_ids)).prefetch_related(
+        conf_list = getattr(config, "objects").filter(Q(pk__in=conf_ids)).prefetch_related(
             "config_str_set",
             "config_int_set",
             "config_bool_set",
