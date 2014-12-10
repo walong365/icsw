@@ -12,8 +12,8 @@
 # Required-Start: $network $syslog logging-server
 # Required-Stop: $network $syslog logging-server
 # Should-Start: mysql postgresql
-# Default-Start: 3 5
-# Default-Stop: 0 1 2 6
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
 # Description:   starts cluster-config-server
 ### END INIT INFO
 
