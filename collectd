@@ -5,8 +5,8 @@
 # Should-Start: $time 
 # Required-Stop:     $syslog $remote_fs rrdcached
 # Should-Stop: $time 
-# Default-Start:     3 5
-# Default-Stop:      0 1 2 6
+# Default-Start:     2 3 5
+# Default-Stop:      0 1 6
 # Short-Description: collectd
 # Description:       starts and stops collectd
 ### END INIT INFO
