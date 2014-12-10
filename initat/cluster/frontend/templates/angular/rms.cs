@@ -85,7 +85,7 @@ iostruct = """
         <input type="button" class="btn btn-sm btn-warning" value="close" ng-click="close_io(io_struct)"></input>
         <input type="button" ng-class="io_struct.update && 'btn btn-sm btn-success' || 'btn btn-sm'" value="update" ng_click="io_struct.update = !io_struct.update"></input>
     </h4>
-    <div ng-show="io_struct.valid"> 
+    <div>
         <tt>
             <textarea ui-codemirror="editorOptions" ng-model="io_struct.text">
             </textarea>
