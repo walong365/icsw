@@ -11,8 +11,8 @@
 # Should-Start: logcheck-server mysql postgresql
 # Required-Start: $network logging-server
 # Required-Stop: $network logging-server logcheck-server
-# Default-Start: 3 5
-# Default-Stop: 0 1 2 6 
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6 
 # Description:   start mother
 ### END INIT INFO
 
