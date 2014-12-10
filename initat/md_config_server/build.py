@@ -31,7 +31,7 @@ from initat.md_config_server.config import global_config, main_config, all_comma
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_services, config_dir, device_templates, service_templates, mon_config, \
     all_host_dependencies, build_cache, build_safe_name, SimpleCounter
-from initat.md_config_server.constants import CACHE_MODES
+from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.mixins import version_check_mixin
 from lxml.builder import E  # @UnresolvedImport
 import codecs
@@ -367,7 +367,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         cache_mode = kwargs.get("cache_mode", "???")
         if cache_mode not in CACHE_MODES:
             # take first cache mode
-            cache_mode = special_commands.DEFAULT_CACHE_MODE
+            cache_mode = DEFAULT_CACHE_MODE
         self.log(
             "rebuild_config called, single_build is {}, cache_mode is {}, hdep_from_topo is {}".format(
                 str(single_build),
