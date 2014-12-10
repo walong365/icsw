@@ -145,7 +145,11 @@ device_config_template = """
     </div>
 </div>
 <accordion ng-show="devices.length" close-others="false">
-    <accordion-group heading="new style" is-open="1">
+    <accordion-group is-open="table_mode">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': table_mode, 'glyphicon-chevron-right': !table_mode}"></i>
+            Table mode
+        </accordion-heading>
         <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
             <thead>
                 <tr>
@@ -168,7 +172,11 @@ device_config_template = """
             </tbody>
         </table>
     </accordion-group>
-    <accordion-group heading="old style">
+    <accordion-group is-open="list_mode">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': list_mode, 'glyphicon-chevron-right': !list_mode}"></i>
+            List mode
+        </accordion-heading>
         <table class="table table-condensed table-hover" style="width:auto;">
             <thead>
                 <tr>
@@ -360,6 +368,8 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         $scope.active_configs = []
         $scope.name_filter = ""
         $scope.new_config_name = ""
+        $scope.table_mode = true
+        $scope.list_mode = false
         $scope.only_selected = false
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
