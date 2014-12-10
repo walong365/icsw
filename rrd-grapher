@@ -13,8 +13,8 @@
 # Should-Start: mysql
 # Required-Stop: $network logging-server meta-server
 # Should-Stop: mysql
-# Default-Start: 3 5
-# Default-Stop: 0 1 2 6
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
 # Description:   start rrd-grapher
 ### END INIT INFO
 
