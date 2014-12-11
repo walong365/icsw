@@ -249,27 +249,47 @@ class tcp_con(object):
         self.srv_com = srv_com
         self.s_time = time.time()
         tcp_con.pending.append(self)
-        self._host, self._port = (socket.gethostbyname(srv_com["host"].text), int(srv_com["port"].text))
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # , socket.IPPROTO_TCP)
-        self.socket.setblocking(0)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
-        # self.socket.setsockopt(socket.SOCK_STREAM, socket.SO_KEEPALIVE, 1)
-        self.__process.register_socket(self.socket, zmq.POLLOUT, self._send)  # @UndefinedVariable
-        self.__registered = True
+        self._port = int(srv_com["port"].text)
         try:
-            self.socket.connect((self._host, self._port))
-        except socket.error as _err:
-            errno = _err.errno
-            if errno != 115:
-                self.log("error while bind: {}".format(errno))
+            self._host = socket.gethostbyname(srv_com["host"].text)
+        except:
+            self._host = srv_com["host"].text
+            self.log(
+                "Failed to resolve host: {}: {}".format(
+                    srv_com["host"].text,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            self.__process.send_result(self.src_id, unicode(self.srv_com), "error resolving host '{}'".format(self._host))
+        else:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # , socket.IPPROTO_TCP)
+            self.socket.setblocking(0)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
+            # self.socket.setsockopt(socket.SOCK_STREAM, socket.SO_KEEPALIVE, 1)
+            self.__process.register_socket(self.socket, zmq.POLLOUT, self._send)  # @UndefinedVariable
+            self.__registered = True
+            try:
+                self.socket.connect((self._host, self._port))
+            except socket.error as _err:
+                errno = _err.errno
+                if errno != 115:
+                    self.log("error while bind to ({}, {:d}): {}".format(self._host, self._port, errno))
             # if errno
             # print errno
             # time.sleep(0.1)
         # self._send()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log("[{}:{:d}] {}".format(self._host, self._port, what), log_level)
+        self.__process.log(
+            "[{}:{:d}] {}".format(
+                self._host,
+                self._port,
+                what
+            ),
+            log_level
+        )
 
     def _send(self, sock):
         try:
@@ -298,9 +318,13 @@ class tcp_con(object):
                 if _len + 8 == len(_data):
                     self.__process.send_result(self.src_id, unicode(self.srv_com), _data[8:])
                 else:
-                    self.log("wrong length: {:d} (header) != {:d} (body)".format(
-                        _len,
-                        len(_data) - 8), logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "wrong length: {:d} (header) != {:d} (body)".format(
+                            _len,
+                            len(_data) - 8
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
             else:
                 self.log("wrong header: {}" .format(_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
         self.close()
