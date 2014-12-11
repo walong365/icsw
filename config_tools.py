@@ -498,27 +498,30 @@ class server_check(object):
             except device.DoesNotExist:
                 self.device = None
             else:
-                _co = config.objects  # @UndefinedVariable
-                try:
-                    self.config = _co.get(
-                        Q(name=self.__server_type) & Q(device_config__device=self.device)
-                    )
-                except config.DoesNotExist:  # @UndefinedVariable
+                if self.device:
+                    _co = config.objects  # @UndefinedVariable
                     try:
                         self.config = _co.get(
-                            Q(name=self.__server_type) &
-                            Q(device_config__device__device_type__identifier="MD") &
-                            Q(device_config__device__device_group=self.device.device_group_id)
+                            Q(name=self.__server_type) & Q(device_config__device=self.device)
                         )
                     except config.DoesNotExist:  # @UndefinedVariable
-                        self.config = None
+                        try:
+                            self.config = _co.get(
+                                Q(name=self.__server_type) &
+                                Q(device_config__device__device_type__identifier="MD") &
+                                Q(device_config__device__device_group=self.device.device_group_id)
+                            )
+                        except config.DoesNotExist:  # @UndefinedVariable
+                            self.config = None
+                        else:
+                            self.effective_device = device.objects.get(
+                                Q(device_group=self.device.device_group_id) &
+                                Q(device_type__identifier="MD")
+                            )
                     else:
-                        self.effective_device = device.objects.get(
-                            Q(device_group=self.device.device_group_id) &
-                            Q(device_type__identifier="MD")
-                        )
+                        self.effective_device = self.device
                 else:
-                    self.effective_device = self.device
+                    self.config = None
         # self.num_servers = len(all_servers)
         if self.config:
             # name matches ->
