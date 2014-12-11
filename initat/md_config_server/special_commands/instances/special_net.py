@@ -28,7 +28,7 @@ import re
 
 class special_net(special_base):
     class Meta:
-        info = "configured Netdevices vi collserer"
+        info = "configured netdevices via collserver"
         command_line = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
         description = "queries all configured network devices"
 

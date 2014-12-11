@@ -42,7 +42,9 @@ import logging_tools
 import net_tools
 import networkx
 import operator
+import json
 import os
+import os.path
 import process_tools
 import server_command
 import signal
@@ -78,6 +80,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.__pending_commands = []
         # ready (check_for_slaves called)
         self.__ready = False
+
+        self.__host_service_map = host_service_map(self.log)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -345,6 +349,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
 
     def _rebuild_config(self, *args, **kwargs):
+        self.__host_service_map.start_collecting()
+
         single_build = True if len(args) > 0 else False
         if not single_build:
             # from mixin
@@ -475,6 +481,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 _bc.single_build = single_build
                 _bc.debug = self.gc["DEBUG"]
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
+                self.log("create host")
+                self.log("bc {}".format(_bc))
+                self.log("cur gc {}".format(cur_gc))
+                self.log("cur_dmap {}".format(cur_dmap))
                 self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if not single_build:
@@ -504,6 +514,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 self.log("{:5d} {}".format(q_idx, act_sql["sql"][:180]))
+        self.__host_service_map.end_collecting()
         del self.gc
         if single_build:
             return res_node
@@ -1702,8 +1713,15 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
         )
         ret_field = []
+
+        self.__host_service_map.add_host(host.full_name, host.pk)
+
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
+            self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
+            self.log("s_check {}".format(s_check))
+            self.log("arg_temp: {}".format(unicode(arg_temp.__dict__)))
+            #self.log(locals())
             act_serv = mon_config("service", arg_temp.info)
             # event handlers
             if s_check.event_handler:
@@ -1810,3 +1828,59 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # old code, produces a lot of dups
             # valid_ips = sum([net_devices[nd_pk] for _val, nd_pk, _loc_trace in traces], [])
         return valid_ips, traces
+
+
+class host_service_map(object):
+    """
+    here, we save the host and services we tell icinga
+    then we can later resolve it when parsing the logs
+    """
+    @staticmethod
+    def get_mapping():
+        data = json.load(open(host_service_map._get_filepath))
+        return data['hosts'], data['services']
+
+    def __init__(self, log):
+        self.clear()
+        self.log = log
+        self._collecting = False
+
+    def clear(self):
+        self._services = {}
+        self._hosts = {}
+
+    def start_collecting(self):
+        self.clear()
+        self._collecting = True
+
+    def end_collecting(self):
+        self._collecting = False
+
+        data = {'hosts': self._hosts, 'services': self._services}
+
+        self.log("Writing host service mapping to {}".format(self._get_filepath()))
+        with open(self._get_filepath(), "w") as mapping_file:
+            json.dump(data, mapping_file)
+            mapping_file.flush()
+
+    def add_service(self, service, pk):
+        if not self._collecting:
+            self.log("collecting service mapping for {} outside of rebuild".format(service), logging_tools.LOG_LEVEL_WARN)
+
+        if service in self._services and self._services[service] != pk:
+            self.log("multiple definitions of service {}: {} and {}".format(service, self._services[service], pk), logging_tools.LOG_LEVEL_WARN)
+        else:
+            self._services[service] = pk
+
+    def add_host(self, host, pk):
+        if not self._collecting:
+            self.log("collecting host mapping for {} outside of rebuild".format(host), logging_tools.LOG_LEVEL_WARN)
+
+        if host in self._hosts and self._hosts[host] != pk:
+            self.log("multiple definitions of host {}: {} and {}".format(host, self._hosts[host], pk), logging_tools.LOG_LEVEL_WARN)
+        else:
+            self._hosts[host] = pk
+
+    @staticmethod
+    def _get_filepath():
+        return os.path.join(global_config['MD_BASEDIR'], 'var', 'host_service_map')
