@@ -56,9 +56,10 @@ class main_config(object):
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
             master_cfg = config_tools.device_with_config("monitor_server")
             slave_cfg = config_tools.server_check(
-                short_host_name=monitor_server.name,
+                host_name=monitor_server.full_name,
                 server_type="monitor_slave",
-                fetch_network_info=True)
+                fetch_network_info=True
+            )
             self.slave_uuid = monitor_server.uuid
             route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg, allow_route_to_other_networks=True)
             if not route:

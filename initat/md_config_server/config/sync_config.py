@@ -59,7 +59,7 @@ class sync_config(object):
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
             master_cfg = config_tools.device_with_config("monitor_server")
             slave_cfg = config_tools.server_check(
-                short_host_name=monitor_server.name,
+                host_name=monitor_server.full_name,
                 server_type="monitor_slave",
                 fetch_network_info=True)
             self.slave_uuid = monitor_server.uuid
