@@ -824,7 +824,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list]
 
     def scan_ctrl(self):
-        cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll", post="strip")
+        cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll -noLog", post="strip")
         if not cur_stat:
             _adp_check = False
             for line in cur_lines:
@@ -1026,7 +1026,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                 num_w += 1
                 if drives_missing:
                     num_e += 1
-                    drive_stats.append("drives missing: {}".format(", ".join(["{:d}".format(m_drive) for m_drive in drives_missing])))
+                    drive_stats.append(
+                        "{} missing: {}".format(
+                            logging_tools.get_plural("drive", len(drives_missing)),
+                            ", ".join(["{:d}".format(m_drive) for m_drive in sorted(drives_missing)])
+                        )
+                    )
             if "virt" not in ctrl_stuff:
                 num_w += 1
             if "enclosures" in ctrl_stuff:
