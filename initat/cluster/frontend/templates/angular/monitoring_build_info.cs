@@ -58,7 +58,7 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
             else
                 return "---"
         $scope.get_slaves = (build) ->
-            return ($scope.get_slave(build, idx) for idx in $scope.all_slaves)
+            return ($scope.get_slave(build, slave.device) for slave in build.mon_dist_slave_set)
         $scope.get_slave = (build, idx) ->
             _list = (entry for entry in build.mon_dist_slave_set when entry.device == idx)
             return if _list.length then _list[0] else undefined 
