@@ -468,7 +468,8 @@ class device_network_scan_form(Form):
     remove_not_found = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Scan network of device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
-        HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
+        # HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
+        HTML("<tabset><tab heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
         Fieldset(
             "Base data",
             Field("scan_address"),
