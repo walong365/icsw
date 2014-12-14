@@ -824,7 +824,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list]
 
     def scan_ctrl(self):
-        cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll", post="strip")
+        cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll -noLog", post="strip")
         if not cur_stat:
             _adp_check = False
             for line in cur_lines:
