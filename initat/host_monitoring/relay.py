@@ -792,9 +792,11 @@ class relay_code(threading_tools.process_pool):
             new_ss.run()
             self.__delayed.append(new_ss)
         elif cur_com == "register_master":
-            self._register_master(srv_com["master_ip"].text,
-                                  srv_com["identity"].text,
-                                  int(srv_com["master_port"].text))
+            self._register_master(
+                srv_com["master_ip"].text,
+                srv_com["identity"].text,
+                int(srv_com["master_port"].text)
+            )
         else:
             # add to cache ?
             self._send_to_master(srv_com)
@@ -861,7 +863,7 @@ class relay_code(threading_tools.process_pool):
                 try:
                     self.client_socket.connect(conn_str)
                 except:
-                    self._send_result(src_id, "error connecting: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+                    self._send_result(src_id, "error connecting: {}".format(process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
                 else:
                     self.log("connected ROUTER client to %s" % (conn_str))
                     connected = True
@@ -895,7 +897,13 @@ class relay_code(threading_tools.process_pool):
 
     def _send_result(self, identity, reply_str, reply_state):
         if identity is None:
-            self.log("refuse to use identity==None", logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "refuse to use identity==None, reply_str is [{:d}]: {}".format(
+                    reply_state,
+                    reply_str
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             self.sender_socket.send_unicode(identity, zmq.SNDMORE)  # @UndefinedVariable
             self.sender_socket.send_unicode(
@@ -932,7 +940,7 @@ class relay_code(threading_tools.process_pool):
                             int(srv_result["result"].attrib["state"]))
                     else:
                         self.log(
-                            "received nhm-result for unknown id '%s', ignoring" % (cur_id),
+                            "received nhm-result for unknown id '{}', ignoring".format(cur_id),
                             logging_tools.LOG_LEVEL_ERROR
                         )
                 else:
@@ -1073,11 +1081,13 @@ class relay_code(threading_tools.process_pool):
                         try:
                             os.unlink(f_path)
                         except:
-                            self.log("cannot remove %s: %s" % (
-                                f_path,
-                                process_tools.get_except_info()
+                            self.log(
+                                "cannot remove {}: {}".format(
+                                    f_path,
+                                    process_tools.get_except_info()
                                 ),
-                                logging_tools.LOG_LEVEL_ERROR)
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                         else:
                             num_rem += 1
             else:
@@ -1099,7 +1109,7 @@ class relay_code(threading_tools.process_pool):
             int(srv_com["uid"].text),
             int(srv_com["gid"].text),
             base64.b64decode(srv_com["content"].text),
-            )
+        )
         if success:
             ret_com.set_result("stored content")
         else:

@@ -262,6 +262,7 @@ class tcp_con(object):
                 logging_tools.LOG_LEVEL_ERROR
             )
             self.__process.send_result(self.src_id, unicode(self.srv_com), "error resolving host '{}'".format(self._host))
+            self.__registered = False
         else:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # , socket.IPPROTO_TCP)
             self.socket.setblocking(0)
