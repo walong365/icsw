@@ -40,7 +40,8 @@ import server_command
 import threading_tools
 import time
 
-IGNORE_LIST = ["tun", "tap", "vnet"]
+# removed tun from list to enable adding of FWs from Madar, move to option?
+IGNORE_LIST = ["tap", "vnet"]
 
 
 class snmp_batch(object):
