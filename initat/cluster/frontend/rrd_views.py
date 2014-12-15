@@ -1,4 +1,3 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -30,7 +29,6 @@ from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from lxml.builder import E # @UnresolvedImports
 from initat.cluster.backbone.models import device
 from lxml.builder import E  # @UnresolvedImports
 import datetime
@@ -42,33 +40,12 @@ import server_command
 
 logger = logging.getLogger("cluster.rrd")
 
+
 class device_rrds(View):
-    # @method_decorator(login_required)
-    # def get(self, request):
-    #    return render_me(
-    #        request, "rrd_class_overview.html",
-    #    )()
-    @method_decorator(xml_wrapper)
+    @method_decorator(login_required)
     def post(self, request):
-        srv_com = server_command.srv_command(command="get_node_rrd")
-        dev_pks = json.loads(request.POST["pks"])
-        srv_com["device_list"] = E.device_list(
-            *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in dev_pks],
-            merge_results="1"
-        )
-        result = contact_server(request, "grapher", srv_com, timeout=30)
-        if result:
-            node_results = result.xpath(".//node_results", smart_strings=False)
-            if len(node_results):
-                node_results = node_results[0]
-                if len(node_results):
-                    # first device
-                    node_result = node_results[0]
-                    request.xml_response["result"] = node_result
-                else:
-                    request.xml_response.error("no node_results", logger=logger)
-            else:
-                request.xml_response.error("no node_results", logger=logger)
+        dev_pks = request.POST.getlist("pks[]")
+        return _get_node_rrd(request, dev_pks)
 
 
 class merge_cds(View):
@@ -100,13 +77,22 @@ def _get_node_rrd(request, dev_pks):
 class graph_rrds(View):
     def _parse_post_boolean(self, _post, name, default):
         return "1" if _post.get(name, default).lower() in ["1", "true"] else "0"
+
+    @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="graph_rrd")
-        pk_list, graph_keys = (json.loads(_post["pks"]), json.loads(_post["keys"]))
+        pk_list, graph_keys = (
+            json.loads(_post["pks"]),
+            json.loads(_post["keys"])
+        )
+        if int(self._parse_post_boolean(_post, "cds_already_merged", "0")):
+            cd_pks = list(device.objects.filter(Q(device_type__identifier="CD") & Q(master_connections__in=pk_list)).values_list("pk", flat=True))
+        else:
+            cd_pks = []
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in pk_list]
+            *[E.device(pk="{:d}".format(int(dev_pk))) for dev_pk in pk_list + cd_pks]
         )
         srv_com["graph_key_list"] = E.graph_key_list(
             *[E.graph_key(graph_key) for graph_key in graph_keys if not graph_key.startswith("_")]
@@ -118,10 +104,16 @@ class graph_rrds(View):
             start_time = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(4 * 3600)
             end_time = datetime.datetime.now(dateutil.tz.tzutc())
         srv_com["parameters"] = E.parameters(
+            E.debug_mode("1" if settings.DEBUG else "0"),
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
             E.size(_post.get("size", "400x200")),
-            E.hide_zero(self._parse_post_boolean(_post, "hide_zero", "0")),
+            E.hide_empty(self._parse_post_boolean(_post, "hide_empty", "0")),
+            E.include_zero(self._parse_post_boolean(_post, "include_zero", "0")),
+            E.scale_y(self._parse_post_boolean(_post, "scale_y", "0")),
+            E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
+            E.job_mode(_post.get("job_mode", "none")),
+            E.selected_job(_post.get("selected_job", "0")),
             E.merge_devices(self._parse_post_boolean(_post, "merge_devices", "1")),
             E.timeshift(_post.get("timeshift", "0")),
         )
