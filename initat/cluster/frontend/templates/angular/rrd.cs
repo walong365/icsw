@@ -41,6 +41,12 @@ rrd_graph_template = """
         <div class="input-group-btn">
             <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
         </div>
+                <div class="input-group-btn">
+                    <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
+                        <span class="glyphicon glyphicon-off"></span>
+                    </button>
+                </div>
+
         <div class="input-group-btn">
             <input type="button" ng-class="merge_devices && 'btn btn-sm btn-success' || 'btn btn-sm'" value="merge devices" ng-click="merge_devices=!merge_devices"></input>
         </div>
@@ -276,6 +282,7 @@ add_rrd_directive = (mod) ->
             $scope.hide_zero = false
             $scope.merge_devices = true
             $scope.show_options = false
+            $scope.merge_cd = false
             $scope.g_tree = new rrd_tree($scope)
             $scope.$watch("from_date_mom", (new_val) ->
                 $scope.update_dt() 
@@ -312,6 +319,18 @@ add_rrd_directive = (mod) ->
             $scope.new_devsel = (_dev_sel, _devg_sel) ->
                 $scope.devsel_list = _dev_sel
                 $scope.reload()
+            $scope.toggle_merge_cd = () ->
+                $scope.merge_cd = !$scope.merge_cd
+                if $scope.merge_cd and not $scope.cds_already_merged
+                    $scope.cds_already_merged = true
+                    call_ajax
+                        url  : "{% url 'rrd:merge_cds' %}"
+                        data : {
+                            "pks" : $scope.devsel_list
+                        }
+                        dataType: "json"
+                        success : (json) =>
+                            $scope.feed_rrd_json(json)
             $scope.reload = () ->
                 $scope.vector_valid = false
                 call_ajax

@@ -163,6 +163,7 @@ rrd_patterns = patterns(
     "initat.cluster.frontend",
     url(r"^dev_rrds$" , rrd_views.device_rrds.as_view(), name="device_rrds"),
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view() , name="graph_rrds"),
+    url(r"^merge_cd$", rrd_views.merge_cds.as_view(), name="merge_cds"),
 )
 
 rpl = []
