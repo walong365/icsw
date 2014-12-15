@@ -488,8 +488,8 @@ class data_store(object):
         # last update time
         entry.attrib["last_update"] = "{:d}".format(int(time.time()))
         entry.attrib["active"] = "1"
-        # if "file_name" in src_entry.attrib:
-        entry.attrib["file_name"] = src_entry.attrib["file_name"]
+        if "file_name" in src_entry.attrib:
+            entry.attrib["file_name"] = src_entry.attrib["file_name"]
         # else:
         #    entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-{}.rrd".format(entry.attrib["sane_name"]))
         for key, def_value in [
@@ -509,7 +509,8 @@ class data_store(object):
             entry.attrib["info"] = src_entry.attrib["info"]
         else:
             del entry.attrib["info"]
-        entry.attrib["file_name"] = src_entry.attrib["file_name"]
+        if "file_name" in src_entry.attrib:
+            entry.attrib["file_name"] = src_entry.attrib["file_name"]
         if len(entry) == len(src_entry):
             for _v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
                 for key, def_value in [
