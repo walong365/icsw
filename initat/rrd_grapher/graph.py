@@ -622,7 +622,7 @@ class RRDGraph(object):
         # store for DEF generation
         self.width = graph_width
         self.height = graph_height
-        dev_dict = {cur_dev.pk: unicode(cur_dev.display_name) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))}
+        dev_dict = {cur_dev.pk: unicode(cur_dev.full_name) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))}
         s_graph_key_dict = self._create_graph_keys(graph_keys)
         self.log(
             "found {}: {}".format(
