@@ -31,7 +31,7 @@ import platform
 import psutil
 import random
 import re
-import signal
+import signal  # @UnusedImport
 import socket
 import stat
 import subprocess
@@ -42,14 +42,15 @@ import traceback
 import uuid_tools
 import zmq
 if sys.version_info[0] == 3:
-    unicode = str
-    long = int
+    unicode = str  # @ReservedAssignment
+    long = int  # @ReservedAssignment
+
 
 if sys.platform in ["linux2", "linux3", "linux"]:
     # helper function for proepilogue
-    from io_stream_helper import io_stream
-    from lxml import etree # @UnresolvedImports
-    from lxml.builder import E # @UnresolvedImports
+    from io_stream_helper import io_stream  # @UnusedImport
+    from lxml import etree  # @UnresolvedImports
+    from lxml.builder import E  # @UnresolvedImports
     import grp
     import pwd
 
@@ -59,16 +60,18 @@ except locale.Error:
     ENCODING = "C"
 
 try:
-    import affinity_tools # @UnresolvedImports
+    import affinity_tools  # @UnresolvedImports
 except IOError:
     affinity_tools = None
 
+
 def getstatusoutput(cmd):
     if sys.version_info[0] == 3:
-        return subprocess.getstatusoutput(cmd)
+        return subprocess.getstatusoutput(cmd)  # @UndefinedVariable
     else:
         import commands
         return commands.getstatusoutput(cmd)
+
 
 # net to sys and reverse functions
 def net_to_sys(in_val):
@@ -81,8 +84,10 @@ def net_to_sys(in_val):
             raise ValueError
     return result
 
+
 def sys_to_net(in_val):
     return pickle.dumps(in_val)
+
 
 def get_except_info(exc_info=None, **kwargs):
     if not exc_info:
@@ -119,6 +124,7 @@ def get_except_info(exc_info=None, **kwargs):
         unicode(_exc_list),
         ", {}".format(", ".join(frame_info)) if frame_info else "")
 
+
 class exception_info(object):
     def __init__(self, **kwargs):
         self.thread_name = threading.currentThread().getName()
@@ -138,9 +144,32 @@ class exception_info(object):
 
 # mapping: server type -> postfix for ZMQ_IDENTITY string
 _CLIENT_TYPE_UUID_MAPPING = {
-    "meta"      : "meta-server",
-    "package"   : "package-client",
+    "meta": "meta-server",
+    "package": "package-client",
 }
+
+
+def call_command(act_command, log_com, close_fds=False):
+    log_com("calling command '{}'".format(act_command))
+    s_time = time.time()
+    _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=close_fds, cwd="/")
+    ret_code = _sub.wait()
+    _stdout, _stderr = _sub.communicate()
+    e_time = time.time()
+    log_com("execution took {}, return code was {:d}".format(
+        logging_tools.get_diff_time_str(e_time - s_time),
+        ret_code,
+        ))
+    for _val, _name, _lev in [(_stdout, "stdout", logging_tools.LOG_LEVEL_OK), (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)]:
+        if _val.strip():
+            _lines = _val.split("\n")
+            log_com("{} has {} ({})".format(_name, logging_tools.get_plural("byte", len(_val)), logging_tools.get_plural("line", len(_lines))))
+            for _line_num, _line in enumerate(_lines):
+                log_com(" {:3d} : {}".format(_line_num + 1, _line), _lev)
+        else:
+            log_com("{} is empty".format(_name))
+    return ret_code, _stdout, _stderr
+
 
 def get_client_uuid(client_type, uuid=None):
     if uuid is None:
@@ -188,11 +217,13 @@ def remove_zmq_dirs(dir_name):
 
 LOCAL_ZMQ_DIR = "/tmp/.icsw_zmq/.zmq_{:d}:{:d}".format(
     os.getuid(),
-    os.getpid())
+    os.getpid(),
+)
 
 LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets"
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
+
 
 def get_zmq_ipc_name(name, **kwargs):
     if "s_name" in kwargs:
@@ -283,28 +314,30 @@ def submit_at_command(com, diff_time=0, as_root=False):
     return cstat, log_f
 
 PROC_STATUSES = {
-    "R" : psutil.STATUS_RUNNING,
-    "S" : psutil.STATUS_SLEEPING,
-    "D" : psutil.STATUS_DISK_SLEEP,
-    "T" : psutil.STATUS_STOPPED,
-    "t" : psutil.STATUS_TRACING_STOP,
-    "Z" : psutil.STATUS_ZOMBIE,
-    "X" : psutil.STATUS_DEAD,
-    "W" : psutil.STATUS_WAKING
+    "R": psutil.STATUS_RUNNING,
+    "S": psutil.STATUS_SLEEPING,
+    "D": psutil.STATUS_DISK_SLEEP,
+    "T": psutil.STATUS_STOPPED,
+    "t": psutil.STATUS_TRACING_STOP,
+    "Z": psutil.STATUS_ZOMBIE,
+    "X": psutil.STATUS_DEAD,
+    "W": psutil.STATUS_WAKING
 }
 
+
 PROC_INFO_DICT = {
-    psutil.STATUS_RUNNING :  "number of running processes",
-    psutil.STATUS_ZOMBIE : "number of zombie processes",
-    psutil.STATUS_DISK_SLEEP : "processes in uninterruptable sleep",
-    psutil.STATUS_STOPPED : "processes stopped",
-    psutil.STATUS_TRACING_STOP : "processes traced",
-    psutil.STATUS_SLEEPING : "processes sleeping",
-    psutil.STATUS_WAKING : "processes waking",
-    psutil.STATUS_DEAD : "processes dead",
+    psutil.STATUS_RUNNING:  "number of running processes",
+    psutil.STATUS_ZOMBIE: "number of zombie processes",
+    psutil.STATUS_DISK_SLEEP: "processes in uninterruptable sleep",
+    psutil.STATUS_STOPPED: "processes stopped",
+    psutil.STATUS_TRACING_STOP: "processes traced",
+    psutil.STATUS_SLEEPING: "processes sleeping",
+    psutil.STATUS_WAKING: "processes waking",
+    psutil.STATUS_DEAD: "processes dead",
 }
 
 PROC_STATUSES_REV = {value: key for key, value in PROC_STATUSES.iteritems()}
+
 
 def get_mem_info(pid=0, **kwargs):
     if not pid:
@@ -314,6 +347,7 @@ def get_mem_info(pid=0, **kwargs):
     ps_list = []
     for cur_pid in pid:
         try:
+            # only count RSS (resident set size)
             ps_list.append(psutil.Process(cur_pid).memory_info()[0])
         except:
             # ignore missing process
@@ -358,7 +392,7 @@ if False:
                 try:
                     mem_start, mem_end = map_p[0].split("-")
                     mem_start, mem_end = (int(mem_start, 16),
-                                          int(mem_end  , 16))
+                                          int(mem_end, 16))
                     mem_size = mem_end - mem_start
                     _perm, _offset, _dev, inode = (
                         map_p[1],
@@ -401,11 +435,13 @@ def _build_stat_dict(content):
         "itrealvalue", "starttime",
         "vsize", "rss", "rlim"
     ]
-    stat_dict = {key.replace("*", "") : value if key.endswith("*") else int(value)
-                      for key, value in zip(stat_keys, stat_parts)}
+    stat_dict = {
+        key.replace("*", ""): value if key.endswith("*") else int(value) for key, value in zip(stat_keys, stat_parts)
+    }
     stat_dict["pid"] = int(pid_part)
     stat_dict["comm"] = com_part
     return stat_dict
+
 
 def beautify_mem_info(mi=None, short=False):
     bs = "B" if short else "Bytes"
@@ -425,23 +461,26 @@ class error(Exception):
     def __init__(self, value=None):
         Exception.__init__(self)
         self.value = value
+
     def __str__(self):
         return self.value
+
 
 class int_error(error):
     def __init__(self):
         error.__init__(self)
 
+
 class meta_server_info(object):
     def __init__(self, name):
         self.__prop_list = [
             ("start_command", "s", None),
-            ("stop_command" , "s", None),
-            ("kill_pids"    , "b", False),
-            ("check_memory" , "b", True),
-            ("exe_name"     , "s", None),
+            ("stop_command", "s", None),
+            ("kill_pids", "b", False),
+            ("check_memory", "b", True),
+            ("exe_name", "s", None),
             ("need_any_pids", "b", 0),
-            ]
+        ]
         parsed = False
         if name.startswith("/"):
             self.__file_name = name
@@ -450,7 +489,7 @@ class meta_server_info(object):
             xml_struct = None
             if etree:
                 try:
-                    xml_struct = etree.fromstring(open(name, "r").read())
+                    xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
                 except:
                     logging_tools.my_syslog("error parsing XML file {} (meta_server_info): {}".format(
                         name, get_except_info()))
@@ -495,11 +534,11 @@ class meta_server_info(object):
                         name,
                         get_except_info()))
                 else:
-                    act_dict = dict([(line[0].strip().lower(), line[1].strip()) for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1])
+                    act_dict = {line[0].strip().lower(): line[1].strip() for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1}
                     self.__name = act_dict.get("name", None)
                     self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
-                    self.__pid_names = {pid : "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
-                    self.__pid_proc_names = {pid : "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
+                    self.__pid_names = {pid: "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
+                    self.__pid_proc_names = {pid: "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
                     self.__pid_fuzzy = dict([(cur_pid, (0, 0)) for cur_pid in set(self.__pids)])
                     for opt, val_type, def_val in self.__prop_list:
                         if opt in act_dict:
@@ -529,54 +568,75 @@ class meta_server_info(object):
                 setattr(self, opt, def_val)
         self.parsed = parsed
         self.file_init_time = time.time()
+
     def get_file_name(self):
         return self.__file_name
+
     def get_name(self):
         return self.__name
+
     @property
     def name(self):
         return self.__name
+
     def get_last_pid_check_ok_time(self):
         return self.__last_check_ok
+
     def set_last_pid_check_ok_time(self, last_t=None):
         self.__last_check_ok = last_t or time.time()
+
     def set_meta_server_dir(self, msd):
         self.__meta_server_dir = msd
+
     def file_init_time_get(self):
         return self.__file_init_time
+
     def file_init_time_set(self, fi_time):
         self.__file_init_time = fi_time
     file_init_time = property(file_init_time_get, file_init_time_set)
+
     def stop_command_get(self):
         return self._stop_command
+
     def stop_command_set(self, stop_com):
         self._stop_command = stop_com
     stop_command = property(stop_command_get, stop_command_set)
+
     def start_command_get(self):
         return self._start_command
+
     def start_command_set(self, start_com):
         self._start_command = start_com
     start_command = property(start_command_get, start_command_set)
+
     def exe_name_get(self):
         return self.__exe_name
+
     def exe_name_set(self, en):
         self.__exe_name = en
     exe_name = property(exe_name_get, exe_name_set)
+
     def need_any_pids_get(self):
         return self.__need_any_pids
+
     def need_any_pids_set(self, en):
         self.__need_any_pids = en
     need_any_pids = property(need_any_pids_get, need_any_pids_set)
+
     def kill_pids_get(self):
         return self.__kill_pids
+
     def kill_pids_set(self, kp=1):
         self.__kill_pids = kp
     kill_pids = property(kill_pids_get, kill_pids_set)
+
     def check_memory_get(self):
         return self.__check_memory
+
     def check_memory_set(self, cm=1):
         self.__check_memory = cm
     check_memory = property(check_memory_get, check_memory_set)
+
     def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0, process_name=""):
         if not act_pid:
             act_pid = os.getpid()
@@ -597,6 +657,7 @@ class meta_server_info(object):
         self.__pid_names[act_pid] = process_name
         self.__pid_proc_names[act_pid] = _ps_name
         self.__pids.sort()
+
     def remove_actual_pid(self, act_pid=None, mult=0):
         """
         mult: number of pids to remove, defaults to 0 (means all)
@@ -611,7 +672,8 @@ class meta_server_info(object):
             while act_pid in self.__pids:
                 self.__pids.remove(act_pid)
         self.__pids.sort()
-    def get_pids(self, process_name=None):
+
+    def get_pids(self, process_name=None, name=None):
         pid_list = self.__pids
         if process_name is None:
             pass
@@ -621,6 +683,8 @@ class meta_server_info(object):
                 pass
             else:
                 pid_list = [_pid for _pid in pid_list if self.__pid_proc_names[_pid] == process_name]
+        if name is not None:
+            pid_list = [_pid for _pid in pid_list if self.__pid_names.get(_pid, "???") == name]
         # get parent processes
         _parent_pids = []
         for _pid in pid_list:
@@ -649,11 +713,19 @@ class meta_server_info(object):
             logging_tools.get_plural("unique pid", len(all_pids)),
             logging_tools.get_plural("total thread", len(self.__pids)),
             all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---")
+
     def save_block(self):
         if etree:
             pid_list = E.pid_list()
             for cur_pid in sorted(set(self.__pids)):
-                cur_pid_el = E.pid("{:d}".format(cur_pid), mult="{:d}".format(self.__pids.count(cur_pid)), name=self.__pid_names[cur_pid], proc_name=self.__pid_proc_names[cur_pid])
+                cur_pid_el = E.pid(
+                    "{:d}".format(cur_pid),
+                    mult="{:d}".format(
+                        self.__pids.count(cur_pid)
+                    ),
+                    name=self.__pid_names[cur_pid],
+                    proc_name=self.__pid_proc_names[cur_pid]
+                )
                 f_f, f_c = self.__pid_fuzzy[cur_pid]
                 if f_f:
                     cur_pid_el.attrib["fuzzy_floor"] = "{:d}".format(f_f)
@@ -670,12 +742,15 @@ class meta_server_info(object):
                 if prop_val is not None:
                     xml_struct.find("properties").append(
                         E.prop(str(prop_val), **{
-                            "key"  : opt,
-                            "type" : {
-                                "s" : "string",
-                                "i" : "integer",
-                                "b" : "boolean"}[val_type]}))
-            file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)
+                            "key": opt,
+                            "type": {
+                                "s": "string",
+                                "i": "integer",
+                                "b": "boolean"}[val_type]
+                            }
+                        )
+                    )
+            file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)  # @UndefinedVariable
         else:
             file_content = ["NAME = {}".format(self.__name),
                             "PIDS = {}".format(" ".join(["{:d}".format(x) for x in self.__pids]))]
@@ -690,10 +765,13 @@ class meta_server_info(object):
             open(self.__file_name, "w").write(file_content)
         except:
             logging_tools.my_syslog("error writing file {} (meta_server_info for {})".format(self.__file_name, self.__name))
+
     def __eq__(self, other):
         return self.__name == other.get_name() and self.__pids == other.get_pids()
+
     def __ne__(self, other):
         return self.__name != other.get_name() or self.__pids != other.get_pids()
+
     def remove_meta_block(self):
         if not self.__file_name:
             self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
@@ -714,8 +792,8 @@ class meta_server_info(object):
             # search pids
             pids_found = [key for key, value in act_dict.iteritems() if value.name() == self.__exe_name]
             self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
-            self.__pid_names.update({key : self.__exe_name for key in pids_found})
-            self.__pid_proc_names.update({key : psutil.Process(key).name() for key in pids_found})
+            self.__pid_names.update({key: self.__exe_name for key in pids_found})
+            self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})
         self.__pids_found = dict([(cur_pid, act_tc_dict[cur_pid]) for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()])
         # structure for check_scripts
         self.pids_found = sum([[cur_pid] * act_tc_dict.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
@@ -750,7 +828,11 @@ class meta_server_info(object):
             "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in missing_list else (
                 "{:d} {}, {:d} found)".format(
                     abs(bound_dict[cur_pid]),
-                    "missing (lower bound is {:d}".format(self.__pids_expected[cur_pid][0]) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(self.__pids_expected[cur_pid][1]),
+                    "missing (lower bound is {:d}".format(
+                        self.__pids_expected[cur_pid][0]
+                    ) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
+                        self.__pids_expected[cur_pid][1]
+                    ),
                     self.__pids_found.get(cur_pid, 0),
                 ) if bound_dict[cur_pid] else "OK"
             )
@@ -856,13 +938,14 @@ RUN_DIR = "/var/run"
 # #    if suse_ver == ["12.1"]:
 # #        RUN_DIR = "/run"
 
+
 def append_pids(name, pid=None, mult=1, mode="a"):
-    if pid == None:
+    if pid is None:
         actp = [os.getpid()]
     else:
         if type(pid) in [int, long]:
             actp = [pid]
-        elif type(pid) in [str, unicode]:
+        elif isinstance(pid, basestring):
             actp = [int(pid)]
         else:
             actp = pid
@@ -876,8 +959,10 @@ def append_pids(name, pid=None, mult=1, mode="a"):
             os.makedirs(dir_name)
         except:
             pass
-    long_mode = {"a" : "appending",
-                 "w" : "writing"}[mode]
+    long_mode = {
+        "a": "appending",
+        "w": "writing"
+    }[mode]
     try:
         open(fname, mode).write("\n".join(mult * ["{:d}".format(cur_p) for cur_p in actp] + [""]))
     except:
@@ -894,16 +979,17 @@ def append_pids(name, pid=None, mult=1, mode="a"):
                 fname,
                 get_except_info()))
 
+
 def remove_pids(name, pid=None, mult=0):
     """
     mult: number of pids to remove, defaults to 0 (means all)
     """
-    if pid == None:
+    if pid is None:
         actp = [os.getpid()]
     else:
         if type(pid) in [int, long]:
             actp = [pid]
-        elif type(pid) in [str, unicode]:
+        elif isinstance(pid, basestring):
             actp = [int(pid)]
         else:
             actp = pid
@@ -1748,12 +1834,18 @@ class automount_checker(object):
         else:
             return "None defined"
 
+
 def get_arp_dict():
     try:
-        arp_dict = dict([(line_p[3].lower(), line_p[0]) for line_p in [line.strip().split() for line in open("/proc/net/arp", "r").read().split("\n")[1:]] if line_p])
+        arp_dict = {
+            line_p[3].lower(): line_p[0] for line_p in [
+                line.strip().split() for line in open("/proc/net/arp", "r").read().split("\n")[1:]
+            ] if line_p
+        }
     except:
         arp_dict = {}
     return arp_dict
+
 
 def get_char_block_device_dict():
     # parses /proc/devices and returns two dicts
@@ -1774,11 +1866,18 @@ def get_char_block_device_dict():
                 act_dict[int(l_spl[0])] = l_spl[1]
     return char_dict, block_dict
 
+
 def _read_issue_file(f_name):
     ret_dict = {}
     if os.path.isfile(f_name):
-        ret_dict = dict([(c_line[0].strip(), c_line[1].strip()) for c_line in [line.strip().lower().split("=", 1) for line in open(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#") and line.count("=")]])
+        ret_dict = {
+            c_line[0].strip(): c_line[1].strip() for c_line in [
+                line.strip().lower().split("=", 1) for line in open(f_name, "r").read().split("\n") if
+                line.strip() and not line.strip().startswith("#") and line.count("=")
+            ]
+        }
     return ret_dict
+
 
 def fetch_sysinfo(root_dir="/"):
     # late import due to strange build problem on Debian (once again) systems
