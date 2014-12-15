@@ -185,6 +185,9 @@ class graph_var(object):
         self.name = "v{:d}".format(self.graph_target.get_def_idx())
 
     def __getitem__(self, key):
+        if key == "file_name" and key not in self.entry.attrib:
+            f_name = "/var/cache/rrd/{}/collserver/icval-{}.rrd".format(self.dev_name, self.entry.attrib["sane_name"])
+            return f_name
         return self.entry.attrib[key]
 
     def __contains__(self, key):
