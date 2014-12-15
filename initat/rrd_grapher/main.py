@@ -69,6 +69,7 @@ def main():
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("RRD_DIR"             , configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc")),
         ("GRAPHCONFIG_BASE"    , configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="name of colortable file")),
+        ("RRD_CACHED_SOCKET", configfile.str_c_var("/var/run/rrdcached.sock", database=True)),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(

@@ -31,6 +31,7 @@ from lxml.builder import E # @UnresolvedImport
 import cluster_location
 import configfile
 import config_tools
+import json
 import logging_tools
 import os
 import process_tools
@@ -371,13 +372,29 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             cur_res = E.node_result(pk="{:d}".format(dev_pk))
             if data_store.has_rrd_xml(dev_pk):
                 # web mode (sorts entries)
-                cur_res.append(data_store.get_rrd_xml(dev_pk, mode="web"))
+                cur_res.append(data_store.get_instance(dev_pk).xml_vector)
+                _compound = data_store.get_instance(dev_pk).compound_xml_vector()
+                if _compound is not None:
+                    cur_res.append(_compound)
             else:
                 self.log("no rrd_xml found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)
-        if int(dev_list.get("merge_results", "0")):
-            node_results = data_store.merge_node_results(node_results)
-        srv_com["result"] = node_results
+        _json = self._to_json(node_results, set(["info", "active", "key", "name", "part", "pk"]))
+        # pprint.pprint(_json, depth=5)
+        srv_com["result"] = json.dumps(_json)
+
+    def _to_json(self, res, key_list):
+        _v_dict = {key: value for key, value in res.attrib.iteritems() if key in key_list}
+        _v_dict["_tag"] = res.tag
+        if res.text:
+            _v_dict["_text"] = res.text
+        if res.tail:
+            _v_dict["_tail"] = res.tail
+        if len(res):
+            _v_dict["_nodes"] = [self._to_json(node, key_list) for node in res]
+        # self._iter_level(res, _dict)
+        return _v_dict
+
     def _recv_command(self, zmq_sock):
         in_data = []
         while True:
