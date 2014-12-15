@@ -20,7 +20,7 @@
 """ data_store structure for rrd-grapher """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, device_variable
 from initat.rrd_grapher.config import global_config
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
