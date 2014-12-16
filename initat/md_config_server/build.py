@@ -1719,9 +1719,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
             self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
-            self.log("s_check {}".format(s_check))
-            self.log("arg_temp: {}".format(unicode(arg_temp.__dict__)))
-            #self.log(locals())
             act_serv = mon_config("service", arg_temp.info)
             # event handlers
             if s_check.event_handler:
@@ -1832,7 +1829,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
 
 class host_service_map(object):
     """
-    here, we save the host and services we tell icinga
+    here, we save the host and services we tell icinga 
     then we can later resolve it when parsing the logs
     """
     @staticmethod

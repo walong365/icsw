@@ -36,6 +36,7 @@ from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
+from initat.md_config_server.icinga_log_reader import icinga_log_reader
 import cluster_location
 import codecs
 import inspect
@@ -70,6 +71,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self._check_relay_version()
         self._log_config()
         self._init_network_sockets()
+        self._icinga_log_reader = icinga_log_reader(self.log)
         if "MD_TYPE" in global_config:
             self.register_func("register_slave", self._register_slave)
             self.register_func("send_command", self._send_command)
@@ -83,6 +85,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
             self.register_timer(self._update, 30, instant=True)
+            self.register_timer(self._update_icinga_log_reader(), 20, instant=True)  # TODO: 5 min as reasonable default
         else:
             self._int_error("no MD found")
 
@@ -138,6 +141,9 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.vector_socket.send_unicode(send_str)
         else:
             self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
+
+    def _update_icinga_log_reader(self):
+        self._icinga_log_reader.update()
 
     def _log_config(self):
         self.log("Config info:")
