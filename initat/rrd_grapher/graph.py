@@ -599,7 +599,7 @@ class RRDGraph(object):
                 _parent = def_xmls[0].getparent()
                 # needed ?
                 def_xml = copy.deepcopy(def_xmls[0])
-                def_xml.attrib["file_name"] = _parent.get("file_name")
+                #def_xml.attrib["file_name"] = _parent.get("file_name")
                 def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
                 def_xml.attrib["part"] = def_xml.attrib["key"]
                 yield (_parent.get("info"), def_xml)
