@@ -186,7 +186,10 @@ class graph_var(object):
 
     def __getitem__(self, key):
         if key == "file_name" and key not in self.entry.attrib:
-            f_name = "/var/cache/rrd/{}/collserver/icval-{}.rrd".format(self.dev_name, self.entry.attrib["sane_name"])
+            if "sane_name" in self.entry.attrib:
+                f_name = "/var/cache/rrd/{}/collserver/icval-{}.rrd".format(self.dev_name, self.entry.attrib["sane_name"])
+            else:
+                f_name = "/var/cache/rrd/{}/perfdata/ipd_{}.rrd".format(self.dev_name, self.entry.attrib["name"].split(".")[0])
             return f_name
         return self.entry.attrib[key]
 
