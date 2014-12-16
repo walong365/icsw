@@ -426,7 +426,7 @@ class data_store(object):
         )
         self.store()
 
-    def feed_pd(self, host_name, pd_type, pd_info, file_name):
+    def feed_pd(self, host_name, pd_type, pd_info):
         # we ignore the global store name for perfdata stores
         old_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         rrd_dir = global_config["RRD_DIR"]
@@ -456,7 +456,7 @@ class data_store(object):
             self.xml_vector.append(cur_entry)
         else:
             cur_entry.attrib["type_instance"] = pd_info.get("type_instance", "")
-        self._update_pd_entry(cur_entry, pd_info, rrd_dir, file_name)
+        self._update_pd_entry(cur_entry, pd_info, rrd_dir)
         new_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         c_keys = old_keys ^ new_keys
         if c_keys:
@@ -466,10 +466,10 @@ class data_store(object):
         #    self.log("pde: %d keys total" % (len(new_keys)))
         self.store()
 
-    def _update_pd_entry(self, entry, src_entry, rrd_dir, file_name):
+    def _update_pd_entry(self, entry, src_entry, rrd_dir):
         entry.attrib["last_update"] = "%d" % (time.time())
         entry.attrib["active"] = "1"
-        entry.attrib["file_name"] = file_name
+        #entry.attrib["file_name"] = file_name
         if len(entry) == len(src_entry):
             for v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
                 for key, def_value in [
@@ -654,7 +654,7 @@ class data_store(object):
         data_store.process.log("[ds] {}".format(what), log_level)
 
     @staticmethod
-    def feed_perfdata(name, pd_type, pd_info, file_name):
+    def feed_perfdata(name, pd_type, pd_info):
         match_dev = None
         if name.count("."):
             full_name, short_name, dom_name = (name, name.split(".")[0], name.split(".", 1)[1])
@@ -688,7 +688,7 @@ class data_store(object):
                 )
             if match_dev.pk not in data_store.__devices:
                 data_store.__devices[match_dev.pk] = data_store(match_dev)
-            data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info, file_name)
+            data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info)
         else:
             data_store.g_log(
                 "no device found (name={}, pd_type={})".format(name, pd_type),

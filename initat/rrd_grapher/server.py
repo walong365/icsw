@@ -362,8 +362,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         self._collectd_sockets[_ch] = _cs
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
-    def _interpret_perfdata_info(self, host_name, pd_type, pd_info, file_name):
-        data_store.feed_perfdata(host_name, pd_type, pd_info, file_name)
+    def _interpret_perfdata_info(self, host_name, pd_type, pd_info):
+        data_store.feed_perfdata(host_name, pd_type, pd_info)
     def _get_node_rrd(self, srv_com):
         node_results = E.node_results()
         dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
@@ -428,7 +428,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     self._interpret_mv_info(srv_com["vector"])
                     send_return = False
                 elif cur_com in ["perfdata_info"]:
-                    self._interpret_perfdata_info(srv_com["hostname"].text, srv_com["pd_type"].text, srv_com["info"][0], srv_com["file_name"].text)
+                    self._interpret_perfdata_info(srv_com["hostname"].text, srv_com["pd_type"].text, srv_com["info"][0])
                     send_return = False
                 elif cur_com == "get_node_rrd":
                     self._get_node_rrd(srv_com)
