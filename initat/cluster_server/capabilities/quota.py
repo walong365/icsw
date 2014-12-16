@@ -147,6 +147,7 @@ class quota_line(object):
         # copy current settings to cur_qs
         for _pf, _dict, _fact in [
             ("files", self.get_file_dict(), 1),
+            # 1024 because of block size
             ("bytes", self.get_block_dict(), 1024),
         ]:
             for _key in ["used", "soft", "hard", "grace"]:
