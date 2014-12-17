@@ -43,6 +43,7 @@ import net_tools
 import networkx
 import operator
 import json
+import time
 import os
 import os.path
 import process_tools
@@ -1720,6 +1721,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         for arg_temp in sc_array:
             self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
             act_serv = mon_config("service", arg_temp.info)
+            act_serv["display_name"] = "my_display_name" + arg_temp.info.replace("(", "[").replace(")", "]")
             # event handlers
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name
@@ -1829,13 +1831,27 @@ class build_process(threading_tools.process_obj, version_check_mixin):
 
 class host_service_map(object):
     """
-    here, we save the host and services we tell icinga 
+    here, we save the host and services we tell icinga
     then we can later resolve it when parsing the logs
     """
-    @staticmethod
-    def get_mapping():
-        data = json.load(open(host_service_map._get_filepath))
-        return data['hosts'], data['services']
+    class host_service_data(object):
+        def __init__(self, hosts, services, timestamp):
+            self.hosts = hosts
+            self.services = services
+            self.timestamp = timestamp
+
+    @classmethod
+    def get_mapping(cls, log):
+        '''
+        :return host_service_map.host_service_data:
+        '''
+        retval = None
+        try:
+            data = json.load(open(host_service_map._get_filepath()))
+            retval = cls.host_service_data(data['hosts'], data['services'], data['timestamp'])
+        except Exception as e:
+            log("no host service map available: {}".format(e), logging_tools.LOG_LEVEL_WARN)
+        return retval
 
     def __init__(self, log):
         self.clear()
@@ -1853,9 +1869,13 @@ class host_service_map(object):
     def end_collecting(self):
         self._collecting = False
 
-        data = {'hosts': self._hosts, 'services': self._services}
+        data = {
+            'hosts': self._hosts,
+            'services': self._services,
+            'timestamp': int(time.time())
+        }
 
-        self.log("Writing host service mapping to {}".format(self._get_filepath()))
+        self.log("writing host service mapping to {}".format(self._get_filepath()))
         with open(self._get_filepath(), "w") as mapping_file:
             json.dump(data, mapping_file)
             mapping_file.flush()
