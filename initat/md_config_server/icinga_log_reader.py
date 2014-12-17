@@ -19,12 +19,14 @@
 #
 
 from django.db.models import Q
-from initat.md_config_server.config import global_config
 import logging_tools
 import os
 import datetime
 import itertools
+import pprint
 from collections import namedtuple
+
+from initat.md_config_server.config import global_config
 from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_host_data, mon_icinga_log_raw_service_data
 from initat.cluster.backbone.models import device
@@ -54,12 +56,13 @@ class icinga_log_reader(object):
         self._historic_service_map = {description.replace(" ", "_").lower(): pk
                                       for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
         self._historic_host_map = {entry.full_name: entry.pk for entry in device.objects.all()}
-        self.parse_sth()
+        # pprint.pprint(self._historic_service_map)
+        self.parse_archive()
 
     def update(self):
         '''Called periodically'''
 
-    def parse_sth(self):
+    def parse_archive(self):
         # sort
         logfiles_date_data = []
         for logfilepath in os.listdir(icinga_log_reader.get_icinga_log_archive_dir()):
@@ -70,7 +73,9 @@ class icinga_log_reader(object):
         # TODO: logic what to read, what has been read
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
             with open(logfilepath, 'r') as logfile:
-                cur_line = self.icinga_log_line()  # just for nicer error handling below
+                cur_line = None  # just for nicer error handling below
+                host_states = []
+                service_states = []
                 try:
                     print 'reading ', logfilepath
                     self.log("reading log file {}".format(logfilepath))
@@ -79,43 +84,38 @@ class icinga_log_reader(object):
 
                     line_iter = iter(lines)
 
+                    #
+                    # check if header is ok
                     first_line_data = next(line_iter)
                     second_line_data = next(line_iter)
 
                     # TODO: first start has other header
-                    # check if header is ok
                     if self._parse_line(first_line_data).kind != "LOG ROTATION" or self._parse_line(second_line_data).kind != "LOG VERSION":
                         self.log("First lines of log file {} do not match pattern".format(logfilepath), logging_tools.LOG_LEVEL_WARN)
                         # treat it as data
                         line_iter = itertools.chain([first_line_data[1], second_line_data[2]], line_iter)
 
-                    # next comes the current host state
-                    host_states = []
-                    cur_line = self._parse_line(next(line_iter))
-                    while cur_line.kind == 'CURRENT HOST STATE':
+                    def create_host_entry(cur_line, full_system_state_entry):
+                        # TODO: make this into a proper method if required by non-historic data parsing (only captured var is logfilepath)
                         try:
                             host, state, state_type, msg = self._parse_host_alert_historic(cur_line.info)
                         except self.unknown_host_error as e:
                             self.log("In file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+                            return None
                         else:
-                            host_states.append(
+                            return (
                                 mon_icinga_log_raw_host_data(
                                     date=datetime.datetime.fromtimestamp(cur_line.timestamp),
-                                    device=host,
+                                    device_id=host,
                                     state_type=state_type,
                                     state=state,
-                                    full_system_state_entry=True,
+                                    full_system_state_entry=full_system_state_entry,
                                     msg=msg
                                 )
                             )
 
-                        cur_line = self._parse_line(next(line_iter))
-
-                    mon_icinga_log_raw_host_data.objects.bulk_create(host_states)
-
-                    service_states = []
-                    # next comes the current service state
-                    while cur_line.kind == 'CURRENT SERVICE STATE':
+                    def create_service_entry(cur_line, full_system_state_entry):
+                        # TODO: make this into a proper method if required by non-historic data parsing (only captured var is logfilepath)
                         try:
                             host, service, state, state_type, msg = self._parse_service_alert_historic(cur_line.info)
                         except (self.unknown_host_error, self.unknown_service_error) as e:
@@ -124,28 +124,66 @@ class icinga_log_reader(object):
                             service_states.append(
                                 mon_icinga_log_raw_service_data(
                                     date=datetime.datetime.fromtimestamp(cur_line.timestamp),
-                                    device=host,
-                                    service=service,
+                                    device_id=host,
+                                    service_id=service,
                                     state_type=state_type,
                                     state=state,
-                                    full_system_state_entry=True,
+                                    full_system_state_entry=full_system_state_entry,
                                     msg=msg
                                 )
                             )
 
+                    #
+                    # next comes the current host state
+                    cur_line = self._parse_line(next(line_iter))
+                    while cur_line.kind == 'CURRENT HOST STATE':
+                        entry = create_host_entry(cur_line, True)
+                        if entry:
+                            host_states.append(entry)
+
                         cur_line = self._parse_line(next(line_iter))
 
-                    mon_icinga_log_raw_service_data.objects.bulk_create(host_states)
 
-                    # from now on, we have service and host alerts
+                    #
+                    # next comes the current service state
+                    while cur_line.kind == 'CURRENT SERVICE STATE':
+                        entry = create_service_entry(cur_line, True)
+                        if entry:
+                            service_states.append(entry)
 
-                    # TODO
+                        cur_line = self._parse_line(next(line_iter))
 
-                    import sys
-                    sys.exit(1)
+
+                    #
+                    # from now on, we heave service and host alerts
+
+                    while True:  # run until StopIteration
+
+                        if cur_line.kind == 'SERVICE ALERT':
+                            entry = create_service_entry(cur_line, False)
+                            if entry:
+                                service_states.append(entry)
+
+                        elif cur_line.kind == 'HOST ALERT':
+                            entry = create_host_entry(cur_line, False)
+                            if entry:
+                                host_states.append(entry)
+
+                        else:
+                            pass  # line is not of interest to us
+
+                        # this throws to end the iteration
+                        cur_line = self._parse_line(next(line_iter))
+
                 except self.malformed_icinga_log_entry as e:
-                    e.msg = "In {} line {}: {}".format(logfilepath, cur_line.line_no, e.msg)
-                    raise e
+                    raise self.malformed_icinga_log_entry(
+                        "In {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message)
+                      )
+                except StopIteration:
+                    # we are done
+                    mon_icinga_log_raw_host_data.objects.bulk_create(host_states)
+                    mon_icinga_log_raw_service_data.objects.bulk_create(service_states)
+                    self.log("created {} host state entries, {} service state entries".format(len(host_states), len(service_states)))
 
     icinga_log_line = namedtuple('icinga_log_line', ('timestamp', 'kind', 'info', 'line_no'))
 
@@ -160,19 +198,21 @@ class icinga_log_reader(object):
         # [timestamp] line_type: info
         data = line.split(" ", 1)
         if len(data) != 2:
-            raise cls.malformed_icinga_log_entry("Malformed line: {} (error #1)".format(line_no, line))
+            raise cls.malformed_icinga_log_entry("Malformed line {}: {} (error #1)".format(line_no, line))
         timestamp_raw, info_raw = data
 
         try:
             timestamp = int(timestamp_raw[1:-1])  # remove first and last char
         except:
-            raise cls.malformed_icinga_log_entry("Malformed line: {} (error #2)".format(line_no, line))
+            raise cls.malformed_icinga_log_entry("Malformed line {}: {} (error #2)".format(line_no, line))
 
         data2 = info_raw.split(": ", 1)
-        if len(data) != 2:
-            raise cls.malformed_icinga_log_entry("Malformed line: {} (error #3)".format(line_no, line))
-
-        kind, info = data2
+        if len(data2) == 2:
+            kind, info = data2
+        else:
+            # no line formatted as we need it
+            kind = None
+            info = info_raw
 
         return cls.icinga_log_line(timestamp, kind, info, line_no)
 
@@ -183,7 +223,7 @@ class icinga_log_reader(object):
         # format is:
         # host;(DOWN|UP);(SOFT|HARD);???;msg
 
-        data = info.split(";")
+        data = info.split(";", 4)
         if len(data) != 5:
             raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #1)".format(info))
 
@@ -191,7 +231,7 @@ class icinga_log_reader(object):
         if not host:
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
-        state = {"DOWN": "D", "UP": "U"}.get(data[1], None)  # format as in db table
+        state = {"DOWN": "D", "UP": "UP", "UNREACHABLE": "UR"}.get(data[1], None)  # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #3)".format(info))
 
@@ -209,7 +249,7 @@ class icinga_log_reader(object):
         '''
         # format is:
         # host;service;(OK|WARNING|UNKNOWN|CRITICAL);(SOFT|HARD);???;msg
-        data = info.split(";")
+        data = info.split(";", 5)
         if len(data) != 6:
             raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #1)".format(info))
 
@@ -217,7 +257,7 @@ class icinga_log_reader(object):
         if not host:
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
-        service = self._resolve_host_historic(data[1])
+        service = self._resolve_service_historic(data[1])
         if not service:
             raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(data[1]))
 
