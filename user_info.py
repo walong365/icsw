@@ -29,10 +29,12 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 django.setup()
 
 from django.db.models import Q
-from initat.cluster.backbone.models import user
+from initat.cluster.backbone.models import user, user_quota_setting
 import argparse
 import logging_tools
+import process_tools
 import pwd
+import subprocess
 import sys
 import termios
 
@@ -53,20 +55,82 @@ def list_mode():
     return 0
 
 
-def info_mode(user_name):
+def _get_user(user_name):
+    _uo = user.objects  # @UndefinedVariable
     try:
-        _user = user.objects.select_related("group").get(Q(login=user_name))  # @UndefinedVariable
+        _user = _uo.select_related(
+            "group"
+        ).prefetch_related(
+            "user_quota_setting_set__quota_capable_blockdevice__device"
+        ).get(
+            Q(login=user_name)
+        )
     except user.DoesNotExist:  # @UndefinedVariable
         print("Unknown user '{}'".format(user_name))
+        _user = None
+    return _user
+
+
+def info_mode(user_name):
+    _user = _get_user(user_name)
+    if _user is None:
         return 1
     else:
+        print("")
         print(
-            u"User with loginname '{}' ({}), uid={:d}".format(
+            u"User with loginname '{}' (user {}), uid={:d}, group={} (gid={:d})".format(
                 _user.login,
                 unicode(_user),
                 _user.uid,
+                unicode(_user.group),
+                _user.group.gid,
             )
         )
+        num_qs = _user.user_quota_setting_set.all().count()
+        if num_qs:
+            print("")
+            print("{} found:".format(logging_tools.get_plural("quota setting", num_qs)))
+            for _qs in _user.user_quota_setting_set.all():
+                _bd = _qs.quota_capable_blockdevice
+                print(
+                    "    device {} ({} on {}): {} used ({} soft, {} hard)".format(
+                        unicode(_bd.device.full_name),
+                        _bd.block_device_path,
+                        _bd.mount_path,
+                        logging_tools.get_size_str(_qs.bytes_used, True, 1024, True),
+                        logging_tools.get_size_str(_qs.bytes_soft, True, 1024, True),
+                        logging_tools.get_size_str(_qs.bytes_hard, True, 1024, True),
+                    )
+                )
+            try:
+                _cmd = "quota --show-mntpoint -wp -u {}".format(
+                    _user.login,
+                    # os.path.expanduser("~{}".format(_user.login)),
+                )
+                _res = subprocess.check_output(
+                    _cmd,
+                    shell=True,
+                    stderr=subprocess.STDOUT,
+                )
+            except:
+                print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
+            else:
+                if _res.lower().count("denied"):
+                    print("    error getting local quotas for {}: {}".format(_user.login, _res))
+                else:
+                    # print _res
+                    _lines = [_line.strip().split() for _line in _res.split("\n") if _line.strip()]
+                    _lines = [_line for _line in _lines if len(_line) == 10]
+                    if _lines:
+                        _line = _lines[-1]
+                        print(
+                            "    local mountpoint: {} used ({} soft, {} hard)".format(
+                                # _line[0],
+                                logging_tools.get_size_str(int(_line[2]) * 1024, True, 1024, True),
+                                logging_tools.get_size_str(int(_line[3]) * 1024, True, 1024, True),
+                                logging_tools.get_size_str(int(_line[4]) * 1024, True, 1024, True),
+                            )
+                        )
         return 0
 
 
@@ -93,7 +157,7 @@ def main():
     my_parser.add_argument("username", nargs="*", default=[pwd.getpwuid(os.getuid())[0]], help="set username [%(default)s]")
     options = my_parser.parse_args()
     if options.mode in ["info", "change"] and not options.username:
-        print "Need username for %s mode" % (options.mode)
+        print "Need username for {} mode".format(options.mode)
         sys.exit(-1)
     if options.mode == "list":
         ret_code = list_mode()
