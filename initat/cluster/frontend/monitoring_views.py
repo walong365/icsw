@@ -119,7 +119,7 @@ class call_icinga(View):
     @method_decorator(login_required)
     def get(self, request):
         resp = HttpResponseRedirect(
-            u"http://{}:{}@{}/icinga/" % (
+            u"http://{}:{}@{}/icinga/".format(
                 request.user.login,
                 # fixme, if no password is set (due to automatic login) use no_passwd
                 base64.b64decode(request.session.get("password", "no_passwd")),
