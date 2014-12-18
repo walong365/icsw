@@ -21,6 +21,7 @@
 #
 """ change password from the commandline """
 
+from __future__ import print_function
 import os
 import django
 
@@ -37,6 +38,7 @@ import pwd
 import subprocess
 import sys
 import termios
+import time
 
 
 def list_mode():
@@ -51,7 +53,7 @@ def list_mode():
                 logging_tools.form_entry(_user.group.groupname, header="group"),
             ]
         )
-    print unicode(out_list)
+    print(unicode(out_list))
     return 0
 
 
@@ -71,10 +73,32 @@ def _get_user(user_name):
     return _user
 
 
+def get_quota_str(uqs):
+    _info_f = []
+    if uqs.bytes_used > uqs.bytes_hard:
+        _info_f.append("hard quota violated")
+    elif uqs.bytes_used > uqs.bytes_soft:
+        _info_f.append("soft quota violated")
+    if uqs.bytes_gracetime:
+        # seconds
+        grace_time = uqs.bytes_gracetime
+        cur_time = int(time.time())
+        _info_f.append("grace time left is {}".format(logging_tools.get_diff_time_str(grace_time - cur_time)))
+    else:
+        pass
+    return "    {}{} used ({} soft, {} hard)".format(
+        "{}; ".format(", ".join(_info_f)) if _info_f else "",
+        logging_tools.get_size_str(uqs.bytes_used, True, 1024, True),
+        logging_tools.get_size_str(uqs.bytes_soft, True, 1024, True),
+        logging_tools.get_size_str(uqs.bytes_hard, True, 1024, True),
+    )
+
+
 def info_mode(user_name):
     _user = _get_user(user_name)
+    _ret_state = 0
     if _user is None:
-        return 1
+        _ret_state = 1
     else:
         print("")
         print(
@@ -89,17 +113,15 @@ def info_mode(user_name):
         num_qs = _user.user_quota_setting_set.all().count()
         if num_qs:
             print("")
-            print("{} found:".format(logging_tools.get_plural("quota setting", num_qs)))
+            print("{} found:".format(logging_tools.get_plural("system-wide quota setting", num_qs)))
             for _qs in _user.user_quota_setting_set.all():
                 _bd = _qs.quota_capable_blockdevice
                 print(
-                    "    device {} ({} on {}): {} used ({} soft, {} hard)".format(
+                    "    device {} ({} on {}): {}".format(
                         unicode(_bd.device.full_name),
                         _bd.block_device_path,
                         _bd.mount_path,
-                        logging_tools.get_size_str(_qs.bytes_used, True, 1024, True),
-                        logging_tools.get_size_str(_qs.bytes_soft, True, 1024, True),
-                        logging_tools.get_size_str(_qs.bytes_hard, True, 1024, True),
+                        get_quota_str(_qs),
                     )
                 )
             try:
@@ -108,30 +130,36 @@ def info_mode(user_name):
                     # os.path.expanduser("~{}".format(_user.login)),
                 )
                 _res = subprocess.check_output(
-                    _cmd,
-                    shell=True,
-                    stderr=subprocess.STDOUT,
+                    _cmd.split(),
                 )
-            except:
-                print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
+            except subprocess.CalledProcessError as sb_exc:
+                _res = sb_exc.output
+                # print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
+                _ret_state = 1
             else:
-                if _res.lower().count("denied"):
-                    print("    error getting local quotas for {}: {}".format(_user.login, _res))
-                else:
-                    # print _res
-                    _lines = [_line.strip().split() for _line in _res.split("\n") if _line.strip()]
-                    _lines = [_line for _line in _lines if len(_line) == 10]
-                    if _lines:
-                        _line = _lines[-1]
-                        print(
-                            "    local mountpoint: {} used ({} soft, {} hard)".format(
-                                # _line[0],
-                                logging_tools.get_size_str(int(_line[2]) * 1024, True, 1024, True),
-                                logging_tools.get_size_str(int(_line[3]) * 1024, True, 1024, True),
-                                logging_tools.get_size_str(int(_line[4]) * 1024, True, 1024, True),
-                            )
+                _ret_state = 0
+            if _res.lower().count("denied"):
+                print("    error getting local quotas for {}: {}".format(_user.login, _res))
+            else:
+                # print _res
+                _lines = [_line.strip().split() for _line in _res.split("\n") if _line.strip()]
+                _lines = [_line for _line in _lines if len(_line) == 10]
+                if _lines:
+                    print("", "local quota:", sep="\n")
+                    _line = _lines[-1]
+                    _bytes_violate = _line[2].count("*") > 0
+                    _local = user_quota_setting(
+                        bytes_used=int(_line[2].replace("*", "")) * 1024,
+                        bytes_soft=int(_line[3]) * 1024,
+                        bytes_hard=int(_line[4]) * 1024,
+                        bytes_gracetime=int(_line[5]),
+                    )
+                    print(
+                        "    local mountpoint: {}".format(
+                            get_quota_str(_local),
                         )
-        return 0
+                    )
+        return _ret_state
 
 
 def get_pass(prompt=">"):
@@ -157,7 +185,7 @@ def main():
     my_parser.add_argument("username", nargs="*", default=[pwd.getpwuid(os.getuid())[0]], help="set username [%(default)s]")
     options = my_parser.parse_args()
     if options.mode in ["info", "change"] and not options.username:
-        print "Need username for {} mode".format(options.mode)
+        print("Need username for {} mode".format(options.mode))
         sys.exit(-1)
     if options.mode == "list":
         ret_code = list_mode()
@@ -168,13 +196,13 @@ def main():
     else:
         ret_code = 1
     sys.exit(ret_code)
-    print options
+    print(options)
     # get name of directory server
     ds_file_name = "/etc/sysconfig/cluster/directory_server"
     if not os.path.isfile(ds_file_name):
-        print "No directory server specified in '%s', please contact your admin" % (ds_file_name)
+        print("No directory server specified in '%s', please contact your admin" % (ds_file_name))
         sys.exit(1)
-    print "functionality not ready, please contact lang-nevyjel@init.at"
+    print("functionality not ready, please contact lang-nevyjel@init.at")
     sys.exit(0)
 #         else:
 #             print "Change password"
