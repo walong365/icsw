@@ -85,7 +85,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
             self.register_timer(self._update, 30, instant=True)
-            self.register_timer(self._update_icinga_log_reader(), 20, instant=True)  # TODO: 5 min as reasonable default
+            self.register_timer(self._update_icinga_log_reader, 60, instant=True)  # TODO: 5 min as reasonable default
         else:
             self._int_error("no MD found")
 

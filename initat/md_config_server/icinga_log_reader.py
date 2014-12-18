@@ -21,8 +21,8 @@
 import logging_tools
 import os
 import datetime
+import calendar
 import glob
-import itertools
 import pprint  # @UnusedImport
 from collections import namedtuple
 
@@ -59,7 +59,7 @@ class icinga_log_reader(object):
         icinga_service_alert = 'SERVICE ALERT'
         icinga_current_service_state = 'CURRENT SERVICE STATE'
         icinga_host_alert = 'HOST ALERT'
-        icinga_current_host_state = 'CURRENT Host STATE'
+        icinga_current_host_state = 'CURRENT HOST STATE'
 
     def __init__(self, log):
         self.log = log
@@ -70,24 +70,28 @@ class icinga_log_reader(object):
 
     def update(self):
         '''Called periodically'''
-        # check for log rotation
         connection.close()
-        self._current_host_service_data = host_service_map.get_mapping(self.log)
 
+        self.log("checking icinga log")
+        self._current_host_service_data = host_service_map.get_mapping(self.log)
+        if self._current_host_service_data:
+            self.log("using host service map from {}".format(datetime.datetime.fromtimestamp(self._current_host_service_data.timestamp)))
+
+        # check for log rotation
         if mon_icinga_log_last_read.objects.all():
             last_read = mon_icinga_log_last_read.objects.all()[0]
             self.log("last icinga read until: {}".format(datetime.datetime.fromtimestamp(last_read.timestamp)))
         else:
             self.log("no earlier icinga log read, reading archive")
             files = os.listdir(icinga_log_reader.get_icinga_log_archive_dir())
-            last_read_timestamp = self.parse_archive(files)
+            last_read_timestamp = self.parse_archive_files(files)
             if last_read_timestamp:
-                last_read = self._update_last_read(0, last_read_timestamp)
+                last_read = self._update_last_read(0, last_read_timestamp)  # this is a duplicate update, but ensures that we have a valid value here
             else:
                 self.log("no earlier icinga log read and no archive data")
                 # there was no earlier read and we weren't able to read anything from the archive, so assume there is none
                 last_read = mon_icinga_log_last_read()
-                last_read.timestamp = datetime.datetime.now() - datetime.timedelta(days=1)  # safe time in past, but not too far cause we check logs of each day
+                last_read.timestamp = calendar.timegm(datetime.datetime.now() - datetime.timedelta(days=1))  # safe time in past, but not too far cause we check logs of each day
                 last_read.position = 0
 
         try:
@@ -97,17 +101,21 @@ class icinga_log_reader(object):
         else:
             logfile.seek(last_read.position)
 
-            last_read_line = logfile.readline()
+            last_read_line = logfile.readline().rstrip("\n")
+            self.log("last read line: {}".format(last_read_line))
 
-            file_position_valid = False
+            same_logfile_as_last_read = False
             if last_read_line:  # empty string (=False) means end, else we at least have '\n'
                 cur_line = self._parse_line((None, last_read_line))
-                file_position_valid = cur_line.timestamp == last_read.timestamp
+                same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
+                self.log("cur line timestamp {}, last read timestamp {}".format(cur_line.timestamp, last_read.timestamp))
+                self.log("cur line timestamp {}, last read timestamp {}".format(datetime.datetime.fromtimestamp(cur_line.timestamp),
+                                                                                datetime.datetime.fromtimestamp(last_read.timestamp)))
 
-            if file_position_valid:
+            if same_logfile_as_last_read:
                 self.log("continuing to read in current icinga log file")
                 # no log rotation, continue reading current file
-                self.parse_current_log_file(logfile)
+                self.parse_log_file(logfile)
             else:
                 self.log("detected icinga log rotation")
                 # cur log file does not correspond to where we last read.
@@ -126,44 +134,69 @@ class icinga_log_reader(object):
                     files_to_check.extend(day_files)
 
                 # read archive
-                last_read_timestamp = self.parse_archive(files_to_check, last_read.timestamp)
-                self._update_last_read(0, last_read_timestamp)
+                self.parse_archive_files(files_to_check, last_read.timestamp)
 
                 self.log("finished catching up with archive, continuing with current icinga log file")
                 # start reading new file
                 logfile.seek(0)
-                self.parse_current_log_file(logfile)
+                self.parse_log_file(logfile)
 
-    def parse_current_log_file(self, logfile):
+    def parse_log_file(self, logfile, logfilepath=None, start_at=None):
         '''
         :param file logfile: Parsing starts at position of logfile. Must be the main icinga log file.
+        :param logfilepath: Path to logfile if it is an archive logfile, not the current one
+        :param int start_at: only consider entries older than start_at
+        :return int: last read timestamp or None
         '''
-        # TODO: if we want the line number here, we would have to save it in last_read
+        is_archive_logfile = logfilepath is not None
+        logfile_db = None
+        if is_archive_logfile:
+            try:
+                logfile_db = mon_icinga_log_file.objects.get(filepath=logfilepath)
+            except mon_icinga_log_file.DoesNotExist:
+                logfile_db = mon_icinga_log_file(filepath=logfilepath)
+                logfile_db.save()
 
+        line_num = 0
+        old_ignored = 0
         host_states = []
         service_states = []
         cur_line = None
-        for line in (i.rstrip("\n") for i in logfile):
-            cur_line = self._parse_line((None, line))
-            if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state):
-                entry = self.create_service_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state, None)
-                if entry:
-                    service_states.append(entry)
-            elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state):
-                entry = self.create_host_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, None)
-                if entry:
-                    host_states.append(entry)
+        for line_raw in logfile:
+            line_num += 1
+            cur_line = self._parse_line((None, line_raw.rstrip("\n")))
+            if start_at is None or cur_line.timestamp > start_at:
+                if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state):
+                    entry = self.create_service_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state, logfilepath, logfile_db)
+                    if entry:
+                        service_states.append(entry)
+                elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state):
+                    entry = self.create_host_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
+                    if entry:
+                        host_states.append(entry)
+                else:
+                    pass  # line_raw is not of interest to us
             else:
-                pass  # line is not of interest to us
+                old_ignored += 1
+
+            # TODO: make malformed and unresolvable errors non-critical
+            #except self.malformed_icinga_log_entry as e:
+            #    # TODO: this shouldn't be critical in the final version
+            #    raise self.malformed_icinga_log_entry(
+            #        "In {} line_raw {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message)
+            #        )
 
         mon_icinga_log_raw_host_data.objects.bulk_create(host_states)
         mon_icinga_log_raw_service_data.objects.bulk_create(service_states)
-        self.log("created {} host state entries, {} service state entries for the current icinga log file".format(len(host_states), len(service_states)))
+        self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
+        self.log("created {} host state entries, {} service state entries from {}".format(len(host_states), len(service_states),
+                                                                                          logfilepath if logfilepath else "cur icinga log file"))
 
-        if cur_line:
-            self._update_last_read(logfile.tell(), cur_line.timestamp)
-
-        # TODO: make malformed and unresolvable errors non-critical
+        if cur_line:  # if at least something has been read
+            position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)
+            self._update_last_read(position, cur_line.timestamp)
+            return cur_line.timestamp
+        return None
 
     def _update_last_read(self, position, timestamp):
         """Keep track of which data was read. May be called with older timestamp (will be discarded)"""
@@ -179,14 +212,12 @@ class icinga_log_reader(object):
         last_read.save()
         return last_read
 
-    def parse_archive(self, files, start_at=None):
+    def parse_archive_files(self, files, start_at=None):
         '''
         :param list files: list of files to consider (will be sorted here)
         :param int start_at: only consider entries older than start_at
-        :param int start_at: only consider entries older than start_at
-        :return int: last read timestamp
+        :return int: last read timestamp or None
         '''
-        last_read_timestamp = None
         # sort
         logfiles_date_data = []
         for logfilepath in files:
@@ -194,99 +225,22 @@ class icinga_log_reader(object):
             logfilepath = os.path.join(icinga_log_reader.get_icinga_log_archive_dir(), logfilepath)
             logfiles_date_data.append((year, month, day, hour, logfilepath))
 
+        retval = None
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
             with open(logfilepath, 'r') as logfile:
-                cur_line = None  # just for nicer error handling below
-                logfile_db = mon_icinga_log_file(filepath=logfilepath)
-                logfile_db.save()
-                host_states = []
-                service_states = []
-                try:
-                    print 'reading ', logfilepath
-                    self.log("reading log file {}".format(logfilepath))
-                    # strip '\n'
-                    lines = enumerate(line.rstrip("\n") for line in logfile)
-
-                    line_iter = iter(lines)
-
-                    #
-                    # check if header is ok
-                    first_line_data = next(line_iter)
-                    second_line_data = next(line_iter)
-
-                    if self._parse_line(first_line_data).kind != "LOG ROTATION" or self._parse_line(second_line_data).kind != "LOG VERSION":
-                        self.log("First lines of log file {} do not match pattern".format(logfilepath), logging_tools.LOG_LEVEL_WARN)
-                        # treat it as data
-                        line_iter = itertools.chain([first_line_data[1], second_line_data[2]], line_iter)
-
-                    self.log("a")
-                    #
-                    # next comes the current host state
-                    cur_line = self._parse_line(next(line_iter))
-                    while cur_line.kind == self.constants.icinga_current_host_state:
-                        if not start_at or cur_line.timestamp > start_at:
-                            entry = self.create_host_entry(cur_line, True, logfilepath, logfile_db)
-                            if entry:
-                                host_states.append(entry)
-
-                        cur_line = self._parse_line(next(line_iter))
-
-                    self.log("b")
-                    #
-                    # next comes the current service state
-                    while cur_line.kind == self.constants.icinga_current_service_state:
-                        if not start_at or cur_line.timestamp > start_at:
-                            entry = self.create_service_entry(cur_line, True, logfilepath, logfile_db)
-                            if entry:
-                                service_states.append(entry)
-
-                        cur_line = self._parse_line(next(line_iter))
-
-                    #
-                    # from now on, we heave service and host alerts
-
-                    while True:  # run until StopIteration
-
-                        self.log(cur_line.info)
-                        if not start_at or cur_line.timestamp > start_at:
-                            if cur_line.kind == self.constants.icinga_service_alert:
-                                entry = self.create_service_entry(cur_line, False, logfilepath, logfile_db)
-                                if entry:
-                                    service_states.append(entry)
-                            elif cur_line.kind == self.constants.icinga_host_alert:
-                                entry = self.create_host_entry(cur_line, False, logfilepath, logfile_db)
-                                self.log('host_DEBUG'+str( entry))
-                                if entry:
-                                    host_states.append(entry)
-                            else:
-                                pass  # line is not of interest to us
-                                self.log("uninteresting kind: "+str(cur_line.kind))
-
-                        # this throws to end the iteration
-                        cur_line = self._parse_line(next(line_iter))
-
-                except self.malformed_icinga_log_entry as e:
-                    # TODO: this shouldn't be critical in the final version
-                    raise self.malformed_icinga_log_entry(
-                        "In {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message)
-                        )
-                except StopIteration:
-                    # we are done
-                    mon_icinga_log_raw_host_data.objects.bulk_create(host_states)
-                    mon_icinga_log_raw_service_data.objects.bulk_create(service_states)
-                    self.log("created {} host state entries, {} service state entries from icinga log file {}".format(
-                             len(host_states), len(service_states), logfilepath))
-
-                    if cur_line:
-                        last_read_timestamp = cur_line.timestamp
-        return last_read_timestamp
+                last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
+                if retval is None:
+                    retval = last_read_timestamp
+                else:
+                    retval = max(retval, last_read_timestamp)
+        return retval
 
     def create_host_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
         retval = None
         try:
             host, state, state_type, msg = self._parse_host_alert(cur_line)
         except self.unknown_host_error as e:
-            self.log("In file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_host_data(
                 date=datetime.datetime.fromtimestamp(cur_line.timestamp),
@@ -304,7 +258,7 @@ class icinga_log_reader(object):
         try:
             host, service, state, state_type, msg = self._parse_service_alert(cur_line)
         except (self.unknown_host_error, self.unknown_service_error) as e:
-            self.log("In file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_service_data(
                 date=datetime.datetime.fromtimestamp(cur_line.timestamp),
@@ -417,7 +371,7 @@ class icinga_log_reader(object):
             # use map for data created with this map, guess for earlier ones (see below)
             retval = self._current_host_service_data.hosts.get(host_spec, None)
             if not retval:
-                self.log("Service lookup for current service {} failed, this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
+                self.log("host lookup for current host {} failed, this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = self._resolve_host_historic(host_spec)
         return retval
@@ -438,7 +392,7 @@ class icinga_log_reader(object):
             # use map for data created with this map, guess for earlier ones (see below)
             retval = self._current_host_service_data.services.get(service_spec, None)
             if not retval:
-                self.log("Service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
+                self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = self._resolve_service_historic(service_spec)
         return retval
