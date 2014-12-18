@@ -672,6 +672,17 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.$on("icsw.enable_refresh", () ->
             $scope.refresh = true
         )
+        $scope.set_filter_values = (job) ->
+            if job.granted_pe?
+                job.sv0 = job.granted_pe.value
+            if job.name?
+                job.sv1 = job.name.value
+            if job.owner?
+                job.sv2 = job.owner.value
+            if job.queue_name?
+                job.sv3 = job.queue_name.value
+            if job.real_user?
+                job.sv4 = job.real_user.value
         $scope.reload = () ->
             $scope.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
             if $scope.update_info_timeout
@@ -704,6 +715,11 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                 $scope.max_load = 4
                             $scope.slot_info.reset()
                             for entry in $scope.node_list
+                                # for filter function
+                                entry.sv0 = entry.host.value
+                                entry.sv1 = entry.queues.value
+                                entry.sv2 = entry.state.value
+                                entry.sv3 = entry.pe_list.value
                                 _total = (parseInt(_val) for _val in entry.slots_total.value.split("/"))
                                 _used = (parseInt(_val) for _val in entry.slots_used.value.split("/"))
                                 _reserved = (parseInt(_val) for _val in entry.slots_reserved.value.split("/"))
@@ -720,11 +736,13 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                         $scope.slot_info.feed_vector(_lv)
                             # get slot info
                             for _job in $scope.run_list
+                                $scope.set_filter_values(_job)
                                 if _job.granted_pe.value == "-"
                                     $scope.running_slots += 1
                                 else
                                     $scope.running_slots += parseInt(_job.granted_pe.value.split("(")[1].split(")")[0])
                             for _job in $scope.wait_list
+                                $scope.set_filter_values(_job)
                                 if _job.requested_pe.value == "-"
                                     $scope.waiting_slots += 1
                                 else
