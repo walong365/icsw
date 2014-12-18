@@ -1135,7 +1135,7 @@ class monitoring_hint(models.Model):
     info = models.CharField(default="", max_length=255)
     # used in monitoring
     check_created = models.BooleanField(default=False)
-    changed = models.DateTimeField(auto_now_add=True, auto_now=True, default=datetime.datetime.now())
+    changed = models.DateTimeField(auto_now_add=True, auto_now=True)  # , default=datetime.datetime.now())
     # persistent: do not remove even when missing from server (for instance openvpn)
     persistent = models.BooleanField(default=False)
     # datasource : (c)ache, (s)erver, (p)ersistent
