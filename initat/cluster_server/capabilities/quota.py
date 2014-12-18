@@ -44,25 +44,19 @@ class quota_line(object):
         self.__blocks_used = int(line_p.pop(0))
         self.__blocks_soft = int(line_p.pop(0))
         self.__blocks_hard = int(line_p.pop(0))
-        if line_p[0].isdigit():
-            self.__blocks_grace = ""
-        else:
-            self.__blocks_grace = line_p.pop(0)
+        self.__blocks_gracetime = int(line_p.pop(0))
         # parse 3 files fields
         self.__files_used = int(line_p.pop(0))
         self.__files_soft = int(line_p.pop(0))
         self.__files_hard = int(line_p.pop(0))
-        if not line_p:
-            self.__files_grace = ""
-        else:
-            self.__files_frace = line_p.pop(0)
+        self.__files_gracetime = int(line_p.pop(0))
 
     def get_block_dict(self):
         return {
             "used": self.__blocks_used,
             "soft": self.__blocks_soft,
             "hard": self.__blocks_hard,
-            "grace": self.__blocks_grace
+            "gracetime": self.__blocks_gracetime
         }
 
     def get_file_dict(self):
@@ -70,7 +64,7 @@ class quota_line(object):
             "used": self.__files_used,
             "soft": self.__files_soft,
             "hard": self.__files_hard,
-            "grace": self.__files_grace
+            "gracetime": self.__files_gracetime
         }
 
     def get_info_str(self, in_dict):
@@ -78,7 +72,7 @@ class quota_line(object):
             in_dict["used"],
             in_dict["soft"],
             in_dict["hard"],
-            in_dict["grace"] and " / %s" % (in_dict["grace"]) or ""
+            in_dict["gracetime"] and " / {:d}" % (in_dict["gracetime"]) or ""
         )
 
     @property
@@ -150,9 +144,9 @@ class quota_line(object):
             # 1024 because of block size
             ("bytes", self.get_block_dict(), 1024),
         ]:
-            for _key in ["used", "soft", "hard", "grace"]:
+            for _key in ["used", "soft", "hard", "gracetime"]:
                 _val = _dict[_key]
-                if type(_val) in [int, long]:
+                if type(_val) in [int, long] and _key not in ["gracetime"]:
                     _val *= _fact
                 _f_key = "{}_{}".format(_pf, _key)
                 setattr(cur_qs, _f_key, _val)
@@ -312,7 +306,7 @@ class quota_stuff(bg_stuff):
         else:
             self.log(sep_str)
             self.log("starting quotacheck")
-            q_cmd = "{} -aniug".format(_quota_bin)
+            q_cmd = "{} -aniugp".format(_quota_bin)
             q_stat, q_out = commands.getstatusoutput(q_cmd)
             if q_stat:
                 self.log(
