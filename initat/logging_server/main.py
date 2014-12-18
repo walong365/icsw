@@ -60,7 +60,9 @@ def main():
         ("GROUP", configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g", autoconf_exclude=True)),
         ("TO_ADDR", configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-mails [%(default)s]")),
         ("LONG_HOST_NAME", configfile.str_c_var(long_host_name)),
-        ("MAX_LINE_LENGTH", configfile.int_c_var(0, help_string="max line number size, 0 for unlimited [%(default)i]"))])
+        ("MAX_LINE_LENGTH", configfile.int_c_var(0, help_string="max line number size, 0 for unlimited [%(default)i]")),
+        ("MAX_FILE_SIZE", configfile.int_c_var(1000000, help_string="file size limit of log files in bytes (larger files are rotated)"))
+    ])
     global_config.parse_file()
     options = global_config.handle_commandline(
         description="logging server, version is {}".format(version.VERSION_STRING),

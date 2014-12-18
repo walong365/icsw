@@ -508,7 +508,7 @@ class main_process(threading_tools.process_pool):
                 global_config["DATE_FORMAT"])
             logger.setLevel(logging.DEBUG)
             full_name = full_name.encode("ascii", errors="replace")
-            new_h = logging_tools.logfile(full_name, max_bytes=1000000, max_age_days=global_config["MAX_AGE_FILES"])
+            new_h = logging_tools.logfile(full_name, max_bytes=global_config["MAX_FILE_SIZE"], max_age_days=global_config["MAX_AGE_FILES"])
             form.set_max_line_length(global_config["MAX_LINE_LENGTH"])
             new_h.setFormatter(form)
             self.__num_open += 1
