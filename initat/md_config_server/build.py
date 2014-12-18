@@ -33,6 +33,8 @@ from initat.md_config_server.config import global_config, main_config, all_comma
     all_host_dependencies, build_cache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.mixins import version_check_mixin
+from initat.md_config_server.icinga_log_reader import icinga_log_reader,\
+    service_id_util
 from lxml.builder import E  # @UnresolvedImport
 import codecs
 import commands
@@ -1721,7 +1723,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         for arg_temp in sc_array:
             self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
             act_serv = mon_config("service", arg_temp.info)
-            act_serv["display_name"] = "my_display_name" + arg_temp.info.replace("(", "[").replace(")", "]")
             # event handlers
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name
@@ -1732,7 +1733,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             else:
                 act_serv["passive_checks_enabled"] = 1
                 act_serv["active_checks_enabled"] = 0
-            act_serv["service_description"] = arg_temp.info.replace("(", "[").replace(")", "]")
+            # display this in icinga webfrontend
+            info = arg_temp.info.replace("(", "[").replace(")", "]")
+            act_serv["display_name"] = info
+            # create identifying string for log
+            act_serv["service_description"] = service_id_util.create_service_description(s_check, info)
             act_serv["host_name"] = host.full_name
             # volatile
             act_serv["is_volatile"] = "1" if serv_temp.volatile else "0"
@@ -1767,7 +1772,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if self.gc["ENABLE_COLLECTD"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
             if s_check.check_command_pk:
+                # TODO: remove this in favor of service_description
                 act_serv["_check_command_pk"] = s_check.check_command_pk
+            # TODO: POSSIBLY remove this in favor of service_description
             act_serv["_device_pk"] = host.pk
             if s_check.servicegroup_names:
                 act_serv["_cat_pks"] = s_check.servicegroup_pks

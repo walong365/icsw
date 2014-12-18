@@ -31,8 +31,12 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_host_data, mon_icinga_log_raw_service_data, mon_icinga_log_file,\
     mon_icinga_log_last_read
 from initat.cluster.backbone.models import device
-from initat.md_config_server.build import host_service_map
 from django.db import connection
+
+__all__ = [
+    "icinga_log_reader",
+    "service_id_util",
+]
 
 
 class icinga_log_reader(object):
@@ -73,11 +77,14 @@ class icinga_log_reader(object):
         connection.close()
 
         self.log("checking icinga log")
+
+        from initat.md_config_server.build import host_service_map
         self._current_host_service_data = host_service_map.get_mapping(self.log)
+        # NOTE: currently used for hosts, but if we encode hosts in the service_description, we don't even need that anymore
         if self._current_host_service_data:
             self.log("using host service map from {}".format(datetime.datetime.fromtimestamp(self._current_host_service_data.timestamp)))
 
-        # check for log rotation
+        # check where we last have read for log rotation
         if mon_icinga_log_last_read.objects.all():
             last_read = mon_icinga_log_last_read.objects.all()[0]
             self.log("last icinga read until: {}".format(datetime.datetime.fromtimestamp(last_read.timestamp)))
@@ -91,14 +98,16 @@ class icinga_log_reader(object):
                 self.log("no earlier icinga log read and no archive data")
                 # there was no earlier read and we weren't able to read anything from the archive, so assume there is none
                 last_read = mon_icinga_log_last_read()
-                last_read.timestamp = calendar.timegm(datetime.datetime.now() - datetime.timedelta(days=1))  # safe time in past, but not too far cause we check logs of each day
+                # safe time in past, but not too far cause we check logs of each day
+                last_read.timestamp = calendar.timegm(datetime.datetime.now() - datetime.timedelta(days=1))
                 last_read.position = 0
 
         try:
             logfile = open(self.get_icinga_log_file(), "r")
         except OSError as e:
-            self.log(u"Failed to open log file {} : {}".format(self.get_icinga_log_file(), e))
+            self.log(u"Failed to open log file {} : {}".format(self.get_icinga_log_file(), e), logging_tools.LOG_LEVEL_ERROR)
         else:
+            # check for log rotation
             logfile.seek(last_read.position)
 
             last_read_line = logfile.readline().rstrip("\n")
@@ -106,15 +115,20 @@ class icinga_log_reader(object):
 
             same_logfile_as_last_read = False
             if last_read_line:  # empty string (=False) means end, else we at least have '\n'
-                cur_line = self._parse_line((None, last_read_line))
-                same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
-                self.log("cur line timestamp {}, last read timestamp {}".format(cur_line.timestamp, last_read.timestamp))
-                self.log("cur line timestamp {}, last read timestamp {}".format(datetime.datetime.fromtimestamp(cur_line.timestamp),
-                                                                                datetime.datetime.fromtimestamp(last_read.timestamp)))
+                try:
+                    cur_line = self._parse_line(last_read_line)
+                except self.malformed_icinga_log_entry:
+                    pass
+                else:
+                    same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
+                    self.log("cur line timestamp {}, last read timestamp {}".format(cur_line.timestamp, last_read.timestamp))
+                    self.log("cur line timestamp {}, last read timestamp {}".format(datetime.datetime.fromtimestamp(cur_line.timestamp),
+                                                                                    datetime.datetime.fromtimestamp(last_read.timestamp)))
 
             if same_logfile_as_last_read:
                 self.log("continuing to read in current icinga log file")
                 # no log rotation, continue reading current file
+                # the current position of the file must be the next byte to read!
                 self.parse_log_file(logfile)
             else:
                 self.log("detected icinga log rotation")
@@ -134,10 +148,10 @@ class icinga_log_reader(object):
                     files_to_check.extend(day_files)
 
                 # read archive
-                self.parse_archive_files(files_to_check, last_read.timestamp)
+                self.parse_archive_files(files_to_check, start_at=last_read.timestamp)
 
                 self.log("finished catching up with archive, continuing with current icinga log file")
-                # start reading new file
+                # start reading cur file
                 logfile.seek(0)
                 self.parse_log_file(logfile)
 
@@ -164,27 +178,24 @@ class icinga_log_reader(object):
         cur_line = None
         for line_raw in logfile:
             line_num += 1
-            cur_line = self._parse_line((None, line_raw.rstrip("\n")))
-            if start_at is None or cur_line.timestamp > start_at:
-                if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state):
-                    entry = self.create_service_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state, logfilepath, logfile_db)
-                    if entry:
-                        service_states.append(entry)
-                elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state):
-                    entry = self.create_host_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
-                    if entry:
-                        host_states.append(entry)
+            try:
+                cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)  # only know line no for archive files
+                if start_at is None or cur_line.timestamp > start_at:
+                    if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state):
+                        entry = self.create_service_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state, logfilepath, logfile_db)
+                        if entry:
+                            service_states.append(entry)
+                    elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state):
+                        entry = self.create_host_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
+                        if entry:
+                            host_states.append(entry)
+                    else:
+                        pass  # line_raw is not of interest to us
                 else:
-                    pass  # line_raw is not of interest to us
-            else:
-                old_ignored += 1
+                    old_ignored += 1
 
-            # TODO: make malformed and unresolvable errors non-critical
-            #except self.malformed_icinga_log_entry as e:
-            #    # TODO: this shouldn't be critical in the final version
-            #    raise self.malformed_icinga_log_entry(
-            #        "In {} line_raw {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message)
-            #        )
+            except self.malformed_icinga_log_entry as e:
+                self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
 
         mon_icinga_log_raw_host_data.objects.bulk_create(host_states)
         mon_icinga_log_raw_service_data.objects.bulk_create(service_states)
@@ -193,17 +204,17 @@ class icinga_log_reader(object):
                                                                                           logfilepath if logfilepath else "cur icinga log file"))
 
         if cur_line:  # if at least something has been read
-            position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)
+            position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
             self._update_last_read(position, cur_line.timestamp)
             return cur_line.timestamp
         return None
 
     def _update_last_read(self, position, timestamp):
-        """Keep track of which data was read. May be called with older timestamp (will be discarded)"""
+        """Keep track of which data was read. May be called with older timestamp (will be discarded)."""
         if mon_icinga_log_last_read.objects.all():
             last_read = mon_icinga_log_last_read.objects.all()[0]
             if last_read.timestamp > timestamp:
-                return  # tried to update with older timestamp
+                return last_read  # tried to update with older timestamp
         else:
             last_read = mon_icinga_log_last_read()
         self.log("updating last read icinga log to pos: {} time: {}".format(position, timestamp))
@@ -256,7 +267,8 @@ class icinga_log_reader(object):
     def create_service_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
         retval = None
         try:
-            host, service, state, state_type, msg = self._parse_service_alert(cur_line)
+            host, (service, service_info), state, state_type, msg = self._parse_service_alert(cur_line)
+            # TODO: need to generalize for other service types
         except (self.unknown_host_error, self.unknown_service_error) as e:
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
@@ -264,6 +276,7 @@ class icinga_log_reader(object):
                 date=datetime.datetime.fromtimestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
+                service_info=service_info,
                 state_type=state_type,
                 state=state,
                 full_system_state_entry=full_system_state_entry,
@@ -275,12 +288,10 @@ class icinga_log_reader(object):
     icinga_log_line = namedtuple('icinga_log_line', ('timestamp', 'kind', 'info', 'line_no'))
 
     @classmethod
-    def _parse_line(cls, line_data):
+    def _parse_line(cls, line, line_no=None):
         '''
-        :param (int, str) line_data:
         :return icinga_log_line
         '''
-        line_no, line = line_data
         # format is:
         # [timestamp] line_type: info
         data = line.split(" ", 1)
@@ -347,7 +358,8 @@ class icinga_log_reader(object):
             # can't use data without host
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
-        service = self._resolve_service(data[1], cur_line.timestamp)
+        service, service_info = self._resolve_service(data[1], cur_line.timestamp)
+        # TODO: generalise to other services
         if not service:
             raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(data[1]))
 
@@ -361,7 +373,7 @@ class icinga_log_reader(object):
 
         msg = data[5]
 
-        return host, service, state, state_type, msg
+        return host, (service, service_info), state, state_type, msg
 
     def _resolve_host(self, host_spec, timestamp):
         '''
@@ -387,14 +399,16 @@ class icinga_log_reader(object):
         return retval
 
     def _resolve_service(self, service_spec, timestamp):
-        # TODO: special services?
-        if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
-            # use map for data created with this map, guess for earlier ones (see below)
-            retval = self._current_host_service_data.services.get(service_spec, None)
-            if not retval:
-                self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
-        else:
-            retval = self._resolve_service_historic(service_spec)
+        retval = service_id_util.parse_service_description(service_spec, self.log)
+        # TODO: need to generalize for other service types
+        if retval[0] is None:
+            if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
+                # use map for data created with this map, guess for earlier ones (see below)
+                retval = (self._current_host_service_data.services.get(service_spec, None), None)
+                if not retval[0]:
+                    self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
+            else:
+                retval = (self._resolve_service_historic(service_spec), None)
         return retval
 
     def _resolve_service_historic(self, service_spec):
@@ -408,4 +422,44 @@ class icinga_log_reader(object):
         # try also last map if available
         if not retval and self._current_host_service_data:
             retval = self._current_host_service_data.services.get(service_spec, None)
+        return retval
+
+
+class service_id_util(object):
+
+    @classmethod
+    def create_service_description(cls, s_check, info):
+        '''
+        Create a string by which we can identify the service. Used to write to icinga log file.
+        '''
+        retval = None
+        if s_check.check_command_pk is not None:
+            # regular service check
+            # format is: service_check:${mon_check_command_pk}:$info
+            # since a mon_check_command_pk can have multiple actual service checks, we add the info string to identify it
+            # as the services are created dynamically, we don't have a nice db pk
+            retval = "host_check:{}:{}".format(s_check.check_command_pk, info)
+            # add host info?
+        else:
+            retval = "unstructured:" + info
+        return retval
+
+    @classmethod
+    def parse_service_description(cls, service_spec, log=None):
+        '''
+        "Inverse" of create_service_description
+        '''
+        data = service_spec.split(':', 1)
+        retval = (None, None)
+        if len(data) == 2:
+            if data[0] == 'host_check':
+                service_data = data[1].split(":")
+                if len(service_data) == 2:
+                    pk, info = service_data
+                    retval = (pk, info)
+            elif data[0] == 'unstructured':
+                pass
+            else:
+                if log:
+                    log("invalid service description: {}".format(service_spec))
         return retval
