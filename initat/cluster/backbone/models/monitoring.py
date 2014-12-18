@@ -62,6 +62,10 @@ __all__ = [
     "snmp_scheme_vendor",
     "snmp_scheme",
     "snmp_scheme_tl_oid",
+    "mon_icinga_log_raw_host_data",
+    "mon_icinga_log_raw_service_data",
+    "mon_icinga_log_file",
+    "mon_icinga_log_last_read",
 ]
 
 
@@ -1199,3 +1203,56 @@ class monitoring_hint(models.Model):
     class Meta:
         app_label = "backbone"
         ordering = ("m_type", "key",)
+
+
+class mon_icinga_log_raw_host_data(models.Model):
+    idx = models.AutoField(primary_key=True)
+    date = models.DateTimeField()
+    device = models.ForeignKey("backbone.device", null=True)
+    state_type = models.CharField(max_length=1, choices=[("H", "HARD"), ("S", "SOFT")])  # Hard and Soft
+    state = models.CharField(max_length=2, choices=[("UP", "UP"), ("D", "DOWN"), ("UR", "UNREACHABLE")])  # Up and Down
+    full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+    msg = models.TextField()
+    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
+
+    class Meta:
+        app_label = "backbone"
+
+
+class mon_icinga_log_raw_service_data(models.Model):
+    idx = models.AutoField(primary_key=True)
+    date = models.DateTimeField()
+    device = models.ForeignKey("backbone.device")
+
+    # NOTE: there are different setup, at this time only regular check_commands are supported
+    # they are identified by the mon_check_command.pk and their name, hence the fields here
+    # the layout of this table probably has to change in order to accommodate for further services
+    # I however can't do that now as I don't know how what to change it to
+    service = models.ForeignKey(mon_check_command)
+    service_info = models.TextField(blank=True, null=True)
+
+    state_type = models.CharField(max_length=1, choices=[("H", "Hard"), ("S", "Soft")])  # Hard and Soft
+    state = models.CharField(max_length=1, choices=[("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL")])  # OK, WARNING, UNKNOWN, CRITICAL
+    full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+    msg = models.TextField()
+    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
+
+    class Meta:
+        app_label = "backbone"
+
+
+class mon_icinga_log_file(models.Model):
+    idx = models.AutoField(primary_key=True)
+    filepath = models.TextField()
+
+    class Meta:
+        app_label = "backbone"
+
+
+class mon_icinga_log_last_read(models.Model):
+    # this table contains only one entry
+    position = models.BigIntegerField()  # position of start of last line read
+    timestamp = models.IntegerField()  # time of last line read
+
+    class Meta:
+        app_label = "backbone"
