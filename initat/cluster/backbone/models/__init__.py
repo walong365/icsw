@@ -514,6 +514,7 @@ class device(models.Model):
         choices=[
             ("snmp", "SNMP"),
             ("ipmi", "IPMI"),
+            # also used for partition fetch
             ("hm", "Host monitor"),
         ]
     )
