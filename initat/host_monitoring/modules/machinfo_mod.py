@@ -933,7 +933,7 @@ class _general(hm_classes.hm_module):
                                         }
                                     else:
                                         if "lv" in self.local_lvm_info.lv_dict:
-                                            if lv_name in self.local_lvm_info.lv_dict:
+                                            if lv_name in self.local_lvm_info.lv_dict["lv"]:
                                                 act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
                                                 act_lv["mount_options"] = {
                                                     "mountpoint": mp,
