@@ -78,6 +78,7 @@ class zmq_connection(object):
             "DEALER",
             linger=self.__linger_time,
             identity=self.identity,
+            immediate=kwargs.get("immediate", False),
         )
         if isinstance(command, server_command.srv_command):
             c_type = "sc"
@@ -98,12 +99,19 @@ class zmq_connection(object):
             self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)  # @UndefinedVariable
             # self.register_poller(new_sock, sock_fd, zmq.POLLERR, self.__show)
             self.__socket_dict[sock_fd] = new_sock
-            self.__results[sock_fd] = None
-            self.__pending.add(sock_fd)
             self.__add_list.append((sock_fd, c_type))
-            new_sock.send_unicode(unicode(command))
-            if not kwargs.get("multi", False):
-                return self.loop()[0]
+            try:
+                new_sock.send_unicode(unicode(command))
+            except:
+                _result = server_command.srv_command(source=unicode(command))
+                _result.set_result("error sending: {}".format(get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+                self.__results[sock_fd] = unicode(_result)
+                new_sock.close()
+            else:
+                self.__results[sock_fd] = None
+                self.__pending.add(sock_fd)
+        if not kwargs.get("multi", False):
+            return self.loop()[0]
 
     def loop(self):
         start_time = time.time()
@@ -113,9 +121,12 @@ class zmq_connection(object):
                 try:
                     cur_cb = self.poller_handler[sock][c_type]
                 except KeyError:
-                    print "unknown key for loop(): ({}, {:d})".format(
-                        str(sock),
-                        c_type)
+                    print(
+                        "unknown key for loop(): ({}, {:d})".format(
+                            str(sock),
+                            c_type
+                        )
+                    )
                 else:
                     cur_cb(sock)
             cur_time = time.time()
