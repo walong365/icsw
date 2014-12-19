@@ -460,20 +460,28 @@ class device_network_scan_form(Form):
     helper.field_class = 'col-sm-7'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
-    scan_address = CharField(max_length=128)
-    snmp_address = CharField(max_length=128)
     snmp_community = CharField(max_length=128)
     snmp_version = ChoiceField(choices=[(1, "1"), (2, "2")])
     strict_mode = BooleanField(required=False)
     remove_not_found = BooleanField(required=False)
     helper.layout = Layout(
-        HTML("<h2>Scan network of device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
+        HTML("<h2>Scan network of settings device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
+        Fieldset(
+            "Scan address, {% verbatim %}{{ _current_dev.ip_list.length }}{% endverbatim %} IPs defined",
+            HTML("""
+<div>{% verbatim %}
+<ul class="list-group">
+    <li class="list-group-item" ng-repeat="ip in _edit_obj.ip_list">
+        <input type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="_edit_obj.manual_address=ip"></input>
+    </li>
+    <li class="list-group-item">
+        IP: <input ng-model="_edit_obj.manual_address"></input>
+    </li>
+</ul>
+{% endverbatim %}</div>"""),
+        ),
         # HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
         HTML("<tabset><tab heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
-        Fieldset(
-            "Base data",
-            Field("scan_address"),
-        ),
         Fieldset(
             "Flags",
             Field("strict_mode"),
@@ -481,7 +489,6 @@ class device_network_scan_form(Form):
         HTML("</tab><tab heading='SNMP' select='set_scan_mode(\"snmp\")' active='_current_dev.scan_snmp_active'>"),
         Fieldset(
             "Base data",
-            Field("snmp_address"),
             Field("snmp_community"),
             Field("snmp_version"),
         ),

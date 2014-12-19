@@ -231,9 +231,15 @@ class scan_device_network(View):
         logger.info("scanning network settings of device {} via {}".format(unicode(_dev.full_name), _sm))
         if _sm == "hm":
             srv_com = server_command.srv_command(command="scan_network_info")
-            srv_com["pk"] = "{:d}".format(_dev.pk)
-            srv_com["scan_address"] = _json_dev["scan_address"]
-            srv_com["strict_mode"] = "1" if _json_dev["strict_mode"] else "0"
+            _dev_node = srv_com.builder("device")
+            _dev_node.attrib.update(
+                {
+                    "pk": "{:d}".format(_dev.pk),
+                    "scan_address": _json_dev["scan_address"],
+                    "strict_mode": "1" if _json_dev["strict_mode"] else "0",
+                }
+            )
+            srv_com["devices"] = _dev_node
         else:
             srv_com = server_command.srv_command(command="snmp_basic_scan")
             _dev_node = srv_com.builder("device")
@@ -242,7 +248,6 @@ class scan_device_network(View):
                     "pk": "{:d}".format(_dev.pk),
                     "scan_address": _json_dev["scan_address"],
                     "snmp_version": "{:d}".format(_json_dev["snmp_version"]),
-                    "snmp_address": _json_dev["snmp_address"],
                     "snmp_community": _json_dev["snmp_community"],
                     "strict": "1" if _json_dev["remove_not_found"] else "0"
                 }

@@ -216,7 +216,7 @@ def send_emergency_mail(**kwargs):
             "PATH_INFO  : {}".format(request.META.get("PATH_INFO", "nor found")),
             "USER_AGENT : {}".format(request.META.get("HTTP_USER_AGENT", "not found"))])
     header_cs = "utf-8"
-    mesg = email.mime.text.MIMEText("\n".join(msg_lines), _charset=header_cs)
+    mesg = email.mime.text.MIMEText("\n".join(msg_lines), _charset=header_cs)  # @UndefinedVariable
     mesg["Subject"] = "Python error"
     mesg["From"] = "python-error@init.at"
     mesg["To"] = "oekotex@init.at"

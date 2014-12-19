@@ -149,7 +149,13 @@ class fetch_partition(View):
         part_dev = device.objects.get(Q(pk=_post["pk"]))
         logger.info("reading partition info from %s" % (unicode(part_dev)))
         srv_com = server_command.srv_command(command="fetch_partition_info")
-        srv_com["device_pk"] = "{:d}".format(part_dev.pk)
+        _dev_node = srv_com.builder("device")
+        _dev_node.attrib.update(
+            {
+                "pk": "{:d}".format(part_dev.pk),
+            }
+        )
+        srv_com["devices"] = _dev_node
         _result = contact_server(request, "discovery", srv_com, timeout=30)
 
 

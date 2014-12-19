@@ -22,7 +22,8 @@ device_networks_template = """
             <thead>
                 <tr>
                     <th>Device</th>
-                    <th>bootinfo</th>
+                    <th>ScanInfo</th>
+                    <th>BootInfo</th>
                     <th>#Ports</th>
                     <th>#IPs</th>
                     <th>#peers</th>
@@ -118,6 +119,9 @@ dev_row_template = """
     {{ ndip_obj.full_name }}
 </td>
 <td>
+    {{ ndip_obj.active_scan || "---" }}
+</td>
+<td>
     <input
         type="button"
         class="btn btn-xs btn-warning"
@@ -156,7 +160,7 @@ dev_row_template = """
     </button>
 </td>
 <td>
-    <div class="input-group-btn" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')">
+    <div class="input-group-btn" ng-show="enable_modal && acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
         <div class="btn-group btn-xs">
             <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
                 Create new <span class="caret"></span>
@@ -227,13 +231,17 @@ nd_row_template = """
      </button>
 </td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+    <div ng-show="!dev_lut[ndip_obj.device].active_scan">
+        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+    </div>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
+    <div ng-show="!dev_lut[ndip_obj.device].active_scan">
+        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
+    </div>
 </td>
 <td>
-    <div class="btn-group btn-xs" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')">
+    <div class="btn-group btn-xs" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
         <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
             Create new <span class="caret"></span>
         </button>
@@ -251,12 +259,18 @@ ip_row_template = """
 <td>{{ ndip_obj.ip }}</td>
 <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
 <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
-<td><span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span></td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+    <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
+    <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
+        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+    </div>
+</td>
+<td>
+    <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
+        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
+    </div>
 <td>
 """
 
@@ -422,8 +436,8 @@ device_network_module = angular.module("icsw.network.device", ["ngResource", "ng
 
 angular_module_setup([device_network_module])
 
-device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope) ->
+device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout) ->
         access_level_service.install($scope)
         $scope.enable_modal = true
         # accordion flags
@@ -521,6 +535,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $scope.ip_lut = {}
             for dev in $scope.devices
                 $scope.dev_lut[dev.idx] = dev
+                dev.previous_scan = dev.active_scan
                 for nd in dev.netdevice_set
                     nd.peers = []
                     $scope.nd_lut[nd.idx] = nd
@@ -638,8 +653,16 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.scan_device_network = (dev, event) ->
             $scope._current_dev = dev
             $scope.scan_device = dev
-            dev.scan_address = dev.full_name
-            dev.snmp_address = dev.full_name
+            ip_list = []
+            for ndev in dev.netdevice_set
+                for ip in ndev.net_ip_set
+                    if ip.network of $scope.network_lut
+                        network = $scope.network_lut[ip.network]
+                        if network.network_type_identifier != "l" and not (network.netmask == "255.0.0.0" and network.network == "127.0.0.0")
+                            ip_list.push(ip.ip)
+            ip_list = _.sortBy(ip_list)
+            dev.ip_list = ip_list
+            dev.manual_address = "0.0.0.0"
             dev.snmp_community = "public"
             dev.snmp_version = 1
             dev.remove_not_found = false
@@ -656,21 +679,41 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.fetch_device_network = () ->
             $.blockUI()
+            _dev = $scope._current_dev
+            _dev.scan_address = _dev.manual_address
             call_ajax
                 url     : "{% url 'device:scan_device_network' %}"
                 data    :
                     "dev" : angular.toJson($scope.scan_device)
                 success : (xml) ->
                     parse_xml_response(xml)
-                    Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_network" : true, "pks" : angular.toJson([$scope.scan_device.idx]), "olp" : "backbone.device.change_network"}).then(
-                        (dev_data) ->
-                            Restangular.all("{% url 'rest:network_list' %}".slice(1)).getList().then((data) ->
-                                $scope.networks = data
-                                $scope.network_lut = build_lut($scope.networks)
-                                $scope.update_device(dev_data[0])
-                                $.unblockUI()
-                            )
-                    )
+                    $.unblockUI()
+                    $scope.scan_mixin.close_modal()
+                    $scope.update_scans()
+        $scope.update_scans = () ->
+            Restangular.all("{% url 'network:get_active_scans' %}".slice(1)).getList({"pks" : angular.toJson($scope.devsel_list)}).then(
+                (data) ->
+                    any_scans_running = false
+                    for obj in data
+                        dev = $scope.dev_lut[obj["pk"]]
+                        dev.previous_scan = dev.active_scan
+                        dev.active_scan = obj.active_scan
+                        if dev.active_scan != dev.previous_scan
+                            if not dev.active_scan
+                                # scan finished
+                                Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"}).then(
+                                    (dev_data) ->
+                                        Restangular.all("{% url 'rest:network_list' %}".slice(1)).getList().then((data) ->
+                                            $scope.networks = data
+                                            $scope.network_lut = build_lut($scope.networks)
+                                            $scope.update_device(dev_data[0])
+                                        )
+                                )
+                        if obj.active_scan
+                            any_scans_running = true
+                    if any_scans_running
+                        $timeout($scope.update_scans, 5000)
+            )
         $scope.update_device = (new_dev) ->
             cur_devs = []
             for dev in $scope.devices
