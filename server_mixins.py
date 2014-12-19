@@ -49,6 +49,7 @@ class network_bind_mixin(object):
     def network_bind(self, **kwargs):
         _need_all_binds = kwargs.get("need_all_binds", False)
         pollin = kwargs.get("pollin", None)
+        immediate = kwargs.get("immediate", True)
         bind_port = kwargs["bind_port"]
         self.bind_id = get_server_uuid(kwargs["server_type"])
         # device recognition
@@ -84,7 +85,7 @@ class network_bind_mixin(object):
             ]
         _errors = []
         for master_bind, bind_list, bind_id in master_bind_list:
-            client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=bind_id)
+            client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=bind_id, immediate=immediate)
             for _bind_str in bind_list:
                 try:
                     client.bind(_bind_str)
