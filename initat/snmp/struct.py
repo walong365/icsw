@@ -36,6 +36,21 @@ class ResultNode(object):
                 _val = [_val]
             setattr(self, _target, _val)
 
+    def ok(self, in_val):
+        self._add_val("ok", in_val)
+
+    def warn(self, in_val):
+        self._add_val("warn", in_val)
+
+    def error(self, in_val):
+        self._add_val("error", in_val)
+
+    def _add_val(self, v_type, in_val):
+        if type(in_val) != list:
+            in_val = [in_val]
+        _l_name = "{}_list".format(v_type)
+        setattr(self, _l_name, getattr(self, _l_name) + in_val)
+
     def merge(self, other_node):
         self.ok_list.extend(other_node.ok_list)
         self.warn_list.extend(other_node.warn_list)
