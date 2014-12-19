@@ -41,7 +41,7 @@ import termios
 import time
 
 
-def list_mode():
+def list_mode(options):
     all_users = user.objects.all().select_related("group").order_by("login")  # @UndefinedVariable
     out_list = logging_tools.new_form_list()
     for _user in all_users:
@@ -94,7 +94,7 @@ def get_quota_str(uqs):
     )
 
 
-def info_mode(user_name):
+def info_mode(options, user_name):
     _user = _get_user(user_name)
     _ret_state = 0
     if _user is None:
@@ -111,7 +111,7 @@ def info_mode(user_name):
             )
         )
         num_qs = _user.user_quota_setting_set.all().count()
-        if num_qs:
+        if num_qs and options.system_wide_quota:
             print("")
             print("{} found:".format(logging_tools.get_plural("system-wide quota setting", num_qs)))
             for _qs in _user.user_quota_setting_set.all():
@@ -124,41 +124,41 @@ def info_mode(user_name):
                         get_quota_str(_qs),
                     )
                 )
-            try:
-                _cmd = "quota --show-mntpoint -wp -u {}".format(
-                    _user.login,
-                    # os.path.expanduser("~{}".format(_user.login)),
+        try:
+            _cmd = "quota --show-mntpoint -wp -u {}".format(
+                _user.login,
+                # os.path.expanduser("~{}".format(_user.login)),
+            )
+            _res = subprocess.check_output(
+                _cmd.split(),
+            )
+        except subprocess.CalledProcessError as sb_exc:
+            _res = sb_exc.output
+            # print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
+            _ret_state = 1
+        else:
+            _ret_state = 0
+        if _res.lower().count("denied"):
+            print("    error getting local quotas for {}: {}".format(_user.login, _res))
+        else:
+            # print _res
+            _lines = [_line.strip().split() for _line in _res.split("\n") if _line.strip()]
+            _lines = [_line for _line in _lines if len(_line) == 10]
+            if _lines:
+                print("", "local quota:", sep="\n")
+                _line = _lines[-1]
+                _bytes_violate = _line[2].count("*") > 0
+                _local = user_quota_setting(
+                    bytes_used=int(_line[2].replace("*", "")) * 1024,
+                    bytes_soft=int(_line[3]) * 1024,
+                    bytes_hard=int(_line[4]) * 1024,
+                    bytes_gracetime=int(_line[5]),
                 )
-                _res = subprocess.check_output(
-                    _cmd.split(),
+                print(
+                    "    local mountpoint: {}".format(
+                        get_quota_str(_local),
+                    )
                 )
-            except subprocess.CalledProcessError as sb_exc:
-                _res = sb_exc.output
-                # print("error calling '{}': {}".format(_cmd, process_tools.get_except_info()))
-                _ret_state = 1
-            else:
-                _ret_state = 0
-            if _res.lower().count("denied"):
-                print("    error getting local quotas for {}: {}".format(_user.login, _res))
-            else:
-                # print _res
-                _lines = [_line.strip().split() for _line in _res.split("\n") if _line.strip()]
-                _lines = [_line for _line in _lines if len(_line) == 10]
-                if _lines:
-                    print("", "local quota:", sep="\n")
-                    _line = _lines[-1]
-                    _bytes_violate = _line[2].count("*") > 0
-                    _local = user_quota_setting(
-                        bytes_used=int(_line[2].replace("*", "")) * 1024,
-                        bytes_soft=int(_line[3]) * 1024,
-                        bytes_hard=int(_line[4]) * 1024,
-                        bytes_gracetime=int(_line[5]),
-                    )
-                    print(
-                        "    local mountpoint: {}".format(
-                            get_quota_str(_local),
-                        )
-                    )
         return _ret_state
 
 
@@ -182,17 +182,18 @@ def get_pass(prompt=">"):
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--mode", dest="mode", choices=["info", "list", "change"], default="info", help="set mode [%(default)s]")
+    my_parser.add_argument("-Q", "--system-wide-quota", default=False, action="store_true", help="show system-wide quota [%(default)s]")
     my_parser.add_argument("username", nargs="*", default=[pwd.getpwuid(os.getuid())[0]], help="set username [%(default)s]")
     options = my_parser.parse_args()
     if options.mode in ["info", "change"] and not options.username:
         print("Need username for {} mode".format(options.mode))
         sys.exit(-1)
     if options.mode == "list":
-        ret_code = list_mode()
+        ret_code = list_mode(options)
     elif options.mode == "info":
         ret_code = 0
         for _user in options.username:
-            ret_code = max(ret_code, info_mode(_user))
+            ret_code = max(ret_code, info_mode(options, _user))
     else:
         ret_code = 1
     sys.exit(ret_code)
