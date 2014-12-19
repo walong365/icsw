@@ -281,7 +281,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
                 else:
                     _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
                 _conn_strs.append(_conn_str)
-                _conn.add_connection(_conn_str, _send_com, multi=True)
+                _conn.add_connection(_conn_str, _send_com, multi=True, immediate=True)
             log_result = kwargs.get("log_result", True)
             log_error = kwargs.get("log_error", True)
             cur_router.start_result_feed()
