@@ -113,7 +113,7 @@ rrd_graph_template = """
                     </button>
                 </div>
             </div>&nbsp;
-            <div class="form-group">
+            <div class="form-group" ng-show="!merge_cd">
                 <div class="input-group-btn">
                     <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
                         <span class="glyphicon glyphicon-off"></span>
