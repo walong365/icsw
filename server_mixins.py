@@ -51,6 +51,7 @@ class network_bind_mixin(object):
         pollin = kwargs.get("pollin", None)
         immediate = kwargs.get("immediate", True)
         bind_port = kwargs["bind_port"]
+        bind_to_localhost = kwargs.get("bind_to_localhost", False)
         self.bind_id = get_server_uuid(kwargs["server_type"])
         # device recognition
         dev_r = cluster_location.device_recognition()
@@ -60,6 +61,7 @@ class network_bind_mixin(object):
         self.main_socket = None
         # create bind list
         if dev_r.device_dict:
+            _bind_ips = set(list(dev_r.local_ips) + sum([_list for _dev, _list in dev_r.ip_r_lut.iteritems()], []))
             # complex bind
             master_bind_list = [
                 (
@@ -78,6 +80,16 @@ class network_bind_mixin(object):
                     # ignore local device
                     get_server_uuid("server", _dev.uuid)) for _dev, _ip_list in dev_r.ip_r_lut.iteritems() if _dev.pk != dev_r.device.pk
             ]
+            # we have to bind to localhost but localhost is not present in bind_list, add master_bind
+            if bind_to_localhost and not any([_ip.startswith("127.") for _ip in _bind_ips]):
+                self.log("bind_to_localhost is set but not IP in range 127.0.0.0/8 found in list, adding master_bind", logging_tools.LOG_LEVEL_WARN)
+                master_bind_list.append(
+                    (
+                        True,
+                        ["tcp://127.0.0.1:{:d}".format(bind_port)],
+                        self.bind_id
+                    )
+                )
         else:
             # simple bind
             master_bind_list = [
