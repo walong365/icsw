@@ -19,6 +19,7 @@
 #
 """ discovery-server, host monitoring functions """
 
+from django.db import transaction
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed
@@ -420,18 +421,22 @@ class hm_mixin(object):
         res_node = ResultNode()
         strict_mode = True if int(dev_com.get("strict_mode")) else False
         scan_address = dev_com.get("scan_address")
-        self.log("scanning network for device '{}' ({:d}), scan_address is '{}', strict_mode is {}".format(
-            unicode(scan_dev),
-            scan_dev.pk,
-            scan_address,
-            "on" if strict_mode else "off",
-            ))
+        self.log(
+            "scanning network for device '{}' ({:d}), scan_address is '{}', strict_mode is {}".format(
+                unicode(scan_dev),
+                scan_dev.pk,
+                scan_address,
+                "on" if strict_mode else "off",
+            )
+        )
         zmq_con = net_tools.zmq_connection(
             "server:{}".format(process_tools.get_machine_name()),
-            context=self.zmq_context)
+            context=self.zmq_context
+        )
         conn_str = "tcp://{}:{:d}".format(
             scan_address,
-            2001)
+            2001
+        )
         self.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
         zmq_con.add_connection(
             conn_str,
@@ -444,6 +449,7 @@ class hm_mixin(object):
         nds_list = netdevice_speed.objects.filter(Q(speed_bps__in=[1000000000, 100000000])).order_by("-speed_bps", "-full_duplex", "-check_via_ethtool")
         default_nds = nds_list[0]
         self.log("default nds is {}".format(unicode(default_nds)))
+
         for _idx, (result, target_dev) in enumerate(zip(res_list, [scan_dev])):
             self.log("device {} ...".format(unicode(target_dev)))
             res_state = -1 if result is None else int(result["result"].attrib["state"])
@@ -467,6 +473,7 @@ class hm_mixin(object):
                     res_node.error(u"{}: error missing keys in dict".format(target_dev))
                 else:
                     # clear current network
+                    sid = transaction.savepoint()
                     self.log("removing current network devices")
                     target_dev.netdevice_set.all().delete()
                     all_ok = True
@@ -486,7 +493,8 @@ class hm_mixin(object):
                             err_str = "error creating netdevice {}: {}".format(
                                 dev_name,
                                 process_tools.get_except_info())
-                            res_node.error(err_str)
+                            if strict_mode:
+                                res_node.error(err_str)
                             for _log in process_tools.exception_info().log_lines:
                                 self.log("  {}".format(_log), logging_tools.LOG_LEVEL_CRITICAL)
                             all_ok = False
@@ -494,9 +502,11 @@ class hm_mixin(object):
                             num_taken += 1
                     [nd_struct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(nd_struct.dict.keys())]
                     if not all_ok and strict_mode:
-                        self.log("removing netdevices because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
+                        self.log("rolling back to savepoint because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
                         num_taken -= target_dev.netdevice_set.all().count()
-                        target_dev.netdevice_set.all().delete()
+                        transaction.savepoint_rollback(sid)
+                    else:
+                        transaction.savepoint_commit(sid)
         if num_taken:
             res_node.ok("{} taken".format(logging_tools.get_plural("netdevice", num_taken)))
         if num_ignored:
