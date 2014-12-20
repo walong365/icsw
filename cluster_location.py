@@ -300,20 +300,18 @@ class device_recognition(object):
                 ) for if_name in netifaces.interfaces()
             ] if 2 in value
         }
-        self_ips = sum(ipv4_dict.values(), [])
+        # remove loopback addresses
+        self_ips = [_ip for _ip in sum(ipv4_dict.values(), []) if not _ip.startswith("127.")]
         self.ip_lut = {}
         self.ip_r_lut = {}
         if self_ips:
             _do = device.objects  # @UndefinedVariable
             # get IPs
             self.device_dict = {
-                cur_dev.pk: cur_dev for cur_dev in _do.exclude(
-                    Q(netdevice__net_ip__network__network_type__identifier="l") |
-                    Q(netdevice__net_ip__ip__startswith="127.")
-                ).filter(
+                cur_dev.pk: cur_dev for cur_dev in _do.filter(
                     Q(netdevice__net_ip__ip__in=self_ips)
                 ).prefetch_related(
-                    "netdevice_set__net_ip_set"
+                    "netdevice_set__net_ip_set__network__network_type"
                 )
             }
             for _ip in self.local_ips:
@@ -321,7 +319,10 @@ class device_recognition(object):
             self.ip_r_lut[self.device] = self.local_ips
             # build lut
             for _dev in self.device_dict.itervalues():
-                _dev_ips = sum([[_nip.ip for _nip in _ndev.net_ip_set.all()] for _ndev in _dev.netdevice_set.all()], [])
+                # gather all ips
+                _dev_ips = sum([list(_ndev.net_ip_set.all()) for _ndev in _dev.netdevice_set.all()], [])
+                # filter for valid ips (no loopback addresses)
+                _dev_ips = [_ip.ip for _ip in _dev_ips if _ip.network.network_type.identifier != "l" and not _ip.ip.startswith("127.")]
                 for _dev_ip in _dev_ips:
                     self.ip_lut[_dev_ip] = _dev
                 self.ip_r_lut[_dev] = _dev_ips
