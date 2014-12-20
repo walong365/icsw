@@ -681,6 +681,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $.blockUI()
             _dev = $scope._current_dev
             _dev.scan_address = _dev.manual_address
+            # intermediate state to trigger reload
+            _dev.active_scan = "waiting"
             call_ajax
                 url     : "{% url 'device:scan_device_network' %}"
                 data    :

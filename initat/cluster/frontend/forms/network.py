@@ -462,12 +462,12 @@ class device_network_scan_form(Form):
     helper.ng_submit = "cur_edit.modify(this)"
     snmp_community = CharField(max_length=128)
     snmp_version = ChoiceField(choices=[(1, "1"), (2, "2")])
-    strict_mode = BooleanField(required=False)
+    strict_mode = BooleanField(required=False, label="all netdevices must be recognizable")
     remove_not_found = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Scan network of settings device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
         Fieldset(
-            "Scan address, {% verbatim %}{{ _current_dev.ip_list.length }}{% endverbatim %} IPs defined",
+            "Scan address, {% verbatim %}{{ _current_dev.ip_list.length }}{% endverbatim %} non-local IPs defined",
             HTML("""
 <div>{% verbatim %}
 <ul class="list-group">

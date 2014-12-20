@@ -11,10 +11,10 @@
 <div id="icsw.cluster_info">
     <div ng-controller="info_ctrl">
         <accordion close-others="no">
-            <accordion-group is-open="isopen1">
+            <accordion-group is-open="is_open_roles">
                 <accordion-heading>
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_roles, 'glyphicon-chevron-right': !is_open_roles}"></i>
                     {{ num_roles() }} valid cluster roles defined (viewed from {{ local_device }})
-                    <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': isopen1, 'glyphicon-chevron-right': !isopen1}"></i>
                 </accordion-heading>
                 <table class="table table-hover table-striped" style="width:auto;">
                     <thead>
@@ -42,10 +42,30 @@
                     </tbody>
                 </table>
             </accordion-group>
-            <accordion-group is-open="isopen2">
+            <accordion-group is-open="is_open_list">
                 <accordion-heading>
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_list, 'glyphicon-chevron-right': !is_open_list}"></i>
+                    <ng-pluralize count="server_info_list.length" when="{'0': 'No Server results', 'one': 'One Server result', 'other': '{} Server results'}"></ng-pluralize>
+                </accordion-heading>
+                <table class="table table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="server in server_info_list" ng-class="server.get_tr_class()">
+                            <td>{{ server.get_name() }}</td>
+                            <td>{{ server.server_reply }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </accordion-group>
+            <accordion-group is-open="is_open_detail">
+                <accordion-heading>
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': is_open_detail, 'glyphicon-chevron-right': !is_open_detail}"></i>
                     <ng-pluralize count="server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
-                    <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': isopen2, 'glyphicon-chevron-right': !isopen2}"></i>
                 </accordion-heading>
                 <table class="table table-hover table-striped" style="width:auto;">
                     <thead>
@@ -150,12 +170,20 @@ angular_module_setup([info_module])
 class server_info
     constructor: (@xml) ->
         _round = 8 * 1024 * 1024
+        @result = @xml.find("result")
+        @server_state = parseInt(@result.attr("state"))
+        @server_reply = @result.attr("reply")
         _mem_vector = (parseInt($(mem_info).text()) for mem_info in @xml.find("instance memory_info") when $(mem_info).text())
         @max_mem = _.max(_mem_vector)
         @sum_mem = _.reduce(_mem_vector, (sum, _val) -> return sum + _val)
         #console.log @max_mem, @sum_mem
         @max_mem = _round * parseInt((@max_mem + _round - 1) / _round)
         @sum_mem = _round * parseInt((@sum_mem + _round - 1) / _round)
+    get_tr_class: () ->
+        if @server_state
+            return "danger"
+        else
+            return ""
     get_name: () ->
         return @xml.find("command").attr("server_name")
     get_server_id: () ->
