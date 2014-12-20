@@ -82,10 +82,10 @@ class network_bind_mixin(object):
             ]
             # we have to bind to localhost but localhost is not present in bind_list, add master_bind
             if bind_to_localhost and not any([_ip.startswith("127.") for _ip in _bind_ips]):
-                self.log("bind_to_localhost is set but not IP in range 127.0.0.0/8 found in list, adding master_bind", logging_tools.LOG_LEVEL_WARN)
+                self.log("bind_to_localhost is set but not IP in range 127.0.0.0/8 found in list, adding virtual_bind", logging_tools.LOG_LEVEL_WARN)
                 master_bind_list.append(
                     (
-                        True,
+                        False,
                         ["tcp://127.0.0.1:{:d}".format(bind_port)],
                         self.bind_id
                     )
