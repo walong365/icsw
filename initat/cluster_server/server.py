@@ -72,10 +72,11 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
             self.register_timer(self._run_command, 3600, instant=True)
         else:
             self._init_network_sockets()
-            self.init_notify_framework(global_config)
-            self.add_process(capability_process("capability_process"), start=True)
-            connection.close()
-            self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
+            if not self["exit_requested"]:
+                self.init_notify_framework(global_config)
+                self.add_process(capability_process("capability_process"), start=True)
+                connection.close()
+                self.register_timer(self._update, 2 if global_config["DEBUG"] else 30, instant=True)
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -222,12 +223,17 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
         if self.__run_command:
             self.main_socket = None
         else:
-            self.network_bind(
-                server_type="server",
-                bind_port=global_config["COM_PORT"],
-                need_all_binds=global_config["NEED_ALL_NETWORK_BINDS"],
-                pollin=self._recv_command,
-            )
+            try:
+                self.network_bind(
+                    server_type="server",
+                    bind_port=global_config["COM_PORT"],
+                    need_all_binds=global_config["NEED_ALL_NETWORK_BINDS"],
+                    pollin=self._recv_command,
+                    bind_to_localhost=True,
+                )
+            except:
+                self.log("error while bind: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                self["exit_requested"] = True
 
     def _recv_command(self, zmq_sock):
         data = []
