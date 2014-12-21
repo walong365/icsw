@@ -52,12 +52,16 @@
                         <tr>
                             <th>Name</th>
                             <th>Result</th>
+                            <th>max Memory</th>
+                            <th>total Memory</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat="server in server_info_list" ng-class="server.get_tr_class()">
-                            <td>{{ server.get_name() }}</td>
-                            <td>{{ server.server_reply }}</td>
+                        <tr ng-repeat="srv_info in server_info_list" ng-class="srv_info.get_tr_class()">
+                            <td>{{ srv_info.get_name() }}</td>
+                            <td>{{ srv_info.server_reply }}</td>
+                            <td>{{ srv_info.max_mem | get_size:1:1024:"B":3 }}</td>
+                            <td>{{ srv_info.sum_mem | get_size:1:1024:"B":3 }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -75,8 +79,8 @@
                             <th>Check</th>
                             <th ng-repeat="srv_info in server_info_list">
                                 {{ srv_info.get_name() }},
-                                {{ srv_info.max_mem | get_size:1:1024 }} max / 
-                                {{ srv_info.sum_mem | get_size:1:1024 }} total Memory
+                                {{ srv_info.max_mem | get_size:1:1024:"B":3 }} max / 
+                                {{ srv_info.sum_mem | get_size:1:1024:"B":3 }} total Memory
                              </th>
                         </tr>
                     </thead>
@@ -177,8 +181,8 @@ class server_info
         @max_mem = _.max(_mem_vector)
         @sum_mem = _.reduce(_mem_vector, (sum, _val) -> return sum + _val)
         #console.log @max_mem, @sum_mem
-        @max_mem = _round * parseInt((@max_mem + _round - 1) / _round)
-        @sum_mem = _round * parseInt((@sum_mem + _round - 1) / _round)
+        #@max_mem = _round * parseInt((@max_mem + _round - 1) / _round)
+        #@sum_mem = _round * parseInt((@sum_mem + _round - 1) / _round)
     get_tr_class: () ->
         if @server_state
             return "danger"

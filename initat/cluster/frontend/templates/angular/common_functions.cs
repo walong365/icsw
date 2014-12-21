@@ -899,16 +899,18 @@ angular.module(
     return (cur_dt) ->
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()
 ).filter("get_size", () ->
-    return (size, base_factor, factor, postfix) ->
+    return (size, base_factor, factor, postfix="B", float_digits=0) ->
         size = size * base_factor
         f_idx = 0
         while size > factor
-            size = parseInt(size/factor)
+            size = parseFloat(parseInt(size)/factor)
             f_idx += 1
-        factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
-        if postfix is undefined
-            postfix = "B"
-        return "#{size} #{factor}#{postfix}"
+        factor_pf = ["", "k", "M", "G", "T", "P", "E"][f_idx]
+        if not float_digits
+            size = parseInt(size)
+        else
+            size = "#{size}".substring(0, "#{parseInt(size)}".length + 1 + float_digits)
+        return "#{size} #{factor_pf}#{postfix}"
 ).filter("props_filter", () ->
     return (items, props) ->
         if angular.isArray(items)
