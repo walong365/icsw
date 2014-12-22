@@ -19,11 +19,12 @@
 #
 """ usefull server mixins """
 
-import threading_tools
-import logging_tools
 from initat.cluster.backbone.routing import get_server_uuid
 import cluster_location
+import logging_tools
+import pprint  # @UnusedImport
 import process_tools
+import threading_tools
 import zmq
 
 
@@ -69,7 +70,8 @@ class network_bind_mixin(object):
                     [
                         "tcp://{}:{:d}".format(_local_ip, bind_port) for _local_ip in dev_r.local_ips
                     ],
-                    self.bind_id
+                    self.bind_id,
+                    None,
                 )
             ] + [
                 (
@@ -78,7 +80,9 @@ class network_bind_mixin(object):
                         "tcp://{}:{:d}".format(_virtual_ip, bind_port) for _virtual_ip in _ip_list
                     ],
                     # ignore local device
-                    get_server_uuid("server", _dev.uuid)) for _dev, _ip_list in dev_r.ip_r_lut.iteritems() if _dev.pk != dev_r.device.pk
+                    get_server_uuid("server", _dev.uuid),
+                    _dev,
+                ) for _dev, _ip_list in dev_r.ip_r_lut.iteritems() if _dev.pk != dev_r.device.pk
             ]
             # we have to bind to localhost but localhost is not present in bind_list, add master_bind
             if bind_to_localhost and not any([_ip.startswith("127.") for _ip in _bind_ips]):
@@ -96,24 +100,36 @@ class network_bind_mixin(object):
                 (True, ["tcp://*:{:d}".format(bind_port)], self.bind_id)
             ]
         _errors = []
-        for master_bind, bind_list, bind_id in master_bind_list:
+        # pprint.pprint(master_bind_list)
+        bound_list = set()
+        for master_bind, bind_list, bind_id, bind_dev in master_bind_list:
             client = process_tools.get_socket(self.zmq_context, "ROUTER", identity=bind_id, immediate=immediate)
             for _bind_str in bind_list:
-                try:
-                    client.bind(_bind_str)
-                except zmq.ZMQError:
+                if _bind_str in bound_list:
                     self.log(
-                        "error binding to {}: {}".format(
+                        "bind_str '{}' (for {}) already used, skipping ...".format(
                             _bind_str,
-                            process_tools.get_except_info()
+                            " device '{}'".format(bind_dev) if bind_dev is not None else " master device",
                         ),
-                        logging_tools.LOG_LEVEL_CRITICAL
+                        logging_tools.LOG_LEVEL_ERROR
                     )
-                    _errors.append(_bind_str)
                 else:
-                    self.log("bound to {} with id {}".format(_bind_str, bind_id))
-                    if pollin:
-                        self.register_poller(client, zmq.POLLIN, pollin)  # @UndefinedVariable
+                    bound_list.add(_bind_str)
+                    try:
+                        client.bind(_bind_str)
+                    except zmq.ZMQError:
+                        self.log(
+                            "error binding to {}: {}".format(
+                                _bind_str,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_CRITICAL
+                        )
+                        _errors.append(_bind_str)
+                    else:
+                        self.log("bound to {} with id {}".format(_bind_str, bind_id))
+                        if pollin:
+                            self.register_poller(client, zmq.POLLIN, pollin)  # @UndefinedVariable
             if master_bind:
                 self.main_socket = client
             else:
