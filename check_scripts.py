@@ -45,18 +45,15 @@ except:
     config_tools = None
 else:
     try:
-        if settings.SATELLITE_MODE:
-            config_tools = None
-        else:
-            import django
-            django.setup()
+        _sm = settings.SATELLITE_MODE
     except:
+        _sm = False
+    if _sm:
         config_tools = None
     else:
-        try:
-            import config_tools
-        except:
-            config_tools = None
+        import django
+        django.setup()
+        import config_tools
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
