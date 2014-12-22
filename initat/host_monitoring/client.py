@@ -28,6 +28,7 @@ import net_tools
 import os
 import server_command
 
+
 def client_code(global_config):
     from initat.host_monitoring import modules
     if global_config["VERBOSE"] > 1:
@@ -42,8 +43,10 @@ def client_code(global_config):
     com_name = arg_list.pop(0)
     if com_name in modules.command_dict:
         srv_com = server_command.srv_command(command=com_name)
-        for src_key, dst_key in [("HOST"    , "host"),
-                                 ("COM_PORT", "port")]:
+        for src_key, dst_key in [
+            ("HOST", "host"),
+            ("COM_PORT", "port")
+        ]:
             srv_com[dst_key] = global_config[src_key]
         com_struct = modules.command_dict[com_name]
         try:
@@ -61,8 +64,14 @@ def client_code(global_config):
             result = net_tools.zmq_connection(
                 "{}:{:d}".format(
                     global_config["IDENTITY_STRING"],
-                    os.getpid()),
-                timeout=global_config["TIMEOUT"]).add_connection(conn_str, srv_com)
+                    os.getpid()
+                ),
+                timeout=global_config["TIMEOUT"],
+            ).add_connection(
+                conn_str,
+                srv_com,
+                immediate=True,
+            )
             if result:
                 if global_config["COM_PORT"] == 2001:
                     error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
@@ -80,12 +89,7 @@ def client_code(global_config):
                             ret_state = server_command.srv_reply_to_nag_state(int(_result.attrib["state"]))
                 else:
                     ret_str, ret_state = result.get_log_tuple()
-                    if ret_state in [server_command.SRV_REPLY_STATE_CRITICAL, server_command.SRV_REPLY_STATE_ERROR, server_command.SRV_REPLY_STATE_UNSET]:
-                        ret_state = limits.nag_STATE_CRITICAL
-                    elif ret_state in [server_command.SRV_REPLY_STATE_WARN]:
-                        ret_state = limits.nag_STATE_WARNING
-                    else:
-                        ret_state = limits.nag_STATE_OK
+                    ret_state = server_command.srv_reply_to_nag_state(ret_state)
             else:
                 ret_state, ret_str = (limits.nag_STATE_CRITICAL, "timeout")
     else:
@@ -100,4 +104,3 @@ def client_code(global_config):
         )
     print ret_str
     return ret_state
-
