@@ -191,14 +191,18 @@ class relay_code(threading_tools.process_pool):
         self.__master_sync_id = None
         # register_to_master_timer set ?
         self.__rmt_set = False
+        self.master_ip = None
+        self.master_port = None
+        self.master_uuid = None
         if os.path.isfile(MASTER_FILE_NAME):
-            master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())  # @UndefinedVariable
-            self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
+            try:
+                master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())  # @UndefinedVariable
+            except:
+                self.log("error interpreting master_file '{}': {}".format(MASTER_FILE_NAME, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
         else:
             self.log("no master_file found", logging_tools.LOG_LEVEL_WARN)
-            self.master_ip = None
-            self.master_port = None
-            self.master_uuid = None
 
     def _handle_relayer_info_result(self, srv_com):
         sync_id = int(srv_com["*sync_id"])
