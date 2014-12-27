@@ -65,7 +65,9 @@ class var_cache(dict):
         if global_key not in self:
             def_dict = self.get_global_def_dict()
             # read global configs
-            self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
+            self[global_key] = {
+                cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=self.__cdg))
+            }
             # update with def_dict
             for key, value in def_dict.iteritems():
                 if key not in self[global_key]:
@@ -74,10 +76,14 @@ class var_cache(dict):
             # do not query the devices
             if dg_key not in self:
                 # read device_group configs
-                self[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))])
+                self[dg_key] = {
+                    cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))
+                }
             if dev_key not in self:
                 # read device configs
-                self[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev))])
+                self[dev_key] = {
+                    cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev))
+                }
         ret_dict, info_dict = ({}, {})
         # for s_key in ret_dict.iterkeys():
         for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
