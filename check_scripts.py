@@ -52,8 +52,12 @@ else:
         config_tools = None
     else:
         import django
-        django.setup()
-        import config_tools
+        try:
+            django.setup()
+        except:
+            config_tools = None
+        else:
+            import config_tools
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
