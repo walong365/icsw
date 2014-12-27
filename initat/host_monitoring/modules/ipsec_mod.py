@@ -289,7 +289,8 @@ class ipsec_status_command(hm_classes.hm_command):
                 else:
                     return limits.nag_STATE_CRITICAL, "connection '{}' not found (defined: {})".format(
                         first_arg,
-                        ", ".join(sorted(_con_dict)) or "none")
+                        ", ".join(sorted(_con_dict)) or "none"
+                    )
         else:
             # old strongswans
             if not first_arg:

@@ -369,7 +369,7 @@ class host_message(object):
             self.srv_com.delete_subtree("arguments")
             self.srv_com[""].append(
                 _e.arguments(
-                    *([getattr(_e, "arg%d" % (arg_idx))(arg) for arg_idx, arg in enumerate(rest)] + [_e.rest(" ".join(rest))])
+                    *([getattr(_e, "arg{:d}".format(arg_idx))(arg) for arg_idx, arg in enumerate(rest)] + [_e.rest(" ".join(rest))])
                 )
             )
             self.srv_com.delete_subtree("namespace")

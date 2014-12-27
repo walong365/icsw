@@ -106,7 +106,8 @@ class drbd_status_command(hm_classes.hm_command):
                 ret_state = max(dev_states)
                 return ret_state, "{}; {}".format(
                     ", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.iteritems()]),
-                    ", ".join(ret_strs) if ret_strs else "everything ok")
+                    ", ".join(ret_strs) if ret_strs else "everything ok"
+                )
             else:
                 ret_strs = []
                 if not drbd_conf["status_present"]:

@@ -20,7 +20,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, with 0MQ and twisted support, tools """
+""" simple caching wrapper """
 
 import process_tools
 
@@ -33,7 +33,11 @@ class my_cached_file(process_tools.cached_file):
     def changed(self):
         if self.content:
             self.log("reread file {}".format(self.name))
-            self.hosts = set([cur_line.strip() for cur_line in self.content.strip().split("\n") if cur_line.strip() and not cur_line.strip().startswith("#")])
+            self.hosts = set(
+                [
+                    cur_line.strip() for cur_line in self.content.strip().split("\n") if cur_line.strip() and not cur_line.strip().startswith("#")
+                ]
+            )
         else:
             self.hosts = set()
 

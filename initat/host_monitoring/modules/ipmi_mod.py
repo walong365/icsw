@@ -111,17 +111,13 @@ class _general(hm_classes.hm_module):
             for kern_mod in ["ipmi_si", "ipmi_devintf"]:
                 cmd = "{} {}".format(mp_command, kern_mod)
                 c_stat, c_out = commands.getstatusoutput(cmd)
-                self.log("calling '{}' gave ({:d}): {}".format(
-                    cmd,
-                    c_stat,
-                    c_out
-                    ))
-            # c_suc, c_stat, c_out = self.call_ipmi_command("sensor list", self.log)
-            # if c_suc:
-            #    for line in c_out:
-            #        new_sensor = ipmi_sensor(self, self.log, line)
-            # new_sensor.update(logger)
-            # ipmi_sensor.update_all(self, self.log, ["rpm", "degrees c"])
+                self.log(
+                    "calling '{}' gave ({:d}): {}".format(
+                        cmd,
+                        c_stat,
+                        c_out
+                    )
+                )
         else:
             self.log(
                 "cmd {} not found".format(cmd_name),
@@ -241,7 +237,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                     el.attrib["info"],
                     cur_value,
                     el.attrib["unit"],
-                    )
+                )
             else:
                 # list mode
                 keys = s_list.xpath(".//@key", smart_strings=False)
@@ -254,7 +250,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                         logging_tools.form_entry_right(el.attrib["base"], header="base"),
                         logging_tools.form_entry(el.attrib["unit"], header="unit"),
                         logging_tools.form_entry(el.attrib["info"], header="info"),
-                        ]
+                    ]
                     for l_key in IPMI_LIMITS:
                         x_key = "limit_{}".format(l_key)
                         v_list.append(logging_tools.form_entry(el.attrib.get(x_key, "-"), header=x_key))
@@ -262,6 +258,6 @@ class ipmi_sensor_command(hm_classes.hm_command):
                 return limits.nag_STATE_OK, "found {}:\n{}".format(
                     logging_tools.get_plural("IPMI sensor", len(keys)),
                     unicode(out_list)
-                    )
+                )
         else:
             return limits.nag_STATE_WARNING, "no IPMI sensors found"

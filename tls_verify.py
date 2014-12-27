@@ -61,7 +61,9 @@ class allowed_struct(object):
                             int(from_time_str.split(":")[1])),
                         datetime.time(
                             int(to_time_str.split(":")[0]),
-                            int(to_time_str.split(":")[1])))
+                            int(to_time_str.split(":")[1])
+                        )
+                    )
                 except:
                     logger.error("error parsing from/to: {}".format(process_tools.get_except_info()))
                 else:
@@ -93,7 +95,9 @@ class allowed_struct(object):
                                 "not allowed: {} not in [{}, {}]".format(
                                     str(now_time),
                                     str(from_time),
-                                    str(to_time)))
+                                    str(to_time)
+                                )
+                            )
                             allowed = False
         return allowed
 
@@ -122,7 +126,9 @@ def main():
                         "checking X_509_name '{}' against match_list '{}', remote_ip is {}".format(
                             sys.argv[2],
                             match_name,
-                            os.environ["untrusted_ip"]))
+                            os.environ["untrusted_ip"]
+                        )
+                    )
                     # get CN (common name)
                     parts = [part.strip().split("=", 1) for part in sum([_part.split(",") for _part in sys.argv[2].split("/")], []) if part.strip().count("=")]
                     value_dict = dict([(key, value) for key, value in parts])
@@ -157,7 +163,9 @@ def main():
                                 logger.error(
                                     "CN {} not in match_list {}".format(
                                         cn,
-                                        match_name))
+                                        match_name
+                                    )
+                                )
                     else:
                         logger.critical("No CN found in X_509_name '{}'".format(sys.argv[2]))
                 else:

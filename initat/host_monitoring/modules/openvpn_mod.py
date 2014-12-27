@@ -141,8 +141,10 @@ class _general(hm_classes.hm_module):
                                 self.log(
                                     u"unable to update instance {}: {}".format(
                                         entry,
-                                        process_tools.get_except_info()),
-                                    logging_tools.LOG_LEVEL_ERROR)
+                                        process_tools.get_except_info()
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
                             else:
                                 found_inst.append(e_key)
                         else:
@@ -152,8 +154,10 @@ class _general(hm_classes.hm_module):
                                 self.log(
                                     u"unable to create new openvpn_instance for {}: {}".format(
                                         entry,
-                                        process_tools.get_except_info()),
-                                    logging_tools.LOG_LEVEL_ERROR)
+                                        process_tools.get_except_info()
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
                             else:
                                 self.__inst_dict[e_key] = new_inst
                                 found_inst.append(e_key)
@@ -162,7 +166,9 @@ class _general(hm_classes.hm_module):
                 self.log(
                     u"removing {}: {}".format(
                         logging_tools.get_plural("instance", len(old_inst)),
-                        ", ".join(sorted(old_inst))))
+                        ", ".join(sorted(old_inst))
+                    )
+                )
                 for inst in old_inst:
                     del self.__inst_dict[inst]
 
@@ -404,7 +410,7 @@ class certificate_status_command(hm_classes.hm_command):
         return self._interpret(cert_dict)
 
     def _interpret(self, cert_dict):
-        num_dict = dict([(key, 0) for key in ["ok", "warn", "error", "total"]])
+        num_dict = {key: 0 for key in ["ok", "warn", "error", "total"]}
         errors = []
         act_time = datetime.datetime.now()
         for file_name in sorted(cert_dict.keys()):
@@ -552,7 +558,8 @@ class openvpn_status_command(hm_classes.hm_command):
                         act_sdict["state"],
                         act_sdict["status"],
                         act_sdict["dict"],
-                        act_sdict["type"])
+                        act_sdict["type"]
+                    )
                     vpn_device = act_sdict.get("device", "not set")
                 if inst_ok:
                     if i_type == "client":
@@ -582,11 +589,14 @@ class openvpn_status_command(hm_classes.hm_command):
                                 ret_state = max(ret_state, self._check_single_peer(clients, vpn_device, inst_name, peer_name, res_field))
                         else:
                             if clients:
-                                res_field.append("{} (server via {}, {}: {})".format(
-                                    inst_name,
-                                    vpn_device,
-                                    logging_tools.get_plural("client", len(clients.keys())),
-                                    ",".join(sorted(clients.keys()))))
+                                res_field.append(
+                                    "{} (server via {}, {}: {})".format(
+                                        inst_name,
+                                        vpn_device,
+                                        logging_tools.get_plural("client", len(clients.keys())),
+                                        ",".join(sorted(clients.keys()))
+                                    )
+                                )
                             else:
                                 res_field.append("{} (no clients)".format(inst_name))
                     else:
