@@ -271,6 +271,8 @@ class device_serializer(serializers.ModelSerializer):
             "DeviceSNMPInfo",
             # uuid
             "uuid",
+            # active_scan
+            "active_scan",
         )
         read_only_fields = ("uuid",)
 

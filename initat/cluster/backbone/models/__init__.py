@@ -507,6 +507,17 @@ class device(models.Model):
     has_active_rrds = models.BooleanField(default=False)
     # active snmp scheme
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
+    # scan active ?
+    active_scan = models.CharField(
+        max_length=16,
+        default="",
+        choices=[
+            ("snmp", "SNMP"),
+            ("ipmi", "IPMI"),
+            # also used for partition fetch
+            ("hm", "Host monitor"),
+        ]
+    )
 
     @property
     def full_name(self):
