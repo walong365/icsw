@@ -33,8 +33,7 @@ from initat.md_config_server.config import global_config, main_config, all_comma
     all_host_dependencies, build_cache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.mixins import version_check_mixin
-from initat.md_config_server.icinga_log_reader import icinga_log_reader,\
-    host_service_id_util
+from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from lxml.builder import E  # @UnresolvedImport
 import codecs
 import commands

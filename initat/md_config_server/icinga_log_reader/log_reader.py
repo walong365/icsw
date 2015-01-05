@@ -81,6 +81,13 @@ class icinga_log_reader(object):
         '''Called periodically'''
         connection.close()
 
+        self._update_raw_data()
+        self._update_aggregated_data()
+
+    def _update_aggregated_data(self):
+        pass
+
+    def _update_raw_data(self):
         self.log("checking icinga log")
 
         # from initat.md_config_server.build import host_service_map
@@ -414,7 +421,7 @@ class icinga_log_reader(object):
         if not host:
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
-        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table
+        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
         if not state:
             raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #3)".format(info))
 
@@ -471,7 +478,7 @@ class icinga_log_reader(object):
 
         user = data[0]
         host, service, service_info = self._parse_host_service(data[1], data[2])
-        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)  # format as in db table
+        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)  # format as in db table @UndefinedVariable
         notification_type = data[4]
         msg = data[5]
         return user, host, (service, service_info), state, notification_type, msg
@@ -486,7 +493,7 @@ class icinga_log_reader(object):
 
         user = data[0]
         host = self._resolve_host(data[1])
-        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table
+        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
         notification_type = data[3]
         msg = data[4]
         return user, host, state, notification_type, msg
@@ -504,7 +511,7 @@ class icinga_log_reader(object):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table
+        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
         if not state:
             raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #4)".format(info))
 
