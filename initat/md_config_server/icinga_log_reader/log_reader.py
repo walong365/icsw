@@ -31,7 +31,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
     mon_icinga_log_raw_service_notification_data,\
-    mon_icinga_log_raw_host_notification_data
+    mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data
 from initat.cluster.backbone.models import device
 from django.db import connection
 
@@ -66,7 +66,7 @@ class icinga_log_reader(object):
         icinga_current_service_state = 'CURRENT SERVICE STATE'
         icinga_host_alert = 'HOST ALERT'
         icinga_current_host_state = 'CURRENT HOST STATE'
-        icinga_flapping_alert = 'SERVICE FLAPPING ALERT'
+        icinga_service_flapping_alert = 'SERVICE FLAPPING ALERT'
         icinga_host_notification = 'HOST NOTIFICATION'
         icinga_service_notification = 'SERVICE NOTIFICATION'
 
@@ -85,7 +85,7 @@ class icinga_log_reader(object):
         self._update_aggregated_data()
 
     def _update_aggregated_data(self):
-        pass
+        pass 
 
     def _update_raw_data(self):
         self.log("checking icinga log")
@@ -187,10 +187,11 @@ class icinga_log_reader(object):
         line_num = 0
         old_ignored = 0
         host_states = []
-        flapping_states = []
-        service_states = []
-        service_notifications = []
+        host_flapping_states = []
         host_notifications = []
+        service_states = []
+        service_flapping_states = []
+        service_notifications = []
         cur_line = None
         for line_raw in logfile:
             line_num += 1
@@ -205,10 +206,14 @@ class icinga_log_reader(object):
                         entry = self.create_host_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
                         if entry:
                             host_states.append(entry)
-                    elif cur_line.kind == self.constants.icinga_flapping_alert:
-                        entry = self.create_flapping_entry(cur_line, logfilepath, logfile_db)
+                    elif cur_line.kind == self.constants.icinga_service_flapping_alert:
+                        entry = self.create_service_flapping_entry(cur_line, logfilepath, logfile_db)
                         if entry:
-                            flapping_states.append(entry)
+                            service_flapping_states.append(entry)
+                    elif cur_line.kind == self.constants.icinga_host_flapping_alert:
+                        entry = self.create_host_flapping_entry(cur_line, logfilepath, logfile_db)
+                        if entry:
+                            host_flapping_states.append(entry)
                     elif cur_line.kind == self.constants.icinga_service_notification:
                         entry = self.create_service_notification_entry(cur_line, logfilepath, logfile_db)
                         if entry:
@@ -227,14 +232,16 @@ class icinga_log_reader(object):
 
         mon_icinga_log_raw_host_alert_data.objects.bulk_create(host_states)
         mon_icinga_log_raw_service_alert_data.objects.bulk_create(service_states)
-        mon_icinga_log_raw_service_flapping_data.objects.bulk_create(flapping_states)
+        mon_icinga_log_raw_service_flapping_data.objects.bulk_create(service_flapping_states)
+        mon_icinga_log_raw_host_flapping_data.objects.bulk_create(host_flapping_states)
         mon_icinga_log_raw_service_notification_data.objects.bulk_create(service_notifications)
         mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
         self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
-        self.log("created {} host state entries, {} service state entries, {} flapping states from {}".format(len(host_states), len(service_states),
-                                                                                                              len(flapping_states),
-                                                                                                              logfilepath if logfilepath else "cur icinga log file"))
 
+        self.log("created {} host state entries, {} service state entries from {}".format(len(host_states), len(service_states),
+                                                                                          logfilepath if logfilepath else "cur icinga log file"))
+        self.log("created {} host flapping entries, {} service flapping entries from {}".format(len(host_flapping_states), len(service_flapping_states),
+                                                                                                logfilepath if logfilepath else "cur icinga log file"))
         self.log("created {} service notifications, {} host notifications  from {}".format(len(service_notifications), len(host_notifications),
                                                                                            logfilepath if logfilepath else "cur icinga log file"))
 
@@ -320,10 +327,10 @@ class icinga_log_reader(object):
             )
         return retval
 
-    def create_flapping_entry(self, cur_line, logfilepath, logfile_db):
+    def create_service_flapping_entry(self, cur_line, logfilepath, logfile_db):
         retval = None
         try:
-            host, (service, service_info), flapping_state, msg = self._parse_flapping_alert(cur_line)
+            host, (service, service_info), flapping_state, msg = self._parse_service_flapping_alert(cur_line)
         except (self.unknown_host_error, self.unknown_service_error) as e:
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
@@ -332,6 +339,22 @@ class icinga_log_reader(object):
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
+                flapping_state=flapping_state,
+                msg=msg,
+                logfile=logfile_db,
+            )
+        return retval
+
+    def create_host_flapping_entry(self, cur_line, logfilepath, logfile_db):
+        retval = None
+        try:
+            host, flapping_state, msg = self._parse_host_flapping_alert(cur_line)
+        except (self.unknown_host_error, self.unknown_service_error) as e:
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+        else:
+            retval = mon_icinga_log_raw_host_flapping_data(
+                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                device_id=host,
                 flapping_state=flapping_state,
                 msg=msg,
                 logfile=logfile_db,
@@ -452,13 +475,13 @@ class icinga_log_reader(object):
             raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(service_spec))
         return host, service, service_info
 
-    def _parse_flapping_alert(self, cur_line):
+    def _parse_service_flapping_alert(self, cur_line):
         # format is:
         # host;service;(STARTED|STOPPED);msg
         info = cur_line.info
         data = info.split(";", 3)
         if len(data) != 4:
-            raise self.malformed_icinga_log_entry("Malformed flapping entry: {} (error #1)".format(info))
+            raise self.malformed_icinga_log_entry("Malformed service flapping entry: {} (error #1)".format(info))
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
@@ -467,6 +490,19 @@ class icinga_log_reader(object):
         msg = data[3]
 
         return host, (service, service_info), flapping_state, msg
+
+    def _parse_host_flapping_alert(self, cur_line):
+        # format is:
+        # host;(STARTED|STOPPED);msg
+        info = cur_line.info
+        data = info.split(";", 2)
+        if len(data) != 3:
+            raise self.malformed_icinga_log_entry("Malformed host flapping entry: {} (error #1)".format(info))
+
+        host = self._resolve_host(data[0])
+        flapping_state = {"STARTED": "START", "STOPPED": "STOP"}.get(data[1], None)  # format as in db table
+        msg = data[2]
+        return host, flapping_state, msg
 
     def _parse_service_notification(self, cur_line):
         # format is:
