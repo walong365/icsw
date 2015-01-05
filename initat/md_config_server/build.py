@@ -1737,7 +1737,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             info = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["display_name"] = info
             # create identifying string for log
-            act_serv["service_description"] = host_service_id_util.create_service_description(host.pk, s_check, info)
+            act_serv["service_description"] = host_service_id_util.create_host_service_description(host.pk, s_check, info)
             act_serv["host_name"] = host.full_name
             # volatile
             act_serv["is_volatile"] = "1" if serv_temp.volatile else "0"

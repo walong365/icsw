@@ -29,7 +29,7 @@ from collections import namedtuple
 from initat.md_config_server.config import global_config
 from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_host_data, mon_icinga_log_raw_service_data, mon_icinga_log_file,\
-    mon_icinga_log_last_read
+    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data
 from initat.cluster.backbone.models import device
 from django.db import connection
 
@@ -64,6 +64,7 @@ class icinga_log_reader(object):
         icinga_current_service_state = 'CURRENT SERVICE STATE'
         icinga_host_alert = 'HOST ALERT'
         icinga_current_host_state = 'CURRENT HOST STATE'
+        icinga_flapping_alert = 'SERVICE FLAPPING ALERT'
 
     def __init__(self, log):
         self.log = log
@@ -175,6 +176,7 @@ class icinga_log_reader(object):
         line_num = 0
         old_ignored = 0
         host_states = []
+        flapping_states = []
         service_states = []
         cur_line = None
         for line_raw in logfile:
@@ -190,6 +192,10 @@ class icinga_log_reader(object):
                         entry = self.create_host_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
                         if entry:
                             host_states.append(entry)
+                    elif cur_line.kind == self.constants.icinga_flapping_alert:
+                        entry = self.create_flapping_entry(cur_line, logfilepath, logfile_db)
+                        if entry:
+                            flapping_states.append(entry)
                     else:
                         pass  # line_raw is not of interest to us
                 else:
@@ -200,9 +206,11 @@ class icinga_log_reader(object):
 
         mon_icinga_log_raw_host_data.objects.bulk_create(host_states)
         mon_icinga_log_raw_service_data.objects.bulk_create(service_states)
+        mon_icinga_log_raw_service_flapping_data.objects.bulk_create(flapping_states)
         self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
-        self.log("created {} host state entries, {} service state entries from {}".format(len(host_states), len(service_states),
-                                                                                          logfilepath if logfilepath else "cur icinga log file"))
+        self.log("created {} host state entries, {} service state entries, {} flapping states from {}".format(len(host_states), len(service_states),
+                                                                                                              len(flapping_states),
+                                                                                                              logfilepath if logfilepath else "cur icinga log file"))
 
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
@@ -286,6 +294,24 @@ class icinga_log_reader(object):
             )
         return retval
 
+    def create_flapping_entry(self, cur_line, logfilepath, logfile_db):
+        retval = None
+        try:
+            host, (service, service_info), flapping_state, msg = self._parse_flapping_alert(cur_line)
+        except (self.unknown_host_error, self.unknown_service_error) as e:
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+        else:
+            retval = mon_icinga_log_raw_service_flapping_data(
+                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                device_id=host,
+                service_id=service,
+                service_info=service_info,
+                flapping_state=flapping_state,
+                msg=msg,
+                logfile=logfile_db,
+            )
+        return retval
+
     icinga_log_line = namedtuple('icinga_log_line', ('timestamp', 'kind', 'info', 'line_no'))
 
     @classmethod
@@ -320,14 +346,14 @@ class icinga_log_reader(object):
         :return (int, str, str, str)
         '''
         # format is:
-        # host;(DOWN|UP);(SOFT|HARD);???;msg
+        # host;(DOWN|UP|UNREACHABLE);(SOFT|HARD);???;msg
         info = cur_line.info
 
         data = info.split(";", 4)
         if len(data) != 5:
             raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #1)".format(info))
 
-        host = self._resolve_host(data[0], cur_line.timestamp)
+        host = self._resolve_host(data[0])
         if not host:
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
@@ -343,6 +369,41 @@ class icinga_log_reader(object):
 
         return host, state, state_type, msg
 
+    def _parse_host_service(self, host_spec, service_spec):
+        # used for service and flapping alerts
+
+        # primary method: check special service description
+        host, service, service_info = host_service_id_util.parse_host_service_description(service_spec, self.log)
+
+        if not host:
+            host = self._resolve_host(host_spec)
+        if not host:
+            # can't use data without host
+            raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(host_spec))
+
+        if not service:
+            service, service_info = self._resolve_service(service_spec)
+        # TODO: generalise to other services
+        if not service:
+            raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(service_spec))
+        return host, service, service_info
+
+    def _parse_flapping_alert(self, cur_line):
+        # format is:
+        # host;service;(STARTED|STOPPED);msg
+        info = cur_line.info
+        data = info.split(";", 3)
+        if len(data) != 4:
+            raise self.malformed_icinga_log_entry("Malformed flapping entry: {} (error #1)".format(info))
+
+        host, service, service_info = self._parse_host_service(data[0], data[1])
+
+        flapping_state = {"STARTED": "START", "STOPPED": "STOP"}.get(data[2], None)  # format as in db table
+
+        msg = data[3]
+
+        return host, (service, service_info), flapping_state, msg
+
     def _parse_service_alert(self, cur_line):
         '''
         :return (int, int, str, str, str)
@@ -353,21 +414,8 @@ class icinga_log_reader(object):
         data = info.split(";", 5)
         if len(data) != 6:
             raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #1)".format(info))
- 
-        # primary method: check special service description
-        host, service, service_info = host_service_id_util.parse_service_description(data[1], self.log)
 
-        if not host:
-            host = self._resolve_host(data[0], cur_line.timestamp)
-        if not host:
-            # can't use data without host
-            raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
-
-        if not service:
-            service, service_info = self._resolve_service(data[1], cur_line.timestamp)
-        # TODO: generalise to other services
-        if not service:
-            raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(data[1]))
+        host, service, service_info = self._parse_host_service(data[0], data[1])
 
         state = {"OK": "O", "WARNING": "W", "UNKNOWN": "U", "CRITICAL": "C"}.get(data[2], None)  # format as in db table
         if not state:
@@ -381,16 +429,16 @@ class icinga_log_reader(object):
 
         return host, (service, service_info), state, state_type, msg
 
-    def _resolve_host(self, host_spec, timestamp):
+    def _resolve_host(self, host_spec):
         '''
         @return int: pk of host or None
         '''
-        #if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
-        #    # use map for data created with this map, guess for earlier ones (see below)
-        #    retval = self._current_host_service_data.hosts.get(host_spec, None)
-        #    if not retval:
-        #        self.log("host lookup for current host {} failed, this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
-        #else:
+        # if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
+        #     # use map for data created with this map, guess for earlier ones (see below)
+        #     retval = self._current_host_service_data.hosts.get(host_spec, None)
+        #     if not retval:
+        #         self.log("host lookup for current host {} failed, this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
+        # else:
 
         retval = self._resolve_host_historic(host_spec)
 
@@ -402,14 +450,14 @@ class icinga_log_reader(object):
         '''
         return self._historic_host_map.get(host_spec, None)
 
-    def _resolve_service(self, service_spec, timestamp):
+    def _resolve_service(self, service_spec):
         # TODO: need to generalize for other service types
-        #if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
-        #    # use map for data created with this map, guess for earlier ones (see below)
-        #    retval = (self._current_host_service_data.services.get(service_spec, None), None)
-        #    if not retval[0]:
-        #        self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
-        #else:
+        # if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
+        #     # use map for data created with this map, guess for earlier ones (see below)
+        #     retval = (self._current_host_service_data.services.get(service_spec, None), None)
+        #     if not retval[0]:
+        #         self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
+        # else:
         retval = (self._resolve_service_historic(service_spec), None)
         return retval
 
@@ -425,8 +473,24 @@ class icinga_log_reader(object):
 
 class host_service_id_util(object):
 
+    """
+    NOTE: we could also encode hosts like this, but then we need to always use this host identification
+          throughout all of the icinga config, which does not seem worth it as it then becomes hard to read.
     @classmethod
-    def create_service_description(cls, host_pk, s_check, info):
+    def create_host_description(cls, host_pk):
+        return "host:{}".format(host_pk)
+
+    @classmethod
+    def parse_host_description(cls, host_spec):
+        data = host_spec.split(":")
+        if len(data) == 2:
+            if data[0] == 'host':
+                return int(data[1])
+        return None
+    """
+
+    @classmethod
+    def create_host_service_description(cls, host_pk, s_check, info):
         '''
         Create a string by which we can identify the service. Used to write to icinga log file.
         '''
@@ -437,15 +501,14 @@ class host_service_id_util(object):
             # since a mon_check_command_pk can have multiple actual service checks, we add the info string to identify it
             # as the services are created dynamically, we don't have a nice db pk
             retval = "host_check:{}:{}:{}".format(host_pk, s_check.check_command_pk, info)
-            # add host info?
         else:
             retval = "unstructured:" + info
         return retval
 
     @classmethod
-    def parse_service_description(cls, service_spec, log=None):
+    def parse_host_service_description(cls, service_spec, log=None):
         '''
-        "Inverse" of create_service_description
+        "Inverse" of create_host_service_description
         '''
         data = service_spec.split(':', 1)
         retval = (None, None, None)
@@ -454,7 +517,7 @@ class host_service_id_util(object):
                 service_data = data[1].split(":")
                 if len(service_data) == 3:
                     host_pk, service_pk, info = service_data
-                    retval = (host_pk, service_pk, info)
+                    retval = (int(host_pk), int(service_pk), info)
             elif data[0] == 'unstructured':
                 pass
             else:
