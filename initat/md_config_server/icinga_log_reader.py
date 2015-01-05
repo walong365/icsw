@@ -28,8 +28,10 @@ from collections import namedtuple
 
 from initat.md_config_server.config import global_config
 from initat.cluster.backbone.models.monitoring import mon_check_command,\
-    mon_icinga_log_raw_host_data, mon_icinga_log_raw_service_data, mon_icinga_log_file,\
-    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data
+    mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
+    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
+    mon_icinga_log_raw_service_notification_data,\
+    mon_icinga_log_raw_host_notification_data
 from initat.cluster.backbone.models import device
 from django.db import connection
 
@@ -65,6 +67,8 @@ class icinga_log_reader(object):
         icinga_host_alert = 'HOST ALERT'
         icinga_current_host_state = 'CURRENT HOST STATE'
         icinga_flapping_alert = 'SERVICE FLAPPING ALERT'
+        icinga_host_notification = 'HOST NOTIFICATION'
+        icinga_service_notification = 'SERVICE NOTIFICATION'
 
     def __init__(self, log):
         self.log = log
@@ -178,6 +182,8 @@ class icinga_log_reader(object):
         host_states = []
         flapping_states = []
         service_states = []
+        service_notifications = []
+        host_notifications = []
         cur_line = None
         for line_raw in logfile:
             line_num += 1
@@ -196,6 +202,14 @@ class icinga_log_reader(object):
                         entry = self.create_flapping_entry(cur_line, logfilepath, logfile_db)
                         if entry:
                             flapping_states.append(entry)
+                    elif cur_line.kind == self.constants.icinga_service_notification:
+                        entry = self.create_service_notification_entry(cur_line, logfilepath, logfile_db)
+                        if entry:
+                            service_notifications.append(entry)
+                    elif cur_line.kind == self.constants.icinga_host_notification:
+                        entry = self.create_host_notification_entry(cur_line, logfilepath, logfile_db)
+                        if entry:
+                            host_notifications.append(entry)
                     else:
                         pass  # line_raw is not of interest to us
                 else:
@@ -204,13 +218,18 @@ class icinga_log_reader(object):
             except self.malformed_icinga_log_entry as e:
                 self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
 
-        mon_icinga_log_raw_host_data.objects.bulk_create(host_states)
-        mon_icinga_log_raw_service_data.objects.bulk_create(service_states)
+        mon_icinga_log_raw_host_alert_data.objects.bulk_create(host_states)
+        mon_icinga_log_raw_service_alert_data.objects.bulk_create(service_states)
         mon_icinga_log_raw_service_flapping_data.objects.bulk_create(flapping_states)
+        mon_icinga_log_raw_service_notification_data.objects.bulk_create(service_notifications)
+        mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
         self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
         self.log("created {} host state entries, {} service state entries, {} flapping states from {}".format(len(host_states), len(service_states),
                                                                                                               len(flapping_states),
                                                                                                               logfilepath if logfilepath else "cur icinga log file"))
+
+        self.log("created {} service notifications, {} host notifications  from {}".format(len(service_notifications), len(host_notifications),
+                                                                                           logfilepath if logfilepath else "cur icinga log file"))
 
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
@@ -262,7 +281,7 @@ class icinga_log_reader(object):
         except self.unknown_host_error as e:
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
-            retval = mon_icinga_log_raw_host_data(
+            retval = mon_icinga_log_raw_host_alert_data(
                 date=datetime.datetime.fromtimestamp(cur_line.timestamp),
                 device_id=host,
                 state_type=state_type,
@@ -281,7 +300,7 @@ class icinga_log_reader(object):
         except (self.unknown_host_error, self.unknown_service_error) as e:
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
-            retval = mon_icinga_log_raw_service_data(
+            retval = mon_icinga_log_raw_service_alert_data(
                 date=datetime.datetime.fromtimestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
@@ -307,6 +326,44 @@ class icinga_log_reader(object):
                 service_id=service,
                 service_info=service_info,
                 flapping_state=flapping_state,
+                msg=msg,
+                logfile=logfile_db,
+            )
+        return retval
+
+    def create_service_notification_entry(self, cur_line, logfilepath, logfile_db):
+        retval = None
+        try:
+            user, host, (service, service_info), state, notification_type, msg = self._parse_service_notification(cur_line)
+        except (self.unknown_host_error, self.unknown_service_error) as e:
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+        else:
+            retval = mon_icinga_log_raw_service_notification_data(
+                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                device_id=host,
+                service_id=service,
+                service_info=service_info,
+                state=state,
+                user=user,
+                notification_type=notification_type,
+                msg=msg,
+                logfile=logfile_db,
+            )
+        return retval
+
+    def create_host_notification_entry(self, cur_line, logfilepath, logfile_db):
+        retval = None
+        try:
+            user, host, state, notification_type, msg = self._parse_host_notification(cur_line)
+        except (self.unknown_host_error, self.unknown_service_error) as e:
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+        else:
+            retval = mon_icinga_log_raw_host_notification_data(
+                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                device_id=host,
+                state=state,
+                user=user,
+                notification_type=notification_type,
                 msg=msg,
                 logfile=logfile_db,
             )
@@ -357,7 +414,7 @@ class icinga_log_reader(object):
         if not host:
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
-        state = {"DOWN": "D", "UP": "UP", "UNREACHABLE": "UR"}.get(data[1], None)  # format as in db table
+        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #3)".format(info))
 
@@ -404,6 +461,36 @@ class icinga_log_reader(object):
 
         return host, (service, service_info), flapping_state, msg
 
+    def _parse_service_notification(self, cur_line):
+        # format is:
+        # user;host;service;($service_state);notification_type,msg
+        info = cur_line.info
+        data = info.split(";", 5)
+        if len(data) != 6:
+            raise self.malformed_icinga_log_entry("Malformed service notification entry: {} (error #1)".format(info))
+
+        user = data[0]
+        host, service, service_info = self._parse_host_service(data[1], data[2])
+        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)  # format as in db table
+        notification_type = data[4]
+        msg = data[5]
+        return user, host, (service, service_info), state, notification_type, msg
+
+    def _parse_host_notification(self, cur_line):
+        # format is:
+        # user;host;($host_state);notification_type,msg
+        info = cur_line.info
+        data = info.split(";", 4)
+        if len(data) != 5:
+            raise self.malformed_icinga_log_entry("Malformed service notification entry: {} (error #1)".format(info))
+
+        user = data[0]
+        host = self._resolve_host(data[1])
+        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table
+        notification_type = data[3]
+        msg = data[4]
+        return user, host, state, notification_type, msg
+
     def _parse_service_alert(self, cur_line):
         '''
         :return (int, int, str, str, str)
@@ -417,7 +504,7 @@ class icinga_log_reader(object):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        state = {"OK": "O", "WARNING": "W", "UNKNOWN": "U", "CRITICAL": "C"}.get(data[2], None)  # format as in db table
+        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #4)".format(info))
 
