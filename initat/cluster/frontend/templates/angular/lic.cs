@@ -97,7 +97,28 @@ lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.licdaterangestart = moment("Tue Oct 07 2014 00:00:00 GMT+0200 (CEST)")
         #$scope.cur_time = "Wed Oct 15 2014 00:00:00 GMT+0200 (CEST)"
 
-]).directive("licgraph", ["$templateCache", "$resource", ($templateCache, $resource) ->
+]).directive("licd3graph", ["$templateCache", "$resource", ($templateCache, $resource) ->
+    return {
+        restrict : "EA"
+        template : """
+{% verbatim %}
+<div ng-if="dimpleloaded">
+
+</div>
+{% endverbatim %}
+"""
+        scope : {
+            timerange: '='
+            dimpleloaded: '='
+            licdaterangestart: '='
+            viewmode: '='
+        }
+        link : (scope, el, attrs) ->
+            # can't reuse other attributes as they are shared with parent scope
+            scope.fixed_range = attrs.fixedtimerange? && attrs.fixedlicdaterangestart?
+            scope.lic_id = attrs.lic
+            scope.lic_name = attrs.licname
+}]).directive("licgraph", ["$templateCache", "$resource", ($templateCache, $resource) ->
     return {
         restrict : "EA"
         template : """
