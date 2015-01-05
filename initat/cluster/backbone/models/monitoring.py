@@ -1241,6 +1241,23 @@ class mon_icinga_log_raw_service_data(models.Model):
         app_label = "backbone"
 
 
+class mon_icinga_log_raw_service_flapping_data(models.Model):
+    idx = models.AutoField(primary_key=True)
+    date = models.DateTimeField()
+    device = models.ForeignKey("backbone.device")
+
+    # see comment in mon_icinga_log_raw_service_data
+    service = models.ForeignKey(mon_check_command)
+    service_info = models.TextField(blank=True, null=True)
+
+    flapping_state = models.CharField(max_length=5, choices=[("START", "START"), ("STOP", "STOP")])
+    msg = models.TextField()
+    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
+
+    class Meta:
+        app_label = "backbone"
+
+
 class mon_icinga_log_file(models.Model):
     idx = models.AutoField(primary_key=True)
     filepath = models.TextField()
