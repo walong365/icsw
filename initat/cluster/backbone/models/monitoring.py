@@ -62,8 +62,8 @@ __all__ = [
     "snmp_scheme_vendor",
     "snmp_scheme",
     "snmp_scheme_tl_oid",
-    "mon_icinga_log_raw_host_data",
-    "mon_icinga_log_raw_service_data",
+    "mon_icinga_log_raw_host_alert_data",
+    "mon_icinga_log_raw_service_alert_data",
     "mon_icinga_log_file",
     "mon_icinga_log_last_read",
 ]
@@ -1205,12 +1205,14 @@ class monitoring_hint(models.Model):
         ordering = ("m_type", "key",)
 
 
-class mon_icinga_log_raw_host_data(models.Model):
+class mon_icinga_log_raw_host_alert_data(models.Model):
+    STATE_CHOICES = [("UP", "UP"), ("D", "DOWN"), ("UR", "UNREACHABLE")]  # Up and Down
+    STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField()
     device = models.ForeignKey("backbone.device", null=True)
     state_type = models.CharField(max_length=1, choices=[("H", "HARD"), ("S", "SOFT")])  # Hard and Soft
-    state = models.CharField(max_length=2, choices=[("UP", "UP"), ("D", "DOWN"), ("UR", "UNREACHABLE")])  # Up and Down
+    state = models.CharField(max_length=2, choices=STATE_CHOICES)
     full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
     msg = models.TextField()
     logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
@@ -1219,7 +1221,9 @@ class mon_icinga_log_raw_host_data(models.Model):
         app_label = "backbone"
 
 
-class mon_icinga_log_raw_service_data(models.Model):
+class mon_icinga_log_raw_service_alert_data(models.Model):
+    STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL")]  # OK, WARNING, UNKNOWN, CRITICAL
+    STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField()
     device = models.ForeignKey("backbone.device")
@@ -1231,8 +1235,8 @@ class mon_icinga_log_raw_service_data(models.Model):
     service = models.ForeignKey(mon_check_command)
     service_info = models.TextField(blank=True, null=True)
 
-    state_type = models.CharField(max_length=1, choices=[("H", "Hard"), ("S", "Soft")])  # Hard and Soft
-    state = models.CharField(max_length=1, choices=[("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL")])  # OK, WARNING, UNKNOWN, CRITICAL
+    state_type = models.CharField(max_length=1, choices=[("H", "HARD"), ("S", "SOFT")])  # Hard and Soft
+    state = models.CharField(max_length=1, choices=STATE_CHOICES)
     full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
     msg = models.TextField()
     logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
@@ -1246,12 +1250,46 @@ class mon_icinga_log_raw_service_flapping_data(models.Model):
     date = models.DateTimeField()
     device = models.ForeignKey("backbone.device")
 
-    # see comment in mon_icinga_log_raw_service_data
+    # see comment in mon_icinga_log_raw_service_alert_data
     service = models.ForeignKey(mon_check_command)
     service_info = models.TextField(blank=True, null=True)
 
     flapping_state = models.CharField(max_length=5, choices=[("START", "START"), ("STOP", "STOP")])
     msg = models.TextField()
+    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
+
+    class Meta:
+        app_label = "backbone"
+
+
+class mon_icinga_log_raw_service_notification_data(models.Model):
+    idx = models.AutoField(primary_key=True)
+    date = models.DateTimeField()
+    device = models.ForeignKey("backbone.device")
+
+    # see comment in mon_icinga_log_raw_service_alert_data
+    service = models.ForeignKey(mon_check_command)
+    service_info = models.TextField(blank=True, null=True)
+
+    state = models.CharField(max_length=2, choices=mon_icinga_log_raw_service_alert_data.STATE_CHOICES)
+    msg = models.TextField()
+    user = models.TextField()
+    notification_type = models.TextField()
+    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
+
+    class Meta:
+        app_label = "backbone"
+
+
+class mon_icinga_log_raw_host_notification_data(models.Model):
+    idx = models.AutoField(primary_key=True)
+    date = models.DateTimeField()
+    device = models.ForeignKey("backbone.device")
+
+    state = models.CharField(max_length=2, choices=mon_icinga_log_raw_host_alert_data.STATE_CHOICES)
+    msg = models.TextField()
+    user = models.TextField()
+    notification_type = models.TextField()
     logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
 
     class Meta:
