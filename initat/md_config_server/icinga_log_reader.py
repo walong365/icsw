@@ -35,7 +35,7 @@ from django.db import connection
 
 __all__ = [
     "icinga_log_reader",
-    "service_id_util",
+    "host_service_id_util",
 ]
 
 
@@ -78,11 +78,12 @@ class icinga_log_reader(object):
 
         self.log("checking icinga log")
 
-        from initat.md_config_server.build import host_service_map
-        self._current_host_service_data = host_service_map.get_mapping(self.log)
+        # from initat.md_config_server.build import host_service_map
+        # self._current_host_service_data = host_service_map.get_mapping(self.log)
+
         # NOTE: currently used for hosts, but if we encode hosts in the service_description, we don't even need that anymore
-        if self._current_host_service_data:
-            self.log("using host service map from {}".format(datetime.datetime.fromtimestamp(self._current_host_service_data.timestamp)))
+        # if self._current_host_service_data:
+        #   self.log("using host service map from {}".format(datetime.datetime.fromtimestamp(self._current_host_service_data.timestamp)))
 
         # check where we last have read for log rotation
         if mon_icinga_log_last_read.objects.all():
@@ -352,13 +353,18 @@ class icinga_log_reader(object):
         data = info.split(";", 5)
         if len(data) != 6:
             raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #1)".format(info))
+ 
+        # primary method: check special service description
+        host, service, service_info = host_service_id_util.parse_service_description(data[1], self.log)
 
-        host = self._resolve_host(data[0], cur_line.timestamp)
+        if not host:
+            host = self._resolve_host(data[0], cur_line.timestamp)
         if not host:
             # can't use data without host
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
-        service, service_info = self._resolve_service(data[1], cur_line.timestamp)
+        if not service:
+            service, service_info = self._resolve_service(data[1], cur_line.timestamp)
         # TODO: generalise to other services
         if not service:
             raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(data[1]))
@@ -379,36 +385,32 @@ class icinga_log_reader(object):
         '''
         @return int: pk of host or None
         '''
-        if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
-            # use map for data created with this map, guess for earlier ones (see below)
-            retval = self._current_host_service_data.hosts.get(host_spec, None)
-            if not retval:
-                self.log("host lookup for current host {} failed, this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
-        else:
-            retval = self._resolve_host_historic(host_spec)
+        #if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
+        #    # use map for data created with this map, guess for earlier ones (see below)
+        #    retval = self._current_host_service_data.hosts.get(host_spec, None)
+        #    if not retval:
+        #        self.log("host lookup for current host {} failed, this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
+        #else:
+
+        retval = self._resolve_host_historic(host_spec)
+
         return retval
 
     def _resolve_host_historic(self, host_spec):
         '''
         @return int: pk of host or None
         '''
-        retval = self._historic_host_map.get(host_spec, None)
-        if not retval and self._current_host_service_data:
-            # try also last map
-            retval = self._current_host_service_data.hosts.get(host_spec, None)
-        return retval
+        return self._historic_host_map.get(host_spec, None)
 
     def _resolve_service(self, service_spec, timestamp):
-        retval = service_id_util.parse_service_description(service_spec, self.log)
         # TODO: need to generalize for other service types
-        if retval[0] is None:
-            if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
-                # use map for data created with this map, guess for earlier ones (see below)
-                retval = (self._current_host_service_data.services.get(service_spec, None), None)
-                if not retval[0]:
-                    self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
-            else:
-                retval = (self._resolve_service_historic(service_spec), None)
+        #if self._current_host_service_data and timestamp >= self._current_host_service_data.timestamp:
+        #    # use map for data created with this map, guess for earlier ones (see below)
+        #    retval = (self._current_host_service_data.services.get(service_spec, None), None)
+        #    if not retval[0]:
+        #        self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
+        #else:
+        retval = (self._resolve_service_historic(service_spec), None)
         return retval
 
     def _resolve_service_historic(self, service_spec):
@@ -418,17 +420,13 @@ class icinga_log_reader(object):
         # we can't really know which services have been defined in the past, so we just check
         # the check command description. This works only for check commands with 1 service, so
         # excludes all special commands and cluster commands.
-        retval = self._historic_service_map.get(service_spec.replace(" ", "_").lower(), None)
-        # try also last map if available
-        if not retval and self._current_host_service_data:
-            retval = self._current_host_service_data.services.get(service_spec, None)
-        return retval
+        return self._historic_service_map.get(service_spec.replace(" ", "_").lower(), None)
 
 
-class service_id_util(object):
+class host_service_id_util(object):
 
     @classmethod
-    def create_service_description(cls, s_check, info):
+    def create_service_description(cls, host_pk, s_check, info):
         '''
         Create a string by which we can identify the service. Used to write to icinga log file.
         '''
@@ -438,7 +436,7 @@ class service_id_util(object):
             # format is: service_check:${mon_check_command_pk}:$info
             # since a mon_check_command_pk can have multiple actual service checks, we add the info string to identify it
             # as the services are created dynamically, we don't have a nice db pk
-            retval = "host_check:{}:{}".format(s_check.check_command_pk, info)
+            retval = "host_check:{}:{}:{}".format(host_pk, s_check.check_command_pk, info)
             # add host info?
         else:
             retval = "unstructured:" + info
@@ -450,13 +448,13 @@ class service_id_util(object):
         "Inverse" of create_service_description
         '''
         data = service_spec.split(':', 1)
-        retval = (None, None)
+        retval = (None, None, None)
         if len(data) == 2:
             if data[0] == 'host_check':
                 service_data = data[1].split(":")
-                if len(service_data) == 2:
-                    pk, info = service_data
-                    retval = (pk, info)
+                if len(service_data) == 3:
+                    host_pk, service_pk, info = service_data
+                    retval = (host_pk, service_pk, info)
             elif data[0] == 'unstructured':
                 pass
             else:

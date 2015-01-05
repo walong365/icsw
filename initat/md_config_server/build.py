@@ -34,7 +34,7 @@ from initat.md_config_server.config import global_config, main_config, all_comma
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.icinga_log_reader import icinga_log_reader,\
-    service_id_util
+    host_service_id_util
 from lxml.builder import E  # @UnresolvedImport
 import codecs
 import commands
@@ -84,7 +84,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         # ready (check_for_slaves called)
         self.__ready = False
 
-        self.__host_service_map = host_service_map(self.log)
+        # self.__host_service_map = host_service_map(self.log)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -352,7 +352,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
 
     def _rebuild_config(self, *args, **kwargs):
-        self.__host_service_map.start_collecting()
+        # self.__host_service_map.start_collecting()
 
         single_build = True if len(args) > 0 else False
         if not single_build:
@@ -517,7 +517,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 self.log("{:5d} {}".format(q_idx, act_sql["sql"][:180]))
-        self.__host_service_map.end_collecting()
+        # self.__host_service_map.end_collecting()
         del self.gc
         if single_build:
             return res_node
@@ -1717,11 +1717,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         )
         ret_field = []
 
-        self.__host_service_map.add_host(host.full_name, host.pk)
+        # self.__host_service_map.add_host(host.full_name, host.pk)
 
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
-            self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
+            # self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
             act_serv = mon_config("service", arg_temp.info)
             # event handlers
             if s_check.event_handler:
@@ -1737,7 +1737,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             info = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["display_name"] = info
             # create identifying string for log
-            act_serv["service_description"] = service_id_util.create_service_description(s_check, info)
+            act_serv["service_description"] = host_service_id_util.create_service_description(host.pk, s_check, info)
             act_serv["host_name"] = host.full_name
             # volatile
             act_serv["is_volatile"] = "1" if serv_temp.volatile else "0"
@@ -1838,6 +1838,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
 
 class host_service_map(object):
     """
+    UNUSED
+
     here, we save the host and services we tell icinga
     then we can later resolve it when parsing the logs
     """
