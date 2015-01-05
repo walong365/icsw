@@ -38,7 +38,7 @@ global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 class config_dir(content_emitter):
     def __init__(self, name, gen_conf, build_proc):
-        self.name = "%s.d" % (name)
+        self.name = "{}.d".format(name)
         self.__build_proc = build_proc
         self.host_pks = set()
         self.refresh(gen_conf)
@@ -87,22 +87,24 @@ class config_dir(content_emitter):
         cfg_written = []
         # check for missing files, FIXME
         cfg_dir = os.path.join(etc_dir, self.name)
-        self.log("creating entries in %s" % (cfg_dir))
+        self.log("creating entries in {}".format(cfg_dir))
         new_entries = set()
         for key in sorted(self.keys()):
-            new_entries.add("%s.cfg" % (key))
-            cfg_name = os.path.join(cfg_dir, "%s.cfg" % (key))
+            new_entries.add("{}.cfg".format(key))
+            cfg_name = os.path.join(cfg_dir, "{}.cfg".format(key))
             # check for changed content, FIXME
             content = self._create_sub_content(key)
             try:
                 codecs.open(cfg_name, "w", "utf-8").write(u"\n".join(content + [u""]))
             except IOError:
                 self.log(
-                    "Error writing content of %s to %s: %s" % (
+                    "Error writing content of {} to {}: {}".format(
                         key,
                         cfg_name,
-                        process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_CRITICAL)
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
             else:
                 os.chmod(cfg_name, 0644)
                 cfg_written.append(key)
@@ -147,7 +149,7 @@ class config_dir(content_emitter):
             for entry in value:
                 if entry.obj_type != prev_tag:
                     if entry.obj_type not in res_dict:
-                        res_xml = getattr(E, "%s_list" % (entry.obj_type))()
+                        res_xml = getattr(E, "{}_list".format(entry.obj_type))()
                         res_dict[entry.obj_type] = res_xml
                     else:
                         res_xml = res_dict[entry.obj_type]

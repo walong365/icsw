@@ -97,7 +97,9 @@ class syncer_process(threading_tools.process_obj):
         if not self.__register_timer:
             self.__register_timer = True
             self.register_func("relayer_info", self._relayer_info)
-            self.register_timer(self._send_register_msg, 600, instant=global_config["DEBUG"])
+            _reg_timeout, _first_timeout = (600, 15)
+            self.log("will send register_msg in {:d} (then {:d}) seconds".format(_first_timeout, _reg_timeout))
+            self.register_timer(self._send_register_msg, _reg_timeout, instant=global_config["DEBUG"], first_timeout=_first_timeout)
 
     def _send_register_msg(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
