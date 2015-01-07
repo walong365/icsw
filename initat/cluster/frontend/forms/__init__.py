@@ -164,7 +164,7 @@ class device_info_form(ModelForm):
     <label class='control-label col-sm-3'>
         Monitoring hints
     </label>
-    <div class='col-sm-9'>
+    <div class='col-sm-9 form-control-static'>
         {% verbatim %}{{ get_monitoring_hint_info() }}{% endverbatim %}
     </div>
 </div>

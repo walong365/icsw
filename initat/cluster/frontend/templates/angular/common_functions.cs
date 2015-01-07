@@ -950,6 +950,7 @@ class angular_edit_mixin
     modify_data_after_post: (data) =>
         # dummy, override in app
     create_or_edit : (event, create_or_edit, obj) =>
+        @closed = false
         @scope._edit_obj = obj
         @scope.pre_edit_obj = angular.copy(obj)
         @scope.create_mode = create_or_edit
@@ -1006,6 +1007,9 @@ class angular_edit_mixin
         @scope.active_aem = undefined
         if @edit_div
             @edit_div.remove()
+        if @use_promise and not @closed
+            # added to catch close events
+            return @_prom.resolve(false)
         return null
     form_error : (field_name) =>
         # hm, hack. needed in partition_table.cs / part_overview.html
@@ -1015,6 +1019,7 @@ class angular_edit_mixin
             else
                 return "has-error"
     modify : () ->
+        @closed = true
         if not @child_scope.form.$invalid
             if @scope.create_mode
                 @create_rest_url.post(@scope.new_obj).then(
