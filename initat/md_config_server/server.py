@@ -72,6 +72,10 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self._log_config()
         self._init_network_sockets()
         self._icinga_log_reader = icinga_log_reader(self.log)
+
+        #self._update_icinga_log_reader()
+        #import sys; sys.exit(5)
+
         if "MD_TYPE" in global_config:
             self.register_func("register_slave", self._register_slave)
             self.register_func("send_command", self._send_command)

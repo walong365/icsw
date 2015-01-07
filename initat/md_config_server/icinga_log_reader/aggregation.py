@@ -1,0 +1,208 @@
+# Copyright (C) 2015 Bernhard Mallinger, init.at
+#
+# this file is part of md-config-server
+#
+# Send feedback to: <mallinger@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+import logging_tools
+import os
+import datetime
+import calendar
+import glob
+import itertools
+import pprint  # @UnusedImport
+from collections import namedtuple, defaultdict
+
+from initat.md_config_server.config import global_config
+from initat.cluster.backbone.models.monitoring import mon_check_command,\
+    mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
+    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
+    mon_icinga_log_raw_service_notification_data,\
+    mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
+    mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base
+from initat.cluster.backbone.models import device
+from django.db import connection
+from initat.cluster.backbone.models import duration
+from initat.cluster.backbone.models.functions import cluster_timezone
+
+__all__ = [
+]
+
+
+# itertools recipe
+def pairwise(iterable):
+    "s -> (s0,s1), (s1,s2), (s2, s3), ..."
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return itertools.izip(a, b)
+
+
+class icinga_log_aggregator(object):
+    def __init__(self, log):
+        self.log = log
+
+    def update(self):
+        #  for duration_type in (duration.Hour, duration.Day, duration.Month):
+        for duration_type in (duration.Day, ):
+            self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
+            # hosts
+            try:
+                last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
+                next_start_time = last_entry.end_date
+                self.log("last icinga aggregated entry for {} from {} to {}".format(duration_type.__name__, last_entry.start_date, last_entry.end_date))
+            except mon_icinga_log_aggregated_timespan.DoesNotExist:
+                earliest_date = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
+                next_start_time = duration_type.get_time_frame_start(earliest_date)
+                self.log("no archive data for duration type {}, starting new data at {}".format(duration_type.__name__, next_start_time))
+
+            do_loop = True
+            while do_loop:
+                next_end_time = duration_type.get_end_time_for_start(next_start_time)
+                last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
+                if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(last_read_obj.timestamp, cluster_timezone):  # have sufficient data
+                    self.log("creating entry for {}", next_start_time)
+                    self._create_timespan_entry(next_start_time, next_end_time, duration_type)
+                else:
+                    self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
+                    do_loop = False
+
+                next_start_time = next_end_time
+
+    def _create_timespan_entry(self, start_time, end_time, duration_type):
+        host_db_rows = []
+
+        for device_id in mon_icinga_log_raw_host_alert_data.objects.values_list("device", flat=True).distinct():
+
+            # need to find last state
+            try:
+                latest_earlier_entry = mon_icinga_log_raw_host_alert_data.objects.filter(device=device_id, date__lte=start_time).latest('date')
+                state_description_before = latest_earlier_entry.state, latest_earlier_entry.state_type
+            except mon_icinga_log_raw_host_alert_data.DoesNotExist:
+                state_description_before = mon_icinga_log_aggregated_host_data.STATE_UNDETERMINED, mon_icinga_log_aggregated_host_data.STATE_UNDETERMINED
+
+            timespan_seconds = (end_time - start_time).total_seconds()
+
+            weighted_states = defaultdict(lambda: 0.0)
+
+            # regular changes in time span
+            relevant_entries = mon_icinga_log_raw_host_alert_data.objects.filter(device=device_id, date__range=(start_time, end_time)).order_by('date')
+            for raw_entry1, raw_entry2 in pairwise(relevant_entries):
+                entry_timespan_seconds = (raw_entry2.date - raw_entry1.date).total_seconds()
+                entry_weight = entry_timespan_seconds / timespan_seconds
+
+                weighted_states[(raw_entry1.state, raw_entry1.state_type)] += entry_weight
+
+            # first/last
+            if not relevant_entries:
+                # always state before
+                weighted_states[state_description_before] += 1.0
+            else:
+                # at least one entry
+                # first
+                first_entry_timespan_seconds = (relevant_entries[0].date - start_time).total_seconds()
+                first_entry_weight = first_entry_timespan_seconds / timespan_seconds
+
+                weighted_states[state_description_before] += first_entry_weight
+
+                # last
+                last_entry = relevant_entries[len(relevant_entries)-1]
+                last_entry_timespan_seconds = (end_time - last_entry.date).total_seconds()
+                last_entry_weight = last_entry_timespan_seconds / timespan_seconds
+
+                weighted_states[(last_entry.state, last_entry.state_type)] += last_entry_weight
+
+            # flapping
+            # check if we start in flapping state
+            def calc_flapping_ratio():
+                start_in_flapping_state = False
+                flap_throughout_timespan = False
+                try:
+                    last_flap_start = mon_icinga_log_raw_host_flapping_data.objects.filter(date__lte=start_time, flapping_state="START").latest('date')
+                except mon_icinga_log_raw_host_flapping_data.DoesNotExist:
+                    pass  # have never flapped
+                else:
+                    try:
+                        end_of_last_flap_start = mon_icinga_log_raw_host_flapping_data.objects.filter(date__gte=last_flap_start.date, flapping_state="STOP")
+                    except mon_icinga_log_raw_host_flapping_data.DoesNotExist:
+                        # flapping up to now
+                        start_in_flapping_state = True
+                        flap_throughout_timespan = True
+                    else:
+                        # have stopped flapping, check if in or after start of cur time span
+                        start_in_flapping_state = end_of_last_flap_start.date > start_time
+
+                # calc flapping time
+                if flap_throughout_timespan:
+                    ratio_flapping = 1.0
+                else:
+                    relevant_flap_entries = mon_icinga_log_raw_host_flapping_data.objects.filter(date__range=(start_time, end_time)).order_by('date')
+                    flapping_seconds = 0.0
+                    if relevant_flap_entries:
+                        if start_in_flapping_state:
+                            flapping_seconds += (relevant_flap_entries[0].date - start_time).total_seconds()
+
+                        for (entry1, entry2) in pairwise(relevant_flap_entries):
+                            if entry1.flapping_state == 'START' and entry2.flapping_state == 'STOP':
+                                flapping_seconds += (entry2.date - entry1.date).total_seconds()
+
+                        last_flap_entry = relevant_flap_entries[len(relevant_flap_entries)-1]
+                        if last_flap_entry.flapping_state == 'START':
+                            # flapping through end
+                            flapping_seconds += (end_time - last_flap_entry.date).total_seconds()
+
+                    ratio_flapping = flapping_seconds / timespan_seconds
+                return ratio_flapping
+
+            weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING, mon_icinga_log_aggregated_host_data.STATE_FLAPPING)] = calc_flapping_ratio()
+
+            timespan_db = mon_icinga_log_aggregated_timespan.objects.create(
+                start_date=start_time,
+                end_date=end_time,
+                duration=(end_time-start_time).total_seconds(),
+                duration_type=duration_type.ID,
+            )
+
+            for ((state, state_type), value) in weighted_states.iteritems():
+                host_db_rows.append(
+                    mon_icinga_log_aggregated_host_data(
+                        state=state,
+                        state_type=state_type,
+                        value=value,
+                        timespan=timespan_db,
+                        device_id=device_id,
+                    )
+                )
+
+            print sum(weighted_states.itervalues())
+            if abs(sum(weighted_states.itervalues())-1.0) > 0.01:
+                self.log("missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}".format(device_id, start_time, end_time,
+                                                                                                                     duration_type.__name__,
+                                                                                                                     sum(weighted_states.itervalues())))
+
+        print 'new host entries: ', len(host_db_rows)
+        mon_icinga_log_aggregated_host_data.objects.bulk_create(host_db_rows)
+
+
+
+
+
+
+
+
+            # TODO: services
+
+

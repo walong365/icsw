@@ -34,6 +34,8 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data
 from initat.cluster.backbone.models import device
 from django.db import connection
+from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
+import collections
 
 __all__ = [
     "icinga_log_reader",
@@ -66,29 +68,39 @@ class icinga_log_reader(object):
         icinga_current_service_state = 'CURRENT SERVICE STATE'
         icinga_host_alert = 'HOST ALERT'
         icinga_current_host_state = 'CURRENT HOST STATE'
+        icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
         icinga_service_flapping_alert = 'SERVICE FLAPPING ALERT'
         icinga_host_notification = 'HOST NOTIFICATION'
         icinga_service_notification = 'SERVICE NOTIFICATION'
 
     def __init__(self, log):
+
+        def my_log(msg, level=""):
+            with open("/tmp/myicingalog", "a") as f:
+                f.write("{}: {}\n".format(level, msg))
+
+        log = my_log
+
         self.log = log
         self._historic_service_map = {description.replace(" ", "_").lower(): pk
                                       for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
         self._historic_host_map = {entry.full_name: entry.pk for entry in device.objects.all()}
         # pprint.pprint(self._historic_service_map)
 
+        self._icinga_log_aggregator = icinga_log_aggregator(log)
+
     def update(self):
         '''Called periodically'''
         connection.close()
 
         self._update_raw_data()
-        self._update_aggregated_data()
-
-    def _update_aggregated_data(self):
-        pass 
+        self._icinga_log_aggregator.update()
 
     def _update_raw_data(self):
         self.log("checking icinga log")
+
+        #TODO: check icinga running via logfile and for current updates via pid:
+        icinga_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
 
         # from initat.md_config_server.build import host_service_map
         # self._current_host_service_data = host_service_map.get_mapping(self.log)
@@ -98,8 +110,8 @@ class icinga_log_reader(object):
         #   self.log("using host service map from {}".format(datetime.datetime.fromtimestamp(self._current_host_service_data.timestamp)))
 
         # check where we last have read for log rotation
-        if mon_icinga_log_last_read.objects.all():
-            last_read = mon_icinga_log_last_read.objects.all()[0]
+        last_read = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
+        if last_read:
             self.log("last icinga read until: {}".format(datetime.datetime.fromtimestamp(last_read.timestamp)))
         else:
             self.log("no earlier icinga log read, reading archive")
@@ -186,12 +198,15 @@ class icinga_log_reader(object):
 
         line_num = 0
         old_ignored = 0
+        stats = collections.defaultdict(lambda: 0)
+
         host_states = []
         host_flapping_states = []
         host_notifications = []
         service_states = []
         service_flapping_states = []
         service_notifications = []
+
         cur_line = None
         for line_raw in logfile:
             line_num += 1
@@ -199,28 +214,34 @@ class icinga_log_reader(object):
                 cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)  # only know line no for archive files
                 if start_at is None or cur_line.timestamp > start_at:
                     if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state):
-                        entry = self.create_service_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state, logfilepath, logfile_db)
+                        entry = self.create_service_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state, logfilepath, logfile_db)
                         if entry:
+                            stats['service alerts'] += 1
                             service_states.append(entry)
                     elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state):
-                        entry = self.create_host_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
+                        entry = self.create_host_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
                         if entry:
+                            stats['host alerts'] += 1
                             host_states.append(entry)
                     elif cur_line.kind == self.constants.icinga_service_flapping_alert:
                         entry = self.create_service_flapping_entry(cur_line, logfilepath, logfile_db)
                         if entry:
+                            stats['service flapping alerts'] += 1
                             service_flapping_states.append(entry)
                     elif cur_line.kind == self.constants.icinga_host_flapping_alert:
                         entry = self.create_host_flapping_entry(cur_line, logfilepath, logfile_db)
                         if entry:
+                            stats['host flapping alerts'] += 1
                             host_flapping_states.append(entry)
                     elif cur_line.kind == self.constants.icinga_service_notification:
                         entry = self.create_service_notification_entry(cur_line, logfilepath, logfile_db)
                         if entry:
+                            stats['service notification'] += 1
                             service_notifications.append(entry)
                     elif cur_line.kind == self.constants.icinga_host_notification:
                         entry = self.create_host_notification_entry(cur_line, logfilepath, logfile_db)
                         if entry:
+                            stats['host notification'] += 1
                             host_notifications.append(entry)
                     else:
                         pass  # line_raw is not of interest to us
@@ -230,6 +251,7 @@ class icinga_log_reader(object):
             except self.malformed_icinga_log_entry as e:
                 self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
 
+        self.log("created from {}: {} ".format(logfilepath if logfilepath else "cur icinga log file", stats.items()))
         mon_icinga_log_raw_host_alert_data.objects.bulk_create(host_states)
         mon_icinga_log_raw_service_alert_data.objects.bulk_create(service_states)
         mon_icinga_log_raw_service_flapping_data.objects.bulk_create(service_flapping_states)
@@ -237,13 +259,6 @@ class icinga_log_reader(object):
         mon_icinga_log_raw_service_notification_data.objects.bulk_create(service_notifications)
         mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
         self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
-
-        self.log("created {} host state entries, {} service state entries from {}".format(len(host_states), len(service_states),
-                                                                                          logfilepath if logfilepath else "cur icinga log file"))
-        self.log("created {} host flapping entries, {} service flapping entries from {}".format(len(host_flapping_states), len(service_flapping_states),
-                                                                                                logfilepath if logfilepath else "cur icinga log file"))
-        self.log("created {} service notifications, {} host notifications  from {}".format(len(service_notifications), len(host_notifications),
-                                                                                           logfilepath if logfilepath else "cur icinga log file"))
 
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
@@ -253,8 +268,8 @@ class icinga_log_reader(object):
 
     def _update_last_read(self, position, timestamp):
         """Keep track of which data was read. May be called with older timestamp (will be discarded)."""
-        if mon_icinga_log_last_read.objects.all():
-            last_read = mon_icinga_log_last_read.objects.all()[0]
+        last_read = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
+        if last_read:
             if last_read.timestamp > timestamp:
                 return last_read  # tried to update with older timestamp
         else:
@@ -288,7 +303,7 @@ class icinga_log_reader(object):
                     retval = max(retval, last_read_timestamp)
         return retval
 
-    def create_host_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
+    def create_host_alert_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
         retval = None
         try:
             host, state, state_type, msg = self._parse_host_alert(cur_line)
@@ -306,7 +321,7 @@ class icinga_log_reader(object):
             )
         return retval
 
-    def create_service_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
+    def create_service_alert_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
         retval = None
         try:
             host, (service, service_info), state, state_type, msg = self._parse_service_alert(cur_line)
@@ -444,9 +459,9 @@ class icinga_log_reader(object):
         if not host:
             raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
 
-        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
+        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[1], None)  # format as in db table @UndefinedVariable
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #3)".format(info))
+            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #3) {} {} ".format(info))
 
         state_type = {"SOFT": "S", "HARD": "H"}.get(data[2], None)  # format as in db table
         if not state_type:
