@@ -1133,6 +1133,8 @@ class monitoring_hint(models.Model):
     upper_crit_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
     # info string
     info = models.CharField(default="", max_length=255)
+    # enabled
+    enabled = models.BooleanField(default=True)
     # used in monitoring
     check_created = models.BooleanField(default=False)
     changed = models.DateTimeField(auto_now_add=True, auto_now=True)  # , default=datetime.datetime.now())
@@ -1188,8 +1190,13 @@ class monitoring_hint(models.Model):
             "i": "int"
         }[self.v_type]
         return [
-            (s_key, getattr(self, "{}_{}".format(key, v_type))) for s_key, key in [
-                ("lc", "lower_crit"), ("lw", "lower_warn"), ("uw", "upper_warn"), ("uc", "upper_crit")
+            (
+                s_key, getattr(self, "{}_{}".format(key, v_type))
+            ) for s_key, key in [
+                ("lc", "lower_crit"),
+                ("lw", "lower_warn"),
+                ("uw", "upper_warn"),
+                ("uc", "upper_crit"),
             ] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"
         ]
 
