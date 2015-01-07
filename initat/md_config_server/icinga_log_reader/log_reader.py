@@ -31,7 +31,8 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
     mon_icinga_log_raw_service_notification_data,\
-    mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data
+    mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data,\
+    mon_icinga_log_raw_base
 from initat.cluster.backbone.models import device
 from django.db import connection
 from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
@@ -66,16 +67,22 @@ class icinga_log_reader(object):
     class constants(object):
         icinga_service_alert = 'SERVICE ALERT'
         icinga_current_service_state = 'CURRENT SERVICE STATE'
+        icinga_initial_service_state = 'INITIAL SERVICE STATE'
+        icinga_service_flapping_alert = 'SERVICE FLAPPING ALERT'
+        icinga_service_notification = 'SERVICE NOTIFICATION'
+
         icinga_host_alert = 'HOST ALERT'
         icinga_current_host_state = 'CURRENT HOST STATE'
-        icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
-        icinga_service_flapping_alert = 'SERVICE FLAPPING ALERT'
+        icinga_initial_host_state = 'INITIAL HOST STATE'
         icinga_host_notification = 'HOST NOTIFICATION'
-        icinga_service_notification = 'SERVICE NOTIFICATION'
+        icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
 
     def __init__(self, log):
 
-        def my_log(msg, level=""):
+        log_orig = log
+        def my_log(msg, level='debug'):
+            log_orig(msg)
+
             with open("/tmp/myicingalog", "a") as f:
                 f.write("{}: {}\n".format(level, msg))
 
@@ -210,16 +217,56 @@ class icinga_log_reader(object):
         cur_line = None
         for line_raw in logfile:
             line_num += 1
+            # check for special entry
+            try:
+                timestamp, msg = self._parse_line(line_raw.rstrip("\n"), only_parse_timestamp=True)
+                self.log("msg: "+msg)
+                if msg.startswith("Successfully shutdown"):
+                    self.log("detected icinga shutdown by log")
+                    # create alerts for all devices: indeterminate (icinga not running)
+                    # note: this relies on the fact that on startup, icinga writes a status update
+                    host_states.append(
+                        mon_icinga_log_raw_host_alert_data(
+                            date=datetime.datetime.fromtimestamp(timestamp),
+                            device=None,
+                            device_independent=True,
+                            state_type=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+                            state=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+                            msg=msg,
+                            logfile=logfile_db,
+                        )
+                    )
+                    service_states.append(
+                        mon_icinga_log_raw_service_alert_data(
+                            date=datetime.datetime.fromtimestamp(timestamp),
+                            device=None,
+                            service=None,
+                            service_info=None,
+                            device_independent=True,
+                            state_type=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+                            state=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+                            msg=msg,
+                            logfile=logfile_db,
+                        )
+                    )
+            except self.malformed_icinga_log_entry as e:
+                self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
+
+            # check for regular log entry
             try:
                 cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)  # only know line no for archive files
                 if start_at is None or cur_line.timestamp > start_at:
-                    if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state):
-                        entry = self.create_service_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state, logfilepath, logfile_db)
+                    if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state,
+                                         self.constants.icinga_initial_service_state):
+                        entry = self.create_service_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state,
+                                                                cur_line.kind == self.constants.icinga_initial_service_state, logfilepath, logfile_db)
                         if entry:
                             stats['service alerts'] += 1
                             service_states.append(entry)
-                    elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state):
-                        entry = self.create_host_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state, logfilepath, logfile_db)
+                    elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state,
+                                           self.constants.icinga_initial_host_state):
+                        entry = self.create_host_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state,
+                                                             cur_line.kind == self.constants.icinga_initial_host_state, logfilepath, logfile_db)
                         if entry:
                             stats['host alerts'] += 1
                             host_states.append(entry)
@@ -303,7 +350,7 @@ class icinga_log_reader(object):
                     retval = max(retval, last_read_timestamp)
         return retval
 
-    def create_host_alert_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
+    def create_host_alert_entry(self, cur_line, log_rotation_state, initial_state, logfilepath, logfile_db=None):
         retval = None
         try:
             host, state, state_type, msg = self._parse_host_alert(cur_line)
@@ -315,13 +362,14 @@ class icinga_log_reader(object):
                 device_id=host,
                 state_type=state_type,
                 state=state,
-                full_system_state_entry=full_system_state_entry,
+                log_rotation_state=log_rotation_state,
+                initial_state=initial_state,
                 msg=msg,
                 logfile=logfile_db,
             )
         return retval
 
-    def create_service_alert_entry(self, cur_line, full_system_state_entry, logfilepath, logfile_db=None):
+    def create_service_alert_entry(self, cur_line, log_rotation_state, initial_state, logfilepath, logfile_db=None):
         retval = None
         try:
             host, (service, service_info), state, state_type, msg = self._parse_service_alert(cur_line)
@@ -336,7 +384,8 @@ class icinga_log_reader(object):
                 service_info=service_info,
                 state_type=state_type,
                 state=state,
-                full_system_state_entry=full_system_state_entry,
+                log_rotation_state=log_rotation_state,
+                initial_state=initial_state,
                 msg=msg,
                 logfile=logfile_db,
             )
@@ -417,7 +466,7 @@ class icinga_log_reader(object):
     icinga_log_line = namedtuple('icinga_log_line', ('timestamp', 'kind', 'info', 'line_no'))
 
     @classmethod
-    def _parse_line(cls, line, line_no=None):
+    def _parse_line(cls, line, line_no=None, only_parse_timestamp=False):
         '''
         :return icinga_log_line
         '''
@@ -432,6 +481,9 @@ class icinga_log_reader(object):
             timestamp = int(timestamp_raw[1:-1])  # remove first and last char
         except:
             raise cls.malformed_icinga_log_entry("Malformed line {}: {} (error #2)".format(line_no, line))
+
+        if only_parse_timestamp:
+            return timestamp, info_raw
 
         data2 = info_raw.split(": ", 1)
         if len(data2) == 2:

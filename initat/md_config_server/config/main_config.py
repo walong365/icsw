@@ -658,7 +658,7 @@ class main_config(object):
             ("service_retries", 1),
             ("host_retries", 1),
             ("event_handlers", 1),
-            ("initial_states", 1 if global_config["LOG_INITIAL_STATES"] else 0),
+            ("initial_states", 1),  # this must be true for log parsing
             ("external_commands", 1 if global_config["LOG_EXTERNAL_COMMANDS"] else 0),
             ("passive_checks", 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
         ]:

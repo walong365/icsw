@@ -130,7 +130,6 @@ def main():
         ("FROM_ADDR", configfile.str_c_var(long_host_name)),
         ("LOG_EXTERNAL_COMMANDS", configfile.bool_c_var(False)),
         ("LOG_PASSIVE_CHECKS", configfile.bool_c_var(False)),
-        ("LOG_INITIAL_STATES", configfile.bool_c_var(False)),
         ("BUILD_CONFIG_ON_STARTUP", configfile.bool_c_var(True)),
         ("RELOAD_ON_STARTUP", configfile.bool_c_var(True)),
         ("RETAIN_HOST_STATUS", configfile.bool_c_var(True)),
