@@ -34,7 +34,7 @@ from initat.cluster.backbone.models import ext_license_site, ext_license, ext_li
     ext_license_version, ext_license_state, ext_license_version_state, ext_license_vendor, \
     ext_license_usage, ext_license_client_version, ext_license_client, ext_license_user, \
     ext_license_check_coarse, ext_license_version_state_coarse, ext_license_state_coarse, \
-    ext_license_usage_coarse
+    ext_license_usage_coarse, duration
 from initat.host_monitoring import hm_classes
 from initat.rms.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
@@ -374,7 +374,7 @@ class license_process(threading_tools.process_obj):
                         entry1_end = lic_state_data[-1]
 
                         timespan_to_end = end - entry1_end.ext_license_check.date
-                        relative_weight = float(timespan_to_end.total_seconds()) / total_timespan_seconds 
+                        relative_weight = float(timespan_to_end.total_seconds()) / total_timespan_seconds
 
                         last_measured_value = getattr(entry1_end, attribute)  # start with last entry and calculate forward to end
                         if first_later_state:
@@ -400,16 +400,12 @@ class license_process(threading_tools.process_obj):
                     print 'end ', iss_end
                     issued_avg += iss_start + iss_end
 
-
                 print 'exact', used_avg
                 print 'exact iss', issued_avg
-
 
                 used_approximated = lic_state_data.aggregate(Avg('used')).itervalues().next()
 
                 if abs(used_approximated - used_avg) > max((abs(used_approximated)+abs(used_avg))*0.01, 0.0001):
-                    #if abs(1 - abs(used_approximated / (used_avg)) > 0.03:
-
                     print 'used divergence: ', used_approximated, " ", used_avg, " at ", start, duration_type
                 print 'approx', used_approximated
                 used_min = lic_state_data.aggregate(Min('used')).itervalues().next()
@@ -439,6 +435,8 @@ class license_process(threading_tools.process_obj):
                 version_state_coarse_additions = []
                 usage_coarse_additions = []
 
+                freq_sum = 0.0
+
                 for vendor_lic_version in timespan_version_state_data.filter(ext_license_state__ext_license_id=lic_id).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
                     ext_lic_id = vendor_lic_version['ext_license_version']
                     vendor_id = vendor_lic_version['vendor']
@@ -456,6 +454,8 @@ class license_process(threading_tools.process_obj):
                     freq = sum((usage_data['num'] * usage_data['frequency']) for usage_data in version_state_usage_data_values)
 
                     _version_frequencies[ext_lic_id] = freq
+
+                    freq_sum += freq
 
                     version_state_coarse = ext_license_version_state_coarse(
                         ext_license_check_coarse=check_coarse,
@@ -477,6 +477,12 @@ class license_process(threading_tools.process_obj):
                             )
                         )
                         # print 'lic ver {} client {} user {} num {} freq {}'.format(ext_lic_id, usage_data['ext_license_client'], usage_data['ext_license_user'], usage_data['num'], usage_data['frequency'])
+
+                # the values calculated above are slightly imprecise, but it is not necessary to have them as exact as the ones above
+                # we however have to scale them
+                factor = used_avg / freq_sum 
+                for new_data in itertools.chain(version_state_coarse_additions, usage_coarse_additions):
+                    new_data.frequency *= factor
 
                 ext_license_version_state_coarse.objects.bulk_create(version_state_coarse_additions)
                 ext_license_usage_coarse.objects.bulk_create(usage_coarse_additions)
@@ -504,7 +510,7 @@ class license_process(threading_tools.process_obj):
         # check which data to collect
         for site in ext_license_site.objects.all():
 
-            for duration_type in (ext_license_check_coarse.Duration.Day, ext_license_check_coarse.Duration.Month, ext_license_check_coarse.Duration.Hour):
+            for duration_type in (duration.Day, duration.Month, duration.Hour):
                 try:
                     # make sure to only get date from db to stay consistent with its timezone
                     last_day = ext_license_check_coarse.objects.filter(duration_type=duration_type.ID, ext_license_site=site).latest('start_date')
