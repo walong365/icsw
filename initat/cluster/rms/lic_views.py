@@ -32,7 +32,7 @@ from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
 from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_version, \
-    ext_license_user, ext_license_client, ext_license_usage_coarse, ext_license_check_coarse, ext_license_state_coarse
+    ext_license_user, ext_license_client, ext_license_usage_coarse, ext_license_check_coarse, ext_license_state_coarse, duration
 from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, ext_license_version_state_coarse_serializer
 from rest_framework.response import Response
 from lxml import etree  # @UnresolvedImport @UnusedImport
@@ -203,21 +203,21 @@ class lic_utils(object):
         '''
         date = lic_utils.parse_date(date)
         if in_duration_type == "day":
-            duration_type = ext_license_check_coarse.Duration.Hour
-            start = ext_license_check_coarse.Duration.Day.get_time_frame_start(date)
-            end = ext_license_check_coarse.Duration.Day.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
+            duration_type = duration.Hour
+            start = duration.Day.get_time_frame_start(date)
+            end = duration.Day.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
         elif in_duration_type == "week":
-            duration_type = ext_license_check_coarse.Duration.Day
+            duration_type = duration.Day
             date_as_date = date.date()  # forget time
             date_day = datetime.datetime(year=date_as_date.year, month=date_as_date.month, day=date_as_date.day)
             start = date_day - datetime.timedelta(days=date_day.weekday())
             end = start + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
         elif in_duration_type == "month":
-            duration_type = ext_license_check_coarse.Duration.Day
-            start = ext_license_check_coarse.Duration.Month.get_time_frame_start(date)
-            end = ext_license_check_coarse.Duration.Month.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
+            duration_type = duration.Day
+            start = duration.Month.get_time_frame_start(date)
+            end = duration.Month.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
         elif in_duration_type == "year":
-            duration_type = ext_license_check_coarse.Duration.Month
+            duration_type = duration.Month
             start = datetime.datetime(year=date.year, month=1, day=1)
             end = datetime.datetime(year=date.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
         return (duration_type, start, end)
