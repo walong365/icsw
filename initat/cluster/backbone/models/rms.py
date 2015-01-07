@@ -24,7 +24,7 @@
 # from django.db.models import Q, signals, get_model
 # from django.dispatch import receiver
 from django.db import models
-from initat.cluster.backbone.models.functions import cluster_timezone
+from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
 import datetime
 import time
 
@@ -377,65 +377,11 @@ class ext_license_check_coarse(models.Model):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     duration = models.IntegerField()  # seconds
-    duration_type = models.IntegerField()  # Durations enum below
+    duration_type = models.IntegerField()  # duration pseudo enum from functions
     ext_license_site = models.ForeignKey("backbone.ext_license_site", null=True)
 
-    class Duration(object):
-        # NOTE: don't use timezone info here
-        class Day(object):
-            ID = 1
-
-            @classmethod
-            def get_time_frame_start(cls, timepoint):
-                return timepoint.replace(hour=0, minute=0, second=0, microsecond=0)
-
-            @classmethod
-            def get_end_time_for_start(cls, starttime):
-                return starttime + datetime.timedelta(days=1) 
-
-            @classmethod
-            def get_display_date(cls, timepoint):
-                return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
-
-        class Month(object):
-            ID = 2
-
-            @classmethod
-            def get_time_frame_start(cls, timepoint):
-                return timepoint.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-            @classmethod
-            def get_end_time_for_start(cls, starttime):
-                return cls.get_time_frame_start(starttime + datetime.timedelta(days=35))  # take beginning of next month
-
-            @classmethod
-            def get_display_date(cls, timepoint):
-                return u"{}-{:02d}".format(timepoint.year, timepoint.month)
-
-        class Hour(object):
-            ID = 3
-
-            @classmethod
-            def get_time_frame_start(cls, timepoint):
-                return timepoint.replace(minute=0, second=0, microsecond=0)
-
-            @classmethod
-            def get_end_time_for_start(cls, starttime):
-                return starttime + datetime.timedelta(seconds=60*60)
-
-            @classmethod
-            def get_display_date(cls, timepoint):
-                return u"{:02d}:{:02d}".format(timepoint.hour, 0)
-
-        @classmethod
-        def get_class(cls, ident):
-            for klass in cls.Hour, cls.Day, cls.Month:
-                if ident == klass.ID:
-                    return klass
-            raise Exception()
-
     def get_display_date(self):
-        klass = ext_license_check_coarse.Duration.get_class(self.duration_type)
+        klass = duration_types.get_class(self.duration_type)
         # border values easily create problems with timezones etc, hence use central values
         return klass.get_display_date( self.start_date + ((self.end_date - self.start_date)/2) )  # @IgnorePep8
 

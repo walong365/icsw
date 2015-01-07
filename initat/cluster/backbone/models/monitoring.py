@@ -1205,28 +1205,39 @@ class monitoring_hint(models.Model):
         ordering = ("m_type", "key",)
 
 
-class mon_icinga_log_raw_host_alert_data(models.Model):
-    STATE_CHOICES = [("UP", "UP"), ("D", "DOWN"), ("UR", "UNREACHABLE")]  # Up and Down
-    STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+########################################
+# models for direct data from icinga logs
+class mon_icinga_log_raw_base(models.Model):
     idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField()
-    device = models.ForeignKey("backbone.device", null=True)
-    state_type = models.CharField(max_length=1, choices=[("H", "HARD"), ("S", "SOFT")])  # Hard and Soft
-    state = models.CharField(max_length=2, choices=STATE_CHOICES)
-    full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+    date = models.DateTimeField(db_index=True)
+    device = models.ForeignKey("backbone.device", db_index=True)
+    # text from log entry
     msg = models.TextField()
+    # entry originates from this logfile
     logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
 
     class Meta:
         app_label = "backbone"
+        abstract = True
+
+    STATE_TYPE_HARD = "H"
+    STATE_TYPE_SOFT = "S"
 
 
-class mon_icinga_log_raw_service_alert_data(models.Model):
+class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
+    STATE_UP = "UP"
+    STATE_DOWN = "D"
+    STATE_UNREACHABLE = "UR"
+    STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE")]
+    STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+    state_type = models.CharField(max_length=1, choices=[(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT")])
+    state = models.CharField(max_length=2, choices=STATE_CHOICES)
+    full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+
+
+class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL")]  # OK, WARNING, UNKNOWN, CRITICAL
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
-    idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField()
-    device = models.ForeignKey("backbone.device")
 
     # NOTE: there are different setup, at this time only regular check_commands are supported
     # they are identified by the mon_check_command.pk and their name, hence the fields here
@@ -1235,78 +1246,37 @@ class mon_icinga_log_raw_service_alert_data(models.Model):
     service = models.ForeignKey(mon_check_command)
     service_info = models.TextField(blank=True, null=True)
 
-    state_type = models.CharField(max_length=1, choices=[("H", "HARD"), ("S", "SOFT")])  # Hard and Soft
-    state = models.CharField(max_length=1, choices=STATE_CHOICES)
+    state_type = models.CharField(max_length=2, choices=[(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT")])
+    state = models.CharField(max_length=2, choices=STATE_CHOICES)
     full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
-    msg = models.TextField()
-    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
-class mon_icinga_log_raw_service_flapping_data(models.Model):
-    idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField()
-    device = models.ForeignKey("backbone.device")
-
+class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     # see comment in mon_icinga_log_raw_service_alert_data
     service = models.ForeignKey(mon_check_command)
     service_info = models.TextField(blank=True, null=True)
 
     flapping_state = models.CharField(max_length=5, choices=[("START", "START"), ("STOP", "STOP")])
-    msg = models.TextField()
-    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
-class mon_icinga_log_raw_host_flapping_data(models.Model):
-    idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField()
-    device = models.ForeignKey("backbone.device")
-
+class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
     flapping_state = models.CharField(max_length=5, choices=[("START", "START"), ("STOP", "STOP")])
-    msg = models.TextField()
-    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
-class mon_icinga_log_raw_service_notification_data(models.Model):
-    idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField()
-    device = models.ForeignKey("backbone.device")
-
+class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
     # see comment in mon_icinga_log_raw_service_alert_data
     service = models.ForeignKey(mon_check_command)
     service_info = models.TextField(blank=True, null=True)
 
     state = models.CharField(max_length=2, choices=mon_icinga_log_raw_service_alert_data.STATE_CHOICES)
-    msg = models.TextField()
     user = models.TextField()
     notification_type = models.TextField()
-    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
-class mon_icinga_log_raw_host_notification_data(models.Model):
-    idx = models.AutoField(primary_key=True)
-    date = models.DateTimeField()
-    device = models.ForeignKey("backbone.device")
-
+class mon_icinga_log_raw_host_notification_data(mon_icinga_log_raw_base):
     state = models.CharField(max_length=2, choices=mon_icinga_log_raw_host_alert_data.STATE_CHOICES)
-    msg = models.TextField()
     user = models.TextField()
     notification_type = models.TextField()
-    logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
-
-    class Meta:
-        app_label = "backbone"
 
 
 class mon_icinga_log_file(models.Model):
@@ -1317,10 +1287,80 @@ class mon_icinga_log_file(models.Model):
         app_label = "backbone"
 
 
+class _last_read_manager(models.Manager):
+    def get_last_read(self):
+        """
+        @return int timestamp
+        """
+        if self.all():
+            return self.all()[0]
+        else:
+            return None
+
+
 class mon_icinga_log_last_read(models.Model):
-    # this table contains only one entry
+    # this table contains only one row
+    idx = models.AutoField(primary_key=True)
     position = models.BigIntegerField()  # position of start of last line read
     timestamp = models.IntegerField()  # time of last line read
 
+    objects = _last_read_manager()
+
     class Meta:
         app_label = "backbone"
+
+
+########################################
+# models for aggregated data from icinga
+
+class mon_icinga_log_aggregated_timespan(models.Model):
+
+    idx = models.AutoField(primary_key=True)
+    start_date = models.DateTimeField(db_index=True)
+    end_date = models.DateTimeField()
+    duration = models.IntegerField()  # seconds
+    duration_type = models.IntegerField(db_index=True)  # durations pseudo enum from functions
+
+
+class mon_icinga_log_aggregated_host_data(models.Model):
+    STATE_UNDETERMINED = "UD"  # this is also a state type
+    STATE_FLAPPING = "FL"  # this is also a state type
+    STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_UNDETERMINED, "UNDETERMINED"), (STATE_FLAPPING, "FLAPPING")]
+    STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+
+    STATE_TYPES = [(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT"),
+                   (STATE_FLAPPING, STATE_FLAPPING), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
+
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("backbone.device")
+    timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)
+
+    state_type = models.CharField(max_length=2, choices=STATE_TYPES)
+    state = models.CharField(max_length=2, choices=STATE_CHOICES)
+
+    # ratio of time span spent in this (state_type, state)
+    value = models.FloatField()
+
+
+class mon_icinga_log_aggregated_service_data(models.Model):
+    STATE_UNDETERMINED = "UD"
+    STATE_FLAPPING = "FL"
+    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_UNDETERMINED, "UNDETERMINED"), (STATE_FLAPPING, "FLAPPING")]
+    STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+
+    idx = models.AutoField(primary_key=True)
+    timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)
+
+    STATE_TYPES = [(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT"),
+                   (STATE_FLAPPING, STATE_FLAPPING), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
+
+    device = models.ForeignKey("backbone.device")
+    state_type = models.CharField(max_length=2, choices=[(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT")])
+    state = models.CharField(max_length=2, choices=STATE_CHOICES)
+
+    # see comment in mon_icinga_log_raw_service_alert_data
+    service = models.ForeignKey(mon_check_command)
+    service_info = models.TextField(blank=True, null=True)
+
+    # ratio of time span spent in this (state_type, state)
+    value = models.FloatField()
