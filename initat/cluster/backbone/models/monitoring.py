@@ -1091,7 +1091,16 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
+
+class MonitoringHintEnabledManager(models.Manager):
+
+    def get_queryset(self):
+        return super(MonitoringHintEnabledManager, self).get_queryset().filter(enabled=True)
+
+
 class monitoring_hint(models.Model):
+    objects = models.Manager()
+    all_enabled = MonitoringHintEnabledManager()
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     # call idx, for multi-server-call specials
@@ -1113,7 +1122,7 @@ class monitoring_hint(models.Model):
     # current value
     value_float = models.FloatField(default=0.0)
     value_int = models.IntegerField(default=0)
-    value_string = models.CharField(default="", max_length=256)
+    value_string = models.CharField(default="", max_length=256, blank=True)
     # limits
     lower_crit_float = models.FloatField(default=0.0)
     lower_warn_float = models.FloatField(default=0.0)
