@@ -37,6 +37,7 @@ from initat.cluster.backbone.models import device
 from django.db import connection
 from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
 import collections
+import psutil
 
 __all__ = [
     "icinga_log_reader",
@@ -105,16 +106,6 @@ class icinga_log_reader(object):
 
     def _update_raw_data(self):
         self.log("checking icinga log")
-
-        #TODO: check icinga running via logfile and for current updates via pid:
-        icinga_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
-
-        # from initat.md_config_server.build import host_service_map
-        # self._current_host_service_data = host_service_map.get_mapping(self.log)
-
-        # NOTE: currently used for hosts, but if we encode hosts in the service_description, we don't even need that anymore
-        # if self._current_host_service_data:
-        #   self.log("using host service map from {}".format(datetime.datetime.fromtimestamp(self._current_host_service_data.timestamp)))
 
         # check where we last have read for log rotation
         last_read = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
@@ -187,6 +178,24 @@ class icinga_log_reader(object):
                 logfile.seek(0)
                 self.parse_log_file(logfile)
 
+        # check if icinga is even running
+        # (we do this after parsing to have events in proper order in db, which is nice)
+        icinga_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
+        try:
+            pid = int(open(icinga_lock_file_name, "r").read().strip())
+        except:
+            pass  # can't really tell if icinga is running this way
+        else:
+            try:
+                psutil.Process(pid=pid)
+            except psutil.NoSuchProcess:
+                # assume not running
+                msg = "icinga process (pid: {}) is not running".format(pid)
+                self.log(msg)
+                host_entry, service_entry = self._create_icinga_down_entry(datetime.datetime.now(), msg, None)
+                host_entry.save()
+                service_entry.save()
+
     def parse_log_file(self, logfile, logfilepath=None, start_at=None):
         '''
         :param file logfile: Parsing starts at position of logfile. Must be the main icinga log file.
@@ -220,35 +229,14 @@ class icinga_log_reader(object):
             # check for special entry
             try:
                 timestamp, msg = self._parse_line(line_raw.rstrip("\n"), only_parse_timestamp=True)
-                self.log("msg: "+msg)
                 if msg.startswith("Successfully shutdown"):
                     self.log("detected icinga shutdown by log")
                     # create alerts for all devices: indeterminate (icinga not running)
                     # note: this relies on the fact that on startup, icinga writes a status update
-                    host_states.append(
-                        mon_icinga_log_raw_host_alert_data(
-                            date=datetime.datetime.fromtimestamp(timestamp),
-                            device=None,
-                            device_independent=True,
-                            state_type=mon_icinga_log_raw_base.STATE_UNDETERMINED,
-                            state=mon_icinga_log_raw_base.STATE_UNDETERMINED,
-                            msg=msg,
-                            logfile=logfile_db,
-                        )
-                    )
-                    service_states.append(
-                        mon_icinga_log_raw_service_alert_data(
-                            date=datetime.datetime.fromtimestamp(timestamp),
-                            device=None,
-                            service=None,
-                            service_info=None,
-                            device_independent=True,
-                            state_type=mon_icinga_log_raw_base.STATE_UNDETERMINED,
-                            state=mon_icinga_log_raw_base.STATE_UNDETERMINED,
-                            msg=msg,
-                            logfile=logfile_db,
-                        )
-                    )
+                    host_entry, service_entry = self._create_icinga_down_entry(datetime.datetime.fromtimestamp(timestamp), msg, logfile_db)
+                    host_states.append(host_entry)
+                    service_states.append(service_entry)
+
             except self.malformed_icinga_log_entry as e:
                 self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
 
@@ -666,6 +654,31 @@ class icinga_log_reader(object):
         # the check command description. This works only for check commands with 1 service, so
         # excludes all special commands and cluster commands.
         return self._historic_service_map.get(service_spec.replace(" ", "_").lower(), None)
+
+    def _create_icinga_down_entry(self, when, msg, logfile_db):
+        host_entry = mon_icinga_log_raw_host_alert_data(
+            date=when,
+            device=None,
+            device_independent=True,
+            state_type=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+            state=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+            msg=msg,
+            logfile=logfile_db,
+        )
+
+        service_entry = mon_icinga_log_raw_service_alert_data(
+            date=when,
+            device=None,
+            service=None,
+            service_info=None,
+            device_independent=True,
+            state_type=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+            state=mon_icinga_log_raw_base.STATE_UNDETERMINED,
+            msg=msg,
+            logfile=logfile_db,
+        )
+
+        return host_entry, service_entry
 
 
 class host_service_id_util(object):
