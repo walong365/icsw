@@ -27,15 +27,16 @@ import itertools
 import pprint  # @UnusedImport
 from collections import namedtuple, defaultdict
 
+from django.db.models.query_utils import Q
+
 from initat.md_config_server.config import global_config
 from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
     mon_icinga_log_raw_service_notification_data,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
-    mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base
-from initat.cluster.backbone.models import device
-from django.db import connection
+    mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
+    mon_icinga_log_aggregated_service_data
 from initat.cluster.backbone.models import duration
 from initat.cluster.backbone.models.functions import cluster_timezone
 
@@ -65,7 +66,9 @@ class icinga_log_aggregator(object):
                 next_start_time = last_entry.end_date
                 self.log("last icinga aggregated entry for {} from {} to {}".format(duration_type.__name__, last_entry.start_date, last_entry.end_date))
             except mon_icinga_log_aggregated_timespan.DoesNotExist:
-                earliest_date = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
+                earliest_date1 = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
+                earliest_date2 = mon_icinga_log_raw_service_alert_data.objects.earliest("date").date
+                earliest_date = min(earliest_date1, earliest_date2)
                 next_start_time = duration_type.get_time_frame_start(earliest_date)
                 self.log("no archive data for duration type {}, starting new data at {}".format(duration_type.__name__, next_start_time))
 
@@ -83,23 +86,9 @@ class icinga_log_aggregator(object):
                 next_start_time = next_end_time
 
     def _create_timespan_entry(self, start_time, end_time, duration_type):
-        host_db_rows = []
-
-        for device_id in mon_icinga_log_raw_host_alert_data.objects.values_list("device", flat=True).distinct():
-
-            # need to find last state
-            try:
-                latest_earlier_entry = mon_icinga_log_raw_host_alert_data.objects.filter(device=device_id, date__lte=start_time).latest('date')
-                state_description_before = latest_earlier_entry.state, latest_earlier_entry.state_type
-            except mon_icinga_log_raw_host_alert_data.DoesNotExist:
-                state_description_before = mon_icinga_log_aggregated_host_data.STATE_UNDETERMINED, mon_icinga_log_aggregated_host_data.STATE_UNDETERMINED
-
-            timespan_seconds = (end_time - start_time).total_seconds()
-
+        # regular changes in time span
+        def calc_weighted_states(relevant_entries, state_description_before):
             weighted_states = defaultdict(lambda: 0.0)
-
-            # regular changes in time span
-            relevant_entries = mon_icinga_log_raw_host_alert_data.objects.filter(device=device_id, date__range=(start_time, end_time)).order_by('date')
             for raw_entry1, raw_entry2 in pairwise(relevant_entries):
                 entry_timespan_seconds = (raw_entry2.date - raw_entry1.date).total_seconds()
                 entry_weight = entry_timespan_seconds / timespan_seconds
@@ -124,57 +113,111 @@ class icinga_log_aggregator(object):
                 last_entry_weight = last_entry_timespan_seconds / timespan_seconds
 
                 weighted_states[(last_entry.state, last_entry.state_type)] += last_entry_weight
+            return weighted_states
 
-            # flapping
-            # check if we start in flapping state
-            def calc_flapping_ratio():
-                start_in_flapping_state = False
-                flap_throughout_timespan = False
+        # flapping
+        # check if we start in flapping state
+        def calc_flapping_ratio(flapping_model, entity_identification):
+            start_in_flapping_state = False
+            flap_throughout_timespan = False
+            try:
+                last_flap_start = flapping_model.objects.filter(entity_identification, date__lte=start_time, flapping_state="START").latest('date')
+            except flapping_model.DoesNotExist:
+                pass  # have never flapped
+            else:
                 try:
-                    last_flap_start = mon_icinga_log_raw_host_flapping_data.objects.filter(date__lte=start_time, flapping_state="START").latest('date')
-                except mon_icinga_log_raw_host_flapping_data.DoesNotExist:
-                    pass  # have never flapped
+                    end_of_last_flap_start = flapping_model.objects.filter(entity_identification, date__gte=last_flap_start.date,
+                                                                           flapping_state="STOP").earliest('date')
+                except flapping_model.DoesNotExist:
+                    # flapping up to now
+                    start_in_flapping_state = True
+                    flap_throughout_timespan = True
                 else:
-                    try:
-                        end_of_last_flap_start = mon_icinga_log_raw_host_flapping_data.objects.filter(date__gte=last_flap_start.date, flapping_state="STOP")
-                    except mon_icinga_log_raw_host_flapping_data.DoesNotExist:
-                        # flapping up to now
-                        start_in_flapping_state = True
-                        flap_throughout_timespan = True
-                    else:
-                        # have stopped flapping, check if in or after start of cur time span
-                        start_in_flapping_state = end_of_last_flap_start.date > start_time
+                    # have stopped flapping, check if in or after start of cur time span
+                    start_in_flapping_state = end_of_last_flap_start.date > start_time
 
-                # calc flapping time
-                if flap_throughout_timespan:
-                    ratio_flapping = 1.0
-                else:
-                    relevant_flap_entries = mon_icinga_log_raw_host_flapping_data.objects.filter(date__range=(start_time, end_time)).order_by('date')
-                    flapping_seconds = 0.0
-                    if relevant_flap_entries:
-                        if start_in_flapping_state:
-                            flapping_seconds += (relevant_flap_entries[0].date - start_time).total_seconds()
+            # calc flapping time
+            if flap_throughout_timespan:
+                ratio_flapping = 1.0
+            else:
+                relevant_flap_entries = flapping_model.objects.filter(entity_identification, date__range=(start_time, end_time)).order_by('date')
+                flapping_seconds = 0.0
+                if relevant_flap_entries:
+                    if start_in_flapping_state:
+                        flapping_seconds += (relevant_flap_entries[0].date - start_time).total_seconds()
 
-                        for (entry1, entry2) in pairwise(relevant_flap_entries):
-                            if entry1.flapping_state == 'START' and entry2.flapping_state == 'STOP':
-                                flapping_seconds += (entry2.date - entry1.date).total_seconds()
+                    for (entry1, entry2) in pairwise(relevant_flap_entries):
+                        if entry1.flapping_state == 'START' and entry2.flapping_state == 'STOP':
+                            flapping_seconds += (entry2.date - entry1.date).total_seconds()
 
-                        last_flap_entry = relevant_flap_entries[len(relevant_flap_entries)-1]
-                        if last_flap_entry.flapping_state == 'START':
-                            # flapping through end
-                            flapping_seconds += (end_time - last_flap_entry.date).total_seconds()
+                    last_flap_entry = relevant_flap_entries[len(relevant_flap_entries)-1]
+                    if last_flap_entry.flapping_state == 'START':
+                        # flapping through end
+                        flapping_seconds += (end_time - last_flap_entry.date).total_seconds()
 
-                    ratio_flapping = flapping_seconds / timespan_seconds
-                return ratio_flapping
+                ratio_flapping = flapping_seconds / timespan_seconds
+            return ratio_flapping
 
-            weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING, mon_icinga_log_aggregated_host_data.STATE_FLAPPING)] = calc_flapping_ratio()
+        service_db_rows = []
 
-            timespan_db = mon_icinga_log_aggregated_timespan.objects.create(
-                start_date=start_time,
-                end_date=end_time,
-                duration=(end_time-start_time).total_seconds(),
-                duration_type=duration_type.ID,
-            )
+        timespan_seconds = (end_time - start_time).total_seconds()
+
+        timespan_db = mon_icinga_log_aggregated_timespan.objects.create(
+            start_date=start_time,
+            end_date=end_time,
+            duration=(end_time-start_time).total_seconds(),
+            duration_type=duration_type.ID,
+        )
+
+        for device_id, service_id, service_info in mon_icinga_log_raw_service_alert_data.objects.values_list("device", "service", "service_info").distinct():
+            # need to find last state
+            service_db_identification = Q(device=device_id, service=service_id, service_info=service_info)
+            service_db_identification_w_downtime = service_db_identification | Q(device_independent=True)
+            try:
+                latest_earlier_entry = mon_icinga_log_raw_service_alert_data.objects.filter(service_db_identification_w_downtime, date__lte=start_time).latest('date')
+                state_description_before = latest_earlier_entry.state, latest_earlier_entry.state_type
+            except mon_icinga_log_raw_service_alert_data.DoesNotExist:
+                state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
+
+            relevant_entries = mon_icinga_log_raw_service_alert_data.objects.filter(service_db_identification_w_downtime, date__range=(start_time, end_time)).order_by('date')
+            weighted_states = calc_weighted_states(relevant_entries, state_description_before)
+
+            flapping_ratio = calc_flapping_ratio(mon_icinga_log_raw_service_flapping_data, service_db_identification)
+            weighted_states[(mon_icinga_log_aggregated_service_data.STATE_FLAPPING, mon_icinga_log_aggregated_service_data.STATE_FLAPPING)] = flapping_ratio
+
+            for ((state, state_type), value) in weighted_states.iteritems():
+                service_db_rows.append(
+                    mon_icinga_log_aggregated_service_data(
+                        state=state,
+                        state_type=state_type,
+                        value=value,
+                        timespan=timespan_db,
+                        device_id=device_id,
+                        service_id=service_id,
+                        service_info=service_info,
+                    )
+                )
+
+            essential_weighted_states = sum(val for (state, state_type), val in weighted_states.iteritems() if state != mon_icinga_log_aggregated_service_data.STATE_FLAPPING)
+            if abs(essential_weighted_states-1.0) > 0.01:
+                self.log("missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}".format(device_id, start_time, end_time,
+                                                                                                                     duration_type.__name__, essential_weighted_states))
+        mon_icinga_log_aggregated_service_data.objects.bulk_create(service_db_rows)
+
+        host_db_rows = []
+
+        for device_id in mon_icinga_log_raw_host_alert_data.objects.values_list("device", flat=True).distinct():
+            dev_db_identification = Q(device=device_id) | Q(device_independent=True)
+            # need to find last state
+            try:
+                latest_earlier_entry = mon_icinga_log_raw_host_alert_data.objects.filter(dev_db_identification, date__lte=start_time).latest('date')
+                state_description_before = latest_earlier_entry.state, latest_earlier_entry.state_type
+            except mon_icinga_log_raw_host_alert_data.DoesNotExist:
+                state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
+            relevant_entries = mon_icinga_log_raw_host_alert_data.objects.filter(dev_db_identification, date__range=(start_time, end_time)).order_by('date')
+            weighted_states = calc_weighted_states(relevant_entries, state_description_before)
+            flapping_ratio = calc_flapping_ratio(mon_icinga_log_raw_host_flapping_data, Q(device=device_id))
+            weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING, mon_icinga_log_aggregated_host_data.STATE_FLAPPING)] = flapping_ratio
 
             for ((state, state_type), value) in weighted_states.iteritems():
                 host_db_rows.append(
@@ -187,22 +230,12 @@ class icinga_log_aggregator(object):
                     )
                 )
 
-            print sum(weighted_states.itervalues())
-            if abs(sum(weighted_states.itervalues())-1.0) > 0.01:
+            essential_weighted_states_sum = sum(val for (state, state_type), val in weighted_states.iteritems() if state != mon_icinga_log_aggregated_host_data.STATE_FLAPPING)
+            if abs(essential_weighted_states_sum-1.0) > 0.01:
                 self.log("missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}".format(device_id, start_time, end_time,
-                                                                                                                     duration_type.__name__,
-                                                                                                                     sum(weighted_states.itervalues())))
+                                                                                                                     duration_type.__name__, essential_weighted_states_sum))
 
         print 'new host entries: ', len(host_db_rows)
         mon_icinga_log_aggregated_host_data.objects.bulk_create(host_db_rows)
-
-
-
-
-
-
-
-
-            # TODO: services
 
 
