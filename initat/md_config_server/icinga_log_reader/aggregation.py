@@ -19,13 +19,10 @@
 #
 
 import logging_tools
-import os
 import datetime
-import calendar
-import glob
 import itertools
 import pprint  # @UnusedImport
-from collections import namedtuple, defaultdict
+from collections import defaultdict
 
 from django.db.models.query_utils import Q
 
@@ -130,13 +127,13 @@ class icinga_log_aggregator(object):
             start_in_flapping_state = False
             flap_throughout_timespan = False
             try:
-                last_flap_start = flapping_model.objects.filter(entity_identification, date__lte=start_time, flapping_state="START").latest('date')
+                last_flap_start = flapping_model.objects.filter(entity_identification, date__lte=start_time, flapping_state=mon_icinga_log_raw_base.FLAPPING_START).latest('date')
             except flapping_model.DoesNotExist:
                 pass  # have never flapped
             else:
                 try:
                     end_of_last_flap_start = flapping_model.objects.filter(entity_identification, date__gte=last_flap_start.date,
-                                                                           flapping_state="STOP").earliest('date')
+                                                                           flapping_state=mon_icinga_log_raw_base.FLAPPING_STOP).earliest('date')
                 except flapping_model.DoesNotExist:
                     # flapping up to now
                     start_in_flapping_state = True
@@ -156,11 +153,11 @@ class icinga_log_aggregator(object):
                         flapping_seconds += (relevant_flap_entries[0].date - start_time).total_seconds()
 
                     for (entry1, entry2) in pairwise(relevant_flap_entries):
-                        if entry1.flapping_state == 'START' and entry2.flapping_state == 'STOP':
+                        if entry1.flapping_state == mon_icinga_log_raw_base.FLAPPING_START and entry2.flapping_state == mon_icinga_log_raw_base.FLAPPING_STOP:
                             flapping_seconds += (entry2.date - entry1.date).total_seconds()
 
                     last_flap_entry = relevant_flap_entries[len(relevant_flap_entries)-1]
-                    if last_flap_entry.flapping_state == 'START':
+                    if last_flap_entry.flapping_state == mon_icinga_log_raw_base.FLAPPING_START:
                         # flapping through end
                         flapping_seconds += (end_time - last_flap_entry.date).total_seconds()
 

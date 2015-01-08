@@ -541,7 +541,7 @@ class icinga_log_reader(object):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        flapping_state = {"STARTED": "START", "STOPPED": "STOP"}.get(data[2], None)  # format as in db table
+        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[2], None)  # format as in db table
 
         msg = data[3]
 
@@ -556,7 +556,7 @@ class icinga_log_reader(object):
             raise self.malformed_icinga_log_entry("Malformed host flapping entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
-        flapping_state = {"STARTED": "START", "STOPPED": "STOP"}.get(data[1], None)  # format as in db table
+        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[1], None)  # format as in db table
         msg = data[2]
         return host, flapping_state, msg
 
@@ -680,7 +680,7 @@ class icinga_log_reader(object):
         host_flapping_entry = mon_icinga_log_raw_host_flapping_data(
             date=when,
             device_id=None,
-            flapping_state="STOP",
+            flapping_state=mon_icinga_log_raw_base.FLAPPING_STOP,
             device_independent=True,
             msg=msg,
             logfile=logfile_db,
@@ -690,7 +690,7 @@ class icinga_log_reader(object):
             device_id=None,
             service_id=None,
             service_info=None,
-            flapping_state="STOP",
+            flapping_state=mon_icinga_log_raw_base.FLAPPING_STOP,
             device_independent=True,
             msg=msg,
             logfile=logfile_db,
