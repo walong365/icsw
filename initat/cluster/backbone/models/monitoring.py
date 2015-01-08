@@ -1202,9 +1202,10 @@ class monitoring_hint(models.Model):
             (
                 s_key, getattr(self, "{}_{}".format(key, v_type))
             ) for s_key, key in [
-                ("lc", "lower_crit"),
+                # ordering is important here to beautify the monitoring output
                 ("lw", "lower_warn"),
                 ("uw", "upper_warn"),
+                ("lc", "lower_crit"),
                 ("uc", "upper_crit"),
             ] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"
         ]
