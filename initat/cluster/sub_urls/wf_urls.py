@@ -142,6 +142,7 @@ monitoring_patterns = patterns(
     url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),
     url("^get_mon_vars$", monitoring_views.get_mon_vars.as_view(), name="get_mon_vars"),
     url("^get_hist_device_data$", monitoring_views.get_hist_device_data.as_view(), name="get_hist_device_data"),
+    url("^get_hist_service_data$", monitoring_views.get_hist_service_data.as_view(), name="get_hist_service_data"),
 )
 
 user_patterns = patterns(

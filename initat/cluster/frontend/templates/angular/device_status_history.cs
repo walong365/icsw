@@ -53,6 +53,49 @@ status_history_template = """
 
 device_status_history_template = """
 <h3>{{device_rest.name }}</h3>
+
+<table class="table table-condensed table-hover table-striped">
+    <thead>
+        <tr>
+            <th>State</th>
+            <th>State type</th>
+            <th>Ratio of state</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="state in host_data">
+            <td> {{ state.state }} </td>
+            <td> {{ state.state_type }} </td>
+            <td> {{ state.value }} </td>
+        </tr>
+    </tbody>
+</table>
+
+<div id="{{device_chart_id}}" style="width: 200px; height: 200px;" class="chart"></div>
+
+<h4>Services</h4>
+<table class="table table-condensed table-hover table-striped">
+    <thead>
+        <tr>
+            <th>Service</th>
+            <th>Ok</th>
+            <th>Warning</th>
+            <th>Critical</th>
+            <th>Unknown</th>
+            <th>Undetermined</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="(serv_key, serv_state) in service_data">
+            <td> {{ extract_service_name(serv_key) }} </td>
+            <td> {{ extract_service_value(serv_state, "ok") }} </td>
+            <td> {{ extract_service_value(serv_state, "warning") }} </td>
+            <td> {{ extract_service_value(serv_state, "critical") }} </td>
+            <td> {{ extract_service_value(serv_state, "unknown") }} </td>
+            <td> {{ extract_service_value(serv_state, "undetermined") }} </td>
+        </tr>
+    </tbody>
+</table>
 """
 {% endverbatim %}
 
@@ -74,6 +117,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
         }
         link : (scope, el, attrs) ->
             scope.device_id = attrs.device
+            scope.device_chart_id = "device_chart_" + scope.device_id
             device_resource = $resource("{% url 'rest:device_list' %}/:id", {});
             scope.device_rest = device_resource.get({'id': scope.device_id})
             scope.$watch('timerange', (unused) ->
@@ -82,13 +126,44 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
             scope.$watch('startdate', (unused) ->
                 scope.update()
             )
-            scope.update = () ->
-                cont = (new_data) ->
-                    console.log new_data
-                status_history_utils.get_device_data($resource, scope.device_id, scope.startdate, scope.timerange, cont)
+            scope.float_format = (n) -> return (n*100).toFixed(0) + "%"
+            scope.extract_service_value = (service, key) ->
+                entries = _.filter(service, (e) -> e.state == key)
+                ret = 0
+                for entry in entries
+                    ret += entry.value
+                return scope.float_format(ret)
+            scope.extract_service_name = (service_key) ->
+                check_command_name = service_key.split(",", 2)[0]
+                description =  service_key.split(",", 2)[1]
+                return check_command_name + ": " + description
 
+            
+            scope.update = () ->
+                dev_cont = (new_data) ->
+                    for d in new_data
+                        d['value'] = scope.float_format(d['value'])
+                    scope.host_data = new_data
+
+                status_history_utils.get_device_data($resource, scope.device_id, scope.startdate, scope.timerange, dev_cont)
+                
+                serv_cont = (new_data) ->
+                    scope.service_data = new_data
+
+                status_history_utils.get_service_data($resource, scope.device_id, scope.startdate, scope.timerange, serv_cont)
+
+                # 66dd66
+                
+                # this is the opposite of angular-style, but it's just this one location
+                elem = $("#"+scope.device_chart_id)
+                elem.html('')
+                elem.drawPieChart([
+                   { title: "A",         value : 220,  color: "#FFD300" },
+                   { title: "B",         value : 120,  color: "#00FF00" },
+                ]);
 
             scope.update()
+
 }).directive("statushistory", ($templateCache) ->
     return {
         restrict : "EA"
@@ -119,8 +194,20 @@ status_history_utils = {
         res.query(query_data, (new_data) ->
             cont(new_data)
         )
+    get_service_data: ($resource, device_id, start_date, timerange, cont) ->
+        res = $resource("{% url 'mon:get_hist_service_data' %}", {}, {'query': {method: 'GET', isArray: false}})
+        query_data = {
+            'device_id': device_id,
+            'date': moment(start_date).unix()  # ask server in utc
+            'duration_type': timerange,
+        }
+        res.query(query_data, (new_data) ->
+            cont(new_data)
+        )
 }
 
 {% endinlinecoffeescript %}
 
 </script>
+
+

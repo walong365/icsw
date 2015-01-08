@@ -21,6 +21,8 @@
 #
 
 """ monitoring views """
+import pprint
+from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -35,7 +37,7 @@ from initat.cluster.backbone.models import device, device_type, domain_name_tree
     parse_commandline
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data,\
-    mon_icinga_log_aggregated_timespan
+    mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
@@ -434,24 +436,53 @@ class create_device(permission_required_mixin, View):
 
 ########################################
 # device status history views
+class _device_status_history_util(object):
+    @staticmethod
+    def get_timespan_db_from_request(request):
+        date = duration_utils.parse_date(request.GET["date"])
+        duration_type = {'day': duration.Day, 'week': duration.Week, 'month': duration.Month}[request.GET['duration_type']]
+        start = duration_type.get_time_frame_start(date)
+        end = duration_type.get_end_time_for_start(start)
+        try:
+            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID, start_date__range=(start, end))
+        except mon_icinga_log_aggregated_timespan.DoesNotExist:
+            return None
+
+
 class get_hist_device_data(ListAPIView):
     @method_decorator(login_required)
     def list(self, request, *args, **kwargs):
         device_id = request.GET["device_id"]
-        date = duration_utils.parse_date(request.GET["date"])
-        duration_type = {'day': duration.Day, 'week': duration.Week, 'month': duration.Month}[request.GET['duration_type']]
 
-        start = duration_type.get_time_frame_start(date)
-        end = duration_type.get_end_time_for_start(start)
+        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
-        try:
-            timespan_db = mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID, start_date__range=(start, end))
-        except mon_icinga_log_aggregated_timespan.DoesNotExist:
-            return Response([])
-        else:
+        data = []
+        if timespan_db:
             data = mon_icinga_log_aggregated_host_data.objects.filter(device_id=device_id, timespan=timespan_db).values('state', 'state_type', 'value')
             trans = dict(mon_icinga_log_aggregated_host_data.STATE_CHOICES)
             for d in data:
                 d['state'] = trans[d['state']].lower()
-            return Response(data)
+        return Response(data)
 
+
+class get_hist_service_data(ListAPIView):
+    @method_decorator(login_required)
+    def list(self, request, *args, **kwargs):
+        device_id = request.GET["device_id"]
+
+        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
+
+        data = defaultdict(lambda: [])
+        trans = dict(mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+
+        for entry in mon_icinga_log_aggregated_service_data.objects.filter(device_id=device_id, timespan=timespan_db).prefetch_related():
+
+            relevant_data_from_entry = {
+                'state': trans[entry.state].lower(),
+                'state_type': entry.state_type,
+                'value': entry.value
+            }
+
+            data["{},{}".format(entry.service.name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
+
+        return Response(data)

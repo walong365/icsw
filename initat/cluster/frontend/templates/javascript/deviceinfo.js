@@ -16,6 +16,7 @@ class device_info
                 @active_div = default_mode
             else
                 @active_div = "general"
+                @active_div = "status_history"
         window.ICSW_DEV_INFO = @
         @active_divs = []
     show: () =>
