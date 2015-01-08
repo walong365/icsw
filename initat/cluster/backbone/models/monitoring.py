@@ -1210,7 +1210,8 @@ class monitoring_hint(models.Model):
 class mon_icinga_log_raw_base(models.Model):
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True)
-    device = models.ForeignKey("backbone.device", db_index=True)
+    device = models.ForeignKey("backbone.device", db_index=True, null=True)  # only null for device_independent
+    device_independent = models.BooleanField(default=False)  # events which apply to all devices such as icinga shutdown
     # text from log entry
     msg = models.TextField()
     # entry originates from this logfile
@@ -1222,33 +1223,42 @@ class mon_icinga_log_raw_base(models.Model):
 
     STATE_TYPE_HARD = "H"
     STATE_TYPE_SOFT = "S"
+    STATE_UNDETERMINED = "UD"  # state as well as state type
+    STATE_TYPES = [(STATE_TYPE_HARD, "HARD"), (STATE_TYPE_SOFT, "SOFT"), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
+ 
+    FLAPPING_START = "START"
+    FLAPPING_STOP = "START"
 
 
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_UP = "UP"
     STATE_DOWN = "D"
     STATE_UNREACHABLE = "UR"
-    STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE")]
+    STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE"), (mon_icinga_log_raw_base.STATE_UNDETERMINED, "UNDETERMINED")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
-    state_type = models.CharField(max_length=1, choices=[(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT")])
+    state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
-    full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+    log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+    initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
 
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
-    STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL")]  # OK, WARNING, UNKNOWN, CRITICAL
+    STATE_UNDETERMINED = "UD"
+    STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL"), (STATE_UNDETERMINED, "UNDETERMINED")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     # NOTE: there are different setup, at this time only regular check_commands are supported
     # they are identified by the mon_check_command.pk and their name, hence the fields here
     # the layout of this table probably has to change in order to accommodate for further services
     # I however can't do that now as I don't know how what to change it to
-    service = models.ForeignKey(mon_check_command)
+    service = models.ForeignKey(mon_check_command, null=True)  # null for device_independent events
     service_info = models.TextField(blank=True, null=True)
 
-    state_type = models.CharField(max_length=2, choices=[(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT")])
+    state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
-    full_system_state_entry = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+
+    log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
+    initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
 
 
 class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
@@ -1256,11 +1266,13 @@ class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     service = models.ForeignKey(mon_check_command)
     service_info = models.TextField(blank=True, null=True)
 
-    flapping_state = models.CharField(max_length=5, choices=[("START", "START"), ("STOP", "STOP")])
+    flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
+                                                             (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)])
 
 
 class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
-    flapping_state = models.CharField(max_length=5, choices=[("START", "START"), ("STOP", "STOP")])
+    flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
+                                                             (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)])
 
 
 class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
@@ -1313,6 +1325,7 @@ class mon_icinga_log_last_read(models.Model):
 ########################################
 # models for aggregated data from icinga
 
+
 class mon_icinga_log_aggregated_timespan(models.Model):
 
     idx = models.AutoField(primary_key=True)
@@ -1323,13 +1336,11 @@ class mon_icinga_log_aggregated_timespan(models.Model):
 
 
 class mon_icinga_log_aggregated_host_data(models.Model):
-    STATE_UNDETERMINED = "UD"  # this is also a state type
     STATE_FLAPPING = "FL"  # this is also a state type
-    STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_UNDETERMINED, "UNDETERMINED"), (STATE_FLAPPING, "FLAPPING")]
+    STATE_CHOICES = mon_icinga_log_raw_host_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
-    STATE_TYPES = [(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT"),
-                   (STATE_FLAPPING, STATE_FLAPPING), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
+    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
 
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
@@ -1343,19 +1354,17 @@ class mon_icinga_log_aggregated_host_data(models.Model):
 
 
 class mon_icinga_log_aggregated_service_data(models.Model):
-    STATE_UNDETERMINED = "UD"
     STATE_FLAPPING = "FL"
-    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_UNDETERMINED, "UNDETERMINED"), (STATE_FLAPPING, "FLAPPING")]
+    STATE_CHOICES = mon_icinga_log_raw_service_alert_data.STATE_CHOICES + [(STATE_FLAPPING, "FLAPPING")]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     idx = models.AutoField(primary_key=True)
     timespan = models.ForeignKey(mon_icinga_log_aggregated_timespan)
 
-    STATE_TYPES = [(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT"),
-                   (STATE_FLAPPING, STATE_FLAPPING), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
+    STATE_TYPES = mon_icinga_log_raw_base.STATE_TYPES + [(STATE_FLAPPING, STATE_FLAPPING)]
 
     device = models.ForeignKey("backbone.device")
-    state_type = models.CharField(max_length=2, choices=[(mon_icinga_log_raw_base.STATE_TYPE_HARD, "HARD"), (mon_icinga_log_raw_base.STATE_TYPE_SOFT, "SOFT")])
+    state_type = models.CharField(max_length=2, choices=STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
 
     # see comment in mon_icinga_log_raw_service_alert_data
