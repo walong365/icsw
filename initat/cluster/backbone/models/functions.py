@@ -191,6 +191,13 @@ class duration(object):
     Utility for databases which have a duration type
     """
 
+    @classmethod
+    def get_class(cls, ident):
+        for klass in cls.Hour, cls.Day, cls.Week, cls.Month:
+            if ident == klass.ID:
+                return klass
+        raise Exception()
+
     # NOTE: don't use timezone info here
     class Day(object):
         ID = 1
@@ -237,12 +244,38 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:02d}:{:02d}".format(timepoint.hour, 0)
 
-    @classmethod
-    def get_class(cls, ident):
-        for klass in cls.Hour, cls.Day, cls.Month:
-            if ident == klass.ID:
-                return klass
-        raise Exception()
+    class Week(object):
+        ID = 4
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            date_day = duration.Day.get_time_frame_start(timepoint)
+            return date_day - datetime.timedelta(days=date_day.weekday())
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return starttime + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
+
+    class Year(object):
+        ID = 5
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            return timepoint.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return cls.get_time_frame_start(starttime + datetime.timedelta(days=370))
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:04d}".format(timepoint.year)
+
+
 
 
 # Modified DES required by vnc

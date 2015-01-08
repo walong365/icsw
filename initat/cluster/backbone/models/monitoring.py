@@ -1225,9 +1225,9 @@ class mon_icinga_log_raw_base(models.Model):
     STATE_TYPE_SOFT = "S"
     STATE_UNDETERMINED = "UD"  # state as well as state type
     STATE_TYPES = [(STATE_TYPE_HARD, "HARD"), (STATE_TYPE_SOFT, "SOFT"), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
- 
+
     FLAPPING_START = "START"
-    FLAPPING_STOP = "START"
+    FLAPPING_STOP = "STOP"
 
 
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
@@ -1251,8 +1251,8 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     # they are identified by the mon_check_command.pk and their name, hence the fields here
     # the layout of this table probably has to change in order to accommodate for further services
     # I however can't do that now as I don't know how what to change it to
-    service = models.ForeignKey(mon_check_command, null=True)  # null for device_independent events
-    service_info = models.TextField(blank=True, null=True)
+    service = models.ForeignKey(mon_check_command, null=True, db_index=True)  # null for device_independent events
+    service_info = models.TextField(blank=True, null=True, db_index=True)
 
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
@@ -1263,7 +1263,7 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
 
 class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     # see comment in mon_icinga_log_raw_service_alert_data
-    service = models.ForeignKey(mon_check_command)
+    service = models.ForeignKey(mon_check_command, null=True)  # null for device_independent events
     service_info = models.TextField(blank=True, null=True)
 
     flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
@@ -1329,8 +1329,8 @@ class mon_icinga_log_last_read(models.Model):
 class mon_icinga_log_aggregated_timespan(models.Model):
 
     idx = models.AutoField(primary_key=True)
-    start_date = models.DateTimeField(db_index=True)
     end_date = models.DateTimeField()
+    start_date = models.DateTimeField(db_index=True)
     duration = models.IntegerField()  # seconds
     duration_type = models.IntegerField(db_index=True)  # durations pseudo enum from functions
 
