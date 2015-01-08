@@ -192,9 +192,7 @@ class icinga_log_reader(object):
                 # assume not running
                 msg = "icinga process (pid: {}) is not running".format(pid)
                 self.log(msg)
-                host_entry, service_entry = self._create_icinga_down_entry(datetime.datetime.now(), msg, None)
-                host_entry.save()
-                service_entry.save()
+                self._create_icinga_down_entry(datetime.datetime.now(), msg, None, save=True)
 
     def parse_log_file(self, logfile, logfilepath=None, start_at=None):
         '''
@@ -232,10 +230,13 @@ class icinga_log_reader(object):
                 if msg.startswith("Successfully shutdown"):
                     self.log("detected icinga shutdown by log")
                     # create alerts for all devices: indeterminate (icinga not running)
-                    # note: this relies on the fact that on startup, icinga writes a status update
-                    host_entry, service_entry = self._create_icinga_down_entry(datetime.datetime.fromtimestamp(timestamp), msg, logfile_db)
+                    # note: this relies on the fact that on startup, icinga writes a status update on start
+                    host_entry, service_entry, host_flapping_entry, service_flapping_entry = \
+                        self._create_icinga_down_entry(datetime.datetime.fromtimestamp(timestamp), msg, logfile_db, save=False)
                     host_states.append(host_entry)
                     service_states.append(service_entry)
+                    host_flapping_states.append(host_flapping_entry)
+                    service_flapping_states.append(service_flapping_entry)
 
             except self.malformed_icinga_log_entry as e:
                 self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
@@ -655,7 +656,7 @@ class icinga_log_reader(object):
         # excludes all special commands and cluster commands.
         return self._historic_service_map.get(service_spec.replace(" ", "_").lower(), None)
 
-    def _create_icinga_down_entry(self, when, msg, logfile_db):
+    def _create_icinga_down_entry(self, when, msg, logfile_db, save):
         host_entry = mon_icinga_log_raw_host_alert_data(
             date=when,
             device=None,
@@ -665,7 +666,6 @@ class icinga_log_reader(object):
             msg=msg,
             logfile=logfile_db,
         )
-
         service_entry = mon_icinga_log_raw_service_alert_data(
             date=when,
             device=None,
@@ -677,8 +677,32 @@ class icinga_log_reader(object):
             msg=msg,
             logfile=logfile_db,
         )
+        host_flapping_entry = mon_icinga_log_raw_host_flapping_data(
+            date=when,
+            device_id=None,
+            flapping_state="STOP",
+            device_independent=True,
+            msg=msg,
+            logfile=logfile_db,
+        )
+        service_flapping_entry = mon_icinga_log_raw_service_flapping_data(
+            date=when,
+            device_id=None,
+            service_id=None,
+            service_info=None,
+            flapping_state="STOP",
+            device_independent=True,
+            msg=msg,
+            logfile=logfile_db,
+        )
 
-        return host_entry, service_entry
+        if save:
+            host_entry.save()
+            service_entry.save()
+            host_flapping_entry.save()
+            service_flapping_entry.save()
+
+        return host_entry, service_entry, host_flapping_entry, service_flapping_entry
 
 
 class host_service_id_util(object):
