@@ -142,16 +142,30 @@ class dynconfig_process(threading_tools.process_obj):
         else:
             form_str = "{:.2f}"
         _val_str = form_str.format(_val)
+        _errors = []
         for s_key, c_val in cur_hint.get_limit_list():
             if s_key[1] == "w":
                 _sn, _retc = (1, limits.nag_STATE_WARNING)
             else:
                 _sn, _retc = (2, limits.nag_STATE_CRITICAL)
-            if (s_key[0] == "l" and _val <= c_val) or (s_key[0] == "u" and _val >= c_val):
+            _lower = s_key[0] == "l"
+            if (_lower and _val <= c_val) or (not _lower and _val >= c_val):
                 _ret = max(_ret, _retc)
-            if s_key[0] == "u":
-                _val_str = "{} {}{}{}".format(_val_str, "<" * _sn, form_str.format(c_val), ">" * _sn)
+                _errors.append(
+                    "{} {} threshold {}".format(
+                        "below lower" if _lower else "above upper",
+                        {"w" : "warning", "c" : "critical"}[s_key[1]],
+                        form_str.format(c_val),
+                    )
+                )
+            if _lower:
+                _val_str = "{}{} {}".format(form_str.format(c_val), "<" * _sn, _val_str)
             else:
-                _val_str = "{}{}{} {}".format("<" * _sn, form_str.format(c_val), ">" * _sn, _val_str)
+                _val_str = "{} {}{}".format(_val_str, "<" * _sn, form_str.format(c_val))
+        if _errors:
+            _val_str = "{}, value is {}".format(
+                _val_str,
+                ", ".join(_errors),
+            )
         # print _val_str
         return _ret, _val_str
