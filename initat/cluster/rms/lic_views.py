@@ -28,13 +28,14 @@ from django.views.generic import View
 from django.http.response import HttpResponse
 from django.db.models.aggregates import Sum
 from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.rms.rms_addons import *  # @UnusedWildImport
 from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_version, \
     ext_license_user, ext_license_client, ext_license_usage_coarse, ext_license_check_coarse, ext_license_state_coarse, duration
 from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, ext_license_version_state_coarse_serializer
-from rest_framework.response import Response
+from initat.cluster.frontend.common import duration_utils
 from lxml import etree  # @UnresolvedImport @UnusedImport
 import json  # @UnusedImport
 import pprint  # @UnusedImport
@@ -89,7 +90,7 @@ class get_license_overview_steps(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
-        steps = lic_utils.get_steps(_post['duration_type'], _post['date'])
+        steps = duration_utils.get_steps(_post['duration_type'], _post['date'])
         return HttpResponse(json.dumps(steps), content_type="application/json")
 
 
@@ -99,7 +100,7 @@ class license_state_coarse_list(ListAPIView):
 
     def list(self, request, *args, **kwargs):
         lic_id = request.GET["lic_id"]
-        (duration_type, start, end) = lic_utils.parse_duration_from_request(request)
+        (duration_type, start, end) = duration_utils.parse_duration_from_request(request)
 
         logger.debug("retrieving data for license {} from {} to {}, type {}".format(lic_id, start, end, duration_type))
         self.object_list = ext_license_state_coarse.objects.filter(ext_license_id=lic_id,
@@ -116,7 +117,7 @@ class license_version_state_coarse_list(ListAPIView):
 
     def list(self, request, *args, **kwargs):
         lic_id = request.GET["lic_id"]
-        (duration_type, start, end) = lic_utils.parse_duration_from_request(request)
+        (duration_type, start, end) = duration_utils.parse_duration_from_request(request)
 
         self.object_list = ext_license_version_state_coarse.objects.filter(
             ext_license_version__ext_license=lic_id,
@@ -134,7 +135,7 @@ class _license_usage_view(ListAPIView):
     '''
     def list(self, request, *args, **kwargs):
         lic_id = request.GET["lic_id"]
-        (duration_type, start, end) = lic_utils.parse_duration_from_request(request)
+        (duration_type, start, end) = duration_utils.parse_duration_from_request(request)
 
         data = ext_license_usage_coarse.objects.filter(
             ext_license_version_state_coarse__ext_license_version__ext_license=lic_id,
@@ -178,59 +179,3 @@ class license_device_coarse_list(_license_usage_view):
     def get_name_column_name(self):
         return "ext_license_client__short_name"
 
-
-class lic_utils(object):
-
-    @staticmethod
-    def parse_date(date):
-        return datetime.datetime.fromtimestamp(int(date))
-
-    @staticmethod
-    def parse_duration_from_request(request):
-        '''
-        Parse duration from a "usual" request
-        '''
-        date = request.GET["date"]
-        in_duration_type = request.GET["duration_type"]
-        return lic_utils.parse_duration(in_duration_type, date)
-
-    @staticmethod
-    def parse_duration(in_duration_type, date):
-        '''
-        :param str in_duration_type:
-        :param str date: timestamp from request
-        :return: tuple (unit of data to display, start, end)
-        '''
-        date = lic_utils.parse_date(date)
-        if in_duration_type == "day":
-            duration_type = duration.Hour
-            start = duration.Day.get_time_frame_start(date)
-            end = duration.Day.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
-        elif in_duration_type == "week":
-            duration_type = duration.Day
-            date_as_date = date.date()  # forget time
-            date_day = datetime.datetime(year=date_as_date.year, month=date_as_date.month, day=date_as_date.day)
-            start = date_day - datetime.timedelta(days=date_day.weekday())
-            end = start + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
-        elif in_duration_type == "month":
-            duration_type = duration.Day
-            start = duration.Month.get_time_frame_start(date)
-            end = duration.Month.get_end_time_for_start(start) - datetime.timedelta(seconds=1)
-        elif in_duration_type == "year":
-            duration_type = duration.Month
-            start = datetime.datetime(year=date.year, month=1, day=1)
-            end = datetime.datetime(year=date.year+1, month=1, day=1) - datetime.timedelta(seconds=1)
-        return (duration_type, start, end)
-
-    @staticmethod
-    def get_steps(in_duration_type, date):
-        (duration_type, start, end) = lic_utils.parse_duration(in_duration_type, date)
-
-        steps = []
-        cur = start
-
-        while cur < end:
-            steps.append({"date": duration_type.get_display_date(cur), "full_date": cur.isoformat()})
-            cur = duration_type.get_end_time_for_start(cur) + datetime.timedelta(seconds=1)
-
-        return steps
