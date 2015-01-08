@@ -54,48 +54,56 @@ status_history_template = """
 device_status_history_template = """
 <h3>{{device_rest.name }}</h3>
 
-<table class="table table-condensed table-hover table-striped">
-    <thead>
-        <tr>
-            <th>State</th>
-            <th>State type</th>
-            <th>Ratio of state</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="state in host_data">
-            <td> {{ state.state }} </td>
-            <td> {{ state.state_type }} </td>
-            <td> {{ state.value }} </td>
-        </tr>
-    </tbody>
-</table>
+<div class="row" style="width: 500px"> <!-- style="display: flex; align-items: center;"> <!-- vertical alignment, see second answer of http://stackoverflow.com/questions/20547819/vertical-align-with-bootstrap-3 -->
+    <div class="col-md-4" style="margin-top: -8px;">
+        <div id="{{device_chart_id}}" style="width: 120px; height: 120px; float: none; margin-left: auto; margin-right: auto;" class="chart"></div>
+    </div>
+    <div class="col-md-8">
+        <table class="table table-condensed table-hover table-striped">
+            <!--
+            <thead>
+                <tr>
+                    <th>State</th>
+                    <th>Ratio of state</th>
+                </tr>
+            </thead>
+            -->
+            <tbody>
+                <tr ng-repeat="state in host_data">
+                    <td> {{ state.state }} </td>
+                    <td> {{ state.value }} </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
-<div id="{{device_chart_id}}" style="width: 200px; height: 200px;" class="chart"></div>
-
-<h4>Services</h4>
-<table class="table table-condensed table-hover table-striped">
-    <thead>
-        <tr>
-            <th>Service</th>
-            <th>Ok</th>
-            <th>Warning</th>
-            <th>Critical</th>
-            <th>Unknown</th>
-            <th>Undetermined</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="(serv_key, serv_state) in service_data">
-            <td> {{ extract_service_name(serv_key) }} </td>
-            <td> {{ extract_service_value(serv_state, "ok") }} </td>
-            <td> {{ extract_service_value(serv_state, "warning") }} </td>
-            <td> {{ extract_service_value(serv_state, "critical") }} </td>
-            <td> {{ extract_service_value(serv_state, "unknown") }} </td>
-            <td> {{ extract_service_value(serv_state, "undetermined") }} </td>
-        </tr>
-    </tbody>
-</table>
+<div class="row" style="width: 500px">
+    <div class="col-md-12">
+        <table class="table table-condensed table-hover table-striped">
+            <thead>
+                <tr>
+                    <th >Service</th>
+                    <th style="width: 10%;">Ok</th>
+                    <th style="width: 10%;">Warning</th>
+                    <th style="width: 10%;">Critical</th>
+                    <th style="width: 10%;">Unknown</th>
+                    <th style="width: 10%;">Undetermined</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="(serv_key, serv_state) in service_data">
+                    <td> {{ extract_service_name(serv_key) }} </td>
+                    <td> {{ extract_service_value(serv_state, "ok") }} </td>
+                    <td> {{ extract_service_value(serv_state, "warning") }} </td>
+                    <td> {{ extract_service_value(serv_state, "critical") }} </td>
+                    <td> {{ extract_service_value(serv_state, "unknown") }} </td>
+                    <td> {{ extract_service_value(serv_state, "undetermined") }} </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 """
 {% endverbatim %}
 
@@ -141,9 +149,50 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
             
             scope.update = () ->
                 dev_cont = (new_data) ->
-                    for d in new_data
+                    weigth = {
+                        "Up": -10
+                        "Down": -8
+                        "Unreachable": -6
+                        "Undetermined": -4
+                    }
+                    formatted_data = _.cloneDeep(new_data)
+                    for key of weigth
+                        if not _.any(new_data, (d) -> return d['state'] == key)
+                            formatted_data.push({'state':key, 'value': 0})
+
+                    for d in formatted_data
                         d['value'] = scope.float_format(d['value'])
-                    scope.host_data = new_data
+                    scope.host_data = _.sortBy(formatted_data, (d) -> return weigth[d['state']])
+
+                    new_data = _.sortBy(new_data, (d) -> return weigth[d['state']])
+                    console.log new_data
+
+                    for d in new_data
+                        d['value'] = Math.round(d['value']*100)
+                    console.log new_data
+
+                    colors = {
+                        "Up": "#66dd66"
+                        "Down": "#ff7777"
+                        "Unreachable": "#f0ad4e"
+                        "Undetermined": "#b7b7b7"
+                    }
+                    pie_data = []
+                    for d in new_data
+                        pie_data.push {
+                            'title': d['state']
+                            'value': d['value']
+                            'color': colors[d['state']]
+                        }
+
+                
+                    # this is the opposite of angular-style, but it's just this one location
+                    elem = $("#"+scope.device_chart_id)
+                    elem.html('')
+                    elem.drawPieChart(pie_data);
+                    #//{ title: "A",         value : 220,  color: "#FFD300" },
+                    #//{ title: "B",         value : 120,  color: "#00FF00" },
+
 
                 status_history_utils.get_device_data($resource, scope.device_id, scope.startdate, scope.timerange, dev_cont)
                 
@@ -152,15 +201,6 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
 
                 status_history_utils.get_service_data($resource, scope.device_id, scope.startdate, scope.timerange, serv_cont)
 
-                # 66dd66
-                
-                # this is the opposite of angular-style, but it's just this one location
-                elem = $("#"+scope.device_chart_id)
-                elem.html('')
-                elem.drawPieChart([
-                   { title: "A",         value : 220,  color: "#FFD300" },
-                   { title: "B",         value : 120,  color: "#00FF00" },
-                ]);
 
             scope.update()
 
@@ -171,7 +211,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
         link : (scope, el, attrs) ->
             scope.devicepks = attrs["devicepks"].split(',')
             #scope.startdate = moment().startOf("day")
-            scope.startdate = moment('Mon Jan 05 2015 00:00:00 GMT+0100 (CET)')
+            scope.startdate = moment('Wed Jan 07 2015 00:00:00 GMT+0100 (CET)')
             scope.timerange = 'day'
 
             scope.set_timerange = (tr) ->

@@ -461,8 +461,14 @@ class get_hist_device_data(ListAPIView):
             data = mon_icinga_log_aggregated_host_data.objects.filter(device_id=device_id, timespan=timespan_db).values('state', 'state_type', 'value')
             trans = dict(mon_icinga_log_aggregated_host_data.STATE_CHOICES)
             for d in data:
-                d['state'] = trans[d['state']].lower()
-        return Response(data)
+                d['state'] = trans[d['state']].capitalize()
+
+        data_merged_state_types = []
+        # merge state_types
+        for state in set(d['state'] for d in data):
+            data_merged_state_types.append({'state': state, 'value': sum(d['value'] for d in data if d['state'] == state)})
+
+        return Response(data_merged_state_types)
 
 
 class get_hist_service_data(ListAPIView):
