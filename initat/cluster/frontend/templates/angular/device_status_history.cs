@@ -46,6 +46,9 @@ status_history_template = """
     </div>
 </h4>
 
+<h4 ng-if="!timespan_error ">Showing data from {{timespan_from}} to {{timespan_to}}:</h4>
+<h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
+
 <div ng-repeat="device in devicepks">
     <devicestatushistory device="{{device}}" timerange="timerange" startdate="startdate" />
 </div>
@@ -131,12 +134,8 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
             scope.device_chart_id = "device_chart_" + scope.device_id
             device_resource = $resource("{% url 'rest:device_list' %}/:id", {});
             scope.device_rest = device_resource.get({'id': scope.device_id})
-            scope.$watch('timerange', (unused) ->
-                scope.update()
-            )
-            scope.$watch('startdate', (unused) ->
-                scope.update()
-            )
+            scope.$watch('timerange', (unused) -> scope.update())
+            scope.$watch('startdate', (unused) -> scope.update())
             scope.float_format = (n) -> return (n*100).toFixed(0) + "%"
             scope.extract_service_value = (service, key) ->
                 entries = _.filter(service, (e) -> e.state == key)
@@ -198,7 +197,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
 
             scope.update()
 
-}).directive("statushistory", ($templateCache) ->
+}).directive("statushistory", ($templateCache, $resource) ->
     return {
         restrict : "EA"
         template : $templateCache.get("status_history_template.html")
@@ -210,6 +209,24 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
 
             scope.set_timerange = (tr) ->
                 scope.timerange = tr
+
+            scope.update = () ->
+                cont = (new_data) ->
+                    scope.timespan_error = ""
+                    scope.timespan_from = ""
+                    scope.timespan_to = ""
+                    if new_data.length > 0
+                        timespan = new_data[0]
+                        scope.timespan_from = moment(timespan[0]).format("DD.MM.YYYY")
+                        scope.timespan_to = moment(timespan[1]).format("DD.MM.YYYY")
+                    else
+                        scope.timespan_error = "No data available for this time span"
+
+                status_history_utils.get_timespan($resource, scope.startdate, scope.timerange, cont)
+
+            scope.$watch('timerange', (unused) -> scope.update())
+            scope.$watch('startdate', (unused) -> scope.update())
+            scope.update()
 }).directive("ngpiechart", () ->
     return {
         restrict : "E"
@@ -251,6 +268,15 @@ status_history_utils = {
         res = $resource("{% url 'mon:get_hist_service_data' %}", {}, {'query': {method: 'GET', isArray: false}})
         query_data = {
             'device_id': device_id,
+            'date': moment(start_date).unix()  # ask server in utc
+            'duration_type': timerange,
+        }
+        res.query(query_data, (new_data) ->
+            cont(new_data)
+        )
+    get_timespan: ($resource, start_date, timerange, cont) ->
+        res = $resource("{% url 'mon:get_hist_timespan' %}", {})
+        query_data = {
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
         }

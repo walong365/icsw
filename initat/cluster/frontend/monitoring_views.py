@@ -449,6 +449,16 @@ class _device_status_history_util(object):
             return None
 
 
+class get_hist_timespan(ListAPIView):
+    @method_decorator(login_required)
+    def list(self, request, *args, **kwargs):
+        timespan = _device_status_history_util.get_timespan_db_from_request(request)
+        data = []
+        if timespan:
+            data.append((timespan.start_date, timespan.end_date))
+        return Response(data)
+
+
 class get_hist_device_data(ListAPIView):
     @method_decorator(login_required)
     def list(self, request, *args, **kwargs):
