@@ -1369,17 +1369,39 @@ mh_devrow_template = """
 """
 
 mh_row_template = """
-<td title="from run {{ hint.call_idx }}">{{ hint.m_type }}</td>
-<td>{{ hint.key }}</td>
+<td title="from run {{ hint.call_idx }}">
+    <span ng-show="hint.enabled">
+        {{ hint.m_type }}
+    </span>
+    <span ng-show="!hint.enabled">
+        <em><strike>{{ hint.m_type }}</strike></em>
+    </span>
+</td>
+<td>
+    <span ng-show="hint.enabled">
+        {{ hint.key }}
+    </span>
+    <span ng-show="!hint.enabled">
+        <em><strike>{{ hint.key }}</strike></em>
+    </span>
+</td>
 <td>{{ hint.persistent | yesno1 }}</td>
 <td>{{ hint.datasource }}</td>
 <td>{{ get_v_type() }}</td>
-<td class="text-right" ng-class="get_td_class('lower_crit')">{{ get_limit('lower_crit') }}</td>
-<td class="text-right" ng-class="get_td_class('lower_warn')">{{ get_limit('lower_warn') }}</td>
-<td class="text-right" ng-class="get_td_class('upper_warn')">{{ get_limit('upper_warn') }}</td>
-<td class="text-right" ng-class="get_td_class('upper_crit')">{{ get_limit('upper_crit') }}</td>
-<td class="text-center"><input ng-show="hint.datasource != 'p'" type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_hint()"></input></td>
+<td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
+<td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
 <td class="text-right success">{{ get_value() }}</td>>
+<td class="text-center">
+    <input ng-show="hint.datasource != 'p'" type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_hint(hint)"></input>
+</td>
+<td class="text-center">
+    <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint)"/></input>
+</td>
+<td class="text-center">
+    <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_hint(hint, $event)"/></input>
+</td>
 <td>{{ hint.info }}</td>
 """
 
@@ -1397,7 +1419,7 @@ mh_table_template = """
             <th>upper warn</th>
             <th>upper crit</th>
             <th>value</th>
-            <th>action</th>
+            <th colspan="3">action</th>
             <th>info</th>
         </tr>
     </thead>
@@ -1436,6 +1458,13 @@ mh_template = """
 device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
+        $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
+        $scope.hint_edit.edit_template = "monitoring_hint_form.html"
+        $scope.hint_edit.modify_rest_url = "{% url 'rest:monitoring_hint_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.hint_edit.modify_data_before_put = (hint) ->
+            $scope.restore_values(hint, true)
+        $scope.hint_edit.new_object_at_tail = false
+        $scope.hint_edit.use_promise = true
         $scope.devices = []
         $scope.configs = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -1446,6 +1475,11 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:device_tree_list' %}", {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
+                ["{% url 'rest:fetch_forms' %}", {
+                    "forms" : angular.toJson([
+                        "monitoring_hint_form"
+                     ])
+                }],
             ])
             $q.all(wait_list).then((data) ->
                 $scope.devices = []
@@ -1454,8 +1488,9 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
                     entry.expanded = true
                     $scope.devices.push(entry)
                     $scope.device_lut[entry.idx] = entry
-                #$scope.init_devices(pre_sel)
-                #$scope.new_filter_set($scope.name_filter, false)
+                # forms
+                for cur_form in data[1] 
+                    $templateCache.put(cur_form.name, cur_form.form)
             )
         $scope.get_tr_class = (obj) ->
             if obj.device_type_identifier == "MD"
@@ -1475,6 +1510,42 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
                 url     : "{% url 'mon:delete_hint' %}"
                 data    :
                     hint_pk : hint.idx
+        $scope.save_hint = (hint) ->
+            Restangular.restangularizeElement(null, hint, "{% url 'rest:monitoring_hint_detail' 1 %}".slice(1).slice(0, -2))
+            hint.put()
+        $scope.backup_values = (hint) ->
+            if hint.v_type == "f"
+                v_name = "float"
+            else
+                v_name = "int"
+            for _a in ["lower", "upper"]
+                for _b in ["crit", "warn"]
+                    _var = "#{_a}_#{_b}_#{v_name}"
+                    hint["#{_var}_saved"] = hint[_var]
+                    hint["#{_var}_source_saved"] = hint["#{_var}_source"]
+                    hint["#{_var}_source"] = "u"
+        $scope.restore_values = (hint, intl) ->
+            if hint.v_type == "f"
+                v_name = "float"
+            else
+                v_name = "int"
+            for _a in ["lower", "upper"]
+                for _b in ["crit", "warn"]
+                    _var = "#{_a}_#{_b}_#{v_name}"
+                    if intl
+                        if hint["#{_var}"] == hint["#{_var}_saved"]
+                            hint["#{_var}"] = hint["#{_var}_saved"]
+                            hint["#{_var}_source"] = hint["#{_var}_source_saved"]
+                    else
+                        hint["#{_var}"] = hint["#{_var}_saved"]
+                        hint["#{_var}_source"] = hint["#{_var}_source_saved"]
+        $scope.modify_hint = (hint, event) ->
+            $scope.backup_values(hint)
+            $scope.hint_edit.edit(hint, event).then(
+                (mod_hint) ->
+                    if mod_hint == false
+                        $scope.restore_values(hint, false)
+            )
         install_devsel_link($scope.new_devsel, false)
 ]).directive("mhdevrow", ($templateCache) ->
     return {
@@ -1490,6 +1561,18 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
                 return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
             scope.get_value = () ->
                 return scope.hint["value_" + scope.get_v_type()]
+            scope.get_td_title = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "n"
+                    return "not set"
+                else if scope.hint[skey] == "s"
+                    return "set by system"
+                else if scope.hint[skey] == "u"
+                    return "set by user"
+                else
+                    return "unknown source '#{scope.hint[skey]}'"
             scope.get_td_class = (name) ->
                 v_type = scope.get_v_type()
                 key = "#{name}_#{v_type}"
@@ -1508,8 +1591,11 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
                     return scope.hint[key]
                 else
                     return "---"
-            scope.delete_hint = () ->
-                scope.remove_hint(scope.hint)
+            scope.delete_hint = (hint) ->
+                scope.remove_hint(hint)
+            scope.toggle_enabled = (hint) ->
+                hint.enabled = !hint.enabled
+                scope.save_hint(hint)
     }
 ).directive("monitoringhint", ($templateCache) ->
     return {

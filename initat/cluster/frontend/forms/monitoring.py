@@ -11,7 +11,7 @@ from django.utils.safestring import mark_safe
 from initat.cluster.backbone.models import device, mon_check_command, mon_service_templ, mon_period, \
     mon_notification, mon_contact, host_check_command, mon_contactgroup, mon_device_templ, \
     mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, mon_service_esc_templ, \
-    mon_device_esc_templ, mon_service_dependency_templ, mon_service_dependency, mon_host_dependency
+    mon_device_esc_templ, mon_service_dependency_templ, mon_service_dependency, mon_host_dependency, monitoring_hint
 from initat.cluster.frontend.widgets import ui_select_widget, ui_select_multiple_widget
 
 
@@ -34,6 +34,7 @@ __all__ = [
     "mon_service_dependency_form",
     "device_monitoring_form",
     "mon_check_command_form",
+    "monitoring_hint_form",
 ]
 
 
@@ -1267,3 +1268,62 @@ class mon_check_command_form(ModelForm):
             "mon_service_templ": ui_select_widget(),
             "event_handler": ui_select_widget(),
         }
+
+
+class monitoring_hint_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-9'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Monitoring hint '{% verbatim %}{{ _edit_obj.m_type }} / {{ _edit_obj.key }}{% endverbatim %}'</h2>"),
+        HTML("{% verbatim %}{{ _edit_obj }}{% endverbatim %}"),
+        Fieldset(
+            "lower bounds",
+            HTML("""
+<div class="form-group">
+    <label class="control-label col-sm-4">Lower Critical</label>
+    <div class="controls col-sm-8">
+        <input class="form-control" ng-model="_edit_obj.lower_crit_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
+        <input class="form-control" ng-model="_edit_obj.lower_crit_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+    </div>
+</div>
+<div class="form-group">
+    <label class="control-label col-sm-4">Lower Warning</label>
+    <div class="controls col-sm-8">
+        <input class="form-control" ng-model="_edit_obj.lower_warn_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
+        <input class="form-control" ng-model="_edit_obj.lower_warn_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+    </div>
+</div>
+"""),
+        ),
+        Fieldset(
+            "upper bounds",
+            HTML("""
+<div class="form-group">
+    <label class="control-label col-sm-4">Upper Warning</label>
+    <div class="controls col-sm-8">
+        <input class="form-control" ng-model="_edit_obj.upper_warn_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
+        <input class="form-control" ng-model="_edit_obj.upper_warn_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+    </div>
+</div>
+<div class="form-group">
+    <label class="control-label col-sm-4">Upper Critial</label>
+    <div class="controls col-sm-8">
+        <input class="form-control" ng-model="_edit_obj.upper_crit_float" required="True" type="number" step="any" ng-show="_edit_obj.v_type == 'f'"></input>
+        <input class="form-control" ng-model="_edit_obj.upper_crit_int" required="True" type="number" ng-show="_edit_obj.v_type == 'i'"></input>
+    </div>
+</div>
+"""),
+        ),
+        FormActions(
+            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+        )
+    )
+
+    class Meta:
+        model = monitoring_hint
