@@ -62,7 +62,7 @@ class icinga_log_aggregator(object):
         relevant_serv_alerts = mon_icinga_log_raw_service_alert_data.objects.filter(device_independent=False)
         self._serv_alert_keys_cache = relevant_serv_alerts.values_list("device", "service", "service_info").distinct()
 
-        for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
+        for duration_type in (duration.Hour, duration.Day, duration.Week, duration.Month, duration.Year):
             self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
             # hosts
             try:
