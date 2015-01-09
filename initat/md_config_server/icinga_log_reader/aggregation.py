@@ -36,6 +36,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_aggregated_service_data
 from initat.cluster.backbone.models import duration
 from initat.cluster.backbone.models.functions import cluster_timezone
+from django.db import connection
 
 __all__ = [
 ]
@@ -54,8 +55,12 @@ class icinga_log_aggregator(object):
         self.log = log
 
     def update(self):
-        #  for duration_type in (duration.Hour, duration.Day, duration.Month):
-        for duration_type in (duration.Day, ):
+
+        relevant_serv_alerts = mon_icinga_log_raw_service_alert_data.objects.filter(device_independent=False)
+        self._serv_alert_keys_cache = relevant_serv_alerts.values_list("device", "service", "service_info").distinct()
+
+        for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
+        #for duration_type in (duration.Day,):
             self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
             # hosts
             try:
@@ -74,13 +79,16 @@ class icinga_log_aggregator(object):
                 next_end_time = duration_type.get_end_time_for_start(next_start_time)
                 last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
                 if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(last_read_obj.timestamp, cluster_timezone):  # have sufficient data
-                    self.log("creating entry for {}", next_start_time)
+                    self.log("creating entry for {} starting at {}".format(duration_type.__name__, next_start_time))
                     self._create_timespan_entry(next_start_time, next_end_time, duration_type)
                 else:
                     self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
                     do_loop = False
 
                 next_start_time = next_end_time
+
+            #pprint.pprint(sorted(connection.queries, key=lambda x:x['time']))
+            #import pdb; pdb.set_trace()
 
     def _create_timespan_entry(self, start_time, end_time, duration_type):
         timespan_seconds = (end_time - start_time).total_seconds()
@@ -167,8 +175,7 @@ class icinga_log_aggregator(object):
         def process_service_alerts():
             service_db_rows = []
             # don't consider alerts for any machine, they are added below
-            relevant_serv_alerts = mon_icinga_log_raw_service_alert_data.objects.filter(device_independent=False)
-            for device_id, service_id, service_info in relevant_serv_alerts.values_list("device", "service", "service_info").distinct():
+            for device_id, service_id, service_info in self._serv_alert_keys_cache:
                 # need to find last state
                 service_db_identification = Q(device=device_id, service=service_id, service_info=service_info)
                 service_db_identification_w_downtime = service_db_identification | Q(device_independent=True)
@@ -184,10 +191,6 @@ class icinga_log_aggregator(object):
                 flapping_ratio = calc_flapping_ratio(mon_icinga_log_raw_service_flapping_data, service_db_identification)
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_service_data.STATE_FLAPPING, mon_icinga_log_aggregated_service_data.STATE_FLAPPING)] = flapping_ratio
-
-                if not service_id:
-                    print 'not service id: ', locals()
-                    pprint.pprint(weighted_states)
 
                 for ((state, state_type), value) in weighted_states.iteritems():
                     service_db_rows.append(

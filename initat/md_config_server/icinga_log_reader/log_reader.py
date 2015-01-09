@@ -18,26 +18,28 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import logging_tools
-import os
-import datetime
 import calendar
-import glob
-import pprint  # @UnusedImport
 from collections import namedtuple
-
-from initat.md_config_server.config import global_config
-from initat.cluster.backbone.models.monitoring import mon_check_command,\
-    mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file,\
-    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data,\
-    mon_icinga_log_raw_service_notification_data,\
-    mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data,\
-    mon_icinga_log_raw_base
-from initat.cluster.backbone.models import device
-from django.db import connection
-from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
 import collections
+import datetime
+import glob
+import os
+import pprint  # @UnusedImport
+
+from django.db import connection
+from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models.monitoring import mon_check_command, \
+    mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file, \
+    mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
+    mon_icinga_log_raw_service_notification_data, \
+    mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
+    mon_icinga_log_raw_base
+from initat.md_config_server.config import global_config
+import logging_tools
 import psutil
+
+from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
+
 
 __all__ = [
     "icinga_log_reader",
@@ -102,6 +104,7 @@ class icinga_log_reader(object):
         connection.close()
 
         self._update_raw_data()
+        # import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), "/tmp/prof.out")
         self._icinga_log_aggregator.update()
 
     def _update_raw_data(self):
@@ -325,9 +328,13 @@ class icinga_log_reader(object):
         # sort
         logfiles_date_data = []
         for logfilepath in files:
-            unused, month, day, year, hour = logfilepath.split("-")
-            logfilepath = os.path.join(icinga_log_reader.get_icinga_log_archive_dir(), logfilepath)
-            logfiles_date_data.append((year, month, day, hour, logfilepath))
+            try:
+                unused, month, day, year, hour = logfilepath.split("-")
+            except ValueError:
+                pass  # filename not appropriate
+            else:
+                logfilepath = os.path.join(icinga_log_reader.get_icinga_log_archive_dir(), logfilepath)
+                logfiles_date_data.append((year, month, day, hour, logfilepath))
 
         retval = None
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
@@ -513,7 +520,7 @@ class icinga_log_reader(object):
         return host, state, state_type, msg
 
     def _parse_host_service(self, host_spec, service_spec):
-        # used for service and flapping alerts
+        # used for service and service flapping alerts as well as service notifications
 
         # primary method: check special service description
         host, service, service_info = host_service_id_util.parse_host_service_description(service_spec, self.log)
@@ -528,7 +535,12 @@ class icinga_log_reader(object):
             service, service_info = self._resolve_service(service_spec)
         # TODO: generalise to other services
         if not service:
-            raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(service_spec))
+            # raise self.unknown_service_error("Failed to resolve service : {} (error #3)".format(service_spec))
+            # this is not an entry with new format and also not a uniquely identifiable one
+            # however we want to keep the data, even if it's not nicely identifiable
+            service = None
+            service_info = service_spec
+
         return host, service, service_info
 
     def _parse_service_flapping_alert(self, cur_line):
