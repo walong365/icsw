@@ -104,8 +104,8 @@ class icinga_log_reader(object):
         connection.close()
 
         self._update_raw_data()
-        import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), "/tmp/prof.out")
-        # self._icinga_log_aggregator.update()
+        #import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), "/tmp/prof.out")
+        self._icinga_log_aggregator.update()
 
     def _update_raw_data(self):
         self.log("checking icinga log")
