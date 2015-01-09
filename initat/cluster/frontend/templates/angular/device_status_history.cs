@@ -54,9 +54,12 @@ status_history_template = """
 device_status_history_template = """
 <h3>{{device_rest.name }}</h3>
 
+
 <div class="row" style="width: 500px"> <!-- style="display: flex; align-items: center;"> <!-- vertical alignment, see second answer of http://stackoverflow.com/questions/20547819/vertical-align-with-bootstrap-3 -->
     <div class="col-md-4" style="margin-top: -8px;">
-        <div id="{{device_chart_id}}" style="width: 120px; height: 120px; float: none; margin-left: auto; margin-right: auto;" class="chart"></div>
+        <div style="float: right">
+            <ngpiechart width="120" height="120" data="pie_data" ></ngpiechart>
+        </div>
     </div>
     <div class="col-md-8">
         <table class="table table-condensed table-hover table-striped">
@@ -146,7 +149,6 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                 description =  service_key.split(",", 2)[1]
                 return check_command_name + ": " + description
 
-            
             scope.update = () ->
                 dev_cont = (new_data) ->
                     weigth = {
@@ -184,16 +186,8 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                             'value': d['value']
                             'color': colors[d['state']]
                         }
-
+                    scope.pie_data = pie_data
                 
-                    # this is the opposite of angular-style, but it's just this one location
-                    elem = $("#"+scope.device_chart_id)
-                    elem.html('')
-                    elem.drawPieChart(pie_data);
-                    #//{ title: "A",         value : 220,  color: "#FFD300" },
-                    #//{ title: "B",         value : 120,  color: "#00FF00" },
-
-
                 status_history_utils.get_device_data($resource, scope.device_id, scope.startdate, scope.timerange, dev_cont)
                 
                 serv_cont = (new_data) ->
@@ -216,6 +210,25 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
 
             scope.set_timerange = (tr) ->
                 scope.timerange = tr
+}).directive("ngpiechart", () ->
+    return {
+        restrict : "E"
+        scope:
+            data: "=data"
+            width: "=width"
+            height: "=height"
+        template: """
+{% verbatim %}
+<div class="chart"></div>
+{% endverbatim %}
+"""
+        link : (scope, el, attrs) ->
+            scope.$watch("data", (new_data) ->
+                el.html ''
+
+                if new_data
+                    el.drawPieChart(new_data, scope.width, scope.height);
+            )
 }).run(($templateCache) ->
     $templateCache.put("status_history_template.html", status_history_template)
     $templateCache.put("device_status_history_template.html", device_status_history_template)

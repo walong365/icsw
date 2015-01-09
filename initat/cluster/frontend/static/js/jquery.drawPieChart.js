@@ -1,8 +1,9 @@
 ;(function($, undefined) {
-  $.fn.drawPieChart = function(data, options) {
+  // old way of getting height and width didn't work with angular, so we pass it manually
+  $.fn.drawPieChart = function(data, width, height, options) {
     var $this = this,
-      W = $this.width(),
-      H = $this.height(),
+      W = width,
+      H = height,
       centerX = W/2,
       centerY = H/2,
       cos = Math.cos,
