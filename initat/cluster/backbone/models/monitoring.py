@@ -1368,7 +1368,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
 
     # see comment in mon_icinga_log_raw_service_alert_data
-    service = models.ForeignKey(mon_check_command)
+    service = models.ForeignKey(mon_check_command, null=True)  # null for old entries for special check commands
     service_info = models.TextField(blank=True, null=True)
 
     # ratio of time span spent in this (state_type, state)
