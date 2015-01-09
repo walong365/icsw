@@ -59,6 +59,7 @@ class icinga_log_aggregator(object):
         relevant_serv_alerts = mon_icinga_log_raw_service_alert_data.objects.filter(device_independent=False)
         self._serv_alert_keys_cache = relevant_serv_alerts.values_list("device", "service", "service_info").distinct()
 
+
         for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
         #for duration_type in (duration.Day,):
             self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
@@ -75,7 +76,12 @@ class icinga_log_aggregator(object):
                 self.log("no archive data for duration type {}, starting new data at {}".format(duration_type.__name__, next_start_time))
 
             do_loop = True
+            i = 0
             while do_loop:
+                i+=1
+                if i == 4:
+                    #return
+                    pass
                 next_end_time = duration_type.get_end_time_for_start(next_start_time)
                 last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
                 if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(last_read_obj.timestamp, cluster_timezone):  # have sufficient data
@@ -99,6 +105,22 @@ class icinga_log_aggregator(object):
             duration=(end_time-start_time).total_seconds(),
             duration_type=duration_type.ID,
         )
+
+        # get flappings of timespan (can't use db in inner loop)
+        service_flapping_cache = defaultdict(lambda: [])  # this is sorted by time
+        _service_flapping_start_tmp = {}
+        for flap_data in mon_icinga_log_raw_service_flapping_data.objects.filter().order_by('date'):
+            key = (flap_data.device_id, flap_data.service_id, flap_data.service_info)
+            if key not in _service_flapping_start_tmp and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_START:
+                # proper start
+                if flap_data.date <= end_time:  # discard newer flappings
+                    _service_flapping_start_tmp[key] = flap_data.date
+            if key in _service_flapping_start_tmp and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_STOP:
+                # a proper stop
+                start_date = _service_flapping_start_tmp.pop(key)
+                if flap_data.date >= start_time:  # only use flappings which are in this timespan
+                    service_flapping_cache[key].append((start_date, flap_data.date))
+        service_flapping_cache = dict(service_flapping_cache)  # make into regular dict
 
         # regular changes in time span
         def calc_weighted_states(relevant_entries, state_description_before):
@@ -131,6 +153,20 @@ class icinga_log_aggregator(object):
 
         # flapping
         # check if we start in flapping state
+        def calc_flapping_ratio_service(key):
+            if key not in service_flapping_cache:
+                return 0.0
+            else:
+                my_flappings = service_flapping_cache[key]
+                flapping_seconds = 0.0
+
+                for flapping in my_flappings:
+                    flap_start = max(flapping[0], start_time)
+                    flap_end = min(flapping[1], end_time)
+                    flapping_seconds += (flap_end - flap_start).total_seconds()
+
+                return flapping_seconds / timespan_seconds
+
         def calc_flapping_ratio(flapping_model, entity_identification):
             start_in_flapping_state = False
             flap_throughout_timespan = False
@@ -188,7 +224,8 @@ class icinga_log_aggregator(object):
                 relevant_entries = mon_icinga_log_raw_service_alert_data.objects.filter(service_db_identification_w_downtime, date__range=(start_time, end_time)).order_by('date')
                 weighted_states = calc_weighted_states(relevant_entries, state_description_before)
 
-                flapping_ratio = calc_flapping_ratio(mon_icinga_log_raw_service_flapping_data, service_db_identification)
+                #flapping_ratio = calc_flapping_ratio(mon_icinga_log_raw_service_flapping_data, service_db_identification)
+                flapping_ratio = calc_flapping_ratio_service((device_id, service_id, service_info))
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_service_data.STATE_FLAPPING, mon_icinga_log_aggregated_service_data.STATE_FLAPPING)] = flapping_ratio
 
