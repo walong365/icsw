@@ -37,6 +37,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
 from initat.cluster.backbone.models import duration
 from initat.cluster.backbone.models.functions import cluster_timezone
 from django.db import connection
+from django.db.models.aggregates import Max
 
 __all__ = [
 ]
@@ -107,20 +108,53 @@ class icinga_log_aggregator(object):
         )
 
         # get flappings of timespan (can't use db in inner loop)
-        service_flapping_cache = defaultdict(lambda: [])  # this is sorted by time
-        _service_flapping_start_tmp = {}
-        for flap_data in mon_icinga_log_raw_service_flapping_data.objects.filter().order_by('date'):
-            key = (flap_data.device_id, flap_data.service_id, flap_data.service_info)
-            if key not in _service_flapping_start_tmp and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_START:
-                # proper start
-                if flap_data.date <= end_time:  # discard newer flappings
-                    _service_flapping_start_tmp[key] = flap_data.date
-            if key in _service_flapping_start_tmp and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_STOP:
-                # a proper stop
-                start_date = _service_flapping_start_tmp.pop(key)
-                if flap_data.date >= start_time:  # only use flappings which are in this timespan
-                    service_flapping_cache[key].append((start_date, flap_data.date))
-        service_flapping_cache = dict(service_flapping_cache)  # make into regular dict
+        def preprocess_flapping_data(flapping_model, key_fun):
+            cache = defaultdict(lambda: [])  # this is sorted by time
+            aux_start_times = {}
+            for flap_data in mon_icinga_log_raw_service_flapping_data.objects.filter().order_by('date'):
+                key = key_fun(flap_data)
+                if key not in aux_start_times and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_START:
+                    # proper start
+                    if flap_data.date <= end_time:  # discard newer flappings
+                        aux_start_times[key] = flap_data.date
+                if key in aux_start_times and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_STOP:
+                    # a proper stop
+                    start_date = aux_start_times.pop(key)
+                    if flap_data.date >= start_time:  # only use flappings which are in this timespan
+                        cache[key].append((start_date, flap_data.date))
+            return dict(cache)  # make into regular dict
+        service_flapping_cache = preprocess_flapping_data(mon_icinga_log_raw_service_flapping_data,
+                                                          lambda flap_data: (flap_data.device_id, flap_data.service_id, flap_data.service_info))
+        host_flapping_cache = preprocess_flapping_data(mon_icinga_log_raw_host_flapping_data,
+                                                       lambda flap_data: flap_data.device_id)
+
+        def calc_service_alert_cache():
+            try:
+                latest_dev_independent_service_alert = mon_icinga_log_raw_service_alert_data.objects\
+                    .filter(date__lte=start_time, device_independent=True).latest('date')
+            except mon_icinga_log_raw_service_alert_data.DoesNotExist:
+                latest_dev_independent_service_alert = None
+
+            # get last service alert of each service before the start time
+            last_service_alert_cache = {}
+            for data in mon_icinga_log_raw_service_alert_data.objects\
+                    .filter(date__lte=start_time, device_independent=False)\
+                    .values("device_id", "service_id", "service_info", "state", "state_type")\
+                    .annotate(max_date=Max('date')):
+                # prefer latest info if there is dev independent one
+                if latest_dev_independent_service_alert and latest_dev_independent_service_alert.date > data['max_date']:
+                    state, state_type = latest_dev_independent_service_alert.state, latest_dev_independent_service_alert.state_type
+                else:
+                    state, state_type = data['state'], data['state_type']
+                key = data['device_id'], data['service_id'], data['service_info']
+
+                # the query above is not perfect, it should group only by device and service 
+                # this seems to be hard in django: http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
+                # so we do the last grouping by this key here manually
+                if key not in last_service_alert_cache or last_service_alert_cache[key][1] < data['max_date']:
+                    last_service_alert_cache[key] = (state, state_type), data['max_date']
+            return last_service_alert_cache
+        last_service_alert_cache = calc_service_alert_cache()
 
         # regular changes in time span
         def calc_weighted_states(relevant_entries, state_description_before):
@@ -153,60 +187,13 @@ class icinga_log_aggregator(object):
 
         # flapping
         # check if we start in flapping state
-        def calc_flapping_ratio_service(key):
-            if key not in service_flapping_cache:
-                return 0.0
-            else:
-                my_flappings = service_flapping_cache[key]
-                flapping_seconds = 0.0
-
-                for flapping in my_flappings:
-                    flap_start = max(flapping[0], start_time)
-                    flap_end = min(flapping[1], end_time)
-                    flapping_seconds += (flap_end - flap_start).total_seconds()
-
-                return flapping_seconds / timespan_seconds
-
-        def calc_flapping_ratio(flapping_model, entity_identification):
-            start_in_flapping_state = False
-            flap_throughout_timespan = False
-            try:
-                last_flap_start = flapping_model.objects.filter(entity_identification, date__lte=start_time, flapping_state=mon_icinga_log_raw_base.FLAPPING_START).latest('date')
-            except flapping_model.DoesNotExist:
-                pass  # have never flapped
-            else:
-                try:
-                    end_of_last_flap_start = flapping_model.objects.filter(entity_identification, date__gte=last_flap_start.date,
-                                                                           flapping_state=mon_icinga_log_raw_base.FLAPPING_STOP).earliest('date')
-                except flapping_model.DoesNotExist:
-                    # flapping up to now
-                    start_in_flapping_state = True
-                    flap_throughout_timespan = True
-                else:
-                    # have stopped flapping, check if in or after start of cur time span
-                    start_in_flapping_state = end_of_last_flap_start.date > start_time
-
-            # calc flapping time
-            if flap_throughout_timespan:
-                ratio_flapping = 1.0
-            else:
-                relevant_flap_entries = flapping_model.objects.filter(entity_identification, date__range=(start_time, end_time)).order_by('date')
-                flapping_seconds = 0.0
-                if relevant_flap_entries:
-                    if start_in_flapping_state:
-                        flapping_seconds += (relevant_flap_entries[0].date - start_time).total_seconds()
-
-                    for (entry1, entry2) in pairwise(relevant_flap_entries):
-                        if entry1.flapping_state == mon_icinga_log_raw_base.FLAPPING_START and entry2.flapping_state == mon_icinga_log_raw_base.FLAPPING_STOP:
-                            flapping_seconds += (entry2.date - entry1.date).total_seconds()
-
-                    last_flap_entry = relevant_flap_entries[len(relevant_flap_entries)-1]
-                    if last_flap_entry.flapping_state == mon_icinga_log_raw_base.FLAPPING_START:
-                        # flapping through end
-                        flapping_seconds += (end_time - last_flap_entry.date).total_seconds()
-
-                ratio_flapping = flapping_seconds / timespan_seconds
-            return ratio_flapping
+        def calc_flapping_ratio(cache, key):
+            flapping_seconds = 0.0
+            for flapping in cache.get(key, []):
+                flap_start = max(flapping[0], start_time)
+                flap_end = min(flapping[1], end_time)
+                flapping_seconds += (flap_end - flap_start).total_seconds()
+            return flapping_seconds / timespan_seconds
 
         def process_service_alerts():
             service_db_rows = []
@@ -215,17 +202,15 @@ class icinga_log_aggregator(object):
                 # need to find last state
                 service_db_identification = Q(device=device_id, service=service_id, service_info=service_info)
                 service_db_identification_w_downtime = service_db_identification | Q(device_independent=True)
-                try:
-                    latest_earlier_entry = mon_icinga_log_raw_service_alert_data.objects.filter(service_db_identification_w_downtime, date__lte=start_time).latest('date')
-                    state_description_before = latest_earlier_entry.state, latest_earlier_entry.state_type
-                except mon_icinga_log_raw_service_alert_data.DoesNotExist:
+
+                state_description_before = last_service_alert_cache.get((device_id, service_id, service_info), (None, None))[0]
+                if not state_description_before:
                     state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
                 relevant_entries = mon_icinga_log_raw_service_alert_data.objects.filter(service_db_identification_w_downtime, date__range=(start_time, end_time)).order_by('date')
                 weighted_states = calc_weighted_states(relevant_entries, state_description_before)
 
-                #flapping_ratio = calc_flapping_ratio(mon_icinga_log_raw_service_flapping_data, service_db_identification)
-                flapping_ratio = calc_flapping_ratio_service((device_id, service_id, service_info))
+                flapping_ratio = calc_flapping_ratio(service_flapping_cache, (device_id, service_id, service_info))
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_service_data.STATE_FLAPPING, mon_icinga_log_aggregated_service_data.STATE_FLAPPING)] = flapping_ratio
 
@@ -263,7 +248,7 @@ class icinga_log_aggregator(object):
                     state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
                 relevant_entries = mon_icinga_log_raw_host_alert_data.objects.filter(dev_db_identification, date__range=(start_time, end_time)).order_by('date')
                 weighted_states = calc_weighted_states(relevant_entries, state_description_before)
-                flapping_ratio = calc_flapping_ratio(mon_icinga_log_raw_host_flapping_data, Q(device=device_id))
+                flapping_ratio = calc_flapping_ratio(host_flapping_cache, device_id)
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING, mon_icinga_log_aggregated_host_data.STATE_FLAPPING)] = flapping_ratio
 
