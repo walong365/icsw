@@ -489,6 +489,8 @@ class get_hist_service_data(ListAPIView):
                 'value': entry.value
             }
 
-            data["{},{}".format(entry.service.name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
+            service_name = entry.service.name if entry.service else "unknown check"
+
+            data["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
 
         return Response(data)
