@@ -147,6 +147,7 @@ class status_process(threading_tools.process_obj):
                         "state_type",
                         "last_state_change",
                         "max_check_attempts",
+                        "display_name",
                         "current_attempt",
                         "custom_variables",
                     ).filter("host_name", "=", dev_names)

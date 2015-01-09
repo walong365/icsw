@@ -1770,9 +1770,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["flap_detection_options"] = n_field
             if self.gc["ENABLE_COLLECTD"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
-            if s_check.check_command_pk:
-                # TODO: remove this in favor of service_description
-                act_serv["_check_command_pk"] = s_check.check_command_pk
             # TODO: POSSIBLY remove this in favor of service_description
             act_serv["_device_pk"] = host.pk
             if s_check.servicegroup_names:
