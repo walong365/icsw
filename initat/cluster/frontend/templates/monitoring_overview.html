@@ -1,0 +1,31 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/monitoring_overview.cs" %}{% endblock %}
+
+{% block title %}{% trans "Monitoring - Overview" %}{% endblock %}
+
+{% block content %}
+
+<h2>Monitoring Overview</h2>
+<div id="icsw.monitoring_overview">
+    <div ng-controller='monitoring_overview_ctrl'>
+        <monitoringoverview>
+        </monitoringoverview>
+    </div>
+</div>
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring_overview']"), ["icsw.monitoring_overview"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

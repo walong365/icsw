@@ -21,7 +21,6 @@
 #
 
 """ monitoring views """
-import pprint
 from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
@@ -251,6 +250,15 @@ class livestatus(View):
     def get(self, request):
         return render_me(
             request, "monitoring_livestatus.html", {
+                }
+        )()
+
+
+class overview(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request, "monitoring_overview.html", {
                 }
         )()
 

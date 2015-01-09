@@ -137,6 +137,7 @@ monitoring_patterns = patterns(
     url("^get_node_config", monitoring_views.get_node_config.as_view(), name="get_node_config"),
     url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
     url("^livestatus$", monitoring_views.livestatus.as_view(), name="livestatus"),
+    url("^overview$", monitoring_views.overview.as_view(), name="overview"),
     url("^create_device$", monitoring_views.create_device.as_view(), name="create_device"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
     url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),

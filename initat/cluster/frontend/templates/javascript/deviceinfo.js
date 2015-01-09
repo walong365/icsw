@@ -200,6 +200,7 @@ urn:uuid:{{ _edit_obj.uuid }}
     </div>
 </div>
 """
+
         dev_div_txt += "<li><a href='#status_history'>Status History#{addon_text}</a></li>"
         main_part += """
 <div class="tab-pane" id="status_history">

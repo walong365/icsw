@@ -60,6 +60,7 @@
                 <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                 <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga" %}</a></li>
                 <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
+                <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:overview' %}">{% trans "Monitoring Overview" %}</a></li>
                 <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
 {% if DJANGO_SERVICE_TYPES.md_config %}                    
                     <li>
