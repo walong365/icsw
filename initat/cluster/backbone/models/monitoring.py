@@ -1105,7 +1105,8 @@ class monitoring_hint(models.Model):
     device = models.ForeignKey("backbone.device")
     # call idx, for multi-server-call specials
     call_idx = models.IntegerField(default=0)
-    m_type = models.CharField(max_length=32, choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
+    # choices not needed, can be any value from special_*
+    m_type = models.CharField(max_length=32)  # , choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
     # key of vector or OID
     key = models.CharField(default="", max_length=255)
     # type of value
