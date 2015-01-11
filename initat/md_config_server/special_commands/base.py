@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -38,7 +38,7 @@ __all__ = [
 
 class special_base(object):
     class Meta:
-        # number of retries in case of error
+        # number of retries in case of error, can be zero
         retries = 1
         # timeout for connection to server
         timeout = 15
@@ -109,7 +109,9 @@ class special_base(object):
             self.log("no cache set")
 
     def add_persistent_entries(self, hint_list):
-        pers_dict = {_hint.key: _hint for _hint in self.__cache if _hint.persistent}
+        pers_dict = {
+            _hint.key: _hint for _hint in self.__cache if _hint.persistent
+        }
         cache_keys = set([_hint.key for _hint in hint_list])
         missing_keys = set(pers_dict.keys()) - cache_keys
         if missing_keys:
@@ -183,7 +185,7 @@ class special_base(object):
         if not self.__use_cache:
             # contact the server / device
             hint_list = []
-            for cur_iter in xrange(self.Meta.retries):
+            for cur_iter in xrange(self.Meta.retries + 1):
                 _result_ok = False
                 log_str, log_level = (
                     "iteration {:d} of {:d} (timeout={:d})".format(cur_iter, self.Meta.retries, self.Meta.timeout),
@@ -199,7 +201,8 @@ class special_base(object):
                         zmq_context=self.build_process.zmq_context,
                         port=2001,
                         timeout=self.Meta.timeout,
-                        **kwargs)
+                        **kwargs
+                    )
                 except:
                     log_str = "{}, error connecting to '{}' ({}, {}): {}".format(
                         log_str,
@@ -227,7 +230,10 @@ class special_base(object):
                         _result_ok = True
                         log_level = logging_tools.LOG_LEVEL_OK
                         # salt hints, add call_idx
-                        hint_list = self._salt_hints(self.to_hint(srv_reply), self.__call_idx)
+                        hint_list = self._salt_hints(
+                            self.to_hint(srv_reply),
+                            self.__call_idx
+                        )
                         # as default all hints are used for monitor checks
                         for _entry in hint_list:
                             _entry.check_created = True
@@ -236,8 +242,10 @@ class special_base(object):
                 self.log(log_str, log_level)
                 if _result_ok:
                     break
-                self.log("waiting for {:d} seconds".format(self.Meta.error_wait), logging_tools.LOG_LEVEL_WARN)
-                time.sleep(self.Meta.error_wait)
+                if self.__server_contacts <= self.Meta.retries:
+                    # only wait if we are belov the retry threshold
+                    self.log("waiting for {:d} seconds".format(self.Meta.error_wait), logging_tools.LOG_LEVEL_WARN)
+                    time.sleep(self.Meta.error_wait)
             if hint_list == [] and self.__call_idx == 0 and len(self.__cache):
                 # use cache only when first call went wrong and we have something in the cache
                 self.__use_cache = True
@@ -282,7 +290,8 @@ class special_base(object):
                     self.__server_contacts,
                     "ok" if self.__server_contact_ok else "failed",
                     logging_tools.get_plural("hint", len(self.__hint_list))
-                ))
+                )
+            )
             # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
             if (self.__server_contacts == self.__call_idx and self.__call_idx) or self.__force_store_cache:
                 if (self.__server_contacts and self.__server_contact_ok) or self.__force_store_cache:

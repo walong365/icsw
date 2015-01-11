@@ -57,7 +57,7 @@ def main():
         ("ZMQ_DEBUG", configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("KILL_RUNNING", configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
         ("CHECK", configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", only_commandline=True)),
-        ("USER", configfile.str_c_var("idnagios", help_string="user to run as [%(default)s")),
+        ("USER", configfile.str_c_var("idnagios", help_string="user to run as [%(default)s]")),
         ("GROUP", configfile.str_c_var("idg", help_string="group to run as [%(default)s]")),
         ("GROUPS", configfile.array_c_var([])),
         ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
