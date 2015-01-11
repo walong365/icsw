@@ -24,7 +24,7 @@
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
 
     {% block stylesheets %}
-        {% compressed_css 'part1' %}
+        {% stylesheet 'part1' %}
     {% endblock %}
     
     <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
@@ -39,9 +39,9 @@
             <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
             <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
         <![endif]-->
-        <!--[if gte IE 9]><!-->{% compressed_js 'js_jquery_new' %}<!--<![endif]-->
-        {% compressed_js 'js_base' %}
-        {% compressed_js 'js_extra1' %}
+        <!--[if gte IE 9]><!-->{% javascript 'js_jquery_new' %}<!--<![endif]-->
+        {% javascript 'js_base' %}
+        {% javascript 'js_extra1' %}
     
     
     {% endblock %}

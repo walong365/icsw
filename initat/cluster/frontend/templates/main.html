@@ -24,7 +24,7 @@
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
 
     {% block stylesheets %}
-        {% compressed_css 'part1' %}
+        {% stylesheet 'part1' %}
 
     <style type="text/css">
 
@@ -166,7 +166,7 @@
             <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
             <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
         <![endif]-->
-        <!--[if gte IE 9]><!-->{% compressed_js 'js_jquery_new' %}<!--<![endif]-->
+        <!--[if gte IE 9]><!-->{% javascript 'js_jquery_new' %}<!--<![endif]-->
         <script type="text/javascript">
         {% inlinecoffeescript %}
         # attach global permissions and license info to window object (== global variable)
@@ -183,8 +183,8 @@
         window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
         {% endinlinecoffeescript %}
         </script>
-        {% compressed_js 'js_base' %}
-        {% compressed_js 'js_extra1' %}
+        {% javascript 'js_base' %}
+        {% javascript 'js_extra1' %}
         {% include "javascript/init.js" %}
         {% include "javascript/deviceinfo.js" %}
         {# common angular modules #}
