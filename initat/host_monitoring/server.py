@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -243,7 +243,7 @@ class server_code(threading_tools.process_pool):
                         file(f_path, "w").write("%d" % (sys_value))
                     except:
                         self.log(
-                            "cannot change of %s from %d to %d: %s" % (
+                            "cannot change value of {} from {:d} to {:d}: {}".format(
                                 f_path,
                                 cur_value,
                                 sys_value,
@@ -252,15 +252,21 @@ class server_code(threading_tools.process_pool):
                             logging_tools.LOG_LEVEL_ERROR
                         )
                     else:
-                        self.log("changed %s from %d to %d" % (
+                        self.log(
+                            "changed {} from {:d} to {:d}".format(
+                                f_path,
+                                cur_value,
+                                sys_value
+                            )
+                        )
+                else:
+                    self.log(
+                        "{} is now {:d} (needed: {:d}), OK".format(
                             f_path,
                             cur_value,
-                            sys_value))
-                else:
-                    self.log("%s is now %d (needed: %d), OK" % (
-                        f_path,
-                        cur_value,
-                        sys_value))
+                            sys_value
+                        )
+                    )
 
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
