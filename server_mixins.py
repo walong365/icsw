@@ -91,13 +91,19 @@ class network_bind_mixin(object):
                     (
                         False,
                         ["tcp://127.0.0.1:{:d}".format(bind_port)],
-                        self.bind_id
+                        self.bind_id,
+                        None,
                     )
                 )
         else:
             # simple bind
             master_bind_list = [
-                (True, ["tcp://*:{:d}".format(bind_port)], self.bind_id)
+                (
+                    True,
+                    ["tcp://*:{:d}".format(bind_port)],
+                    self.bind_id,
+                    None,
+                )
             ]
         _errors = []
         # pprint.pprint(master_bind_list)
@@ -121,7 +127,7 @@ class network_bind_mixin(object):
                         self.log(
                             "error binding to {}: {}".format(
                                 _bind_str,
-                                process_tools.get_except_info()
+                                process_tools.get_except_info(),
                             ),
                             logging_tools.LOG_LEVEL_CRITICAL
                         )
