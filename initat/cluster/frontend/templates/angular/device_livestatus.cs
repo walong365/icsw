@@ -231,9 +231,9 @@ livestatus_templ = """
 """
 
 monconfig_templ = """
-<h4 ng-show="!reload_pending">
-    {{ mc_tables.length }} tables shown,
-    <div ng-show="!reload_pending" class="btn-group btn-xs">
+<div ng-show="!reload_pending">
+    Action:
+    <div class="btn-group btn-xs">
         <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
             reload config <span class="caret"></span>
         </button>
@@ -242,39 +242,70 @@ monconfig_templ = """
             <li ng-click="load_data('REFRESH')"><a href="#">refresh (contact device if necessary)</a></li>
         </ul>
     </div>
-</h4>
-<tabset ng-show="!reload_pending">
-    <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
-        <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
-        <table class="table table-condensed table-hover table-striped" style="width:auto;">
+</div>
+<accordion close-others="no" ng-show="!reload_pending">
+    <accordion-group is-open="monconfig_open">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monconfig_open, 'glyphicon-chevron-right': !monconfig_open}"></i>
+            Monitoring config, {{ mc_tables.length }} tables shown,
+        </accordion-heading>
+        <tabset>
+            <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
+                <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
+                <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+                        </tr>
+                        <tr>
+                            <th colspan="{{ value.attr_list.length }}">
+                                <div class="btn-group btn-group-xs">
+                                    <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
+                                </div>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
+                                <span ng-class="value.get_order_glyph(attr)"></span>
+                                {{ get_short_attr_name(attr) }}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
+                            <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
+                                {{ entry[attr] }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </tab>
+        </tabset>
+    </accordion-group>
+    <accordion-group is-open="monhint_open">
+        <accordion-heading>
+            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monhint_open, 'glyphicon-chevron-right': !monhint_open}"></i>
+            Monitoring hint ({{ devices.length }} devices)
+        </accordion-heading>
+        <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
             <thead>
                 <tr>
-                    <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-                </tr>
-                <tr>
-                    <th colspan="{{ value.attr_list.length }}">
-                        <div class="btn-group btn-group-xs">
-                            <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
-                        </div>
-                    </th>
-                </tr>
-                <tr>
-                    <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
-                        <span ng-class="value.get_order_glyph(attr)"></span>
-                        {{ get_short_attr_name(attr) }}
-                    </th>
+                    <th></th>
+                    <th>Device</th>
+                    <th>Group</th>
+                    <th>Comment</th>
+                    <th>Info</th>
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
-                    <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
-                        {{ entry[attr] }}
-                    </td>
+                <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+                <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
+                    <td colspan="9"><monitoringhinttable></monitoringhinttable></td>
                 </tr>
             </tbody>
         </table>
-    </tab>
-</tabset>
+    </accordion-group>
+</accordion>
 """
 
 serviceinfo_templ = """
@@ -314,6 +345,83 @@ serviceinfo_templ = """
         </ul>
     </div>
 </div>
+"""
+
+mh_devrow_template = """
+<td>
+    <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
+        <span ng_class="get_expand_class(obj)">
+        </span> {{ obj.device_variable_set.length }}
+        <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
+    </button>
+</td>
+<td>{{ obj.full_name }}</td>
+<td>{{ obj.device_group_name }}</td>
+<td>{{ obj.comment }}</td>
+<td>hints : {{ obj.monitoring_hint_set.length }}</td>
+"""
+
+mh_row_template = """
+<td title="from run {{ hint.call_idx }}">
+    <span ng-show="hint.enabled">
+        {{ hint.m_type }}
+    </span>
+    <span ng-show="!hint.enabled">
+        <em><strike>{{ hint.m_type }}</strike></em>
+    </span>
+</td>
+<td>
+    <span ng-show="hint.enabled">
+        {{ hint.key }}
+    </span>
+    <span ng-show="!hint.enabled">
+        <em><strike>{{ hint.key }}</strike></em>
+    </span>
+</td>
+<td>{{ hint.persistent | yesno1 }}</td>
+<td>{{ hint.datasource }}</td>
+<td>{{ hint.persistent | yesno2 }}</td>
+<td>{{ get_v_type() }}</td>
+<td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
+<td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
+<td class="text-right success">{{ get_value() }}</td>>
+<td class="text-center">
+    <input ng-show="hint.datasource != 'p'" type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_hint(hint)"></input>
+</td>
+<td class="text-center">
+    <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint)"/></input>
+</td>
+<td class="text-center">
+    <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_hint(hint, $event)"/></input>
+</td>
+<td>{{ hint.info }}</td>
+"""
+
+mh_table_template = """
+<table class="table table-condensed table-hover table-bordered" style="width:auto;">
+    <thead>
+        <tr>
+            <th>Source</th>
+            <th>key</th>
+            <th title="entry is persistent">pers</th>
+            <th title="datasource">ds</th>
+            <th>persistent</th>
+            <th>Type</th>
+            <th>lower crit</th>
+            <th>lower warn</th>
+            <th>upper warn</th>
+            <th>upper crit</th>
+            <th>value</th>
+            <th colspan="3">action</th>
+            <th>info</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr mhrow ng-repeat="hint in obj.monitoring_hint_set"></tr>
+    </tbody>
+</table>
 """
 
 {% endverbatim %}
@@ -1224,9 +1332,19 @@ class mc_table
             _class = "glyphicon"
         return _class
         
-device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service) ->
+        access_level_service.install($scope)
+        $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
+        $scope.hint_edit.edit_template = "monitoring_hint_form.html"
+        $scope.hint_edit.modify_rest_url = "{% url 'rest:monitoring_hint_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.hint_edit.modify_data_before_put = (hint) ->
+            $scope.restore_values(hint, true)
+        $scope.hint_edit.new_object_at_tail = false
+        $scope.hint_edit.use_promise = true
         $scope.reload_pending = false
+        $scope.monconfig_open = true
+        $scope.monhint_open = true
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.load_data("ALWAYS")
@@ -1253,7 +1371,6 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = (mode) ->
-            #$scope.cur_timeout = $timeout($scope.load_data, 20000)
             $scope.reload_pending = true
             $scope.cur_xhr = call_ajax
                 url  : "{% url 'mon:get_node_config' %}"
@@ -1269,6 +1386,26 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                             mc_tables.push(new_table)
                         $scope.$apply(
                             $scope.mc_tables = mc_tables
+                        )
+                        restDataSource.reset()
+                        wait_list = restDataSource.add_sources([
+                            ["{% url 'rest:device_tree_list' %}", {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
+                            ["{% url 'rest:fetch_forms' %}", {
+                                "forms" : angular.toJson([
+                                    "monitoring_hint_form"
+                                 ])
+                            }],
+                        ])
+                        $q.all(wait_list).then((data) ->
+                            $scope.devices = []
+                            $scope.device_lut = {}
+                            for entry in data[0]
+                                entry.expanded = true
+                                $scope.devices.push(entry)
+                                $scope.device_lut[entry.idx] = entry
+                            # forms
+                            for cur_form in data[1] 
+                                $templateCache.put(cur_form.name, cur_form.form)
                             $scope.reload_pending = false
                         )
                     else
@@ -1276,6 +1413,60 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                             $scope.mc_tables = []
                             $scope.reload_pending = false
                         )
+        $scope.get_tr_class = (obj) ->
+            if obj.device_type_identifier == "MD"
+                return "success"
+            else
+                return ""
+        $scope.expand_vt = (obj) ->
+            obj.expanded = not obj.expanded
+        $scope.get_expand_class = (obj) ->
+            if obj.expanded
+                return "glyphicon glyphicon-chevron-down"
+            else
+                return "glyphicon glyphicon-chevron-right"
+        $scope.remove_hint = (hint) ->
+            _.remove($scope.device_lut[hint.device].monitoring_hint_set, (entry) -> return entry.idx == hint.idx)
+            call_ajax
+                url     : "{% url 'mon:delete_hint' %}"
+                data    :
+                    hint_pk : hint.idx
+        $scope.save_hint = (hint) ->
+            Restangular.restangularizeElement(null, hint, "{% url 'rest:monitoring_hint_detail' 1 %}".slice(1).slice(0, -2))
+            hint.put()
+        $scope.backup_values = (hint) ->
+            if hint.v_type == "f"
+                v_name = "float"
+            else
+                v_name = "int"
+            for _a in ["lower", "upper"]
+                for _b in ["crit", "warn"]
+                    _var = "#{_a}_#{_b}_#{v_name}"
+                    hint["#{_var}_saved"] = hint[_var]
+                    hint["#{_var}_source_saved"] = hint["#{_var}_source"]
+                    hint["#{_var}_source"] = "u"
+        $scope.restore_values = (hint, intl) ->
+            if hint.v_type == "f"
+                v_name = "float"
+            else
+                v_name = "int"
+            for _a in ["lower", "upper"]
+                for _b in ["crit", "warn"]
+                    _var = "#{_a}_#{_b}_#{v_name}"
+                    if intl
+                        if hint["#{_var}"] == hint["#{_var}_saved"]
+                            hint["#{_var}"] = hint["#{_var}_saved"]
+                            hint["#{_var}_source"] = hint["#{_var}_source_saved"]
+                    else
+                        hint["#{_var}"] = hint["#{_var}_saved"]
+                        hint["#{_var}_source"] = hint["#{_var}_source_saved"]
+        $scope.modify_hint = (hint, event) ->
+            $scope.backup_values(hint)
+            $scope.hint_edit.edit(hint, event).then(
+                (mod_hint) ->
+                    if mod_hint == false
+                        $scope.restore_values(hint, false)
+            )
         $scope.$on("$destroy", () ->
             #if $scope.cur_timeout?
             #    $timeout.cancel($scope.cur_timeout)
@@ -1289,8 +1480,67 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         link : (scope, el, attrs) ->
             scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
+).directive("mhdevrow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhdevrow.html")
+    }
+).directive("mhrow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhrow.html")
+        link : (scope) ->
+            scope.get_v_type = () ->
+                return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
+            scope.get_value = () ->
+                return scope.hint["value_" + scope.get_v_type()]
+            scope.get_td_title = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "n"
+                    return "not set"
+                else if scope.hint[skey] == "s"
+                    return "set by system"
+                else if scope.hint[skey] == "u"
+                    return "set by user"
+                else
+                    return "unknown source '#{scope.hint[skey]}'"
+            scope.get_td_class = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "n"
+                    return ""
+                else if scope.hint[skey] == "s"
+                    return "warning"
+                else if scope.hint[skey] == "u"
+                    return "success"
+            scope.get_limit = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "s" or scope.hint[skey] == "u"
+                    return scope.hint[key]
+                else
+                    return "---"
+            scope.delete_hint = (hint) ->
+                scope.remove_hint(hint)
+            scope.toggle_enabled = (hint) ->
+                hint.enabled = !hint.enabled
+                scope.save_hint(hint)
+    }
+).directive("monitoringhinttable", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhtable.html")
+        link : (scope) ->
+    }
 ).run(($templateCache) ->
     $templateCache.put("monconfig_template.html", monconfig_templ)
+    $templateCache.put("mhdevrow.html", mh_devrow_template)
+    $templateCache.put("mhrow.html", mh_row_template)
+    $templateCache.put("mhtable.html", mh_table_template)
 )
 
 {% endinlinecoffeescript %}
