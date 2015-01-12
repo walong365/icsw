@@ -171,11 +171,11 @@ dev_row_template = """
                 <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
             </ul>
         </div>
-            <button type="button" class="btn btn-warning btn-xs"
-                ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')"
-                ng-click="scan_device_network(ndip_obj, $event)">
-            update network
-            </button>
+        <button type="button" class="btn btn-warning btn-xs"
+            ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')"
+            ng-click="scan_device_network(ndip_obj, $event)">
+        update network
+        </button>
     </div>
 </td>
 """

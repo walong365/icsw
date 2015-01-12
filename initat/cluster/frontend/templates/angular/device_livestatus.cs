@@ -232,7 +232,16 @@ livestatus_templ = """
 
 monconfig_templ = """
 <h4 ng-show="!reload_pending">
-    {{ mc_tables.length }} tables shown, <input type="button" class="btn btn-sm btn-success" value="reload" ng-show="!reload_pending" ng-click="load_data()"></input>
+    {{ mc_tables.length }} tables shown,
+    <div ng-show="!reload_pending" class="btn-group btn-xs">
+        <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
+            reload config <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li ng-click="load_data('ALWAYS')"><a href="#">cached (fast)</a></li>
+            <li ng-click="load_data('REFRESH')"><a href="#">refresh (contact device if necessary)</a></li>
+        </ul>
+    </div>
 </h4>
 <tabset ng-show="!reload_pending">
     <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
@@ -269,42 +278,42 @@ monconfig_templ = """
 """
 
 serviceinfo_templ = """
-    <h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
-    <div ng-switch="service.ct">
-        <div ng-switch-when="system">
-           <ul class="list-group">
-               <li class="list-group-item">System</li>
-           </ul>
-        </div>
-        <div ng-switch-when="group">
-           <ul class="list-group">
-               <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-               <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
-           </ul>
-        </div>
-        <div ng-switch-when="host">
-            <ul class="list-group">
-                <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
-                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-                <li class="list-group-item">State<span ng-class="get_host_state_class(service)">{{ get_host_state_string(service) }}</span></li>
-                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
-                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
-                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
-            </ul>
-        </div>
-        <div ng-switch-when="service">
-            <ul class="list-group">
-                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
-                <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
-                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-                <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
-                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
-                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
-                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
-            </ul>
-        </div>
+<h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
+<div ng-switch="service.ct">
+    <div ng-switch-when="system">
+       <ul class="list-group">
+           <li class="list-group-item">System</li>
+       </ul>
     </div>
+    <div ng-switch-when="group">
+       <ul class="list-group">
+           <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
+           <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
+       </ul>
+    </div>
+    <div ng-switch-when="host">
+        <ul class="list-group">
+            <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
+            <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
+            <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
+            <li class="list-group-item">State<span ng-class="get_host_state_class(service)">{{ get_host_state_string(service) }}</span></li>
+            <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
+            <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
+            <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+        </ul>
+    </div>
+    <div ng-switch-when="service">
+        <ul class="list-group">
+            <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
+            <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
+            <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
+            <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
+            <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
+            <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
+            <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+        </ul>
+    </div>
+</div>
 """
 
 {% endverbatim %}
@@ -610,7 +619,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 $scope.dev_tree_lut = build_lut(data[1])
                 $scope.load_data()
             )
-        $scope.load_data = () ->
+        $scope.load_data = (mode) ->
             $scope.cur_timeout = $timeout($scope.load_data, 20000)#20000)
             $scope.cur_xhr = call_ajax
                 url  : "{% url 'mon:get_node_status' %}"
@@ -1221,7 +1230,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         $scope.reload_pending = false
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
-            $scope.load_data()
+            $scope.load_data("ALWAYS")
         $scope.toggle_order = (name) ->
             if $scope.order_name == name
                 $scope.order_dir = not $scope.order_dir
@@ -1244,13 +1253,14 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         $scope.get_short_attr_name = (name) ->
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
-        $scope.load_data = () ->
+        $scope.load_data = (mode) ->
             #$scope.cur_timeout = $timeout($scope.load_data, 20000)
             $scope.reload_pending = true
             $scope.cur_xhr = call_ajax
                 url  : "{% url 'mon:get_node_config' %}"
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
+                    "mode"    : mode
                 },
                 success : (xml) =>
                     if parse_xml_response(xml)
@@ -1260,6 +1270,11 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                             mc_tables.push(new_table)
                         $scope.$apply(
                             $scope.mc_tables = mc_tables
+                            $scope.reload_pending = false
+                        )
+                    else
+                        $scope.$apply(
+                            $scope.mc_tables = []
                             $scope.reload_pending = false
                         )
         $scope.$on("$destroy", () ->

@@ -1,12 +1,12 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags compressed staticfiles %}
+{% load i18n coffeescript crispy_forms_tags pipeline staticfiles %}
 
 {% block title %}Category tree{% endblock %}
 
 {% block js_load_1 %}
 <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
-{% compressed_js 'js_gmaps' %}
+{% javascript 'js_gmaps' %}
 {% endblock %}
 
 {% block site_css %}

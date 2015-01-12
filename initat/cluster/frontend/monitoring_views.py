@@ -208,7 +208,7 @@ class get_node_config(View):
             pk_list = request.POST.getlist("pks[]")
         srv_com = server_command.srv_command(command="get_host_config")
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in pk_list]
+            *[E.device(pk="{:d}".format(int(cur_pk)), mode=request.POST["mode"]) for cur_pk in pk_list]
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
