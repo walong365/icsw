@@ -185,6 +185,7 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
         os.makedirs(STATIC_ROOT_DEBUG)
     except:
         pass
+
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 # URL prefix for static files.
@@ -315,7 +316,7 @@ STATICFILES_DIRS = []
 if os.path.isdir("/opt/icinga/share/images/logos"):
     STATICFILES_DIRS.append(
         ("icinga", "/opt/icinga/share/images/logos")
-        )
+    )
 STATICFILES_DIRS.append(
     ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin")
     # ("frontend", os.path.join(FILE_ROOT, "frontend", "media")),

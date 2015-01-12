@@ -1212,7 +1212,13 @@ class monitoring_hint(models.Model):
         ]
 
     def __unicode__(self):
-        return u"{} ({}) for {}".format(self.m_type, self.key, unicode(self.device))
+        return u"{} ({}) for {}, ds {}, persistent {}".format(
+            self.m_type,
+            self.key,
+            unicode(self.device),
+            self.datasource,
+            "true" if self.persistent else "false",
+        )
 
     class Meta:
         app_label = "backbone"
