@@ -689,6 +689,8 @@ class relay_code(threading_tools.process_pool):
                         if self.__autosense:
                             # try to get the state of both addresses
                             c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
+                            # just for debug runs
+                            # c_state = "T"
                             if c_state is None:
                                 # not needed
                                 # host_connection.delete_hc(srv_com)

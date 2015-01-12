@@ -98,6 +98,7 @@ class subprocess_struct(object):
             run_info["comline"] = self.command_line
         self.run_info = run_info
         if run_info["comline"]:
+            # if comline is None we do nothing, no server_reply is set
             if self.Meta.verbose:
                 self.log("popen '{}'".format(run_info["comline"]))
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)

@@ -250,7 +250,7 @@ class tcp_con(object):
         self.s_time = time.time()
         self._port = int(srv_com["port"].text)
         try:
-            self._host = socket.gethostbyname(srv_com["host"].text)
+            self._host = socket.gethostbyname("*" + srv_com["host"].text)
         except:
             self._host = srv_com["host"].text
             self.log(
@@ -261,7 +261,8 @@ class tcp_con(object):
                 logging_tools.LOG_LEVEL_ERROR
             )
             self.__process.send_result(self.src_id, unicode(self.srv_com), "error resolving host '{}'".format(self._host))
-            self.__registered = False
+            # no need to set registered flag because we dont add us to the list of pending connections
+            # self.__registered = False
         else:
             # BM Jan 2014:
             # there used to be a problem due to connections without successful connection being added to the pending list
@@ -289,10 +290,10 @@ class tcp_con(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            "[{}:{:d}] {}".format(
+            u"[{}:{:d}] {}".format(
                 self._host,
                 self._port,
-                what
+                logging_tools.only_printable(what),
             ),
             log_level
         )
@@ -301,7 +302,9 @@ class tcp_con(object):
         try:
             self.socket.send(self._send_str(self.srv_com))
         except:
-            self.log("error sending: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            _err_str = "error sending: {}".format(process_tools.get_except_info())
+            self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
+            self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str)
             self.close()
         else:
             self.__process.unregister_socket(self.socket)
@@ -314,25 +317,31 @@ class tcp_con(object):
         return "{:08d}{}".format(len(com), com)
 
     def _recv(self, sock):
+        _log_recv = True
         try:
             _data = sock.recv(2048)
         except:
-            self.log("recv problem: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            _recv_str = "recv problem: {}".format(process_tools.get_except_info())
         else:
             if _data[0:8].isdigit():
                 _len = int(_data[0:8])
                 if _len + 8 == len(_data):
-                    self.__process.send_result(self.src_id, unicode(self.srv_com), _data[8:])
+                    _recv_str = _data[8:]
+                    _log_recv = False
                 else:
-                    self.log(
-                        "wrong length: {:d} (header) != {:d} (body)".format(
-                            _len,
-                            len(_data) - 8
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
+                    _recv_str = "wrong length: {:d} (header) != {:d} (body)".format(
+                        _len,
+                        len(_data) - 8
                     )
             else:
-                self.log("wrong header: {}" .format(_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
+                _recv_str = "wrong header: {}".format(":".join(["{:02x}".format(ord(_chr)) for _chr in _data[0:8]]))
+        if _log_recv:
+            _recv_str = "error {}".format(_recv_str)
+            self.log(
+                _recv_str,
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            self.__process.send_result(self.src_id, unicode(self.srv_com), _recv_str)
         self.close()
 
     def close(self):
@@ -340,7 +349,7 @@ class tcp_con(object):
         if self.__registered:
             self.__registered = False
             self.__process.unregister_socket(self.socket)
-        self.socket.close()
+            self.socket.close()
         del self.srv_com
 
 
