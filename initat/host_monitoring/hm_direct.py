@@ -248,7 +248,6 @@ class tcp_con(object):
         self.src_id = src_id
         self.srv_com = srv_com
         self.s_time = time.time()
-        tcp_con.pending.append(self)
         self._port = int(srv_com["port"].text)
         try:
             self._host = socket.gethostbyname(srv_com["host"].text)
@@ -264,6 +263,12 @@ class tcp_con(object):
             self.__process.send_result(self.src_id, unicode(self.srv_com), "error resolving host '{}'".format(self._host))
             self.__registered = False
         else:
+            # BM Jan 2014:
+            # there used to be a problem due to connections without successful connection being added to the pending list
+            # then, for any further call, socket would not have been defined
+            # therefore we only keep track of successful connections now
+            tcp_con.pending.append(self)
+
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # , socket.IPPROTO_TCP)
             self.socket.setblocking(0)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
