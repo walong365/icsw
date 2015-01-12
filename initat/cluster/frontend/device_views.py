@@ -58,6 +58,21 @@ class device_tree(permission_required_mixin, View):
         )()
 
 
+class device_tree_smart(permission_required_mixin, View):
+    all_required_permissions = ["backbone.user.modify_tree"]
+
+    def get(self, request):
+        return render_me(
+            request,
+            "device_tree_smart.html",
+            {
+                "device_tree_form": device_tree_form(),
+                "device_group_tree_form": device_group_tree_form(),
+                "device_tree_many_form": device_tree_many_form(),
+            }
+        )()
+
+
 class change_devices(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

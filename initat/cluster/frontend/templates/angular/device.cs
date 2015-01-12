@@ -370,6 +370,31 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 success : (xml) ->
                     parse_xml_response(xml)
         install_devsel_link($scope.new_devsel, false)
+
+        # for smart table head
+        scope.hidelist = []
+        scope.columns = [
+            {
+                id: 'name'
+                name: 'Name'
+                sortable: true
+            },
+            {
+                id: 'sel'
+                name: 'Sel'
+            },
+            {
+                id: 'desc'
+                name: 'Description'
+                sortable: true
+            },
+            {
+                id: 'enabled'
+                name: 'Enabled'
+                sortable: true
+            },
+            // TODO: HIDDEn
+        ]
 ]).directive("devicetreerow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
@@ -406,6 +431,14 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
     return {
         restrict : "EA"
         template : $templateCache.get("device_tree_head.html")
+    }
+).directive("smartTableHead", ($templateCache) ->
+    return {
+        restrict : "E"
+        template : ""
+        link : (scope, element, attrs) ->
+            # TODO
+
     }
 )
 

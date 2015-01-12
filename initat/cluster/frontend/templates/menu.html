@@ -16,6 +16,7 @@
                 <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'mon:create_device' %}">{% trans "Create new device" %}</a></li>
                 <li ng-show="check_perm('user.modify_tree')" class="divider"></li>
                 <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'device:tree' %}">{% trans "Device tree" %}</a></li>
+                <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'device:tree_smart' %}">{% trans "Device tree smart" %}</a></li>
                 <li ng-show="check_perm('user.modify_domain_name_tree')"><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
                 <li ng-show="check_perm('user.modify_category_tree')"><a href="{% url 'base:category_tree' %}">{% trans "Category tree" %}</a></li>
                 <li ng-show="check_perm('user.modify_category_tree') || check_perm('user.modify_domain_tree') || check_perm('user.modify_tree')" class="divider"></li>
