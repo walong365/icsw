@@ -18,6 +18,7 @@
 
 from initat.host_monitoring import hm_classes, limits
 import logging_tools
+import process_tools
 
 HPASM_BIN = "/sbin/hpasmcli"
 
@@ -125,6 +126,8 @@ class hp_health_bg(hm_classes.subprocess_struct):
     def __init__(self, log_com, srv_com, hp_com):
         self.__log_com = log_com
         self.__hp_com = hp_com
+        if not process_tools.find_file(HPASM_BIN):
+            raise RuntimeError("Failed to find binary \"{}\"".format(HPASM_BIN))
         hm_classes.subprocess_struct.__init__(
             self,
             srv_com,
