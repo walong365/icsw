@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -33,7 +33,7 @@ class special_ipmi_ext(special_base):
 
     def _call(self):
         sc_array = []
-        for ipmi_ext in monitoring_hint.objects.filter(
+        for ipmi_ext in monitoring_hint.all_enabled.filter(
             Q(device=self.host) & Q(m_type="ipmi")
         ):
             new_at = self.get_arg_template(

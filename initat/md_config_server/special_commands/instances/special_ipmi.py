@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -37,11 +37,14 @@ class special_ipmi(special_base):
         if srv_reply is not None:
             if "list:sensor_list" in srv_reply:
                 for sensor in srv_reply["list:sensor_list"]:
-                    lim_dict = {l_key: sensor.attrib[key] for l_key, key in [
-                        ("lower_warn", "limit_lw"),
-                        ("lower_crit", "limit_lc"),
-                        ("upper_warn", "limit_uw"),
-                        ("upper_crit", "limit_uc")] if key in sensor.attrib}
+                    lim_dict = {
+                        l_key: sensor.attrib[key] for l_key, key in [
+                            ("lower_warn", "limit_lw"),
+                            ("lower_crit", "limit_lc"),
+                            ("upper_warn", "limit_uw"),
+                            ("upper_crit", "limit_uc")
+                        ] if key in sensor.attrib
+                    }
                     new_hint = monitoring_hint(
                         key=sensor.attrib["key"],
                         v_type="f",

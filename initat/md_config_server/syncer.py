@@ -57,6 +57,9 @@ class syncer_process(threading_tools.process_obj):
         self.register_func("build_info", self._build_info)
         self.__build_in_progress, self.__build_version = (False, 0)
 
+        # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
+        self.__slave_configs, self.__slave_lut = ({}, {})
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 

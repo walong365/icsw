@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -54,15 +54,16 @@ class special_openvpn(special_base):
         hint_list = self.collrelay("openvpn_status")
         ip_dict = {}
         for hint in hint_list:
-            inst_name, peer_name = hint.key.split("|")
-            ip_dict.setdefault(inst_name, []).append(peer_name)
-            sc_array.append(
-                self.get_arg_template(
-                    hint.info,
-                    arg1=inst_name,
-                    arg2=peer_name
+            if hint.enabled:
+                inst_name, peer_name = hint.key.split("|")
+                ip_dict.setdefault(inst_name, []).append(peer_name)
+                sc_array.append(
+                    self.get_arg_template(
+                        hint.info,
+                        arg1=inst_name,
+                        arg2=peer_name
+                    )
                 )
-            )
         for inst_name in sorted(ip_dict.keys()):
             _clients = ip_dict[inst_name]
             if len(_clients) > 1:

@@ -305,11 +305,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
     def _build_host_config(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
+        dev_cache_mode = list(set(srv_com.xpath(".//device_list/device/@mode", smart_strings=False)))[0]
         dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")]
-        self.log("starting single build with {}: {}".format(
+        self.log("starting single build with {}, cache mode is {}: {}".format(
             logging_tools.get_plural("device", len(dev_names)),
+            dev_cache_mode,
             ", ".join(sorted(dev_names))))
-        srv_com["result"] = self._rebuild_config(*dev_names)
+        srv_com["result"] = self._rebuild_config(*dev_names, cache_mode=dev_cache_mode)
         srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
