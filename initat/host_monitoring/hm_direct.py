@@ -250,7 +250,7 @@ class tcp_con(object):
         self.s_time = time.time()
         self._port = int(srv_com["port"].text)
         try:
-            self._host = socket.gethostbyname("*" + srv_com["host"].text)
+            self._host = socket.gethostbyname(srv_com["host"].text)
         except:
             self._host = srv_com["host"].text
             self.log(
@@ -260,7 +260,7 @@ class tcp_con(object):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            self.__process.send_result(self.src_id, unicode(self.srv_com), "error resolving host '{}'".format(self._host))
+            self.__process.send_result(self.src_id, unicode(self.srv_com), "error resolving host '{}'".format(self._host), True)
             # no need to set registered flag because we dont add us to the list of pending connections
             # self.__registered = False
         else:
@@ -304,7 +304,7 @@ class tcp_con(object):
         except:
             _err_str = "error sending: {}".format(process_tools.get_except_info())
             self.log(_err_str, logging_tools.LOG_LEVEL_ERROR)
-            self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str)
+            self.__process.send_result(self.src_id, unicode(self.srv_com), _err_str, False)
             self.close()
         else:
             self.__process.unregister_socket(self.socket)
@@ -341,7 +341,7 @@ class tcp_con(object):
                 _recv_str,
                 logging_tools.LOG_LEVEL_ERROR
             )
-            self.__process.send_result(self.src_id, unicode(self.srv_com), _recv_str)
+            self.__process.send_result(self.src_id, unicode(self.srv_com), _recv_str, True)
         self.close()
 
     def close(self):
@@ -406,8 +406,8 @@ class socket_process(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
-    def send_result(self, src_id, srv_com, data):
-        self.send_pool_message("socket_result", src_id, srv_com, data, target="main")
+    def send_result(self, src_id, srv_com, data, is_error):
+        self.send_pool_message("socket_result", src_id, srv_com, data, is_error, target="main")
 
     def send_ping_result(self, *args):
         self.send_pool_message("socket_ping_result", *args, target="main")  # src_id, srv_com, data, target="main")

@@ -317,10 +317,10 @@ class host_connection(object):
             self.send_result(cur_mes, res_tuple)
             # self.send_result(cur_mes, res_tuple)
 
-    def _handle_old_result(self, mes_id, result):
+    def _handle_old_result(self, mes_id, result, is_error):
         if mes_id in self.messages:
             cur_mes = self.messages[mes_id]
-            if result.startswith("no valid"):
+            if result.startswith("no valid") or is_error:
                 res_tuple = (limits.nag_STATE_CRITICAL, result)
             else:
                 host_connection.relayer_process._old_client(cur_mes.srv_com["host"].text, int(cur_mes.srv_com["port"].text))

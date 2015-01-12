@@ -275,7 +275,8 @@ class relay_code(threading_tools.process_pool):
         if not self.__autosense:
             self.__new_clients, self.__old_clients = (
                 my_cached_file("/tmp/.new_clients", log_handle=self.log),
-                my_cached_file("/tmp/.old_clients", log_handle=self.log))
+                my_cached_file("/tmp/.old_clients", log_handle=self.log)
+            )
         else:
             if os.path.isfile(MAPPING_FILE_TYPES):
                 self.__client_dict.update(dict([(key, "0") for key in file(MAPPING_FILE_TYPES, "r").read().split("\n") if key.strip()]))
@@ -298,7 +299,7 @@ class relay_code(threading_tools.process_pool):
                         check_names.append(real_name)
             for c_name in check_names:
                 if self.__client_dict.get(c_name, None) != c_type and c_port == 2001:
-                    self.log("setting client '%s:%d' to '%s'" % (c_name, c_port, c_type))
+                    self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
                     self.__client_dict[c_name] = c_type
                     write_file = True
         if write_file:
@@ -402,12 +403,13 @@ class relay_code(threading_tools.process_pool):
                         new_list.append(cur_del)
             self.__delayed = new_list
 
-    def _socket_result(self, src_proc, proc_id, src_id, srv_com, data_str):
+    def _socket_result(self, src_proc, proc_id, src_id, srv_com, data_str, is_error):
         if src_id in self.__old_send_lut:
-            self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str)
+            self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str, is_error)
         else:
-            self.log("result for non-existing id '%s' received, discarding" % (src_id),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "result for non-existing id '{}' received, discarding".format(src_id),
+                logging_tools.LOG_LEVEL_ERROR)
 
     def send_result(self, src_id, ret_str):
         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
@@ -643,16 +645,18 @@ class relay_code(threading_tools.process_pool):
                         cur_com = arg_list.pop(0) if arg_list else ""
                         srv_com = server_command.srv_command(command=cur_com, identity=src_id)
                         _e = srv_com.builder()
-                        srv_com[""].extend([
-                            _e.host(parts[0]),
-                            _e.port(parts[1]),
-                            _e.timeout(parts[2]),
-                            _e.raw_connect(parts[3]),
-                            _e.arguments(
-                                *[getattr(_e, "arg{:d}".format(arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
-                            ),
-                            _e.arg_list(" ".join(arg_list)),
-                        ])
+                        srv_com[""].extend(
+                            [
+                                _e.host(parts[0]),
+                                _e.port(parts[1]),
+                                _e.timeout(parts[2]),
+                                _e.raw_connect(parts[3]),
+                                _e.arguments(
+                                    *[getattr(_e, "arg{:d}".format(arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
+                                ),
+                                _e.arg_list(" ".join(arg_list)),
+                            ]
+                    )
                 except:
                     self.log("error parsing %s: %s" % (data, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     srv_com = None
