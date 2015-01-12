@@ -30,6 +30,7 @@ import os
 import pickle
 import re
 import stat
+import string
 import sys
 import threading
 import time
@@ -98,6 +99,10 @@ def get_relative_dt(dt_struct):
             return dt_struct.strftime("%a, {:d} days ago %H:%M:%S".format(int(diff_days)))
     else:
         return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
+
+
+def only_printable(in_str):
+    return "".join([_chr for _chr in in_str if _chr in string.printable])
 
 
 def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
