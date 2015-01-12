@@ -188,3 +188,8 @@ class mon_service_esc_templ_serializer(serializers.ModelSerializer):
 class monitoring_hint_serializer(serializers.ModelSerializer):
     class Meta:
         model = monitoring_hint
+        read_only_fields = [
+            "idx", "device", "call_idx", "m_type", "key", "v_type",
+            "value_float", "value_int", "value_string", "info",
+            "check_created", "changed", "persistent", "datasource", "date",
+        ]

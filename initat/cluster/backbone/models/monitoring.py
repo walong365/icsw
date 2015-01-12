@@ -1095,12 +1095,22 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 
+
+class MonitoringHintEnabledManager(models.Manager):
+
+    def get_queryset(self):
+        return super(MonitoringHintEnabledManager, self).get_queryset().filter(enabled=True)
+
+
 class monitoring_hint(models.Model):
+    objects = models.Manager()
+    all_enabled = MonitoringHintEnabledManager()
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     # call idx, for multi-server-call specials
     call_idx = models.IntegerField(default=0)
-    m_type = models.CharField(max_length=32, choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
+    # choices not needed, can be any value from special_*
+    m_type = models.CharField(max_length=32)  # , choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
     # key of vector or OID
     key = models.CharField(default="", max_length=255)
     # type of value
@@ -1117,7 +1127,7 @@ class monitoring_hint(models.Model):
     # current value
     value_float = models.FloatField(default=0.0)
     value_int = models.IntegerField(default=0)
-    value_string = models.CharField(default="", max_length=256)
+    value_string = models.CharField(default="", max_length=256, blank=True)
     # limits
     lower_crit_float = models.FloatField(default=0.0)
     lower_warn_float = models.FloatField(default=0.0)
@@ -1137,6 +1147,8 @@ class monitoring_hint(models.Model):
     upper_crit_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
     # info string
     info = models.CharField(default="", max_length=255)
+    # enabled
+    enabled = models.BooleanField(default=True)
     # used in monitoring
     check_created = models.BooleanField(default=False)
     changed = models.DateTimeField(auto_now_add=True, auto_now=True)  # , default=datetime.datetime.now())
@@ -1192,8 +1204,14 @@ class monitoring_hint(models.Model):
             "i": "int"
         }[self.v_type]
         return [
-            (s_key, getattr(self, "{}_{}".format(key, v_type))) for s_key, key in [
-                ("lc", "lower_crit"), ("lw", "lower_warn"), ("uw", "upper_warn"), ("uc", "upper_crit")
+            (
+                s_key, getattr(self, "{}_{}".format(key, v_type))
+            ) for s_key, key in [
+                # ordering is important here to beautify the monitoring output
+                ("lw", "lower_warn"),
+                ("uw", "upper_warn"),
+                ("lc", "lower_crit"),
+                ("uc", "upper_crit"),
             ] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"
         ]
 

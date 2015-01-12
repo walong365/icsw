@@ -516,7 +516,8 @@ class device(models.Model):
             ("ipmi", "IPMI"),
             # also used for partition fetch
             ("hm", "Host monitor"),
-        ]
+        ],
+        blank=True
     )
 
     @property
