@@ -1080,7 +1080,7 @@ class relay_code(threading_tools.process_pool):
         if not t_dir.startswith(ICINGA_TOP_DIR):
             self.log("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            self.log("clearing directory %s" % (t_dir))
+            self.log("clearing directory {}".format(t_dir))
             num_rem = 0
             if os.path.isdir(t_dir):
                 for entry in os.listdir(t_dir):
@@ -1101,8 +1101,8 @@ class relay_code(threading_tools.process_pool):
                         else:
                             num_rem += 1
             else:
-                self.log("directory '%s' does not exist" % (t_dir), logging_tools.LOG_LEVEL_ERROR)
-            self.log("removed %s in %s" % (logging_tools.get_plural("file", num_rem), t_dir))
+                self.log("directory '{}' does not exist".format(t_dir), logging_tools.LOG_LEVEL_ERROR)
+            self.log("removed {} in {}".format(logging_tools.get_plural("file", num_rem), t_dir))
 
     def _file_content(self, srv_com):
         t_file = srv_com["file_name"].text

@@ -317,7 +317,7 @@ class tcp_con(object):
         return "{:08d}{}".format(len(com), com)
 
     def _recv(self, sock):
-        _log_recv = True
+        _is_error = True
         try:
             _data = sock.recv(2048)
         except:
@@ -327,7 +327,7 @@ class tcp_con(object):
                 _len = int(_data[0:8])
                 if _len + 8 == len(_data):
                     _recv_str = _data[8:]
-                    _log_recv = False
+                    _is_error = False
                 else:
                     _recv_str = "wrong length: {:d} (header) != {:d} (body)".format(
                         _len,
@@ -335,13 +335,13 @@ class tcp_con(object):
                     )
             else:
                 _recv_str = "wrong header: {}".format(":".join(["{:02x}".format(ord(_chr)) for _chr in _data[0:8]]))
-        if _log_recv:
+        if _is_error:
             _recv_str = "error {}".format(_recv_str)
             self.log(
                 _recv_str,
                 logging_tools.LOG_LEVEL_ERROR
             )
-            self.__process.send_result(self.src_id, unicode(self.srv_com), _recv_str, True)
+        self.__process.send_result(self.src_id, unicode(self.srv_com), _recv_str, _is_error)
         self.close()
 
     def close(self):
