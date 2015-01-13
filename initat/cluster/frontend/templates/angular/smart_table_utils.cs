@@ -123,8 +123,8 @@ angular.module(
                 num = parseInt(num)
                 s_val = (num - 1 ) * scope.stItemsByPage + 1
                 e_val = s_val + scope.stItemsByPage - 1
-                if e_val > 199
-                    e_val = 100
+                if e_val > ctrl.getNumberOfTotalEntries()
+                    e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
 }).run(($templateCache) ->
     $templateCache.put("paginator.html", paginator_template)

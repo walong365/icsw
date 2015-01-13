@@ -44,6 +44,10 @@ ng.module('smart-table')
             }
         }
 
+        this.getNumberOfTotalEntries = function() {
+            return safeCopy.length;
+        }
+
         if ($attrs.stSafeSrc) {
             safeGetter = $parse($attrs.stSafeSrc);
             $scope.$watch(function () {
@@ -109,6 +113,7 @@ ng.module('smart-table')
                 filtered = filtered.slice(pagination.start, pagination.start + pagination.number);
             }
             displaySetter($scope, filtered);
+
         };
 
         /**
