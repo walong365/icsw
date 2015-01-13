@@ -409,10 +409,20 @@ class poller_obj(object):
                                 # raise exception, important
                                 raise
                         else:
+                            try:
+                                _fd_info = "{:d}".format(sock.fileno())
+                            except:
+                                _fd_info = process_tools.get_except_info()
                             self.log(
-                                "r_type {:d} not found for socket '{}'".format(
+                                "r_type {:d} ({}) not found for socket '{}' (fd_info: {})".format(
                                     r_type,
+                                    {
+                                        zmq.POLLIN: "POLLIN",  # @UndefinedVariable
+                                        zmq.POLLOUT: "POLLOUT",  # @UndefinedVariable
+                                        zmq.POLLERR: "POLLERR",  # @UndefinedVariable
+                                    }[r_type],
                                     str(sock),
+                                    _fd_info,
                                 ),
                                 logging_tools.LOG_LEVEL_CRITICAL
                             )
@@ -765,7 +775,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                 r_list = [(src_process, cur_mes)]
                 while True:
                     try:
-                        src_process = zmq_socket.recv_unicode(zmq.NOBLOCK)
+                        src_process = zmq_socket.recv_unicode(zmq.NOBLOCK)  # @UndefinedVariable
                     except:
                         break
                     else:
