@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table"])
+device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "smart_table_utils"])
 
 angular_module_setup([device_module])
 
@@ -30,7 +30,7 @@ angular_add_simple_list_controller(
     }
 )
 
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.initial_load = true
         # init pagSettings /w. filter
@@ -409,6 +409,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         template : $templateCache.get("device_tree_head.html")
     }
 )
+
 
 {% endinlinecoffeescript %}
 

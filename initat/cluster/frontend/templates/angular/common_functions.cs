@@ -1303,6 +1303,7 @@ reload_sidebar_tree = (pk_list) ->
             scope.reload(pk_list)
         )
 
+
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin
