@@ -497,7 +497,9 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                             mon_flag = parseInt(mon_f) == scope.mon_master
                         else
                             mon_flag = parseInt(mon_f) == entry.monitor_server
-                    entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag 
+                    boot_f = scope.filter_settings.boot_filter
+                    boot_flag = (boot_f == "i") or (parseInt(boot_f) == entry.bootserver)
+                    entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag and boot_flag
                  console.log scope.entries.map((x)->x._show)
 
                  tableCtrl.search(true, "_show")
