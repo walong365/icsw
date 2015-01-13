@@ -25,59 +25,6 @@
 
 {% verbatim %}
 
-<script type="text/ng-template" id="device_tree_paginator.html">
-    pages: {{ pages }}
-    <form class="form-inline">
-        <span ng-show="pages.length > 0">
-            <div class="form-group">
-                <!-- small pager -->
-                <ul class="pagination pagination-sm" ng-show="numPages > 1 && numPages < 11"  style="margin-top:0px; margin-bottom:0px;">
-                    <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
-                        <a href="#" ng-click="selectPage(pag_num)">{{ pag_num }}</a>
-                    </li>
-                </ul>
-                <!-- large pager with back/forward buttons -->
-                <ul class="pagination pagination-sm" ng-show="numPages > 1 && numPages > 10"  style="margin-top:0px; margin-bottom:0px;">
-                    <li ng-class="{disabled: currentPage == 1}">
-                        <a href="#" ng-click="selectPage(currentPage-1)">&laquo;</a>
-                    </li>
-                    <li ng-class="{disabled: currentPage == numPages}">
-                        <a href="#" ng-click="selectPage(currentPage+1)">&raquo;</a>
-                    </li>
-                    <li ng-repeat="pag_num in pages" ng-class="{active: page==currentPage}">
-                        <a href="#" ng-click="selectPage(pag_num)">{{ pag_num }}</a>
-                    </li>
-                </ul>
-            </div>
-            TODO:
-                a
-{{ pagination_utils.get_range_info(1, 4, 10) }}
-        b
-            <span ng-show="numPages > 5">
-                <select class="form-control input-sm" ng-model="_cur_page_by_select" ng-change="selectPage(_cur_page_by_select)"
-                    ng-options="idx as pagination_utils.get_range_info(idx, stItemsByPage, numPages) for idx in [] | range:pages.length"
-
-                >
-                </select>
-            </span>
-            <span ng-show="numPages > 1">, </span>
-            <span ng-show="numPages < 6">
-                showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ currentPage  * stItemsByPage }}
-            </span>
-        </span>
-        <span ng-show="pages.length == 0">
-            no entries to show,
-        </span>
-        <span ng-show="true"> <!-- pagSettings.conf.modify_epp -->
-            show
-            <div class="form-group">
-                <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in [5,10,20,50,100,200,500,1000]"></select>
-            </div> per page,
-        </span>
-    </form>
-</script>
-
-
 <script type="text/ng-template" id="device_tree_head.html">
     <th>Name</th>
     <th>sel</th>

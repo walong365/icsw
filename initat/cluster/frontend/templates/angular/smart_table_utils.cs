@@ -59,7 +59,7 @@ root = exports ? this
 
 angular.module(
     "smart_table_utils", []
-]).directive('icswPagination', ($templateCache) ->
+).directive('icswPagination', ($templateCache) ->
     return {
         restrict: 'EA',
         require: '^stTable',
