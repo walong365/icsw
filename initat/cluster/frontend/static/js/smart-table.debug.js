@@ -33,6 +33,9 @@ ng.module('smart-table')
         var ctrl = this;
         var lastSelected;
 
+        // PATCH BM Jan 2014
+        var displayed_entries = []
+
         function copyRefs(src) {
             return [].concat(src);
         }
@@ -42,10 +45,6 @@ ng.module('smart-table')
             if (pipeAfterSafeCopy === true) {
                 ctrl.pipe();
             }
-        }
-
-        this.getNumberOfTotalEntries = function() {
-            return safeCopy.length;
         }
 
         if ($attrs.stSafeSrc) {
@@ -104,6 +103,7 @@ ng.module('smart-table')
         this.pipe = function pipe() {
             var pagination = tableState.pagination;
             var filtered = tableState.search.predicateObject ? filter(safeCopy, tableState.search.predicateObject) : safeCopy;
+            displayed_entries = copyRefs(filtered)
             if (tableState.sort.predicate) {
                 filtered = orderBy(filtered, tableState.sort.predicate, tableState.sort.reverse);
             }
@@ -180,6 +180,23 @@ ng.module('smart-table')
         this.preventPipeOnWatch = function preventPipe() {
             pipeAfterSafeCopy = false;
         };
+
+
+        // PATCH: BM Jan 2014
+        this.getNumberOfTotalEntries = function() {
+            return safeCopy.length;
+        }
+
+        this.getDisplayedEntries = function() {
+            // entries which are currently shown in one of the pages
+            // this is not the same as the entries on the current page
+            return displayed_entries;
+        }
+
+        // Allow access to the controller, else everything would have to be a directive in this controller.
+        // This might be preferrable for the future, but it's not nice to rewrite legacy code for this.
+        $scope.table_controller = this;
+
     }])
     .directive('stTable', function () {
         return {

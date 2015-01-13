@@ -255,7 +255,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             $scope.pagSettings.conf.filter_settings.str_filter = $scope.str_filter
             # console.log $scope.pagSettings.conf.filter_settings
         $scope.select_shown = () ->
-            for entry in $scope.entries
+            for entry in $scope.table_controller.getDisplayedEntries()
                 if not entry.is_meta_device
                     entry.selected = entry._show
         $scope.pagSettings.conf.filter_changed = () ->
@@ -450,7 +450,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         template : $templateCache.get("device_tree_head.html")
     }
 )
-
 
 {% endinlinecoffeescript %}
 
