@@ -449,7 +449,68 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         restrict : "EA"
         template : $templateCache.get("device_tree_head.html")
     }
-)
+).directive("devicetreefilters", () ->
+    return {
+        restrict : "EA"
+        require : "^stTable"
+        templateUrl : "device_tree_filters.html"
+        link : (scope, element, attrs, tableCtrl) ->
+            scope.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i"}
+
+            filter_changed = () ->
+                console.log("fil chan", scope.entries)
+                aft_dict = {
+                    "b" : [true, false]
+                    "f" : [false]
+                    "t" : [true]
+                }
+                # meta device selection list
+                md_list = aft_dict[scope.filter_settings.dg_filter]
+                # enabled selection list
+                en_list = aft_dict[scope.filter_settings.en_filter]
+                # selected list
+                sel_list = aft_dict[scope.filter_settings.sel_filter]
+                for entry in scope.entries
+                    if en_list.length == 2
+                        # show all, no check
+                        en_flag = true
+                    else if en_list[0] == true
+                        if entry.is_meta_device
+                            en_flag = entry.device_group_obj.enabled
+                        else
+                            # show enabled (device AND device_group)
+                            en_flag = entry.enabled and scope.device_group_lut[entry.device_group].enabled
+                    else
+                        if entry.is_meta_device
+                            en_flag = not entry.device_group_obj.enabled
+                        else
+                            # show disabled (device OR device_group)
+                            en_flag = not entry.enabled or (not scope.device_group_lut[entry.device_group].enabled)
+                    # selected
+                    sel_flag = entry.selected in sel_list
+                    # monitoring
+                    mon_f = scope.filter_settings.mon_filter
+                    if mon_f == "i"
+                        mon_flag = true
+                    else
+                        if entry.monitor_server == null
+                            mon_flag = parseInt(mon_f) == scope.mon_master
+                        else
+                            mon_flag = parseInt(mon_f) == entry.monitor_server
+                    entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag 
+                 console.log scope.entries.map((x)->x._show)
+
+                 tableCtrl.search(true, "_show")
+
+            scope.$watch(
+                    () -> return scope.filter_settings
+                    filter_changed
+                    true)
+            scope.$watch(
+                    () -> scope.entries
+                    filter_changed
+                    true)
+})
 
 {% endinlinecoffeescript %}
 

@@ -25,6 +25,56 @@
 
 {% verbatim %}
 
+<script type="text/ng-template" id="device_tree_filters.html">
+{{filter_settings}}
+b
+{{filter_settings.dg_filter}}
+    <form class="form-inline">
+        <div class="form-group">
+            <label class="control-label">Group/Device:</label>
+            <select class="form-control input-sm" ng-model="filter_settings.dg_filter">
+                <option value="b">all</option>
+                <option value="f">Devices</option>
+                <option value="t">Group</option>
+            </select>
+        </div>
+        &nbsp;
+        <div class="form-group">
+            <label class="control-label">Selected:</label>
+            <select class="form-control input-sm" ng-model="filter_settings.sel_filter">
+                <option value="b">all</option>
+                <option value="t">selected</option>
+                <option value="f">unselected</option>
+            </select>
+        </div>
+        &nbsp;
+        <div class="form-group">
+            <label class="control-label">Enabled:</label>
+            <select class="form-control input-sm" ng-model="filter_settings.en_filter">
+                <option value="b">all</option>
+                <option value="t">enabled</option>
+                <option value="f">disabled</option>
+            </select>
+        </div>
+        &nbsp;
+        <div class="form-group">
+            <label class="control-label">MonServer:</label>
+            <select class="form-control input-sm" ng-model="filter_settings.mon_filter">
+                <option value="i">ignore</option>
+                <option ng-repeat="obj in rest_data.monitor_server" ng-value="obj.idx">{{ obj.full_name }} ({{ obj.monitor_type }})</option>
+            </select>
+        </div>
+        &nbsp;
+        <div class="form-group">
+            <label class="control-label">BootServer:</label>
+            <select class="form-control" ng-model="filter_settings.boot_filter">
+                <option value="i">ignore</option>
+                <option ng-repeat="obj in rest_data.mother_server" ng-value="obj.idx">{{ obj.full_name }}</option>
+            </select>
+        </div>
+    </form>
+</script>
+
 <script type="text/ng-template" id="device_tree_head.html">
     <th>Name</th>
     <th>Sel</th>
@@ -105,7 +155,11 @@
             <input ng-show="num_selected() > 1" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
         </div>
     </h2>
+
     <div st-table="entries_displayed" st-safe-src="entries">
+
+        <devicetreefilters></devicetreefilters>
+
         <from class="form-inline">
             <label class="control-label">Filter:</label>
             <div class="form-group">

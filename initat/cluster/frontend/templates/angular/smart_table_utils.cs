@@ -38,7 +38,7 @@ paginator_template =
         </span>
         <span ng-show="numPages > 1">, </span>
         <span ng-show="numPages < 6">
-            showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ currentPage  * stItemsByPage }}
+            showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ currentPage  * stItemsByPage }},
         </span>
     </span>
     <span ng-show="pages.length == 0">
