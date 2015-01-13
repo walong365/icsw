@@ -38,7 +38,7 @@ paginator_template =
         </span>
         <span ng-show="numPages > 1">, </span>
         <span ng-show="numPages < 6">
-            showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ currentPage  * stItemsByPage }},
+            showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ Math.min(currentPage  * stItemsByPage, table_controller.getDisplayedEntries().length) }},
         </span>
     </span>
     <span ng-show="pages.length == 0">
@@ -72,6 +72,10 @@ angular.module(
 
             scope.stItemsByPage = scope.stItemsByPage or 10
             scope.stDisplayedPages = scope.stDisplayedPages or 5
+
+            scope.Math = Math;
+
+            scope.table_controller = ctrl
 
             if attrs.possibleItemsByPage
                 scope.possibleItemsByPage = (parseInt(i) for i in attrs.possibleItemsByPage.split(","))

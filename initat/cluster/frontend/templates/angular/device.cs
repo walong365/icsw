@@ -49,13 +49,20 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         ]
         $scope.hide_list = [
             # short, full, default
-            ["tln", "TLN", false, "Top level node"]
-            ["rrd_store", "RRD store", false, "flag if sensor data is store on disk"]
-            ["passwd", "Password", false, "password set"]
-            ["mon_master", "MonMaster", false, "show monitoring master"]
-            ["boot_master", "BootMaster", false, "show boot master"]
-            ["curl", "cURL", false, "show cluster URL"]
+            ["tln", "TLN", false, "Show top level node"]
+            ["rrd_store", "RRD store", false, "Show if sensor data is store on disk"]
+            ["passwd", "Password", false, "Show if a password is set"]
+            ["mon_master", "MonMaster", false, "Show monitoring master"]
+            ["boot_master", "BootMaster", false, "Show boot master"]
+            ["curl", "cURL", false, "Show cluster URL"]
         ]
+        $scope.column_list = [
+            ['name', 'Name'],
+            ['description', 'Description'],
+            ['enabled', 'Enabled'],
+            ['type', 'Type'],
+            ].concat($scope.hide_list.map((elem) -> [elem[0], elem[1]]))
+
         $scope.num_shown = (exclude_list) ->
             exclude_list = exclude_list ? []
             return (entry for entry of $scope.hide_lut when $scope.hide_lut[entry] and entry not in exclude_list).length
@@ -258,6 +265,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             for entry in $scope.table_controller.getDisplayedEntries()
                 if not entry.is_meta_device
                     entry.selected = entry._show
+        $scope.deselect_all = () ->
+            for entry in $scope.entries
+                if not entry.is_meta_device
+                    entry.selected = false
         $scope.pagSettings.conf.filter_changed = () ->
             aft_dict = {
                 "b" : [true, false]
@@ -375,6 +386,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         install_devsel_link($scope.new_devsel, false)
 
         $scope.update_entries_st_attrs = () ->
+            # use same keys as in $scope.column_list
             for obj in $scope.entries
                 st_attrs = {}
                 if obj.is_meta_device
@@ -458,7 +470,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             scope.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i"}
 
             filter_changed = () ->
-                console.log("fil chan", scope.entries)
                 aft_dict = {
                     "b" : [true, false]
                     "f" : [false]
@@ -500,7 +511,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     boot_f = scope.filter_settings.boot_filter
                     boot_flag = (boot_f == "i") or (parseInt(boot_f) == entry.bootserver)
                     entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag and boot_flag
-                 console.log scope.entries.map((x)->x._show)
 
                  tableCtrl.search(true, "_show")
 

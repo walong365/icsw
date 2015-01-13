@@ -26,9 +26,6 @@
 {% verbatim %}
 
 <script type="text/ng-template" id="device_tree_filters.html">
-{{filter_settings}}
-b
-{{filter_settings.dg_filter}}
     <form class="form-inline">
         <div class="form-group">
             <label class="control-label">Group/Device:</label>
@@ -164,10 +161,18 @@ b
             <label class="control-label">Filter:</label>
             <div class="form-group">
                 <input class="form-control input-sm" st-search="" placeholder="filter"></input>
+                <b style="color:red">TODO</b>
             </div>
+            <select class="form-control" ng-model="hereherehere">
+                <option value="">All columns</option>
+                <option ng-repeat="column in column_list" ng-value="column[0]">{{ column[1] }}</option>
+            </select>
 
             <div class="form-group">
                 <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"></input>
+            </div>
+            <div class="form-group">
+                <input type="button" class="btn btn-sm btn-danger" value="deselect all" ng-click="deselect_all()"></input>
             </div>
         </form>
         <div class="panel panel-default">
@@ -176,12 +181,13 @@ b
                     <thead>
                         <tr>
                             <td colspan="99">
+                                Additional columns:
                                 <div class="btn-group btn-group-xs">
                                     <input
                                         type="button"
                                         ng-repeat="entry in hide_list"
                                         title="{{ entry[3] }}"
-                                        ng-value="entry[0]"
+                                        ng-value="entry[1]"
                                         ng-class="hide_lut[entry[0]] && 'btn btn-success' || 'btn'"
                                         ng-click="hide_lut[entry[0]]=!hide_lut[entry[0]]">
                                     </input>
@@ -195,7 +201,7 @@ b
                         </tr>
                         <tr>
                             <th st-sort='st_attrs.name'>Name</th>
-                            <th>sel</th>
+                            <th>Sel</th>
                             <th st-sort='st_attrs.description'>Description</th>
                             <th st-sort='st_attrs.enabled'>Enabled</th>
                             <th st-sort='st_attrs.type'>Type</th>
