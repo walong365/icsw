@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
+device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table"])
 
 angular_module_setup([device_module])
 
@@ -69,6 +69,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         }
         $scope.modal_active = false
         $scope.entries = []
+        $scope.entries_displayed = []  # only for smart-table, filled automatically
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.sel_cache = _dev_sel
             $scope.initial_load = true
@@ -370,31 +371,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 success : (xml) ->
                     parse_xml_response(xml)
         install_devsel_link($scope.new_devsel, false)
-
-        # for smart table head
-        scope.hidelist = []
-        scope.columns = [
-            {
-                id: 'name'
-                name: 'Name'
-                sortable: true
-            },
-            {
-                id: 'sel'
-                name: 'Sel'
-            },
-            {
-                id: 'desc'
-                name: 'Description'
-                sortable: true
-            },
-            {
-                id: 'enabled'
-                name: 'Enabled'
-                sortable: true
-            },
-            // TODO: HIDDEn
-        ]
 ]).directive("devicetreerow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
@@ -431,14 +407,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
     return {
         restrict : "EA"
         template : $templateCache.get("device_tree_head.html")
-    }
-).directive("smartTableHead", ($templateCache) ->
-    return {
-        restrict : "E"
-        template : ""
-        link : (scope, element, attrs) ->
-            # TODO
-
     }
 )
 
