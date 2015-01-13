@@ -30,8 +30,8 @@ angular_add_simple_list_controller(
     }
 )
 
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter) ->
         $scope.initial_load = true
         # init pagSettings /w. filter
         $scope.settings = {}
@@ -90,6 +90,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     $scope.rest_data[$scope.rest_map[idx].short] = value
                 $.unblockUI()
                 $scope.rest_data_set()
+                $scope.update_entries_st_attrs()  # this depends on rest data
             )
         $scope.dg_present = () ->
             return (entry for entry in $scope.entries when entry.device_type_identifier == "MD").length > 1
@@ -336,6 +337,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
                     $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
                 reload_sidebar_tree()
+                $scope.update_entries_st_attrs()
             else if $scope._array_name == "device_group"
                 $scope.reload()
                 reload_sidebar_tree()
@@ -371,6 +373,45 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 success : (xml) ->
                     parse_xml_response(xml)
         install_devsel_link($scope.new_devsel, false)
+
+        $scope.update_entries_st_attrs = () ->
+            for obj in $scope.entries
+                st_attrs = {}
+                if obj.is_meta_device
+                        # give some value, js sucks at comparing undefined
+                        st_attrs['rrd_store'] = ""
+                        st_attrs['passwd'] = ""
+                        st_attrs['mon_master'] = ""
+                        st_attrs['boot_master'] = ""
+                        st_attrs['curl'] = ""
+                        if obj.device_group_obj.cluster_device_group
+                            new_el = $compile($templateCache.get("device_tree_cdg_row.html"))
+                            st_attrs['name'] = obj.device_group_obj.name
+                            st_attrs['description'] = obj.device_group_obj.description
+                            st_attrs['enabled'] = null
+                            st_attrs['type'] = null
+                            st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.device_group_obj.domain_tree_node, $scope.rest_data.domain_tree_node))
+                        else
+                            obj.device_group_obj.num_devices = (entry for entry in $scope.entries when entry.device_group == obj.device_group).length - 1
+                            new_el = $compile($templateCache.get("device_tree_meta_row.html"))
+                            st_attrs['name'] = obj.device_group_obj.name
+                            st_attrs['description'] = obj.device_group_obj.description
+                            st_attrs['enabled'] = obj.device_group_obj.enabled
+                            st_attrs['type'] = obj.device_group_obj.num_devices
+                            st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.device_group_obj.domain_tree_node, $scope.rest_data.domain_tree_node))
+                    else
+                        new_el = $compile($templateCache.get("device_tree_row.html"))
+                        st_attrs['name'] = obj.name
+                        st_attrs['description'] = obj.comment
+                        st_attrs['enabled'] = obj.enabled
+                        st_attrs['type'] = array_lookupFilter(obj.device_type, $scope.rest_data.device_type, "description")
+                        st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.domain_tree_node, $scope.rest_data.domain_tree_node))
+                        st_attrs['rrd_store'] = obj.store_rrd_data
+                        st_attrs['passwd'] = obj.root_passwd_set
+                        st_attrs['mon_master'] = array_lookupFilter(obj.monitor_server, $scope.rest_data.monitor_server, "full_name_wt")
+                        st_attrs['boot_master'] = array_lookupFilter(obj.bootserver, $scope.rest_data.mother_server, "full_name")
+                        st_attrs['curl'] = obj.curl
+                obj.st_attrs = st_attrs
 ]).directive("devicetreerow", ($templateCache, $compile) ->
     return {
         restrict : "EA"

@@ -8,16 +8,12 @@
 {% verbatim %}
 
 monitoring_overview_template = """
-here
 
 <div class="row">
     <div class="col-md-6">
 
                 <span ng-class="" ng-click="myhidden = !myhidden" class="ng-binding label label-primary"> click {{ myhidden }} </span>
 
-    <!--
-    <table st-table="displayedRowCollection" st-safe-src="rowCollection" class="table table-striped">
-    -->
     <div st-table="rowCollection" >
              <custom-search></custom-search>
 
