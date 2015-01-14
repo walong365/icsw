@@ -78,8 +78,6 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
 }).run(($templateCache) ->
 )
 
-
 {% endinlinecoffeescript %}
 
 </script>
-

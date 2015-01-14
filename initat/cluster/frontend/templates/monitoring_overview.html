@@ -46,23 +46,19 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="entry in entries_displayed">
-                            <td>{{entry.name}}
+                            <td>{{entry.name}}</td>
                             <td>TBD</td>
                             <td>
-                                <div>
-                                    <device-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
-                                </div>
+                                <device-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
                             </td>
                             <td>
-                                    <service-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
+                                <service-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></service-hist-status-overview>
                             </td>
                             <td>
-                                <div>
-                                    <device-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></device-hist-status-overview>
-                                </div>
+                                <device-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></device-hist-status-overview>
                             </td>
                             <td>
-                                    <service-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></device-hist-status-overview>
+                                <service-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></service-hist-status-overview>
                             </td>
                             <td>
                                 {{entry}}
@@ -74,6 +70,7 @@
         </div>
     </script>
 
+    <!-- actual content: -->
     <div ng-controller='monitoring_overview_ctrl'>
         <monitoringoverview>
         </monitoringoverview>

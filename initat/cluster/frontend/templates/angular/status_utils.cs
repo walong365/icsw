@@ -39,6 +39,12 @@ device_hist_status_template = """
 </div>
 """
 
+service_hist_status_template = """
+<ngpiechart width="40" height="40" data="pie_data"></ngpiechart>
+here
+{{pie_data}}
+"""
+
 {% endverbatim %}
 
 root = exports ? this
@@ -59,29 +65,19 @@ angular.module(
         link: (scope, element, attrs) ->
             scope.show_table = scope.$eval(attrs.showTable)
 
+            # TODO: make this into a filter, then remove also from serviceHist*
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
+
+            scope.pie_data = []
 
             scope.update = () ->
                 cont = (new_data) ->
-                    weigth = {
+                    weights = {
                         "Up": -10
                         "Down": -8
                         "Unreachable": -6
                         "Undetermined": -4
                     }
-                    formatted_data = _.cloneDeep(new_data)
-                    for key of weigth
-                        if not _.any(new_data, (d) -> return d['state'] == key)
-                            formatted_data.push({'state':key, 'value': 0})
-
-                    for d in formatted_data
-                        d['value'] = scope.float_format(d['value'])
-                    scope.host_data = _.sortBy(formatted_data, (d) -> return weigth[d['state']])
-
-                    new_data = _.sortBy(new_data, (d) -> return weigth[d['state']])
-
-                    for d in new_data
-                        d['value'] = Math.round(d['value']*10000) / 100
 
                     colors = {
                         "Up": "#66dd66"
@@ -89,17 +85,71 @@ angular.module(
                         "Unreachable": "#f0ad4e"
                         "Undetermined": "#b7b7b7"
                     }
-                    pie_data = []
-                    for d in new_data
-                        pie_data.push {
-                            'title': d['state']
-                            'value': d['value']
-                            'color': colors[d['state']]
-                        }
-                    scope.pie_data = pie_data
+
+                    [scope.host_data, scope.pie_data] = status_history_utils.preprocess_state_data(new_data, weights, colors, scope.float_format)
 
                 status_history_utils.get_device_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont)
+            scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
 
+}).directive('serviceHistStatusOverview', ($templateCache, $resource, $parse) ->
+    # shows piechart of state of service. shows how many service are in which state at a given time frame
+    return {
+        restrict: 'EA',
+        scope: {
+            deviceid: "="
+            startdate: "="
+            timerange: "="
+        },
+        template: $templateCache.get("service_hist_status.html")
+        link: (scope, element, attrs) ->
+
+            # TODO: see above
+            scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
+
+            scope.pie_data = []
+
+            scope.update = () ->
+                cont = (new_data) ->
+                    console.log 'servd', new_data
+                    # it's not obvious how to aggregate service states
+                    # we now just add the values, but we could e.g. also use the most common state of a service as it's state
+                    # then we could say "4 services were ok, 3 were critical".
+
+                    aggregated_data = {
+                        "Ok": 0
+                        "Warning": 0
+                        "Critical": 0
+                        "Unknown": 0
+                        "Undetermined": 0
+                    }
+
+                    for service in new_data
+                        for state_entry in service
+                            aggregated_data[state_entry['state']] += state_entry['value']  # ignore state_type
+
+                    aggregated_data_list = []
+                    for key, value of aggregated_data
+                        aggregated_data_list.push({'state': key, 'value': value})
+
+                    weights = {
+                        "Ok": -10
+                        "Warning": -9
+                        "Critical": -8
+                        "Unknown": -5
+                        "Undetermined": -4
+                    }
+
+                    colors = {
+                        "Ok": "#66dd66"
+                        "Warning": "#f0ad4e"
+                        "Critical": "#ff7777"
+                        "Unknown": "#b7b7b7"
+                        "Undetermined": "#b7b7b7"
+                    }
+
+                    [scope.service_data, scope.pie_data] = status_history_utils.preprocess_state_data(aggregated_data_list, weights, colors, scope.float_format)
+
+                status_history_utils.get_service_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
 }).directive("ngpiechart", () ->
     return {
@@ -137,6 +187,39 @@ status_history_utils = {
         res.query(query_data, (new_data) ->
             cont(new_data)
         )
+    get_service_data: ($resource, device_id, start_date, timerange, cont) ->
+        res = $resource("{% url 'mon:get_hist_service_data' %}", {}, {'query': {method: 'GET', isArray: false}})
+        query_data = {
+            'device_id': device_id,
+            'date': moment(start_date).unix()  # ask server in utc
+            'duration_type': timerange,
+        }
+        res.query(query_data, (new_data) ->
+            cont(new_data)
+        )
+    preprocess_state_data: (new_data, weights, colors, float_format) ->
+        formatted_data = _.cloneDeep(new_data)
+        for key of weights
+            if not _.any(new_data, (d) -> return d['state'] == key)
+                formatted_data.push({'state': key, 'value': 0})
+
+        for d in formatted_data
+            d['value'] = float_format(d['value'])
+        final_data = _.sortBy(formatted_data, (d) -> return weights[d['state']])
+
+        new_data = _.sortBy(new_data, (d) -> return weights[d['state']])
+
+        for d in new_data
+            d['value'] = Math.round(d['value']*10000) / 100
+
+        pie_data = []
+        for d in new_data
+            pie_data.push {
+                'title': d['state']
+                'value': d['value']
+                'color': colors[d['state']]
+            }
+        return [final_data, pie_data]
 }
 
 

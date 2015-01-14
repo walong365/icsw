@@ -509,7 +509,7 @@ class get_hist_service_data(ListAPIView):
         for entry in queryset.prefetch_related(Prefetch("service", queryset=queryset)):
 
             relevant_data_from_entry = {
-                'state': trans[entry.state].lower(),
+                'state': trans[entry.state].capitalize(),
                 'state_type': entry.state_type,
                 'value': entry.value
             }
