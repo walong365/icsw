@@ -1,4 +1,4 @@
-# Copyright (C) 2010,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2010,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -35,6 +35,11 @@ class _general(hm_classes.hm_module):
 
 
 class corosync_status_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        self.parser.add_argument("-w", dest="warn", default=4, type=int)
+        self.parser.add_argument("-c", dest="crit", default=8, type=int)
+
     def __call__(self, srv_com, cur_ns):
         # not beautifull, FIXME ...
         c_out, c_stat = self.module._exec_command("/usr/sbin/corosync-cfgtool -s", full_output=True)
@@ -46,9 +51,6 @@ class corosync_status_command(hm_classes.hm_command):
         coro_stat = int(coro_node.attrib.get("status", "0"))
         lines = (coro_node.text or "").split("\n")
         return self._interpret(lines, cur_ns, status=coro_stat)
-
-    def interpret_old(self, result, cur_ns):
-        return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
 
     def _parse_lines(self, lines):
         r_dict = {
@@ -89,15 +91,18 @@ class corosync_status_command(hm_classes.hm_command):
                     match_str = "ring {:d}".format(ring_key)
                     if ring_stat.lower().startswith(match_str):
                         ring_stat = ring_stat[len(match_str):].strip()
-                    out_f.append("ring {:d}: id {}, {}".format(
-                        ring_key,
-                        ring_dict["id"],
-                        ring_stat)
+                    out_f.append(
+                        "ring {:d}: id {}, {}".format(
+                            ring_key,
+                            ring_dict["id"],
+                            ring_stat
+                        )
                     )
                     if ring_stat.lower().count("no faults"):
                         pass
                     elif ring_stat.lower().count("incrementing problem"):
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        _count = int(ring_stat.split("[", 1)[1].split()[0])
+                        ret_state = max(ret_state, limits.check_ceiling(_count, parsed_coms.warn, parsed_coms.crit))
                     else:
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
@@ -131,18 +136,24 @@ class heartbeat_status_command(hm_classes.hm_command):
         for online in [False, True]:
             nodes = [name for name, stuff in hb_dict["nodes"].iteritems() if stuff["online"] == online]
             if nodes:
-                out_f.append("{}({:d}): [{}]".format(
-                    "online" if online else "offline",
-                    len(nodes),
-                    logging_tools.compress_list(nodes)))
+                out_f.append(
+                    "{}({:d}): [{}]".format(
+                        "online" if online else "offline",
+                        len(nodes),
+                        logging_tools.compress_list(nodes)
+                    )
+                )
                 if not online:
                     ret_state = max(ret_state, limits.nag_STATE_WARNING)
         for res_name in sorted(hb_dict["resources"]):
             stuff = hb_dict["resources"][res_name]
             if "node" in stuff:
-                out_f.append("{} on {}".format(
-                    res_name,
-                    stuff["node"]))
+                out_f.append(
+                    "{} on {}".format(
+                        res_name,
+                        stuff["node"]
+                    )
+                )
             else:
                 out_f.append(res_name)
         return ret_state, ", ".join(out_f)
