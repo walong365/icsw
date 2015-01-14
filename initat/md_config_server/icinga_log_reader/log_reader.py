@@ -37,6 +37,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
 from initat.md_config_server.config import global_config
 import logging_tools
 import psutil
+import threading_tools
 
 from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
 
@@ -47,7 +48,33 @@ __all__ = [
 ]
 
 
+class icinga_log_reader_process(threading_tools.process_obj):
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True
+        )
+        connection.close()
+
+        self.icinga_log_reader = icinga_log_reader(self.log)
+
+        self.register_timer(self._update, 30 if global_config["DEBUG"] else 300, instant=True)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+
+    def loop_post(self):
+        self.__log_template.close()
+
+    def _update(self):
+        self.icinga_log_reader.update()
+
+
 class icinga_log_reader(object):
+
     class malformed_icinga_log_entry(RuntimeError):
         pass
 
@@ -82,29 +109,29 @@ class icinga_log_reader(object):
 
     def __init__(self, log):
 
-        log_orig = log
-        def my_log(msg, level='debug'):
-            log_orig(msg)
+        if False:
+            log_orig = log
 
-            with open("/tmp/myicingalog", "a") as f:
-                f.write("{}: {}\n".format(level, msg))
+            def my_log(msg, level='debug'):
+                log_orig(msg)
 
-        log = my_log
+                with open("/tmp/myicingalog", "a") as f:
+                    f.write("{}: {}\n".format(level, msg))
+
+            log = my_log
 
         self.log = log
         self._historic_service_map = {description.replace(" ", "_").lower(): pk
                                       for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
         self._historic_host_map = {entry.full_name: entry.pk for entry in device.objects.all()}
-        # pprint.pprint(self._historic_service_map)
 
         self._icinga_log_aggregator = icinga_log_aggregator(log)
 
     def update(self):
         '''Called periodically'''
-        connection.close()
-
         self._update_raw_data()
-        #import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), "/tmp/prof.out")
+
+        # import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), "/tmp/prof.out")
         self._icinga_log_aggregator.update()
 
     def _update_raw_data(self):
