@@ -50,6 +50,7 @@ class network_bind_mixin(object):
     def network_bind(self, **kwargs):
         _need_all_binds = kwargs.get("need_all_binds", False)
         pollin = kwargs.get("pollin", None)
+        ext_call = kwargs.get("ext_call", False)
         immediate = kwargs.get("immediate", True)
         bind_port = kwargs["bind_port"]
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
@@ -135,7 +136,7 @@ class network_bind_mixin(object):
                     else:
                         self.log("bound to {} with id {}".format(_bind_str, bind_id))
                         if pollin:
-                            self.register_poller(client, zmq.POLLIN, pollin)  # @UndefinedVariable
+                            self.register_poller(client, zmq.POLLIN, pollin, ext_call=ext_call, bind_id=bind_id)  # @UndefinedVariable
             if master_bind:
                 self.main_socket = client
             else:

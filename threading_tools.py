@@ -315,16 +315,18 @@ class poller_obj(object):
         # poller
         self.poller = zmq.Poller()
         self.poller_handler = {}
+        self.poller_kwargs = {}
         # for ZMQ debug
         self.fd_lookup = {}
         self._socket_lut = {}
         self.__normal_sockets = False
         # self.__waiting = 0
 
-    def register_poller(self, zmq_socket, sock_type, callback):
+    def register_poller(self, zmq_socket, sock_type, callback, **kwargs):
         if self.debug_zmq:
             self.fd_lookup[zmq_socket._sock] = zmq_socket
         self.poller_handler.setdefault(zmq_socket, {})[sock_type] = callback
+        self.poller_kwargs.setdefault(zmq_socket, {})[sock_type] = kwargs
         cur_mask = 0
         for mask in self.poller_handler[zmq_socket].keys():
             cur_mask |= mask
@@ -343,6 +345,7 @@ class poller_obj(object):
             if self.debug_zmq:
                 del self.fd_lookup[zmq_socket._sock]
             del self.poller_handler[zmq_socket]
+            del self.poller_kwargs[zmq_socket]
             if kwargs.get("close_socket", False):
                 zmq_socket.close()
         else:
@@ -351,10 +354,11 @@ class poller_obj(object):
                 cur_mask |= mask
             self.poller.register(zmq_socket, cur_mask)
 
-    def register_socket(self, n_socket, event_mask, callback):
+    def register_socket(self, n_socket, event_mask, callback, **kwargs):
         self._socket_lut[n_socket.fileno()] = n_socket
         _fn = n_socket.fileno()
         self.poller_handler.setdefault(n_socket, {})[event_mask] = callback
+        self.poller_kwargs.setdefault(n_socket, {})[event_mask] = kwargs
         cur_mask = 0
         for mask in self.poller_handler[n_socket].keys():
             cur_mask |= mask
@@ -368,6 +372,7 @@ class poller_obj(object):
         if n_socket.fileno() in self._socket_lut:
             del self._socket_lut[n_socket.fileno()]
         del self.poller_handler[n_socket]
+        del self.poller_kwargs[n_socket]
 
     def _do_select(self, timeout):
         _list = self.poller.poll(timeout)
@@ -391,7 +396,10 @@ class poller_obj(object):
                         # the socket could vanish
                         if r_type in self.poller_handler.get(sock, []):
                             try:
-                                self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
+                                if self.poller_kwargs[sock][r_type].get("ext_call"):
+                                    self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock), **self.poller_kwargs[sock][r_type])
+                                else:
+                                    self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
                             except:
                                 exc_info = process_tools.exception_info()
                                 # try:
