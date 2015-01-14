@@ -70,6 +70,19 @@
             </select>
         </div>
     </form>
+    <from class="form-inline">
+        <label class="control-label">Filter:</label>
+        <div class="form-group">
+            <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
+        </div>
+
+        <div class="form-group">
+            <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"></input>
+        </div>
+        <div class="form-group">
+            <input type="button" class="btn btn-sm btn-danger" value="deselect all" ng-click="deselect_all()"></input>
+        </div>
+    </form>
 </script>
 
 <script type="text/ng-template" id="device_tree_head.html">
@@ -142,9 +155,10 @@
     </td>
 </script> 
 
-<div ng-controller="device_tree_base" >
+
+<div ng-controller="device_tree_base">
     <h2>
-        Device tree smart ({{ entries.length }} entries, {{ table_controller.getDisplayedEntries().length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
+        Device tree smart ({{ entries.length }} entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
         <div class="btn-group">
             <input type="button" class="btn btn-success" value="create device" ng-show="dg_present()" ng-click="create('device', $event)"></button>
             <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
@@ -153,69 +167,49 @@
         </div>
     </h2>
 
-    <div st-table="entries_displayed" st-safe-src="entries">
+    <devicetreefilters></devicetreefilters>
 
-        <devicetreefilters></devicetreefilters>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <!-- entries_displayed is st-table interal -->
+            <table st-table="entries_displayed" st-safe-src="entries_filtered" class="table table-hover table-condensed table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            Additional columns:
+                            <div class="btn-group btn-group-xs">
+                                <input
+                                    type="button"
+                                    ng-repeat="entry in hide_list"
+                                    title="{{ entry[3] }}"
+                                    ng-value="entry[1]"
+                                    ng-class="hide_lut[entry[0]] && 'btn btn-success' || 'btn'"
+                                    ng-click="hide_lut[entry[0]]=!hide_lut[entry[0]]">
+                                </input>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-pagination="" st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort='st_attrs.name'>Name</th>
+                        <th>Sel</th>
+                        <th st-sort='st_attrs.description'>Description</th>
+                        <th st-sort='st_attrs.enabled'>Enabled</th>
+                        <th st-sort='st_attrs.type'>Type</th>
+                        <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]" st-sort="{{'st_attrs.'+entry[0]}}">{{ entry[1] }}</th>
+                        <th colspan="2" class="text-center">action</th>
+                    </tr>
+                </thead>
 
-        <from class="form-inline">
-            <label class="control-label">Filter:</label>
-            <div class="form-group">
-                <input class="form-control input-sm" st-search="" placeholder="filter"></input>
-                <b style="color:red">TODO</b>
-            </div>
-            <select class="form-control" ng-model="hereherehere">
-                <option value="">All columns</option>
-                <option ng-repeat="column in column_list" ng-value="column[0]">{{ column[1] }}</option>
-            </select>
+                <tbody>
+                    <tr devicetreerow ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)"></tr>
+                </tbody>
 
-            <div class="form-group">
-                <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"></input>
-            </div>
-            <div class="form-group">
-                <input type="button" class="btn btn-sm btn-danger" value="deselect all" ng-click="deselect_all()"></input>
-            </div>
-        </form>
-        <div class="panel panel-default">
-            <div class="panel-body">
-                <table class="table table-hover table-condensed table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <td colspan="99">
-                                Additional columns:
-                                <div class="btn-group btn-group-xs">
-                                    <input
-                                        type="button"
-                                        ng-repeat="entry in hide_list"
-                                        title="{{ entry[3] }}"
-                                        ng-value="entry[1]"
-                                        ng-class="hide_lut[entry[0]] && 'btn btn-success' || 'btn'"
-                                        ng-click="hide_lut[entry[0]]=!hide_lut[entry[0]]">
-                                    </input>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="99">
-                                <div icsw-pagination="" st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th st-sort='st_attrs.name'>Name</th>
-                            <th>Sel</th>
-                            <th st-sort='st_attrs.description'>Description</th>
-                            <th st-sort='st_attrs.enabled'>Enabled</th>
-                            <th st-sort='st_attrs.type'>Type</th>
-                            <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]" st-sort="{{'st_attrs.'+entry[0]}}">{{ entry[1] }}</th>
-                            <th colspan="2" class="text-center">action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        <tr devicetreerow ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)"></tr>
-                    </tbody>
-
-                </table>
-            </div>
+            </table>
         </div>
     </div>
 

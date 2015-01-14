@@ -38,7 +38,7 @@ paginator_template =
         </span>
         <span ng-show="numPages > 1">, </span>
         <span ng-show="numPages < 6">
-            showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ Math.min(currentPage  * stItemsByPage, table_controller.getDisplayedEntries().length) }},
+            showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ Math.min(currentPage  * stItemsByPage, table_controller.getNumberOfTotalEntries()) }},
         </span>
     </span>
     <span ng-show="pages.length == 0">
@@ -74,8 +74,9 @@ angular.module(
             scope.stDisplayedPages = scope.stDisplayedPages or 5
 
             scope.Math = Math;
-
-            scope.table_controller = ctrl
+            # this is not nice but only needed for a minor thing (see template above)
+            # the problem is that we can't access the scope of the outer directive as the st-table directive overwrites the scope
+            scope.table_controller = ctrl;
 
             if attrs.possibleItemsByPage
                 scope.possibleItemsByPage = (parseInt(i) for i in attrs.possibleItemsByPage.split(","))
