@@ -27,7 +27,7 @@ device_hist_status_template = """
                 <tbody>
                     <tr ng-repeat="state in host_data">
                         <td> {{ state.state }} </td>
-                        <td> {{ state.value }} </td>
+                        <td class="text-right"> {{ state.value }} </td>
                     </tr>
                 </tbody>
             </table>
@@ -35,7 +35,7 @@ device_hist_status_template = """
     </div>
 </div>
 <div ng-if="!show_table"> <!-- only chart -->
-    <ngpiechart width="60" height="60" data="pie_data"></ngpiechart>
+    <ngpiechart width="40" height="40" data="pie_data"></ngpiechart>
 </div>
 """
 
@@ -59,7 +59,7 @@ angular.module(
         link: (scope, element, attrs) ->
             scope.show_table = scope.$eval(attrs.showTable)
 
-            scope.float_format = (n) -> return (n*100).toFixed(0) + "%"
+            scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
 
             scope.update = () ->
                 cont = (new_data) ->
@@ -81,7 +81,7 @@ angular.module(
                     new_data = _.sortBy(new_data, (d) -> return weigth[d['state']])
 
                     for d in new_data
-                        d['value'] = Math.round(d['value']*100)
+                        d['value'] = Math.round(d['value']*10000) / 100
 
                     colors = {
                         "Up": "#66dd66"

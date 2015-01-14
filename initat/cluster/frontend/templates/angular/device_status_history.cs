@@ -77,11 +77,11 @@ device_status_history_template = """
             <tbody>
                 <tr ng-repeat="(serv_key, serv_state) in service_data">
                     <td> {{ extract_service_name(serv_key) }} </td>
-                    <td> {{ extract_service_value(serv_state, "ok") }} </td>
-                    <td> {{ extract_service_value(serv_state, "warning") }} </td>
-                    <td> {{ extract_service_value(serv_state, "critical") }} </td>
-                    <td> {{ extract_service_value(serv_state, "unknown") }} </td>
-                    <td> {{ extract_service_value(serv_state, "undetermined") }} </td>
+                    <td class="text-right"> {{ extract_service_value(serv_state, "ok") }} </td>
+                    <td class="text-right"> {{ extract_service_value(serv_state, "warning") }} </td>
+                    <td class="text-right"> {{ extract_service_value(serv_state, "critical") }} </td>
+                    <td class="text-right"> {{ extract_service_value(serv_state, "unknown") }} </td>
+                    <td class="text-right"> {{ extract_service_value(serv_state, "undetermined") }} </td>
                 </tr>
             </tbody>
         </table>
@@ -113,7 +113,6 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
             scope.device_rest = device_resource.get({'id': scope.device_id})
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
-            scope.float_format = (n) -> return (n*100).toFixed(0) + "%"
             scope.extract_service_value = (service, key) ->
                 entries = _.filter(service, (e) -> e.state == key)
                 ret = 0
@@ -124,6 +123,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                 check_command_name = service_key.split(",", 2)[0]
                 description =  service_key.split(",", 2)[1]
                 return check_command_name + ": " + description
+            scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
 
             scope.update = () ->
                 serv_cont = (new_data) ->

@@ -8,13 +8,79 @@
 
 {% block content %}
 
+{% verbatim %}
+
 <h2>Monitoring Overview</h2>
 <div id="icsw.monitoring_overview">
+
+    <script type="text/ng-template" id="monitoring_overview_template.html">
+        <div class="panel panel-default" style="width: auto">
+            <div class="panel-body">
+                <!-- entries_displayed is st-table interal -->
+                <from class="form-inline">
+                    <label class="control-label">Filter:</label>
+                    <div class="form-group">
+                        <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
+                    </div>
+                </form>
+                <table st-table="entries_displayed" st-safe-src="entries_filtered" class="table table-hover table-condensed table-striped" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-pagination="" st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort='name' rowspan="2">Name</th>
+                            <!-- todo: sort -->
+                            <th rowspan="2">Now</th>
+                            <th colspan="2" class="text-center">Yesterday</th>
+                            <th colspan="2" class="text-center">Last Week</th>
+                        </tr>
+                        <tr>
+                            <th class="text-center">Host</th>
+                            <th class="text-center">Services</th>
+                            <th class="text-center">Host</th>
+                            <th class="text-center">Services</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="entry in entries_displayed">
+                            <td>{{entry.name}}
+                            <td>TBD</td>
+                            <td>
+                                <div>
+                                    <device-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
+                                </div>
+                            </td>
+                            <td>
+                                    <service-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
+                            </td>
+                            <td>
+                                <div>
+                                    <device-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></device-hist-status-overview>
+                                </div>
+                            </td>
+                            <td>
+                                    <service-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></device-hist-status-overview>
+                            </td>
+                            <td>
+                                {{entry}}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </script>
+
     <div ng-controller='monitoring_overview_ctrl'>
         <monitoringoverview>
         </monitoringoverview>
     </div>
 </div>
+
+{% endverbatim %}
 
 <script>
 

@@ -416,7 +416,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 try
                     str_re = new RegExp(scope.filter_settings.str_filter, "gi")
                 catch
-                    str_re = new RegExp(/^$/, "gi")
+                    str_re = new RegExp("^$", "gi")
 
                 # meta device selection list
                 md_list = aft_dict[scope.filter_settings.dg_filter]
