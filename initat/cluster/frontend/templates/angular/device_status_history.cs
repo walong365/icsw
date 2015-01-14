@@ -57,6 +57,9 @@ status_history_template = """
 device_status_history_template = """
 <h3>{{device_rest.name }}</h3>
 
+<div style="width: 470px">
+    <device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
+</div>
 
 <div class="row" style="width: 500px"> <!-- style="display: flex; align-items: center;"> <!-- vertical alignment, see second answer of http://stackoverflow.com/questions/20547819/vertical-align-with-bootstrap-3 -->
     <div class="col-md-4" style="margin-top: -8px;">
@@ -83,6 +86,8 @@ device_status_history_template = """
         </table>
     </div>
 </div>
+
+
 
 <div class="row" style="width: 500px">
     <div class="col-md-12">
@@ -115,7 +120,7 @@ device_status_history_template = """
 
 
 # don't know who needs restangular here, but there are strange errors if removed
-status_history_module = angular.module("icsw.device.status_history", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker"])
+status_history_module = angular.module("icsw.device.status_history", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "status_utils"])
 
 angular_module_setup([status_history_module])
 
@@ -166,11 +171,9 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                     scope.host_data = _.sortBy(formatted_data, (d) -> return weigth[d['state']])
 
                     new_data = _.sortBy(new_data, (d) -> return weigth[d['state']])
-                    console.log new_data
 
                     for d in new_data
                         d['value'] = Math.round(d['value']*100)
-                    console.log new_data
 
                     colors = {
                         "Up": "#66dd66"
