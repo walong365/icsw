@@ -7,30 +7,35 @@
 {% verbatim %}
 
 device_hist_status_template = """
-<div class="row">
-<div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
-    <div style="float: right">
-        <ngpiechart width="120" height="120" data="pie_data"></ngpiechart>
+<div ng-if="show_table"> <!-- use full layout -->
+    <div class="row">
+        <div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
+            <div style="float: right">
+                <ngpiechart width="120" height="120" data="pie_data"></ngpiechart>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <table class="table table-condensed table-hover table-striped">
+                <!--
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Ratio of state</th>
+                    </tr>
+                </thead>
+                -->
+                <tbody>
+                    <tr ng-repeat="state in host_data">
+                        <td> {{ state.state }} </td>
+                        <td> {{ state.value }} </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
-<div class="col-md-8" ng-if="show_table">
-    <table class="table table-condensed table-hover table-striped">
-        <!--
-        <thead>
-            <tr>
-                <th>State</th>
-                <th>Ratio of state</th>
-            </tr>
-        </thead>
-        -->
-        <tbody>
-            <tr ng-repeat="state in host_data">
-                <td> {{ state.state }} </td>
-                <td> {{ state.value }} </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+<div ng-if="!show_table"> <!-- only chart -->
+    <ngpiechart width="60" height="60" data="pie_data"></ngpiechart>
 </div>
 """
 
@@ -41,7 +46,7 @@ root = exports ? this
 
 angular.module(
     "status_utils", []
-).directive('deviceHistStatusOverview', ($templateCache, $resource) ->
+).directive('deviceHistStatusOverview', ($templateCache, $resource, $parse) ->
     # shows piechart and possibly table of historic device status
     return {
         restrict: 'EA',
@@ -52,12 +57,12 @@ angular.module(
         },
         template: $templateCache.get("device_hist_status.html")
         link: (scope, element, attrs) ->
-            scope.show_table = attrs.showTable or true
+            scope.show_table = scope.$eval(attrs.showTable)
 
             scope.float_format = (n) -> return (n*100).toFixed(0) + "%"
 
             scope.update = () ->
-                dev_cont = (new_data) ->
+                cont = (new_data) ->
                     weigth = {
                         "Up": -10
                         "Down": -8
@@ -93,11 +98,28 @@ angular.module(
                         }
                     scope.pie_data = pie_data
 
-                status_history_utils.get_device_data($resource, scope.deviceid, scope.startdate, scope.timerange, dev_cont)
+                status_history_utils.get_device_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont)
 
-            scope.$watch('deviceid', (unused) -> scope.update())
-            scope.$watch('startdate', (unused) -> scope.update())
-            scope.$watch('timerange', (unused) -> scope.update())
+            scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
+}).directive("ngpiechart", () ->
+    return {
+        restrict : "E"
+        scope:
+            data: "=data"
+            width: "=width"
+            height: "=height"
+        template: """
+{% verbatim %}
+<div class="chart"></div>
+{% endverbatim %}
+"""
+        link : (scope, el, attrs) ->
+            scope.$watchGroup(["data", "width", "height"], (new_data) ->
+                el.html ''
+
+                if scope.data
+                    el.drawPieChart(scope.data, scope.width, scope.height, {animation: false, lightPiesOffset: 0, edgeOffset: 0, baseOffset: 0, baseColor: "#fff"});
+            )
 }).run(($templateCache) ->
     $templateCache.put("device_hist_status.html", device_hist_status_template)
 )

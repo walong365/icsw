@@ -164,25 +164,6 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
             scope.update()
-}).directive("ngpiechart", () ->
-    return {
-        restrict : "E"
-        scope:
-            data: "=data"
-            width: "=width"
-            height: "=height"
-        template: """
-{% verbatim %}
-<div class="chart"></div>
-{% endverbatim %}
-"""
-        link : (scope, el, attrs) ->
-            scope.$watch("data", (new_data) ->
-                el.html ''
-
-                if new_data
-                    el.drawPieChart(new_data, scope.width, scope.height);
-            )
 }).run(($templateCache) ->
     $templateCache.put("status_history_template.html", status_history_template)
     $templateCache.put("device_status_history_template.html", device_status_history_template)

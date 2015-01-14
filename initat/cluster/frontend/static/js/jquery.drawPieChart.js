@@ -169,7 +169,8 @@
 
       //draw each path
       for (var i = 0, len = data.length; i < len; i++){
-        var segmentAngle = rotateAnimation * ((data[i].value/segmentTotal) * (PI*2)),//start radian
+        var part = (data[i].value/segmentTotal);
+        var segmentAngle = rotateAnimation * (part * (PI*2)),//start radian
             endRadius = startRadius + segmentAngle,
             largeArc = ((endRadius - startRadius) % (PI * 2)) > PI ? 1 : 0,
             startX = centerX + cos(startRadius) * pieRadius,
@@ -180,18 +181,28 @@
             startY2 = centerY + sin(startRadius) * (pieRadius + settings.lightPiesOffset),
             endX2 = centerX + cos(endRadius) * (pieRadius + settings.lightPiesOffset),
             endY2 = centerY + sin(endRadius) * (pieRadius + settings.lightPiesOffset);
-        var cmd = [
-          'M', startX, startY,//Move pointer
-          'A', pieRadius, pieRadius, 0, largeArc, 1, endX, endY,//Draw outer arc path
-          'L', centerX, centerY,//Draw line to the center.
-          'Z'//Cloth path
-        ];
-        var cmd2 = [
-          'M', startX2, startY2,
-          'A', pieRadius + settings.lightPiesOffset, pieRadius + settings.lightPiesOffset, 0, largeArc, 1, endX2, endY2,//Draw outer arc path
-          'L', centerX, centerY,
-          'Z'
-        ];
+        if (part == 1.0) { // have to draw full circle
+            var cmd = [
+                'M', centerX, centerY,
+                'm', -pieRadius, 0,
+                'a', pieRadius, pieRadius, 0, 1, 0, 2*pieRadius, 0,
+                'a', pieRadius, pieRadius, 0, 1, 0, -2*pieRadius, 0,
+            ];
+           var cmd2 = cmd; // nice light pies for full circles not implemented yet
+        } else {
+            var cmd = [
+              'M', startX, startY,//Move pointer
+              'A', pieRadius, pieRadius, 0, largeArc, 1, endX, endY,//Draw outer arc path
+              'L', centerX, centerY,//Draw line to the center.
+              'Z'//Cloth path
+            ];
+            var cmd2 = [
+              'M', startX2, startY2,
+              'A', pieRadius + settings.lightPiesOffset, pieRadius + settings.lightPiesOffset, 0, largeArc, 1, endX2, endY2,//Draw outer arc path
+              'L', centerX, centerY,
+              'Z'
+            ];
+        }
         $pies[i][0].setAttribute("d",cmd.join(' '));
         $lightPies[i][0].setAttribute("d", cmd2.join(' '));
         startRadius += segmentAngle;

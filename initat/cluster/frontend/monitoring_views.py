@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from django.db.models.query import Prefetch
 
 """ monitoring views """
 from collections import defaultdict
@@ -36,7 +37,8 @@ from initat.cluster.backbone.models import device, device_type, domain_name_tree
     parse_commandline
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data,\
-    mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data
+    mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data,\
+    mon_icinga_log_raw_base
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
@@ -477,14 +479,18 @@ class get_hist_device_data(ListAPIView):
         data = []
         if timespan_db:
             data = mon_icinga_log_aggregated_host_data.objects.filter(device_id=device_id, timespan=timespan_db).values('state', 'state_type', 'value')
-            trans = dict(mon_icinga_log_aggregated_host_data.STATE_CHOICES)
-            for d in data:
-                d['state'] = trans[d['state']].capitalize()
+
+        trans = dict(mon_icinga_log_aggregated_host_data.STATE_CHOICES)
+        for d in data:
+            d['state'] = trans[d['state']].capitalize()
 
         data_merged_state_types = []
-        # merge state_types
+        # merge state_types (soft/hard)
         for state in set(d['state'] for d in data):
             data_merged_state_types.append({'state': state, 'value': sum(d['value'] for d in data if d['state'] == state)})
+
+        if not data_merged_state_types:
+            data_merged_state_types.append({'state': trans[mon_icinga_log_raw_base.STATE_UNDETERMINED].capitalize(), 'value': 1})
 
         return Response(data_merged_state_types)
 
@@ -499,7 +505,8 @@ class get_hist_service_data(ListAPIView):
         data = defaultdict(lambda: [])
         trans = dict(mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
-        for entry in mon_icinga_log_aggregated_service_data.objects.filter(device_id=device_id, timespan=timespan_db).prefetch_related():
+        queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id=device_id, timespan=timespan_db)
+        for entry in queryset.prefetch_related(Prefetch("service", queryset=queryset)):
 
             relevant_data_from_entry = {
                 'state': trans[entry.state].lower(),
