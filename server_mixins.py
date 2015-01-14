@@ -80,7 +80,7 @@ class network_bind_mixin(object):
                         "tcp://{}:{:d}".format(_virtual_ip, bind_port) for _virtual_ip in _ip_list
                     ],
                     # ignore local device
-                    get_server_uuid("server", _dev.uuid),
+                    get_server_uuid(kwargs["server_type"], _dev.uuid),
                     _dev,
                 ) for _dev, _ip_list in dev_r.ip_r_lut.iteritems() if _dev.pk != dev_r.device.pk
             ]
