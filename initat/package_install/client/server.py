@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -28,6 +28,7 @@ import os
 import process_tools
 import server_command
 import threading_tools
+import time
 import uuid_tools
 import zmq
 
@@ -58,12 +59,16 @@ class server_process(threading_tools.process_pool):
         # log limits
         self._log_limits()
         self._set_resend_timeout(None)
-        self._init_network_sockets()
-        self.register_func("send_to_server", self._send_to_server)
-        if os.path.isfile("/etc/centos-release"):
-            self.add_process(yum_install_process("install"), start=True)
+        if self._get_package_server_id():
+            self._init_network_sockets()
+            self.register_func("send_to_server", self._send_to_server)
+            if os.path.isfile("/etc/centos-release"):
+                self.add_process(yum_install_process("install"), start=True)
+            else:
+                self.add_process(zypper_install_process("install"), start=True)
         else:
-            self.add_process(zypper_install_process("install"), start=True)
+            self.client_socket = None
+            self._int_error("no package_server id")
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -91,7 +96,6 @@ class server_process(threading_tools.process_pool):
             msi_block.start_command = "/etc/init.d/package-client start"
             msi_block.stop_command = "/etc/init.d/package-client force-stop"
             msi_block.kill_pids = True
-            # msi_block.heartbeat_timeout = 60
             msi_block.save_block()
         else:
             msi_block = None
@@ -144,47 +148,80 @@ class server_process(threading_tools.process_pool):
             else:
                 self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
 
-    def _init_network_sockets(self):
-        # connect to server
-        self.router_com = True if "PACKAGE_SERVER_ID" in global_config else False
-        if self.router_com:
-            self.__package_server_id = global_config["PACKAGE_SERVER_ID"]
-            self.log("using a ROUTER socket to communicate with the package server {}".format(self.__package_server_id))
-            srv_port = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-            srv_port.setsockopt(zmq.ROUTER_MANDATORY, 1)  # @UndefinedVariable
-        else:
-            self.__package_server_id = None
-            self.log("using a DEALER socket to communicate with the package server", logging_tools.LOG_LEVEL_WARN)
-            srv_port = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-        srv_port.setsockopt(zmq.LINGER, 1000)  # @UndefinedVariable
-        srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())  # @UndefinedVariable
-        srv_port.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-        srv_port.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
-        # srv_port.setsockopt(zmq.SUBSCRIBE, "")
-        self.conn_str = "tcp://{}:{:d}".format(
+    def _get_package_server_id(self):
+        self.srv_conn_str = "tcp://{}:{:d}".format(
             global_config["PACKAGE_SERVER"],
-            global_config["SERVER_COM_PORT"])
-        srv_port.connect(self.conn_str)
-        # pull_port = self.zmq_context.socket(zmq.PUSH)
-        # pull_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
-        self.register_poller(srv_port, zmq.POLLIN, self._recv)  # @UndefinedVariable
-        self.log("connected to {}".format(self.conn_str))
-        self.srv_port = srv_port
-        # client socket
+            global_config["SERVER_COM_PORT"]
+        )
+        ps_id_file_name = global_config["PACKAGE_SERVER_ID_FILE"]
+        if not os.path.exists(ps_id_file_name):
+            _result = self._get_package_server_id_from_server()
+            if _result is not None:
+                _server_id = _result["*zmq_id"]
+                self.log(
+                    "got server_id {} from server, writing to {}".format(
+                        _server_id,
+                        ps_id_file_name,
+                    )
+                )
+                file(ps_id_file_name, "w").write(_server_id)
+        if os.path.exists(ps_id_file_name):
+            self.__package_server_id = file(ps_id_file_name, "r").read().strip()
+            return True
+        else:
+            return False
+
+    def _get_package_server_id_from_server(self):
+        check_sock = process_tools.get_socket(
+            self.zmq_context,
+            "DEALER",
+            identity="{}:ptest:".format(uuid_tools.get_uuid().get_urn()),
+        )
+        check_sock.connect(self.srv_conn_str)
+        self.log("init test socket, connected to {}".format(self.srv_conn_str))
+        check_sock.send_unicode(unicode(server_command.srv_command(command="get_0mq_id")))
+        _timeout = 10
+        my_poller = zmq.Poller()
+        my_poller.register(check_sock, zmq.POLLIN)  # @UndefinedVariable
+        s_time = time.time()
+        while True:
+            _list = my_poller.poll(2)
+            if _list:
+                _result = server_command.srv_command(source=check_sock.recv_unicode())
+                break
+            cur_time = time.time()
+            if cur_time > s_time + _timeout:
+                self.log("timeout, exiting ...", logging_tools.LOG_LEVEL_ERROR)
+                _result = None
+                break
+            else:
+                self.log(
+                    "timeout, still waiting ({:.2f} of {:.2f})".format(
+                        abs(cur_time - s_time),
+                        _timeout,
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+        my_poller.unregister(check_sock)
+        del my_poller
+        check_sock.close()
+        del check_sock
+        return _result
+
+    def _init_network_sockets(self):
+        # socket
         self.bind_id = "{}:pclient:".format(uuid_tools.get_uuid().get_urn())
-        client_sock = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.LINGER, 1000)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.IDENTITY, self.bind_id)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.SNDHWM, 16)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.RCVHWM, 16)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
-        client_sock.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
+        self.log("connected to {}".format(self.srv_conn_str))
+        client_sock = process_tools.get_socket(
+            self.zmq_context,
+            "ROUTER",
+            identity=self.bind_id,
+        )
         bind_str = "tcp://0.0.0.0:{:d}".format(
             global_config["COM_PORT"]
         )
         client_sock.bind(bind_str)
+        client_sock.connect(self.srv_conn_str)
         self.log("bound to {} (ID {})".format(bind_str, self.bind_id))
         self.client_socket = client_sock
         self.register_poller(client_sock, zmq.POLLIN, self._recv_client)  # @UndefinedVariable
@@ -200,9 +237,8 @@ class server_process(threading_tools.process_pool):
         for _msg in self.__send_buffer:
             if _success:
                 try:
-                    if self.__package_server_id:
-                        self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
-                    self.srv_port.send_unicode(_msg)
+                    self.client_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
+                    self.client_socket.send_unicode(_msg)
                 except zmq.error.ZMQError:
                     _success = False
                     new_buffer.append(_msg)
@@ -239,11 +275,10 @@ class server_process(threading_tools.process_pool):
 
     def _send_to_server(self, src_proc, *args, **kwargs):
         _src_pid, com_name, send_com, send_info = args
-        self.log("sending {} ({}) to server {}".format(com_name, send_info, self.conn_str))
+        self.log("sending {} ({}) to server {}".format(com_name, send_info, self.srv_conn_str))
         try:
-            if self.__package_server_id:
-                self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
-            self.srv_port.send_unicode(send_com)
+            self.client_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
+            self.client_socket.send_unicode(send_com)
         except zmq.error.ZMQError:
             self.__send_buffer.append(send_com)
             self.log("error sending message to server, buffering ({:d})".format(len(self.__send_buffer)))
@@ -290,22 +325,24 @@ class server_process(threading_tools.process_pool):
             zmq_sock.send_unicode(unicode(srv_com))
             del srv_com
         else:
-            self.log("cannot receive more data, already got '{}'".format(", ".join(data)),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot receive more data, already got '{}'".format(
+                    ", ".join(data)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
             raw_data = []
-            while True:
-                raw_data.append(zmq_sock.recv_unicode())
-                if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-                    break
+            raw_data.append(zmq_sock.recv_unicode())
+            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+                break
             # rewrite to srv_coms
             data = []
             while raw_data:
-                if self.__package_server_id:
-                    raw_data.pop(0)
+                raw_data.pop(0)
                 try:
                     in_com = server_command.srv_command(source=raw_data.pop(0))
                 except:
@@ -329,7 +366,10 @@ class server_process(threading_tools.process_pool):
         self.send_to_process(
             "install",
             "command_batch",
-            [unicode(cur_com) for cur_com in batch_list])
+            [
+                unicode(cur_com) for cur_com in batch_list
+            ]
+        )
     # def _optimize_list(self, in_list):
     #    return in_list
 
@@ -350,6 +390,6 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.srv_port.close()
-        self.client_socket.close()
+        if self.client_socket:
+            self.client_socket.close()
         self.__log_template.close()

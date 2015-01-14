@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -78,33 +78,24 @@ def main():
     else:
         global_config.write_file()
         ps_file_name = global_config["PACKAGE_SERVER_FILE"]
-        ps_id_file_name = global_config["PACKAGE_SERVER_ID_FILE"]
         if not os.path.isfile(ps_file_name):
             try:
                 file(ps_file_name, "w").write("localhost\n")
             except:
-                print "error writing to %s: %s" % (ps_file_name, process_tools.get_except_info())
+                print("error writing to {}: {}".format(ps_file_name, process_tools.get_except_info()))
                 ret_code = 5
             else:
                 pass
         try:
-            global_config.add_config_entries([
-                ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip())),
-                ("VERSION", configfile.str_c_var(VERSION_STRING)),
-            ])
+            global_config.add_config_entries(
+                [
+                    ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip())),
+                    ("VERSION", configfile.str_c_var(VERSION_STRING)),
+                ]
+            )
         except:
-            print "error reading from {}: {}".format(ps_file_name, process_tools.get_except_info())
+            print("error reading from {}: {}".format(ps_file_name, process_tools.get_except_info()))
             ret_code = 5
-        if os.path.exists(ps_id_file_name):
-            try:
-                global_config.add_config_entries(
-                    [
-                        ("PACKAGE_SERVER_ID", configfile.str_c_var(file(ps_id_file_name, "r").read().strip().split("\n")[0].strip())),
-                    ]
-                )
-            except:
-                # ignore, use old com style
-                pass
         if not ret_code:
             global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
             if global_config["KILL_RUNNING"]:
@@ -120,6 +111,7 @@ def main():
                 # exit
                 os._exit(0)
             else:
+                global_config = configfile.get_global_config(prog_name, parent_object=global_config)
                 print "Debugging {} on {}".format(prog_name, process_tools.get_machine_name())
                 run_code()
     return 0

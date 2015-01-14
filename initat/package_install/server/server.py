@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -139,7 +139,7 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
             open_sock.close()
         self.__log_template.close()
 
-    def _new_com(self, zmq_sock):
+    def _new_com(self, zmq_sock, **kwargs):
         data = [zmq_sock.recv_unicode()]
         while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             data.append(zmq_sock.recv_unicode())
@@ -157,29 +157,33 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
                     except KeyError:
                         srv_com.update_source()
                         # srv_com["result"] = None
-                        self.log("got command '%s' from %s" % (cur_com, c_uid))
+                        self.log("got command '{}' from {}".format(cur_com, c_uid))
                         # check for normal command
                         if cur_com == "get_0mq_id":
-                            srv_com["zmq_id"] = self.bind_id
-                            srv_com.set_result("0MQ_ID is %s" % (self.bind_id))
+                            srv_com["zmq_id"] = kwargs["bind_id"]
+                            srv_com.set_result("0MQ_ID is {}".format(kwargs["bind_id"]))
                         elif cur_com == "status":
                             srv_com.set_result("up and running")
                         else:
                             self.log(
-                                "unknown uid %s (command %s), not known" % (
+                                "unknown uid {} (command {}), not known".format(
                                     c_uid,
                                     cur_com,
                                 ),
                                 logging_tools.LOG_LEVEL_CRITICAL
                             )
-                            srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
+                            srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
                         zmq_sock.send_unicode(c_uid, zmq.SNDMORE)  # @UndefinedVariable
                         zmq_sock.send_unicode(unicode(srv_com))
                     else:
                         cur_client.new_command(srv_com)
         else:
-            self.log("wrong number of data chunks (%d != 2)" % (len(data)),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "wrong number of data chunks ({:d} != 2)".format(
+                    len(data)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _delayed_result(self, src_name, src_pid, ext_id, ret_str, ret_state, **kwargs):
         in_uid, srv_com = self.__delayed_struct[ext_id]
@@ -267,6 +271,7 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
             bind_port=global_config["SERVER_PUB_PORT"],
             need_all_binds=False,
             pollin=self._new_com,
+            ext_call=True,
         )
 
     def send_reply(self, t_uid, srv_com):
@@ -275,7 +280,7 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
             send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
             send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
         except:
-            self.log("error sending to {}".format(t_uid), logging_tools.LOG_LEVEL_ERROR)
+            self.log("error sending to {}: {}".format(t_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
 
     def _send_update(self, command="send_info", dev_list=[], **kwargs):
         send_list = dev_list or client.name_set

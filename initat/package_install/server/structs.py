@@ -456,7 +456,8 @@ class client(object):
                 global_config["LOG_DESTINATION"],
                 zmq=True,
                 context=client.srv_process.zmq_context,
-                init_logger=True)
+                init_logger=True
+            )
             self.log("added client")
 
     @staticmethod
@@ -524,7 +525,8 @@ class client(object):
     def __unicode__(self):
         return u"{} ({})".format(
             self.name,
-            self.uid)
+            self.uid
+        )
 
     def _modify_device_variable(self, var_name, var_descr, var_type, var_value):
         try:
