@@ -257,16 +257,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             return entry.identifier != "MD"
         $scope.ignore_cdg = (entry) ->
             return not entry.cluster_device_group
-        $scope.update_filter = () ->
-            if $scope.cur_f_to
-                $timeout.cancel($scope.cur_f_to)
-            $scope.cur_f_to = $timeout($scope.new_filter, 250)
-        $scope.new_filter = () ->
-            # apply filter
-            $scope.pagSettings.conf.filter_settings.str_filter = $scope.str_filter
-            # console.log $scope.pagSettings.conf.filter_settings
-        $scope.filter_pag = (entry, scope) ->
-            return entry._show
         $scope.object_modified = (mod_obj) ->
             mod_obj.selected = $scope.pre_edit_obj.selected
             mod_obj.device_group_obj = $scope.device_group_lut[mod_obj.device_group]
