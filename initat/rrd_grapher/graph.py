@@ -182,7 +182,10 @@ class graph_var(object):
         self.dev_name = dev_name
         self.rrd_graph = rrd_graph
         self.graph_target = graph_target
-        self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
+        if self.rrd_graph.para_dict["show_values"]:
+            self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
+        else:
+            self.max_info_width = self.rrd_graph.width / 7
         self.name = "v{:d}".format(self.graph_target.get_def_idx())
 
     def __getitem__(self, key):
@@ -194,7 +197,7 @@ class graph_var(object):
     def get(self, key, default):
         return self.entry.attrib.get(key, default)
 
-    def info(self, timeshift):
+    def info(self, timeshift, forecast):
         info = self["info"]
         parts = self["name"].split(".")
         for idx in xrange(len(parts)):
@@ -204,6 +207,8 @@ class graph_var(object):
             info_parts.append(unicode(self.dev_name))
         if timeshift:
             info_parts.append("ts {}".format(logging_tools.get_diff_time_str(timeshift)))
+        if forecast:
+            info_parts.append("fc")
         return rrd_escape(
             "{}{}".format(
                 info,
@@ -248,6 +253,11 @@ class graph_var(object):
         _stacked = draw_type.endswith("STACK")
         if _stacked:
             draw_type = draw_type[:-5]
+        # plot forecast ?
+        if draw_type.startswith("LINE") or (draw_type.startswith("AREA") and not _stacked):
+            show_forecast = self.rrd_graph.para_dict["show_forecast"]
+        else:
+            show_forecast = False
         # area: modes area (pure are), area{1,2,3} (area with lines)
         # print draw_name, draw_type, _stacked
         if draw_type.startswith("AREA"):  # in ["AREA", "AREA1", "AREA2", "AREA3"]:
@@ -257,7 +267,7 @@ class graph_var(object):
                     "AREA",
                     draw_name,
                     self.color,
-                    ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift))[:self.max_info_width],
+                    ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift, show_forecast))[:self.max_info_width],
                     ":STACK" if _stacked else "",
                 ),
             )
@@ -286,9 +296,34 @@ class graph_var(object):
                     self.color,
                     (
                         "{{:<{:d}s}}".format(self.max_info_width)
-                    ).format(self.info(timeshift))[:self.max_info_width],
+                    ).format(self.info(timeshift, show_forecast))[:self.max_info_width],
                     ":STACK" if _stacked else "",
                 ),
+            )
+            # c_lines.append(
+            #    "CDEF:{}trend={},1800,TRENDNAN".format(
+            #        self.name,
+            #        self.name,
+            #    )
+            # )
+        if show_forecast:
+            c_lines.extend(
+                [
+                    "VDEF:{0}dl={0},LSLSLOPE".format(
+                        draw_name,
+                    ),
+                    "VDEF:{0}kl={0},LSLINT".format(
+                        draw_name,
+                    ),
+                    "CDEF:{0}lsls={0},POP,{0}dl,COUNT,*,{0}kl,+".format(
+                        draw_name,
+                    ),
+                    "{}:{}lsls{}".format(
+                        draw_type.replace("AREA", "LINE "),
+                        draw_name,
+                        self.color,
+                    ),
+                ],
             )
         if timeshift:
             # draw timeshifted graph
@@ -311,10 +346,15 @@ class graph_var(object):
                         ts_name,
                         timeshift,
                     ),
+                    # "{}:{}inv{}40".format(
+                    #    "LINE3",
+                    #    ts_name,
+                    #    self.color,
+                    # ),
                     "{}:{}inv{}::dashes".format(
-                        ts_draw_type,
+                        ts_draw_type,  # "LINE1",  # ts_draw_type,
                         ts_name,
-                        ts_color,
+                        ts_color,  # "#000000",  # ts_color,
                     )
                 ]
             )
@@ -328,20 +368,19 @@ class graph_var(object):
             _sum_unit = _sum_unit[:-2]
             if _sum_unit == "1":
                 _sum_unit = ""
-        c_lines.append(
-            "COMMENT:<tt>{}</tt>".format("{:>4s}".format(_unit.replace("%%", "%")))
-        )
+        if self.rrd_graph.para_dict["show_values"]:
+            c_lines.append(
+                "COMMENT:<tt>{}</tt>".format(
+                    "{:>4s}".format(
+                        _unit.replace("%%", "%")
+                    ),
+                )
+            )
         for _num, (rep_name, cf, total) in enumerate(l_list):
             _last = _num == len(l_list) - 1
             c_lines.extend(
                 [
                     "VDEF:{}{}={},{}".format(self.name, rep_name, self.name, cf),
-                    "GPRINT:{}{}:<tt>%6.1lf%s{}</tt>{}".format(
-                        self.name,
-                        rep_name,
-                        _sum_unit if total else "",
-                        r"\l" if _last else r""
-                    ),
                     # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
                     "PRINT:{}{}:{:d}.{}.{}=%.4lf".format(
                         self.name,
@@ -352,6 +391,17 @@ class graph_var(object):
                     ),
                 ]
             )
+            if self.rrd_graph.para_dict["show_values"]:
+                c_lines.extend(
+                    [
+                        "GPRINT:{}{}:<tt>%6.1lf%s{}</tt>{}".format(
+                            self.name,
+                            rep_name,
+                            _sum_unit if total else "",
+                            r"\l" if _last else r""
+                        ),
+                    ]
+                )
         return c_lines
 
     def get_legend_list(self):
@@ -370,7 +420,12 @@ class graph_var(object):
 
     @property
     def header_line(self):
-        return "COMMENT:<tt>{}unit{}</tt>\\n".format(
+        _sv = self.rrd_graph.para_dict["show_values"]
+        if _sv:
+            _l_list = self.get_legend_list()
+        else:
+            _l_list = []
+        return "COMMENT:<tt>{}{}{}</tt>\\n".format(
             (
                 "{{:<{:d}s}}".format(
                     self.max_info_width + 4
@@ -378,9 +433,10 @@ class graph_var(object):
             ).format(
                 "Description"
             )[:self.max_info_width + 4],
+            "unit" if _sv else "",
             "".join(
                 [
-                    "{:>9s}".format(rep_name) for rep_name, _cf, _total in self.get_legend_list()
+                    "{:>9s}".format(rep_name) for rep_name, _cf, _total in _l_list
                 ]
             )
         )
@@ -524,6 +580,7 @@ class RRDGraph(object):
             "graph_root": graph_root,
             "hide_empty":  False,
             "include_zero": False,
+            "show_forecast": False,
             "scale_y": False,
             "merge_devices": True,
             "job_mode": "none",
@@ -566,16 +623,16 @@ class RRDGraph(object):
                     Q(device__in=dev_dict.keys()) | Q(rms_pe_info__device__in=dev_dict.keys())
                 ) & (
                     (
-                        Q(start_time_py__lte=self.para_dict["end_time"]) &
+                        Q(start_time_py__lte=self.para_dict["end_time_fc"]) &
                         Q(start_time_py__gte=self.para_dict["start_time"])
                     ) | (
-                        Q(end_time_py__lte=self.para_dict["end_time"]) &
+                        Q(end_time_py__lte=self.para_dict["end_time_fc"]) &
                         Q(end_time_py__gte=self.para_dict["start_time"])
                     ) | (
-                        Q(start_time__lte=self.para_dict["end_time"]) &
+                        Q(start_time__lte=self.para_dict["end_time_fc"]) &
                         Q(start_time__gte=self.para_dict["start_time"])
                     ) | (
-                        Q(end_time__lte=self.para_dict["end_time"]) &
+                        Q(end_time__lte=self.para_dict["end_time_fc"]) &
                         Q(end_time__gte=self.para_dict["start_time"])
                     )
                 )
@@ -615,15 +672,15 @@ class RRDGraph(object):
                     _start_time = _run.start_time or _run.start_time_py
                     _end_time = _run.end_time or _run.end_time_py
                     # set start and / or end time to None if outside of graph
-                    if _start_time and (_start_time <= self.para_dict["start_time"] or _start_time >= self.para_dict["end_time"]):
+                    if _start_time and (_start_time <= self.para_dict["start_time"] or _start_time >= self.para_dict["end_time_fc"]):
                         _start_time = None
-                    if _end_time and (_end_time <= self.para_dict["start_time"] or _end_time >= self.para_dict["end_time"]):
+                    if _end_time and (_end_time <= self.para_dict["start_time"] or _end_time >= self.para_dict["end_time_fc"]):
                         _end_time = None
                     _job_add_dict.setdefault(_entry["device"], []).append(
                         {
                             "slots": _entry["slots"] or 1,
                             "start_time": _start_time,
-                            "end_time": _end_time,
+                            "end_time_fc": _end_time,
                             "job": _run.rms_job.full_id,
                             "user": unicode(_run.rms_job.user.login),
                             "hostname": _entry["hostname"],
@@ -646,7 +703,7 @@ class RRDGraph(object):
                         logging_tools.get_plural("slot", _job_info["slots"]),
                         _job_info["hostname"],
                     )
-                if _job_info["start_time"] and _job_info["end_time"]:
+                if _job_info["start_time"] and _job_info["end_time_fc"]:
                     _ext_args.extend(
                         [
                             "VRULE:{}#4444ee:{}".format(
@@ -658,11 +715,11 @@ class RRDGraph(object):
                                 )
                             ),
                             "VRULE:{}#ee4444:{}\l".format(
-                                int((_job_info["end_time"] - self.dt_1970).total_seconds()),
+                                int((_job_info["end_time_fc"] - self.dt_1970).total_seconds()),
                                 rrd_escape(
                                     "end, {} - {}, {}".format(
                                         strftime(_job_info["start_time"]),
-                                        strftime(_job_info["end_time"], _job_info["start_time"]),
+                                        strftime(_job_info["end_time_fc"], _job_info["start_time"]),
                                         _us_info,
                                     )
                                 )
@@ -682,14 +739,14 @@ class RRDGraph(object):
                             )
                         )
                     )
-                elif _job_info["end_time"]:
+                elif _job_info["end_time_fc"]:
                     _ext_args.append(
                         "VRULE:{}#ee4444:{}\l".format(
-                            int((_job_info["end_time"] - self.dt_1970).total_seconds()),
+                            int((_job_info["end_time_fc"] - self.dt_1970).total_seconds()),
                             rrd_escape(
                                 "{} end  , {}, {}".format(
                                     _job_info["job"],
-                                    strftime(_job_info["end_time"]),
+                                    strftime(_job_info["end_time_fc"]),
                                     _us_info,
                                 )
                             )
@@ -752,7 +809,11 @@ class RRDGraph(object):
         raise StopIteration
 
     def graph(self, vector_dict, compound_dict, dev_pks, graph_keys):
-        timeframe = abs((self.para_dict["end_time"] - self.para_dict["start_time"]).total_seconds())
+        # end time with forecast
+        self.para_dict["end_time_fc"] = self.para_dict["end_time"]
+        if self.para_dict["show_forecast"]:
+            self.para_dict["end_time_fc"] += self.para_dict["end_time"] - self.para_dict["start_time"]
+        timeframe = abs((self.para_dict["end_time_fc"] - self.para_dict["start_time"]).total_seconds())
         graph_size = self.para_dict["size"]
         graph_width, graph_height = [int(value) for value in graph_size.split("x")]
         self.log("width / height : {:d} x {:d}, timeframe {}".format(
@@ -846,7 +907,7 @@ class RRDGraph(object):
                     # reset colorizer for current graph
                     self.colorizer.reset()
                     self.abs_start_time = int((self.para_dict["start_time"] - self.dt_1970).total_seconds())
-                    self.abs_end_time = int((self.para_dict["end_time"] - self.dt_1970).total_seconds())
+                    self.abs_end_time = int((self.para_dict["end_time_fc"] - self.dt_1970).total_seconds())
                     rrd_pre_args = [
                         abs_file_loc,
                         "-E",  # slope mode
@@ -916,7 +977,7 @@ class RRDGraph(object):
                             rrd_args.extend(
                                 [
                                     "--title",
-                                    "{} on {} (tf: {})".format(
+                                    "{} on {} (tf: {}{})".format(
                                         _graph_target.header,
                                         dev_dict.get(
                                             _graph_target.dev_list[0][1],
@@ -925,7 +986,8 @@ class RRDGraph(object):
                                             "device",
                                             len(_graph_target.dev_list)
                                         ),
-                                        logging_tools.get_diff_time_str(timeframe)
+                                        logging_tools.get_diff_time_str(timeframe),
+                                        ", with forecast" if self.para_dict["end_time"] != self.para_dict["end_time_fc"] else "",
                                     )
                                 ]
                             )
@@ -1123,7 +1185,9 @@ class graph_process(threading_tools.process_obj, server_mixins.operational_error
             ("hide_empty", "0"),
             ("merge_devices", "1"),
             ("scale_y", "0"),
+            ("show_values", "1"),
             ("include_zero", "0"),
+            ("show_forecast", "0"),
             ("debug_mode", "0"),
             ("merge_cd", "0"),
         ]:
