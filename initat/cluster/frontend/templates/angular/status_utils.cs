@@ -81,7 +81,7 @@ angular.module(
                         "Up": "#66dd66"
                         "Down": "#ff7777"
                         "Unreachable": "#f0ad4e"
-                        "Undetermined": "#b7b7b7"
+                        "Undetermined": "#c7c7c7"
                     }
 
                     [scope.host_data, scope.pie_data] = status_history_utils.preprocess_state_data(new_data, weights, colors, scope.float_format)
@@ -134,8 +134,8 @@ angular.module(
                         "Ok": "#66dd66"
                         "Warning": "#f0ad4e"
                         "Critical": "#ff7777"
-                        "Unknown": "#b7b7b7"
-                        "Undetermined": "#b7b7b7"
+                        "Unknown": "#c7c7c7"
+                        "Undetermined": "#c7c7c7"
                     }
 
                     [scope.service_data, scope.pie_data] = status_history_utils.preprocess_state_data(new_data, weights, colors, scope.float_format)
