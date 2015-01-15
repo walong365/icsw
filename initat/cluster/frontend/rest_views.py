@@ -94,9 +94,9 @@ def csw_exception_handler(exc):
         detail_info = list(set([_entry for _entry in [_part.strip() for _part in detail_info if _part.strip()] if _entry not in ["()"]]))
         response = Response(
             {
-                "detail": "%s%s" % (
+                "detail": "{}{}".format(
                     detail_str,
-                    " (%s)" % (", ".join(detail_info)) if detail_info else ""
+                    " ({})".format(", ".join(detail_info)) if detail_info else ""
                 ),
             },
             status=status.HTTP_406_NOT_ACCEPTABLE,
@@ -134,17 +134,17 @@ class rest_logging(object):
             result = self._func(*args, **kwargs)
         except:
             self.log(
-                "exception: %s" % (
+                "exception: {}".format(
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
-                self.log("  %s" % (line))
+                self.log("  {}".format(line))
             raise
         e_time = time.time()
-        self.log("call took %s" % (
+        self.log("call took {}".format(
             logging_tools.get_diff_time_str(e_time - s_time)))
         return result
 
@@ -335,7 +335,7 @@ class list_view(mixins.ListModelMixin,
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
-            resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
+            resp.data["_messages"] = [u"created '{}'".format(unicode(self.object))]
         return resp
 
     @rest_logging
@@ -399,7 +399,7 @@ class fetch_forms(viewsets.ViewSet):
             if cur_form in dir(forms):
                 ext_list.append(
                     {
-                        "name": "%s.html" % (cur_form),
+                        "name": "{}.html".format(cur_form),
                         "form": render_string(
                             request,
                             "crispy_form.html",
@@ -412,8 +412,8 @@ class fetch_forms(viewsets.ViewSet):
             else:
                 ext_list.append(
                     {
-                        "name": "%s.html" % (cur_form),
-                        "form": "<strong>form '%s' not found</strong>" % (cur_form)
+                        "name": "{}.html".format(cur_form),
+                        "form": "<strong>form '{}' not found</strong>".format(cur_form)
                     }
                 )
         _ser = form_serializer(ext_list, many=True)
@@ -668,7 +668,7 @@ class device_tree_list(mixins.ListModelMixin,
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
-            resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
+            resp.data["_messages"] = [u"created '{}'".format(unicode(self.object))]
         return resp
 
     @rest_logging

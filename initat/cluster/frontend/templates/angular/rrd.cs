@@ -113,6 +113,20 @@ rrd_graph_template = """
                     </button>
                 </div>
             </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="show_forecast && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_forecast=!show_forecast" title="show forecast">
+                        <span class="glyphicon glyphicon-eye-open"></span>
+                    </button>
+                </div>
+            </div>&nbsp;
+            <div class="form-group">
+                <div class="input-group-btn">
+                    <button type="button" ng-class="show_values && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_values=!show_values" title="show numeric values">
+                        <span class="glyphicon glyphicon-list"></span>
+                    </button>
+                </div>
+            </div>&nbsp;
             <div class="form-group" ng-show="!merge_cd">
                 <div class="input-group-btn">
                     <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
@@ -369,6 +383,8 @@ add_rrd_directive = (mod) ->
             $scope.job_mode = $scope.job_modes[0]
             $scope.selected_job = 0
             $scope.include_zero = true
+            $scope.show_forecast = false
+            $scope.show_values = true
             $scope.cds_already_merged = false
             $scope.merge_cd = false
             $scope.scale_y = true
@@ -677,6 +693,8 @@ add_rrd_directive = (mod) ->
                         "job_mode"      : $scope.job_mode
                         "selected_job"  : $scope.selected_job 
                         "include_zero"  : $scope.include_zero
+                        "show_forecast" : $scope.show_forecast
+                        "show_values"   : $scope.show_values
                         "merge_cd"      : $scope.merge_cd
                         # flag if the controlling devices are shown in the rrd tree
                         "cds_already_merged" : $scope.cds_already_merged
