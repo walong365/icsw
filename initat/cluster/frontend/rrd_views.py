@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,14 +28,15 @@ from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.cluster.backbone.models import device
+from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E  # @UnresolvedImports
 import datetime
 import dateutil.parser
 import dateutil.tz
 import json
 import logging
+import logging_tools
 import server_command
 
 logger = logging.getLogger("cluster.rrd")
@@ -65,11 +66,16 @@ def _get_node_rrd(request, dev_pks):
         merge_results="1"
     )
     result, _log_lines = contact_server(request, "grapher", srv_com, timeout=30)
-    if result:
-        node_results = result.xpath(".//ns:result", smart_strings=False)
-        if len(node_results):
-            return HttpResponse(node_results[0].text, content_type="application/json")
-        return HttpResponse(json.dumps({"error": "no node results"}), content_type="application/json")
+    if result is not None:
+        _log_str, _log_level = result.get_log_tuple()
+        if _log_level <= logging_tools.LOG_LEVEL_WARN:
+            node_results = result.xpath(".//ns:result", smart_strings=False)
+            if len(node_results) and node_results[0].text:
+                return HttpResponse(node_results[0].text, content_type="application/json")
+            else:
+                return HttpResponse(json.dumps({"error": "no node results"}), content_type="application/json")
+        else:
+            return HttpResponse(json.dumps({"error": _log_str}), content_type="application/json")
     else:
         return HttpResponse(json.dumps({"error": ", ".join([_line for _level, _line in _log_lines])}), content_type="application/json")
 
@@ -110,6 +116,8 @@ class graph_rrds(View):
             E.size(_post.get("size", "400x200")),
             E.hide_empty(self._parse_post_boolean(_post, "hide_empty", "0")),
             E.include_zero(self._parse_post_boolean(_post, "include_zero", "0")),
+            E.show_values(self._parse_post_boolean(_post, "show_values", "0")),
+            E.show_forecast(self._parse_post_boolean(_post, "show_forecast", "0")),
             E.scale_y(self._parse_post_boolean(_post, "scale_y", "0")),
             E.merge_cd(self._parse_post_boolean(_post, "merge_cd", "0")),
             E.job_mode(_post.get("job_mode", "none")),
