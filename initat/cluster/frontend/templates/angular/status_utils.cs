@@ -41,7 +41,6 @@ device_hist_status_template = """
 
 service_hist_status_template = """
 <ngpiechart width="40" height="40" data="pie_data"></ngpiechart>
-here
 {{pie_data}}
 """
 
@@ -172,6 +171,7 @@ angular.module(
             )
 }).run(($templateCache) ->
     $templateCache.put("device_hist_status.html", device_hist_status_template)
+    $templateCache.put("service_hist_status.html", service_hist_status_template)
 )
 
 
