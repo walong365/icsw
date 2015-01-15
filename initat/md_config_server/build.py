@@ -592,9 +592,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ur_pks = [_entry.pk for _entry in dm_dict.itervalues() if _entry.md_dist_level < 0]
         if nodes_ur and show_unroutable:
             self.log(
-                "{}: {}".format(
+                u"{}: {}".format(
                     logging_tools.get_plural("unroutable node", len(nodes_ur)),
-                    ", ".join(sorted(nodes_ur)),
+                    u", ".join(sorted(nodes_ur)),
                 )
             )
         for level in xrange(max_level + 1):
