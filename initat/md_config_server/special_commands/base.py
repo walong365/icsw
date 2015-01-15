@@ -82,7 +82,7 @@ class special_base(object):
         self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
         # set datasource to cache
         for _entry in self.__cache:
-            if _entry.datasource != "c":
+            if _entry.datasource not in ["c", "p"]:
                 _entry.datasource = "c"
                 _entry.save(update_fields=["datasource"])
         self.log(
@@ -108,9 +108,9 @@ class special_base(object):
         else:
             self.log("no cache set")
 
-    def add_persistent_entries(self, hint_list):
+    def add_persistent_entries(self, hint_list, call_idx):
         pers_dict = {
-            _hint.key: _hint for _hint in self.__cache if _hint.persistent
+            _hint.key: _hint for _hint in self.__cache if _hint.persistent and _hint.call_idx == call_idx
         }
         cache_keys = set([_hint.key for _hint in hint_list])
         missing_keys = set(pers_dict.keys()) - cache_keys
@@ -126,6 +126,8 @@ class special_base(object):
                 _hint.datasource = "p"
                 _hint.save(update_fields=["datasource"])
                 hint_list.append(_hint)
+                # for later storage
+                self.__hint_list.append(_hint)
 
     def cleanup(self):
         self.build_process = None
@@ -165,7 +167,7 @@ class special_base(object):
 
     @property
     def call_idx(self):
-        # gives current server call number
+        # gives current server call number (for multi-call specials, for example: first call for network, second call for disks)
         return self.__call_idx
 
     def _call_server(self, command, server_name, *args, **kwargs):
@@ -251,16 +253,22 @@ class special_base(object):
                 self.__use_cache = True
         if self.__use_cache:
             hint_list = [_entry for _entry in self.__cache if _entry.call_idx == self.__call_idx]
-            self.log("take result from cache")
+            self.log("take {} from cache".format(logging_tools.get_plural("entry", len(hint_list))))
         else:
             # add persistent values
-            self.add_persistent_entries(hint_list)
+            self.add_persistent_entries(hint_list, self.__call_idx)
         self.__call_idx += 1
         return hint_list
 
     def __call__(self, **kwargs):
         s_name = self.__class__.__name__.split("_", 1)[1]
-        self.log("starting {} for {}, cache_mode is {}".format(s_name, self.host.name, self.cache_mode))
+        self.log(
+            "starting {} for {}, cache_mode is {}".format(
+                s_name,
+                self.host.name,
+                self.cache_mode
+            )
+        )
         s_time = time.time()
         # flag to force store the cache (in case of migration of cache entries from FS to DB), only used internally
         self.__force_store_cache = False
@@ -289,7 +297,7 @@ class special_base(object):
                     self.__call_idx,
                     self.__server_contacts,
                     "ok" if self.__server_contact_ok else "failed",
-                    logging_tools.get_plural("hint", len(self.__hint_list))
+                    logging_tools.get_plural("hint", len(self.__hint_list)),
                 )
             )
             # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
