@@ -28,7 +28,7 @@ rrd_graph_template = """
             </div>&nbsp;
             <div class="form-group">
                 <div class="input-group-btn">
-                    <button type="button" class="btn btn-xs btn-success" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
+                    <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
                         <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
                      </button>
                 </div>
@@ -191,7 +191,7 @@ rrd_graph_template = """
             <div class="input-group">
                 <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
                 <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
+                    <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
                     <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
                 </span>
             </div>
@@ -370,6 +370,7 @@ add_rrd_directive = (mod) ->
             $scope.error_string = ""
             $scope.searchstr = ""
             $scope.is_loading = true
+            $scope.is_drawing = false
             $scope.cur_selected = []
             $scope.active_ts = undefined
             # to be set by directive
@@ -681,47 +682,50 @@ add_rrd_directive = (mod) ->
                         text : "selected timeframe is too narrow (#{_mins} < 10 min)"
                         type : "warning"
             $scope.draw_graph = () =>
-                call_ajax
-                    url  : "{% url 'rrd:graph_rrds' %}"
-                    data : {
-                        "keys"       : angular.toJson($scope.cur_selected)
-                        "pks"        : angular.toJson($scope.devsel_list)
-                        "start_time" : moment($scope.from_date_mom).format(DT_FORM)
-                        "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
-                        "size"       : $scope.cur_dim
-                        "hide_empty"    : $scope.hide_empty
-                        "job_mode"      : $scope.job_mode
-                        "selected_job"  : $scope.selected_job 
-                        "include_zero"  : $scope.include_zero
-                        "show_forecast" : $scope.show_forecast
-                        "show_values"   : $scope.show_values
-                        "merge_cd"      : $scope.merge_cd
-                        # flag if the controlling devices are shown in the rrd tree
-                        "cds_already_merged" : $scope.cds_already_merged
-                        "scale_y"       : $scope.scale_y
-                        "merge_devices" : $scope.merge_devices
-                        "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
-                    }
-                    success : (xml) =>
-                        graph_list = []
-                        # graph matrix
-                        graph_mat = {}
-                        if parse_xml_response(xml)
-                            num_graph = 0
-                            for graph in $(xml).find("graph_list > graph")
-                                graph = $(graph)
-                                graph_key = graph.attr("fmt_graph_key")
-                                dev_key = graph.attr("fmt_device_key")
-                                if !(graph_key of graph_mat)
-                                    graph_mat[graph_key] = {}
-                                num_graph++
-                                cur_graph = new d_graph(num_graph, graph)
-                                graph_mat[graph_key][dev_key] = cur_graph
-                                graph_list.push(cur_graph)
-                        $scope.$apply(
-                            $scope.graph_mat = graph_mat
-                            $scope.graph_list = graph_list
-                        )
+                if !$scope.is_drawing
+                    $scope.is_drawing = true
+                    call_ajax
+                        url  : "{% url 'rrd:graph_rrds' %}"
+                        data : {
+                            "keys"       : angular.toJson($scope.cur_selected)
+                            "pks"        : angular.toJson($scope.devsel_list)
+                            "start_time" : moment($scope.from_date_mom).format(DT_FORM)
+                            "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
+                            "size"       : $scope.cur_dim
+                            "hide_empty"    : $scope.hide_empty
+                            "job_mode"      : $scope.job_mode
+                            "selected_job"  : $scope.selected_job 
+                            "include_zero"  : $scope.include_zero
+                            "show_forecast" : $scope.show_forecast
+                            "show_values"   : $scope.show_values
+                            "merge_cd"      : $scope.merge_cd
+                            # flag if the controlling devices are shown in the rrd tree
+                            "cds_already_merged" : $scope.cds_already_merged
+                            "scale_y"       : $scope.scale_y
+                            "merge_devices" : $scope.merge_devices
+                            "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
+                        }
+                        success : (xml) =>
+                            $scope.is_drawing = false
+                            graph_list = []
+                            # graph matrix
+                            graph_mat = {}
+                            if parse_xml_response(xml)
+                                num_graph = 0
+                                for graph in $(xml).find("graph_list > graph")
+                                    graph = $(graph)
+                                    graph_key = graph.attr("fmt_graph_key")
+                                    dev_key = graph.attr("fmt_device_key")
+                                    if !(graph_key of graph_mat)
+                                        graph_mat[graph_key] = {}
+                                    num_graph++
+                                    cur_graph = new d_graph(num_graph, graph)
+                                    graph_mat[graph_key][dev_key] = cur_graph
+                                    graph_list.push(cur_graph)
+                            $scope.$apply(
+                                $scope.graph_mat = graph_mat
+                                $scope.graph_list = graph_list
+                            )
             $scope.get_graph_keys = () ->
                 return (key for key of $scope.graph_mat)
             $scope.$on("$destroy", () ->

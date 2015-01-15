@@ -441,7 +441,7 @@ lic_graph_template = """
 
 {% endverbatim %}
 
-rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "ui.bootstrap.datetimepicker"])
+rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "ui.bootstrap.datetimepicker", "angular-ladda"])
 
 angular_module_setup([rms_module])
 
@@ -1399,9 +1399,7 @@ class license_usage
         @absolute_co = @checkout_time.format("dd, Do MM YYYY, hh:mm:ss")
         @relative_co = @checkout_time.fromNow()
 
- 
-
-
+        
 add_rrd_directive(rms_module)
 
 {% endinlinecoffeescript %}
