@@ -140,7 +140,7 @@ class icinga_log_reader(object):
         # check where we last have read for log rotation
         last_read = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
         if last_read:
-            self.log("last icinga read until: {}".format(datetime.datetime.fromtimestamp(last_read.timestamp)))
+            self.log("last icinga read until: {}".format(datetime.datetime.utcfromtimestamp(last_read.timestamp)))
         else:
             self.log("no earlier icinga log read, reading archive")
             files = os.listdir(icinga_log_reader.get_icinga_log_archive_dir())
@@ -175,8 +175,8 @@ class icinga_log_reader(object):
                 else:
                     same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
                     self.log("cur line timestamp {}, last read timestamp {}".format(cur_line.timestamp, last_read.timestamp))
-                    self.log("cur line timestamp {}, last read timestamp {}".format(datetime.datetime.fromtimestamp(cur_line.timestamp),
-                                                                                    datetime.datetime.fromtimestamp(last_read.timestamp)))
+                    self.log("cur line timestamp {}, last read timestamp {}".format(datetime.datetime.utcfromtimestamp(cur_line.timestamp),
+                                                                                    datetime.datetime.utcfromtimestamp(last_read.timestamp)))
 
             if same_logfile_as_last_read:
                 self.log("continuing to read in current icinga log file")
@@ -187,7 +187,7 @@ class icinga_log_reader(object):
                 self.log("detected icinga log rotation")
                 # cur log file does not correspond to where we last read.
                 # we have to check the archive for whatever we have missed.
-                last_read_date = datetime.date.fromtimestamp(last_read.timestamp)
+                last_read_date = datetime.date.utcfromtimestamp(last_read.timestamp)
                 missed_timedelta = datetime.date.today() - last_read_date
 
                 files_to_check = []
@@ -262,7 +262,7 @@ class icinga_log_reader(object):
                     # create alerts for all devices: indeterminate (icinga not running)
                     # note: this relies on the fact that on startup, icinga writes a status update on start
                     host_entry, service_entry, host_flapping_entry, service_flapping_entry = \
-                        self._create_icinga_down_entry(datetime.datetime.fromtimestamp(timestamp), msg, logfile_db, save=False)
+                        self._create_icinga_down_entry(datetime.datetime.utcfromtimestamp(timestamp), msg, logfile_db, save=False)
                     host_states.append(host_entry)
                     service_states.append(service_entry)
                     host_flapping_states.append(host_flapping_entry)
@@ -381,7 +381,7 @@ class icinga_log_reader(object):
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_host_alert_data(
-                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
                 device_id=host,
                 state_type=state_type,
                 state=state,
@@ -401,7 +401,7 @@ class icinga_log_reader(object):
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_service_alert_data(
-                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
@@ -422,7 +422,7 @@ class icinga_log_reader(object):
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_service_flapping_data(
-                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
@@ -440,7 +440,7 @@ class icinga_log_reader(object):
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_host_flapping_data(
-                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
                 device_id=host,
                 flapping_state=flapping_state,
                 msg=msg,
@@ -456,7 +456,7 @@ class icinga_log_reader(object):
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_service_notification_data(
-                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
@@ -476,7 +476,7 @@ class icinga_log_reader(object):
             self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
         else:
             retval = mon_icinga_log_raw_host_notification_data(
-                date=datetime.datetime.fromtimestamp(cur_line.timestamp),
+                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
                 device_id=host,
                 state=state,
                 user=user,
