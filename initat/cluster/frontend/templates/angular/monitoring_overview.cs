@@ -16,6 +16,12 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
         $scope.filter_settings = {"str_filter": ""}
 
         $scope.filter_predicate = (entry) ->
+            selected = $scope.get_selected_entries()
+            if selected.length == 0
+                sel_flag = true
+            else
+                sel_flag = _.contains(selected, entry)
+                    
             try
                 str_re = new RegExp($scope.filter_settings.str_filter, "gi")
             catch err
@@ -24,15 +30,19 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
             # string filter
             sf_flag = entry.name.match(str_re)
 
-            return sf_flag
+            return sf_flag and sel_flag
 
         wait_list = restDataSource.add_sources([
             ["{% url 'rest:device_list' %}", {}],
         ])
+        $device_list = []
         $q.all(wait_list).then( (data) ->
             $scope.device_list = data[0]
             $scope.update_data()
         )
+
+        $scope.get_selected_entries = () ->
+            return (entry for entry in $scope.entries when entry.selected)
 
         $scope.yesterday = moment().subtract(1, "days")
         $scope.last_week = moment().subtract(1, "weeks")
@@ -45,14 +55,23 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
                 true)
 
         $scope.update_data = () ->
+            # currently only called on external selection change
+            # if this is to be called more often, take care to not destroy selection
+
+            set_initial_sel = $scope.initial_sel.length > 0
 
             new_entries = []
             for dev in $scope.device_list
-                new_entries.push({
+                entry = {
                     'idx': dev.idx
                     'name': dev.name
-                })
+                }
+                if set_initial_sel
+                    entry['selected'] = _.contains($scope.initial_sel, dev.idx)
+                new_entries.push(entry)
             $scope.entries = new_entries
+
+            $scope.initial_sel = []
 
             call_ajax
                 url  : "{% url 'mon:get_node_status' %}"
@@ -69,6 +88,15 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
                             host_entries = host_entries.concat(angular.fromJson($(node).text()))
                         console.log 'serv', service_entries
                         console.log 'host', host_entries
+
+        $scope.initial_sel = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.initial_sel = _dev_sel
+            $scope.update_data()
+            $scope.$apply(  # if we do update_data() from this path, angular doesn't realise it
+                $scope.entries = $scope.entries
+            )
+        install_devsel_link($scope.new_devsel, false)
 
 ]).directive("monitoringoverview", ($templateCache, $timeout) ->
     return {
