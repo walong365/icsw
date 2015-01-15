@@ -61,27 +61,29 @@ device_status_history_template = """
     <device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
 </div>
 
-<div class="row" style="width: 500px">
+<div class="row" style="width: 600px">
     <div class="col-md-12">
         <table class="table table-condensed table-hover table-striped">
             <thead>
                 <tr>
                     <th >Service</th>
-                    <th style="width: 10%;">Ok</th>
-                    <th style="width: 10%;">Warning</th>
-                    <th style="width: 10%;">Critical</th>
-                    <th style="width: 10%;">Unknown</th>
-                    <th style="width: 10%;">Undetermined</th>
+                    <th style="width: 10%;" class="text-center">Ok</th>
+                    <th style="width: 10%;" class="text-center">Warning</th>
+                    <th style="width: 10%;" class="text-center">Critical</th>
+                    <th style="width: 10%;" class="text-center">Unknown</th>
+                    <th style="width: 10%;" class="text-center">Undetermined</th>
+                    <th style="width: 10%;" class="text-center">Flapping</th>
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="(serv_key, serv_state) in service_data">
-                    <td> {{ extract_service_name(serv_key) }} </td>
-                    <td class="text-right"> {{ extract_service_value(serv_state, "ok") }} </td>
-                    <td class="text-right"> {{ extract_service_value(serv_state, "warning") }} </td>
-                    <td class="text-right"> {{ extract_service_value(serv_state, "critical") }} </td>
-                    <td class="text-right"> {{ extract_service_value(serv_state, "unknown") }} </td>
-                    <td class="text-right"> {{ extract_service_value(serv_state, "undetermined") }} </td>
+                <tr ng-repeat="entry in service_data">
+                    <td> {{ extract_service_name(entry[0]) }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry[1], "Ok") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry[1], "Warning") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry[1], "Critical") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry[1], "Unknown") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry[1], "Undetermined") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry[1], "Flapping") }} </td>
                 </tr>
             </tbody>
         </table>
@@ -122,15 +124,23 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
             scope.extract_service_name = (service_key) ->
                 check_command_name = service_key.split(",", 2)[0]
                 description =  service_key.split(",", 2)[1]
-                return check_command_name + ": " + description
+                if check_command_name
+                    if description
+                        serv_name = check_command_name + ": " + description
+                    else
+                        serv_name = check_command_name
+                else  # legacy data, only have some kind of id string to show
+                    serv_name = description
+                return serv_name
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
 
             scope.update = () ->
                 serv_cont = (new_data) ->
-                    scope.service_data = new_data
+                    # new_data is dict, but we want it as list to be able to sort it
+                    data = ([key, val] for key, val of new_data)
+                    scope.service_data = _.sortBy(data, (entry) -> return scope.extract_service_name(entry[0]))
 
                 status_history_utils.get_service_data($resource, scope.device_id, scope.startdate, scope.timerange, serv_cont)
-
 
             scope.update()
 
@@ -180,7 +190,7 @@ status_history_utils = {
             'duration_type': timerange,
         }
         res.query(query_data, (new_data) ->
-            cont(new_data)
+            cont(new_data.toJSON())  # toJSON gets rid of object properties of $resource, which would otherwise be iterated over
         )
     get_timespan: ($resource, start_date, timerange, cont) ->
         res = $resource("{% url 'mon:get_hist_timespan' %}", {})

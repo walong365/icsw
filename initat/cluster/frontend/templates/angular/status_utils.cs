@@ -208,11 +208,12 @@ status_history_utils = {
 
         pie_data = []
         for d in new_data
-            pie_data.push {
-                'title': d['state']
-                'value': d['value']
-                'color': colors[d['state']]
-            }
+            if d['state'] != "Flapping"  # can't display flapping in pie
+                pie_data.push {
+                    'title': d['state']
+                    'value': d['value']
+                    'color': colors[d['state']]
+                }
         return [final_data, pie_data]
 }
 

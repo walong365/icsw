@@ -517,8 +517,8 @@ class get_hist_service_data(ListAPIView):
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
         queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id=device_id, timespan=timespan_db)
-        # can't do regular prefetch_related for queryset
-        for entry in queryset.prefetch_related(Prefetch("service", queryset=queryset)):
+        # can't do regular prefetch_related for queryset, this seems to work
+        for entry in queryset.prefetch_related(Prefetch("service")):
 
             relevant_data_from_entry = {
                 'state': trans[entry.state],
@@ -526,7 +526,7 @@ class get_hist_service_data(ListAPIView):
                 'value': entry.value
             }
 
-            service_name = entry.service.name if entry.service else "unknown check"
+            service_name = entry.service.name if entry.service else ""
 
             data["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
 
