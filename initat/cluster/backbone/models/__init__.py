@@ -34,7 +34,7 @@ from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_float, _check_integer, _check_non_empty_string, to_system_tz, \
-    get_change_reset_list, get_related_models, cluster_timezone
+    get_change_reset_list, get_related_models, cluster_timezone, duration
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
 import crypt
@@ -739,7 +739,9 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
         )
-        fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo"]
+        fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", 
+                          "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
+                          "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data"]
 
     class Meta:
         db_table = u'device'

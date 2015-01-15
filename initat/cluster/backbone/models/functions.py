@@ -27,6 +27,7 @@ from django.db import models
 from django.db.models import Q
 import pytz
 import time
+import datetime
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])
@@ -183,6 +184,98 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
         else:
             print "FieldType() in get_change_reset_list: {}".format(cur_t)
     return c_list, r_list
+
+
+class duration(object):
+    """
+    Utility for databases which have a duration type
+    """
+
+    @classmethod
+    def get_class(cls, ident):
+        for klass in cls.Hour, cls.Day, cls.Week, cls.Month:
+            if ident == klass.ID:
+                return klass
+        raise Exception()
+
+    # NOTE: don't use timezone info here
+    class Day(object):
+        ID = 1
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            return timepoint.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return starttime + datetime.timedelta(days=1)
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
+
+    class Month(object):
+        ID = 2
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            return timepoint.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return cls.get_time_frame_start(starttime + datetime.timedelta(days=35))  # take beginning of next month
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{}-{:02d}".format(timepoint.year, timepoint.month)
+
+    class Hour(object):
+        ID = 3
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            return timepoint.replace(minute=0, second=0, microsecond=0)
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return starttime + datetime.timedelta(seconds=60*60)
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:02d}:{:02d}".format(timepoint.hour, 0)
+
+    class Week(object):
+        ID = 4
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            date_day = duration.Day.get_time_frame_start(timepoint)
+            return date_day - datetime.timedelta(days=date_day.weekday())
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return starttime + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
+
+    class Year(object):
+        ID = 5
+
+        @classmethod
+        def get_time_frame_start(cls, timepoint):
+            return timepoint.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        @classmethod
+        def get_end_time_for_start(cls, starttime):
+            return cls.get_time_frame_start(starttime + datetime.timedelta(days=370))
+
+        @classmethod
+        def get_display_date(cls, timepoint):
+            return u"{:04d}".format(timepoint.year)
+
+
 
 
 # Modified DES required by vnc
