@@ -1304,7 +1304,7 @@ class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
 
 class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
     # see comment in mon_icinga_log_raw_service_alert_data
-    service = models.ForeignKey(mon_check_command)
+    service = models.ForeignKey(mon_check_command, null=True)
     service_info = models.TextField(blank=True, null=True)
 
     state = models.CharField(max_length=2, choices=mon_icinga_log_raw_service_alert_data.STATE_CHOICES)
