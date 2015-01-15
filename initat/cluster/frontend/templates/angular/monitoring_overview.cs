@@ -57,37 +57,38 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
         $scope.update_data = () ->
             # currently only called on external selection change
             # if this is to be called more often, take care to not destroy selection
+            
+            if $scope.device_list
+                set_initial_sel = $scope.initial_sel.length > 0
 
-            set_initial_sel = $scope.initial_sel.length > 0
+                new_entries = []
+                for dev in $scope.device_list
+                    entry = {
+                        'idx': dev.idx
+                        'name': dev.name
+                    }
+                    if set_initial_sel
+                        entry['selected'] = _.contains($scope.initial_sel, dev.idx)
+                    new_entries.push(entry)
+                $scope.entries = new_entries
 
-            new_entries = []
-            for dev in $scope.device_list
-                entry = {
-                    'idx': dev.idx
-                    'name': dev.name
-                }
-                if set_initial_sel
-                    entry['selected'] = _.contains($scope.initial_sel, dev.idx)
-                new_entries.push(entry)
-            $scope.entries = new_entries
+                $scope.initial_sel = []
 
-            $scope.initial_sel = []
-
-            call_ajax
-                url  : "{% url 'mon:get_node_status' %}"
-                data : {
-                    "pk_list" : angular.toJson((dev.idx for dev in $scope.device_list))
-                }
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        service_entries = []
-                        $(xml).find("value[name='service_result']").each (idx, node) =>
-                            service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                        host_entries = []
-                        $(xml).find("value[name='host_result']").each (idx, node) =>
-                            host_entries = host_entries.concat(angular.fromJson($(node).text()))
-                        console.log 'serv', service_entries
-                        console.log 'host', host_entries
+                call_ajax
+                    url  : "{% url 'mon:get_node_status' %}"
+                    data : {
+                        "pk_list" : angular.toJson((dev.idx for dev in $scope.device_list))
+                    }
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            service_entries = []
+                            $(xml).find("value[name='service_result']").each (idx, node) =>
+                                service_entries = service_entries.concat(angular.fromJson($(node).text()))
+                            host_entries = []
+                            $(xml).find("value[name='host_result']").each (idx, node) =>
+                                host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                            console.log 'serv', service_entries
+                            console.log 'host', host_entries
 
         $scope.initial_sel = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
