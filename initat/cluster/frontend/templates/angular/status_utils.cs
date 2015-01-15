@@ -41,7 +41,6 @@ device_hist_status_template = """
 
 service_hist_status_template = """
 <ngpiechart width="40" height="40" data="pie_data"></ngpiechart>
-{{pie_data}}
 """
 
 {% endverbatim %}
@@ -109,10 +108,6 @@ angular.module(
 
             scope.update = () ->
                 cont = (new_data) ->
-                    console.log 'servd', new_data
-                    # it's not obvious how to aggregate service states
-                    # we now just add the values, but we could e.g. also use the most common state of a service as it's state
-                    # then we could say "4 services were ok, 3 were critical".
 
                     aggregated_data = {
                         "Ok": 0
@@ -122,13 +117,10 @@ angular.module(
                         "Undetermined": 0
                     }
 
-                    for service in new_data
-                        for state_entry in service
-                            aggregated_data[state_entry['state']] += state_entry['value']  # ignore state_type
 
-                    aggregated_data_list = []
-                    for key, value of aggregated_data
-                        aggregated_data_list.push({'state': key, 'value': value})
+                    #aggregated_data_list = []
+                    #for key, value of aggregated_data
+                    #    aggregated_data_list.push({'state': key, 'value': value})
 
                     weights = {
                         "Ok": -10
@@ -146,9 +138,9 @@ angular.module(
                         "Undetermined": "#b7b7b7"
                     }
 
-                    [scope.service_data, scope.pie_data] = status_history_utils.preprocess_state_data(aggregated_data_list, weights, colors, scope.float_format)
+                    [scope.service_data, scope.pie_data] = status_history_utils.preprocess_state_data(new_data, weights, colors, scope.float_format)
 
-                status_history_utils.get_service_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont)
+                status_history_utils.get_service_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=true)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
 }).directive("ngpiechart", () ->
     return {
@@ -187,12 +179,14 @@ status_history_utils = {
         res.query(query_data, (new_data) ->
             cont(new_data)
         )
-    get_service_data: ($resource, device_id, start_date, timerange, cont) ->
-        res = $resource("{% url 'mon:get_hist_service_data' %}", {}, {'query': {method: 'GET', isArray: false}})
+    get_service_data: ($resource, device_id, start_date, timerange, cont, merge_services=false) ->
+        expect_array = merge_services
+        res = $resource("{% url 'mon:get_hist_service_data' %}", {}, {'query': {method: 'GET', isArray: expect_array}})
         query_data = {
             'device_id': device_id,
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
+            'merge_services': merge_services,
         }
         res.query(query_data, (new_data) ->
             cont(new_data)

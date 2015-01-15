@@ -48,20 +48,17 @@
                         <tr ng-repeat="entry in entries_displayed">
                             <td>{{entry.name}}</td>
                             <td>TBD</td>
-                            <td>
+                            <td class="text-center">
                                 <device-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <service-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></service-hist-status-overview>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <device-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></device-hist-status-overview>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <service-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></service-hist-status-overview>
-                            </td>
-                            <td>
-                                {{entry}}
                             </td>
                         </tr>
                     </tbody>
