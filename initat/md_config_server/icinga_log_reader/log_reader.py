@@ -19,12 +19,14 @@
 #
 
 import calendar
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 import collections
 import datetime
 import glob
 import os
 import pprint  # @UnusedImport
+import pytz
+import time
 
 from django.db import connection
 from initat.cluster.backbone.models import device
@@ -35,12 +37,10 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
     mon_icinga_log_raw_base
 from initat.md_config_server.config import global_config
+from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
 import logging_tools
 import psutil
 import threading_tools
-
-from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
-
 
 __all__ = [
     "icinga_log_reader",
@@ -109,17 +109,6 @@ class icinga_log_reader(object):
 
     def __init__(self, log):
 
-        if False:
-            log_orig = log
-
-            def my_log(msg, level='debug'):
-                log_orig(msg)
-
-                with open("/tmp/myicingalog", "a") as f:
-                    f.write("{}: {}\n".format(level, msg))
-
-            log = my_log
-
         self.log = log
         self._historic_service_map = {description.replace(" ", "_").lower(): pk
                                       for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
@@ -137,10 +126,14 @@ class icinga_log_reader(object):
     def _update_raw_data(self):
         self.log("checking icinga log")
 
+        start_time = time.time()
+        # collect warnings for not spamming in release mode
+        self._warnings = defaultdict(lambda: 0)
+
         # check where we last have read for log rotation
         last_read = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
         if last_read:
-            self.log("last icinga read until: {}".format(datetime.datetime.utcfromtimestamp(last_read.timestamp)))
+            self.log("last icinga read until: {}".format(self._parse_timestamp(last_read.timestamp)))
         else:
             self.log("no earlier icinga log read, reading archive")
             files = os.listdir(icinga_log_reader.get_icinga_log_archive_dir())
@@ -175,8 +168,8 @@ class icinga_log_reader(object):
                 else:
                     same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
                     self.log("cur line timestamp {}, last read timestamp {}".format(cur_line.timestamp, last_read.timestamp))
-                    self.log("cur line timestamp {}, last read timestamp {}".format(datetime.datetime.utcfromtimestamp(cur_line.timestamp),
-                                                                                    datetime.datetime.utcfromtimestamp(last_read.timestamp)))
+                    self.log("cur line timestamp {}, last read timestamp {}".format(self._parse_timestamp(cur_line.timestamp),
+                                                                                    self._parse_timestamp(last_read.timestamp)))
 
             if same_logfile_as_last_read:
                 self.log("continuing to read in current icinga log file")
@@ -224,6 +217,13 @@ class icinga_log_reader(object):
                 self.log(msg)
                 self._create_icinga_down_entry(datetime.datetime.now(), msg, None, save=True)
 
+        if not global_config["DEBUG"]:
+            self.log("Warnings while parsing:")
+            for warning, multiplicity in self._warnings.iteritems():
+                self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
+
+        self.log("Parsing took {} seconds".format(time.time() - start_time))
+
     def parse_log_file(self, logfile, logfilepath=None, start_at=None):
         '''
         :param file logfile: Parsing starts at position of logfile. Must be the main icinga log file.
@@ -262,14 +262,14 @@ class icinga_log_reader(object):
                     # create alerts for all devices: indeterminate (icinga not running)
                     # note: this relies on the fact that on startup, icinga writes a status update on start
                     host_entry, service_entry, host_flapping_entry, service_flapping_entry = \
-                        self._create_icinga_down_entry(datetime.datetime.utcfromtimestamp(timestamp), msg, logfile_db, save=False)
+                        self._create_icinga_down_entry(self._parse_timestamp(timestamp), msg, logfile_db, save=False)
                     host_states.append(host_entry)
                     service_states.append(service_entry)
                     host_flapping_states.append(host_flapping_entry)
                     service_flapping_states.append(service_flapping_entry)
 
             except self.malformed_icinga_log_entry as e:
-                self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
+                self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
 
             # check for regular log entry
             try:
@@ -315,7 +315,7 @@ class icinga_log_reader(object):
                     old_ignored += 1
 
             except self.malformed_icinga_log_entry as e:
-                self.log("in {} line {}: {}".format(logfilepath, cur_line.line_no if cur_line else None, e.message), logging_tools.LOG_LEVEL_WARN)
+                self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
 
         self.log("created from {}: {} ".format(logfilepath if logfilepath else "cur icinga log file", stats.items()))
         mon_icinga_log_raw_host_alert_data.objects.bulk_create(host_states)
@@ -373,15 +373,22 @@ class icinga_log_reader(object):
                     retval = max(retval, last_read_timestamp)
         return retval
 
+    def _handle_warning(self, exception, logfilepath, cur_line_no):
+        if False and global_config["DEBUG"]:
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line_no, exception), logging_tools.LOG_LEVEL_WARN)
+        else:
+            # in release mode, we don't want spam so we collect the errors and log each according to the multiplicity
+            self._warnings[unicode(exception)] += 1
+
     def create_host_alert_entry(self, cur_line, log_rotation_state, initial_state, logfilepath, logfile_db=None):
         retval = None
         try:
             host, state, state_type, msg = self._parse_host_alert(cur_line)
         except self.unknown_host_error as e:
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_host_alert_data(
-                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
+                date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
                 state_type=state_type,
                 state=state,
@@ -398,10 +405,10 @@ class icinga_log_reader(object):
             host, (service, service_info), state, state_type, msg = self._parse_service_alert(cur_line)
             # TODO: need to generalize for other service types
         except (self.unknown_host_error, self.unknown_service_error) as e:
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_service_alert_data(
-                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
+                date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
@@ -419,10 +426,10 @@ class icinga_log_reader(object):
         try:
             host, (service, service_info), flapping_state, msg = self._parse_service_flapping_alert(cur_line)
         except (self.unknown_host_error, self.unknown_service_error) as e:
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_service_flapping_data(
-                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
+                date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
@@ -437,10 +444,10 @@ class icinga_log_reader(object):
         try:
             host, flapping_state, msg = self._parse_host_flapping_alert(cur_line)
         except (self.unknown_host_error, self.unknown_service_error) as e:
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_host_flapping_data(
-                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
+                date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
                 flapping_state=flapping_state,
                 msg=msg,
@@ -453,10 +460,10 @@ class icinga_log_reader(object):
         try:
             user, host, (service, service_info), state, notification_type, msg = self._parse_service_notification(cur_line)
         except (self.unknown_host_error, self.unknown_service_error) as e:
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_service_notification_data(
-                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
+                date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
                 service_id=service,
                 service_info=service_info,
@@ -473,10 +480,10 @@ class icinga_log_reader(object):
         try:
             user, host, state, notification_type, msg = self._parse_host_notification(cur_line)
         except (self.unknown_host_error, self.unknown_service_error) as e:
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line.line_no, e), logging_tools.LOG_LEVEL_WARN)
+            self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
             retval = mon_icinga_log_raw_host_notification_data(
-                date=datetime.datetime.utcfromtimestamp(cur_line.timestamp),
+                date=self._parse_timestamp(cur_line.timestamp),
                 device_id=host,
                 state=state,
                 user=user,
@@ -536,7 +543,7 @@ class icinga_log_reader(object):
 
         state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[1], None)  # format as in db table @UndefinedVariable
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #3) {} {} ".format(info))
+            raise self.malformed_icinga_log_entry("Malformed state entry: {} (error #3) {} {} ".format(info))
 
         state_type = {"SOFT": "S", "HARD": "H"}.get(data[2], None)  # format as in db table
         if not state_type:
@@ -581,6 +588,8 @@ class icinga_log_reader(object):
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
         flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[2], None)  # format as in db table
+        if not flapping_state:
+            raise self.malformed_icinga_log_entry("Malformed flapping state entry: {} (error #7)".format(info))
 
         msg = data[3]
 
@@ -596,6 +605,8 @@ class icinga_log_reader(object):
 
         host = self._resolve_host(data[0])
         flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[1], None)  # format as in db table
+        if not flapping_state:
+            raise self.malformed_icinga_log_entry("Malformed flapping state entry: {} (error #7)".format(info))
         msg = data[2]
         return host, flapping_state, msg
 
@@ -610,6 +621,8 @@ class icinga_log_reader(object):
         user = data[0]
         host, service, service_info = self._parse_host_service(data[1], data[2])
         state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)  # format as in db table @UndefinedVariable
+        if not state:
+            raise self.malformed_icinga_log_entry("Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[4]
         msg = data[5]
         return user, host, (service, service_info), state, notification_type, msg
@@ -625,6 +638,8 @@ class icinga_log_reader(object):
         user = data[0]
         host = self._resolve_host(data[1])
         state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
+        if not state:
+            raise self.malformed_icinga_log_entry("Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[3]
         msg = data[4]
         return user, host, state, notification_type, msg
@@ -644,7 +659,7 @@ class icinga_log_reader(object):
 
         state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #4)".format(info))
+            raise self.malformed_icinga_log_entry("Malformed state entry: {} (error #6)".format(info))
 
         state_type = {"SOFT": "S", "HARD": "H"}.get(data[3], None)  # format as in db table
         if not state_type:
@@ -742,6 +757,9 @@ class icinga_log_reader(object):
             service_flapping_entry.save()
 
         return host_entry, service_entry, host_flapping_entry, service_flapping_entry
+
+    def _parse_timestamp(self, timestamp):
+        return datetime.datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.utc)
 
 
 class host_service_id_util(object):
