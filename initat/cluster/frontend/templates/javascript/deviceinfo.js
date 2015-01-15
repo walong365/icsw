@@ -16,6 +16,7 @@ class device_info
                 @active_div = default_mode
             else
                 @active_div = "general"
+                #@active_div = "status_history"
         window.ICSW_DEV_INFO = @
         @active_divs = []
     show: () =>
@@ -200,6 +201,19 @@ urn:uuid:{{ _edit_obj.uuid }}
     </div>
 </div>
 """
+
+        dev_div_txt += "<li><a href='#status_history'>Status History#{addon_text}</a></li>"
+        main_part += """
+<div class="tab-pane" id="status_history">
+    <div id='icsw.device.status_history'>
+        <div ng-controller='status_history_ctrl'>
+            <statushistory devicepks='#{pk_list}'>
+            </statushistory>
+        </div>
+    </div>
+</div>
+"""
+
         if pk_list_nmd.length
             if window.SERVICE_TYPES["md-config"]? and @has_perm("backbone.device.change_monitoring", 0)
                 dev_div_txt += "<li><a href='#livestatus'>Livestatus#{addon_text_nmd}</a></li><li><a href='#monconfig'>MonConfig/hint#{addon_text_nmd}</a></li>"
@@ -233,6 +247,7 @@ urn:uuid:{{ _edit_obj.uuid }}
     </div>
 </div>
 """
+
         dev_div_txt += "</ul></div>"
         main_part += "</div></div>"
         dev_div_txt += main_part + "</div>"

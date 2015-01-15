@@ -760,6 +760,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                                 # sanitize entries
                                 $scope._sanitize_entries(entry)
                                 entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
+                                entry.description = entry.display_name  # this is also what icinga displays
                                 entry.ct = "service"
                                 # populate list of checks
                                 $scope.host_lut[entry.custom_variables.device_pk].checks.push(entry)

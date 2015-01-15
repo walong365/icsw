@@ -101,6 +101,7 @@ boot_patterns = patterns(
 device_patterns = patterns(
     "initat.cluster.frontend",
     url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
+    url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^config$", device_views.show_configs.as_view(), name="show_configs"),
     url("^connections", device_views.connections.as_view(), name="connections"),
@@ -137,10 +138,14 @@ monitoring_patterns = patterns(
     url("^get_node_config", monitoring_views.get_node_config.as_view(), name="get_node_config"),
     url("^build_info$", monitoring_views.build_info.as_view(), name="build_info"),
     url("^livestatus$", monitoring_views.livestatus.as_view(), name="livestatus"),
+    url("^overview$", monitoring_views.overview.as_view(), name="overview"),
     url("^create_device$", monitoring_views.create_device.as_view(), name="create_device"),
     url("^resolve_name$", monitoring_views.resolve_name.as_view(), name="resolve_name"),
     url("^delete_hint$", monitoring_views.delete_hint.as_view(), name="delete_hint"),
     url("^get_mon_vars$", monitoring_views.get_mon_vars.as_view(), name="get_mon_vars"),
+    url("^get_hist_timespan$", monitoring_views.get_hist_timespan.as_view(), name="get_hist_timespan"),
+    url("^get_hist_device_data$", monitoring_views.get_hist_device_data.as_view(), name="get_hist_device_data"),
+    url("^get_hist_service_data$", monitoring_views.get_hist_service_data.as_view(), name="get_hist_service_data"),
 )
 
 user_patterns = patterns(

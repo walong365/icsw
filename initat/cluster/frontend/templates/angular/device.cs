@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
+device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "smart_table_utils"])
 
 angular_module_setup([device_module])
 
@@ -30,8 +30,8 @@ angular_add_simple_list_controller(
     }
 )
 
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter) ->
         $scope.initial_load = true
         # init pagSettings /w. filter
         $scope.settings = {}
@@ -49,13 +49,20 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         ]
         $scope.hide_list = [
             # short, full, default
-            ["tln", "TLN", false, "Top level node"]
-            ["rrd_store", "RRD store", false, "flag if sensor data is store on disk"]
-            ["passwd", "Password", false, "password set"]
-            ["mon_master", "MonMaster", false, "show monitoring master"]
-            ["boot_master", "BootMaster", false, "show boot master"]
-            ["curl", "cURL", false, "show cluster URL"]
+            ["tln", "TLN", false, "Show top level node"]
+            ["rrd_store", "RRD store", false, "Show if sensor data is store on disk"]
+            ["passwd", "Password", false, "Show if a password is set"]
+            ["mon_master", "MonMaster", false, "Show monitoring master"]
+            ["boot_master", "BootMaster", false, "Show boot master"]
+            ["curl", "cURL", false, "Show cluster URL"]
         ]
+        $scope.column_list = [
+            ['name', 'Name'],
+            ['description', 'Description'],
+            ['enabled', 'Enabled'],
+            ['type', 'Type'],
+            ].concat($scope.hide_list.map((elem) -> [elem[0], elem[1]]))
+
         $scope.num_shown = (exclude_list) ->
             exclude_list = exclude_list ? []
             return (entry for entry of $scope.hide_lut when $scope.hide_lut[entry] and entry not in exclude_list).length
@@ -69,6 +76,11 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         }
         $scope.modal_active = false
         $scope.entries = []
+        $scope.$watch(
+                () -> $scope.entries,
+                () ->
+                    $scope.entries_filtered = (entry for entry in $scope.entries when entry._show == true) 
+                true)
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.sel_cache = _dev_sel
             $scope.initial_load = true
@@ -89,6 +101,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     $scope.rest_data[$scope.rest_map[idx].short] = value
                 $.unblockUI()
                 $scope.rest_data_set()
+                $scope.update_entries_st_attrs()  # this depends on rest data
             )
         $scope.dg_present = () ->
             return (entry for entry in $scope.entries when entry.device_type_identifier == "MD").length > 1
@@ -244,69 +257,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             return entry.identifier != "MD"
         $scope.ignore_cdg = (entry) ->
             return not entry.cluster_device_group
-        $scope.update_filter = () ->
-            if $scope.cur_f_to
-                $timeout.cancel($scope.cur_f_to)
-            $scope.cur_f_to = $timeout($scope.new_filter, 250)
-        $scope.new_filter = () ->
-            # apply filter
-            $scope.pagSettings.conf.filter_settings.str_filter = $scope.str_filter
-            # console.log $scope.pagSettings.conf.filter_settings
-        $scope.select_shown = () ->
-            for entry in $scope.entries
-                if not entry.is_meta_device
-                    entry.selected = entry._show
-        $scope.pagSettings.conf.filter_changed = () ->
-            aft_dict = {
-                "b" : [true, false]
-                "f" : [false]
-                "t" : [true]
-            }
-            try
-                str_re = new RegExp($scope.pagSettings.conf.filter_settings.str_filter, "gi")
-            catch
-                str_re = new RegExp(/^$/, "gi") 
-            # meta device selection list
-            md_list = aft_dict[$scope.pagSettings.conf.filter_settings.dg_filter]
-            # enabled selection list
-            en_list = aft_dict[$scope.pagSettings.conf.filter_settings.en_filter]
-            # selected list
-            sel_list = aft_dict[$scope.pagSettings.conf.filter_settings.sel_filter]
-            for entry in $scope.entries
-                if en_list.length == 2
-                    # show all, no check
-                    en_flag = true
-                else if en_list[0] == true
-                    if entry.is_meta_device
-                        en_flag = entry.device_group_obj.enabled
-                    else
-                        # show enabled (device AND device_group)
-                        en_flag = entry.enabled and $scope.device_group_lut[entry.device_group].enabled
-                else
-                    if entry.is_meta_device
-                        en_flag = not entry.device_group_obj.enabled
-                    else
-                        # show disabled (device OR device_group)
-                        en_flag = not entry.enabled or (not $scope.device_group_lut[entry.device_group].enabled)
-                # selected
-                sel_flag = entry.selected in sel_list
-                # monitoring
-                mon_f = $scope.pagSettings.conf.filter_settings.mon_filter
-                if mon_f == "i"
-                    mon_flag = true
-                else
-                    if entry.monitor_server == null
-                        mon_flag = parseInt(mon_f) == $scope.mon_master
-                    else
-                        mon_flag = parseInt(mon_f) == entry.monitor_server
-                # string filter
-                if entry.is_meta_device
-                    sf_flag = if (entry.name.match(str_re) or entry.comment.match(str_re)) then true else false
-                else
-                    sf_flag = if (entry.full_name.match(str_re) or entry.comment.match(str_re)) then true else false
-                entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag and sf_flag
-        $scope.filter_pag = (entry, scope) ->
-            return entry._show
         $scope.object_modified = (mod_obj) ->
             mod_obj.selected = $scope.pre_edit_obj.selected
             mod_obj.device_group_obj = $scope.device_group_lut[mod_obj.device_group]
@@ -335,6 +285,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
                     $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
                 reload_sidebar_tree()
+                $scope.update_entries_st_attrs()
             else if $scope._array_name == "device_group"
                 $scope.reload()
                 reload_sidebar_tree()
@@ -370,6 +321,46 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 success : (xml) ->
                     parse_xml_response(xml)
         install_devsel_link($scope.new_devsel, false)
+
+        $scope.update_entries_st_attrs = () ->
+            # use same keys as in $scope.column_list
+            for obj in $scope.entries
+                st_attrs = {}
+                if obj.is_meta_device
+                        # give some value, js sucks at comparing undefined
+                        st_attrs['rrd_store'] = ""
+                        st_attrs['passwd'] = ""
+                        st_attrs['mon_master'] = ""
+                        st_attrs['boot_master'] = ""
+                        st_attrs['curl'] = ""
+                        if obj.device_group_obj.cluster_device_group
+                            new_el = $compile($templateCache.get("device_tree_cdg_row.html"))
+                            st_attrs['name'] = obj.device_group_obj.name
+                            st_attrs['description'] = obj.device_group_obj.description
+                            st_attrs['enabled'] = null
+                            st_attrs['type'] = null
+                            st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.device_group_obj.domain_tree_node, $scope.rest_data.domain_tree_node))
+                        else
+                            obj.device_group_obj.num_devices = (entry for entry in $scope.entries when entry.device_group == obj.device_group).length - 1
+                            new_el = $compile($templateCache.get("device_tree_meta_row.html"))
+                            st_attrs['name'] = obj.device_group_obj.name
+                            st_attrs['description'] = obj.device_group_obj.description
+                            st_attrs['enabled'] = obj.device_group_obj.enabled
+                            st_attrs['type'] = obj.device_group_obj.num_devices
+                            st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.device_group_obj.domain_tree_node, $scope.rest_data.domain_tree_node))
+                    else
+                        new_el = $compile($templateCache.get("device_tree_row.html"))
+                        st_attrs['name'] = obj.name
+                        st_attrs['description'] = obj.comment
+                        st_attrs['enabled'] = obj.enabled
+                        st_attrs['type'] = array_lookupFilter(obj.device_type, $scope.rest_data.device_type, "description")
+                        st_attrs['tln'] = show_dtnFilter(array_lookupFilter(obj.domain_tree_node, $scope.rest_data.domain_tree_node))
+                        st_attrs['rrd_store'] = obj.store_rrd_data
+                        st_attrs['passwd'] = obj.root_passwd_set
+                        st_attrs['mon_master'] = array_lookupFilter(obj.monitor_server, $scope.rest_data.monitor_server, "full_name_wt")
+                        st_attrs['boot_master'] = array_lookupFilter(obj.bootserver, $scope.rest_data.mother_server, "full_name")
+                        st_attrs['curl'] = obj.curl
+                obj.st_attrs = st_attrs
 ]).directive("devicetreerow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
@@ -407,7 +398,89 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         restrict : "EA"
         template : $templateCache.get("device_tree_head.html")
     }
-)
+).directive("devicetreefilters", () ->
+    # controller to set the _show flag of entries according to filters
+    return {
+        restrict : "E"
+        templateUrl : "device_tree_filters.html"
+        link : (scope, element, attrs) ->
+            scope.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i"}
+
+            filter_changed = () ->
+                aft_dict = {
+                    "b" : [true, false]
+                    "f" : [false]
+                    "t" : [true]
+                }
+
+                try
+                    str_re = new RegExp(scope.filter_settings.str_filter, "gi")
+                catch
+                    str_re = new RegExp("^$", "gi")
+
+                # meta device selection list
+                md_list = aft_dict[scope.filter_settings.dg_filter]
+                # enabled selection list
+                en_list = aft_dict[scope.filter_settings.en_filter]
+                # selected list
+                sel_list = aft_dict[scope.filter_settings.sel_filter]
+                for entry in scope.entries
+                    if en_list.length == 2
+                        # show all, no check
+                        en_flag = true
+                    else if en_list[0] == true
+                        if entry.is_meta_device
+                            en_flag = entry.device_group_obj.enabled
+                        else
+                            # show enabled (device AND device_group)
+                            en_flag = entry.enabled and scope.device_group_lut[entry.device_group].enabled
+                    else
+                        if entry.is_meta_device
+                            en_flag = not entry.device_group_obj.enabled
+                        else
+                            # show disabled (device OR device_group)
+                            en_flag = not entry.enabled or (not scope.device_group_lut[entry.device_group].enabled)
+                    # selected
+                    sel_flag = entry.selected in sel_list
+                    # monitoring
+                    mon_f = scope.filter_settings.mon_filter
+                    if mon_f == "i"
+                        mon_flag = true
+                    else
+                        if entry.monitor_server == null
+                            mon_flag = parseInt(mon_f) == scope.mon_master
+                        else
+                            mon_flag = parseInt(mon_f) == entry.monitor_server
+                    boot_f = scope.filter_settings.boot_filter
+                    boot_flag = (boot_f == "i") or (parseInt(boot_f) == entry.bootserver)
+
+                    # string filter
+                    if entry.is_meta_device
+                        sf_flag = if (entry.name.match(str_re) or entry.comment.match(str_re)) then true else false
+                    else
+                        sf_flag = if (entry.full_name.match(str_re) or entry.comment.match(str_re)) then true else false
+
+                    entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag and boot_flag and sf_flag
+
+
+            scope.$watch(
+                    () -> return scope.filter_settings
+                    filter_changed
+                    true)
+            scope.$watch(
+                    () -> scope.entries
+                    filter_changed
+                    true)
+
+            scope.select_shown = () ->
+                for entry in scope.entries
+                    if not entry.is_meta_device
+                        entry.selected = entry._show
+            scope.deselect_all = () ->
+                for entry in scope.entries
+                    if not entry.is_meta_device
+                        entry.selected = false
+})
 
 {% endinlinecoffeescript %}
 

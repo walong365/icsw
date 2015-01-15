@@ -126,7 +126,7 @@ class rest_logging(object):
 
     def __call__(self, *args, **kwargs):
         s_time = time.time()
-        if hasattr(args[0], "model"):
+        if hasattr(args[0], "model") and args[0].model is not None:
             self.__obj_name = args[0].model._meta.object_name
         else:
             self.__obj_name = getattr(args[0], "display_name", "unknown")

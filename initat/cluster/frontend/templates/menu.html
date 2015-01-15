@@ -15,7 +15,7 @@
             <ul class="dropdown-menu">
                 <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'mon:create_device' %}">{% trans "Create new device" %}</a></li>
                 <li ng-show="check_perm('user.modify_tree')" class="divider"></li>
-                <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'device:tree' %}">{% trans "Device tree" %}</a></li>
+                <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'device:tree_smart' %}">{% trans "Device tree" %}</a></li>
                 <li ng-show="check_perm('user.modify_domain_name_tree')"><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
                 <li ng-show="check_perm('user.modify_category_tree')"><a href="{% url 'base:category_tree' %}">{% trans "Category tree" %}</a></li>
                 <li ng-show="check_perm('user.modify_category_tree') || check_perm('user.modify_domain_tree') || check_perm('user.modify_tree')" class="divider"></li>
@@ -60,6 +60,7 @@
                 <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                 <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga" %}</a></li>
                 <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
+                <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:overview' %}">{% trans "Monitoring Overview" %}</a></li>
                 <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
 {% if DJANGO_SERVICE_TYPES.md_config %}                    
                     <li>

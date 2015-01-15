@@ -19,17 +19,29 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from django.db.models.query import Prefetch
+import itertools
+from initat.cluster.frontend.rest_views import rest_logging
 
 """ monitoring views """
+from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework.generics import ListAPIView
+from rest_framework.response import Response
+
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline
+from initat.cluster.frontend.common import duration_utils
+from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data,\
+    mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data,\
+    mon_icinga_log_raw_base
+from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
@@ -246,6 +258,15 @@ class livestatus(View):
         )()
 
 
+class overview(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request, "monitoring_overview.html", {
+                }
+        )()
+
+
 class delete_hint(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -423,3 +444,103 @@ class create_device(permission_required_mixin, View):
                     except:
                         request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
                         cur_ip = None
+
+
+########################################
+# device status history views
+class _device_status_history_util(object):
+    @staticmethod
+    def get_timespan_db_from_request(request):
+        date = duration_utils.parse_date(request.GET["date"])
+        duration_type = {'day': duration.Day, 'week': duration.Week, 'month': duration.Month}[request.GET['duration_type']]
+        start = duration_type.get_time_frame_start(date)
+        end = duration_type.get_end_time_for_start(start)
+        try:
+            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID, start_date__range=(start, end))
+        except mon_icinga_log_aggregated_timespan.DoesNotExist:
+            return None
+
+    @staticmethod
+    def merge_state_types(data, undetermined_state):
+        # data is list of dicts {'state': state, 'value': value, 'state_type': state_type}
+        data_merged_state_types = []
+        # merge state_types (soft/hard)
+        for state in set(d['state'] for d in data):
+            data_merged_state_types.append({'state': state, 'value': sum(d['value'] for d in data if d['state'] == state)})
+
+        if not data_merged_state_types:
+            data_merged_state_types.append({'state': undetermined_state, 'value': 1})
+        return data_merged_state_types
+
+
+class get_hist_timespan(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        timespan = _device_status_history_util.get_timespan_db_from_request(request)
+        data = []
+        if timespan:
+            data.append((timespan.start_date, timespan.end_date))
+        return Response(data)
+
+
+class get_hist_device_data(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        device_id = request.GET["device_id"]
+
+        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
+
+        data = []
+        if timespan_db:
+            data = mon_icinga_log_aggregated_host_data.objects.filter(device_id=device_id, timespan=timespan_db).values('state', 'state_type', 'value')
+
+        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
+        for d in data:
+            d['state'] = trans[d['state']].capitalize()
+
+        data_merged_state_types = _device_status_history_util.merge_state_types(data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED].capitalize())
+
+        return Response(data_merged_state_types)
+
+
+class get_hist_service_data(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        device_id = request.GET["device_id"]
+
+        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
+
+        data = defaultdict(lambda: [])
+        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+
+        queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id=device_id, timespan=timespan_db)
+        # can't do regular prefetch_related for queryset
+        for entry in queryset.prefetch_related(Prefetch("service", queryset=queryset)):
+
+            relevant_data_from_entry = {
+                'state': trans[entry.state],
+                'state_type': entry.state_type,
+                'value': entry.value
+            }
+
+            service_name = entry.service.name if entry.service else "unknown check"
+
+            data["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
+
+        # this mode is for an overview of the services of a device without saying anything about a particular service
+        if request.GET.get("merge_services", False):
+            # it's not obvious how to aggregate service states
+            # we now just add the values, but we could e.g. also use the most common state of a service as it's state
+            # then we could say "4 services were ok, 3 were critical".
+            data_concat = list(itertools.chain.from_iterable(service_data for service_data in data.itervalues()))
+            data = _device_status_history_util.merge_state_types(data_concat, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
+
+            # normalize to 1.0, else the values are meaningless
+            total = sum(entry['value'] for entry in data)
+            for entry in data:
+                entry['value'] /= total
+
+        return Response(data)
