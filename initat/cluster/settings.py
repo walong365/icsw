@@ -377,6 +377,8 @@ PIPELINE_JS = {
             "js/ladda.min.js",
             "js/angular-ladda.min.js",
             "js/hamster.js",
+            # not needed right now
+            # "js/ng-jcrop.js",
         },
         "output_filename": "pipeline/js/base.js"
     },
