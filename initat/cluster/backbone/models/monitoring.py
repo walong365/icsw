@@ -1241,10 +1241,6 @@ class mon_icinga_log_raw_base(models.Model):
     # entry originates from this logfile
     logfile = models.ForeignKey("backbone.mon_icinga_log_file", blank=True, null=True)
 
-    class Meta:
-        app_label = "backbone"
-        abstract = True
-
     STATE_TYPE_HARD = "H"
     STATE_TYPE_SOFT = "S"
     STATE_UNDETERMINED = "UD"  # state as well as state type
@@ -1253,6 +1249,10 @@ class mon_icinga_log_raw_base(models.Model):
 
     FLAPPING_START = "START"
     FLAPPING_STOP = "STOP"
+
+    class Meta:
+        app_label = "backbone"
+        abstract = True
 
 
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
@@ -1266,6 +1266,9 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
     log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
     initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
+
+    class CSW_Meta:
+        backup = False
 
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
@@ -1287,6 +1290,9 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
     initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
 
+    class CSW_Meta:
+        backup = False
+
 
 class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     # see comment in mon_icinga_log_raw_service_alert_data
@@ -1296,10 +1302,16 @@ class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
                                                              (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)])
 
+    class CSW_Meta:
+        backup = False
+
 
 class mon_icinga_log_raw_host_flapping_data(mon_icinga_log_raw_base):
     flapping_state = models.CharField(max_length=5, choices=[(mon_icinga_log_raw_base.FLAPPING_START, mon_icinga_log_raw_base.FLAPPING_START),
                                                              (mon_icinga_log_raw_base.FLAPPING_STOP, mon_icinga_log_raw_base.FLAPPING_STOP)])
+
+    class CSW_Meta:
+        backup = False
 
 
 class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
@@ -1311,11 +1323,17 @@ class mon_icinga_log_raw_service_notification_data(mon_icinga_log_raw_base):
     user = models.TextField()
     notification_type = models.TextField()
 
+    class CSW_Meta:
+        backup = False
+
 
 class mon_icinga_log_raw_host_notification_data(mon_icinga_log_raw_base):
     state = models.CharField(max_length=2, choices=mon_icinga_log_raw_host_alert_data.STATE_CHOICES)
     user = models.TextField()
     notification_type = models.TextField()
+
+    class CSW_Meta:
+        backup = False
 
 
 class mon_icinga_log_file(models.Model):
@@ -1324,6 +1342,9 @@ class mon_icinga_log_file(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
 
 
 class _last_read_manager(models.Manager):
@@ -1347,6 +1368,9 @@ class mon_icinga_log_last_read(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
 
 
 ########################################
