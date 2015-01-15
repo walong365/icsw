@@ -108,25 +108,31 @@ class icinga_log_reader(object):
         icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
 
     def __init__(self, log):
-
         self.log = log
+        self._icinga_log_aggregator = icinga_log_aggregator(log)
+
+    def update(self):
+        '''Called periodically. Only method to be called from outside of this class'''
         self._historic_service_map = {description.replace(" ", "_").lower(): pk
                                       for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
         self._historic_host_map = {entry.full_name: entry.pk for entry in device.objects.all()}
 
-        self._icinga_log_aggregator = icinga_log_aggregator(log)
+        # logs might contain ids which are not present any more. we discard such data (i.e. ids not present in these sets:)
+        self._valid_service_ids = frozenset(mon_check_command.objects.all().values_list('pk', flat=True))
+        self._valid_host_ids = frozenset(device.objects.all().values_list('pk', flat=True))
 
-    def update(self):
-        '''Called periodically'''
+        parse_start_time = time.time()
         self._update_raw_data()
+        self.log("parsing took {} seconds".format(time.time() - parse_start_time))
 
         # import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), "/tmp/prof.out")
+        aggr_start_time = time.time()
         self._icinga_log_aggregator.update()
+        self.log("aggregation took {} seconds".format(time.time() - aggr_start_time))
 
     def _update_raw_data(self):
         self.log("checking icinga log")
 
-        start_time = time.time()
         # collect warnings for not spamming in release mode
         self._warnings = defaultdict(lambda: 0)
 
@@ -180,8 +186,9 @@ class icinga_log_reader(object):
                 self.log("detected icinga log rotation")
                 # cur log file does not correspond to where we last read.
                 # we have to check the archive for whatever we have missed.
-                last_read_date = datetime.date.utcfromtimestamp(last_read.timestamp)
-                missed_timedelta = datetime.date.today() - last_read_date
+                last_read_date = datetime.datetime.utcfromtimestamp(last_read.timestamp)
+                today_datetime = datetime.datetime.combine(datetime.date.today(), datetime.datetime.min.time())
+                missed_timedelta = today_datetime - last_read_date
 
                 files_to_check = []
 
@@ -217,12 +224,10 @@ class icinga_log_reader(object):
                 self.log(msg)
                 self._create_icinga_down_entry(datetime.datetime.now(), msg, None, save=True)
 
-        if not global_config["DEBUG"]:
+        if global_config["DEBUG"]:
             self.log("Warnings while parsing:")
             for warning, multiplicity in self._warnings.iteritems():
                 self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
-
-        self.log("Parsing took {} seconds".format(time.time() - start_time))
 
     def parse_log_file(self, logfile, logfilepath=None, start_at=None):
         '''
@@ -374,7 +379,8 @@ class icinga_log_reader(object):
         return retval
 
     def _handle_warning(self, exception, logfilepath, cur_line_no):
-        if False and global_config["DEBUG"]:
+        if global_config["DEBUG"]:
+            # log right away
             self.log("in file {} line {}: {}".format(logfilepath, cur_line_no, exception), logging_tools.LOG_LEVEL_WARN)
         else:
             # in release mode, we don't want spam so we collect the errors and log each according to the multiplicity
@@ -558,6 +564,11 @@ class icinga_log_reader(object):
 
         # primary method: check special service description
         host, service, service_info = host_service_id_util.parse_host_service_description(service_spec, self.log)
+
+        if host not in self._valid_host_ids:
+            host = None  # host has been properly logged, but doesn't exist any more
+        if service not in self._valid_service_ids:
+            service = None  # service has been properly logged, but doesn't exist any more
 
         if not host:
             host = self._resolve_host(host_spec)
