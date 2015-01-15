@@ -1242,6 +1242,7 @@ class mon_icinga_log_raw_base(models.Model):
     STATE_TYPE_HARD = "H"
     STATE_TYPE_SOFT = "S"
     STATE_UNDETERMINED = "UD"  # state as well as state type
+    STATE_UNDETERMINED_LONG = "UNDETERMINED"
     STATE_TYPES = [(STATE_TYPE_HARD, "HARD"), (STATE_TYPE_SOFT, "SOFT"), (STATE_UNDETERMINED, STATE_UNDETERMINED)]
 
     FLAPPING_START = "START"
@@ -1252,7 +1253,8 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_UP = "UP"
     STATE_DOWN = "D"
     STATE_UNREACHABLE = "UR"
-    STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE"), (mon_icinga_log_raw_base.STATE_UNDETERMINED, "UNDETERMINED")]
+    STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE"),
+                     (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
@@ -1262,7 +1264,8 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_UNDETERMINED = "UD"
-    STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL"), (STATE_UNDETERMINED, "UNDETERMINED")]
+    STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL"),
+                     (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
 
     # NOTE: there are different setup, at this time only regular check_commands are supported
