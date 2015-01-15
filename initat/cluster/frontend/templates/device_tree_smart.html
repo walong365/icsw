@@ -26,63 +26,65 @@
 {% verbatim %}
 
 <script type="text/ng-template" id="device_tree_filters.html">
-    <form class="form-inline">
-        <div class="form-group">
-            <label class="control-label">Group/Device:</label>
-            <select class="form-control input-sm" ng-model="filter_settings.dg_filter">
-                <option value="b">all</option>
-                <option value="f">Devices</option>
-                <option value="t">Group</option>
-            </select>
-        </div>
-        &nbsp;
-        <div class="form-group">
-            <label class="control-label">Selected:</label>
-            <select class="form-control input-sm" ng-model="filter_settings.sel_filter">
-                <option value="b">all</option>
-                <option value="t">selected</option>
-                <option value="f">unselected</option>
-            </select>
-        </div>
-        &nbsp;
-        <div class="form-group">
-            <label class="control-label">Enabled:</label>
-            <select class="form-control input-sm" ng-model="filter_settings.en_filter">
-                <option value="b">all</option>
-                <option value="t">enabled</option>
-                <option value="f">disabled</option>
-            </select>
-        </div>
-        &nbsp;
-        <div class="form-group">
-            <label class="control-label">MonServer:</label>
-            <select class="form-control input-sm" ng-model="filter_settings.mon_filter">
-                <option value="i">ignore</option>
-                <option ng-repeat="obj in rest_data.monitor_server" ng-value="obj.idx">{{ obj.full_name }} ({{ obj.monitor_type }})</option>
-            </select>
-        </div>
-        &nbsp;
-        <div class="form-group">
-            <label class="control-label">BootServer:</label>
-            <select class="form-control" ng-model="filter_settings.boot_filter">
-                <option value="i">ignore</option>
-                <option ng-repeat="obj in rest_data.mother_server" ng-value="obj.idx">{{ obj.full_name }}</option>
-            </select>
-        </div>
-    </form>
-    <from class="form-inline">
-        <label class="control-label">Filter:</label>
-        <div class="form-group">
-            <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
-        </div>
+    <div class="panel panel-default" style="margin-bottom: 8px">
+        <div class="panel-body" style="padding: 6px 15px">
+            <form class="form-inline">
+                <div class="form-group">
+                    <label class="control-label">Group/Device:</label>
+                    <select class="form-control input-sm" ng-model="filter_settings.dg_filter">
+                        <option value="b">all</option>
+                        <option value="f">Devices</option>
+                        <option value="t">Group</option>
+                    </select>
+                </div>
+                &nbsp;
+                <div class="form-group">
+                    <label class="control-label">Selected:</label>
+                    <select class="form-control input-sm" ng-model="filter_settings.sel_filter">
+                        <option value="b">all</option>
+                        <option value="t">selected</option>
+                        <option value="f">unselected</option>
+                    </select>
+                </div>
+                &nbsp;
+                <div class="form-group">
+                    <label class="control-label">Enabled:</label>
+                    <select class="form-control input-sm" ng-model="filter_settings.en_filter">
+                        <option value="b">all</option>
+                        <option value="t">enabled</option>
+                        <option value="f">disabled</option>
+                    </select>
+                </div>
+                &nbsp;
+                <div class="form-group">
+                    <label class="control-label">MonServer:</label>
+                    <select class="form-control input-sm" ng-model="filter_settings.mon_filter">
+                        <option value="i">ignore</option>
+                        <option ng-repeat="obj in rest_data.monitor_server" ng-value="obj.idx">{{ obj.full_name }} ({{ obj.monitor_type }})</option>
+                    </select>
+                </div>
+                &nbsp;
+                <div class="form-group">
+                    <label class="control-label">BootServer:</label>
+                    <select class="form-control" ng-model="filter_settings.boot_filter">
+                        <option value="i">ignore</option>
+                        <option ng-repeat="obj in rest_data.mother_server" ng-value="obj.idx">{{ obj.full_name }}</option>
+                    </select>
+                </div>
+            </form>
+            <from class="form-inline">
+                <label class="control-label">Filter:</label>
+                <div class="form-group">
+                    <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
+                </div>
 
-        <div class="form-group">
-            <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"></input>
+                <div class="form-group">
+                    <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"></input>
+                    <input type="button" class="btn btn-sm btn-info" value="deselect all" ng-click="deselect_all()"></input>
+                </div>
+            </form>
         </div>
-        <div class="form-group">
-            <input type="button" class="btn btn-sm btn-danger" value="deselect all" ng-click="deselect_all()"></input>
-        </div>
-    </form>
+    </div>
 </script>
 
 <script type="text/ng-template" id="device_tree_head.html">
@@ -158,22 +160,35 @@
 
 <div ng-controller="device_tree_base">
     <h2>
-        Device tree smart ({{ entries.length }} entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
-        <div class="btn-group">
-            <input type="button" class="btn btn-success" value="create device" ng-show="dg_present()" ng-click="create('device', $event)"></button>
-            <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
-            <input ng-show="num_selected() > 1" type="button" class="btn btn-primary" value="modify selected" ng-click="edit_many($event)"></button>
-            <input ng-show="num_selected() > 1" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
-        </div>
+        Device tree ({{ entries.length }} entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
     </h2>
 
     <devicetreefilters></devicetreefilters>
 
     <div class="panel panel-default">
-        <div class="panel-body">
+        <div class="panel-body" style="padding: 6px 15px">
             <!-- entries_displayed is st-table interal -->
             <table st-table="entries_displayed" st-safe-src="entries_filtered" class="table table-hover table-condensed table-striped" style="width:auto;">
                 <thead>
+                    
+                    <tr>
+                        <td colspan="99">
+
+                            <div class="btn-group">
+                                <input type="button" class="btn btn-success" value="create device" ng-show="dg_present()" ng-click="create('device', $event)"></button>
+                                <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
+                                <input ng-disabled="num_selected() == 0" type="button" class="btn btn-primary" value="modify selected" ng-click="edit_many($event)"></button>
+                                <input ng-disabled="num_selected() == 0" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-pagination="" st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+
                     <tr>
                         <td colspan="99">
                             Additional columns:
@@ -187,11 +202,6 @@
                                     ng-click="hide_lut[entry[0]]=!hide_lut[entry[0]]">
                                 </input>
                             </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="99">
-                            <div icsw-pagination="" st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                         </td>
                     </tr>
                     <tr>
