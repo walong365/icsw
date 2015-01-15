@@ -254,7 +254,7 @@ class duration(object):
 
         @classmethod
         def get_end_time_for_start(cls, starttime):
-            return starttime + datetime.timedelta(days=7) - datetime.timedelta(seconds=1)
+            return starttime + datetime.timedelta(days=7)
 
         @classmethod
         def get_display_date(cls, timepoint):
@@ -274,6 +274,7 @@ class duration(object):
         @classmethod
         def get_display_date(cls, timepoint):
             return u"{:04d}".format(timepoint.year)
+
 
 
 
