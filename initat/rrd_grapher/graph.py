@@ -319,7 +319,7 @@ class graph_var(object):
                         draw_name,
                     ),
                     "{}:{}lsls{}".format(
-                        draw_type.replace("AREA", "LINE "),
+                        draw_type.replace("AREA", "LINE"),
                         draw_name,
                         self.color,
                     ),
