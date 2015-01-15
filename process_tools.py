@@ -410,7 +410,8 @@ if False:
                         map_p[1],
                         int(map_p[2], 16),
                         map_p[3],
-                        int(map_p[4]))
+                        int(map_p[4])
+                    )
                     if not inode:
                         tot_size += mem_size
                 except:

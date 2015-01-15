@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2006,2011,2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2006,2011,2013-2015 Andreas Lang-Nevyjel
 #
 # this file is part of python-modules-base
 #
