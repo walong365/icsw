@@ -37,7 +37,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
     mon_icinga_log_raw_base
 from initat.md_config_server.config import global_config
-from initat.md_config_server.icinga_log_reader.aggregation import icinga_log_aggregator
+from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 import logging_tools
 import psutil
 import threading_tools
@@ -106,6 +106,8 @@ class icinga_log_reader(object):
         icinga_initial_host_state = 'INITIAL HOST STATE'
         icinga_host_notification = 'HOST NOTIFICATION'
         icinga_host_flapping_alert = 'HOST FLAPPING ALERT'
+
+        always_collect_warnings = True
 
     def __init__(self, log):
         self.log = log
@@ -224,7 +226,7 @@ class icinga_log_reader(object):
                 self.log(msg)
                 self._create_icinga_down_entry(datetime.datetime.now(), msg, None, save=True)
 
-        if global_config["DEBUG"]:
+        if self.constants.always_collect_warnings or not global_config["DEBUG"]:
             self.log("Warnings while parsing:")
             for warning, multiplicity in self._warnings.iteritems():
                 self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
@@ -379,12 +381,12 @@ class icinga_log_reader(object):
         return retval
 
     def _handle_warning(self, exception, logfilepath, cur_line_no):
-        if global_config["DEBUG"]:
-            # log right away
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line_no, exception), logging_tools.LOG_LEVEL_WARN)
-        else:
+        if self.constants.always_collect_warnings or not global_config["DEBUG"]:
             # in release mode, we don't want spam so we collect the errors and log each according to the multiplicity
             self._warnings[unicode(exception)] += 1
+        else:
+            # log right away
+            self.log("in file {} line {}: {}".format(logfilepath, cur_line_no, exception), logging_tools.LOG_LEVEL_WARN)
 
     def create_host_alert_entry(self, cur_line, log_rotation_state, initial_state, logfilepath, logfile_db=None):
         retval = None
