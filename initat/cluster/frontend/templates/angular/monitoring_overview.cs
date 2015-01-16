@@ -63,13 +63,14 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
 
                 new_entries = []
                 for dev in $scope.device_list
-                    entry = {
-                        'idx': dev.idx
-                        'name': dev.name
-                    }
-                    if set_initial_sel
-                        entry['selected'] = _.contains($scope.initial_sel, dev.idx)
-                    new_entries.push(entry)
+                    if ! dev.is_meta_device
+                        entry = {
+                            'idx': dev.idx
+                            'name': dev.name
+                        }
+                        if set_initial_sel
+                            entry['selected'] = _.contains($scope.initial_sel, dev.idx)
+                        new_entries.push(entry)
                 $scope.entries = new_entries
 
                 $scope.initial_sel = []
