@@ -69,6 +69,16 @@ class syncer_process(threading_tools.process_obj):
     def _check_for_slaves(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave")).select_related("domain_tree_node")
+        _error_slaves = [_dev for _dev in slave_servers if _dev.pk == master_server.pk]
+        if _error_slaves:
+            self.log(
+                "{} also used as master_server: {}".format(
+                    logging_tools.get_plural("slave server", len(_error_slaves)),
+                    ", ".join([unicode(_dev) for _dev in _error_slaves]),
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
+            slave_servers = [_dev for _dev in slave_servers if _dev not in _error_slaves]
         # slave configs
         self.__master_config = sync_config(self, master_server, distributed=True if len(slave_servers) else False)
         self.__slave_configs, self.__slave_lut = ({}, {})
