@@ -358,7 +358,11 @@ class user_detail_form(ModelForm):
                 filter="{groupname:$select.search}",
             ),
             # do not use ui-select here (will not refresh on export_list change)
-            Field("export", wrapper_ng_show="!_edit_obj.only_webfrontend", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"),
+            Field(
+                "export",
+                wrapper_ng_show="!_edit_obj.only_webfrontend",
+                ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"
+            ),
             HTML("""
 <div class='form-group' ng-show='!_edit_obj.only_webfrontend'>
     <label class='control-label col-sm-2'>

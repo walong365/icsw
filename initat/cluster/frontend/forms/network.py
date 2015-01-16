@@ -5,7 +5,6 @@
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
-from django.db.models import Q
 from django.forms import Form, ModelForm, CharField, ModelChoiceField, \
     ModelMultipleChoiceField, ChoiceField, BooleanField
 from initat.cluster.backbone.models import network, network_type, network_device_type, \
@@ -480,7 +479,8 @@ class device_network_scan_form(Form):
 </ul>
 {% endverbatim %}</div>"""),
         ),
-        # HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
+        # HTML("<tabset><tab heading='Hostmonitor' disabled='no_objects_defined(_current_dev)'"
+        # " select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
         HTML("<tabset><tab heading='Hostmonitor' select='set_scan_mode(\"hm\")' active='_current_dev.scan_hm_active'>"),
         Fieldset(
             "Flags",
