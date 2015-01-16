@@ -27,6 +27,10 @@ import os
 import pprint  # @UnusedImport
 import pytz
 import time
+import logging_tools
+import psutil
+import threading_tools
+import codecs
 
 from django.db import connection
 from initat.cluster.backbone.models import device
@@ -38,9 +42,6 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
     mon_icinga_log_raw_base
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
-import logging_tools
-import psutil
-import threading_tools
 
 __all__ = [
     "icinga_log_reader",
@@ -157,7 +158,7 @@ class icinga_log_reader(object):
                 last_read.position = 0
 
         try:
-            logfile = open(self.get_icinga_log_file(), "r")
+            logfile = codecs.open(self.get_icinga_log_file(), "r", "utf-8", errors='replace')
         except OSError as e:
             self.log(u"Failed to open log file {} : {}".format(self.get_icinga_log_file(), e), logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -372,7 +373,7 @@ class icinga_log_reader(object):
 
         retval = None
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
-            with open(logfilepath, 'r') as logfile:
+            with codecs.open(logfilepath, 'r', 'utf-8', errors='replace') as logfile:
                 last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
                 if retval is None:
                     retval = last_read_timestamp
