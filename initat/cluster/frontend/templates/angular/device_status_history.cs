@@ -57,23 +57,25 @@ status_history_template = """
 device_status_history_template = """
 <h3>{{device_rest.name }}</h3>
 
-<div style="width: 470px">
-    <device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
-</div>
+<div class="row" style="width: 650px">
+    <div class="col-md-12">
+        <div style="width: auto">
+            <device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
+        </div>
+    </div>
 
-<div class="row" style="width: 600px">
     <div class="col-md-12">
         <table class="table table-condensed table-hover table-striped">
             <thead>
                 <tr>
                     <th >Service</th>
                     <th style="width: 10%;" class="text-center"><!-- chart --></th>
-                    <th style="width: 10%;" class="text-center">Ok</th>
-                    <th style="width: 10%;" class="text-center">Warning</th>
-                    <th style="width: 10%;" class="text-center">Critical</th>
-                    <th style="width: 10%;" class="text-center">Unknown</th>
-                    <th style="width: 10%;" class="text-center">Undetermined</th>
-                    <th style="width: 10%;" class="text-center">Flapping</th>
+                    <th style="width: 50px;" class="text-center">Ok</th>
+                    <th style="width: 50px;" class="text-center">Warning</th>
+                    <th style="width: 50px;" class="text-center">Critical</th>
+                    <th style="width: 50px;" class="text-center">Unknown</th>
+                    <th style="width: 50px;" class="text-center">Undetermined</th>
+                    <th style="width: 50px;" class="text-center">Flapping</th>
                 </tr>
             </thead>
             <tbody>

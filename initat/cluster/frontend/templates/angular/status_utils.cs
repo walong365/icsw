@@ -14,7 +14,7 @@ device_hist_status_template = """
                 <ngpiechart width="120" height="120" data="pie_data"></ngpiechart>
             </div>
         </div>
-        <div class="col-md-8">
+        <div class="col-md-4">
             <table class="table table-condensed table-hover table-striped">
                 <!--
                 <thead>
