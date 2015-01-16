@@ -61,9 +61,11 @@ class icinga_log_aggregator(object):
 
         relevant_serv_alerts = mon_icinga_log_raw_service_alert_data.objects.filter(device_independent=False)
         self._serv_alert_keys_cache = relevant_serv_alerts.values_list("device", "service", "service_info").distinct()
+        relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
+        self._host_alert_keys_cache = relevant_host_alerts.values_list("device", flat=True).distinct()
 
         # aggregate in order of how often data is used, then you can quickly see results
-        for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year, duration.Hour):
+        for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):  #, duration.Hour):
             self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
             # hosts
             try:
@@ -121,7 +123,7 @@ class icinga_log_aggregator(object):
         host_flapping_cache = preprocess_flapping_data(mon_icinga_log_raw_host_flapping_data,
                                                        lambda flap_data: flap_data.device_id)
 
-        def calc_service_alert_cache():
+        def calc_last_service_alert_cache():
             try:
                 latest_dev_independent_service_alert = mon_icinga_log_raw_service_alert_data.objects\
                     .filter(date__lte=start_time, device_independent=True).latest('date')
@@ -147,7 +149,33 @@ class icinga_log_aggregator(object):
                 if key not in last_service_alert_cache or last_service_alert_cache[key][1] < data['max_date']:
                     last_service_alert_cache[key] = (state, state_type), data['max_date']
             return last_service_alert_cache
-        last_service_alert_cache = calc_service_alert_cache()
+        last_service_alert_cache = calc_last_service_alert_cache()
+
+        def calc_last_host_alert_cache():
+            try:
+                latest_dev_independent_host_alert = mon_icinga_log_raw_host_alert_data.objects\
+                    .filter(date__lte=start_time, device_independent=True).latest('date')
+            except mon_icinga_log_raw_host_alert_data.DoesNotExist:
+                latest_dev_independent_host_alert = None
+
+            # get last service alert of each service before the start time
+            last_host_alert_cache = {}
+            for data in mon_icinga_log_raw_host_alert_data.objects\
+                    .filter(date__lte=start_time, device_independent=False)\
+                    .values("device_id", "state", "state_type")\
+                    .annotate(max_date=Max('date')):
+                # prefer latest info if there is dev independent one
+                if latest_dev_independent_host_alert and latest_dev_independent_host_alert.date > data['max_date']:
+                    state, state_type = latest_dev_independent_host_alert.state, latest_dev_independent_host_alert.state_type
+                else:
+                    state, state_type = data['state'], data['state_type']
+                key = data['device_id']
+
+                # see comment in calc_last_service_alert_cache
+                if key not in last_host_alert_cache or last_host_alert_cache[key][1] < data['max_date']:
+                    last_host_alert_cache[key] = (state, state_type), data['max_date']
+            return last_host_alert_cache
+        last_host_alert_cache = calc_last_host_alert_cache()
 
         # regular changes in time span
         def calc_weighted_states(relevant_entries, state_description_before):
@@ -188,18 +216,38 @@ class icinga_log_aggregator(object):
                 flapping_seconds += (flap_end - flap_start).total_seconds()
             return flapping_seconds / timespan_seconds
 
-        service_alerts = defaultdict(lambda: [])
-        for entry in mon_icinga_log_raw_service_alert_data.objects\
-                .filter(device_independent=False, date__range=(start_time, end_time)):
-            key = entry.device_id, entry.service_id, entry.service_info
-            service_alerts[key].append(entry)
-        for entry in mon_icinga_log_raw_service_alert_data.objects\
-                .filter(device_independent=True, date__range=(start_time, end_time)):
-            for key in service_alerts:
+        def calc_service_alerts():
+            service_alerts = defaultdict(lambda: [])
+            for entry in mon_icinga_log_raw_service_alert_data.objects\
+                    .filter(device_independent=False, date__range=(start_time, end_time)):
+                key = entry.device_id, entry.service_id, entry.service_info
                 service_alerts[key].append(entry)
-        for l in service_alerts.itervalues():
-            # not in order due to dev independents
-            l.sort(key=operator.attrgetter('date'))
+            # calc dev independent afterwards and add to all keys
+            for entry in mon_icinga_log_raw_service_alert_data.objects\
+                    .filter(device_independent=True, date__range=(start_time, end_time)):
+                for key in service_alerts:
+                    service_alerts[key].append(entry)
+            for l in service_alerts.itervalues():
+                # not in order due to dev independents
+                l.sort(key=operator.attrgetter('date'))
+            return service_alerts
+        service_alerts = calc_service_alerts()
+
+        def calc_host_alerts():
+            host_alerts = defaultdict(lambda: [])
+            for entry in mon_icinga_log_raw_host_alert_data.objects\
+                    .filter(device_independent=False, date__range=(start_time, end_time)):
+                host_alerts[entry.device_id].append(entry)
+            # calc dev independent afterwards and add to all keys
+            for entry in mon_icinga_log_raw_host_alert_data.objects\
+                    .filter(device_independent=True, date__range=(start_time, end_time)):
+                for key in host_alerts:
+                    host_alerts[key].append(entry)
+            for l in host_alerts.itervalues():
+                # not in order due to dev independents
+                l.sort(key=operator.attrgetter('date'))
+            return host_alerts
+        host_alerts = calc_host_alerts()
 
         def process_service_alerts():
             service_db_rows = []
@@ -241,17 +289,12 @@ class icinga_log_aggregator(object):
             # NOTE: this is still slow and not optimized as service alerts
 
             # don't consider alerts for any machine, they are added below
-            relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
-            for device_id in relevant_host_alerts.values_list("device", flat=True).distinct():
-                dev_db_identification = Q(device=device_id) | Q(device_independent=True)
-                # need to find last state
-                try:
-                    latest_earlier_entry = mon_icinga_log_raw_host_alert_data.objects.filter(dev_db_identification, date__lte=start_time).latest('date')
-                    state_description_before = latest_earlier_entry.state, latest_earlier_entry.state_type
-                except mon_icinga_log_raw_host_alert_data.DoesNotExist:
+            for device_id in self._host_alert_keys_cache:
+                state_description_before = last_host_alert_cache.get(device_id, (None, None))[0]
+                if not state_description_before:
                     state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
-                relevant_entries = mon_icinga_log_raw_host_alert_data.objects.filter(dev_db_identification, date__range=(start_time, end_time)).order_by('date')
-                weighted_states = calc_weighted_states(relevant_entries, state_description_before)
+
+                weighted_states = calc_weighted_states(host_alerts[device_id], state_description_before)
                 flapping_ratio = calc_flapping_ratio(host_flapping_cache, device_id)
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING, mon_icinga_log_aggregated_host_data.STATE_FLAPPING)] = flapping_ratio
