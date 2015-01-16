@@ -128,8 +128,10 @@ class icinga_log_reader(object):
         self._update_raw_data()
         self.log("parsing took {} seconds".format(time.time() - parse_start_time))
 
-        # import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), "/tmp/prof.out")
         aggr_start_time = time.time()
+        # prof_file_name = "/tmp/prof.out.{}".format(time.time())
+        # self.log("profiling to {}".format(prof_file_name))
+        # import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
         self._icinga_log_aggregator.update()
         self.log("aggregation took {} seconds".format(time.time() - aggr_start_time))
 
@@ -712,7 +714,7 @@ class icinga_log_reader(object):
         #     if not retval[0]:
         #         self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
         # else:
-        retval = (self._resolve_service_historic(service_spec), None)
+        retval = (self._resolve_service_historic(service_spec), service_spec)
         return retval
 
     def _resolve_service_historic(self, service_spec):
