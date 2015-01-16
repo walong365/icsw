@@ -173,8 +173,8 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                     scope.timespan_to = ""
                     if new_data.length > 0
                         timespan = new_data[0]
-                        scope.timespan_from = moment(timespan[0]).format("DD.MM.YYYY HH:MM")
-                        scope.timespan_to = moment(timespan[1]).format("DD.MM.YYYY HH:MM")
+                        scope.timespan_from = moment.utc(timespan[0]).format("DD.MM.YYYY HH:mm")
+                        scope.timespan_to = moment.utc(timespan[1]).format("DD.MM.YYYY HH:mm")
                     else
                         scope.timespan_error = "No data available for this time span"
 
