@@ -1,6 +1,6 @@
 {% load i18n coffeescript staticfiles %}
 
-<nav class="navbar navbar-default navbar-fixed-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base" ng-cloak ng-show="is_authenticated">
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated">
     <ul class="nav navbar-nav">
         <li>
             <a href="{% url 'main:index' %}"><span class="glyphicon glyphicon-home"></span></a>
@@ -260,11 +260,6 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
                         $scope.update_progress_bar()
         $scope.show_time()
 ])
-
-# bootstrap angular
-angular.element(document).ready(() ->
-    angular.bootstrap($("nav[id='icsw.menu_app']"), ["icsw.menu_app"])
-)
 
 {% endinlinecoffeescript %}
 

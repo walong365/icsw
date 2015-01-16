@@ -1571,9 +1571,9 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
             else
                 return false
         $scope.set_visibility = (flag) ->
-            $scope.$apply(
-                $scope.show_index = flag
-            )
+            #$scope.$apply(
+            $scope.show_index = flag
+            #)
         $scope.use_devs = (dev_list, devg_list, md_list) ->
             if dev_list.length
                 # only use when at least one device is selected
@@ -1599,8 +1599,9 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
             $scope.set_visibility(flag)
         root.show_device_on_index = $scope.use_devs
         # hack for late init of sidebar_base
-        root.target_devsel_link = [$scope.use_devs, true]
-        #root.install_devsel_link($scope.use_devs, true)
+        #root.target_devsel_link = [$scope.use_devs, true]
+        # unified app, to be improved, FIXME
+        root.install_devsel_link($scope.use_devs, true)
 ]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window) ->
         $scope.index_view = $window.INDEX_VIEW

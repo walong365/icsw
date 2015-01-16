@@ -1352,7 +1352,8 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
     }
 )
 
-add_tree_directive(cat_ctrl)
+# no longer needed due to single app
+#add_tree_directive(cat_ctrl)
 
 {% endinlinecoffeescript %}
 

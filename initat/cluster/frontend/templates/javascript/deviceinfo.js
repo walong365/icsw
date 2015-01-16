@@ -265,7 +265,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                     # get target div
                     target_div = @dev_div.find("div[class='tab-pane'][id='#{t_href}'] > div[id^='icsw']")
                     # bootstrap angular (app == id of device)
-                    angular.bootstrap(target_div, [target_div.attr("id")])
+                    #angular.bootstrap(target_div, [target_div.attr("id")])
                     @active_divs.push(target_div[0])
                 # store active div
                 @active_div = t_href

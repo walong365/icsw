@@ -8,7 +8,7 @@
 
 {% verbatim %}
 
-<div id="icsw.index_app" ng-controller="index_base" ng-cloack ng-show="show_index">
+<div ng-controller="index_base" ng-cloack ng-show="show_index">
     <h2 class="center">Please select a device from the tree on the left side</h2>
     {{ icsw_devsel }}
     <accordion close-others="no">
@@ -108,7 +108,7 @@
         </accordion-group>
         <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled">
             <accordion-heading>
-            	Job info
+               Job info
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>
             </accordion-heading>
             <div ng-controller="jobinfo_ctrl">
@@ -122,19 +122,5 @@
 
 <div id="center_deviceinfo" mode="{{ DEVICE_MODE }}">
 </div>
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-angular.element(document).ready(
-    angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.user"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

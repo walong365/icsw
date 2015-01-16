@@ -186,10 +186,11 @@
         </script>
         {% javascript 'js_base' %}
         {% javascript 'js_extra1' %}
+        {% include "angular/common_functions.cs" %}
+        {% include "angular/app.cs" %}
         {% include "javascript/init.js" %}
         {% include "javascript/deviceinfo.js" %}
         {# common angular modules #}
-        {% include "angular/common_functions.cs" %}
         {% include "angular/smart_table_utils.cs" %}
         {% include "angular/status_utils.cs" %}
         {% include "angular/tree.cs" %}
@@ -220,16 +221,17 @@
         {% block header %}
         {% endblock %}
     </header>
-
-    {% include "menu.html" %}
-    <div id="icsw_wrapper">
-
-        {% include 'sidebar.html' %}
-
-        <div id="page-content-wrapper">
-            <div class="container-fluid">
-                {% block content %}
-                {% endblock %}
+    <div id="icsw.app">
+        {% include "menu.html" %}
+        <div id="icsw_wrapper">
+    
+            {% include 'sidebar.html' %}
+    
+            <div id="page-content-wrapper">
+                <div class="container-fluid">
+                    {% block content %}
+                    {% endblock %}
+                </div>
             </div>
         </div>
     </div>
@@ -272,6 +274,8 @@
         add_handlers_main = ->
             init_blockUI()
             init_noty()
+            # bootstrap app
+            angular.bootstrap($("div[id='icsw.app']"), ["icsw.app"])
         
         angular.element(document).ready(add_handlers_main)
         
