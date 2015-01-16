@@ -13,11 +13,11 @@ angular_module_setup([monitoring_overview_module])
 
 monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
-        $scope.filter_settings = {"str_filter": ""}
+        $scope.filter_settings = {"str_filter": "", "only_selected": true}
 
         $scope.filter_predicate = (entry) ->
             selected = $scope.get_selected_entries()
-            if selected.length == 0
+            if (!$scope.filter_settings.only_selected) || selected.length == 0
                 sel_flag = true
             else
                 sel_flag = _.contains(selected, entry)
