@@ -74,21 +74,22 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
 
                 $scope.initial_sel = []
 
-                call_ajax
-                    url  : "{% url 'mon:get_node_status' %}"
-                    data : {
-                        "pk_list" : angular.toJson((dev.idx for dev in $scope.device_list))
-                    }
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            service_entries = []
-                            $(xml).find("value[name='service_result']").each (idx, node) =>
-                                service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                            host_entries = []
-                            $(xml).find("value[name='host_result']").each (idx, node) =>
-                                host_entries = host_entries.concat(angular.fromJson($(node).text()))
-                            console.log 'serv', service_entries
-                            console.log 'host', host_entries
+                # TODO: livestatus:
+                #call_ajax
+                #    url  : "{% url 'mon:get_node_status' %}"
+                #    data : {
+                #        "pk_list" : angular.toJson((dev.idx for dev in $scope.device_list))
+                #    }
+                #    success : (xml) =>
+                #        if parse_xml_response(xml)
+                #            service_entries = []
+                #            $(xml).find("value[name='service_result']").each (idx, node) =>
+                #                service_entries = service_entries.concat(angular.fromJson($(node).text()))
+                #            host_entries = []
+                #            $(xml).find("value[name='host_result']").each (idx, node) =>
+                #                host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                #            console.log 'serv', service_entries
+                #            console.log 'host', host_entries
 
         $scope.initial_sel = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->

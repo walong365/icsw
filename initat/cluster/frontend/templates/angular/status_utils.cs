@@ -50,7 +50,7 @@ root = exports ? this
 
 angular.module(
     "status_utils", []
-).directive('deviceHistStatusOverview', ($templateCache, $resource, $parse) ->
+).directive('deviceHistStatusOverview', ($templateCache, $resource, $parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     return {
         restrict: 'EA',
@@ -84,12 +84,12 @@ angular.module(
                         "Undetermined": "#c7c7c7"
                     }
 
-                    [scope.host_data, scope.pie_data] = status_history_utils.preprocess_state_data(new_data, weights, colors, scope.float_format)
+                    [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, colors, scope.float_format)
 
                 status_history_utils.get_device_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
 
-}).directive('serviceHistStatusOverview', ($templateCache, $resource, $parse) ->
+}).directive('serviceHistStatusOverview', ($templateCache, $resource, $parse, status_utils_functions) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
     return {
         restrict: 'EA',
@@ -108,37 +108,7 @@ angular.module(
 
             scope.update = () ->
                 cont = (new_data) ->
-
-                    aggregated_data = {
-                        "Ok": 0
-                        "Warning": 0
-                        "Critical": 0
-                        "Unknown": 0
-                        "Undetermined": 0
-                    }
-
-
-                    #aggregated_data_list = []
-                    #for key, value of aggregated_data
-                    #    aggregated_data_list.push({'state': key, 'value': value})
-
-                    weights = {
-                        "Ok": -10
-                        "Warning": -9
-                        "Critical": -8
-                        "Unknown": -5
-                        "Undetermined": -4
-                    }
-
-                    colors = {
-                        "Ok": "#66dd66"
-                        "Warning": "#f0ad4e"
-                        "Critical": "#ff7777"
-                        "Unknown": "#c7c7c7"
-                        "Undetermined": "#c7c7c7"
-                    }
-
-                    [scope.service_data, scope.pie_data] = status_history_utils.preprocess_state_data(new_data, weights, colors, scope.float_format)
+                    [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
                 status_history_utils.get_service_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=true)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
@@ -161,7 +131,53 @@ angular.module(
                 if scope.data
                     el.drawPieChart(scope.data, scope.width, scope.height, {animation: false, lightPiesOffset: 0, edgeOffset: 0, baseOffset: 0, baseColor: "#fff"});
             )
-}).run(($templateCache) ->
+}).service('status_utils_functions', () ->
+    float_format = (n) -> return (n*100).toFixed(2) + "%"
+    preprocess_state_data = (new_data, weights, colors) ->
+        formatted_data = _.cloneDeep(new_data)
+        for key of weights
+            if not _.any(new_data, (d) -> return d['state'] == key)
+                formatted_data.push({'state': key, 'value': 0})
+
+        for d in formatted_data
+            d['value'] = float_format(d['value'])
+        final_data = _.sortBy(formatted_data, (d) -> return weights[d['state']])
+
+        new_data = _.sortBy(new_data, (d) -> return weights[d['state']])
+
+        pie_data = []
+        for d in new_data
+            if d['state'] != "Flapping"  # can't display flapping in pie
+                pie_data.push {
+                    'title': d['state']
+                    'value': Math.round(d['value']*10000) / 100
+                    'color': colors[d['state']]
+                }
+        return [final_data, pie_data]
+
+    return {
+        float_format: float_format
+        preprocess_state_data: preprocess_state_data
+        preprocess_service_state_data: (new_data, float_format) ->
+            weights = {
+                "Ok": -10
+                "Warning": -9
+                "Critical": -8
+                "Unknown": -5
+                "Undetermined": -4
+            }
+
+            colors = {
+                "Ok": "#66dd66"
+                "Warning": "#f0ad4e"
+                "Critical": "#ff7777"
+                "Unknown": "#c7c7c7"
+                "Undetermined": "#c7c7c7"
+            }
+
+            return preprocess_state_data(new_data, weights, colors, float_format)
+    }
+).run(($templateCache) ->
     $templateCache.put("device_hist_status.html", device_hist_status_template)
     $templateCache.put("service_hist_status.html", service_hist_status_template)
 )
@@ -191,30 +207,7 @@ status_history_utils = {
         res.query(query_data, (new_data) ->
             cont(new_data)
         )
-    preprocess_state_data: (new_data, weights, colors, float_format) ->
-        formatted_data = _.cloneDeep(new_data)
-        for key of weights
-            if not _.any(new_data, (d) -> return d['state'] == key)
-                formatted_data.push({'state': key, 'value': 0})
 
-        for d in formatted_data
-            d['value'] = float_format(d['value'])
-        final_data = _.sortBy(formatted_data, (d) -> return weights[d['state']])
-
-        new_data = _.sortBy(new_data, (d) -> return weights[d['state']])
-
-        for d in new_data
-            d['value'] = Math.round(d['value']*10000) / 100
-
-        pie_data = []
-        for d in new_data
-            if d['state'] != "Flapping"  # can't display flapping in pie
-                pie_data.push {
-                    'title': d['state']
-                    'value': d['value']
-                    'color': colors[d['state']]
-                }
-        return [final_data, pie_data]
 }
 
 

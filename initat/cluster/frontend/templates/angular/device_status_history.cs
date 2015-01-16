@@ -67,6 +67,7 @@ device_status_history_template = """
             <thead>
                 <tr>
                     <th >Service</th>
+                    <th style="width: 10%;" class="text-center"><!-- chart --></th>
                     <th style="width: 10%;" class="text-center">Ok</th>
                     <th style="width: 10%;" class="text-center">Warning</th>
                     <th style="width: 10%;" class="text-center">Critical</th>
@@ -78,6 +79,9 @@ device_status_history_template = """
             <tbody>
                 <tr ng-repeat="entry in service_data">
                     <td> {{ extract_service_name(entry[0]) }} </td>
+                    <td class="text-right">
+                        <ngpiechart width="28" height="28" data="entry[2]"></ngpiechart>
+                    </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Ok") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Warning") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Critical") }} </td>
@@ -100,7 +104,7 @@ angular_module_setup([status_history_module])
 
 status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "$resource",
     ($scope, $compile, $filter, $templateCache, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, $resource) ->
-]).directive("devicestatushistory", ($templateCache, $resource) ->
+]).directive("devicestatushistory", ($templateCache, $resource, status_utils_functions) ->
     return {
         restrict : "EA"
         template : $templateCache.get("device_status_history_template.html")
@@ -134,10 +138,13 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                 return serv_name
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
 
+            scope.calc_pie_data = (name, service_data) ->
+                [unused, pie_data] = status_utils_functions.preprocess_service_state_data(service_data)
+                return pie_data
             scope.update = () ->
                 serv_cont = (new_data) ->
                     # new_data is dict, but we want it as list to be able to sort it
-                    data = ([key, val] for key, val of new_data)
+                    data = ([key, val, scope.calc_pie_data(key, val)] for key, val of new_data)
                     scope.service_data = _.sortBy(data, (entry) -> return scope.extract_service_name(entry[0]))
 
                 status_history_utils.get_service_data($resource, scope.device_id, scope.startdate, scope.timerange, serv_cont)
