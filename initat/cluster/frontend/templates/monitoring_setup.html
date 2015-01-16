@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/monitoring_basic.cs" %}{% endblock %}
-
 {% block title %}{% trans "Monitoring" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.monitoring_basic">
+<div>
 
 <script type="text/ng-template" id="mon_period.html">
     {% crispy mon_period_form mon_period_form.helper %}
@@ -389,17 +387,5 @@
 {% endverbatim %}
 
 </div>
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.monitoring_basic']"), ["icsw.monitoring_basic"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

@@ -8,8 +8,6 @@ root = exports ? this
 
 monitoring_basic_module = angular.module("icsw.monitoring_basic", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-angular_module_setup([monitoring_basic_module])
-
 angular_add_simple_list_controller(
     monitoring_basic_module,
     "mon_period_base",
@@ -230,4 +228,3 @@ monitoring_basic_module.controller("mon_device_templ", ["$scope", "$compile", "$
 {% endinlinecoffeescript %}
 
 </script>
-

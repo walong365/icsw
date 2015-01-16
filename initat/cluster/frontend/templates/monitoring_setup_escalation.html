@@ -2,8 +2,6 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/monitoring_extended.cs" %}{% endblock %}
-
 {% block title %}{% trans "Monitoring setup / Escalation" %}{% endblock %}
 
 {% block content %}
@@ -120,17 +118,5 @@
 {% endverbatim %}
 
 </div>
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.monitoring_extended']"), ["icsw.monitoring_extended"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

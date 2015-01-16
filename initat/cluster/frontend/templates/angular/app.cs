@@ -11,6 +11,10 @@ ics_app = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "icsw.menu_app", "icsw.user", "icsw.monitoring.create", "icsw.device.config", "icsw.device",
+        "icsw.login",
+        "icsw.monitoring_basic", "icsw.monitoring_extended",
+        "icsw.partition_table",
+        "icsw.background_job_info",
     ]
 )
 
@@ -18,9 +22,11 @@ ics_app.config(() ->
     console.log "go"
 )
 
-create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular"])
+root.ics_app = ics_app
 
-angular_module_setup([create_module])
+angular_module_setup([ics_app])
+
+create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular"])
 
 create_controller = create_module.controller("create_base", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q",
     ($scope, $timeout, $window, $templateCache, restDataSource, $q) ->

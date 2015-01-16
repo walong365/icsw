@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/partition_table.cs" %}{% endblock %}
-
 {% block title %}{% trans "Partition Overview" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.partition_table">
+<div>
 
 <script type="text/ng-template" id="partition_table.html">
     {% crispy partition_table_form partition_table_form.helper %}
@@ -174,17 +172,4 @@
 
 {% endverbatim %}
 
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.partition_table']"), ["icsw.partition_table"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
-
 {% endblock %}
-

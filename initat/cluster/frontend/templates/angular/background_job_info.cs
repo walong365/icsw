@@ -36,8 +36,6 @@ root = exports ? this
 
 background_job_info_module = angular.module("icsw.background_job_info", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
-angular_module_setup([background_job_info_module])
-
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
 background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",

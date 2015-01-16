@@ -8,8 +8,6 @@ root = exports ? this
 
 device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "smart_table_utils"])
 
-angular_module_setup([device_module])
-
 angular_add_simple_list_controller(
     device_module,
     "device_base",

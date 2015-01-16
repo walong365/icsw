@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/background_job_info.cs" %}{% endblock %}
-
 {% block title %}{% trans "Background job info" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.background_job_info">
+<div>
 
 {% verbatim %}
 
@@ -48,17 +46,5 @@
 {% endverbatim %}
 
 </div>
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.background_job_info']"), ["icsw.background_job_info"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

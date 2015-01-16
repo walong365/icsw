@@ -49,7 +49,7 @@ class authentication_form(Form):
         Div(
             Fieldset(
                 "Please enter your login credentials {% if CLUSTER_NAME %} for {{ CLUSTER_NAME }}{% endif %}",
-                Field("username", placeholder="user name"),
+                Field("username", placeholder="user name", autofocus="1"),
                 Field("password", placeholder="password"),
                 Field("next", type="hidden"),
             ),

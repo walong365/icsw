@@ -270,8 +270,6 @@ partinfo_template = """
 
 device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3"])
 
-angular_module_setup([device_config_module])
-
 class device_config_var_tree extends tree_config
     constructor: (@scope, args) ->
         super(args)

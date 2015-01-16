@@ -8,8 +8,6 @@ root = exports ? this
 
 partition_table_module = angular.module("icsw.partition_table", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"])
 
-angular_module_setup([partition_table_module])
-
 class part_edit_mixin extends angular_edit_mixin
     constructor : (scope, templateCache, compile, modal, Restangular) ->
         super(scope, templateCache, compile, modal, Restangular)
