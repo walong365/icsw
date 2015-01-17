@@ -8,8 +8,6 @@ root = exports ? this
 
 image_module = angular.module("icsw.image", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
-angular_module_setup([image_module])
-
 angular_add_simple_list_controller(
     image_module,
     "image_base",

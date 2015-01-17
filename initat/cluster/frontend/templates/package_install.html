@@ -2,15 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}
-{% include "angular/package.cs" %}
-{% endblock %}
-
 {% block title %}{% trans "Package Install" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.package" ng-cloack>
+<div ng-cloack>
 
 <script type="text/ng-template" id="package_search.html">
     {% crispy package_search_form package_search_form.helper %}
@@ -301,17 +297,5 @@
 </tabset>
 
 {% endverbatim %}
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.package']"), ["icsw.package"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

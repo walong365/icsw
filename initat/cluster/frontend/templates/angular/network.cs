@@ -8,8 +8,6 @@ root = exports ? this
 
 network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-angular_module_setup([network_module])
-
 nw_types_dict = [
     {"value":"b", "name":"boot"}
     {"value":"p", "name":"prod"}

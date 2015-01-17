@@ -186,15 +186,17 @@
         </script>
         {% javascript 'js_base' %}
         {% javascript 'js_extra1' %}
+        <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
+        {% javascript 'js_gmaps' %}
         {% include "angular/common_functions.cs" %}
         {% include "angular/app.cs" %}
         {% include "javascript/init.js" %}
         {% include "javascript/deviceinfo.js" %}
+        {% include "angular/tree.cs" %}
         {% include "angular/rrd.cs" %}
         {# common angular modules #}
         {% include "angular/smart_table_utils.cs" %}
         {% include "angular/status_utils.cs" %}
-        {% include "angular/tree.cs" %}
         {% include "angular/login.cs" %}
         {% include "angular/user.cs" %}
         {% include "angular/device.cs" %}
@@ -205,8 +207,17 @@
         {% include "angular/device_variable.cs" %}
         {% include "angular/monitoring_basic.cs" %}
         {% include "angular/monitoring_extended.cs" %}
+        {% include "angular/monitoring_build_info.cs" %}
+        {% include "angular/network.cs" %}
+        {% include "angular/category_tree.cs" %}
+        {% include "angular/domain_name_tree.cs" %}
+        {% include "angular/config.cs" %}
         {% include "angular/partition_table.cs" %}
         {% include "angular/background_job_info.cs" %}
+        {% include "angular/kernel.cs" %}
+        {% include "angular/image.cs" %}
+        {% include "angular/package.cs" %}
+        {% include "angular/settings.cs" %}
         {# site-related javascript load blocks #}
         {% block js_load_1 %}{% endblock %}
         {# site-related angular modules #}

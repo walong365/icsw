@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/network.cs" %}{% endblock %}
-
 {% block title %}Cluster networks{% endblock %}
 
 {% block content %}
 
-<div id="icsw.network">
+<div>
 
 <script type="text/ng-template" id="network.html">
     {% crispy network_form network_form.helper %}
@@ -170,17 +168,5 @@
 </div>
 
 {% endverbatim %}
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.network']"), ["icsw.network"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

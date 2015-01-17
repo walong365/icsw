@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript staticfiles crispy_forms_tags %}
 
-{% block angular %}{% include "angular/config.cs" %}{% endblock %}
-
 {% block title %}{% trans "Configurations" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.config">
+<div>
 
     <script type="text/ng-template" id="config_template.html">
         {% crispy config_form config_form.helper %}
@@ -38,7 +36,7 @@
         {% crispy mon_check_command_form mon_check_command_form.helper %}
     </script>
 
-    <div ng-controller="config_ctrl">
+    <div ng-controller="general_config_ctrl">
         <tabset>
             <tab heading="configurations">
                 <configtable></configtable>
@@ -73,17 +71,5 @@
 </div>
 
 {% include "generate_config.html" %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.config']"), ["icsw.config"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/image.cs" %}{% endblock %}
-
 {% block title %}{% trans "Image Overview" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.image">
+<div>
 
 <script type="text/ng-template" id="image.html">
     {% crispy image_form image_form.helper %}
@@ -88,17 +86,5 @@
 </div>
 
 {% endverbatim %}
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.image']"), ["icsw.image"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

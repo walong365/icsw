@@ -165,7 +165,7 @@ config_table_template = """
         </tr>
         <tr ng-show="config.var_expanded">
             <td colspan="14">
-                <vartable></vartable>
+                <confvartable></confvartable>
             </td>
         </tr>
         <tr ng-show="config.script_expanded">
@@ -319,9 +319,7 @@ cached_config_template = """
 
 config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select"])
 
-angular_module_setup([config_module])
-
-config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http",
+gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http) ->
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
@@ -936,10 +934,10 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         restrict : "EA"
         template : $templateCache.get("config_table.html")
     }
-).directive("vartable", ($templateCache, $compile, $modal, Restangular) ->
+).directive("confvartable", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("var_table.html")
+        template : $templateCache.get("conf_var_table.html")
         link : (scope, el, attrs) ->
             scope.get_value = (obj) ->
                 if obj.v_type == "bool"
@@ -1058,7 +1056,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("config_table.html", config_table_template)
     $templateCache.put("catalog_table.html", catalog_table_template)
-    $templateCache.put("var_table.html", var_table_template)
+    $templateCache.put("conf_var_table.html", var_table_template)
     $templateCache.put("script_table.html", script_table_template)
     $templateCache.put("mon_table.html", mon_table_template)
     $templateCache.put("cached_upload_template.html", cached_upload_template)
@@ -1088,7 +1086,140 @@ class cat_tree extends tree_config
         )
         @scope.new_selection(sel_list)
 
-add_tree_directive(config_ctrl)
+config_gen_module = angular.module("icsw.config.gen", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror"])
+
+class config_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = true
+        @show_select = false
+        @show_descendants = false
+        @show_childs = false
+    get_name : (t_entry) ->
+        switch t_entry._node_type
+            when "eh"
+                return "errors"
+            when "e"
+                console.log t_entry.obj
+                return "config " + t_entry.obj.key
+            when "c"
+                obj = t_entry.obj
+                content = obj.data
+                node_str = obj.name
+                attr_list = []
+                for attr_name in ["uid", "gid", "mode"]
+                    if content[attr_name]?
+                        attr_value = content[attr_name]
+                        if attr_name == "mode"
+                            attr_value = parseInt(attr_value).toString(8)
+                        attr_list.push("#{attr_name}=#{attr_value}")
+                if attr_list
+                    node_str = "#{node_str} (" + attr_list.join(", ") + ")"
+                return node_str
+            else
+                return "unknown _node_type '#{t_entry._node_type}'"
+    handle_click: (t_entry, event) =>
+        @clear_selected()
+        t_entry.selected = true
+        switch t_entry._node_type
+            when "eh"
+                @dev_conf.active_error = []
+            when "e"
+                @dev_conf.active_error = t_entry.obj.text.split("\n")
+            when "c"
+                content = t_entry.obj.data.content
+                if content?
+                    @dev_conf.active_content = content.split("\n")
+                else
+                    @dev_conf.active_content = []
+
+config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+        $scope.devsel_list = []
+        $scope.result_trees = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.$apply(
+                $scope.devsel_list = _dev_sel
+            )
+        $scope.dev_names = () ->
+            return resolve_device_keys($scope.devsel_list)
+        $scope._build_list = (ct) ->
+            _r_list = [ct]
+            for _subnode in ct.sub_nodes
+                for _res in $scope._build_list(_subnode)
+                    _r_list.push(_res)
+            return _r_list
+        $scope.generate_config = () ->
+            $scope.result_trees = []
+            $.blockUI()
+            call_ajax
+                url     : "{% url 'config:generate_config' %}"
+                data    : {
+                    "pk_list" : angular.toJson($scope.devsel_list)
+                },
+                success : (xml) =>
+                    $.unblockUI()
+                    cur_list = []
+                    if parse_xml_response(xml)
+                        _json = angular.fromJson($(xml).find("value[name='result']").text())
+                        for cur_dev in _json["devices"]
+                            new_tree = new config_tree($scope)
+                            new_conf = {
+                                state : parseInt(cur_dev.state_level)
+                                name : cur_dev.name
+                                tree : new_tree
+                                info_str : cur_dev.info_str
+                                active_error : []
+                                active_content : []
+                            }
+                            new_tree.dev_conf = new_conf
+                            if new_conf.state >= 40
+                                top_node = new_tree.new_node(
+                                    {
+                                        folder     :  true
+                                        _node_type : "eh"
+                                        expand     : true
+                                    }
+                                )
+                                new_tree.add_root_node(top_node)
+                                # build error tree
+                                for entry in cur_dev.info_dict
+                                    t_entry = new_tree.new_node({folder:true, obj:entry, _node_type : "e", expand:true})
+                                    top_node.add_child(t_entry)
+                            else
+                                node_lut = {}
+                                # build list of entries
+                                _tree_list = $scope._build_list(cur_dev.config_tree)
+                                for entry in _tree_list
+                                    t_entry = new_tree.new_node(
+                                        {
+                                            folder : parseInt(entry.is_dir)
+                                            _node_type : "c"
+                                            expand : parseInt(entry.depth) < 2
+                                            obj : entry
+                                        }
+                                    )
+                                    node_id = entry.node_id
+                                    parent_id = entry.parent_id
+                                    node_lut[node_id] = t_entry
+                                    if parent_id != "0"
+                                        node_lut[parent_id].add_child(t_entry)
+                                    else
+                                        new_tree.add_root_node(t_entry)
+                            cur_list.push(new_conf)
+                    $scope.$apply(
+                        $scope.result_trees = cur_list
+                    )
+        $scope.get_info_class = (dev_conf) ->
+            if dev_conf.state == 40
+                return "text-danger"
+            else if dev_conf.state == 20
+                return "text-success"
+            else
+                return "text-warning"
+        install_devsel_link($scope.new_devsel, true)
+])
 
 {% endinlinecoffeescript %}
 

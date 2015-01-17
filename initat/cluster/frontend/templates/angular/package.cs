@@ -8,8 +8,6 @@ root = exports ? this
 
 package_module = angular.module("icsw.package", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-angular_module_setup([package_module])
-
 angular_add_simple_list_controller(
     package_module,
     "package_repo_base",

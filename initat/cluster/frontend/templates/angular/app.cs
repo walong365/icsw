@@ -10,10 +10,14 @@ ics_app = angular.module(
     "icsw.app",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
-        "icsw.menu_app", "icsw.user", "icsw.monitoring.create", "icsw.device.config", "icsw.device",
-        "icsw.login",
+        "icsw.menu_app", "icsw.user", "icsw.network",
+        "icsw.config", "icsw.config.gen",
+        "icsw.category_tree", "icsw.domain_name_tree",
+        "icsw.monitoring.create", "icsw.monitoring_build_info",
+        "icsw.device.config", "icsw.device", "icsw.device.variables",
+        "icsw.login", "icsw.package", "icsw.settings",
         "icsw.monitoring_basic", "icsw.monitoring_extended",
-        "icsw.partition_table",
+        "icsw.partition_table", "icsw.kernel", "icsw.image",
         "icsw.background_job_info",
     ]
 )

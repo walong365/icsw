@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/kernel.cs" %}{% endblock %}
-
 {% block title %}{% trans "Kernel Overview" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.kernel">
+<div>
 
 <script type="text/ng-template" id="kernel.html">
     {% crispy kernel_form kernel_form.helper %}
@@ -60,17 +58,5 @@
 </div>
 
 {% endverbatim %}
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.kernel']"), ["icsw.kernel"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

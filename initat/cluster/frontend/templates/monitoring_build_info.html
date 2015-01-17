@@ -2,8 +2,6 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/monitoring_build_info.cs" %}{% endblock %}
-
 {% block title %}{% trans "Monitoring - build info" %}{% endblock %}
 
 {% block content %}
@@ -12,7 +10,7 @@
 
 {% verbatim %}
 
-<div ng-controller="info_ctrl">
+<div ng-controller="mon_build_info_ctrl">
     <h2>Build info ({{ masters.length }} builds)</h2>
     <table class="table table-condensed table-hover" style="width:auto;">
         <thead>
@@ -68,17 +66,5 @@
 {% endverbatim %}
 
 </div>
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.monitoring_build_info']"), ["icsw.monitoring_build_info"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

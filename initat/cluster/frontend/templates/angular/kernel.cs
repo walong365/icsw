@@ -8,8 +8,6 @@ root = exports ? this
 
 kernel_module = angular.module("icsw.kernel", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
-angular_module_setup([kernel_module])
-
 DT_FORM = "YYYY-MM-DD HH:mm"
 
 angular_add_simple_list_controller(

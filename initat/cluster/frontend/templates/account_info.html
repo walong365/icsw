@@ -8,7 +8,7 @@
 
 {% verbatim %}
 
-<div id="icsw.user">
+<div>
     <div ng-controller="account_ctrl" ng-model="cur_user">
         <div ng-controller="password_ctrl">
             {% endverbatim %}
@@ -24,18 +24,5 @@
 </div>
 
 {% endverbatim %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.user']"), ["icsw.user"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
-
 
 {% endblock %}

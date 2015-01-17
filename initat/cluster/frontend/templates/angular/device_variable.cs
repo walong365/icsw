@@ -117,8 +117,6 @@ device_vars_template = """
 
 device_variable_module = angular.module("icsw.device.variables", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-angular_module_setup([device_variable_module])
-
 device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.enable_modal = true
@@ -135,12 +133,12 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             call_ajax
                 url : "{% url 'mon:get_mon_vars' %}"
                 data : {
-                	device_pk : obj.idx
+                    device_pk : obj.idx
                 }
                 dataType : "json"
                 success : (json) ->
                     $scope.$apply(
-                    	$scope.mon_vars = json
+                        $scope.mon_vars = json
                     )
             $scope.mon_vars = []#{"idx" : 0, "info" : "please wait, fetching data from server ..."}]
             $scope.base_edit.create(event)
