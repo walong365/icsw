@@ -23,8 +23,7 @@
     
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
 
-    {% block stylesheets %}
-        {% stylesheet 'part1' %}
+    {% stylesheet 'part1' %}
 
     <style type="text/css">
 
@@ -147,20 +146,26 @@
         background: #ffff00 !important;
     }
     
+    circle.fixed {
+        fill : #ffaaaa ;
+        stroke : #5555ff ;
+    }
+    .connect_line {
+        stroke : #9999ff ;
+        stroke-width : 4;
+        pointer-events : none;
+    }
+    .connect_line_hidden {
+        stroke-width : 0
+    }
+    .angular-google-map-container { height: 480px; }
     </style>
-    
-    {% block tab_js %}{% endblock %}
-    
-    {% endblock %}
-    {% block site_css %}
-    {% endblock %}
     
     <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
     
     <!-- All JavaScript at the bottom, except this Modernizr build.
          Modernizr enables HTML5 elements & feature detects for optimal performance.
          Create your own custom Modernizr build: www.modernizr.com/download/ -->
-    {% block javascript %}
         <!--[if lt IE 9]>
             <script type="text/javascript" src='{% static "js/libs/modernizr-2.7.1.ie8.js" %}'></script>
             <script type="text/javascript" src='{% static "js/libs/jquery-1.11.1.js" %}'></script>
@@ -225,11 +230,6 @@
         {% include "angular/image.cs" %}
         {% include "angular/package.cs" %}
         {% include "angular/settings.cs" %}
-        {# site-related javascript load blocks #}
-        {% block js_load_1 %}{% endblock %}
-        {# site-related angular modules #}
-        {% block angular %}{% endblock %}
-    {% endblock %}
 
 </head>
 <body>
