@@ -198,8 +198,6 @@ device_log_row_template = """
 
 device_boot_module = angular.module("icsw.device.boot", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-angular_module_setup([device_boot_module])
-
 device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
         access_level_service.install($scope)

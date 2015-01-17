@@ -4,8 +4,6 @@
 
 {% block title %}{% trans "RMS Overview" %}{% endblock %}
 
-{% block angular %}{% include "angular/rms.cs" %}{% endblock %}
-
 {% block content %}
 
 {% verbatim %}
@@ -15,16 +13,16 @@
     <div ng-controller="rms_ctrl">
         <tabset>
             <tab heading="{{ get_running_info() }}">
-                <running></running>
+                <rmsjobrunning></rmsjobrunning>
             </tab>
             <tab heading="{{ get_waiting_info() }}">
-                <waiting></waiting>
+                <rmsjobwaiting></rmsjobwaiting>
             </tab>
             <tab heading="{{ get_done_info() }}">
-                <done></done>
+                <rmsjobdone></rmsjobdone>
             </tab>
             <tab heading="{{ get_node_info() }}">
-                <node></node>
+                <rmsnode></rmsnode>
             </tab>
             <tab ng-repeat="io_struct in io_dict" heading="{{ io_struct.get_name() }}" active="io_struct.active">
                 <iostruct struct="io_struct"></iostruct>
@@ -35,17 +33,4 @@
 
 {% endverbatim %}
 
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.rms']"), ["icsw.rms"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
-
 {% endblock %}
-

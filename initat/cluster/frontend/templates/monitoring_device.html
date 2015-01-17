@@ -2,13 +2,11 @@
 
 {% load i18n coffeescript crispy_forms_tags staticfiles %}
 
-{% block angular %}{% include "angular/monitoring_device.cs" %}{% endblock %}
-
 {% block title %}{% trans "Monitoring,  device settings" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.monitoring_device">
+<div>
 
 <script type="text/ng-template" id="monitoring_device.html">
     {% crispy device_monitoring_form device_monitoring_form.helper %}
@@ -77,17 +75,5 @@
 </div>
 
 <div id="mon_tables"></div>
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.monitoring_device']"), ["icsw.monitoring_device"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

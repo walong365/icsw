@@ -178,4 +178,3 @@ class license_user_coarse_list(_license_usage_view):
 class license_device_coarse_list(_license_usage_view):
     def get_name_column_name(self):
         return "ext_license_client__short_name"
-

@@ -4,13 +4,11 @@
 
 {% block title %}{% trans "License Liveview" %}{% endblock %}
 
-{% block angular %}{% include "angular/rms.cs" %}{% endblock %}
-
 {% block content %}
 
 {% verbatim %}
 
-<div id="icsw.rms">
+<div>
     <div ng-controller="lic_liveview_ctrl">
         <accordion close-others="no" ng-show="lic_overview.length">
             <accordion-group is-open="overview_open">
@@ -135,17 +133,4 @@
 
 {% endverbatim %}
 
- <script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.rms']"), ["icsw.rms"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
-
 {% endblock %}
-

@@ -2,8 +2,6 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
-{% block angular %}{% include "angular/monitoring_overview.cs" %}{% endblock %}
-
 {% block title %}{% trans "Monitoring - Overview" %}{% endblock %}
 
 {% block content %}
@@ -11,7 +9,7 @@
 {% verbatim %}
 
 <h2>Monitoring Overview</h2>
-<div id="icsw.monitoring_overview">
+<div>
 
     <script type="text/ng-template" id="monitoring_overview_template.html">
         <div class="panel panel-default" style="width: auto">
@@ -75,17 +73,5 @@
 </div>
 
 {% endverbatim %}
-
-<script>
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.monitoring_overview']"), ["icsw.monitoring_overview"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

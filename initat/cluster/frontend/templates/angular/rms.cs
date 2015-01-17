@@ -443,8 +443,6 @@ lic_graph_template = """
 
 rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "ui.bootstrap.datetimepicker", "angular-ladda"])
 
-angular_module_setup([rms_module])
-
 LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
@@ -884,7 +882,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     $scope.header_filter_set = true
                 )
                 $scope.reload()
-]).directive("running", ($templateCache) ->
+]).directive("rmsjobrunning", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("running_table.html")
@@ -892,7 +890,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             if "filter" of attrs
                 scope.pagRun.conf.filter = attrs["filter"]
     }
-).directive("waiting", ($templateCache) ->
+).directive("rmsjobwaiting", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("waiting_table.html")
@@ -900,7 +898,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             if "filter" of attrs
                 scope.pagWait.conf.filter = attrs["filter"]
     }
-).directive("done", ($templateCache) ->
+).directive("rmsjobdone", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("done_table.html")
@@ -908,7 +906,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             if "filter" of attrs
                 scope.pagDone.conf.filter = attrs["filter"]
     }
-).directive("node", ($templateCache) ->
+).directive("rmsnode", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("node_table.html")
@@ -1400,8 +1398,6 @@ class license_usage
         @relative_co = @checkout_time.fromNow()
 
         
-add_rrd_directive(rms_module)
-
 {% endinlinecoffeescript %}
 
 </script>

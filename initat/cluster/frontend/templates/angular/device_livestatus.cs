@@ -428,10 +428,6 @@ mh_table_template = """
 
 device_livestatus_module = angular.module("icsw.device.livestatus", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
-angular_module_setup([device_livestatus_module])
-
-add_tree_directive(device_livestatus_module)
-
 get_service_state_string = (entry) ->
     return {
         0: "OK"

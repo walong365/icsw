@@ -434,8 +434,6 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
 
 device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"])
 
-angular_module_setup([device_network_module])
-
 device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout) ->
         access_level_service.install($scope)
@@ -1107,7 +1105,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
             $scope.devices = _dev_sel
             $scope.$apply()
         install_devsel_link($scope.new_devsel, false)
-]).directive("hostnode", ["dragging", (dragging) ->
+]).directive("nethostnode", ["dragging", (dragging) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
@@ -1162,7 +1160,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 cur_di = new device_info(event, scope.node.id)
                 cur_di.show()
     }
-]).directive("hostlink", () ->
+]).directive("nethostlink", () ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
@@ -1249,8 +1247,8 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
     <!-- translate before scale: no need to scale offsets -->
     <rect style="stroke:black;stroke-width:2px;fill-opacity:0" x="0" y="0" ng-attr-width="{{ size.width }}" ng-attr-height="{{ size.height }}"></rect>
     <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }}) scale({{ zoom.factor }})">
-        <hostlink ng-repeat="link in links" link="link" redraw="redraw_nodes"></hostlink>
-        <hostnode ng-repeat="node in nodes" node="node" redraw="redraw_nodes"></hostnode>
+        <nethostlink ng-repeat="link in links" link="link" redraw="redraw_nodes"></nethostlink>
+        <nethostnode ng-repeat="node in nodes" node="node" redraw="redraw_nodes"></nethostnode>
     </g>
 </svg>
 {% endverbatim %}

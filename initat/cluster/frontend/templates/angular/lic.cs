@@ -19,8 +19,6 @@ root = exports ? this
 # NOTE: ui.bootstrap and angular-dimple both define a bar directive and therefore can not be used in the same module
 lic_module = angular.module("icsw.lic", ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "restangular", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple", "angular-dimple", "ui.bootstrap.datetimepicker"])
 
-angular_module_setup([lic_module])
-
 
 lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$resource", "d3_service", "dimple_service"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, $resource, d3_service, dimple_service) ->

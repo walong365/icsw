@@ -29,7 +29,7 @@
 
 {% verbatim %}
 
-<div id="icsw.network.device">
+<div>
     <tabset>
         <tab heading="settings">
             <div ng-controller="network_ctrl">
@@ -108,17 +108,5 @@
 </div>
 
 {% endverbatim %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.network.device']"), ["icsw.network.device"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}
