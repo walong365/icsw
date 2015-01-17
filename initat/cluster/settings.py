@@ -402,6 +402,7 @@ PIPELINE_JS = {
             # "js/libs/angular-block-ui.js",
             "js/libs/ui-select/select.js",
             "js/libs/ui-bootstrap-tpls.min.js",
+            "js/libs/angular-ui-router.js",
             # now in common_function as coffeescript
             # "js/libs/ui-codemirror.min.js",
             "js/libs/angular-datetimepicker.js",
@@ -492,6 +493,7 @@ if os.path.isfile(LOCAL_CONFIG):
     else:
         _config_ok = True
     sys.path.remove(local_dir)
+
 if not _config_ok:
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
     SECRET_KEY = get_random_string(50, chars)
