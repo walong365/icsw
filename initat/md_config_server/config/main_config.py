@@ -61,7 +61,7 @@ class main_config(object):
                 fetch_network_info=True
             )
             self.slave_uuid = monitor_server.uuid
-            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg, allow_route_to_other_networks=True)
+            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg)
             if not route:
                 self.slave_ip = None
                 self.master_ip = None
@@ -69,11 +69,13 @@ class main_config(object):
             else:
                 self.slave_ip = route[0][3][1][0]
                 self.master_ip = route[0][2][1][0]
-                self.log("IP-address of slave %s is %s (master: %s)" % (
-                    unicode(monitor_server),
-                    self.slave_ip,
-                    self.master_ip
-                ))
+                self.log(
+                    "IP-address of slave {} is {} (master: {})".format(
+                        unicode(monitor_server),
+                        self.slave_ip,
+                        self.master_ip
+                    )
+                )
         else:
             self.__dir_offset = ""
             # self.__min_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
@@ -130,9 +132,13 @@ class main_config(object):
         return self.__dict.keys()
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log("[mc%s] %s" % (
-            " %s" % (self.__slave_name) if self.__slave_name else "",
-            what), level)
+        self.__process.log(
+            "[mc{}] {}".format(
+                " {}".format(self.__slave_name) if self.__slave_name else "",
+                what
+            ),
+            level
+        )
 
     def get_command_name(self):
         return os.path.join(self.__r_dir_dict["var"], "icinga.cmd")
@@ -158,16 +164,16 @@ class main_config(object):
         self.__r_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, dir_name))) for dir_name in dir_names])
         for dir_name, full_path in self.__w_dir_dict.iteritems():
             if not os.path.exists(full_path):
-                self.log("Creating directory %s" % (full_path))
+                self.log("Creating directory {}".format(full_path))
                 os.makedirs(full_path)
             else:
-                self.log("already exists : %s" % (full_path))
+                self.log("already exists : {}".format(full_path))
 
     def _clear_etc_dir(self):
         if self.master:
-            self.log("not clearing %s dir (master)" % (self.__w_dir_dict["etc"]))
+            self.log("not clearing {} dir (master)".format(self.__w_dir_dict["etc"]))
         else:
-            self.log("clearing %s dir (slave)" % (self.__w_dir_dict["etc"]))
+            self.log("clearing {} dir (slave)".format(self.__w_dir_dict["etc"]))
             for dir_e in os.listdir(self.__w_dir_dict["etc"]):
                 full_path = "%s/%s" % (self.__w_dir_dict["etc"], dir_e)
                 if os.path.isfile(full_path):

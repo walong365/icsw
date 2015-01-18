@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -68,19 +68,21 @@ class sync_config(object):
                 slave_cfg,
                 allow_route_to_other_networks=True,
                 global_sort_results=True,
-                )
+            )
             if not route:
                 self.slave_ip = None
                 self.master_ip = None
-                self.log("no route to slave %s found" % (unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
+                self.log("no route to slave {} found".format(unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.slave_ip = route[0][3][1][0]
                 self.master_ip = route[0][2][1][0]
-                self.log("IP-address of slave %s is %s (master: %s)" % (
-                    unicode(monitor_server),
-                    self.slave_ip,
-                    self.master_ip
-                ))
+                self.log(
+                    "IP-address of slave {} is {} (master ip: {})".format(
+                        unicode(monitor_server),
+                        self.slave_ip,
+                        self.master_ip
+                    )
+                )
             # target config version directory for distribute
             self.__tcv_dict = {}
         else:
@@ -122,7 +124,7 @@ class sync_config(object):
                 _latest_build = _latest_build[0]
                 self.mon_version = _latest_build.mon_version
                 self.relayer_version = _latest_build.relayer_version
-                self.log("recovered MonVer %s / RelVer %s from DB" % (self.mon_version, self.relayer_version))
+                self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
 
     def _relayer_gen(self):
         # return the relayer generation
@@ -154,16 +156,21 @@ class sync_config(object):
             if key in srv_com:
                 _new_vers = srv_com[key].text
                 if _new_vers != getattr(self, key):
-                    self.log("changing %s from '%s' to '%s'" % (
+                    self.log("changing {} from '{}' to '{}'".format(
                         key,
                         getattr(self, key),
-                        _new_vers))
+                        _new_vers)
+                    )
                     setattr(self, key, _new_vers)
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log("[sc %s] %s" % (
-            self.__slave_name if self.__slave_name else "master",
-            what), level)
+        self.__process.log(
+            "[sc {}] {}".format(
+                self.__slave_name if self.__slave_name else "master",
+                what
+            ),
+            level
+        )
 
     def _create_directories(self):
         dir_names = [
@@ -295,9 +302,9 @@ class sync_config(object):
                         host="DIRECT",
                         slave_name=self.__slave_name,
                         port="0",
-                        version="%d" % (self.send_time),
+                        version="{:d}".format(self.send_time),
                         directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
-                        )
+                    )
                     self._send(srv_com)
                     for cur_file in sorted(file_names):
                         full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
@@ -313,7 +320,7 @@ class sync_config(object):
                                 port="0",
                                 uid="{:d}".format(os.stat(full_r_path)[stat.ST_UID]),
                                 gid="{:d}".format(os.stat(full_r_path)[stat.ST_GID]),
-                                version="{:d}".format(self.send_time),
+                                version="{:d}".format(int(self.send_time)),
                                 file_name="{}".format(full_w_path),
                                 content=base64.b64encode(_content)
                             )
@@ -330,8 +337,8 @@ class sync_config(object):
                         host="DIRECT",
                         slave_name=self.__slave_name,
                         port="0",
-                        version="%d" % (self.send_time),
-                        )
+                        version="{:d}".format(int(self.send_time)),
+                    )
                     _bld = srv_com.builder()
                     srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
                     self._send(srv_com)
@@ -369,12 +376,12 @@ class sync_config(object):
             host="DIRECT",
             slave_name=self.__slave_name,
             port="0",
-            version="%d" % (self.send_time),
+            version="{:d}".format(int(self.send_time)),
         )
         _bld = srv_com.builder()
 
         srv_com["file_list"] = _bld.file_list(
-            *[_bld.file(_path, uid="%d" % (_uid), gid="%d" % (_gid), size="%d" % (_size)) for _uid, _gid, _path, _size, _content in _send_list]
+            *[_bld.file(_path, uid="{:d}".format(_uid), gid="{:d}".format(_gid), size="{:d}".format(_size)) for _uid, _gid, _path, _size, _content in _send_list]
             )
         srv_com["bulk"] = base64.b64encode(bz2.compress("".join([_parts[-1] for _parts in _send_list])))
         return srv_com
@@ -392,11 +399,13 @@ class sync_config(object):
         )
         if not pend_keys and not error_keys:
             _dist_time = abs(cur_time - self.send_time)
-            self.log("actual distribution_set %d is OK (in %s, %.2f / sec)" % (
-                self.config_version_send,
-                logging_tools.get_diff_time_str(_dist_time),
-                self.num_send[self.config_version_send] / _dist_time,
-                ))
+            self.log(
+                "actual distribution_set {:d} is OK (in {}, {:.2f} / sec)".format(
+                    int(self.config_version_send),
+                    logging_tools.get_diff_time_str(_dist_time),
+                    self.num_send[self.config_version_send] / _dist_time,
+                )
+            )
             self.config_version_installed = self.config_version_send
             self.dist_ok = True
             self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
@@ -411,8 +420,9 @@ class sync_config(object):
                 command="call_command",
                 host="DIRECT",
                 port="0",
-                version="%d" % (self.config_version_send),
-                cmdline="/etc/init.d/icinga reload")
+                version="{:d}".format(int(self.config_version_send)),
+                cmdline="/etc/init.d/icinga reload"
+            )
             self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
 
     def _parse_list(self, in_list):
@@ -445,7 +455,7 @@ class sync_config(object):
             file_name = srv_com["file_name"].text
             # check return state for validity
             if not server_command.srv_reply_state_is_valid(file_status):
-                self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("file_state {:d} is not valid".format(file_status), logging_tools.LOG_LEVEL_CRITICAL)
             self.log("file_content_status for %s is %s (%d), version %d (dist: %d)" % (
                 file_name,
                 srv_com["result"].attrib["reply"],
