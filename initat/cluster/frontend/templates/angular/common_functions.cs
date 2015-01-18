@@ -250,209 +250,209 @@ class rest_data_source
         return r_list
     get: (rest_tuple) =>
         return @_data[@_build_key(rest_tuple[0], rest_tuple[1])]
-  
-angular_module_setup = (module_list, url_list=[]) ->
-    $(module_list).each (idx, cur_mod) ->
-        cur_mod.factory("access_level_service", () ->
-            # see lines 205 ff in backbone/models/user.py
-            check_level = (obj, ac_name, mask, any) ->
-                if ac_name.split(".").length != 3
-                    alert("illegal ac specifier '#{ac_name}'")
-                #console.log ac_name, obj._GLOBAL_, obj.access_levels
-                if obj and obj.access_levels?
-                    # object level permissions
-                    # no need to check for global permissions because those are mirrored down
-                    # to the object_level permission on the server
-                    if not obj._all
-                        obj._all = obj.access_levels
-                    if ac_name of obj._all
-                        if any
-                            return if obj._all[ac_name] & mask then true else false
-                        else
-                            return (obj._all[ac_name] & mask) == mask
-                    else
-                        return false
-                else
-                    # check global permissions
-                    obj = GLOBAL_PERMISSIONS
-                    if ac_name of obj
-                        if any
-                            if mask
-                                return if obj[ac_name] & mask then true else false
-                            else
-                                return true    
-                        else
-                            return (obj[ac_name] & mask) == mask
-                    else
-                        return false
-            func_dict = {
-                "acl_delete" : (obj, ac_name) ->
-                    return check_level(obj, ac_name, 4, true)
-                "acl_create" : (obj, ac_name) ->
-                    return check_level(obj, ac_name, 2, true)
-                "acl_modify" : (obj, ac_name) ->
-                    return check_level(obj, ac_name, 1, true)
-                "acl_read" : (obj, ac_name) ->
-                    return check_level(obj, ac_name, 0, true)
-                "acl_any" : (obj, ac_name, mask) ->
-                    return check_level(obj, ac_name, mask, true)
-                "acl_all" : (obj, ac_name, mask) ->
-                    return check_level(obj, ac_name, mask, false)
 
-            }
-            return {
-                "install" : (scope) ->
-                    scope.acl_create = func_dict["acl_create"]
-                    scope.acl_modify = func_dict["acl_modify"]
-                    scope.acl_delete = func_dict["acl_delete"]
-                    scope.acl_read = func_dict["acl_read"]
-                    scope.acl_any = func_dict["acl_any"]
-                    scope.acl_all = func_dict["acl_all"]
-           }
-        ).factory("icswTools", () ->
-            return {
-                "get_size_str" : (size, factor, postfix) ->
-                    f_idx = 0
-                    while size > factor
-                        size = parseInt(size/factor)
-                        f_idx += 1
-                    factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
-                    return "#{size} #{factor}#{postfix}"
-            }
-        ).config(['$httpProvider', 
-            ($httpProvider) ->
-                $httpProvider.defaults.xsrfCookieName = 'csrftoken'
-                $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
-        ]).filter("paginator", ["$filter", ($filter) ->
-            return (arr, scope, pagname) ->
-                cur_ps = if pagname then scope.$eval(pagname) else scope.pagSettings
-                if cur_ps.conf.init
-                    arr = cur_ps.apply_filter(arr)
-                    return arr.slice(cur_ps.conf.start_idx, cur_ps.conf.end_idx + 1)
+icsw_tools = angular.module(
+    "icsw.tools", []
+).factory("icswTools", () ->
+    return {
+        "get_size_str" : (size, factor, postfix) ->
+            f_idx = 0
+            while size > factor
+                size = parseInt(size/factor)
+                f_idx += 1
+            factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
+            return "#{size} #{factor}#{postfix}"
+    }
+).factory("access_level_service", () ->
+    # see lines 205 ff in backbone/models/user.py
+    check_level = (obj, ac_name, mask, any) ->
+        if ac_name.split(".").length != 3
+            alert("illegal ac specifier '#{ac_name}'")
+        #console.log ac_name, obj._GLOBAL_, obj.access_levels
+        if obj and obj.access_levels?
+            # object level permissions
+            # no need to check for global permissions because those are mirrored down
+            # to the object_level permission on the server
+            if not obj._all
+                obj._all = obj.access_levels
+            if ac_name of obj._all
+                if any
+                    return if obj._all[ac_name] & mask then true else false
                 else
-                    return arr
-        ]).filter("paginator2", ["$filter", ($filter) ->
-            return (arr, pag_settings) ->
-                if pag_settings.conf.init
-                    arr = pag_settings.apply_filter(arr)
-                    return arr.slice(pag_settings.conf.start_idx, pag_settings.conf.end_idx + 1)
+                    return (obj._all[ac_name] & mask) == mask
+            else
+                return false
+        else
+            # check global permissions
+            obj = GLOBAL_PERMISSIONS
+            if ac_name of obj
+                if any
+                    if mask
+                        return if obj[ac_name] & mask then true else false
+                    else
+                        return true    
                 else
-                    return arr
-        ]).filter("paginator_filter", ["$filter", ($filter) ->
-            return (arr, scope) ->
-                return scope.pagSettings.apply_filter(arr)
-        ]).config(["RestangularProvider", 
-            (RestangularProvider) ->
-                RestangularProvider.setRestangularFields({
-                    "id" : "idx"
-                })
-                RestangularProvider.setResponseInterceptor((data, operation, what, url, response, deferred) ->
-                    if data.log_lines
-                        for entry in data.log_lines
-                            noty
-                                type : {20 : "success", 30 : "warning", 40 : "error", 50 : "alert"}[entry[0]] 
-                                text : entry[1]
-                    if data._change_list
-                        $(data._change_list).each (idx, entry) ->
-                            noty
-                                text : entry[0] + " : " + entry[1]
-                        delete data._change_list
-                    if data._messages
-                        $(data._messages).each (idx, entry) ->
-                            noty
-                                text : entry
-                    return data
-                )
-                RestangularProvider.setErrorInterceptor((resp) ->
-                    error_list = []
-                    if typeof(resp.data) == "string"
-                        if resp.data
-                            resp.data = {"error" : resp.data}
-                        else
-                            resp.data = {}
-                    for key, value of resp.data
-                        key_str = if key == "__all__" then "error: " else "#{key} : "
-                        if key != "_reset_list"
-                            if Array.isArray(value)
-                                for sub_val in value
-                                    if sub_val.non_field_errors
-                                        error_list.push(key_str + sub_val.non_field_errors.join(", "))
-                                    else
-                                        error_list.push(key_str + String(sub_val))
-                            else
-                                if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
-                                    error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
-                    new_error_list = []
-                    for _err in error_list
-                        if _err not in new_error_list
-                            new_error_list.push(_err)
-                            noty
-                                text : _err
-                                type : "error"
-                                timeout : false
-                    return true
-                )
-        ]).service("paginatorSettings", ["$filter", ($filter) ->
-        # in fact identical ?
-        # cur_mod.service("paginatorSettings", (paginator_class))
-            return new paginator_root($filter)
-        ]).service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
-            return new rest_data_source($q, Restangular)
-        ]).service("sharedDataSource", [() ->
-            return new shared_data_source()
-        ]).directive("paginator", ($templateCache) ->
-            link = (scope, element, attrs) ->
-                #console.log attrs.pagSettings, scope.$eval(attrs.pagSettings), scope
-                #pagSettings = scope.$eval(scope.pagSettings)
-                pagSettings = scope.pagSettings
-                pagSettings.conf.per_page = parseInt(attrs.perPage)
-                #scope.pagSettings.conf.filter = attrs.paginatorFilter
-                if attrs.paginatorEpp
-                    pagSettings.set_epp(attrs.paginatorEpp)
-                if attrs.paginatorFilter
-                    pagSettings.conf.filter_mode = attrs.paginatorFilter
-                    if pagSettings.conf.filter_mode == "simple"
-                        pagSettings.conf.filter = ""
-                    else if pagSettings.conf.filter_mode == "func"
-                        pagSettings.conf.filter_func = scope.filterFunc
-                scope.activate_page = (page_num) ->
-                    pagSettings.activate_page(page_num)
-                scope.$watch(
-                    () -> return scope.entries
-                    (new_el) ->
-                        pagSettings.set_entries(new_el)
-                )
-                scope.$watch(
-                    () -> return pagSettings.conf.filter
-                    (new_el) ->
-                        pagSettings.set_entries(scope.entries)
-                )
-                scope.$watch(
-                    () -> return pagSettings.conf.per_page
-                    (new_el) ->
-                        pagSettings.set_entries(scope.entries)
-                )
-                scope.$watch(
-                    () -> return pagSettings.conf.filter_settings
-                    (new_el) ->
-                        pagSettings.set_entries(scope.entries)
-                    true
-                )
-            return {
-                restrict : "EA"
-                scope:
-                    entries     : "="
-                    pagSettings : "="
-                    paginatorFilter : "="
-                    filterFunc  : "&paginatorFilterFunc"
-                template : icsw_paginator
-                link     : link
-            }
-        #).config((blockUIConfigProvider) ->
-        #    console.log blockUIConfigProvider
-        #    blockUIConfigProvider.message("oh no...")
-        #    blockUIConfigProvider.delay(0)
+                    return (obj[ac_name] & mask) == mask
+            else
+                return false
+    func_dict = {
+        "acl_delete" : (obj, ac_name) ->
+            return check_level(obj, ac_name, 4, true)
+        "acl_create" : (obj, ac_name) ->
+            return check_level(obj, ac_name, 2, true)
+        "acl_modify" : (obj, ac_name) ->
+            return check_level(obj, ac_name, 1, true)
+        "acl_read" : (obj, ac_name) ->
+            return check_level(obj, ac_name, 0, true)
+        "acl_any" : (obj, ac_name, mask) ->
+            return check_level(obj, ac_name, mask, true)
+        "acl_all" : (obj, ac_name, mask) ->
+            return check_level(obj, ac_name, mask, false)
+
+    }
+    return {
+        "install" : (scope) ->
+            scope.acl_create = func_dict["acl_create"]
+            scope.acl_modify = func_dict["acl_modify"]
+            scope.acl_delete = func_dict["acl_delete"]
+            scope.acl_read = func_dict["acl_read"]
+            scope.acl_any = func_dict["acl_any"]
+            scope.acl_all = func_dict["acl_all"]
+   }
+).config(['$httpProvider', 
+    ($httpProvider) ->
+        $httpProvider.defaults.xsrfCookieName = 'csrftoken'
+        $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
+]).filter("paginator", ["$filter", ($filter) ->
+    return (arr, scope, pagname) ->
+        cur_ps = if pagname then scope.$eval(pagname) else scope.pagSettings
+        if cur_ps.conf.init
+            arr = cur_ps.apply_filter(arr)
+            return arr.slice(cur_ps.conf.start_idx, cur_ps.conf.end_idx + 1)
+        else
+            return arr
+]).filter("paginator2", ["$filter", ($filter) ->
+    return (arr, pag_settings) ->
+        if pag_settings.conf.init
+            arr = pag_settings.apply_filter(arr)
+            return arr.slice(pag_settings.conf.start_idx, pag_settings.conf.end_idx + 1)
+        else
+            return arr
+]).filter("paginator_filter", ["$filter", ($filter) ->
+    return (arr, scope) ->
+        return scope.pagSettings.apply_filter(arr)
+]).config(["RestangularProvider", 
+    (RestangularProvider) ->
+        RestangularProvider.setRestangularFields({
+            "id" : "idx"
+        })
+        RestangularProvider.setResponseInterceptor((data, operation, what, url, response, deferred) ->
+            if data.log_lines
+                for entry in data.log_lines
+                    noty
+                        type : {20 : "success", 30 : "warning", 40 : "error", 50 : "alert"}[entry[0]] 
+                        text : entry[1]
+            if data._change_list
+                $(data._change_list).each (idx, entry) ->
+                    noty
+                        text : entry[0] + " : " + entry[1]
+                delete data._change_list
+            if data._messages
+                $(data._messages).each (idx, entry) ->
+                    noty
+                        text : entry
+            return data
         )
+        RestangularProvider.setErrorInterceptor((resp) ->
+            error_list = []
+            if typeof(resp.data) == "string"
+                if resp.data
+                    resp.data = {"error" : resp.data}
+                else
+                    resp.data = {}
+            for key, value of resp.data
+                key_str = if key == "__all__" then "error: " else "#{key} : "
+                if key != "_reset_list"
+                    if Array.isArray(value)
+                        for sub_val in value
+                            if sub_val.non_field_errors
+                                error_list.push(key_str + sub_val.non_field_errors.join(", "))
+                            else
+                                error_list.push(key_str + String(sub_val))
+                    else
+                        if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
+                            error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
+            new_error_list = []
+            for _err in error_list
+                if _err not in new_error_list
+                    new_error_list.push(_err)
+                    noty
+                        text : _err
+                        type : "error"
+                        timeout : false
+            return true
+        )
+]).service("paginatorSettings", ["$filter", ($filter) ->
+# in fact identical ?
+# cur_mod.service("paginatorSettings", (paginator_class))
+    return new paginator_root($filter)
+]).service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
+    return new rest_data_source($q, Restangular)
+]).service("sharedDataSource", [() ->
+    return new shared_data_source()
+]).directive("paginator", ($templateCache) ->
+    link = (scope, element, attrs) ->
+        #console.log attrs.pagSettings, scope.$eval(attrs.pagSettings), scope
+        #pagSettings = scope.$eval(scope.pagSettings)
+        pagSettings = scope.pagSettings
+        pagSettings.conf.per_page = parseInt(attrs.perPage)
+        #scope.pagSettings.conf.filter = attrs.paginatorFilter
+        if attrs.paginatorEpp
+            pagSettings.set_epp(attrs.paginatorEpp)
+        if attrs.paginatorFilter
+            pagSettings.conf.filter_mode = attrs.paginatorFilter
+            if pagSettings.conf.filter_mode == "simple"
+                pagSettings.conf.filter = ""
+            else if pagSettings.conf.filter_mode == "func"
+                pagSettings.conf.filter_func = scope.filterFunc
+        scope.activate_page = (page_num) ->
+            pagSettings.activate_page(page_num)
+        scope.$watch(
+            () -> return scope.entries
+            (new_el) ->
+                pagSettings.set_entries(new_el)
+        )
+        scope.$watch(
+            () -> return pagSettings.conf.filter
+            (new_el) ->
+                pagSettings.set_entries(scope.entries)
+        )
+        scope.$watch(
+            () -> return pagSettings.conf.per_page
+            (new_el) ->
+                pagSettings.set_entries(scope.entries)
+        )
+        scope.$watch(
+            () -> return pagSettings.conf.filter_settings
+            (new_el) ->
+                pagSettings.set_entries(scope.entries)
+            true
+        )
+    return {
+        restrict : "EA"
+        scope:
+            entries     : "="
+            pagSettings : "="
+            paginatorFilter : "="
+            filterFunc  : "&paginatorFilterFunc"
+        template : icsw_paginator
+        link     : link
+    }
+#).config((blockUIConfigProvider) ->
+#    console.log blockUIConfigProvider
+#    blockUIConfigProvider.message("oh no...")
+#    blockUIConfigProvider.delay(0)
+)
         
 handle_reset = (data, e_list, idx) ->
     # used to reset form fields when requested by server reply
@@ -769,7 +769,8 @@ d3js_module = angular.module("icsw.d3", []
         }
 ])
 
-dimple_module = angular.module("icsw.dimple", []
+dimple_module = angular.module(
+    "icsw.dimple", []
 ).factory("dimple_service", ["$document", "$q", "$rootScope",
     ($document, $q, $rootScope) ->
         d = $q.defer()
@@ -1307,7 +1308,6 @@ reload_sidebar_tree = (pk_list) ->
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin
-root.angular_module_setup = angular_module_setup
 root.handle_reset = handle_reset
 root.angular_add_simple_list_controller = angular_add_simple_list_controller
 root.angular_add_mixin_list_controller = angular_add_mixin_list_controller

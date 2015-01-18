@@ -10,7 +10,7 @@ ics_app = angular.module(
     "icsw.app",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
-        "icsw.menu_app", "icsw.user", "icsw.network",
+        "icsw.menu_app", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
         "icsw.config", "icsw.config.gen",
         "icsw.rms", "icsw.lic", "icsw.server.info",
         "icsw.network.device",
@@ -29,9 +29,9 @@ ics_app.config(() ->
     console.log "go"
 )
 
-root.ics_app = ics_app
+add_tree_directive(ics_app)
 
-angular_module_setup([ics_app])
+root.ics_app = ics_app
 
 create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular"])
 

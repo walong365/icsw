@@ -385,60 +385,53 @@ permissions_template = """
 
 {% endverbatim %}
 
-angular_add_password_controller = (module, name) ->
-    module.run(($templateCache) ->
-        $templateCache.put("set_password.html", enter_password_template)
-    )
-    module.controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
-            $scope.$on("icsw.enter_password", () ->
-                $modal.open
-                    template : $templateCache.get("set_password.html")
-                    controller : ($scope, $modalInstance, scope) ->
-                        $scope.pwd = {
-                            "pwd1" : ""
-                            "pwd2" : ""
-                        }
-                        $scope.dyn_check = (val) ->
-                            $scope.check()
-                            _rc = []
-                            if val.length < 8
-                                _rc.push("has-error")
-                            return _rc.join(" ")
-                        $scope.ok = () ->
-                            $modalInstance.close(true)
-                            scope.$emit("icsw.set_password", $scope.pwd.pwd1)
-                        $scope.check = () ->
-                            if $scope.pwd.pwd1 == "" and $scope.pwd.pwd1 == $scope.pwd.pwd2
-                                $scope.pwd_error = "empty passwords"
-                                $scope.pwd_error_class = "alert alert-warning"
-                                return false
-                            else if $scope.pwd.pwd1.length >= 8 and $scope.pwd.pwd1 == $scope.pwd.pwd2
-                                $scope.pwd_error = "passwords match"
-                                $scope.pwd_error_class = "alert alert-success"
-                                return true
-                            else
-                                $scope.pwd_error = "passwords do not match or too short"
-                                $scope.pwd_error_class = "alert alert-danger"
-                                return false
-                        $scope.cancel = () ->
-                            $modalInstance.dismiss("cancel")
-                    backdrop : "static"
-                    resolve:
-                        scope: () ->
-                            return $scope
-            )
-    ])
+password_test_module = angular.module(
+    "icsw.password.test",
+    ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"]
+).run(($templateCache) ->
+    $templateCache.put("set_password.html", enter_password_template)
+).controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+        $scope.$on("icsw.enter_password", () ->
+            $modal.open
+                template : $templateCache.get("set_password.html")
+                controller : ($scope, $modalInstance, scope) ->
+                    $scope.pwd = {
+                        "pwd1" : ""
+                        "pwd2" : ""
+                    }
+                    $scope.dyn_check = (val) ->
+                        $scope.check()
+                        _rc = []
+                        if val.length < 8
+                            _rc.push("has-error")
+                        return _rc.join(" ")
+                    $scope.ok = () ->
+                        $modalInstance.close(true)
+                        scope.$emit("icsw.set_password", $scope.pwd.pwd1)
+                    $scope.check = () ->
+                        if $scope.pwd.pwd1 == "" and $scope.pwd.pwd1 == $scope.pwd.pwd2
+                            $scope.pwd_error = "empty passwords"
+                            $scope.pwd_error_class = "alert alert-warning"
+                            return false
+                        else if $scope.pwd.pwd1.length >= 8 and $scope.pwd.pwd1 == $scope.pwd.pwd2
+                            $scope.pwd_error = "passwords match"
+                            $scope.pwd_error_class = "alert alert-success"
+                            return true
+                        else
+                            $scope.pwd_error = "passwords do not match or too short"
+                            $scope.pwd_error_class = "alert alert-danger"
+                            return false
+                    $scope.cancel = () ->
+                        $modalInstance.dismiss("cancel")
+                backdrop : "static"
+                resolve:
+                    scope: () ->
+                        return $scope
+        )
+])
 
-password_test_module = angular.module("icsw.password.test", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
-
-angular_add_password_controller(password_test_module)
-
-user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select"])
-
-add_tree_directive(user_module)
-
-angular_add_password_controller(user_module)
+user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.password.test"])
 
 class sidebar_tree extends tree_config
     constructor: (@scope, args) ->
@@ -1927,8 +1920,6 @@ virtual_desktop_utils = {
     get_viewer_command_line: (vdus, ip) ->
         return "echo \"#{vdus.password}\" | vncviewer -autopass #{ip}:#{vdus.effective_port }\n"
 }
-
-root.angular_add_password_controller = angular_add_password_controller
 
 root.sidebar_target_func = undefined
 root.sidebar_call_devsel_link_when_loaded = false

@@ -194,10 +194,10 @@
         <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
         {% javascript 'js_gmaps' %}
         {% include "angular/common_functions.cs" %}
+        {% include "angular/tree.cs" %}
         {% include "angular/app.cs" %}
         {% include "javascript/init.js" %}
         {% include "javascript/deviceinfo.js" %}
-        {% include "angular/tree.cs" %}
         {% include "angular/rrd.cs" %}
         {# common angular modules #}
         {% include "angular/smart_table_utils.cs" %}

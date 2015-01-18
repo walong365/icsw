@@ -6,8 +6,6 @@
 
 settings_module = angular.module("icsw.settings", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
-angular_add_password_controller(settings_module)
-
 settings_module.controller("settings_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "$window", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, $window) ->
         wait_list = restDataSource.add_sources([

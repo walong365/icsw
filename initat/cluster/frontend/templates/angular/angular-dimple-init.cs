@@ -66,11 +66,11 @@ angular.module("angular-dimple.area", [])
 
     return
 ])
-angular.module("angular-dimple.bar", []).directive("bar", [->
+angular.module("angular-dimple.bar", []).directive("dimplebar", [->
   restrict: "E"
   replace: true
   require: [
-    "bar"
+    "dimplebar"
     "^graph"
   ]
   controller: [

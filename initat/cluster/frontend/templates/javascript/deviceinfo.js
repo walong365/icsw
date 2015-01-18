@@ -277,4 +277,3 @@ root.device_info = device_info
 {% endinlinecoffeescript %}
 
 </script>
-
