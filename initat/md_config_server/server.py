@@ -36,7 +36,7 @@ from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
-from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader_process
+from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
 import cluster_location
 import codecs
 import inspect
@@ -81,7 +81,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.add_process(status_process("status"), start=True)
             self.add_process(syncer_process("syncer"), start=True)
             self.add_process(dynconfig_process("dynconfig"), start=True)
-            self.add_process(icinga_log_reader_process("icinga_log_reader"), start=True)
+            self.add_process(icinga_log_reader("icinga_log_reader"), start=True)
             # wait for the processes to start
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)

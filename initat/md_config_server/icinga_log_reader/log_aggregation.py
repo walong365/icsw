@@ -34,12 +34,13 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_service_notification_data,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
     mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_device_services
 from initat.cluster.backbone.models import duration
 from initat.cluster.backbone.models.functions import cluster_timezone
 
 from django.db import connection
 from django.db.models.aggregates import Max
+from initat.cluster.backbone.middleware import show_database_calls
 
 __all__ = [
 ]
@@ -54,20 +55,26 @@ def pairwise(iterable):
 
 
 class icinga_log_aggregator(object):
-    def __init__(self, log):
-        self.log = log
+    def __init__(self, log_reader):
+        '''
+        :param icinga_log_reader log_reader:
+        '''
+        self.log_reader = log_reader
+
+    def log(self, *args, **kwargs):
+        self.log_reader.log(*args, **kwargs)
 
     def update(self):
-
-        relevant_serv_alerts = mon_icinga_log_raw_service_alert_data.objects.filter(device_independent=False)
-        self._serv_alert_keys_cache = relevant_serv_alerts.values_list("device", "service", "service_info").distinct()
+        # it would be way too slow to get the device-services from the alerts table, which is huge, so we prepared it in this table
+        self._serv_alert_keys_cache = mon_icinga_log_device_services.objects.all().values_list("device_id", "service_id", "service_info")
+        # possibly TODO: also do same optimization with hosts. if each host has at least one service, we can just use the table above
         relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
         self._host_alert_keys_cache = relevant_host_alerts.values_list("device", flat=True).distinct()
 
         # aggregate in order of how often data is used, then you can quickly see results
-        for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):  #, duration.Hour):
+        # for duration_type in (duration.Hour, duration.Day, duration.Week, duration.Month, duration.Year):  # duration.Hour):
+        for duration_type in (duration.Day, ):
             self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
-            # hosts
             try:
                 last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
                 next_start_time = last_entry.end_date
@@ -80,27 +87,60 @@ class icinga_log_aggregator(object):
                 self.log("no archive data for duration type {}, starting new data at {}".format(duration_type.__name__, next_start_time))
 
             do_loop = True
+            i = 0
+            next_last_service_alert_cache = None
             while do_loop:
                 next_end_time = duration_type.get_end_time_for_start(next_start_time)
                 last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
                 if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(last_read_obj.timestamp, cluster_timezone):  # have sufficient data
                     self.log("creating entry for {} starting at {}".format(duration_type.__name__, next_start_time))
-                    self._create_timespan_entry(next_start_time, next_end_time, duration_type)
+                    next_last_service_alert_cache = self._create_timespan_entry(next_start_time, next_end_time, duration_type, next_last_service_alert_cache)
                 else:
                     self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
                     do_loop = False
 
+                # check if we are supposed to die
+                self.log_reader.step()
+                if self.log_reader["exit_requested"]:
+                    self.log("exit requested")
+                    do_loop = False
+
+                #i += 1
+
+                #def printfun(s):
+                #    with open("/tmp/db_calls", "a") as f:
+                #        f.write(s)
+                #        f.write("\n")
+                #show_database_calls(printfun=printfun, full=True)
+
+                #if i == 10:
+                #    do_loop = False
+                #    return
+
                 next_start_time = next_end_time
 
-    def _create_timespan_entry(self, start_time, end_time, duration_type):
+            if self.log_reader["exit_requested"]:
+                break
+
+    def _create_timespan_entry(self, start_time, end_time, duration_type, next_last_service_alert_cache=None):
         timespan_seconds = (end_time - start_time).total_seconds()
 
         timespan_db = mon_icinga_log_aggregated_timespan.objects.create(
             start_date=start_time,
             end_date=end_time,
-            duration=(end_time-start_time).total_seconds(),
+            duration=timespan_seconds,
             duration_type=duration_type.ID,
         )
+
+        if True or duration_type == duration.Hour:
+            next_last_service_alert_cache = self._create_timespan_entry_from_raw_data(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
+        else:
+            self._create_timespan_entry_incrementally(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
+            next_last_service_alert_cache = None  # we don't get this here
+        return next_last_service_alert_cache
+
+    def _create_timespan_entry_from_raw_data(self, timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache=None):
+        timespan_seconds = timespan_db.duration
 
         # get flappings of timespan (can't use db in inner loop)
         def preprocess_flapping_data(flapping_model, key_fun):
@@ -148,8 +188,12 @@ class icinga_log_aggregator(object):
                 # so we do the last grouping by this key here manually
                 if key not in last_service_alert_cache or last_service_alert_cache[key][1] < data['max_date']:
                     last_service_alert_cache[key] = (state, state_type), data['max_date']
-            return last_service_alert_cache
-        last_service_alert_cache = calc_last_service_alert_cache()
+            return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}  # drop max_date
+
+        if next_last_service_alert_cache:
+            last_service_alert_cache = next_last_service_alert_cache
+        else:
+            last_service_alert_cache = calc_last_service_alert_cache()
 
         def calc_last_host_alert_cache():
             try:
@@ -174,7 +218,8 @@ class icinga_log_aggregator(object):
                 # see comment in calc_last_service_alert_cache
                 if key not in last_host_alert_cache or last_host_alert_cache[key][1] < data['max_date']:
                     last_host_alert_cache[key] = (state, state_type), data['max_date']
-            return last_host_alert_cache
+
+            return {k: v[0] for (k, v) in last_host_alert_cache.iteritems()}  # drop max_date
         last_host_alert_cache = calc_last_host_alert_cache()
 
         # regular changes in time span
@@ -190,6 +235,7 @@ class icinga_log_aggregator(object):
             if not relevant_entries:
                 # always state before
                 weighted_states[state_description_before] += 1.0
+                last_state_description = state_description_before
             else:
                 # at least one entry
                 # first
@@ -203,8 +249,10 @@ class icinga_log_aggregator(object):
                 last_entry_timespan_seconds = (end_time - last_entry.date).total_seconds()
                 last_entry_weight = last_entry_timespan_seconds / timespan_seconds
 
-                weighted_states[(last_entry.state, last_entry.state_type)] += last_entry_weight
-            return weighted_states
+                last_state_description = (last_entry.state, last_entry.state_type)
+                weighted_states[last_state_description] += last_entry_weight
+
+            return weighted_states, last_state_description
 
         # flapping
         # check if we start in flapping state
@@ -250,15 +298,19 @@ class icinga_log_aggregator(object):
         host_alerts = calc_host_alerts()
 
         def process_service_alerts():
+            next_last_service_alert_cache = {}
+
             service_db_rows = []
             # don't consider alerts for any machine, they are added below
+
             for device_id, service_id, service_info in self._serv_alert_keys_cache:
                 # need to find last state
-                state_description_before = last_service_alert_cache.get((device_id, service_id, service_info), (None, None))[0]
+                state_description_before = last_service_alert_cache.get((device_id, service_id, service_info), None)
                 if not state_description_before:
                     state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
-                weighted_states = calc_weighted_states(service_alerts[(device_id, service_id, service_info)], state_description_before)
+                weighted_states, last_state_description = calc_weighted_states(service_alerts[(device_id, service_id, service_info)], state_description_before)
+                next_last_service_alert_cache[(device_id, service_id, service_info)] = last_state_description
 
                 flapping_ratio = calc_flapping_ratio(service_flapping_cache, (device_id, service_id, service_info))
                 if flapping_ratio != 0.0:
@@ -282,19 +334,17 @@ class icinga_log_aggregator(object):
                     self.log("missing icinga log entries for device {} between {} and {} ({}), amounts sum to {}".format(device_id, start_time, end_time,
                                                                                                                          duration_type.__name__, essential_weighted_states))
             mon_icinga_log_aggregated_service_data.objects.bulk_create(service_db_rows)
+            return next_last_service_alert_cache
 
         def process_host_alerts():
             host_db_rows = []
 
-            # NOTE: this is still slow and not optimized as service alerts
-
-            # don't consider alerts for any machine, they are added below
             for device_id in self._host_alert_keys_cache:
-                state_description_before = last_host_alert_cache.get(device_id, (None, None))[0]
+                state_description_before = last_host_alert_cache.get(device_id, None)
                 if not state_description_before:
                     state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED
 
-                weighted_states = calc_weighted_states(host_alerts[device_id], state_description_before)
+                weighted_states, last_state_description = calc_weighted_states(host_alerts[device_id], state_description_before)  # @UnusedVariable
                 flapping_ratio = calc_flapping_ratio(host_flapping_cache, device_id)
                 if flapping_ratio != 0.0:
                     weighted_states[(mon_icinga_log_aggregated_host_data.STATE_FLAPPING, mon_icinga_log_aggregated_host_data.STATE_FLAPPING)] = flapping_ratio
@@ -317,6 +367,16 @@ class icinga_log_aggregator(object):
 
             mon_icinga_log_aggregated_host_data.objects.bulk_create(host_db_rows)
 
-        process_service_alerts()
+        next_last_service_alert_cache = process_service_alerts()
         process_host_alerts()
+
+        return next_last_service_alert_cache
+
+    def _create_timespan_entry_incrementally(self, timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache):
+        if duration_type == duration.Day:
+
+            mon_icinga_log_aggregated_host_data.objects.filter(timespan__duration_type=duration.Hour.ID, timespan__start_date__range=(start_time, end_time))
+
+            # TODO
+
 

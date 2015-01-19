@@ -39,7 +39,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_service_notification_data, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
-    mon_icinga_log_raw_base
+    mon_icinga_log_raw_base, mon_icinga_log_device_services
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 
@@ -49,33 +49,7 @@ __all__ = [
 ]
 
 
-class icinga_log_reader_process(threading_tools.process_obj):
-    def process_init(self):
-        self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.zmq_context,
-            init_logger=True
-        )
-        connection.close()
-
-        self.icinga_log_reader = icinga_log_reader(self.log)
-
-        self.register_timer(self._update, 30 if global_config["DEBUG"] else 300, instant=True)
-
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_template.log(log_level, what)
-
-    def loop_post(self):
-        self.__log_template.close()
-
-    def _update(self):
-        self.icinga_log_reader.update()
-
-
-class icinga_log_reader(object):
-
+class icinga_log_reader(threading_tools.process_obj):
     class malformed_icinga_log_entry(RuntimeError):
         pass
 
@@ -110,15 +84,32 @@ class icinga_log_reader(object):
 
         always_collect_warnings = True
 
-    def __init__(self, log):
-        self.log = log
-        self._icinga_log_aggregator = icinga_log_aggregator(log)
+    #
+    def process_init(self):
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context,
+            init_logger=True
+        )
+        connection.close()
+
+        self._icinga_log_aggregator = icinga_log_aggregator(self)
+
+        self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+
+    def loop_post(self):
+        self.__log_template.close()
 
     def update(self):
         '''Called periodically. Only method to be called from outside of this class'''
         self._historic_service_map = {description.replace(" ", "_").lower(): pk
                                       for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
-        self._historic_host_map = {entry.full_name: entry.pk for entry in device.objects.all()}
+        self._historic_host_map = {entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')}
 
         # logs might contain ids which are not present any more. we discard such data (i.e. ids not present in these sets:)
         self._valid_service_ids = frozenset(mon_check_command.objects.all().values_list('pk', flat=True))
@@ -207,11 +198,11 @@ class icinga_log_reader(object):
 
                 # read archive
                 self.parse_archive_files(files_to_check, start_at=last_read.timestamp)
-
-                self.log("finished catching up with archive, continuing with current icinga log file")
-                # start reading cur file
-                logfile.seek(0)
-                self.parse_log_file(logfile)
+                if not self["exit_requested"]:
+                    self.log("finished catching up with archive, continuing with current icinga log file")
+                    # start reading cur file
+                    logfile.seek(0)
+                    self.parse_log_file(logfile)
 
         # check if icinga is even running
         # (we do this after parsing to have events in proper order in db, which is nice)
@@ -230,15 +221,18 @@ class icinga_log_reader(object):
                 self._create_icinga_down_entry(datetime.datetime.now(), msg, None, save=True)
 
         if self.constants.always_collect_warnings or not global_config["DEBUG"]:
-            self.log("Warnings while parsing:")
-            for warning, multiplicity in self._warnings.iteritems():
-                self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
+            if self._warnings:
+                self.log("warnings while parsing:")
+                for warning, multiplicity in self._warnings.iteritems():
+                    self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
+                self.log("end of warnings while parsing:")
 
-    def parse_log_file(self, logfile, logfilepath=None, start_at=None):
+    def parse_log_file(self, logfile, logfilepath=None, start_at=None, device_services_entries_set=None):
         '''
         :param file logfile: Parsing starts at position of logfile. Must be the main icinga log file.
         :param logfilepath: Path to logfile if it is an archive logfile, not the current one
         :param int start_at: only consider entries older than start_at
+        :param set device_services_entries_set: if list is given, (device_id, service_id, service_info)-tuples are added here instead of directly to db
         :return int: last read timestamp or None
         '''
         is_archive_logfile = logfilepath is not None
@@ -268,7 +262,7 @@ class icinga_log_reader(object):
             try:
                 timestamp, msg = self._parse_line(line_raw.rstrip("\n"), only_parse_timestamp=True)
                 if msg.startswith("Successfully shutdown"):
-                    self.log("detected icinga shutdown by log")
+                    # self.log("detected icinga shutdown by log")
                     # create alerts for all devices: indeterminate (icinga not running)
                     # note: this relies on the fact that on startup, icinga writes a status update on start
                     host_entry, service_entry, host_flapping_entry, service_flapping_entry = \
@@ -336,6 +330,15 @@ class icinga_log_reader(object):
         mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
         self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
 
+        for service_state in service_states:
+            if not service_state.device_independent:  # these would have dev_id, serv_id = (None, None)
+                if device_services_entries_set is not None:
+                    device_services_entries_set.add((service_state.device_id, service_state.service_id, service_state.service_info))
+                else:
+                    mon_icinga_log_device_services.objects.get_or_create(device_id=service_state.device_id,
+                                                                         service_id=service_state.service_id,
+                                                                         service_info=service_state.service_info)
+
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
             self._update_last_read(position, cur_line.timestamp)
@@ -374,13 +377,24 @@ class icinga_log_reader(object):
                 logfiles_date_data.append((year, month, day, hour, logfilepath))
 
         retval = None
+        device_services_entries_set = set()
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
             with codecs.open(logfilepath, 'r', 'utf-8', errors='replace') as logfile:
-                last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
+                last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at, device_services_entries_set=device_services_entries_set)
                 if retval is None:
                     retval = last_read_timestamp
                 else:
                     retval = max(retval, last_read_timestamp)
+                # check if we are supposed to die
+                self.step()
+                if self["exit_requested"]:
+                    self.log("exit requested")
+                    break
+
+        for device_id, service_id, service_info in device_services_entries_set:
+            mon_icinga_log_device_services.objects.get_or_create(device_id=device_id,
+                                                                 service_id=service_id,
+                                                                 service_info=service_info)
         return retval
 
     def _handle_warning(self, exception, logfilepath, cur_line_no):
