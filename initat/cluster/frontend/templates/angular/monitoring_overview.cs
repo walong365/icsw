@@ -94,9 +94,11 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.initial_sel = _dev_sel
             $scope.update_data()
-            $scope.$apply(  # if we do update_data() from this path, angular doesn't realise it
-                $scope.entries = $scope.entries
-            )
+            $scope.entries = $scope.entries
+            # TODO: since single-app move, this now seems to be executed from apply. Use whichever version works in final single-app version
+            #$scope.$apply(  # if we do update_data() from this path, angular doesn't realise it
+            #    $scope.entries = $scope.entries
+            #)
         install_devsel_link($scope.new_devsel, false)
 
 ]).directive("monitoringoverview", ($templateCache, $timeout) ->
