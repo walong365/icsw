@@ -1,13 +1,11 @@
-.chart {
-}
-.pieTip {
+.piechart-tooltip {
   position: absolute;
   float: left;
   min-width: 30px;
   max-width: 300px;
   padding: 5px 15px;
   border-radius: 2px;
-  background: rgba(255,255,255,.97);
+  background: rgba(255,255,255,1);
   color: #444;
   font-size: 17px;
   text-shadow: 0 1px 0 #fff;
@@ -23,7 +21,8 @@
           transform: all .3s;
   pointer-events: none;
 }
-.pieTip:after {
+.piechart-tooltip:after {
+    /* triangle pointer at bottom of piechart tooltip */
       position: absolute;
       left: 50%;
       bottom: -6px;
@@ -35,6 +34,7 @@
       border-top: 6px solid rgba(255,255,255,.95);
       line-height: 0;
 }
-.chart path {
+
+.chart {
   cursor: pointer;
 }

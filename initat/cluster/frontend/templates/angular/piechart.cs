@@ -21,19 +21,31 @@ angular.module(
             diameter: "=diameter"
         template: """
 {% verbatim %}
-<svg ng-show="data_active.length > 0" ng-attr-width="{{diameter}}" ng-attr-height="{{diameter}}" ng-attr-viewBox="0 0 {{diameter}} {{diameter}}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-    <!-- background circle: -->
-    <circle ng-attr-cx="{{centerX}}" ng-attr-cy="{{centerY}}" ng-attr-r="{{radius}}" fill="#f00"></circle>
-    <g opacity="1">
-        <g ng-repeat="entry in data_active" data-active class="pieSegmentGroup" data-order={{entry.num}}>
-            <path stroke-width="1" stroke-miterlimit="2" stroke="#fff" ng-attr-fill="{{entry.color}}" class="pieSegment" ng-attr-d="{{entry.path}}"></path>
+<div class="chart">
+    <svg ng-show="data_active.length > 0" ng-attr-width="{{diameter}}" ng-attr-height="{{diameter}}" ng-attr-viewBox="0 0 {{diameter}} {{diameter}}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <g opacity="1">
+            <g ng-repeat="entry in data_active" data-active class="pieSegmentGroup" data-order={{entry.num}}>
+                <path stroke-width="1" stroke-miterlimit="2" stroke="#fff" ng-attr-fill="{{entry.color}}" class="pieSegment" ng-attr-d="{{entry.path}}"
+                    ng-mouseenter="mouse_enter(entry)" ng-mouseleave="mouse_leave(entry)" ng-mousemove="mouse_move(entry, $event)"></path>
+            </g>
         </g>
-    </g>
-</svg>
+    </svg>
+    <div class="piechart-tooltip" ng-show="tooltip_text" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">{{tooltip_text}}</div>
+</div>
 {% endverbatim %}
 """
         link : (scope, el, attrs) ->
+            scope.mouse_enter = (entry) ->
+                scope.tooltip_text = "#{entry.title}: #{entry.value}%"
+            scope.mouse_leave = (entry) ->
+                scope.tooltip_text = undefined
+            scope.mouse_move = (entry, event) ->
+                # not very elegant
+                tooltip = el[0].children[0].childNodes[3]
+                scope.tooltipX = event.clientX - (tooltip.clientWidth/2)
+                scope.tooltipY = event.clientY - 40
             scope.calc_path = (entry) ->
+
                 if entry.part == 1.0  # full circle
                     cmd = [
                            'M', scope.centerX, scope.centerY,
@@ -86,6 +98,8 @@ angular.module(
                     new_entry.end_angle = start_angle + part_angle
 
                     new_entry.path = scope.calc_path(new_entry)
+
+                    new_entry.tooltip_visible = false
 
                     start_angle = new_entry.end_angle
 
