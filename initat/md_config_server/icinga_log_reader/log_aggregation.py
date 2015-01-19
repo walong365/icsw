@@ -39,7 +39,7 @@ from initat.cluster.backbone.models import duration
 from initat.cluster.backbone.models.functions import cluster_timezone
 
 from django.db import connection
-from django.db.models.aggregates import Max
+from django.db.models.aggregates import Max, Sum
 from initat.cluster.backbone.middleware import show_database_calls
 
 __all__ = [
@@ -71,9 +71,11 @@ class icinga_log_aggregator(object):
         relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
         self._host_alert_keys_cache = relevant_host_alerts.values_list("device", flat=True).distinct()
 
+        self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
+        self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
+
         # aggregate in order of how often data is used, then you can quickly see results
-        # for duration_type in (duration.Hour, duration.Day, duration.Week, duration.Month, duration.Year):  # duration.Hour):
-        for duration_type in (duration.Day, ):
+        for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
             self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
             try:
                 last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
@@ -105,17 +107,19 @@ class icinga_log_aggregator(object):
                     self.log("exit requested")
                     do_loop = False
 
-                #i += 1
+                i += 1
 
                 #def printfun(s):
-                #    with open("/tmp/db_calls", "a") as f:
+                #    import time
+                #    prof_file_name = "/tmp/db_calls.out.{}".format(time.time())
+
+                #    with open(prof_file_name, "a") as f:
                 #        f.write(s)
                 #        f.write("\n")
                 #show_database_calls(printfun=printfun, full=True)
 
-                #if i == 10:
-                #    do_loop = False
-                #    return
+                #if i == 2:
+                #    break
 
                 next_start_time = next_end_time
 
@@ -132,21 +136,21 @@ class icinga_log_aggregator(object):
             duration_type=duration_type.ID,
         )
 
-        if True or duration_type == duration.Hour:
+        if duration_type == duration.Day:
             next_last_service_alert_cache = self._create_timespan_entry_from_raw_data(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
         else:
             self._create_timespan_entry_incrementally(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
-            next_last_service_alert_cache = None  # we don't get this here
+            next_last_service_alert_cache = None  # we don't get this here, but also don't need it
         return next_last_service_alert_cache
 
     def _create_timespan_entry_from_raw_data(self, timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache=None):
         timespan_seconds = timespan_db.duration
 
         # get flappings of timespan (can't use db in inner loop)
-        def preprocess_flapping_data(flapping_model, key_fun):
+        def preprocess_flapping_data(flapping_cache, key_fun):
             cache = defaultdict(lambda: [])  # this is sorted by time
             aux_start_times = {}
-            for flap_data in flapping_model.objects.filter().order_by('date'):
+            for flap_data in flapping_cache:
                 key = key_fun(flap_data)
                 if key not in aux_start_times and flap_data.flapping_state == mon_icinga_log_raw_base.FLAPPING_START:
                     # proper start
@@ -158,9 +162,10 @@ class icinga_log_aggregator(object):
                     if flap_data.date >= start_time:  # only use flappings which are in this timespan
                         cache[key].append((start_date, flap_data.date))
             return dict(cache)  # make into regular dict
-        service_flapping_cache = preprocess_flapping_data(mon_icinga_log_raw_service_flapping_data,
+        # TODO: possibly extract keys in cache
+        service_flapping_cache = preprocess_flapping_data(self._service_flapping_cache,
                                                           lambda flap_data: (flap_data.device_id, flap_data.service_id, flap_data.service_info))
-        host_flapping_cache = preprocess_flapping_data(mon_icinga_log_raw_host_flapping_data,
+        host_flapping_cache = preprocess_flapping_data(self._host_flapping_cache,
                                                        lambda flap_data: flap_data.device_id)
 
         def calc_last_service_alert_cache():
@@ -373,10 +378,66 @@ class icinga_log_aggregator(object):
         return next_last_service_alert_cache
 
     def _create_timespan_entry_incrementally(self, timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache):
-        if duration_type == duration.Day:
+        # no Hours currently
+        if duration_type == duration.Week:
+            shorter_duration = duration.Day
+        elif duration_type == duration.Month:
+            shorter_duration = duration.Day  # weeks are not nice
+        elif duration_type == duration.Year:
+            shorter_duration = duration.Month
+        else:
+            raise ValueError("Invalid duration for incremental timespan creation: {}".format(duration_type))
 
-            mon_icinga_log_aggregated_host_data.objects.filter(timespan__duration_type=duration.Hour.ID, timespan__start_date__range=(start_time, end_time))
+        end_time_minus_epsilon = end_time - datetime.timedelta(seconds=1)
 
-            # TODO
+        def create_host_entries_incrementally():
+            host_entries = []
+            # check no of timespans:
+            # ts = mon_icinga_log_aggregated_host_data.objects\
+            #     .filter(timespan__duration_type=shorter_duration.ID, timespan__start_date__range=(start_time, end_time_minus_epsilon))\
+            #     .distinct('timespan')
+            # self.log("got {} values for host ".format(len(ts)))
+
+            values = mon_icinga_log_aggregated_host_data.objects\
+                .filter(timespan__duration_type=shorter_duration.ID, timespan__start_date__range=(start_time, end_time_minus_epsilon))\
+                .values_list("device_id", "state", "state_type")\
+                .annotate(value_sum=Sum('value'))
+
+            for (device_id, state, state_type, value) in values:
+                host_entries.append(
+                    mon_icinga_log_aggregated_host_data(
+                        state=state,
+                        state_type=state_type,
+                        value=value,
+                        timespan=timespan_db,
+                        device_id=device_id,
+                    )
+                )
+            mon_icinga_log_aggregated_host_data.objects.bulk_create(host_entries)
+
+        def create_service_entries_incrementally():
+            serv_entries = []
+            values = mon_icinga_log_aggregated_service_data.objects\
+                .filter(timespan__duration_type=shorter_duration.ID, timespan__start_date__range=(start_time, end_time_minus_epsilon))\
+                .values_list("device_id", "service_id", "service_info", "state", "state_type")\
+                .annotate(value_sum=Sum('value'))
+
+            for (device_id, service_id, service_info, state, state_type, value) in values:
+                serv_entries.append(
+                    mon_icinga_log_aggregated_service_data(
+                        state=state,
+                        state_type=state_type,
+                        value=value,
+                        timespan=timespan_db,
+                        device_id=device_id,
+                        service_id=service_id,
+                        service_info=service_info,
+                    )
+                )
+            mon_icinga_log_aggregated_service_data.objects.bulk_create(serv_entries)
+
+        create_host_entries_incrementally()
+        create_service_entries_incrementally()
+
 
 
