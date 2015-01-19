@@ -1235,7 +1235,7 @@ class mon_icinga_log_raw_base(models.Model):
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True)
     device = models.ForeignKey("backbone.device", db_index=True, null=True)  # only null for device_independent
-    device_independent = models.BooleanField(default=False)  # events which apply to all devices such as icinga shutdown
+    device_independent = models.BooleanField(default=False, db_index=True)  # events which apply to all devices such as icinga shutdown
     # text from log entry
     msg = models.TextField()
     # entry originates from this logfile
@@ -1289,6 +1289,18 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
 
     log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
     initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
+
+    class CSW_Meta:
+        backup = False
+
+
+class mon_icinga_log_device_services(models.Model):
+    # saves which services have at some point been defined for a device
+    # make sure to keep the values distinct
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("backbone.device", null=True, db_index=True)
+    service = models.ForeignKey(mon_check_command, null=True, db_index=True)
+    service_info = models.TextField(blank=True, null=True, db_index=True)
 
     class CSW_Meta:
         backup = False
