@@ -57,27 +57,33 @@ status_history_template = """
 device_status_history_template = """
 <h3>{{device_rest.name }}</h3>
 
-<div style="width: 470px">
-    <device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
-</div>
+<div class="row" style="width: 650px">
+    <div class="col-md-12">
+        <div style="width: auto">
+            <device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
+        </div>
+    </div>
 
-<div class="row" style="width: 600px">
     <div class="col-md-12">
         <table class="table table-condensed table-hover table-striped">
             <thead>
                 <tr>
                     <th >Service</th>
-                    <th style="width: 10%;" class="text-center">Ok</th>
-                    <th style="width: 10%;" class="text-center">Warning</th>
-                    <th style="width: 10%;" class="text-center">Critical</th>
-                    <th style="width: 10%;" class="text-center">Unknown</th>
-                    <th style="width: 10%;" class="text-center">Undetermined</th>
-                    <th style="width: 10%;" class="text-center">Flapping</th>
+                    <th style="width: 10%;" class="text-center"><!-- chart --></th>
+                    <th style="width: 50px;" class="text-center">Ok</th>
+                    <th style="width: 50px;" class="text-center">Warning</th>
+                    <th style="width: 50px;" class="text-center">Critical</th>
+                    <th style="width: 50px;" class="text-center">Unknown</th>
+                    <th style="width: 50px;" class="text-center">Undetermined</th>
+                    <th style="width: 50px;" class="text-center">Flapping</th>
                 </tr>
             </thead>
             <tbody>
                 <tr ng-repeat="entry in service_data">
                     <td> {{ extract_service_name(entry[0]) }} </td>
+                    <td class="text-right">
+                        <ngpiechart width="28" height="28" data="entry[2]"></ngpiechart>
+                    </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Ok") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Warning") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Critical") }} </td>
@@ -98,7 +104,7 @@ status_history_module = angular.module("icsw.device.status_history", ["ngResourc
 
 status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "$resource",
     ($scope, $compile, $filter, $templateCache, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, $resource) ->
-]).directive("devicestatushistory", ($templateCache, $resource) ->
+]).directive("devicestatushistory", ($templateCache, $resource, status_utils_functions) ->
     return {
         restrict : "EA"
         template : $templateCache.get("device_status_history_template.html")
@@ -132,10 +138,13 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                 return serv_name
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
 
+            scope.calc_pie_data = (name, service_data) ->
+                [unused, pie_data] = status_utils_functions.preprocess_service_state_data(service_data)
+                return pie_data
             scope.update = () ->
                 serv_cont = (new_data) ->
                     # new_data is dict, but we want it as list to be able to sort it
-                    data = ([key, val] for key, val of new_data)
+                    data = ([key, val, scope.calc_pie_data(key, val)] for key, val of new_data)
                     scope.service_data = _.sortBy(data, (entry) -> return scope.extract_service_name(entry[0]))
 
                 status_history_utils.get_service_data($resource, scope.device_id, scope.startdate, scope.timerange, serv_cont)
@@ -162,8 +171,8 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                     scope.timespan_to = ""
                     if new_data.length > 0
                         timespan = new_data[0]
-                        scope.timespan_from = moment(timespan[0]).format("DD.MM.YYYY HH:MM")
-                        scope.timespan_to = moment(timespan[1]).format("DD.MM.YYYY HH:MM")
+                        scope.timespan_from = moment.utc(timespan[0]).format("DD.MM.YYYY HH:mm")
+                        scope.timespan_to = moment.utc(timespan[1]).format("DD.MM.YYYY HH:mm")
                     else
                         scope.timespan_error = "No data available for this time span"
 

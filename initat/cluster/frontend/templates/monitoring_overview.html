@@ -20,6 +20,11 @@
                     <div class="form-group">
                         <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
                     </div>
+                    ,
+
+                    <input type="button" ng-class="filter_settings.only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
+                        ng-click="filter_settings.only_selected = ! filter_settings.only_selected" value="only selected"></input>
+
                 </form>
                 <table st-table="entries_displayed" st-safe-src="entries_filtered" class="table table-hover table-condensed table-striped" style="width:auto;">
                     <thead>

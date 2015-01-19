@@ -11,11 +11,11 @@ monitoring_overview_module = angular.module("icsw.monitoring_overview",
 
 monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
-        $scope.filter_settings = {"str_filter": ""}
+        $scope.filter_settings = {"str_filter": "", "only_selected": true}
 
         $scope.filter_predicate = (entry) ->
             selected = $scope.get_selected_entries()
-            if selected.length == 0
+            if (!$scope.filter_settings.only_selected) || selected.length == 0
                 sel_flag = true
             else
                 sel_flag = _.contains(selected, entry)
@@ -61,32 +61,34 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
 
                 new_entries = []
                 for dev in $scope.device_list
-                    entry = {
-                        'idx': dev.idx
-                        'name': dev.name
-                    }
-                    if set_initial_sel
-                        entry['selected'] = _.contains($scope.initial_sel, dev.idx)
-                    new_entries.push(entry)
+                    if ! dev.is_meta_device
+                        entry = {
+                            'idx': dev.idx
+                            'name': dev.name
+                        }
+                        if set_initial_sel
+                            entry['selected'] = _.contains($scope.initial_sel, dev.idx)
+                        new_entries.push(entry)
                 $scope.entries = new_entries
 
                 $scope.initial_sel = []
 
-                call_ajax
-                    url  : "{% url 'mon:get_node_status' %}"
-                    data : {
-                        "pk_list" : angular.toJson((dev.idx for dev in $scope.device_list))
-                    }
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            service_entries = []
-                            $(xml).find("value[name='service_result']").each (idx, node) =>
-                                service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                            host_entries = []
-                            $(xml).find("value[name='host_result']").each (idx, node) =>
-                                host_entries = host_entries.concat(angular.fromJson($(node).text()))
-                            console.log 'serv', service_entries
-                            console.log 'host', host_entries
+                # TODO: livestatus:
+                #call_ajax
+                #    url  : "{% url 'mon:get_node_status' %}"
+                #    data : {
+                #        "pk_list" : angular.toJson((dev.idx for dev in $scope.device_list))
+                #    }
+                #    success : (xml) =>
+                #        if parse_xml_response(xml)
+                #            service_entries = []
+                #            $(xml).find("value[name='service_result']").each (idx, node) =>
+                #                service_entries = service_entries.concat(angular.fromJson($(node).text()))
+                #            host_entries = []
+                #            $(xml).find("value[name='host_result']").each (idx, node) =>
+                #                host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                #            console.log 'serv', service_entries
+                #            console.log 'host', host_entries
 
         $scope.initial_sel = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
