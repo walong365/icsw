@@ -11,7 +11,7 @@ device_hist_status_template = """
     <div class="row">
         <div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
             <div style="float: right">
-                <ngpiechart width="120" height="120" data="pie_data"></ngpiechart>
+                <icsw-piechart diameter="120" data="pie_data"></icsw-piechart>
             </div>
         </div>
         <div class="col-md-4">
@@ -35,12 +35,12 @@ device_hist_status_template = """
     </div>
 </div>
 <div ng-if="!show_table"> <!-- only chart -->
-    <ngpiechart width="40" height="40" data="pie_data"></ngpiechart>
+    <icsw-piechart diameter="40" data="pie_data"></icsw-piechart>
 </div>
 """
 
 service_hist_status_template = """
-<ngpiechart width="40" height="40" data="pie_data"></ngpiechart>
+<icsw-piechart diameter="40" data="pie_data"></icsw-piechart>
 """
 
 {% endverbatim %}
@@ -49,7 +49,7 @@ root = exports ? this
 
 
 angular.module(
-    "status_utils", []
+    "status_utils", ["angular-piechart"]
 ).directive('deviceHistStatusOverview', ($templateCache, $parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     return {
@@ -210,12 +210,6 @@ angular.module(
     $templateCache.put("device_hist_status.html", device_hist_status_template)
     $templateCache.put("service_hist_status.html", service_hist_status_template)
 )
-
-
-# TODO: make into service?
-status_history_utils = {
-
-}
 
 
 {% endinlinecoffeescript %}

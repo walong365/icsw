@@ -82,7 +82,7 @@ device_status_history_template = """
                 <tr ng-repeat="entry in service_data">
                     <td> {{ extract_service_name(entry[0]) }} </td>
                     <td class="text-right">
-                        <ngpiechart width="28" height="28" data="entry[2]"></ngpiechart>
+                        <icsw-piechart diameter="28" data="entry[2]"></ngpiechart>
                     </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Ok") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Warning") }} </td>
