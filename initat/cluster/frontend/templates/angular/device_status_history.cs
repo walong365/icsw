@@ -99,12 +99,11 @@ device_status_history_template = """
 {% endverbatim %}
 
 
-# don't know who needs restangular here, but there are strange errors if removed
 status_history_module = angular.module("icsw.device.status_history", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "status_utils"])
 
-status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "$resource",
-    ($scope, $compile, $filter, $templateCache, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, $resource) ->
-]).directive("devicestatushistory", ($templateCache, $resource, status_utils_functions) ->
+status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout",
+    ($scope, $compile, $filter, $templateCache, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+]).directive("devicestatushistory", ($templateCache, status_utils_functions, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("device_status_history_template.html")
@@ -115,8 +114,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
         link : (scope, el, attrs) ->
             scope.device_id = attrs.device
             scope.device_chart_id = "device_chart_" + scope.device_id
-            device_resource = $resource("{% url 'rest:device_list' %}/:id", {});
-            scope.device_rest = device_resource.get({'id': scope.device_id})
+            scope.device_rest = Restangular.one("{% url 'rest:device_list' %}".slice(1)).get({'id': scope.device_id})
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
             scope.extract_service_value = (service, key) ->
@@ -147,11 +145,11 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                     data = ([key, val, scope.calc_pie_data(key, val)] for key, val of new_data)
                     scope.service_data = _.sortBy(data, (entry) -> return scope.extract_service_name(entry[0]))
 
-                status_history_utils.get_service_data($resource, scope.device_id, scope.startdate, scope.timerange, serv_cont)
+                status_utils_functions.get_service_data(scope.device_id, scope.startdate, scope.timerange, serv_cont)
 
             scope.update()
 
-}).directive("statushistory", ($templateCache, $resource) ->
+}).directive("statushistory", ($templateCache, status_utils_functions) ->
     return {
         restrict : "EA"
         template : $templateCache.get("status_history_template.html")
@@ -176,7 +174,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                     else
                         scope.timespan_error = "No data available for this time span"
 
-                status_history_utils.get_timespan($resource, scope.startdate, scope.timerange, cont)
+                status_utils_functions.get_timespan(scope.startdate, scope.timerange, cont)
 
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
@@ -186,29 +184,6 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
     $templateCache.put("device_status_history_template.html", device_status_history_template)
 )
 
-
-
-status_history_utils = {
-    get_service_data: ($resource, device_id, start_date, timerange, cont) ->
-        res = $resource("{% url 'mon:get_hist_service_data' %}", {}, {'query': {method: 'GET', isArray: false}})
-        query_data = {
-            'device_id': device_id,
-            'date': moment(start_date).unix()  # ask server in utc
-            'duration_type': timerange,
-        }
-        res.query(query_data, (new_data) ->
-            cont(new_data.toJSON())  # toJSON gets rid of object properties of $resource, which would otherwise be iterated over
-        )
-    get_timespan: ($resource, start_date, timerange, cont) ->
-        res = $resource("{% url 'mon:get_hist_timespan' %}", {})
-        query_data = {
-            'date': moment(start_date).unix()  # ask server in utc
-            'duration_type': timerange,
-        }
-        res.query(query_data, (new_data) ->
-            cont(new_data)
-        )
-}
 
 {% endinlinecoffeescript %}
 

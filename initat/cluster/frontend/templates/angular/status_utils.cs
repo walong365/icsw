@@ -50,7 +50,7 @@ root = exports ? this
 
 angular.module(
     "status_utils", []
-).directive('deviceHistStatusOverview', ($templateCache, $resource, $parse, status_utils_functions) ->
+).directive('deviceHistStatusOverview', ($templateCache, $parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     return {
         restrict: 'EA',
@@ -86,10 +86,10 @@ angular.module(
 
                     [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, colors, scope.float_format)
 
-                status_history_utils.get_device_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont)
+                status_utils_functions.get_device_data(scope.deviceid, scope.startdate, scope.timerange, cont)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
 
-}).directive('serviceHistStatusOverview', ($templateCache, $resource, $parse, status_utils_functions) ->
+}).directive('serviceHistStatusOverview', ($templateCache, $parse, status_utils_functions) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
     return {
         restrict: 'EA',
@@ -110,7 +110,7 @@ angular.module(
                 cont = (new_data) ->
                     [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
-                status_history_utils.get_service_data($resource, scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=true)
+                status_utils_functions.get_service_data(scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=true)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
 }).directive("ngpiechart", () ->
     return {
@@ -131,7 +131,32 @@ angular.module(
                 if scope.data
                     el.drawPieChart(scope.data, scope.width, scope.height, {animation: false, lightPiesOffset: 0, edgeOffset: 0, baseOffset: 0, baseColor: "#fff"});
             )
-}).service('status_utils_functions', () ->
+}).service('status_utils_functions', (Restangular) ->
+    get_device_data = (device_id, start_date, timerange, cont) ->
+        query_data = {
+            'device_id': device_id,
+            'date': moment(start_date).unix()  # ask server in utc
+            'duration_type': timerange,
+        }
+        base = Restangular.all("{% url 'mon:get_hist_device_data' %}".slice(1))
+        base.getList(query_data).then(cont)
+    get_service_data = (device_id, start_date, timerange, cont, merge_services=false) ->
+        expect_array = merge_services
+        query_data = {
+            'device_id': device_id,
+            'date': moment(start_date).unix()  # ask server in utc
+            'duration_type': timerange,
+            'merge_services': merge_services,
+        }
+        base = Restangular.all("{% url 'mon:get_hist_service_data' %}".slice(1))
+        base.getList(query_data).then(cont)
+    get_timespan = (start_date, timerange, cont) ->
+        query_data = {
+            'date': moment(start_date).unix()  # ask server in utc
+            'duration_type': timerange,
+        }
+        base = Restangular.all("{% url 'mon:get_hist_timespan' %}".slice(1))
+        base.getList(query_data).then(cont)
     float_format = (n) -> return (n*100).toFixed(2) + "%"
     preprocess_state_data = (new_data, weights, colors) ->
         formatted_data = _.cloneDeep(new_data)
@@ -154,11 +179,7 @@ angular.module(
                     'color': colors[d['state']]
                 }
         return [final_data, pie_data]
-
-    return {
-        float_format: float_format
-        preprocess_state_data: preprocess_state_data
-        preprocess_service_state_data: (new_data, float_format) ->
+    preprocess_service_state_data = (new_data, float_format) ->
             weights = {
                 "Ok": -10
                 "Warning": -9
@@ -176,6 +197,14 @@ angular.module(
             }
 
             return preprocess_state_data(new_data, weights, colors, float_format)
+
+    return {
+        float_format: float_format
+        get_device_data: get_device_data
+        get_service_data: get_service_data
+        get_timespan: get_timespan
+        preprocess_state_data: preprocess_state_data
+        preprocess_service_state_data: preprocess_service_state_data
     }
 ).run(($templateCache) ->
     $templateCache.put("device_hist_status.html", device_hist_status_template)
@@ -185,28 +214,6 @@ angular.module(
 
 # TODO: make into service?
 status_history_utils = {
-    get_device_data: ($resource, device_id, start_date, timerange, cont) ->
-        res = $resource("{% url 'mon:get_hist_device_data' %}", {})
-        query_data = {
-            'device_id': device_id,
-            'date': moment(start_date).unix()  # ask server in utc
-            'duration_type': timerange,
-        }
-        res.query(query_data, (new_data) ->
-            cont(new_data)
-        )
-    get_service_data: ($resource, device_id, start_date, timerange, cont, merge_services=false) ->
-        expect_array = merge_services
-        res = $resource("{% url 'mon:get_hist_service_data' %}", {}, {'query': {method: 'GET', isArray: expect_array}})
-        query_data = {
-            'device_id': device_id,
-            'date': moment(start_date).unix()  # ask server in utc
-            'duration_type': timerange,
-            'merge_services': merge_services,
-        }
-        res.query(query_data, (new_data) ->
-            cont(new_data)
-        )
 
 }
 
