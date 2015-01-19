@@ -46,4 +46,3 @@ settings_module.controller("settings_ctrl", ["$scope", "$compile", "$filter", "$
 {% endinlinecoffeescript %}
 
 </script>
-
