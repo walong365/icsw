@@ -1306,6 +1306,13 @@ class mon_icinga_log_device_services(models.Model):
         backup = False
 
 
+class mon_icinga_log_full_system_dump(models.Model):
+    # save dates of all full system dumps, i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
+    # this is needed for faster access, the alerts-tables are too huge
+    idx = models.AutoField(primary_key=True)
+    date = models.DateTimeField(db_index=True)
+
+
 class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
     # see comment in mon_icinga_log_raw_service_alert_data
     service = models.ForeignKey(mon_check_command, null=True)  # null for device_independent events
@@ -1390,7 +1397,6 @@ class mon_icinga_log_last_read(models.Model):
 
 
 class mon_icinga_log_aggregated_timespan(models.Model):
-
     idx = models.AutoField(primary_key=True)
     end_date = models.DateTimeField()
     start_date = models.DateTimeField(db_index=True)
