@@ -611,6 +611,11 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.$watch("recalcSunburst", (red) ->
             $scope.md_filter_changed()
         )
+        # workaround: pull outer devicepk into inner scope
+        $scope.$watch(
+                () -> $scope.$parent.devicepk_livestatus_ctrl
+                () -> $scope.devicepk = $scope.$parent.devicepk_livestatus_ctrl
+        )
         # paginator settings
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         # category tree
@@ -1281,7 +1286,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         restrict : "EA"
         template : $templateCache.get("livestatus_brief_template.html")
         link : (scope, element, attrs) ->
-                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            scope.$watch(("devicepk"), (data) ->
+                if data
+                    scope.new_devsel([scope.devicepk], [])
+            )
     }
 ).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {

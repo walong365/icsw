@@ -51,8 +51,9 @@
                         <tr ng-repeat="entry in entries_displayed">
                             <td>{{entry.name}}</td>
                             <td>
+                                <div style="display: none">{{ devicepk_livestatus_ctrl = entry.idx }}</div>
                                 <div ng-controller='livestatus_ctrl'>
-                                    <livestatus-brief devicepk="227"></livestatus>
+                                    <livestatus-brief devicepk="devicepk"></livestatus>
                                 </div>
                             </td>
                             <td class="text-center">
