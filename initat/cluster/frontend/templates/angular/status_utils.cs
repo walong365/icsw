@@ -112,25 +112,6 @@ angular.module(
 
                 status_utils_functions.get_service_data(scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=true)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
-}).directive("ngpiechart", () ->
-    return {
-        restrict : "E"
-        scope:
-            data: "=data"
-            width: "=width"
-            height: "=height"
-        template: """
-{% verbatim %}
-<div class="chart"></div>
-{% endverbatim %}
-"""
-        link : (scope, el, attrs) ->
-            scope.$watchGroup(["data", "width", "height"], (new_data) ->
-                el.html ''
-
-                if scope.data
-                    el.drawPieChart(scope.data, scope.width, scope.height, {animation: false, lightPiesOffset: 0, edgeOffset: 0, baseOffset: 0, baseColor: "#fff"});
-            )
 }).service('status_utils_functions', (Restangular) ->
     get_device_data = (device_id, start_date, timerange, cont) ->
         query_data = {
