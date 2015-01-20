@@ -24,8 +24,11 @@ import datetime
 import itertools
 import pprint  # @UnusedImport
 from collections import defaultdict
+import time
 
 from django.db.models.query_utils import Q
+from django.db import connection
+from django.db.models.aggregates import Max, Sum
 
 from initat.md_config_server.config import global_config
 from initat.cluster.backbone.models.monitoring import mon_check_command,\
@@ -34,17 +37,13 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_service_notification_data,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
     mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_device_services
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_device_services,\
+    mon_icinga_log_full_system_dump
 from initat.cluster.backbone.models import duration
 from initat.cluster.backbone.models.functions import cluster_timezone
-
-from django.db import connection
-from django.db.models.aggregates import Max, Sum
 from initat.cluster.backbone.middleware import show_database_calls
 
-__all__ = [
-]
-
+__all__ = ["icinga_log_aggregator"]
 
 # itertools recipe
 def pairwise(iterable):
@@ -66,10 +65,10 @@ class icinga_log_aggregator(object):
 
     def update(self):
         # it would be way too slow to get the device-services from the alerts table, which is huge, so we prepared it in this table
-        self._serv_alert_keys_cache = mon_icinga_log_device_services.objects.all().values_list("device_id", "service_id", "service_info")
+        #self._serv_alert_keys_cache = mon_icinga_log_device_services.objects.all().values_list("device_id", "service_id", "service_info")
         # possibly TODO: also do same optimization with hosts. if each host has at least one service, we can just use the table above
-        relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
-        self._host_alert_keys_cache = relevant_host_alerts.values_list("device", flat=True).distinct()
+        #relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
+        #self._host_alert_keys_cache = relevant_host_alerts.values_list("device", flat=True).distinct()
 
         self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
         self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
@@ -145,6 +144,22 @@ class icinga_log_aggregator(object):
 
     def _create_timespan_entry_from_raw_data(self, timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache=None):
         timespan_seconds = timespan_db.duration
+
+        # get latest full system dump plus all in the timespan. these entries define the relevant hosts and services
+        # of this time span
+        dump_times = []
+        try:
+            dump_times.append(
+                mon_icinga_log_full_system_dump.objects.filter(date__lte=(start_time)).latest('date').date
+            )
+        except mon_icinga_log_full_system_dump.DoesNotExist:
+            pass
+        dump_times.extend(
+            mon_icinga_log_full_system_dump.objects.filter(date__range=(start_time, end_time)).values_list('date', flat=True)
+        )
+
+        timespan_hosts = mon_icinga_log_raw_host_alert_data.objects.filter(date__in=(dump_times)).values_list("device_id", flat=True)
+        timespan_services = mon_icinga_log_raw_service_alert_data.objects.filter(date__in=(dump_times)).values_list("device_id", "service_id", "service_info")
 
         # get flappings of timespan (can't use db in inner loop)
         def preprocess_flapping_data(flapping_cache, key_fun):
@@ -317,7 +332,8 @@ class icinga_log_aggregator(object):
             service_db_rows = []
             # don't consider alerts for any machine, they are added below
 
-            for device_id, service_id, service_info in self._serv_alert_keys_cache:
+            #for device_id, service_id, service_info in self._serv_alert_keys_cache:
+            for device_id, service_id, service_info in timespan_services:
                 # need to find last state
                 state_description_before = last_service_alert_cache.get((device_id, service_id, service_info), None)
                 if not state_description_before:
@@ -353,7 +369,8 @@ class icinga_log_aggregator(object):
         def process_host_alerts():
             host_db_rows = []
 
-            for device_id in self._host_alert_keys_cache:
+            #for device_id in self._host_alert_keys_cache:
+            for device_id in timespan_hosts:
                 state_description_before = last_host_alert_cache.get(device_id, None)
                 if not state_description_before:
                     state_description_before = mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED

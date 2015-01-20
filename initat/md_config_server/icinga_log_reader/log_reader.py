@@ -39,7 +39,8 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_service_notification_data, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_device_services
+    mon_icinga_log_raw_base, mon_icinga_log_device_services,\
+    mon_icinga_log_full_system_dump
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 
@@ -254,6 +255,7 @@ class icinga_log_reader(threading_tools.process_obj):
         service_states = []
         service_flapping_states = []
         service_notifications = []
+        full_system_dump_times = set()
 
         cur_line = None
         for line_raw in logfile:
@@ -278,7 +280,14 @@ class icinga_log_reader(threading_tools.process_obj):
             # check for regular log entry
             try:
                 cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)  # only know line no for archive files
-                if start_at is None or cur_line.timestamp > start_at:
+                # we want to discard older (reread) entries if start_at is given, except for current states (these are at the beginning of each log file)
+                # (we don't need the initial states here because they don't occur at turnovers)
+                if start_at is None or (cur_line.timestamp > start_at or
+                                        cur_line.kind in (self.constants.icinga_current_host_state, self.constants.icinga_current_service_state)):
+
+                    if cur_line.kind in (self.constants.icinga_current_host_state, self.constants.icinga_current_service_state,
+                                         self.constants.icinga_initial_host_state, self.constants.icinga_initial_service_state):
+                        full_system_dump_times.add(cur_line.timestamp)
                     if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state,
                                          self.constants.icinga_initial_service_state):
                         entry = self.create_service_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state,
@@ -328,6 +337,8 @@ class icinga_log_reader(threading_tools.process_obj):
         mon_icinga_log_raw_host_flapping_data.objects.bulk_create(host_flapping_states)
         mon_icinga_log_raw_service_notification_data.objects.bulk_create(service_notifications)
         mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
+        for timestamp in full_system_dump_times:
+            mon_icinga_log_full_system_dump.objects.get_or_create(date=self._parse_timestamp(timestamp))
         self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
 
         for service_state in service_states:
