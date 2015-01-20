@@ -339,7 +339,7 @@ PIPELINE_CSS = {
             # "css/angular-block-ui.css",
             "js/libs/ui-select/select.css",
             "css/ladda.min.css",
-            "css/jquery.drawPieChart.css",
+            "css/piechart.css",
             "css/smart-table.css",
         },
         "output_filename": "pipeline/css/part1.css"
@@ -411,7 +411,6 @@ PIPELINE_JS = {
             "js/angular-noVNC.js",
             "js/libs/FileSaver.js",
             "js/mousewheel.js",
-            "js/jquery.drawPieChart.js",
             "js/smart-table.debug.js",
         },
         "output_filename": "pipeline/js/extra1.js"
