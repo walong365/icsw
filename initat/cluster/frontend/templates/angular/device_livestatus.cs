@@ -230,6 +230,20 @@ livestatus_templ = """
 </table>
 """
 
+livestatus_brief_templ = """
+<svg width="40" height="40" font-family="'Open-Sans', sans-serif" font-size="10pt">
+    <g transform="translate(20,20)">
+        <newburst
+            data="burstData"
+            innerradius="0"
+            outerradius="19"
+            noninteractive="true"
+            hidegroup="true"
+        ></newburst>
+    </g>
+</svg>
+"""
+
 monconfig_templ = """
 <div ng-show="!reload_pending">
     Action:
@@ -1017,6 +1031,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.zoom = parseInt(attrs["zoom"] or 0)
             scope.font_stroke = parseInt(attrs["fontstroke"] or 0)
             scope.show_name = parseInt(attrs["showname"] or 0)
+            scope.noninteractive = attrs["noninteractive"]  # defaults to false
+            scope.hidegroup = attrs["hidegroup"]  # defaults to false
             scope.create_node = (name, settings) ->
                 ns = 'http://www.w3.org/2000/svg'
                 node = document.createElementNS(ns, name)
@@ -1040,6 +1056,9 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 return _num
             scope.$watch("data", (data) ->
                 if data?
+                    if scope.hidegroup
+                        # skip first two levels
+                        data = data.children[0].children[0]
                     scope.set_focus_service(null)
                     scope.sunburst_data = data
                     scope.name = scope.sunburst_data.name
@@ -1153,27 +1172,29 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 else
                     return 0.8
             scope.mouse_enter = (part) ->
-                scope.set_focus_service(part.check)
-                if part.children.length
-                    for _entry in part.children
-                        if _entry.value
-                            _entry.legend_show = true
-                else
-                    if part.value
-                        part.legend_show = true
-                scope.set_mouseover(part, true)
+                if !scope.noninteractive
+                    scope.set_focus_service(part.check)
+                    if part.children.length
+                        for _entry in part.children
+                            if _entry.value
+                                _entry.legend_show = true
+                    else
+                        if part.value
+                            part.legend_show = true
+                    scope.set_mouseover(part, true)
             scope.mouse_click = (part) ->
-                if scope.zoom
+                if scope.zoom and !scope.noninteractive
                     scope.sunburst_data.clear_clicked()
                     part.clicked = true
                     scope.force_recalc()
             scope.mouse_leave = (part) ->
-                if part.children.length
-                    for _entry in part.children
-                        _entry.legend_show = false
-                else
-                    part.legend_show = false
-                scope.set_mouseover(part, false)
+                if !scope.noninteractive
+                    if part.children.length
+                        for _entry in part.children
+                            _entry.legend_show = false
+                    else
+                        part.legend_show = false
+                    scope.set_mouseover(part, false)
             scope.set_mouseover = (part, flag) ->
                 while true
                     part.mouseover = flag
@@ -1255,6 +1276,13 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.get_attempt_info = (entry) ->
                 return get_attempt_info(entry)
     }
+).directive("livestatusBrief", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("livestatus_brief_template.html")
+        link : (scope, element, attrs) ->
+                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+    }
 ).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
@@ -1283,6 +1311,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
     }    
 ).run(($templateCache) ->
     $templateCache.put("livestatus_template.html", livestatus_templ)
+    $templateCache.put("livestatus_brief_template.html", livestatus_brief_templ)
     $templateCache.put("serviceinfo_template.html", serviceinfo_templ)
     $templateCache.put("map.html", map_template)
     $templateCache.put("devnode.html", devnode_template)

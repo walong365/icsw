@@ -50,7 +50,11 @@
                     <tbody>
                         <tr ng-repeat="entry in entries_displayed">
                             <td>{{entry.name}}</td>
-                            <td>TBD</td>
+                            <td>
+                                <div ng-controller='livestatus_ctrl'>
+                                    <livestatus-brief devicepk="227"></livestatus>
+                                </div>
+                            </td>
                             <td class="text-center">
                                 <device-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
                             </td>
