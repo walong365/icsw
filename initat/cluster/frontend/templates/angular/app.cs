@@ -13,7 +13,7 @@ ics_app = angular.module(
         "icsw.menu_app", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
         "icsw.config", "icsw.config.gen",
         "icsw.rms", "icsw.lic", "icsw.server.info",
-        "icsw.network.device",
+        "icsw.network.device", "icsw.device.info",
         "icsw.category_tree", "icsw.domain_name_tree",
         "icsw.monitoring.create", "icsw.monitoring_build_info", "icsw.monitoring.device", "icsw.monitoring_overview",
         "icsw.device.config", "icsw.device", "icsw.device.variables", "icsw.device.connection",

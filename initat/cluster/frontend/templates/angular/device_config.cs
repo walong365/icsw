@@ -1298,6 +1298,7 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                     restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
                 ]
                 $q.all(wait_list).then((data) ->
+                    console.log "*", data
                     form = data[0][0].form
                     scope.domain_tree_node = data[1]
                     scope.mon_device_templ_list = data[2]
