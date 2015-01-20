@@ -569,35 +569,7 @@ available_screen_sizes = [
     new screen_size(640, 420),
 ]
         
-user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
-    devs = {}
-    selection = {
-        "dev_pk_list": []
-        "dev_pk_nmd_list": []
-        "devg_pk_list": []
-        "dev_pk_md_list": []
-        "clients": 0
-    }
-    console.log "init", $rootScope
-    register_client = () ->
-        selection.clients++
-        console.log "++"
-        signal()
-    signal = () ->
-        console.log "signal", $rootScope
-        $rootScope.$broadcast("icsw_devsel_changed")
-    register_handler = (scope, handler) ->
-        console.log "reg", scope, handler
-        scope.$on("icsw_devsel_changed", () ->
-            console.log "****"
-            handler()
-        )
-    return {
-         "selection": selection
-         "register_client": register_client
-         "register_handler": register_handler
-    }
-]).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
+user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
@@ -1575,7 +1547,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                 )
                 $scope.set_index_visibility(false)
                 $scope.show_devices = true
-                $("div#center_deviceinfo").show()
+                console.log "show_deviceinfo"
+                #$("div#center_deviceinfo").show()
                 cur_di.show()
             else
                 # check for active device_info
@@ -1583,7 +1556,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                     window.ICSW_DEV_INFO.close()
                 $scope.show_devices = false
                 $scope.set_index_visibility(true)
-                $("div#center_deviceinfo").hide()
+                console.log "hide_deviceinfo"
+                #$("div#center_deviceinfo").hide()
         $scope.set_index_visibility = (flag) ->
             $scope.set_visibility(flag)
         root.show_device_on_index = $scope.use_devs
@@ -1591,8 +1565,8 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
         #root.target_devsel_link = [$scope.use_devs, true]
         # unified app, to be improved, FIXME
         root.install_devsel_link($scope.use_devs, true)
-]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window",
-    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window) ->
+]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus",
+    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.searchstr = ""
@@ -1620,10 +1594,7 @@ user_module.factory("icsw_devsel", ["$rootScope", ($rootScope) ->
                         else
                             dev_pk_nmd_list.push(idx)
                         dev_pk_list.push(idx)
-                #$scope.icsw_devsel.dev_pk_list = dev_pk_list
-                #$scope.icsw_devsel.dev_pk_nmd_list = dev_pk_nmd_list
-                #$scope.icsw_devsel.devg_pk_list = devg_pk_list
-                #$scope.icsw_devsel.dev_pk_md_list = dev_pk_md_list
+                msgbus.emit("devicelist", [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list])
                 for entry in $scope.devsel_func
                     if called_after_load and not entry.fire_when_loaded
                         true

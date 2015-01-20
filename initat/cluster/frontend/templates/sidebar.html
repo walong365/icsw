@@ -9,7 +9,7 @@
                         <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
                     </div>
                     <span class="input-group-btn">
-                        <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length || icsw_devsel.selection.clients">
+                        <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length">
                             <span title="use selection" class="glyphicon glyphicon-chevron-right"></span>
                         </button>
                         <button class="btn btn-danger" type="button" ng-click="clear_selection()">

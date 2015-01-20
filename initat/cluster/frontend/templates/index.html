@@ -10,7 +10,6 @@
 
 <div ng-controller="index_base" ng-cloack ng-show="show_index">
     <h2 class="center">Please select a device from the tree on the left side</h2>
-    {{ icsw_devsel }}
     <accordion close-others="no">
         <accordion-group is-open="quick_open">
             <accordion-heading>
@@ -112,7 +111,7 @@
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>
             </accordion-heading>
             <div ng-controller="jobinfo_ctrl">
-                <jobinfo/>
+                <jobinfo></jobinfo>
             </div>
         </accordion-group>
     </accordion>
@@ -120,7 +119,8 @@
 
 {% endverbatim %}
 
-<div id="center_deviceinfo" mode="{{ DEVICE_MODE }}">
+<div id="center_deviceinfo" ng-controller="device_info_ctrl" ng-show="show" mode="{{ DEVICE_MODE }}">
+    <deviceoverview></deviceoverview>
 </div>
 
 {% endblock %}

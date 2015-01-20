@@ -191,11 +191,11 @@ angular.module("angular-dimple.graph", []).directive("graph", [->
         return
   ]
 ])
-angular.module("angular-dimple.legend", []).directive("legend", [->
+angular.module("angular-dimple.legend", []).directive("dimplelegend", [->
   restrict: "E"
   replace: true
   require: [
-    "legend"
+    "dimplelegend"
     "^graph"
   ]
   controller: [

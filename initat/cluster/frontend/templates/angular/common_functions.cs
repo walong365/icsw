@@ -253,7 +253,16 @@ class rest_data_source
 
 icsw_tools = angular.module(
     "icsw.tools", []
-).factory("icswTools", () ->
+).factory("msgbus", ["$rootScope", ($rootScope) ->
+    bus = {}
+    bus.emit = (msg, data) ->
+        console.log "e", data
+        $rootScope.$emit(msg, data)
+    bus.receive = (msg, scope, func) ->
+        unbind = $rootScope.$on(msg, func)
+        scope.$on("$destroy", unbind)
+    return bus
+]).factory("icswTools", () ->
     return {
         "get_size_str" : (size, factor, postfix) ->
             f_idx = 0
