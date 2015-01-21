@@ -752,7 +752,10 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
             scope.draw_on_init = attrs["draw"] ? false
-            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.new_devsel(new_val)
+            )
     }
 ).run(($templateCache) ->
     $templateCache.put("rrd_graph_template.html", rrd_graph_template)

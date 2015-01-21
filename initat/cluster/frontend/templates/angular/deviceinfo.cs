@@ -10,7 +10,7 @@ root = exports ? this
 
 dev_info_template = """
 <tabset>
-    <tab>
+    <tab select="activate('general')">
         <tab-heading>
             General
         </tab-heading>
@@ -28,15 +28,121 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab>
+    <tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')">
         <tab-heading>
             Category{{ addon_text_nmd }}
         </tab-heading>
         <div class="panel panel-default"><div class="panel-body">
             <div ng-controller="category_ctrl">
-                <devicecategory devicepk="{{ pk_list_nmd }}">
+                <devicecategory devicepk="pk_list['category']">
                     <tree treeconfig="cat_tree"></tree>
                 </devicecategory>
+            </div>
+        </div></div>
+    </tab>
+    <tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')">
+        <tab-heading>
+            Location{{ addon_text_nmd }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="location_ctrl">
+                <devicelocation devicepk="pk_list['location']">
+                </devicelocation>
+            </div>
+        </div></div>
+    </tab>
+    <tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')">
+        <tab-heading>
+            Network{{ addon_text_nmd }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="network_ctrl">
+                <devicenetworks devicepk="pk_list['network']" disablemodal="true">
+                </devicenetworks>
+            </div>
+        </div></div>
+    </tab>
+    <tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')">
+        <tab-heading>
+            Config{{ addon_text }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="config_ctrl">
+                <deviceconfig devicepk="pk_list['config']">
+                </deviceconfig>
+            </div>
+            <!-- only valid for corvus -->
+            <div ng-controller='config_vars_ctrl'>
+                <deviceconfigvars devicepk='pk_list_config'>
+                </deviceconfigvars>
+            </div>
+        </div></div>
+    </tab>
+    <tab ng-if="acl_read(null, 'backbone.device.change_disk') && dev_pk_nmd_list.length" select="activate('partinfo')">
+        <tab-heading>
+            Disk{{ addon_text_nmd }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="partinfo_ctrl">
+                <partinfo devicepk="pk_list['partinfo']">
+                </partinfo>
+            </div>
+        </div></div>
+    </tab>
+    <tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('variables')">
+        <tab-heading>
+            Vars{{ addon_text }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="dv_base">
+                <devicevars devicepk="pk_list['variables']" disablemodal="true">
+                </devicevars>
+            </div>
+        </div></div>
+    </tab>
+    <tab select="activate('status_history')">
+        <tab-heading>
+            Status History
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="status_history_ctrl">
+                <statushistory devicepks="pk_list['status_history']">
+                </statushistory>
+            </div>
+        </div></div>
+    </tab>
+    <!-- also check for md-config-server in service list -->
+    <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('livestatus')">
+        <tab-heading>
+            Livestatus{{ addon_text_nmd }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="livestatus_ctrl">
+                <livestatus devicepk="pk_list['livestatus']">
+                </livestatus>
+            </div>
+        </div></div>
+    </tab>
+    <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('monconfig')">
+        <tab-heading>
+            MonConfig/hint{{ addon_text_nmd }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="monconfig_ctrl">
+                <monconfig devicepk="pk_list['monconfig']">
+                </monconfig>
+            </div>
+        </div></div>
+    </tab>
+    <!-- also check for grapher in service list -->
+    <tab ng-if="acl_read(null, 'backbone.device.show_graphs')" select="activate('graphing')">
+        <tab-heading>
+            Graph{{ addon_text }}
+        </tab-heading>
+        <div class="panel panel-default"><div class="panel-body">
+            <div ng-controller="rrd_ctrl">
+                <rrdgraph devicepk="pk_list['graphing']" disablemodal="true">
+                </rrdgraph>
             </div>
         </div></div>
     </tab>
@@ -48,9 +154,10 @@ dev_info_template = """
 device_info_module = angular.module(
     "icsw.device.info",
     ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools"]
-).controller("device_info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window", "msgbus"
-    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window, msgbus) ->
+).controller("device_info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window", "msgbus", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window, msgbus, access_level_service) ->
         console.log "c", $window.ICSW_DEV_INFO
+        access_level_service.install($scope)
         $scope.active_div = "general"
         $scope.show = false
         $scope.dev_json = undefined
@@ -61,7 +168,7 @@ device_info_module = angular.module(
             $scope.dev_pk_list = dev_list
             $scope.dev_pk_nmd_list = args[1]
             $scope.devg_pk_list = args[2]
-            $scope.dev_pk_nmd_list = args[3]
+            $scope.dev_pk_md_list = args[3]
             $scope.addon_text = " (4)"
             $scope.addon_text_nmd = " (1)"
             $scope.addon_devices = []
@@ -100,7 +207,6 @@ device_info_module = angular.module(
             $scope.dev_json = json
             $scope.permissions = access_json
             $scope.show = true
-            console.log "show=", $scope.show
             #new_scope = $compile(info_template)($scope)
             #console.log new_scope
 ]).directive("deviceoverview", ($compile) ->
@@ -108,17 +214,31 @@ device_info_module = angular.module(
         restrict: "EA"
         replace: true
         compile: (element, attrs) ->
-            console.log "comp", element, attrs
             return (scope, iElement, iAttrs) ->
+                scope.pk_list = {
+                    "category": []
+                    "location": []
+                    "network": []
+                    "config": []
+                    "partinfo": []
+                    "variables": []
+                    "status_history": []
+                    "livestatus": []
+                    "monconfig": []
+                    "graphing": []
+                }
                 scope.$watch("dev_json", (new_val) ->
-                    console.log "nv", new_val
                     if new_val
                         scope.devicepk = new_val[0].idx
-                        console.log scope.devicepk
                         new_el = $compile(dev_info_template)
                         iElement.children().remove()
                         iElement.append(new_el(scope))
                 )
+                scope.activate = (name) ->
+                    if name in ["category", "location", "network", "partinfo", "status_history", "livestatus", "monconfig"]
+                        scope.pk_list[name] = scope.dev_pk_nmd_list
+                    else if name in ["config", "variables", "graphing"]
+                        scope.pk_list[name] = scope.dev_pk_list
     }
 )
 
@@ -213,160 +333,6 @@ class device_info
             addon_text_nmd = " (#{pk_list_nmd.length})"
         else
             addon_text_nmd = ""
-        main_part = "<div class='panel-body'><div class='tab-content'>"
-        dev_div_txt = """
-<div class="panel panel-default">
-    <div class="panel-heading">
-        <ul class='nav nav-tabs' id="info_tab">
-            <li><a href='#general'>General</a></li>
-"""
-        main_part += """
-<div class="tab-pane" id="general">
-    <div id="icsw.device.config">
-        <div ng-controller="deviceinfo_ctrl">
-            <deviceinfo devicepk='#{main_pk}'>
-            </deviceinfo>
-            {% verbatim %}
-            <div ng-show="show_uuid">
-                <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
-                <pre>
-urn:uuid:{{ _edit_obj.uuid }}
-                </pre>
-                <h4>and restart host-monitoring .</h4>
-            </div>
-            {% endverbatim %}
-        </div>
-    </div>
-</div>"""
-        if pk_list_nmd.length
-            if @has_perm("backbone.device.change_category", 0)
-                dev_div_txt += "<li><a href='#category'>Category#{addon_text_nmd}</a></li>"
-                main_part += """
-<div class="tab-pane" id="category">
-    <div id="icsw.device.config">
-        <div ng-controller="category_ctrl">
-            <devicecategory devicepk='#{pk_list_nmd}'>
-                <tree treeconfig="cat_tree"></tree>
-            </devicecategory>
-        </div>
-    </div>
-</div>
-"""
-            if @has_perm("backbone.device.change_location", 0)
-                dev_div_txt += "<li><a href='#location'>Location#{addon_text_nmd}</a></li>"
-                main_part += """
-<div class="tab-pane" id="location">
-    <div id="icsw.device.config">
-        <div ng-controller="location_ctrl">
-            <devicelocation devicepk='#{pk_list_nmd}'>
-            </devicelocation>
-        </div>
-    </div>
-</div>
-"""
-            if @has_perm("backbone.device.change_network", 0)
-                dev_div_txt += "<li><a href='#di_network'>Network#{addon_text_nmd}</a></li>"
-                main_part += """
-<div class="tab-pane" id="di_network">
-    <div id='icsw.network.device'>
-        <div ng-controller='network_ctrl'>
-            <devicenetworks devicepk='#{pk_list_nmd}' disablemodal='#{dis_modal}'>
-            </devicenetworks>
-        </div>
-    </div>
-</div>
-"""
-        if @has_perm("backbone.device.change_config", 0)
-            dev_div_txt += "<li><a href='#config'>Config#{addon_text}</a></li>"
-            main_part += """
-<div class="tab-pane" id="config">
-    <div id='icsw.device.config'>
-        <div ng-controller='config_ctrl'>
-            <deviceconfig devicepk='#{pk_list}'>
-            </deviceconfig>
-        </div>
-"""
-            if window.INIT_PRODUCT_NAME.toLowerCase() == "corvus"
-                main_part += """
-<div ng-controller='config_vars_ctrl'>
-    <deviceconfigvars devicepk='#{pk_list}'>
-    </deviceconfigvars>
-</div>
-"""
-            main_part += "</div></div>"
-        if pk_list_nmd.length and @has_perm("backbone.device.change_disk", 0)
-            dev_div_txt += "<li><a href='#disk'>Disk#{addon_text_nmd}</a></li>"
-            main_part += """
-<div class="tab-pane" id="disk">
-    <div id='icsw.device.config'>
-        <div ng-controller='partinfo_ctrl'>
-            <partinfo devicepk='#{pk_list_nmd}'>
-            </partinfo>
-        </div>
-    </div>
-</div>
-"""
-        if @has_perm("backbone.device.change_variables", 0)
-            dev_div_txt += "<li><a href='#vars'>Vars#{addon_text}</a></li>"
-            main_part += """
-<div class="tab-pane" id="vars">
-    <div id='icsw.device.variables'>
-        <div ng-controller='dv_base'>
-            <devicevars devicepk='#{pk_list}' disablemodal='#{dis_modal}'></devicevars>
-        </div>
-    </div>
-</div>
-"""
-
-        dev_div_txt += "<li><a href='#status_history'>Status History#{addon_text}</a></li>"
-        main_part += """
-<div class="tab-pane" id="status_history">
-    <div id='icsw.device.status_history'>
-        <div ng-controller='status_history_ctrl'>
-            <statushistory devicepks='#{pk_list}'>
-            </statushistory>
-        </div>
-    </div>
-</div>
-"""
-
-        if pk_list_nmd.length
-            if window.SERVICE_TYPES["md-config"]? and @has_perm("backbone.device.change_monitoring", 0)
-                dev_div_txt += "<li><a href='#livestatus'>Livestatus#{addon_text_nmd}</a></li><li><a href='#monconfig'>MonConfig/hint#{addon_text_nmd}</a></li>"
-                main_part += """
-<div class="tab-pane" id="livestatus">
-    <div id='icsw.device.livestatus'>
-        <div ng-controller='livestatus_ctrl'>
-            <livestatus devicepk='#{pk_list_nmd}'>
-            </livestatus>
-        </div>
-    </div>
-</div>
-<div class="tab-pane" id="monconfig">
-    <div id='icsw.device.livestatus'>
-        <div ng-controller='monconfig_ctrl'>
-            <monconfig devicepk='#{pk_list_nmd}'>
-            </monconfig>
-        </div>
-    </div>
-</div>
-"""
-        if window.SERVICE_TYPES["grapher"]? and @has_perm("backbone.device.show_graphs", 0)
-            dev_div_txt += "<li><a href='#rrd'>Graphs#{addon_text}</a></li>"
-            main_part += """
-<div class="tab-pane" id="rrd">
-    <div id='icsw.device.rrd'>
-        <div ng-controller='rrd_ctrl'>
-            <rrdgraph devicepk='#{pk_list}'>
-            </rrdgraph>
-        </div>
-    </div>
-</div>
-"""
-
-        dev_div_txt += "</ul></div>"
-        main_part += "</div></div>"
-        dev_div_txt += main_part + "</div>"
         dev_div = $(dev_div_txt)
         @dev_div = dev_div
         @tabs_init = {}

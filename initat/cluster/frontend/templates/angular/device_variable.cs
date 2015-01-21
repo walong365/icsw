@@ -404,8 +404,10 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
         link : (scope, el, attrs) ->
             if attrs["disablemodal"]?
                 scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
-            if attrs["devicepk"]?
-                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.new_devsel(new_val)
+            )
     }
 ).run(($templateCache) ->
     $templateCache.put("dv_head.html", dv_head_template)

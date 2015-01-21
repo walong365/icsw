@@ -38,8 +38,8 @@ from initat.cluster.backbone.models import device, device_type, domain_name_tree
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline
 from initat.cluster.frontend.common import duration_utils
-from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data,\
-    mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data,\
+from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data, \
+    mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
     mon_icinga_log_raw_base
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
@@ -233,7 +233,7 @@ class get_node_status(View):
         pk_list = json.loads(_post["pk_list"])
         srv_com = server_command.srv_command(command="get_node_status")
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in pk_list]
+            *[E.device(pk="{:d}".format(int(cur_pk))) for cur_pk in pk_list if cur_pk]
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:

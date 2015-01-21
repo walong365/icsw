@@ -351,7 +351,11 @@ device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$fil
         restrict : "EA"
         template : $templateCache.get("devconfvars.html")
         link : (scope, el, attrs) ->
-            scope.set_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+        link : (scope, el, attrs) ->
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.set_devsel(new_val)
+            )
     }
 ).run(($templateCache) ->
     $templateCache.put("devconfvars.html", devconf_vars_template)
@@ -536,8 +540,10 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         restrict : "EA"
         template : $templateCache.get("device_config_template.html")
         link : (scope, el, attrs) ->
-            if attrs["devicepk"]?
-                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.new_devsel(new_val)
+            )
     }
 ).directive("deviceconfighelper", (Restangular) ->
     return {
@@ -681,13 +687,9 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
         $scope.cat_tree = new category_tree($scope, {})            
-        $scope.reload = (pk_str) ->
-            if pk_str.match(/,/)
-                $scope.multi_device_mode = true
-                $scope.device_pks = (parseInt(_val) for _val in pk_str.split(","))
-            else
-                $scope.multi_device_mode = false
-                $scope.device_pks = [parseInt(pk_str)]
+        $scope.reload = (pk_list) ->
+            $scope.device_pks = pk_list
+            $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
@@ -762,8 +764,10 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
     return {
         restrict : "EA"
         link : (scope, el, attrs) ->
-            if attrs["devicepk"]?
-                scope.reload(attrs["devicepk"])
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.reload(new_val)
+            )
     }
 )
 
@@ -838,13 +842,9 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
         # category with gfx 
         $scope.gfx_cat = undefined
         $scope.active_loc_gfx = undefined
-        $scope.reload = (pk_str) ->
-            if pk_str.match(/,/)
-                $scope.multi_device_mode = true
-                $scope.device_pks = (parseInt(_val) for _val in pk_str.split(","))
-            else
-                $scope.multi_device_mode = false
-                $scope.device_pks = [parseInt(pk_str)]
+        $scope.reload = (pk_list) ->
+            $scope.device_pks = pk_list
+            $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_mon_locations": true, "pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
@@ -969,8 +969,10 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
         restrict : "EA"
         template: $templateCache.get("device_location.html")
         link : (scope, el, attrs) ->
-            if attrs["devicepk"]?
-                scope.reload(attrs["devicepk"])
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.reload(new_val)
+            )
     }
 ).directive("locationlist", ($templateCache, $compile, $modal, Restangular) ->
     return {
@@ -1246,7 +1248,10 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
         restrict : "EA"
         template : $templateCache.get("partinfo.html")
         link : (scope, el, attrs) ->
-            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.new_devsel(new_val)
+            )
     }
 ).run(($templateCache) ->
     $templateCache.put("partinfo.html", partinfo_template)

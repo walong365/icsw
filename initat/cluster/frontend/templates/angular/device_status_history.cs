@@ -154,7 +154,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
         restrict : "EA"
         template : $templateCache.get("status_history_template.html")
         link : (scope, el, attrs) ->
-            scope.devicepks = attrs["devicepks"].split(',')
+            scope.devicepks = []
             #scope.startdate = moment().startOf("day")
             scope.startdate = moment('Wed Jan 07 2015 00:00:00 GMT+0100 (CET)')
             scope.timerange = 'day'
@@ -178,6 +178,12 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
 
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
+            scope.$watch(attrs["devicepks"], (new_val) ->
+                if new_val and new_val.length
+                    scope.devicepks = new_val
+                    console.log scope.devicepks
+                    scope.update()
+            )
             scope.update()
 }).run(($templateCache) ->
     $templateCache.put("status_history_template.html", status_history_template)

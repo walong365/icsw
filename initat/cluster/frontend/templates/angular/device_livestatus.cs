@@ -1214,7 +1214,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         template : $templateCache.get("livestatus_template.html")
         link : (scope, el, attrs) ->
             if attrs.devicepk?
-                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+                scope.$watch(attrs["devicepk"], (new_val) ->
+                    if new_val and new_val.length
+                        scope.new_devsel(new_val)
+                )
             else
                 install_devsel_link(scope.new_devsel, false)
             scope.get_state_class = (entry) ->
@@ -1512,7 +1515,10 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         restrict : "EA"
         template : $templateCache.get("monconfig_template.html")
         link : (scope, el, attrs) ->
-            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.new_devsel(new_val)
+            )
     }
 ).directive("mhdevrow", ($templateCache) ->
     return {
