@@ -38,7 +38,7 @@ _subnode = """
     <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
     <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
     <span ng-if="treeconfig.show_select && entry._show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
-    <span ng-show="treeconfig.show_icons" ng-class="treeconfig.get_icon_class(entry)"></span>
+    <span ng-show="treeconfig.show_icons" ng-class="treeconfig.get_icon_class(entry)" style="width: 16px; margin-left: 0px"></span>
     <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
         <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
         <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
