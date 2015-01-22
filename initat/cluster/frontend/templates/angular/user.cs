@@ -929,7 +929,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, json.ip)
                     script = "notepad.exe\r\n"
                     blob = new Blob([ script ], { type : 'application/x-bat' });
-                    console.log "blob", blob
+                    # console.log "blob", blob
                     vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
                     console.log "set testurl", vdus.testurl
 ]).controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
@@ -1535,7 +1535,6 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             if dev_list.length
                 $scope.show_index = false
                 $scope.show_devices = true
-                console.log "show_deviceinfo"
                 # not needed here, emitted by sidebar
                 # msgbus.emit("devicelist", [dev_list, dev_list, devg_list, md_list])
             else
@@ -1544,7 +1543,6 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     window.ICSW_DEV_INFO.close()
                 $scope.show_devices = false
                 $scope.show_index = true
-                console.log "hide_deviceinfo"
                 #$("div#center_deviceinfo").hide()
         # hack for late init of sidebar_base
         #root.target_devsel_link = [$scope.use_devs, true]

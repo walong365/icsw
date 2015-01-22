@@ -377,7 +377,6 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
             $scope.devsel_list = _dev_sel
             $scope.reload()
         $scope.reload = () ->
-            console.log "devconfig reload2"
             pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
@@ -542,7 +541,6 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         link : (scope, el, attrs) ->
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val and new_val.length
-                    console.log "devconfig reload"
                     scope.new_devsel(new_val)
             )
             if not attrs["devicepk"]?

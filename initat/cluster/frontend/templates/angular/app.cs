@@ -26,7 +26,6 @@ ics_app = angular.module(
 )
 
 ics_app.config(() ->
-    console.log "go"
 )
 
 add_tree_directive(ics_app)

@@ -154,7 +154,6 @@ device_info_module = angular.module(
     ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools"]
 ).controller("device_info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window", "msgbus", "access_level_service",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window, msgbus, access_level_service) ->
-        console.log "c", $window.ICSW_DEV_INFO
         access_level_service.install($scope)
         $scope.active_div = "general"
         $scope.show = false
@@ -163,10 +162,8 @@ device_info_module = angular.module(
         #@replace_div = {% if index_view %}true{% else %}false{% endif %}
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
-            console.log "new_devl"
             $scope.dev_pk_list = args[0]
             $scope.dev_pk_nmd_list = args[1]
-            console.log "->", $scope.dev_pk_list, $scope.dev_pk_nmd_list
             $scope.devg_pk_list = args[2]
             $scope.dev_pk_md_list = args[3]
             $scope.addon_devices = []
@@ -201,7 +198,6 @@ device_info_module = angular.module(
             # device object with access_levels
             sub_scope = $rootScope.$new()
             access_level_service.install(sub_scope)
-            console.log dev
             dev_idx = dev.idx
             sub_scope.devicepk = dev_idx
             sub_scope.disable_modal = true
@@ -260,13 +256,10 @@ device_info_module = angular.module(
                     scope.multi_device = false
                     scope.$watch(attrs["devicepk"], (new_val) ->
                         if new_val
-                            console.log "nv", new_val
                             scope.devicepk = new_val
                             scope.new_device_sel()
                     )
-                console.log scope.multi_device
                 scope.new_device_sel = () ->
-                    console.log "*********SEL"
                     if scope.dev_pk_list.length > 1
                         scope.addon_text = " (#{scope.dev_pk_list.length})"
                     else
@@ -277,9 +270,7 @@ device_info_module = angular.module(
                         scope.addon_text_nmd = ""
                     # destroy old subscope, important
                     if scope.current_subscope
-                        console.log "destroy"
                         scope.current_subscope.$destroy()
-                    console.log " new overview"
                     new_scope = scope.$new()
                     new_el = $compile(dev_info_template)(new_scope)
                     iElement.children().remove()

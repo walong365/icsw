@@ -452,7 +452,6 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             $q.all(wait_list).then((data) ->
                 $scope.mon_service_templ = data[1]
                 $scope.categories = data[2]
-                #console.log data
                 ($scope._set_fields(entry, true) for entry in data[0])
                 $scope.entries = data[0]
                 $scope.config_catalogs = data[3]
@@ -1101,7 +1100,6 @@ class config_tree extends tree_config
             when "eh"
                 return "errors"
             when "e"
-                console.log t_entry.obj
                 return "config " + t_entry.obj.key
             when "c"
                 obj = t_entry.obj
@@ -1140,7 +1138,6 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->
             $scope.devsel_list = _dev_sel
-            console.log $scope.devsel_list
         $scope.dev_names = () ->
             return resolve_device_keys($scope.devsel_list)
         $scope._build_list = (ct) ->

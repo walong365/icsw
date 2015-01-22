@@ -636,7 +636,6 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
                 else
                     # unhandled entry
                     true
-                    console.log entry
 
         $scope.update_search = () ->
             if $scope.cur_search_to
