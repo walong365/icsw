@@ -341,6 +341,7 @@ PIPELINE_CSS = {
             "css/ladda.min.css",
             "css/piechart.css",
             "css/smart-table.css",
+            "css/font-awesome.min.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }
