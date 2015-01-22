@@ -1138,10 +1138,9 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.devsel_list = []
         $scope.result_trees = []
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
-            $scope.$apply(
-                $scope.devsel_list = _dev_sel
-            )
+        $scope.new_devsel = (_dev_sel) ->
+            $scope.devsel_list = _dev_sel
+            console.log $scope.devsel_list
         $scope.dev_names = () ->
             return resolve_device_keys($scope.devsel_list)
         $scope._build_list = (ct) ->
@@ -1218,8 +1217,18 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
                 return "text-success"
             else
                 return "text-warning"
-        install_devsel_link($scope.new_devsel, true)
-])
+]).directive("generateconfig", ($templateCache, msgbus) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("generate_config.html")
+        link : (scope, el, attrs) ->
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[1])
+                )
+    }
+)
 
 {% endinlinecoffeescript %}
 

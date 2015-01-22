@@ -256,7 +256,7 @@ icsw_tools = angular.module(
 ).factory("msgbus", ["$rootScope", ($rootScope) ->
     bus = {}
     bus.emit = (msg, data) ->
-        console.log "e", data
+        #console.log "e", data
         $rootScope.$emit(msg, data)
     bus.receive = (msg, scope, func) ->
         unbind = $rootScope.$on(msg, func)
@@ -535,8 +535,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
     module.run(($templateCache) ->
         $templateCache.put("simple_confirm.html", simple_modal_template)
     )
-    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "msgbus",
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, msgbus) ->
             # set reference
             $scope.settings = settings
             $scope.settings.use_modal ?= true
@@ -686,7 +686,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 )
             # call the external init function after the rest has been declared
             if $scope.settings.init_fn
-                $scope.settings.init_fn($scope, $timeout, Restangular)
+                $scope.settings.init_fn($scope, $timeout, Restangular, msgbus)
     ])
 
 angular_add_mixin_list_controller = (module, name, settings) ->

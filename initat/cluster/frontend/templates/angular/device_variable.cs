@@ -280,8 +280,6 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             # trigger redisplay of vars
             $scope.new_filter_set($scope.var_filter, false)
         )
-        install_devsel_link($scope.new_devsel, true)
-        #$scope.base_edit.create_template = 
 ]).directive("dvhead", ($templateCache) ->
     return {
         restrict : "EA"
@@ -397,7 +395,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                     scope.obj.device_variable_set.push(data)
                 )
     }
-).directive("devicevars", ($templateCache) ->
+).directive("devicevars", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         template : $templateCache.get("device_vars.html")
@@ -408,6 +406,11 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 if new_val and new_val.length
                     scope.new_devsel(new_val)
             )
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[0])                    
+                )
     }
 ).run(($templateCache) ->
     $templateCache.put("dv_head.html", dv_head_template)

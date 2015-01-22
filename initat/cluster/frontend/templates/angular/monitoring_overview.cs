@@ -10,8 +10,8 @@ monitoring_overview_module = angular.module("icsw.monitoring_overview",
             ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
              "smart_table_utils", "status_utils", "icsw.device.livestatus"])
 
-monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
+monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus) ->
         $scope.filter_settings = {"str_filter": "", "only_selected": true}
 
         $scope.filter_predicate = (entry) ->
@@ -100,7 +100,11 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
             #$scope.$apply(  # if we do update_data() from this path, angular doesn't realise it
             #    $scope.entries = $scope.entries
             #)
-        install_devsel_link($scope.new_devsel, false)
+         
+        msgbus.emit("devselreceiver")
+        msgbus.receive("devicelist", $scope, (name, args) ->
+            $scope.new_devsel(args[1])
+        )
 
 ]).directive("monitoringoverview", ($templateCache, $timeout) ->
     return {

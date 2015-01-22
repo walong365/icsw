@@ -20,9 +20,7 @@ dev_info_template = """
                 </deviceinfo>
                 <div ng-show="show_uuid">
                     <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
-                    <pre>
-    urn:uuid:{{ _edit_obj.uuid }}
-                    </pre>
+                    <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
                     <h4>and restart host-monitoring .</h4>
                 </div>
             </div>
@@ -160,16 +158,17 @@ device_info_module = angular.module(
         access_level_service.install($scope)
         $scope.active_div = "general"
         $scope.show = false
-        $scope.dev_json = undefined
         $scope.permissions = undefined
+        $scope.devicepk = undefined
         #@replace_div = {% if index_view %}true{% else %}false{% endif %}
+        msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
+            console.log "new_devl"
             $scope.dev_pk_list = args[0]
             $scope.dev_pk_nmd_list = args[1]
+            console.log "->", $scope.dev_pk_list, $scope.dev_pk_nmd_list
             $scope.devg_pk_list = args[2]
             $scope.dev_pk_md_list = args[3]
-            $scope.addon_text = " (4)"
-            $scope.addon_text_nmd = " (1)"
             $scope.addon_devices = []
             if $scope.dev_pk_list.length
                 $scope.show = true
@@ -187,18 +186,31 @@ device_info_module = angular.module(
                 $scope.show_div(data[0], data[1])
             )
         $scope.show_div = (json, access_json) ->
-            $scope.dev_json = json
+            $scope.devicepk = json.idx
             $scope.permissions = access_json
             $scope.show = true
-]).service("DeviceOverviewService", (Restangular, $rootScope, $templateCache, $compile, $modal, $q, access_level_service) ->
-    console.log Restangular
+]).service("DeviceOverviewService", (Restangular, $rootScope, $templateCache, $compile, $modal, $q, access_level_service, msgbus) ->
     return {
-        "NewOverview" : (event, dev_idx) ->
+        "NewSingleSelection" : (dev) ->
+            if dev.device_type_identifier == "MD"
+                msgbus.emit("devicelist", [[dev.idx], [], [], [dev.idx]])
+            else
+                msgbus.emit("devicelist", [[dev.idx], [dev.idx], [], []])
+        "NewOverview" : (event, dev) ->
+            # create new modal for device
+            # device object with access_levels
             sub_scope = $rootScope.$new()
             access_level_service.install(sub_scope)
+            console.log dev
+            dev_idx = dev.idx
             sub_scope.devicepk = dev_idx
-            sub_scope.dev_pk_list = [dev_idx]
-            sub_scope.dev_pk_nmd_list = [dev_idx]
+            sub_scope.disable_modal = true
+            if dev.device_type_identifier == "MD"
+                sub_scope.dev_pk_list = [dev_idx]
+                sub_scope.dev_pk_nmd_list = []
+            else
+                sub_scope.dev_pk_list = [dev_idx]
+                sub_scope.dev_pk_nmd_list = [dev_idx]
             my_mixin = new angular_modal_mixin(
                 sub_scope,
                 $templateCache,
@@ -213,13 +225,17 @@ device_info_module = angular.module(
             # todo: destroy sub_scope
     }
 ).run(($templateCache) ->
-    $templateCache.put("DeviceOverviewTemplate", "<deviceoverview devicepk='devicepk'></deviceoverview>")
+    $templateCache.put(
+        "DeviceOverviewTemplate",
+        "<deviceoverview devicepk='devicepk'></deviceoverview>"
+    )
 ).directive("deviceoverview", ($compile) ->
     return {
         restrict: "EA"
         replace: true
         compile: (element, attrs) ->
             return (scope, iElement, iAttrs) ->
+                scope.current_subscope = undefined
                 scope.pk_list = {
                     "category": []
                     "location": []
@@ -232,20 +248,43 @@ device_info_module = angular.module(
                     "monconfig": []
                     "graphing": []
                 }
-                scope.$watch(attrs["devicepk"], (new_val) ->
-                    if new_val
-                        scope.devicepk = new_val
-                        new_el = $compile(dev_info_template)
-                        iElement.children().remove()
-                        iElement.append(new_el(scope))
-                )
-                scope.$watch("dev_json", (new_val) ->
-                    if new_val
-                        scope.devicepk = new_val.idx
-                        new_el = $compile(dev_info_template)
-                        iElement.children().remove()
-                        iElement.append(new_el(scope))
-                )
+                if attrs["multi"]?
+                    # possibly multi-device view
+                    scope.multi_device = true
+                    scope.$watch("dev_pk_list", (new_val) ->
+                        if new_val and new_val.length
+                            scope.devicepk = new_val[0]
+                            scope.new_device_sel()
+                    )
+                else
+                    scope.multi_device = false
+                    scope.$watch(attrs["devicepk"], (new_val) ->
+                        if new_val
+                            console.log "nv", new_val
+                            scope.devicepk = new_val
+                            scope.new_device_sel()
+                    )
+                console.log scope.multi_device
+                scope.new_device_sel = () ->
+                    console.log "*********SEL"
+                    if scope.dev_pk_list.length > 1
+                        scope.addon_text = " (#{scope.dev_pk_list.length})"
+                    else
+                        scope.addon_text = ""
+                    if scope.dev_pk_nmd_list.length > 1
+                        scope.addon_text_nmd = " (#{scope.dev_pk_nmd_list.length})"
+                    else
+                        scope.addon_text_nmd = ""
+                    # destroy old subscope, important
+                    if scope.current_subscope
+                        console.log "destroy"
+                        scope.current_subscope.$destroy()
+                    console.log " new overview"
+                    new_scope = scope.$new()
+                    new_el = $compile(dev_info_template)(new_scope)
+                    iElement.children().remove()
+                    iElement.append(new_el)
+                    scope.current_subscope = new_scope
                 scope.activate = (name) ->
                     if name in ["category", "location", "network", "partinfo", "status_history", "livestatus", "monconfig"]
                         scope.pk_list[name] = scope.dev_pk_nmd_list
@@ -337,37 +376,9 @@ class device_info
         # pks for devices which are no meta devices
         pk_list_nmd = (entry for entry in pk_list when entry not in @md_list)
         dis_modal = if @replace_div then 0 else 1
-        if @addon_devices.length
-            addon_text = " (#{@addon_devices.length + 1})"
-        else
-            addon_text = ""
-        if pk_list_nmd.length > 1
-            addon_text_nmd = " (#{pk_list_nmd.length})"
-        else
-            addon_text_nmd = ""
         dev_div = $(dev_div_txt)
         @dev_div = dev_div
-        @tabs_init = {}
-        dev_div.find("a").click(
-            (event) =>
-                event.preventDefault()
-                el = $(event.target)
-                t_href = el.attr("href").slice(1)
-                if not @tabs_init[t_href]?
-                    # set init flag
-                    @tabs_init[t_href] = true
-                    # get target div
-                    target_div = @dev_div.find("div[class='tab-pane'][id='#{t_href}'] > div[id^='icsw']")
-                    # bootstrap angular (app == id of device)
-                    #angular.bootstrap(target_div, [target_div.attr("id")])
-                    @active_divs.push(target_div[0])
-                # store active div
-                @active_div = t_href
-                el.tab("show")
-        )
     
-root.device_info = device_info
-
 {% endinlinecoffeescript %}
 
 </script>

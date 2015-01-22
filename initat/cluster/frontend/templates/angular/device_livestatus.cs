@@ -1208,7 +1208,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     else
                         break
     }
-]).directive("livestatus", ($templateCache) ->
+]).directive("livestatus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         template : $templateCache.get("livestatus_template.html")
@@ -1219,7 +1219,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         scope.new_devsel(new_val)
                 )
             else
-                install_devsel_link(scope.new_devsel, false)
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[0])                    
+                )
             scope.get_state_class = (entry) ->
                 state_class = {
                     0 : "success"

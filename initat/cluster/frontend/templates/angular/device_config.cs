@@ -361,8 +361,8 @@ device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$fil
     $templateCache.put("devconfvars.html", devconf_vars_template)
 )
 
-device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus) ->
         access_level_service.install($scope)
         $scope.devices = []
         $scope.configs = []
@@ -373,10 +373,11 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         $scope.table_mode = true
         $scope.list_mode = false
         $scope.only_selected = false
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.new_devsel = (_dev_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.reload()
         $scope.reload = () ->
+            console.log "devconfig reload2"
             pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
@@ -529,21 +530,26 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 return r_v.join("/")
             else
                 return ""
-        install_devsel_link($scope.new_devsel, true)
 ]).directive("dcrow", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("dc_row.html")
     }
-).directive("deviceconfig", ($templateCache) ->
+).directive("deviceconfig", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         template : $templateCache.get("device_config_template.html")
         link : (scope, el, attrs) ->
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val and new_val.length
+                    console.log "devconfig reload"
                     scope.new_devsel(new_val)
             )
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[0])                    
+                )
     }
 ).directive("deviceconfighelper", (Restangular) ->
     return {
@@ -1294,6 +1300,8 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
         link : (scope, element, attrs) ->
             scope._edit_obj = null
             scope.device_pk = null
+            scope.$on("$destroy", () ->
+            )
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val
                     scope.device_pk = new_val
@@ -1305,7 +1313,6 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                         restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
                     ]
                     $q.all(wait_list).then((data) ->
-                        console.log "*", data
                         form = data[0][0].form
                         scope.domain_tree_node = data[1]
                         scope.mon_device_templ_list = data[2]

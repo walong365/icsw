@@ -4,6 +4,99 @@
 
 {% inlinecoffeescript %}
 
+{% verbatim %}
+device_connection_template = """
+<div>
+    <h2>Device connections, {{ cd_devs.length }} controlling devices selected</h2>
+    <table ng-show="cd_devs.length" class="table table-condensed table-hover" style="width:auto;">
+        <tbody>
+            <tr ng-repeat-start="dev in cd_devs" class="success">
+                <th colspan="2">{{ dev.full_name }} ({{ dev.comment }})</th>
+            </tr>
+            <tr>
+                <td>
+                    <div class="input-group-btn">
+                        <div class="btn-group" ng-show="any_valid_devs(dev, false)">
+                            <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
+                                is master for <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="pk in get_valid_devs(dev, false)">
+                                    <a href="#" ng-click="create_master(dev, pk)">{{ get_device_info(pk) }}</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="input-group-btn">
+                        <div class="btn-group" ng-show="any_valid_devs(dev, true)">
+                            <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
+                                is slave of <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="pk in get_valid_devs(dev, true)">
+                                    <a href="#" ng-click="create_slave(dev, pk)">{{ get_device_info(pk) }}</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td><ng-pluralize count="dev.slave_list.length" when="{'0' : 'no slave devices', '1' : 'one slave device', 'other' : '{} slave devices'}"</ng-pluralize></td>
+                <td><ng-pluralize count="dev.master_list.length" when="{'0' : 'no master devices', '1' : 'one master device', 'other' : '{} master devices'}"</ng-pluralize></td>
+            </tr>
+            <tr ng-repeat-end>
+                <td>
+                    <ul class="list-group">
+                        <li ng-repeat="el in dev.slave_list" class="list-group-item">
+                            <button class="btn btn-xs btn-danger" ng-click="delete_cd(el, dev, $event)">delete</button>&nbsp;
+                            <button class="btn btn-xs btn-warning" ng-click="modify_cd(el, $event)">modify</button>
+                            {{ el.child | follow_fk:this:'devices':'full_name' }}
+                            ({{ el.connection_info }}; {{ el.parameter_i1 }} / 
+                            {{ el.parameter_i2 }} / 
+                            {{ el.parameter_i3 }} / 
+                            {{ el.parameter_i4 }})
+                        </li>
+                    </ul>
+                </td>
+                <td>
+                    <ul class="list-group">
+                        <li ng-repeat="el in dev.master_list" class="list-group-item">
+                            <button class="btn btn-xs btn-danger" ng-click="delete_cd(el, dev, $event)">delete</button>&nbsp;
+                            <button class="btn btn-xs btn-warning" ng-click="modify_cd(el, $event)">modify</button>
+                            {{ el.parent | follow_fk:this:'devices':'full_name' }}
+                            ({{ el.connection_info }}; {{ el.parameter_i1 }} / 
+                            {{ el.parameter_i2 }} / 
+                            {{ el.parameter_i3 }} / 
+                            {{ el.parameter_i4 }}) 
+                        </li>
+                    </ul>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>Automatic creation</h3>
+    <form class="form-inline">
+        Set
+        <div class="form-group">
+            <input type="text" class="form-control" ng-model="ac_host"></input> 
+        </div>
+        (Host) as <input type="button" class="btn btn-sn btn-primary" ng-value="ac_type" ng-click="change_ac_type()"></input>
+        for
+        <div class="form-group">
+            <input type="text" class="form-control" ng-model="ac_cd"></input> 
+        </div>
+        (Controlling device)
+        <input type="button" ng-show="ac_host && ac_cd" class="btn btn-success" value="create" ng-click="handle_ac()"></input>
+    </form>
+    Example: 'node##' as Slave for 'ipmi##' (2 digits).
+</div>
+"""
+
+{% endverbatim %}
+
 device_connection_module = angular.module("icsw.device.connection", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
 device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
@@ -37,7 +130,7 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
         $scope.cd_edit.new_object_at_tail = true
         $scope.cd_edit.use_promise = true
 
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.new_devsel = (_dev_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.reload()
         $scope.reload = () ->
@@ -114,15 +207,26 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
             $scope.cd_edit.create_rest_url.post(new_obj).then((data) ->
                 dev.master_list.push(data)
             )
-        install_devsel_link($scope.new_devsel, false)
     ]
+).directive("deviceconnection", ($templateCache, msgbus) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("device_connection_template.html")
+        link : (scope, el, attrs) ->
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.new_devsel(new_val)
+            )
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[0])                    
+                )
+    }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
+    $templateCache.put("device_connection_template.html", device_connection_template)
 )
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.device.connection']"), ["icsw.device.connection"])
-)
-
 {% endinlinecoffeescript %}
 
 </script>

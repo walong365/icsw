@@ -231,6 +231,7 @@ update_pdc = (srv_pdc, client_pdc) ->
 package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout) ->
         # devices
+        $scope.entries = []
         $scope.devices = []
         # image / kernel list
         $scope.srv_image_list = []
@@ -263,7 +264,6 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 $.unblockUI()
             )
         # not working right now, f*ck, will draw to many widgets
-        install_devsel_link($scope.reload_devices, false)
         $scope.reload_state = () ->
             #console.log "rls"
             Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"package_state" : true, "ignore_meta_devices" : true}).then(
@@ -516,8 +516,19 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 return moment.unix(dev.latest_contact).fromNow(true)
             else
                 return "never"
-
-]).directive("istate", ($templateCache, $compile) ->
+]).directive("packageinstall", ($templateCache, msgbus) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("package_install.html")
+        link : (scope, el, attrs) ->
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    # args is not needed here, fix controller
+                    scope.reload_devices(args[1])
+                )
+    }
+).directive("istate", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         scope:

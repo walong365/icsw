@@ -443,10 +443,10 @@ class sidebar_tree extends tree_config
                 # create modal or use main view
                 if @scope.index_view
                     # replace index
-                    show_device_on_index([dev.idx])
+                    @scope.DeviceOverviewService.NewSingleSelection(dev)
                 else
                     # modal
-                    @scope.DeviceOverviewService.NewOverview(event, dev.idx)
+                    @scope.DeviceOverviewService.NewOverview(event, dev)
     get_name: (t_entry) ->
         entry = @get_dev_entry(t_entry)
         if t_entry._node_type == "f"
@@ -1531,35 +1531,30 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 return true
             else
                 return false
-        $scope.set_visibility = (flag) ->
-            #$scope.$apply(
-            $scope.show_index = flag
-            #)
         $scope.use_devs = (dev_list, devg_list, md_list) ->
             if dev_list.length
-                $scope.set_index_visibility(false)
+                $scope.show_index = false
                 $scope.show_devices = true
                 console.log "show_deviceinfo"
-                msgbus.emit("devicelist", [dev_list, dev_list, devg_list, md_list])
+                # not needed here, emitted by sidebar
+                # msgbus.emit("devicelist", [dev_list, dev_list, devg_list, md_list])
             else
                 # check for active device_info
                 if window.ICSW_DEV_INFO?
                     window.ICSW_DEV_INFO.close()
                 $scope.show_devices = false
-                $scope.set_index_visibility(true)
+                $scope.show_index = true
                 console.log "hide_deviceinfo"
                 #$("div#center_deviceinfo").hide()
-        $scope.set_index_visibility = (flag) ->
-            $scope.set_visibility(flag)
-        root.show_device_on_index = $scope.use_devs
         # hack for late init of sidebar_base
         #root.target_devsel_link = [$scope.use_devs, true]
         # unified app, to be improved, FIXME
-        root.install_devsel_link($scope.use_devs, true)
+        #root.install_devsel_link($scope.use_devs, true)
 ]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.DeviceOverviewService = DeviceOverviewService
+        $scope.msgbus = msgbus
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.searchstr = ""
         $scope.search_ok = true
@@ -1567,35 +1562,36 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         # active tab, (g)roups, (f)qdn, (c)ategories
         $scope.hidden_tabs = {"g" : true, "f" : true, "c" : true}
         $scope.devsel_func = []
-        $scope.call_devsel_func = (called_after_load) ->
-            if $scope.devsel_func.length or true
-                # list of devices
-                dev_pk_list = []
-                # list of devices without meta device list
-                dev_pk_nmd_list = []
-                # list of device groups
-                devg_pk_list = []
-                # list of metadevices
-                dev_pk_md_list = []
-                for idx in $scope.cur_sel
-                    if idx of $scope.dev_lut
-                        # in case dev_lut is not valid
-                        if $scope.dev_lut[idx].device_type_identifier == "MD"
-                            devg_pk_list.push($scope.dev_lut[idx].device_group)
-                            dev_pk_md_list.push(idx)
-                        else
-                            dev_pk_nmd_list.push(idx)
-                        dev_pk_list.push(idx)
-                msgbus.emit("devicelist", [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list])
-                for entry in $scope.devsel_func
-                    if called_after_load and not entry.fire_when_loaded
-                        true
+        $scope.devsel_receiver = 0
+        $scope.call_devsel_func = () ->
+            # list of devices
+            dev_pk_list = []
+            # list of devices without meta device list
+            dev_pk_nmd_list = []
+            # list of device groups
+            devg_pk_list = []
+            # list of metadevices
+            dev_pk_md_list = []
+            for idx in $scope.cur_sel
+                if idx of $scope.dev_lut
+                    # in case dev_lut is not valid
+                    if $scope.dev_lut[idx].device_type_identifier == "MD"
+                        devg_pk_list.push($scope.dev_lut[idx].device_group)
+                        dev_pk_md_list.push(idx)
                     else
-                        # build device, device_group list
-                        if entry.with_meta_devices
-                            entry.func(dev_pk_list, devg_pk_list, dev_pk_md_list)
-                        else
-                            entry.func(dev_pk_nmd_list, devg_pk_list, dev_pk_md_list)
+                        dev_pk_nmd_list.push(idx)
+                    dev_pk_list.push(idx)
+            #console.log "send"
+            msgbus.emit("devicelist", [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list])
+            #for entry in $scope.devsel_func
+            #    if called_after_load and not entry.fire_when_loaded
+            #        true
+            #    else
+            #        # build device, device_group list
+            #        if entry.with_meta_devices
+            #            entry.func(dev_pk_list, devg_pk_list, dev_pk_md_list)
+            #        else
+            #            entry.func(dev_pk_nmd_list, devg_pk_list, dev_pk_md_list)
         $scope.resolve_device_keys = (key_list) =>
             list_len = key_list.length
             ret_list = list_len + (if list_len == 1 then " device" else " devices")
@@ -1631,13 +1627,13 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             $scope.selection_changed()
         # current device selection
         $scope.cur_sel = []            
-        $scope.install_devsel_link = (ds_func, with_meta_devices) ->
-            fire_when_loaded = true
-            $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded, "with_meta_devices" : with_meta_devices})
-        if root.target_devsel_link?
-            $scope.install_devsel_link(root.target_devsel_link[0], root.target_devsel_link[1])
-            root.target_devsel_link = null
-        root.install_devsel_link = $scope.install_devsel_link
+        #$scope.install_devsel_link = (ds_func, with_meta_devices) ->
+        #    fire_when_loaded = true
+        #    $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded, "with_meta_devices" : with_meta_devices})
+        #if root.target_devsel_link?
+        #    $scope.install_devsel_link(root.target_devsel_link[0], root.target_devsel_link[1])
+        #    root.target_devsel_link = null
+        #root.install_devsel_link = $scope.install_devsel_link
         root.resolve_device_keys = $scope.resolve_device_keys
         root.sidebar = {"resolve_device_keys" : $scope.resolve_device_keys}
         $scope.active_tab = "{{ request.session.sidebar_mode }}".slice(0, 1) 
@@ -1842,7 +1838,11 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 cur_tc.recalc()
                 cur_tc.show_selected()
             $scope.is_loading = false
-            $scope.call_devsel_func(true)
+            $scope.call_devsel_func()
+        msgbus.receive("devselreceiver", $scope, (name, args) ->
+            $scope.devsel_receiver++
+        )
+        
 ]).controller("sidebar_sep", ["$scope", "$window",
     ($scope, $window) ->
         # init display of sidebar
@@ -1883,9 +1883,6 @@ virtual_desktop_utils = {
     get_viewer_command_line: (vdus, ip) ->
         return "echo \"#{vdus.password}\" | vncviewer -autopass #{ip}:#{vdus.effective_port }\n"
 }
-
-root.sidebar_target_func = undefined
-root.sidebar_call_devsel_link_when_loaded = false
 
 {% endinlinecoffeescript %}
 

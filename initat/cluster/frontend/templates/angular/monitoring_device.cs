@@ -26,8 +26,11 @@ angular_add_simple_list_controller(
             {"idx" : 2, "name" : "never use cache"} 
             {"idx" : 3, "name" : "once (until successfull)"} 
         ]
-        init_fn: ($scope, $timeout) ->
-            install_devsel_link($scope.reload, false)
+        init_fn: ($scope, $timeout, xx, msgbus) ->
+            msgbus.emit("devselreceiver")
+            msgbus.receive("devicelist", $scope, (name, args) ->
+                $scope.reload(args[1])
+            )
         fn:
             fetch : (edit_obj) ->
                 $.blockUI()

@@ -198,9 +198,13 @@ device_log_row_template = """
 
 device_boot_module = angular.module("icsw.device.boot", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
+device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus) ->
         access_level_service.install($scope)
+        msgbus.emit("devselreceiver")
+        msgbus.receive("devicelist", $scope, (name, args) ->
+            $scope.new_devsel(args[1])
+        )
         $scope.enable_modal = true
         $scope.mbl_entries = []
         $scope.num_selected = 0
@@ -634,7 +638,6 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             )
         $scope.get_mbl_created = (mbl) ->
             return moment.unix(mbl.created).format(DT_FORM)
-        install_devsel_link($scope.new_devsel, false)
 ]).directive("boottable", ($templateCache) ->
     return {
         restrict : "EA"

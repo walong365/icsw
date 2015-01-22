@@ -163,6 +163,7 @@
     <td>{{ get_pdc_list(obj) }}</td>
 </script>
 
+<script type="text/ng-template" id="package_install.html">
 <tabset>
     <tab heading="Package repositories">
         <div ng-controller="package_repo_base">
@@ -295,6 +296,11 @@
         </div>
     </tab>
 </tabset>
+</script>
+
+<div ng-controller="install">
+    <packageinstall></packageinstall>
+</div>
 
 {% endverbatim %}
 

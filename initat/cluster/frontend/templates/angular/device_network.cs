@@ -976,8 +976,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.get_boot_value = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
             return "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
-        install_devsel_link($scope.new_devsel, false)
-]).directive("devicenetworks", ($templateCache) ->
+]).directive("devicenetworks", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         template : $templateCache.get("devicenetworks.html")
@@ -988,6 +987,11 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 if new_val and new_val.length
                     scope.new_devsel(new_val)
             )
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[1])
+                )
     }
 ).directive("netdevicerow", ($templateCache, $compile) ->
     return {
@@ -1055,9 +1059,12 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
     $templateCache.put("net_cluster_info.html", net_cluster_info_template)
 )
 
-device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus) ->
         access_level_service.install($scope)
+        msgbus.receive("devicelist", $scope, (name, args) ->
+            $scope.devices = args[1] 
+        )
         $scope.clusters = []
         $scope.devices = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -1084,7 +1091,6 @@ device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter
                     }
                 }
             )          
-        install_devsel_link($scope.new_devsel, false)
         $scope.reload()
 ])
 
@@ -1103,10 +1109,8 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
         access_level_service.install($scope)
         $scope.graph_sel = "none"
         $scope.devices = []
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.new_devsel = (_dev_sel) ->
             $scope.devices = _dev_sel
-            $scope.$apply()
-        install_devsel_link($scope.new_devsel, false)
 ]).directive("nethostnode", ["dragging", (dragging) ->
     return {
         restrict : "EA"
@@ -1189,7 +1193,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 element.attr("y2", scope.link.y2c)
             )
     }
-).directive("networkgraph", () ->
+).directive("networkgraph", (msgbus) ->
     return {
         restrict : "EA"
         replace: true
@@ -1202,6 +1206,11 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
 {% endverbatim %}
 """
         link: (scope, element, attrs) ->
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[1])                    
+                )
             scope.prev_size = {width:100, height:100}
             scope.get_element_dimensions = () ->
                 return {"h": element.height(), "w": element.width()}

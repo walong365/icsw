@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "smart_table_utils"])
+device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "smart_table_utils", "icsw.tools"])
 
 angular_add_simple_list_controller(
     device_module,
@@ -28,8 +28,8 @@ angular_add_simple_list_controller(
     }
 )
 
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter) ->
+device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus) ->
         $scope.initial_load = true
         # init pagSettings /w. filter
         $scope.settings = {}
@@ -79,7 +79,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 () ->
                     $scope.entries_filtered = (entry for entry in $scope.entries when entry._show == true) 
                 true)
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.new_devsel = (_dev_sel) ->
             $scope.sel_cache = _dev_sel
             $scope.initial_load = true
             $scope.reload()
@@ -318,8 +318,11 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 }
                 success : (xml) ->
                     parse_xml_response(xml)
-        install_devsel_link($scope.new_devsel, false)
-
+                   
+        msgbus.emit("devselreceiver")
+        msgbus.receive("devicelist", $scope, (name, args) ->
+            $scope.new_devsel(args[0])
+        )
         $scope.update_entries_st_attrs = () ->
             # use same keys as in $scope.column_list
             for obj in $scope.entries

@@ -6,30 +6,14 @@
 
 {% block content %}
 
-<div id="icsw.device.config">
-
 {% verbatim %}
 
 <div ng-controller="config_ctrl">
     <deviceconfig></deviceconfig>    
 </div>
 
-</div>
-
 {% endverbatim %}
 
 {% include "generate_config.html" %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.device.config']"), ["icsw.device.config"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}
