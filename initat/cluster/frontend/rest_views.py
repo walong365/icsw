@@ -529,6 +529,8 @@ class min_access_levels(viewsets.ViewSet):
             else:
                 for key, value in _cur_dict.iteritems():
                     min_dict[key] = min(min_dict.get(key, -1), value)
+        if min_dict is None:
+            min_dict = {}
         min_dict = {_key: _value for _key, _value in min_dict.iteritems() if _value >= 0}
         return Response(min_dict)
 

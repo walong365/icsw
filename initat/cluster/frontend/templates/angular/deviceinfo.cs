@@ -16,7 +16,7 @@ dev_info_template = """
         </tab-heading>
         <div class="panel panel-default"><div class="panel-body">
             <div ng-controller="deviceinfo_ctrl">
-                <deviceinfo devicepk='{{ devicepk }}'>
+                <deviceinfo devicepk='devicepk'>
                 </deviceinfo>
                 <div ng-show="show_uuid">
                     <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
@@ -164,52 +164,57 @@ device_info_module = angular.module(
         $scope.permissions = undefined
         #@replace_div = {% if index_view %}true{% else %}false{% endif %}
         msgbus.receive("devicelist", $scope, (name, args) ->
-            dev_list = args[0]
-            $scope.dev_pk_list = dev_list
+            $scope.dev_pk_list = args[0]
             $scope.dev_pk_nmd_list = args[1]
             $scope.devg_pk_list = args[2]
             $scope.dev_pk_md_list = args[3]
             $scope.addon_text = " (4)"
             $scope.addon_text_nmd = " (1)"
             $scope.addon_devices = []
-            if dev_list
+            if $scope.dev_pk_list.length
                 $scope.show = true
                 $scope.fetch_info()
             else
                 $scope.show = false
         )
         $scope.fetch_info = () ->
-            call_ajax
-                url     : "{% url 'rest:device_detail' 1 %}".slice(0, -2) + "?pk=#{$scope.dev_pk_list[0]}"
-                method  : "GET"
-                dataType  : "json"
-                success : (json) =>
-                    if $scope.addon_devices
-                        # multi-device view, get minimum access levels
-                        all_devs = (entry for entry in $scope.addon_devices)
-                        all_devs.push($scope.dev_pk_list[0])
-                        call_ajax
-                            url     : "{% url 'rest:min_access_levels' %}"
-                            method  : "GET"
-                            data:
-                                obj_type: "device"
-                                obj_list: angular.toJson(all_devs)
-                            dataType  : "json"
-                            success: (access_json) =>
-                                $scope.$apply(
-                                    $scope.show_div(json, access_json)
-                                )
-                    else
-                        $scope.$apply(
-                            $scope.show_div(json, access_json)
-                        )
+            wait_list = [
+                Restangular.one("{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2), $scope.dev_pk_list[0]).get()
+                Restangular.one("{% url 'rest:min_access_levels' %}".slice(1)).get( {"obj_type": "device", "obj_list": angular.toJson($scope.dev_pk_list)})
+            ]
+            # access levels needed ?
+            $q.all(wait_list).then((data) ->
+                $scope.show_div(data[0], data[1])
+            )
         $scope.show_div = (json, access_json) ->
             $scope.dev_json = json
             $scope.permissions = access_json
             $scope.show = true
-            #new_scope = $compile(info_template)($scope)
-            #console.log new_scope
-]).directive("deviceoverview", ($compile) ->
+]).service("DeviceOverviewService", (Restangular, $rootScope, $templateCache, $compile, $modal, $q, access_level_service) ->
+    console.log Restangular
+    return {
+        "NewOverview" : (event, dev_idx) ->
+            sub_scope = $rootScope.$new()
+            access_level_service.install(sub_scope)
+            sub_scope.devicepk = dev_idx
+            sub_scope.dev_pk_list = [dev_idx]
+            sub_scope.dev_pk_nmd_list = [dev_idx]
+            my_mixin = new angular_modal_mixin(
+                sub_scope,
+                $templateCache,
+                $compile
+                $modal
+                Restangular
+                $q
+            )
+            my_mixin.min_width = "800px"
+            my_mixin.template = "DeviceOverviewTemplate"
+            my_mixin.edit(null, dev_idx)
+            # todo: destroy sub_scope
+    }
+).run(($templateCache) ->
+    $templateCache.put("DeviceOverviewTemplate", "<deviceoverview devicepk='devicepk'></deviceoverview>")
+).directive("deviceoverview", ($compile) ->
     return {
         restrict: "EA"
         replace: true
@@ -227,9 +232,16 @@ device_info_module = angular.module(
                     "monconfig": []
                     "graphing": []
                 }
+                scope.$watch(attrs["devicepk"], (new_val) ->
+                    if new_val
+                        scope.devicepk = new_val
+                        new_el = $compile(dev_info_template)
+                        iElement.children().remove()
+                        iElement.append(new_el(scope))
+                )
                 scope.$watch("dev_json", (new_val) ->
                     if new_val
-                        scope.devicepk = new_val[0].idx
+                        scope.devicepk = new_val.idx
                         new_el = $compile(dev_info_template)
                         iElement.children().remove()
                         iElement.append(new_el(scope))

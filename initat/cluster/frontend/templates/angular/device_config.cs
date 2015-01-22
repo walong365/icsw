@@ -1293,28 +1293,29 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
         #priority : 2
         link : (scope, element, attrs) ->
             scope._edit_obj = null
-            if attrs["devicepk"]?
-                scope.device_pk = parseInt(attrs["devicepk"])
-                wait_list = [
-                    restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_info_form"])}])
-                    restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
-                    restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
-                    restDataSource.reload(["{% url 'rest:mon_ext_host_list' %}", {}])
-                    restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
-                ]
-                $q.all(wait_list).then((data) ->
-                    console.log "*", data
-                    form = data[0][0].form
-                    scope.domain_tree_node = data[1]
-                    scope.mon_device_templ_list = data[2]
-                    scope.mon_ext_host_list = data[3]
-                    scope._edit_obj = data[4][0]
-                    if scope._edit_obj.device_type_identifier == "MD"
-                        scope._edit_obj.name = scope._edit_obj.name.substr(8)
-                    element.append($compile(form)(scope))
-                )
-            else
-                scope.device_pk = null
+            scope.device_pk = null
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val
+                    scope.device_pk = new_val
+                    wait_list = [
+                        restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_info_form"])}])
+                        restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
+                        restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
+                        restDataSource.reload(["{% url 'rest:mon_ext_host_list' %}", {}])
+                        restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
+                    ]
+                    $q.all(wait_list).then((data) ->
+                        console.log "*", data
+                        form = data[0][0].form
+                        scope.domain_tree_node = data[1]
+                        scope.mon_device_templ_list = data[2]
+                        scope.mon_ext_host_list = data[3]
+                        scope._edit_obj = data[4][0]
+                        if scope._edit_obj.device_type_identifier == "MD"
+                            scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                        element.append($compile(form)(scope))
+                    )
+            )
             scope.is_device = () ->
                 return if scope._edit_obj.device_type_identifier in ["MD"] then false else true
             scope.get_monitoring_hint_info = () ->

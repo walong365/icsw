@@ -446,7 +446,7 @@ class sidebar_tree extends tree_config
                     show_device_on_index([dev.idx])
                 else
                     # modal
-                    new device_info(event, dev.idx).show()
+                    @scope.DeviceOverviewService.NewOverview(event, dev.idx)
     get_name: (t_entry) ->
         entry = @get_dev_entry(t_entry)
         if t_entry._node_type == "f"
@@ -1511,8 +1511,8 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
     $templateCache.put("jobinfo.html", jobinfo_template)
     $templateCache.put("diskusage.html", diskusage_template)
     $templateCache.put("vncwebviewer.html", vncwebviewer_template)
-).controller("index_base", ["$scope", "$timeout", "$window",
-    ($scope, $timeout, $window) ->
+).controller("index_base", ["$scope", "$timeout", "$window", "msgbus",
+    ($scope, $timeout, $window, msgbus) ->
         $scope.show_index = true
         $scope.quick_open = true
         $scope.ext_open = false
@@ -1537,19 +1537,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             #)
         $scope.use_devs = (dev_list, devg_list, md_list) ->
             if dev_list.length
-                # only use when at least one device is selected
-                cur_di = new device_info(
-                    undefined,
-                    dev_list[0],
-                    (entry for entry in dev_list[1..]),
-                    md_list,
-                    $("div#center_deviceinfo").attr("mode")
-                )
                 $scope.set_index_visibility(false)
                 $scope.show_devices = true
                 console.log "show_deviceinfo"
-                #$("div#center_deviceinfo").show()
-                cur_di.show()
+                msgbus.emit("devicelist", [dev_list, dev_list, devg_list, md_list])
             else
                 # check for active device_info
                 if window.ICSW_DEV_INFO?
@@ -1565,9 +1556,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         #root.target_devsel_link = [$scope.use_devs, true]
         # unified app, to be improved, FIXME
         root.install_devsel_link($scope.use_devs, true)
-]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus",
-    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus) ->
+]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService",
+    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService) ->
         $scope.index_view = $window.INDEX_VIEW
+        $scope.DeviceOverviewService = DeviceOverviewService
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.searchstr = ""
         $scope.search_ok = true
