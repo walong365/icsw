@@ -531,7 +531,8 @@ class get_hist_service_data(ListAPIView):
             data["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
 
         # this mode is for an overview of the services of a device without saying anything about a particular service
-        if request.GET.get("merge_services", False):
+
+        if int(request.GET.get("merge_services", 0)):
             # it's not obvious how to aggregate service states
             # we now just add the values, but we could e.g. also use the most common state of a service as it's state
             # then we could say "4 services were ok, 3 were critical".
@@ -542,5 +543,8 @@ class get_hist_service_data(ListAPIView):
             total = sum(entry['value'] for entry in data)
             for entry in data:
                 entry['value'] /= total
+        else:
+            # we should always return a list here for easier REST handling
+            data = [data]
 
         return Response(data)

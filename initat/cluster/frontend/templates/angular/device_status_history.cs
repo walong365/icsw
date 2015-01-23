@@ -101,8 +101,8 @@ device_status_history_template = """
 
 status_history_module = angular.module("icsw.device.status_history", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "status_utils"])
 
-status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout",
-    ($scope, $compile, $filter, $templateCache, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout",
+    ($scope, $compile, $filter, $templateCache, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
 ]).directive("devicestatushistory", ($templateCache, status_utils_functions, Restangular) ->
     return {
         restrict : "EA"
@@ -114,7 +114,7 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
         link : (scope, el, attrs) ->
             scope.device_id = attrs.device
             scope.device_chart_id = "device_chart_" + scope.device_id
-            scope.device_rest = Restangular.one("{% url 'rest:device_list' %}".slice(1)).get({'id': scope.device_id})
+            scope.device_rest = Restangular.one("{% url 'rest:device_list' %}".slice(1)).get({'idx': scope.device_id})
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
             scope.extract_service_value = (service, key) ->
@@ -144,6 +144,8 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                     # new_data is dict, but we want it as list to be able to sort it
                     data = ([key, val, scope.calc_pie_data(key, val)] for key, val of new_data)
                     scope.service_data = _.sortBy(data, (entry) -> return scope.extract_service_name(entry[0]))
+                    console.log 'serv d 1', new_data
+                    console.log 'serv d 2', scope.service_data
 
                 status_utils_functions.get_service_data(scope.device_id, scope.startdate, scope.timerange, serv_cont)
 

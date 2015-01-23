@@ -110,7 +110,7 @@ angular.module(
                 cont = (new_data) ->
                     [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
-                status_utils_functions.get_service_data(scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=true)
+                status_utils_functions.get_service_data(scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=1)
             scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
 }).service('status_utils_functions', (Restangular) ->
     get_device_data = (device_id, start_date, timerange, cont) ->
@@ -121,8 +121,9 @@ angular.module(
         }
         base = Restangular.all("{% url 'mon:get_hist_device_data' %}".slice(1))
         base.getList(query_data).then(cont)
-    get_service_data = (device_id, start_date, timerange, cont, merge_services=false) ->
-        expect_array = merge_services
+    get_service_data = (device_id, start_date, timerange, cont, merge_services=0) ->
+        # merge_services: boolean as int
+        expect_array = merge_services != 0
         query_data = {
             'device_id': device_id,
             'date': moment(start_date).unix()  # ask server in utc
@@ -130,7 +131,13 @@ angular.module(
             'merge_services': merge_services,
         }
         base = Restangular.all("{% url 'mon:get_hist_service_data' %}".slice(1))
-        base.getList(query_data).then(cont)
+        if expect_array
+            base.getList(query_data).then(cont)
+        else
+            # we always return a list for easier REST handling
+            base.getList(query_data).then((data_pseudo_list) ->
+                cont(data_pseudo_list[0])
+            )
     get_timespan = (start_date, timerange, cont) ->
         query_data = {
             'date': moment(start_date).unix()  # ask server in utc
@@ -140,6 +147,7 @@ angular.module(
         base.getList(query_data).then(cont)
     float_format = (n) -> return (n*100).toFixed(2) + "%"
     preprocess_state_data = (new_data, weights, colors) ->
+        console.log 'preproc', new_data
         formatted_data = _.cloneDeep(new_data)
         for key of weights
             if not _.any(new_data, (d) -> return d['state'] == key)
