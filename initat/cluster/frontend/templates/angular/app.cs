@@ -2,6 +2,9 @@
 
 <script type="text/javascript">
 
+{% comment %}
+{% endcomment %}
+
 {% inlinecoffeescript %}
 
 root = exports ? this
