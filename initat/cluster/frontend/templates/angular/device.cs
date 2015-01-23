@@ -215,7 +215,8 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                                 # remove meta device, now handled via reload_sidebar
                                 # remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])
                                 reload_sidebar_tree()
-                        $scope.pagSettings.set_entries($scope.entries)
+                        #$scope.pagSettings.set_entries($scope.entries)
+                        # TODO: adapt this to smart table
                     )
             )
         $scope.rest_data_set = () ->
@@ -271,7 +272,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 $scope.entries.splice(_.indexOf($scope.entries, md_obj) + 1, 0, new_obj)
                 $scope.device_lut[new_obj.idx] = new_obj
                 $scope.device_group_lut[new_obj.device_group].num_devices++
-                $scope.pagSettings.set_entries($scope.entries)
+
+                #$scope.pagSettings.set_entries($scope.entries)
+                # TODO: adapt this to smart table
+
                 # increase postfix of device name
                 node_re = new RegExp(/^(.*?)(\d+)(.*)$/)
                 name_m = node_re.exec(new_obj.name)
