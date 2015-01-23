@@ -3,6 +3,32 @@
 <script type="text/javascript">
 
 {% comment %}
+
+Naming conventions
+
+- where possible use CamelCase
+- controllers end with "Ctrl"
+- module names start with "icsw.", separation with dots (no CamelCase)
+- second part is the name of the directory
+- then the (optional) functionality (for example icsw.device.network)
+- directives use '-' as separator, CamelCase in code
+- service, provider and factory names end with service and also use CamelCase
+
+Directory setup
+
+- below templates
+- top level equals the second part of the module name
+- second level (optional) for functionality (icsw.device.network -> templates/device/network/ )
+- shared functions in utils.{function} (app icsw.utils) [init.csw.filters -> icsw.utils.filters]
+
+File separation inside directories
+
+- one or more file(s) for HTML and cs / js code
+- no templates in coffeescript files
+- templates in .html via script type=ng-template/script
+- name of templates start with the name of the module with underscores, ending is ".html"
+- no root. bindings
+
 {% endcomment %}
 
 {% inlinecoffeescript %}
