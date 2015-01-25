@@ -39,6 +39,7 @@ ics_app = angular.module(
     "icsw.app",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
+        "blockUI",
         "icsw.menu_app", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
         "icsw.config", "icsw.config.gen",
         "icsw.rms", "icsw.lic", "icsw.server.info",
@@ -55,6 +56,12 @@ ics_app = angular.module(
 )
 
 ics_app.config(() ->
+    console.log "config"
+).config((blockUIConfig) ->
+    blockUIConfig.delay = 0
+    blockUIConfig.message = "Loading, please wait ..."
+    blockUIConfig.autoBlock = false
+    blockUIConfig.autoInjectBodyBlock = false;
 )
 
 add_tree_directive(ics_app)
@@ -63,8 +70,8 @@ root.ics_app = ics_app
 
 create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular"])
 
-create_controller = create_module.controller("create_base", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q",
-    ($scope, $timeout, $window, $templateCache, restDataSource, $q) ->
+create_controller = create_module.controller("create_base", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI",
+    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI) ->
         $scope.base_open = true
         $scope.resolve_pending = false
         $scope.device_data = {
@@ -90,7 +97,7 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
         $scope.rest_data = {}
         $scope.all_peers = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
         $scope.reload = () ->
-            $.blockUI()
+            blockUI.start()
             wait_list = []
             for value, idx in $scope.rest_map
                 $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
@@ -110,7 +117,7 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
                 for entry in $scope.peers 
                     r_list.push(entry)
                 $scope.all_peers = r_list
-                $.unblockUI()
+                blockUI.stop()
             )
         $scope.get_image_src = () ->
             img_url = ""
@@ -152,7 +159,7 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
             }
         $scope.create_device = () ->
             d_dict = $scope.device_data
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url  : "{% url 'mon:create_device' %}"
                 data : {
@@ -161,7 +168,7 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
                 success : (xml) =>
                     parse_xml_response(xml)
                     reload_sidebar_tree()
-                    $.unblockUI()
+                    blockUI.stop()
                     $scope.reload()
         $scope.reload()
 

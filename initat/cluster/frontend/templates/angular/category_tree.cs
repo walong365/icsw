@@ -44,8 +44,8 @@ class category_tree_edit extends tree_config
 
 cat_ctrl = category_tree_module.controller("cat_base", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, FileUploader) ->
+    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, FileUploader, blockUI) ->
         $scope.cat = new category_tree_edit($scope, {})            
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
@@ -85,13 +85,13 @@ cat_ctrl = category_tree_module.controller("cat_base", [
         $scope.upload_list = []
         $scope.uploader.onBeforeUploadItem = (item) ->
             item.formData[0].location_id = $scope.cur_location_gfx.idx
-            $.blockUI()
+            blockUI.start()
         $scope.uploader.onCompleteAll = () ->
-            $.unblockUI()
+            blockUI.stop()
             $scope.uploader.clearQueue()
             return null
         $scope.uploader.onErrorItem = (item, response, status, headers) ->
-            $.unblockUI()
+            blockUI.stop()
             $scope.uploader.clearQueue()
             noty
                 text: "error uploading file, please check logs"
@@ -287,13 +287,13 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                             return "Really prune tree (delete empty elements) ?"
             ).result.then(
                 () =>
-                    $.blockUI()
+                    blockUI.start()
                     call_ajax
                         url     : "{% url 'base:prune_categories' %}"
                         success : (xml) ->
                             parse_xml_response(xml)
                             $scope.reload()
-                            $.unblockUI()
+                            blockUI.stop()
             )
         $scope.new_location_gfx = () ->
             # return empty location_gfx for current location
@@ -366,12 +366,12 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             $scope.show_preview(obj)
             if angular.isString(data)
                 data = {"id" : obj.idx, "mode": data}
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url : "{% url 'base:modify_location_gfx' %}"
                 data: data
                 success: (xml) ->
-                    $.unblockUI()
+                    blockUI.stop()
                     if parse_xml_response(xml)
                         $scope.$apply(() ->
                             obj.image_url = $(xml).find("value[name='image_url']").text()

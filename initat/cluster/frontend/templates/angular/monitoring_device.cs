@@ -33,14 +33,14 @@ angular_add_simple_list_controller(
             )
         fn:
             fetch : (edit_obj) ->
-                $.blockUI()
+                # $.blockUI()
                 call_ajax
                     url     : "{% url 'mon:fetch_partition' %}"
                     data    : {
                         "pk" : edit_obj.idx
                     }
                     success : (xml) ->
-                        $.unblockUI()
+                        # $.unblockUI()
                         parse_xml_response(xml)   
     }
 )

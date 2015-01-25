@@ -117,8 +117,8 @@ device_vars_template = """
 
 device_variable_module = angular.module("icsw.device.variables", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI) ->
         $scope.enable_modal = true
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device_variable_new_form.html"
@@ -257,7 +257,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             if not $scope.form.$invalid
                 $scope.create_rest_url = Restangular.all("{% url 'rest:device_variable_list' %}".slice(1))
                 $scope.close_modal()
-                $.blockUI()
+                blockUI.start()
                 $scope.add_list = []
                 for entry in $scope.entries
                     new_var = angular.copy($scope._edit_obj)
@@ -275,7 +275,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             else
                 # trigger recalc of filter w. pagination settings
                 $scope.new_filter_set($scope.var_filter, false)
-                $.unblockUI()
+                blockUI.stop()
         $scope.$on("icsw.dv.changed", (args) ->
             # trigger redisplay of vars
             $scope.new_filter_set($scope.var_filter, false)

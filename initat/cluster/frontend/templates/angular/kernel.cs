@@ -29,18 +29,18 @@ angular_add_simple_list_controller(
     }
 )
 
-kernel_module.controller("kernel", ["$scope", "$compile", "$templateCache", "Restangular",
-    ($scope, $compile, $templateCache, restangular) ->
+kernel_module.controller("kernel", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI",
+    ($scope, $compile, $templateCache, restangular, blockUI) ->
         $scope.delete_ok = (obj) ->
             num_refs = obj.act_kernel.length + obj.new_kernel.length
             return if num_refs == 0 then true else false
         $scope.scan_for_kernels = () =>
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url     : "{% url 'setup:rescan_kernels' %}"
                 title   : "scanning for new kernels"
                 success : (xml) =>
-                    $.unblockUI()
+                    blockUI.stop()
                     $scope.reload()
 ])
 

@@ -178,8 +178,8 @@ class server_info
     get_check_source: (instance) ->
         return @xml.find("instance[name='#{instance}']").attr("check_source")
         
-info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_service",
-    ($scope, $timeout, access_level_service) ->
+info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_service", "blockUI",
+    ($scope, $timeout, access_level_service, blockUI) ->
         access_level_service.install($scope)
         $scope.show_server = true
         $scope.show_roles = false
@@ -217,7 +217,7 @@ info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_
         $scope.do_action = (srv_info, instance, type) ->
             if $scope.cur_to
                 $timeout.cancel($scope.cur_to)
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url     : "{% url 'main:server_control' %}"
                 data    : {
@@ -229,7 +229,7 @@ info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_
                 }
                 success : (xml) =>
                     parse_xml_response(xml)
-                    $.unblockUI()
+                    blockUI.stop()
                     $scope.cur_to = $timeout($scope.reload_server_info, 100)
         $scope.local_device = "{{ local_device }}"
         $scope.routing_info = {{ routing | safe }}

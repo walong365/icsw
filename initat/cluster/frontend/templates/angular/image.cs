@@ -19,8 +19,8 @@ angular_add_simple_list_controller(
     }
 )
 
-image_module.controller("image", ["$scope", "$compile", "$templateCache", "Restangular",
-    ($scope, $compile, $templateCache, Restangular) ->
+image_module.controller("image", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI",
+    ($scope, $compile, $templateCache, Restangular, blockUI) ->
         $scope.arch_rest = Restangular.all("{% url 'rest:architecture_list' %}".slice(1))
         $scope.arch_rest.getList().then((response) ->
             $scope.architectures = response
@@ -30,7 +30,7 @@ image_module.controller("image", ["$scope", "$compile", "$templateCache", "Resta
             num_refs = obj.act_image.length + obj.new_image.length
             return if num_refs == 0 then true else false
         $scope.scan_for_images = () =>
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url     : "{% url 'setup:rescan_images' %}"
                 title   : "scanning for new images"
@@ -46,19 +46,19 @@ image_module.controller("image", ["$scope", "$compile", "$templateCache", "Resta
                             "present" : parseInt(new_img.attr("present"))
                         }
                         new_list.push(new_obj)
-                    $.unblockUI()
+                    blockUI.stop()
                     $scope.$apply(() ->
                         $scope.new_entries = new_list
                     )
         $scope.take_image = (obj) =>
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url     : "{% url 'setup:use_image' %}"
                 data    : 
                     "img_name" : obj.name
                 title   : "scanning for new images"
                 success : (xml) =>
-                    $.unblockUI()
+                    blockUI.stop()
                     $scope.$apply(() ->
                         $scope.new_entries = []
                     )

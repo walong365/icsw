@@ -99,15 +99,15 @@ device_connection_template = """
 
 device_connection_module = angular.module("icsw.device.connection", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
-device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI) ->
         $scope.devsel_list = []
         # ac settings
         $scope.ac_type = "master"
         $scope.change_ac_type = () ->
             $scope.ac_type = if $scope.ac_type == "master" then "slave" else "master"
         $scope.handle_ac = () ->
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url   : "{% url 'device:manual_connection' %}"
                 data  : {
@@ -116,7 +116,7 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
                     "mode"   : $scope.ac_type
                 }
                 success : (xml) =>
-                    $.unblockUI()
+                    blockUI.stop()
                     # show info
                     parse_xml_response(xml, 30)
                     # reload (even on error)

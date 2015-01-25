@@ -28,8 +28,8 @@ angular_add_simple_list_controller(
     }
 )
 
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus) ->
+device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI) ->
         $scope.initial_load = true
         $scope.rest_data = {}
         $scope.rest_map = [
@@ -80,7 +80,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             $scope.initial_load = true
             $scope.reload()
         $scope.reload = () ->
-            $.blockUI()
+            blockUI.start()
             # store selected state when not first load
             if not $scope.initial_load
                 $scope.sel_cache = (entry.idx for entry in $scope.entries when entry.selected)
@@ -93,7 +93,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     if idx == 0
                         $scope.entries = value
                     $scope.rest_data[$scope.rest_map[idx].short] = value
-                $.unblockUI()
+                blockUI.stop()
                 $scope.rest_data_set()
                 $scope.update_entries_st_attrs()  # this depends on rest data
             )

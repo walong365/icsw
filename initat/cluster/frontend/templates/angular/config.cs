@@ -319,8 +319,8 @@ cached_config_template = """
 
 config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select"])
 
-gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http) ->
+gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI) ->
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
         $scope.cached_uploads = []
@@ -337,9 +337,9 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
         )
         $scope.upload_list = []
         $scope.uploader.onBeforeUploadItem = () ->
-            $.blockUI()
+            blockUI.start()
         $scope.uploader.onCompleteAll = () ->
-            $.unblockUI()
+            blockUI.stop()
             $scope.uploader.clearQueue()
             $scope.reload_upload()
         $scope.$on("icsw.reload_upload", () ->
@@ -528,7 +528,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             $scope.pagSettings.conf.filter_settings.filter_str = ""
         $scope.delete_selected_objects = () ->
             if confirm("really delete #{$scope.selected_objects.length} objects ?")
-                $.blockUI
+                blockUI.start()
                 for obj in $scope.selected_objects
                     conf = (entry for entry in $scope.entries when entry.idx == obj.config)[0]
                     if obj.object_type == "mon"
@@ -547,7 +547,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                         "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
                     success : (xml) =>
                         parse_xml_response(xml)
-                        $.unblockUI()
+                        blockUI.stop()
                 $scope.selected_objects = []
         $scope.unselect_objects = () ->
             # unselect all selected objects
@@ -1024,7 +1024,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                 else
                     return 0
             scope.take_config = () ->
-                $.blockUI
+                # $.blockUI
                 call_ajax
                     url     : "{% url 'config:handle_cached_config' %}"
                     data    : {
@@ -1034,11 +1034,11 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                         "mode"       : "take"
                     }
                     success : (xml) ->
-                        $.unblockUI
+                        # $.unblockUI
                         parse_xml_response(xml)
                         scope.$emit("icsw.reload_all")
             scope.delete_config = () ->
-                $.blockUI
+                # $.blockUI
                 call_ajax
                     url     : "{% url 'config:handle_cached_config' %}"
                     data    : {
@@ -1047,7 +1047,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                         "mode"       : "delete"
                     }
                     success : (xml) ->
-                        $.unblockUI
+                        # $.unblockUI
                         parse_xml_response(xml)
                         scope.$emit("icsw.reload_upload")
     }
@@ -1132,8 +1132,8 @@ class config_tree extends tree_config
                 else
                     @dev_conf.active_content = []
 
-config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI) ->
         $scope.devsel_list = []
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->
@@ -1148,14 +1148,14 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
             return _r_list
         $scope.generate_config = () ->
             $scope.result_trees = []
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url     : "{% url 'config:generate_config' %}"
                 data    : {
                     "pk_list" : angular.toJson($scope.devsel_list)
                 },
                 success : (xml) =>
-                    $.unblockUI()
+                    blockUI.stop()
                     cur_list = []
                     if parse_xml_response(xml)
                         _json = angular.fromJson($(xml).find("value[name='result']").text())

@@ -31,35 +31,35 @@ angular_add_simple_list_controller(
                 obj.publish_to_nodes = if obj.publish_to_nodes then false else true
                 obj.put()
             rescan : ($scope) ->
-                $.blockUI()
+                # $.blockUI()
                 call_ajax
                     url     : "{% url 'pack:repo_overview' %}"
                     data    : {
                         "mode" : "rescan_repos"
                     }
                     success : (xml) ->
-                        $.unblockUI()
+                        # $.unblockUI()
                         if parse_xml_response(xml)
                             $scope.reload()
             sync : () ->
-                $.blockUI()
+                # $.blockUI()
                 call_ajax
                     url     : "{% url 'pack:repo_overview' %}"
                     data    : {
                         "mode" : "sync_repos"
                     }
                     success : (xml) ->
-                        $.unblockUI()
+                        # $.unblockUI()
                         parse_xml_response(xml)
             clearcaches : () ->
-                $.blockUI()
+                # $.blockUI()
                 call_ajax
                     url     : "{% url 'pack:repo_overview' %}"
                     data    : {
                         "mode" : "clear_caches"
                     }
                     success : (xml) ->
-                        $.unblockUI()
+                        # $.unblockUI()
                         parse_xml_response(xml)
             filter_repo : (obj, $scope) ->
                 _show = true
@@ -186,13 +186,13 @@ angular_add_simple_list_controller(
                     (new_el) ->
                         if $scope.shared_data.result_obj
                             $scope.pagSettings.clear_filter()
-                            $.blockUI()
+                            # $.blockUI()
                             $scope.load_data(
                                 "{% url 'rest:package_search_result_list' %}",
                                 {"package_search" : $scope.shared_data.result_obj.idx}
                             ).then(
                                 (data) ->
-                                    $.unblockUI()
+                                    # $.unblockUI()
                                     $scope.entries = data
                                     for entry in $scope.entries
                                         entry.target_repo = 0
@@ -228,8 +228,8 @@ update_pdc = (srv_pdc, client_pdc) ->
       "installed_name", "installed_version", "installed_release"] 
         client_pdc[attr_name] = srv_pdc[attr_name]
         
-package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout) ->
+package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI) ->
         # devices
         $scope.entries = []
         $scope.devices = []
@@ -258,10 +258,10 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         #$scope.load_devices = (url, options) ->
         #    return Restangular.all(url.slice(1)).getList(options)
         $scope.reload_devices = () ->
-            $.blockUI()
+            blockUI.start()
             restDataSource.reload([$scope.device_tree_url, {"ignore_meta_devices" : true}]).then((data) ->
                 $scope.set_devices(data)
-                $.unblockUI()
+                blockUI.stop()
             )
         # not working right now, f*ck, will draw to many widgets
         $scope.reload_state = () ->
@@ -492,24 +492,24 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             else
                 return "text-center"
         $scope.send_sync = (event) ->
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url     : "{% url 'pack:repo_overview' %}"
                 data    : {
                     "mode" : "new_config"
                 }
                 success : (xml) ->
-                    $.unblockUI()
+                    blockUI.stop()
                     parse_xml_response(xml)
         $scope.send_clear_caches = (event) ->
-            $.blockUI()
+            blockUI.start()
             call_ajax
                 url     : "{% url 'pack:repo_overview' %}"
                 data    : {
                     "mode" : "clear_caches"
                 }
                 success : (xml) ->
-                    $.unblockUI()
+                    blockUI.stop()
                     parse_xml_response(xml)
         $scope.latest_contact = (dev) ->
             if dev.latest_contact

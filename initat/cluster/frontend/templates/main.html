@@ -246,6 +246,7 @@
         {% endblock %}
     </header>
     <div id="icsw.app">
+        <div block-ui="main" class="block-ui-main"></div>
         {% include "menu.html" %}
         <div id="icsw_wrapper">
     
@@ -264,11 +265,6 @@
         
         {% inlinecoffeescript %}
         
-        init_blockUI = ->
-            $.blockUI.defaults.fadeOut = 0
-            $.blockUI.defaults.fadeIn  = 0
-            $.blockUI.defaults.overlayCSS.opacity = 0.1
-            
         init_noty = ->
             $.noty.defaults = {
                 "layout" : "topRight"
@@ -296,7 +292,6 @@
                 buttons: false
             }
         add_handlers_main = ->
-            init_blockUI()
             init_noty()
             # bootstrap app
             angular.bootstrap($("div[id='icsw.app']"), ["icsw.app"])

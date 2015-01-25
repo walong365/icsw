@@ -569,8 +569,8 @@ available_screen_sizes = [
     new screen_size(640, 420),
 ]
         
-user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -680,12 +680,12 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     $scope.get_viewer_command_line(vdus)
         )
         $scope.sync_users = () ->
-            $.blockUI()
+            blockUI.start("Sending sync to server ...")
             call_ajax
                 url     : "{% url 'user:sync_users' %}"
                 title   : "syncing users"
                 success : (xml) =>
-                    $.unblockUI()
+                    blockUI.stop()
                     parse_xml_response(xml)
         $scope.rebuild_tree = () ->
             $scope.tree.clear_root_nodes()

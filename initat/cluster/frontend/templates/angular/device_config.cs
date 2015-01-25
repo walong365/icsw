@@ -1193,8 +1193,8 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
     }
 ])
 
-device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI) ->
         $scope.entries = []
         $scope.active_dev = undefined
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -1213,38 +1213,38 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
             return (cur_vg for cur_vg in dev.act_partition_table.lvm_vg_set when cur_vg.idx == vg_idx)[0]
         $scope.clear = (pk) ->
             if pk?
-                $.blockUI()
+                blockUI.start()
                 call_ajax
                     url     : "{% url 'mon:clear_partition' %}"
                     data    : {
                         "pk" : pk
                     }
                     success : (xml) ->
-                        $.unblockUI()
+                        blockUI.stop()
                         parse_xml_response(xml)
                         $scope.reload()
         $scope.fetch = (pk) ->
             if pk?
-                $.blockUI()
+                blockUI.start()
                 call_ajax
                     url     : "{% url 'mon:fetch_partition' %}"
                     data    : {
                         "pk" : pk
                     }
                     success : (xml) ->
-                        $.unblockUI()
+                        blockUI.stop()
                         parse_xml_response(xml)
                         $scope.reload()
         $scope.use = (pk) ->
             if pk?
-                $.blockUI()
+                blockUI.start()
                 call_ajax
                     url     : "{% url 'mon:use_partition' %}"
                     data    : {
                         "pk" : pk
                     }
                     success : (xml) ->
-                        $.unblockUI()
+                        blockUI.stop()
                         parse_xml_response(xml)
                         $scope.reload()
 ]).directive("partinfo", ($templateCache, $compile, $modal, Restangular) ->

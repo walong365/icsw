@@ -434,8 +434,8 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
 
 device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"])
 
-device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout) ->
+device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout, blockUI) ->
         access_level_service.install($scope)
         $scope.enable_modal = true
         # accordion flags
@@ -676,7 +676,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     true
             )
         $scope.fetch_device_network = () ->
-            $.blockUI()
+            blockUI.start()
             _dev = $scope._current_dev
             _dev.scan_address = _dev.manual_address
             # intermediate state to trigger reload
@@ -687,7 +687,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     "dev" : angular.toJson($scope.scan_device)
                 success : (xml) ->
                     parse_xml_response(xml)
-                    $.unblockUI()
+                    blockUI.stop()
                     $scope.scan_mixin.close_modal()
                     $scope.update_scans()
         $scope.update_scans = () ->
@@ -947,7 +947,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 return "---"    
         $scope.copy_network = (src_obj, event) ->
             if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
-                $.blockUI()
+                blockUI.start()
                 call_ajax
                     url     : "{% url 'network:copy_network' %}"
                     data    : {
@@ -955,7 +955,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         "all_devs"   : angular.toJson(@devsel_list)
                     },
                     success : (xml) =>
-                        $.unblockUI()
+                        blockUI.stop()
                         parse_xml_response(xml)
                         $scope.reload()
         $scope.get_bootdevice_info_class = (obj) ->
@@ -1278,7 +1278,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                   .linkDistance((d) -> return 100).on("tick", scope.tick)
                 scope.fetch_data()
             scope.fetch_data = () ->
-                $.blockUI(
+                blockUI.start(
                     message : "loading, please wait..."
                 )
                 call_ajax
@@ -1287,7 +1287,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                         "graph_sel" : scope.graph_sel
                     dataType : "json"
                     success  : (json) =>
-                        $.unblockUI()
+                        blockUI.stop()
                         scope.json_data = json
                         scope.draw_graph()
             )
