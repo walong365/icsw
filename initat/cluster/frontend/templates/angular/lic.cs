@@ -1,5 +1,3 @@
-{% include "angular/angular-dimple-init.cs" %}
-
 {% load coffeescript %}
 
 <script type="text/javascript">
@@ -17,11 +15,10 @@ root = exports ? this
 # TODO: only add required modules
 
 # NOTE: ui.bootstrap and angular-dimple both define a bar directive and therefore can not be used in the same module
-lic_module = angular.module("icsw.lic", ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "restangular", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple", "angular-dimple", "ui.bootstrap.datetimepicker"])
+lic_module = angular.module("icsw.lic", ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple", "angular-dimple", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"])
 
-
-lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$resource", "d3_service", "dimple_service"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, $resource, d3_service, dimple_service) ->
+lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$resource", "d3_service", "dimple_service"
+    ($scope, $compile, $filter, $templateCache, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, $resource, d3_service, dimple_service) ->
         wait_list = restDataSource.add_sources([
             ["{% url 'rest:device_list' %}", {}],
             ["{% url 'rest:ext_license_list' %}", {}],
@@ -31,8 +28,8 @@ lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.ext_license_list = data[1]
 
             # for testing:
-            $scope.ext_license_list[1].selected = true
-            $scope.license_select_change()
+            # $scope.ext_license_list[1].selected = true
+            # $scope.license_select_change()
 
             $scope.update_lic_overview_data()
         )
