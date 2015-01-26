@@ -1517,23 +1517,11 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 return true
             else
                 return false
-        $scope.use_devs = (dev_list, devg_list, md_list) ->
-            if dev_list.length
-                $scope.show_index = false
-                $scope.show_devices = true
-                # not needed here, emitted by sidebar
-                # msgbus.emit("devicelist", [dev_list, dev_list, devg_list, md_list])
-            else
-                # check for active device_info
-                if window.ICSW_DEV_INFO?
-                    window.ICSW_DEV_INFO.close()
-                $scope.show_devices = false
-                $scope.show_index = true
-                #$("div#center_deviceinfo").hide()
-        # hack for late init of sidebar_base
-        #root.target_devsel_link = [$scope.use_devs, true]
-        # unified app, to be improved, FIXME
-        #root.install_devsel_link($scope.use_devs, true)
+        msgbus.emit("devselreceiver")
+        msgbus.receive("devicelist", $scope, (name, args) ->
+            pk_list = args[0]
+            $scope.show_index = if pk_list.length then false else true
+        )
 ]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService) ->
         $scope.index_view = $window.INDEX_VIEW

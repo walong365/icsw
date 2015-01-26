@@ -1,8 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
-
-{% block title %}{% trans "Indexpage" %}{% endblock %}
+{% block title %}Indexpage{% endblock %}
 
 {% block content %}
 
@@ -24,7 +22,7 @@
                             Change account settings (password, contact data)
                         </div>
                         <div class="col-md-4">
-                            <a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a>
+                            <a href="{% url 'user:account_info' %}">Account Info</a>
                         </div>
                     </div>
                 </li>
@@ -34,7 +32,7 @@
                             Add a new device
                         </div>
                         <div class="col-md-4">
-                            <a href="{% url 'mon:create_device' %}">{% trans "Create device" %}</a>
+                            <a href="{% url 'mon:create_device' %}">Create device</a>
                         </div>
                     </div>
                 </li>
@@ -54,7 +52,7 @@
                             Changelog of the current development master
                         </div>
                         <div class="col-md-4">
-                            <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >{% trans "Changelog" %}</a>
+                            <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >Changelog</a>
                         </div>
                     </div>
                 </li>
@@ -64,7 +62,7 @@
                             Software support forum (register, discuss and ask questions)
                         </div>
                         <div class="col-md-4">
-                            <a href="http://www.initat.org/phpBB3/index.php" target="_blank">{% trans "Forum" %}</a>
+                            <a href="http://www.initat.org/phpBB3/index.php" target="_blank">Forum</a>
                         </div>
                     </div>
                 </li>
@@ -74,7 +72,7 @@
                             Mailing list (subscribe)
                         </div>
                         <div class="col-md-4">
-                            <a href="http://www.initat.org/mailman/listinfo" target="_blank">{% trans "Mailman" %}</a>
+                            <a href="http://www.initat.org/mailman/listinfo" target="_blank">MailMan</a>
                         </div>
                     </div>
                 </li>
@@ -117,10 +115,10 @@
     </accordion>
 </div>
 
-{% endverbatim %}
-
-<div id="center_deviceinfo" ng-controller="device_info_ctrl" ng-show="show" mode="{{ DEVICE_MODE }}">
+<div id="center_deviceinfo" ng-controller="device_info_ctrl" ng-show="show">
     <deviceoverview devicepk="devicepk" multi="1"></deviceoverview>
 </div>
+
+{% endverbatim %}
 
 {% endblock %}

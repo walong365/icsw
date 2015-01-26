@@ -10,7 +10,7 @@ root = exports ? this
 
 dev_info_template = """
 <tabset>
-    <tab select="activate('general')">
+    <tab select="activate('general')" active="general_active">
         <tab-heading>
             General
         </tab-heading>
@@ -26,7 +26,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')" active="category_active">
         <tab-heading>
             Category{{ addon_text_nmd }}
         </tab-heading>
@@ -38,7 +38,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')" active="location_active">
         <tab-heading>
             Location{{ addon_text_nmd }}
         </tab-heading>
@@ -49,7 +49,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">
         <tab-heading>
             Network{{ addon_text_nmd }}
         </tab-heading>
@@ -60,7 +60,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')" active="config_active">
         <tab-heading>
             Config{{ addon_text }}
         </tab-heading>
@@ -76,7 +76,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab ng-if="acl_read(null, 'backbone.device.change_disk') && dev_pk_nmd_list.length" select="activate('partinfo')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_disk') && dev_pk_nmd_list.length" select="activate('partinfo')" active="partinfo_active">
         <tab-heading>
             Disk{{ addon_text_nmd }}
         </tab-heading>
@@ -87,7 +87,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('variables')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('variables')" active="variables_active">
         <tab-heading>
             Vars{{ addon_text }}
         </tab-heading>
@@ -98,7 +98,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab select="activate('status_history')">
+    <tab select="activate('status_history')" active="status_history_active">
         <tab-heading>
             Status History
         </tab-heading>
@@ -110,7 +110,7 @@ dev_info_template = """
         </div></div>
     </tab>
     <!-- also check for md-config-server in service list -->
-    <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('livestatus')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('livestatus')" active="livestatus_active">
         <tab-heading>
             Livestatus{{ addon_text_nmd }}
         </tab-heading>
@@ -121,7 +121,7 @@ dev_info_template = """
             </div>
         </div></div>
     </tab>
-    <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('monconfig')">
+    <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('monconfig')" active="monconfig_active">
         <tab-heading>
             MonConfig/hint{{ addon_text_nmd }}
         </tab-heading>
@@ -133,7 +133,7 @@ dev_info_template = """
         </div></div>
     </tab>
     <!-- also check for grapher in service list -->
-    <tab ng-if="acl_read(null, 'backbone.device.show_graphs')" select="activate('graphing')">
+    <tab ng-if="acl_read(null, 'backbone.device.show_graphs')" select="activate('graphing')" active="graphing_active">
         <tab-heading>
             Graph{{ addon_text }}
         </tab-heading>
@@ -159,7 +159,6 @@ device_info_module = angular.module(
         $scope.show = false
         $scope.permissions = undefined
         $scope.devicepk = undefined
-        #@replace_div = {% if index_view %}true{% else %}false{% endif %}
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.dev_pk_list = args[0]
@@ -225,7 +224,15 @@ device_info_module = angular.module(
         "DeviceOverviewTemplate",
         "<deviceoverview devicepk='devicepk'></deviceoverview>"
     )
-).directive("deviceoverview", ($compile) ->
+).service("DeviceOverviewSettings", [() ->
+    def_mode = ""
+    return {
+        "get_mode" : () ->
+            return def_mode
+        "set_mode": (mode) ->
+            def_mode = mode
+    }
+]).directive("deviceoverview", ($compile, DeviceOverviewSettings) ->
     return {
         restrict: "EA"
         replace: true
@@ -244,6 +251,12 @@ device_info_module = angular.module(
                     "monconfig": []
                     "graphing": []
                 }
+                scope["general_active"] = true
+                for key of scope.pk_list
+                    scope["#{key}_active"] = false
+                scope.active_div = DeviceOverviewSettings.get_mode()
+                if scope.active_div
+                    scope["#{scope.active_div}_active"] = true
                 if attrs["multi"]?
                     # possibly multi-device view
                     scope.multi_device = true
@@ -277,6 +290,7 @@ device_info_module = angular.module(
                     iElement.append(new_el)
                     scope.current_subscope = new_scope
                 scope.activate = (name) ->
+                    DeviceOverviewSettings.set_mode(name)
                     if name in ["category", "location", "network", "partinfo", "status_history", "livestatus", "monconfig"]
                         scope.pk_list[name] = scope.dev_pk_nmd_list
                     else if name in ["config", "variables", "graphing"]
@@ -284,92 +298,6 @@ device_info_module = angular.module(
     }
 )
 
-class device_info
-    constructor: (@event, @dev_key, @addon_devices=[], @md_list=[], default_mode="") ->
-        if window.ICSW_DEV_INFO
-            window.ICSW_DEV_INFO.close()
-            @active_div = window.ICSW_DEV_INFO.active_div
-        else
-            if default_mode
-                @active_div = default_mode
-            else
-                @active_div = "general"
-        window.ICSW_DEV_INFO = @
-        @active_divs = []
-    show: () =>
-        return
-        @replace_div = {% if index_view %}true{% else %}false{% endif %}
-        call_ajax
-            url     : "{% url 'rest:device_detail' 1 %}".slice(0, -2) + "?pk=#{@dev_key}"
-            method  : "GET"
-            dataType  : "json"
-            success : (json) =>
-                if @addon_devices
-                    # multi-device view, get minimum access levels
-                    all_devs = (entry for entry in @addon_devices)
-                    all_devs.push(@dev_key)
-                    call_ajax
-                        url     : "{% url 'rest:min_access_levels' %}"
-                        method  : "GET"
-                        data:
-                            obj_type: "device"
-                            obj_list: angular.toJson(all_devs)
-                        dataType  : "json"
-                        success: (access_json) =>
-                            @show_div(json, access_json)
-                else
-                    @show_div(json, json[0].access_levels)
-    show_div: (json, access_json) =>
-        @dev_json = json[0]
-        # set permissions
-        @permissions = access_json
-        if @dev_json.device_type_identifier == "MD" and @dev_key not in @md_list
-            @md_list.push(@dev_key)
-        @build_div()
-        if @replace_div
-            #$("div#center_deviceinfo"). children().remove().end().append(@dev_div)
-            _index_scope = angular.element($("div[id='icsw.index_app']")[0]).scope()
-            $("div#center_deviceinfo"). children().remove().end().append(@dev_div)
-        else
-            @dev_div.simplemodal
-                opacity      : 50
-                position     : [@event.clientY - 50, @event.clientX - 50]
-                autoResize   : true
-                autoPosition : true
-                minWidth     : "800px"
-                onShow: (dialog) -> 
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                    $("#simplemodal-container").css("width", "auto")
-                onClose: =>
-                    # destroy scopes
-                    @close()
-                    $.simplemodal.close()
-        _active_div = @dev_div.find("a[href='##{@active_div}']")
-        if not _active_div.length
-            @active_div = "general"
-            _active_div = @dev_div.find("a[href='##{@active_div}']")
-        _active_div.trigger("click")
-    close: () =>
-        # find all scopes and close them
-        for active_div in @active_divs
-            $(active_div).find(".ng-scope").scope().$destroy()
-        @active_divs = []
-    has_perm: (perm_name, min_perm) =>
-        if @permissions[perm_name]?
-            return if @permissions[perm_name] >= min_perm then 1 else 0
-        else
-            return 0
-    build_div: () =>
-        main_pk = @dev_json.idx
-        # pks for all devices
-        pk_list = [@dev_json.idx].concat(@addon_devices)
-        # pks for devices which are no meta devices
-        pk_list_nmd = (entry for entry in pk_list when entry not in @md_list)
-        dis_modal = if @replace_div then 0 else 1
-        dev_div = $(dev_div_txt)
-        @dev_div = dev_div
-    
 {% endinlinecoffeescript %}
 
 </script>
