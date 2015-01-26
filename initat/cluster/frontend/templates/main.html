@@ -187,6 +187,13 @@
     window.USER_VARS = {{ USER_VARS | safe }}
     window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
     window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
+    window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %}
+    window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %}
+    {% if doc_page %}
+    window.DOC_PAGE = "{{ doc_page }}"
+    {% else %}
+    window.DOC_PAGE = null
+    {% endif %}
     {% endinlinecoffeescript %}
     </script>
     {% javascript 'js_base' %}
@@ -196,11 +203,16 @@
     {% include "angular/common_functions.cs" %}
     {% include "angular/piechart.cs" %}
     {% include "angular/tree.cs" %}
+    <script type="text/javascript">
+    {% inlinecoffeescript %}
     {% include "angular/app.cs" %}
+    {% endinlinecoffeescript %}
+    </script>
     {% include "javascript/init.js" %}
     {% include "angular/deviceinfo.cs" %}
     {% include "angular/rrd.cs" %}
     {# common angular modules #}
+    {% javascript 'icsw_cs1' %}
     {% include "angular/smart_table_utils.cs" %}
     {% include "angular/status_utils.cs" %}
     {% include "angular/login.cs" %}
@@ -248,7 +260,7 @@
     </header>
     <div id="icsw.app">
         <div block-ui="main" class="block-ui-main"></div>
-        {% include "menu.html" %}
+        {% include "menu/menu.html" %}
         <div id="icsw_wrapper">
     
             {% include 'sidebar.html' %}
