@@ -196,6 +196,8 @@ STATIC_URL = "{}/static/".format(SITE_ROOT)
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True
 
+ALLOWED_INCLUDE_ROOTS = True
+
 # Make this unique, and don't share it with anybody.
 # SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
 
@@ -307,6 +309,7 @@ STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
     "static_precompiler.finders.StaticPrecompilerFinder",
+    "pipeline.finders.PipelineFinder",
 )
 
 if DEBUG:
@@ -318,10 +321,16 @@ if os.path.isdir("/opt/icinga/share/images/logos"):
         ("icinga", "/opt/icinga/share/images/logos")
     )
 STATICFILES_DIRS.append(
-    ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin")
-    # ("frontend", os.path.join(FILE_ROOT, "frontend", "media")),
+    ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin"),
 )
 STATICFILES_DIRS = list(STATICFILES_DIRS)
+
+PIPELINE_COMPILERS = (
+    "pipeline.compilers.coffee.CoffeeScriptCompiler",
+)
+
+PIPELINE_COFFEE_SCRIPT_BINARY = "/opt/cluster/bin/coffee"
+PIPELINE_COFFEE_SCRIPT_ARGUMENTS = ""
 
 PIPELINE_CSS = {
     "part1": {
@@ -357,7 +366,7 @@ PIPELINE_JS = {
         "output_filename": "pipeline/js/jquery_new.js"
     },
     "js_base": {
-        "source_filenames": {
+        "source_filenames": (
             "js/libs/jquery-ui-1.10.2.custom.js",
             # "js/libs/jquery-migrate-1.2.1.min.js",
             # now via bootstrap
@@ -382,11 +391,11 @@ PIPELINE_JS = {
             "js/hamster.js",
             # not needed right now
             # "js/ng-jcrop.js",
-        },
+        ),
         "output_filename": "pipeline/js/base.js"
     },
     "js_extra1": {
-        "source_filenames": {
+        "source_filenames": (
             "js/codemirror/addon/selection/active-line.js",
             "js/codemirror/mode/python/python.js",
             "js/codemirror/mode/xml/xml.js",
@@ -413,17 +422,24 @@ PIPELINE_JS = {
             "js/libs/FileSaver.js",
             "js/mousewheel.js",
             "js/smart-table.debug.js",
-        },
+        ),
         "output_filename": "pipeline/js/extra1.js"
     },
     "js_gmaps": {
-        "source_filenames": {
+        "source_filenames": (
             # google maps
             "js/angular-google-maps.min.js",
             # "js/ng-map.min.js",
-        },
+        ),
         "output_filename": "pipeline/js/gmaps.js"
     },
+    "icsw_cs1": {
+        "source_filenames": (
+            "icsw/*/*.coffee",
+            "icsw/*/*/*.coffee",
+        ),
+        "output_filename": "pipeline/js/icsw1.js"
+    }
 }
 
 # add all applications, including backbone
