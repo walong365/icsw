@@ -845,6 +845,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             for _devg in _bdat.children
                 _devg.children = (entry for entry in _devg.children when entry.children.length)
             _bdat.children = (entry for entry in _bdat.children when entry.children.length)
+            console.log 'bdat', _bdat
             $scope.burstData = _bdat
         $scope._sanitize_entries = (entry) ->
             entry.state = parseInt(entry.state)
@@ -1060,9 +1061,12 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 struct[depth].push(node)
                 return _num
             scope.$watch("data", (data) ->
-                if data?
+                if data
                     if scope.hidegroup
                         # skip first two levels
+                        console.log 'data', data
+                        console.log data.children
+                        console.log data.children[0]
                         data = data.children[0].children[0]
                     scope.set_focus_service(null)
                     scope.sunburst_data = data

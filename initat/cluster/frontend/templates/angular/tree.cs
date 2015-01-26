@@ -40,9 +40,12 @@ _subnode = """
     <span ng-if="treeconfig.show_select && entry._show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
     <span ng-show="treeconfig.show_icons" ng-class="treeconfig.get_icon_class(entry)" style="width: 16px; margin-left: 0px"></span>
     <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
-        <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
-        <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
-        <input type="button" class="btn btn-warning" value="C" ng-click="treeconfig.toggle_tree_state(entry, -1)" title="deselect subtree"></input>
+        <input type="button" ng-class="entry.select_button_class" ng-value="entry.select_button_letter" ng-click="treeconfig.toggle_select_new(entry)" title="select subtree"></input>
+        <!--
+            <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
+            <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
+            <input type="button" class="btn btn-warning" value="C" ng-click="treeconfig.toggle_tree_state(entry, -1)" title="deselect subtree"></input>
+        -->
     </div>
     <div ng-if="entry._depth == 0 && entry._num_childs && treeconfig.show_tree_expand_buttons" class="btn-group btn-group-xs">
         <input type="button" class="btn btn-success" value="e" ng-click="treeconfig.toggle_expand_tree(1, false)" title="expand all"></input>
@@ -50,6 +53,7 @@ _subnode = """
         <input type="button" class="btn btn-danger" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
     </div>
     <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)">
+        {{ entry.obj }}
         <span ng-class="treeconfig.get_name_class(entry)" title="{{ treeconfig.get_title(entry) }}">{{ treeconfig.get_name(entry) }}</span>
         <span ng-if="treeconfig.show_childs && !treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
         <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">
@@ -101,6 +105,7 @@ class tree_node
         @_sel_descendants = 0
         # pruned (currently not shown)
         @pruned = false
+        @notify_child_selection_changed()
     set_selected: (flag, propagate=true) ->
         # if _show_select is false ignore selection request
         if not @_show_select
@@ -131,6 +136,20 @@ class tree_node
                         first = false
                     cur_p._sel_descendants += diff
                     cur_p = cur_p.parent
+
+            if propagate
+                @notify_child_selection_changed()
+    notify_child_selection_changed: () ->
+        # notify self and all parents: a child selection has changed (self is also a child)
+        if @parent?
+            @parent.notify_child_selection_changed()
+        #if @self_and_descendants_selected()
+        if @all_selectable_descendant_and_self_selected()
+            @select_button_letter = "C"
+            @select_button_class = "btn btn-warning"
+        else
+            @select_button_letter = "S"
+            @select_button_class = "btn btn-success"
     add_child: (child, sort_func) =>
         child.parent = @
         child._depth = @_depth + 1
@@ -147,6 +166,7 @@ class tree_node
             if not child.folder
                cur_p._num_nd_descendants += 1
             cur_p = cur_p.parent
+        @notify_child_selection_changed()
     remove_child: (child) ->
         @children = (entry for entry in @children when entry != child)
         cur_p = @
@@ -156,6 +176,7 @@ class tree_node
             if not child.folder
                cur_p._num_nd_descendants -= 1
             cur_p = cur_p.parent
+        @notify_child_selection_changed()
     recalc_num_descendants: () => 
         @_num_childs = (_entry for _entry in @children when !_entry.pruned).length
         @_num_descendants = @_num_childs
@@ -165,6 +186,15 @@ class tree_node
             @_num_descendants += _desc[0]
             @_num_nd_descendants += _desc[1]
         return [@_num_descendants, @_num_nd_descendants]
+    get_num_selectable_children: (debug=false) =>
+        selectable_desc = (true for entry in @children when entry.is_selectable).length
+        if debug
+            console.log @, 'dir child sel ', selectable_desc, ": ", (entry for entry in @children when entry.is_selectable)
+            for entry in @children
+                console.log entry._show_select, entry.selected, entry.is_selectable()
+        for child in @children
+            selectable_desc += child.get_num_selectable_children()
+        return selectable_desc
     recalc_sel_descendants: () => 
         @_sel_descendants = (true for entry in @children when entry.selected).length
         for child in @children
@@ -178,6 +208,27 @@ class tree_node
             return "label label-primary"
         else
             return "label label-default"
+    self_and_descendants_selected: () =>
+        @recalc_sel_descendants()
+        num_selectable_children = @get_num_selectable_children()
+        if num_selectable_children == 18
+            @get_num_selectable_children(true)
+        console.log @, @_sel_descendants, num_selectable_children, @is_selectable, @selected, @_show_select
+        return @_sel_descendants == num_selectable_children and
+               (@selected or not @is_selectable())
+    is_selectable: () =>
+        return typeof(@_show_select) == "undefined" or @_show_select
+    all_selectable_descendant_and_self_selected: () =>
+        if @is_selectable() and not @selected
+            console.log "not selected: ", @obj, @
+            return false
+        for child in @children
+            if ! child.all_selectable_descendant_and_self_selected()
+                return false
+        return true
+
+
+
 
 class tree_config
     constructor: (args) ->
@@ -291,6 +342,27 @@ class tree_config
                             _entry.selected = false
                 )
             @selection_changed(entry)
+    toggle_select_new: (entry) =>
+         # if all selected, deselect
+         # otw select all
+         change_sel_rec = (entry, flag) ->
+             if true
+                @start_tracking_changes()
+             entry.set_selected(flag)
+             if true
+                @stop_tracking_changes()
+                @selection_changed(entry)
+             if flag
+                entry.expand = true
+             for sub_entry in entry.children
+                 change_sel_rec(sub_entry, flag)
+
+         # TODO: remove this and its code in case it won't be used in final version
+         #if entry.self_and_descendants_selected()
+         if entry.all_selectable_descendant_and_self_selected()
+             change_sel_rec(entry, false)
+         else
+             change_sel_rec(entry, true)
     toggle_tree_state: (entry, flag, signal=true) =>
         if entry == undefined
             (@toggle_tree_state(_entry, flag, signal) for _entry in @root_nodes)
