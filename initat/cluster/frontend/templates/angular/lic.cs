@@ -15,7 +15,7 @@ root = exports ? this
 # TODO: only add required modules
 
 # NOTE: ui.bootstrap and angular-dimple both define a bar directive and therefore can not be used in the same module
-lic_module = angular.module("icsw.lic", ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple", "angular-dimple", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"])
+lic_module = angular.module("icsw.lic", ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple", "angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"])
 
 lic_module.controller("lic_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "$resource", "d3_service", "dimple_service"
     ($scope, $compile, $filter, $templateCache, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, $resource, d3_service, dimple_service) ->
