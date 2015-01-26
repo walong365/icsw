@@ -6,34 +6,6 @@
 
 root = exports ? this
 
-enter_password_template = """
-<div class="modal-header"><h3>Please enter the new password</h3></div>
-<div class="modal-body">
-    <form name="form">
-        <div ng-class="dyn_check(pwd.pwd1)">
-            <label>Password:</label>
-            <input type="password" ng-model="pwd.pwd1" placeholder="enter password" ng-trim="false" class="form-control"></input>
-        </div>
-        <div ng-class="dyn_check(pwd.pwd2)">
-            <label>again:</label>
-            <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" ng-trim="false" class="form-control"></input>
-        </div>
-    </form>
-</div>
-<div class="modal-footer">
-    <div ng-class="pwd_error_class">
-       {% verbatim %}
-           {{ pwd_error }}
-       {% endverbatim %}
-    </div>
-    <div>
-        <button class="btn btn-primary" ng-click="check()">Check</button>
-        <button class="btn btn-success" ng-click="ok()" ng-show="check()">Save</button>
-        <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
-    </div>
-</div>
-"""
-
 {% verbatim %}
 
 vncwebviewer_template = """
@@ -388,9 +360,7 @@ permissions_template = """
 password_test_module = angular.module(
     "icsw.password.test",
     ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"]
-).run(($templateCache) ->
-    $templateCache.put("set_password.html", enter_password_template)
-).controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+).controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.$on("icsw.enter_password", () ->
             $modal.open
@@ -429,7 +399,23 @@ password_test_module = angular.module(
                     scope: () ->
                         return $scope
         )
-])
+]).directive("accountDetail", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("account_detail_form.html")
+        link: (scope, element, attrs) ->
+            scope._cur_user = null
+            scope.$watch(attrs["user"], (new_val) ->
+                if new_val
+                    scope._cur_user = new_val
+            )
+            scope.update_account = () ->
+                scope._cur_user.put().then(
+                   (data) ->
+                   (resp) ->
+                )
+    }
+)
 
 user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.password.test"])
 

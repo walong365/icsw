@@ -548,10 +548,10 @@ class account_detail_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
-    helper.ng_model = "edit_obj"
+    helper.ng_model = "_cur_user"
     helper.ng_submit = "update_account()"
     helper.layout = Layout(
-        HTML("<h2>Account info for '{% verbatim %}{{ edit_obj.login }}{% endverbatim %}'</h2>"),
+        HTML("<h2>Account info for '{% verbatim %}{{ _cur_user.login }}{% endverbatim %}'</h2>"),
         Div(
             Div(
                 Fieldset(

@@ -352,7 +352,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             "filter_str" : ""
             "filter_name" : true
             "filter_script" : false
-            "filter_var" : false
+            "filter_var" : false 
             "filter_mon" : false
         }
         $scope.editorOptions = {

@@ -61,7 +61,7 @@ ics_app.config(() ->
     blockUIConfig.delay = 0
     blockUIConfig.message = "Loading, please wait ..."
     blockUIConfig.autoBlock = false
-    blockUIConfig.autoInjectBodyBlock = false;
+    blockUIConfig.autoInjectBodyBlock = false
 )
 
 add_tree_directive(ics_app)
