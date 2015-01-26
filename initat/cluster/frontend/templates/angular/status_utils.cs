@@ -136,7 +136,8 @@ angular.module(
         else
             # we always return a list for easier REST handling
             base.getList(query_data).then((data_pseudo_list) ->
-                cont(data_pseudo_list[0])
+                # need plain() to get rid of restangular stuff
+                cont(data_pseudo_list.plain()[0])
             )
     get_timespan = (start_date, timerange, cont) ->
         query_data = {
@@ -147,7 +148,6 @@ angular.module(
         base.getList(query_data).then(cont)
     float_format = (n) -> return (n*100).toFixed(2) + "%"
     preprocess_state_data = (new_data, weights, colors) ->
-        console.log 'preproc', new_data
         formatted_data = _.cloneDeep(new_data)
         for key of weights
             if not _.any(new_data, (d) -> return d['state'] == key)
