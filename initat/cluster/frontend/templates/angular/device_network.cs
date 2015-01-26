@@ -1238,7 +1238,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 scope.$apply()
             )
     }
-).directive("networkgraph2", ["d3_service", "dragging", "svg_tools", (d3_service, dragging, svg_tools) ->
+).directive("networkgraph2", ["d3_service", "dragging", "svg_tools", "blockUI", (d3_service, dragging, svg_tools, blockUI) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
@@ -1279,7 +1279,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 scope.fetch_data()
             scope.fetch_data = () ->
                 blockUI.start(
-                    message : "loading, please wait..."
+                    "loading, please wait..."
                 )
                 call_ajax
                     url      : "{% url 'network:json_network' %}"

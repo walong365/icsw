@@ -6,28 +6,28 @@
 
 # customized by BM, based on:
 
-#! angular-dimple - 1.1.4 - 2014-11-10
+#! angular-dimple-init - 1.1.4 - 2014-11-10
 #*   https://github.com/esripdx/angular-dimple
 #*   Licensed ISC 
-angular.module("angular-dimple", [
-  "angular-dimple.graph"
-  "angular-dimple.legend"
-  "angular-dimple.x"
-  "angular-dimple.y"
-  "angular-dimple.r"
-  "angular-dimple.line"
-  "angular-dimple.bar"
-  "angular-dimple.stacked-bar"
-  "angular-dimple.area"
-  "angular-dimple.stacked-area"
-  "angular-dimple.scatter-plot"
-  "angular-dimple.ring"
+angular.module("angular-dimple-init", [
+  "angular-dimple-init.graph"
+  "angular-dimple-init.legend"
+  "angular-dimple-init.x"
+  "angular-dimple-init.y"
+  "angular-dimple-init.r"
+  "angular-dimple-init.lineDimple"  # NOTE: directives now ending with Dimple have caused name conflicts (bar with bootstrap, line with d3). In the future, we could rename all such directives, depending on whether we actually use it.
+  "angular-dimple-init.barDimple"
+  "angular-dimple-init.stacked-bar"
+  "angular-dimple-init.area"
+  "angular-dimple-init.stacked-area"
+  "angular-dimple-init.scatter-plot"
+  "angular-dimple-init.ring"
 ])
 .constant("MODULE_VERSION", "0.0.1")
 .value "defaults",
   foo: "bar"
 
-angular.module("angular-dimple.area", [])
+angular.module("angular-dimple-init.area", [])
 .directive("area", [->
   restrict: "E"
   replace: true
@@ -46,13 +46,13 @@ angular.module("angular-dimple.area", [])
       if $attrs.value
         area = chart.addSeries([$attrs.field], dimple.plot.area)
         graphController.filter $attrs
-        area.lineMarkers = true
+        area.lineDimpleMarkers = true
       else
         values = dimple.getUniqueValues($scope.data, $attrs.field)
         angular.forEach values, (value) ->
           area = chart.addSeries([$attrs.field], dimple.plot.area)
           graphController.filter $attrs
-          area.lineMarkers = true
+          area.lineDimpleMarkers = true
           return
 
       graphController.draw()
@@ -66,11 +66,11 @@ angular.module("angular-dimple.area", [])
 
     return
 ])
-angular.module("angular-dimple.bar", []).directive("dimplebar", [->
+angular.module("angular-dimple-init.barDimple", []).directive("barDimple", [->
   restrict: "E"
   replace: true
   require: [
-    "dimplebar"
+    "barDimple"
     "^graph"
   ]
   controller: [
@@ -82,12 +82,12 @@ angular.module("angular-dimple.bar", []).directive("dimplebar", [->
   link: ($scope, $element, $attrs, $controllers) ->
     addBar = ->
       filteredData = undefined
-      bar = chart.addSeries([$attrs.field], dimple.plot.bar)
+      barDimple = chart.addSeries([$attrs.field], dimple.plot.barDimple)
       graphController.filter $attrs
       graphController.draw()
       return
     graphController = $controllers[1]
-    lineController = $controllers[0]
+    lineDimpleController = $controllers[0]
     chart = graphController.getChart()
     $scope.$watch "dataReady", (newValue, oldValue) ->
       addBar()  if newValue is true
@@ -95,7 +95,7 @@ angular.module("angular-dimple.bar", []).directive("dimplebar", [->
 
     return
 ])
-angular.module("angular-dimple.graph", []).directive("graph", [->
+angular.module("angular-dimple-init.graph", []).directive("graph", [->
   restrict: "E"
   replace: true
   scope:
@@ -191,7 +191,7 @@ angular.module("angular-dimple.graph", []).directive("graph", [->
         return
   ]
 ])
-angular.module("angular-dimple.legend", []).directive("dimplelegend", [->
+angular.module("angular-dimple-init.legend", []).directive("dimplelegend", [->
   restrict: "E"
   replace: true
   require: [
@@ -221,11 +221,11 @@ angular.module("angular-dimple.legend", []).directive("dimplelegend", [->
 
     return
 ])
-angular.module("angular-dimple.line", []).directive("line", [->
+angular.module("angular-dimple-init.lineDimple", []).directive("lineDimple", [->
   restrict: "E"
   replace: true
   require: [
-    "line"
+    "lineDimple"
     "^graph"
   ]
   controller: [
@@ -237,9 +237,9 @@ angular.module("angular-dimple.line", []).directive("line", [->
   link: ($scope, $element, $attrs, $controllers) ->
     addLine = ->
       filteredData = undefined
-      line = chart.addSeries([$attrs.field], dimple.plot.line)
+      lineDimple = chart.addSeries([$attrs.field], dimple.plot.lineDimple)
       graphController.filter $attrs
-      line.lineMarkers = true
+      lineDimple.lineDimpleMarkers = true
       graphController.draw()
       return
     graphController = $controllers[1]
@@ -251,7 +251,7 @@ angular.module("angular-dimple.line", []).directive("line", [->
 
     return
 ])
-angular.module("angular-dimple.r", []).directive("r", [->
+angular.module("angular-dimple-init.r", []).directive("r", [->
   restrict: "E"
   replace: true
   require: [
@@ -279,7 +279,7 @@ angular.module("angular-dimple.r", []).directive("r", [->
 
     return
 ])
-angular.module("angular-dimple.ring", []).directive("ring", [->
+angular.module("angular-dimple-init.ring", []).directive("ring", [->
   restrict: "E"
   replace: true
   require: [
@@ -320,7 +320,7 @@ angular.module("angular-dimple.ring", []).directive("ring", [->
 
     return
 ])
-angular.module("angular-dimple.scatter-plot", []).directive("scatterPlot", [->
+angular.module("angular-dimple-init.scatter-plot", []).directive("scatterPlot", [->
   restrict: "E"
   replace: true
   require: [
@@ -348,7 +348,7 @@ angular.module("angular-dimple.scatter-plot", []).directive("scatterPlot", [->
 
     return
 ])
-angular.module("angular-dimple.stacked-area", []).directive("stackedArea", [->
+angular.module("angular-dimple-init.stacked-area", []).directive("stackedArea", [->
   restrict: "E"
   replace: true
   require: [
@@ -375,7 +375,7 @@ angular.module("angular-dimple.stacked-area", []).directive("stackedArea", [->
           1
 
       graphController.filter $attrs
-      area.lineMarkers = false
+      area.lineDimpleMarkers = false
       graphController.draw()
       return
     graphController = $controllers[1]
@@ -387,7 +387,7 @@ angular.module("angular-dimple.stacked-area", []).directive("stackedArea", [->
 
     return
 ])
-angular.module("angular-dimple.stacked-bar", []).directive("stackedBar", [->
+angular.module("angular-dimple-init.stacked-bar", []).directive("stackedBar", [->
   restrict: "E"
   replace: true
   require: [
@@ -403,14 +403,14 @@ angular.module("angular-dimple.stacked-bar", []).directive("stackedBar", [->
   link: ($scope, $element, $attrs, $controllers) ->
     addBar = ->
       if $attrs.series
-        bar = chart.addSeries([$attrs.series], dimple.plot.bar)
+        barDimple = chart.addSeries([$attrs.series], dimple.plot.barDimple)
       else
-        bar = chart.addSeries([$attrs.field], dimple.plot.bar)
+        barDimple = chart.addSeries([$attrs.field], dimple.plot.barDimple)
       graphController.filter $attrs
       graphController.draw()
       return
     graphController = $controllers[1]
-    lineController = $controllers[0]
+    lineDimpleController = $controllers[0]
     chart = graphController.getChart()
     $scope.$watch "dataReady", (newValue, oldValue) ->
       addBar()  if newValue is true
@@ -418,7 +418,7 @@ angular.module("angular-dimple.stacked-bar", []).directive("stackedBar", [->
 
     return
 ])
-angular.module("angular-dimple.x", []).directive("x", [->
+angular.module("angular-dimple-init.x", []).directive("x", [->
   restrict: "E"
   replace: true
   require: [
@@ -473,7 +473,7 @@ angular.module("angular-dimple.x", []).directive("x", [->
 
     return
 ])
-angular.module("angular-dimple.y", []).directive("y", [->
+angular.module("angular-dimple-init.y", []).directive("y", [->
   restrict: "E"
   replace: true
   require: [
