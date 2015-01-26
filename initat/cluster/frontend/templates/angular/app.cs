@@ -1,3 +1,4 @@
+{% load staticfiles %}
 # Naming conventions
 #
 #- where possible use CamelCase
@@ -42,7 +43,7 @@ ics_app = angular.module(
         "icsw.login", "icsw.package", "icsw.settings",
         "icsw.monitoring_basic", "icsw.monitoring_extended",
         "icsw.partition_table", "icsw.kernel", "icsw.image",
-        "icsw.background_job_info",
+        "icsw.info.background",
     ]
 )
 
@@ -60,6 +61,10 @@ ics_app.config(() ->
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "MON_CREATE_CONFIG" : "{% url 'mon:create_config' %}"
+    "REST_BACKGROUND_JOB_LIST": "{% url 'rest:background_job_list' %}"
+    {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
+    "MENU_GFX_URL": "{% static gfx_name %}"
+    {% endwith %}
 })
 
 add_tree_directive(ics_app)

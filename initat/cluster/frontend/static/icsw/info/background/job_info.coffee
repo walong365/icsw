@@ -1,15 +1,11 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-background_job_info_module = angular.module("icsw.background_job_info", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
+background_job_info_module = angular.module(
+    "icsw.info.background",
+    ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"]
+).controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS) ->
         access_level_service.install($scope)
         $scope.pagSettings = paginatorSettings.get_paginator("jobs", $scope)
         $scope.jobs = []
@@ -17,7 +13,7 @@ background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filt
             # force reload
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
-                ["{% url 'rest:background_job_list' %}", {}]
+                [ICSW_URLS.REST_BACKGROUND_JOB_LIST, {}]
             ])
             $q.all(wait_list).then((data) ->
                 $scope.jobs = data[0]
@@ -43,7 +39,3 @@ background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filt
             return ""
         $scope.reload()
 ])
-
-{% endinlinecoffeescript %}
-
-</script>

@@ -1826,7 +1826,6 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         msgbus.receive("devselreceiver", $scope, (name, args) ->
             $scope.devsel_receiver++
         )
-        
 ]).controller("sidebar_sep", ["$scope", "$window",
     ($scope, $window) ->
         # init display of sidebar

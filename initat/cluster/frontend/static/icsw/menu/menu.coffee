@@ -13,6 +13,9 @@ menu_module = angular.module(
         $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
         $scope.SERVICE_TYPES = $window.SERVICE_TYPES
         $scope.HANDBOOK_PDF_PRESENT = $window.HANDBOOK_PDF_PRESENT
+        $scope.ICSW_URLS = ICSW_URLS
+        console.log $scope.CLUSTER_LICENSE
+        console.log $scope.SERVICE_TYPES
         if $window.DOC_PAGE
             $scope.HANDBOOK_CHUNKS_PRESENT = $window.HANDBOOK_CHUNKS_PRESENT
             $scope.HANDBOOK_PAGE = $window.DOC_PAGE
