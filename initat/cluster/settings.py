@@ -336,7 +336,7 @@ PIPELINE_CSS = {
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
             # not used right now
-            # "css/angular-block-ui.css",
+            "css/angular-block-ui.css",
             "js/libs/ui-select/select.css",
             "css/ladda.min.css",
             "css/piechart.css",
@@ -400,7 +400,7 @@ PIPELINE_JS = {
             "js/libs/angular-file-upload.js",
             "js/libs/restangular.min.js",
             # not used right now
-            # "js/libs/angular-block-ui.js",
+            "js/libs/angular-block-ui.js",
             "js/libs/ui-select/select.js",
             "js/libs/ui-bootstrap-tpls.min.js",
             "js/libs/angular-ui-router.js",
