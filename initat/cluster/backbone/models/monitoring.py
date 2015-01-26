@@ -545,7 +545,7 @@ class mon_contact(models.Model):
             self.user.login,
             self.user.first_name,
             self.user.last_name,
-            )
+        )
 
     def __unicode__(self):
         return unicode(self.user)

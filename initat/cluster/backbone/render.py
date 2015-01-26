@@ -78,7 +78,12 @@ class render_me(object):
             self._unfold(op_dict)
             _user = {
                 "idx": self.request.user.pk,
-                "pk": self.request.user.pk
+                "pk": self.request.user.pk,
+                "is_superuser": self.request.user.is_superuser,
+                "authenticated": True,
+                "login": self.request.user.login,
+                "login_name": self.request.session["login_name"],
+                "full_name": unicode(self.request.user),
             }
             _vars = {_name: _var.value for _name, _var in self.request.session["user_vars"].iteritems()}
             _num_bg_jobs = background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()
@@ -87,7 +92,10 @@ class render_me(object):
         else:
             gp_dict = {}
             op_dict = {}
-            _user = {}
+            _user = {
+                "is_superuser": false,
+                "authenticated": false,
+            }
             _num_bg_jobs = 0
             _service_types = {}
             _vars = {"sidebar_open": True}
