@@ -28,7 +28,7 @@ import time
 
 from django.db.models.query_utils import Q
 from django.db import connection
-from django.db.models.aggregates import Max, Sum
+from django.db.models.aggregates import Max
 
 from initat.md_config_server.config import global_config
 from initat.cluster.backbone.models.monitoring import mon_check_command,\
@@ -66,6 +66,8 @@ class icinga_log_aggregator(object):
     def update(self):
         # it would be way too slow to get the device-services from the alerts table, which is huge, so we prepared it in this table
         #self._serv_alert_keys_cache = mon_icinga_log_device_services.objects.all().values_list("device_id", "service_id", "service_info")
+        # TODO: remove  mon_icinga_log_device_services in case new system works out
+        # mon_icinga_log_device_services.objects.all().values_list("device_id", "service_id", "service_info")
         # possibly TODO: also do same optimization with hosts. if each host has at least one service, we can just use the table above
         #relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
         #self._host_alert_keys_cache = relevant_host_alerts.values_list("device", flat=True).distinct()
@@ -432,10 +434,22 @@ class icinga_log_aggregator(object):
             number_of_source_timespans = db_entries.distinct('timespan').count()
             # self.log("got {} values for host ".format(number_of_source_timespans))
 
-            values = db_entries.values_list("device_id", "state", "state_type").annotate(value_sum=Sum('value'))
-            # can't use Avg as we only saves states at the times they are present
+            # dict for summing up
+            data_sum = defaultdict(lambda: 0.0)
+            # check how many timespan entries we have for each service (to detect added/removed services)
+            data_timespans = defaultdict(lambda: set())
+            for (timespan_id, device_id, state, state_type, value) in db_entries.values_list("timespan_id", "device_id", "state", "state_type", "value"):
+                data_sum[device_id, state, state_type] += value
+                data_timespans[device_id].add(timespan_id)
 
-            for (device_id, state, state_type, value_sum) in values:
+            for device_id, timespan_entries in data_timespans.iteritems():
+                for i in xrange(len(timespan_entries), number_of_source_timespans):
+                    # add undetermined entry for each iteration here
+                    data_sum[device_id,
+                             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+                             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED] += 1.0
+
+            for ((device_id, state, state_type), value_sum) in data_sum.iteritems():
                 host_entries.append(
                     mon_icinga_log_aggregated_host_data(
                         state=state,
@@ -484,9 +498,22 @@ class icinga_log_aggregator(object):
                 .filter(timespan__duration_type=shorter_duration.ID, timespan__start_date__range=(start_time, end_time_minus_epsilon))
             number_of_source_timespans = db_entries.distinct('timespan').count()
 
-            values = db_entries.values_list("device_id", "service_id", "service_info", "state", "state_type").annotate(value_avg=Sum('value'))
+            # dict for summing up
+            data_sum = defaultdict(lambda: 0.0)
+            # check how many timespan entries we have for each service (to detect added/removed services)
+            data_timespans = defaultdict(lambda: set())
+            for (timespan_id, device_id, service_id, service_info, state, state_type, value) in db_entries.values_list("timespan_id", "device_id", "service_id", "service_info", "state", "state_type", "value"):
+                data_sum[device_id, service_id, service_info, state, state_type] += value
+                data_timespans[device_id, service_id, service_info].add(timespan_id)
 
-            for (device_id, service_id, service_info, state, state_type, value_sum) in values:
+            for (device_id, service_id, service_info), timespan_entries in data_timespans.iteritems():
+                for i in xrange(len(timespan_entries), number_of_source_timespans):
+                    # add undetermined entry for each iteration here
+                    data_sum[device_id, service_id, service_info,
+                             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
+                             mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED] += 1.0
+
+            for ((device_id, service_id, service_info, state, state_type), value_sum) in data_sum.iteritems():
                 serv_entries.append(
                     mon_icinga_log_aggregated_service_data(
                         state=state,
