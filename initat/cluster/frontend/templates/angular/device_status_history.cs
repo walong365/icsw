@@ -141,13 +141,12 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
                 return pie_data
             scope.update = () ->
                 serv_cont = (new_data) ->
+                    new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
                     # new_data is dict, but we want it as list to be able to sort it
                     data = ([key, val, scope.calc_pie_data(key, val)] for key, val of new_data)
                     scope.service_data = _.sortBy(data, (entry) -> return scope.extract_service_name(entry[0]))
-                    console.log 'serv d 1', new_data
-                    console.log 'serv d 2', scope.service_data
 
-                status_utils_functions.get_service_data(scope.device_id, scope.startdate, scope.timerange, serv_cont)
+                status_utils_functions.get_service_data([scope.device_id], scope.startdate, scope.timerange, serv_cont)
 
             scope.update()
 
@@ -183,7 +182,6 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
             scope.$watch(attrs["devicepks"], (new_val) ->
                 if new_val and new_val.length
                     scope.devicepks = new_val
-                    console.log scope.devicepks
                     scope.update()
             )
             scope.update()

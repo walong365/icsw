@@ -517,7 +517,6 @@ class get_hist_service_data(ListAPIView):
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
-        data = defaultdict(lambda: [])
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
         queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan=timespan_db)
@@ -553,6 +552,6 @@ class get_hist_service_data(ListAPIView):
                     entry['value'] /= total
                 return_data[device_id] = device_data
         else:
-            return_data = data
+            return_data = per_device_data
 
         return Response([return_data])  # fake a list, see coffeescript

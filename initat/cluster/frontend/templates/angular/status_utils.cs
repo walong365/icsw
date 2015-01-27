@@ -84,9 +84,10 @@ angular.module(
 
             scope.update_from_server = () ->
                 cont = (new_data) ->
+                    new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
                     [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, colors, scope.float_format)
 
-                #status_utils_functions.get_device_data([scope.deviceid], scope.startdate, scope.timerange, cont)
+                status_utils_functions.get_device_data([scope.deviceid], scope.startdate, scope.timerange, cont)
 
             scope.update_from_local_data = () ->
                 if scope.data?
@@ -117,6 +118,7 @@ angular.module(
 
             scope.update_from_server = () ->
                 cont = (new_data) ->
+                    new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
                     [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
                 status_utils_functions.get_service_data([scope.deviceid], scope.startdate, scope.timerange, cont, merge_services=1)
@@ -151,7 +153,6 @@ angular.module(
             'duration_type': timerange,
             'merge_services': merge_services,
         }
-        console.log 'query data', query_data
         base = Restangular.all("{% url 'mon:get_hist_service_data' %}".slice(1))
         # we always return a list for easier REST handling
         base.getList(query_data).then((data_pseudo_list) ->
