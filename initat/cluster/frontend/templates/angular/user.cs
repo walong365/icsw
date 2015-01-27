@@ -1497,8 +1497,9 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
     $templateCache.put("jobinfo.html", jobinfo_template)
     $templateCache.put("diskusage.html", diskusage_template)
     $templateCache.put("vncwebviewer.html", vncwebviewer_template)
-).controller("index_base", ["$scope", "$timeout", "$window", "msgbus",
-    ($scope, $timeout, $window, msgbus) ->
+).controller("index_base", ["$scope", "$timeout", "$window", "ICSW_URLS",
+    ($scope, $timeout, $window, ICSW_URLS) ->
+        $scope.ICSW_URLS = ICSW_URLS
         $scope.show_index = true
         $scope.quick_open = true
         $scope.ext_open = false
@@ -1517,12 +1518,13 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 return true
             else
                 return false
-        msgbus.emit("devselreceiver")
-        msgbus.receive("devicelist", $scope, (name, args) ->
-            pk_list = args[0]
-            $scope.show_index = if pk_list.length then false else true
-        )
-]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService",
+]).directive("indexView", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("index_template.html")
+        link : (scope, element, attrs) ->
+    }
+).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.DeviceOverviewService = DeviceOverviewService
