@@ -1061,14 +1061,20 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 return _num
             scope.$watch("data", (data) ->
                 if data?
+                    data_ok = true
                     if scope.hidegroup
-                        # skip first two levels
-                        data = data.children[0].children[0]
-                    scope.set_focus_service(null)
-                    scope.sunburst_data = data
-                    scope.name = scope.sunburst_data.name
-                    scope.draw_data()
-            )
+                        if data.children.length > 0  # if not proper livestatus is available, data does not have any children
+                            # skip first two levels
+                            data = data.children[0].children[0]
+                        else
+                            data_ok = false
+
+                    if data_ok
+                        scope.set_focus_service(null)
+                        scope.sunburst_data = data
+                        scope.name = scope.sunburst_data.name
+                        scope.draw_data()
+                )
             scope.$watch("redraw_burst", (data) ->
                 if scope.sunburst_data?
                     scope.draw_data()

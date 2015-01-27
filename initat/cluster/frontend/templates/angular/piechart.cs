@@ -74,10 +74,12 @@ angular.module(
                 scope.centerX = scope.diameter/2
                 scope.centerY = scope.diameter/2
                 scope.radius = scope.diameter/2
-                
+
+
                 new_data = []
                 i = 0
                 scope.value_total = 0
+
                 for entry in scope.data
                     new_entry = Object.create(entry)
                     new_entry.num = i

@@ -15,7 +15,7 @@
         <div class="panel panel-default" style="width: auto">
             <div class="panel-body">
                 <!-- entries_displayed is st-table interal -->
-                <from class="form-inline">
+                <form class="form-inline">
                     <label class="control-label">Filter:</label>
                     <div class="form-group">
                         <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
@@ -51,22 +51,23 @@
                         <tr ng-repeat="entry in entries_displayed">
                             <td>{{entry.name}}</td>
                             <td>
+                                <!-- unnice workaround to get device pk into directive over the controller. in a nice design, the controller wouldn't be necessary. -->
                                 <div style="display: none">{{ devicepk_livestatus_ctrl = entry.idx }}</div>
                                 <div ng-controller='livestatus_ctrl'>
-                                    <livestatus-brief devicepk="devicepk"></livestatus>
+                                    <livestatus-brief devicepk="devicepk"></livestatus-brief>
                                 </div>
                             </td>
                             <td class="text-center">
-                                <device-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'" show-table="false"></device-hist-status-overview>
+                                <device-hist-status-overview data="entry.device_data_yesterday" show-table="false"></device-hist-status-overview>
                             </td>
                             <td class="text-center">
-                                <service-hist-status-overview deviceid="entry.idx" startdate="yesterday" timerange="'day'"></service-hist-status-overview>
+                                <service-hist-status-overview data="entry.service_data_yesterday" show-table="false"></service-hist-status-overview>
                             </td>
                             <td class="text-center">
-                                <device-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'" show-table="false"></device-hist-status-overview>
+                                <device-hist-status-overview data="entry.device_data_last_week" show-table="false"></device-hist-status-overview>
                             </td>
                             <td class="text-center">
-                                <service-hist-status-overview deviceid="entry.idx" startdate="last_week" timerange="'week'"></service-hist-status-overview>
+                                <service-hist-status-overview data="entry.service_data_last_week" show-table="false"></service-hist-status-overview>
                             </td>
                         </tr>
                     </tbody>

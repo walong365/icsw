@@ -53,8 +53,9 @@ angular.module(
 ).directive('deviceHistStatusOverview', ($templateCache, $parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     return {
-        restrict: 'EA',
+        restrict: 'E',
         scope: {
+            data: "="  # if data is passed right through here, the other attributes are discarded
             deviceid: "="
             startdate: "="
             timerange: "="
@@ -67,33 +68,41 @@ angular.module(
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
 
             scope.pie_data = []
+            weights = {
+                "Up": -10
+                "Down": -8
+                "Unreachable": -6
+                "Undetermined": -4
+            }
 
-            scope.update = () ->
+            colors = {
+                "Up": "#66dd66"
+                "Down": "#ff7777"
+                "Unreachable": "#f0ad4e"
+                "Undetermined": "#c7c7c7"
+            }
+
+            scope.update_from_server = () ->
                 cont = (new_data) ->
-                    weights = {
-                        "Up": -10
-                        "Down": -8
-                        "Unreachable": -6
-                        "Undetermined": -4
-                    }
-
-                    colors = {
-                        "Up": "#66dd66"
-                        "Down": "#ff7777"
-                        "Unreachable": "#f0ad4e"
-                        "Undetermined": "#c7c7c7"
-                    }
-
                     [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, colors, scope.float_format)
 
-                status_utils_functions.get_device_data(scope.deviceid, scope.startdate, scope.timerange, cont)
-            scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
+                #status_utils_functions.get_device_data([scope.deviceid], scope.startdate, scope.timerange, cont)
+
+            scope.update_from_local_data = () ->
+                if scope.data?
+                    [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(scope.data, weights, colors, scope.float_format)
+
+            if attrs.data?
+                scope.$watch('data', (unused) -> scope.update_from_local_data())
+            else
+                scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
 
 }).directive('serviceHistStatusOverview', ($templateCache, $parse, status_utils_functions) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
     return {
-        restrict: 'EA',
+        restrict: 'E',
         scope: {
+            data: "="  # if data is passed right through here, the other attributes are discarded
             deviceid: "="
             startdate: "="
             timerange: "="
@@ -106,39 +115,49 @@ angular.module(
 
             scope.pie_data = []
 
-            scope.update = () ->
+            scope.update_from_server = () ->
                 cont = (new_data) ->
                     [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
-                status_utils_functions.get_service_data(scope.deviceid, scope.startdate, scope.timerange, cont, merge_services=1)
-            scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update())
+                status_utils_functions.get_service_data([scope.deviceid], scope.startdate, scope.timerange, cont, merge_services=1)
+
+            scope.update_from_local_data = () ->
+                if scope.data?
+                    [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(scope.data)
+
+            if attrs.data?
+                scope.$watch('data', (unused) -> scope.update_from_local_data())
+            else
+                scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
 }).service('status_utils_functions', (Restangular) ->
-    get_device_data = (device_id, start_date, timerange, cont) ->
+    get_device_data = (device_ids, start_date, timerange, cont) ->
         query_data = {
-            'device_id': device_id,
+            'device_ids': device_ids.join(),
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
         }
         base = Restangular.all("{% url 'mon:get_hist_device_data' %}".slice(1))
-        base.getList(query_data).then(cont)
-    get_service_data = (device_id, start_date, timerange, cont, merge_services=0) ->
+        base.getList(query_data).then((new_data) ->
+            # customGET fucks up the query data, so just fake lists
+            obj = new_data.plain()[0]
+            cont(obj)
+        )
+    get_service_data = (device_ids, start_date, timerange, cont, merge_services=0) ->
         # merge_services: boolean as int
         expect_array = merge_services != 0
         query_data = {
-            'device_id': device_id,
+            'device_ids': device_ids.join(),
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
             'merge_services': merge_services,
         }
+        console.log 'query data', query_data
         base = Restangular.all("{% url 'mon:get_hist_service_data' %}".slice(1))
-        if expect_array
-            base.getList(query_data).then(cont)
-        else
-            # we always return a list for easier REST handling
-            base.getList(query_data).then((data_pseudo_list) ->
-                # need plain() to get rid of restangular stuff
-                cont(data_pseudo_list.plain()[0])
-            )
+        # we always return a list for easier REST handling
+        base.getList(query_data).then((data_pseudo_list) ->
+            # need plain() to get rid of restangular stuff
+            cont(data_pseudo_list.plain()[0])
+        )
     get_timespan = (start_date, timerange, cont) ->
         query_data = {
             'date': moment(start_date).unix()  # ask server in utc
