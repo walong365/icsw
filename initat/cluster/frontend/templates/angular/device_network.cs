@@ -434,8 +434,8 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
 
 device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"])
 
-device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout, blockUI) ->
+device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools) ->
         access_level_service.install($scope)
         $scope.enable_modal = true
         # accordion flags
@@ -513,16 +513,16 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 $scope.peers = data[1]
                 $scope.netdevice_speeds = data[2]
                 $scope.network_device_types = data[3]
-                $scope.ndt_lut = build_lut($scope.network_device_types)
+                $scope.ndt_lut = icswTools.build_lut($scope.network_device_types)
                 $scope.networks = data[4]
-                $scope.network_lut = build_lut($scope.networks)
+                $scope.network_lut = icswTools.build_lut($scope.networks)
                 $scope.domain_tree_node = data[5]
-                $scope.dtn_lut = build_lut($scope.domain_tree_node)
+                $scope.dtn_lut = icswTools.build_lut($scope.domain_tree_node)
                 $scope.nd_peers = data[6]
                 $scope.build_luts()
                 # snmp network types
                 $scope.snt = data[7]
-                $scope.snt_lut = build_lut($scope.snt)
+                $scope.snt_lut = icswTools.build_lut($scope.snt)
                 # forms
                 for cur_form in data[8] 
                     $templateCache.put(cur_form.name, cur_form.form)
@@ -705,7 +705,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                                     (dev_data) ->
                                         Restangular.all("{% url 'rest:network_list' %}".slice(1)).getList().then((data) ->
                                             $scope.networks = data
-                                            $scope.network_lut = build_lut($scope.networks)
+                                            $scope.network_lut = icswTools.build_lut($scope.networks)
                                             $scope.update_device(dev_data[0])
                                         )
                                 )

@@ -319,8 +319,8 @@ cached_config_template = """
 
 config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select"])
 
-gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI) ->
+gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools) ->
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
         $scope.cached_uploads = []
@@ -456,7 +456,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                 $scope.entries = data[0]
                 $scope.config_catalogs = data[3]
                 $scope.mccs_list = data[5]
-                $scope.mccs_lut = build_lut(data[5])
+                $scope.mccs_lut = icswTools.build_lut(data[5])
                 # catalog for uploads
                 $scope.catalog = $scope.config_catalogs[0].idx
                 $scope.config_edit.create_list = $scope.entries

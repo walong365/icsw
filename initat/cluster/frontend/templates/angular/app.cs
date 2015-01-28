@@ -31,7 +31,7 @@ ics_app = angular.module(
     "icsw.app",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
-        "blockUI",
+        "blockUI", "icsw.tools.tree",
         "icsw.menu_app", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
         "icsw.config", "icsw.config.gen",
         "icsw.rms", "icsw.lic", "icsw.server.info",
@@ -76,6 +76,7 @@ ics_app.config(() ->
     "MON_BUILD_INFO": "{% url 'mon:build_info' %}"
     "MON_CALL_ICINGA": "{% url 'mon:call_icinga' %}"
     "MON_CREATE_DEVICE": "{% url 'mon:create_device' %}"
+    "MON_CREATE_CONFIG": "{% url 'mon:create_config' %}"
     "MON_DEVICE_CONFIG": "{% url 'mon:device_config' %}"
     "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"
     "MON_OVERVIEW": "{% url 'mon:overview' %}"
@@ -97,8 +98,6 @@ ics_app.config(() ->
     "USER_GLOBAL_SETTINGS": "{% url 'user:global_settings' %}"
     "USER_OVERVIEW": "{% url 'user:overview' %}"
 })
-
-add_tree_directive(ics_app)
 
 root.ics_app = ics_app
 

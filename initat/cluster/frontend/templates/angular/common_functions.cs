@@ -55,12 +55,6 @@ icsw_paginator = """
 
 {% endverbatim %}
 
-build_lut = (list) ->
-    lut = {}
-    for value in list
-        lut[value.idx] = value
-    return lut
-
 class paginator_root
     constructor: (@$filter) ->
         @dict = {}
@@ -271,7 +265,39 @@ icsw_tools = angular.module(
                 f_idx += 1
             factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
             return "#{size} #{factor}#{postfix}"
+        "build_lut" : (in_list) ->
+            lut = {}
+            for value in in_list
+                lut[value.idx] = value
+            return lut
     }
+).service("CallAjaxService", () ->
+    default_ajax_dict =
+        type       : "POST"
+        timeout    : 50000
+        dataType   : "xml"
+        headers    : { "X-CSRFToken" : '{{ csrf_token }}'}
+        beforeSend : (xhr, settings) ->
+            if not settings.hidden
+                xhr.inituuid = my_ajax_struct.new_connection(settings)
+        complete   : (xhr, textstatus) ->
+            my_ajax_struct.close_connection(xhr.inituuid)
+        dataFilter : (data, data_type) ->
+            return data
+        error      : (xhr, status, except) ->
+            if status == "timeout"
+                alert("timeout")
+            else
+                if xhr.status
+                    # if status is != 0 an error has occured
+                    alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
+            return false
+    return (in_dict) ->
+        for key of default_ajax_dict
+            if key not of in_dict
+                in_dict[key] = default_ajax_dict[key]
+        cur_xhr = $.ajax(in_dict)
+        return cur_xhr
 ).factory("access_level_service", () ->
     # see lines 205 ff in backbone/models/user.py
     check_level = (obj, ac_name, mask, any) ->
@@ -535,8 +561,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
     module.run(($templateCache) ->
         $templateCache.put("simple_confirm.html", simple_modal_template)
     )
-    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "msgbus",
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, msgbus) ->
+    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "msgbus", "icswTools",
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, msgbus, icswTools) ->
             # set reference
             $scope.settings = settings
             $scope.settings.use_modal ?= true
@@ -700,11 +726,12 @@ angular_add_mixin_list_controller = (module, name, settings) ->
         )
     module.run(($templateCache) ->
         $templateCache.put("simple_confirm.html", simple_modal_template)
-    ).controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+    ).controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "icswTools",
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, icswTools) ->
             # extend scope with reference
             angular.extend($scope, settings.fn)
             # edit mixin
+            $scope.icswTools = icswTools
             $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
             $scope.edit_mixin.create_template = settings.edit_template
             $scope.edit_mixin.edit_template   = settings.edit_template
@@ -1320,7 +1347,6 @@ root.angular_modal_mixin = angular_modal_mixin
 root.handle_reset = handle_reset
 root.angular_add_simple_list_controller = angular_add_simple_list_controller
 root.angular_add_mixin_list_controller = angular_add_mixin_list_controller
-root.build_lut = build_lut
 root.simple_modal_template = simple_modal_template
 root.simple_modal_ctrl = simple_modal_ctrl
 root.simple_modal = simple_modal

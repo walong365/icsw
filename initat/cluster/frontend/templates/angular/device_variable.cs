@@ -117,8 +117,8 @@ device_vars_template = """
 
 device_variable_module = angular.module("icsw.device.variables", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI) ->
+device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools) ->
         $scope.enable_modal = true
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device_variable_new_form.html"
@@ -183,7 +183,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 $scope.base_edit.create_list = entries
                 # all entries (including parent meta devices and CDG)
                 $scope.cdg = (entry for entry in entries when entry.is_cluster_device_group)[0]
-                $scope.deep_entries = build_lut(entries)
+                $scope.deep_entries = icswTools.build_lut(entries)
                 $scope.group_dev_lut = {}
                 for entry in entries
                     if entry.device_type_identifier == "MD"

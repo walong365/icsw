@@ -202,7 +202,6 @@
     {% javascript 'js_gmaps' %}
     {% include "angular/common_functions.cs" %}
     {% include "angular/piechart.cs" %}
-    {% include "angular/tree.cs" %}
     <script type="text/javascript">
     {% inlinecoffeescript %}
     {% include "angular/app.cs" %}
@@ -210,9 +209,9 @@
     </script>
     {% include "javascript/init.js" %}
     {% include "angular/deviceinfo.cs" %}
-    {% include "angular/rrd.cs" %}
     {# common angular modules #}
     {% javascript 'icsw_cs1' %}
+    {% include "angular/rrd.cs" %}
     {% include "angular/smart_table_utils.cs" %}
     {% include "angular/status_utils.cs" %}
     {% include "angular/login.cs" %}
@@ -258,6 +257,7 @@
         {% endblock %}
     </header>
     <div id="icsw.app">
+        {% include "tools/tree.html" %}
         <div block-ui="main" class="block-ui-main"></div>
         {% include "menu/menu.html" %}
         <div id="icsw_wrapper">

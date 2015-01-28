@@ -2,10 +2,10 @@
 menu_module = angular.module(
     "icsw.menu_app",
     [
-        "ngSanitize", "ui.bootstrap"
+        "ngSanitize", "ui.bootstrap",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS",
-    ($scope, $timeout, $window, ICSW_URLS) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "CallAjaxService",
+    ($scope, $timeout, $window, ICSW_URLS, CallAjaxService) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
@@ -36,12 +36,12 @@ menu_module = angular.module(
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
         $scope.show_time = () ->
-            $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
+            $scope.cur_time = #moment().format("ddd, Do MMMM YYYY HH:mm:ss")
             $timeout($scope.show_time, 1000)
         $scope.update_progress_bar = () ->
             call_ajax
                 url     : ICSW_URLS.BASE_GET_GAUGE_INFO
-                hidden  : true,
+                hidden  : true
                 success : (xml) =>
                     cur_pb = []
                     if parse_xml_response(xml)
@@ -91,7 +91,8 @@ menu_module = angular.module(
             else
                 return "btn btn-xs btn-danger"
         $scope.rebuild_config = (cache_mode) ->
-            call_ajax
+            console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
+            CallAjaxService
                 url     : ICSW_URLS.MON_CREATE_CONFIG
                 data    : {
                     "cache_mode" : cache_mode

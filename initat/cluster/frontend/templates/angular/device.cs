@@ -28,8 +28,8 @@ angular_add_simple_list_controller(
     }
 )
 
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI) ->
+device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools) ->
         $scope.initial_load = true
         $scope.rest_data = {}
         $scope.rest_map = [
@@ -220,8 +220,8 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     )
             )
         $scope.rest_data_set = () ->
-            $scope.device_lut = build_lut($scope.entries)
-            $scope.device_group_lut = build_lut($scope.rest_data.device_group)
+            $scope.device_lut = icswTools.build_lut($scope.entries)
+            $scope.device_group_lut = icswTools.build_lut($scope.rest_data.device_group)
             for entry in $scope.entries
                 entry.selected = false
                 entry.device_group_obj = $scope.device_group_lut[entry.device_group]

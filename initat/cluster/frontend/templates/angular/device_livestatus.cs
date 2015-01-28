@@ -583,8 +583,8 @@ class hs_node
             parent = parent.parent
         _clicked.iter_childs((obj) -> obj.show = true)
     
-device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -739,7 +739,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         $scope.selected_mcs.push(entry.idx)
                 $scope.cat_tree_lut = cat_tree_lut
                 $scope.cat_tree.show_selected(false)
-                $scope.dev_tree_lut = build_lut(data[1])
+                $scope.dev_tree_lut = icswTools.build_lut(data[1])
                 $scope.load_data()
             )
         $scope.load_data = (mode) ->
