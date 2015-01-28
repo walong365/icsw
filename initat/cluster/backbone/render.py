@@ -93,8 +93,8 @@ class render_me(object):
             gp_dict = {}
             op_dict = {}
             _user = {
-                "is_superuser": false,
-                "authenticated": false,
+                "is_superuser": False,
+                "authenticated": False,
             }
             _num_bg_jobs = 0
             _service_types = {}
