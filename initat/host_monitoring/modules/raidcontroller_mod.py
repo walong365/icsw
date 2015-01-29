@@ -972,10 +972,20 @@ class ctrl_type_megaraid_sas(ctrl_type):
             return False
 
     def _interpret(self, ctrl_dict, cur_ns):
+        def get_status(lines):
+            stat_keys = [_key for _key, _value in lines if _key.endswith("_status")]
+            if stat_keys:
+                # status keys found, return last status
+                return [_value for _key, _value in lines if _key in stat_keys][-1]
+            else:
+                # not status keys found, return first value
+                return lines[0][1]
         num_c, num_d, num_e, num_w = (len(ctrl_dict.keys()), 0, 0, 0)
         ret_state = limits.nag_STATE_OK
         drive_stats = []
         num_enc = 0
+        #import pprint
+        #pprint.pprint(ctrl_dict)
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
             bbu_mc = ctrl_stuff.get("bbu_keys", {}).get("main", {})
             if bbu_mc:
@@ -1051,13 +1061,13 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         if cur_num:
                             loc_problems = 0
                             for cur_idx in xrange(cur_num):
-                                cur_stat = enc_dict[key][cur_idx]["lines"][0][1]
-                                if key.count("temperature"):
-                                    if int(cur_stat) > 50:
-                                        problem = True
-                                    else:
-                                        problem = False
-                                elif cur_stat.lower() in set(
+                                cur_stat = get_status(enc_dict[key][cur_idx]["lines"])
+                                #if key.count("temperature"):
+                                #    if int(cur_stat) > 50:
+                                #        problem = True
+                                #    else:
+                                #        problem = False
+                                if cur_stat.lower() in set(
                                     [
                                         "ok", "not installed", "unknown", "medium speed",
                                         "normal speed", "low speed", "high speed", "not available"
