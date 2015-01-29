@@ -39,8 +39,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_service_notification_data, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_device_services,\
-    mon_icinga_log_full_system_dump
+    mon_icinga_log_raw_base, mon_icinga_log_full_system_dump
 from initat.md_config_server.config import global_config
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 
@@ -228,12 +227,11 @@ class icinga_log_reader(threading_tools.process_obj):
                     self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
                 self.log("end of warnings while parsing:")
 
-    def parse_log_file(self, logfile, logfilepath=None, start_at=None, device_services_entries_set=None):
+    def parse_log_file(self, logfile, logfilepath=None, start_at=None):
         '''
         :param file logfile: Parsing starts at position of logfile. Must be the main icinga log file.
         :param logfilepath: Path to logfile if it is an archive logfile, not the current one
         :param int start_at: only consider entries older than start_at
-        :param set device_services_entries_set: if list is given, (device_id, service_id, service_info)-tuples are added here instead of directly to db
         :return int: last read timestamp or None
         '''
         is_archive_logfile = logfilepath is not None
@@ -341,15 +339,6 @@ class icinga_log_reader(threading_tools.process_obj):
             mon_icinga_log_full_system_dump.objects.get_or_create(date=self._parse_timestamp(timestamp))
         self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
 
-        for service_state in service_states:
-            if not service_state.device_independent:  # these would have dev_id, serv_id = (None, None)
-                if device_services_entries_set is not None:
-                    device_services_entries_set.add((service_state.device_id, service_state.service_id, service_state.service_info))
-                else:
-                    mon_icinga_log_device_services.objects.get_or_create(device_id=service_state.device_id,
-                                                                         service_id=service_state.service_id,
-                                                                         service_info=service_state.service_info)
-
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
             self._update_last_read(position, cur_line.timestamp)
@@ -388,10 +377,9 @@ class icinga_log_reader(threading_tools.process_obj):
                 logfiles_date_data.append((year, month, day, hour, logfilepath))
 
         retval = None
-        device_services_entries_set = set()
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
             with codecs.open(logfilepath, 'r', 'utf-8', errors='replace') as logfile:
-                last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at, device_services_entries_set=device_services_entries_set)
+                last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
                 if retval is None:
                     retval = last_read_timestamp
                 else:
@@ -402,10 +390,6 @@ class icinga_log_reader(threading_tools.process_obj):
                     self.log("exit requested")
                     break
 
-        for device_id, service_id, service_info in device_services_entries_set:
-            mon_icinga_log_device_services.objects.get_or_create(device_id=device_id,
-                                                                 service_id=service_id,
-                                                                 service_info=service_info)
         return retval
 
     def _handle_warning(self, exception, logfilepath, cur_line_no):

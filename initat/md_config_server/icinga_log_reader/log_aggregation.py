@@ -37,8 +37,7 @@ from initat.cluster.backbone.models.monitoring import mon_check_command,\
     mon_icinga_log_raw_service_notification_data,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data,\
     mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
-    mon_icinga_log_aggregated_service_data, mon_icinga_log_device_services,\
-    mon_icinga_log_full_system_dump
+    mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump
 from initat.cluster.backbone.models import duration
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.middleware import show_database_calls
@@ -64,14 +63,6 @@ class icinga_log_aggregator(object):
         self.log_reader.log(*args, **kwargs)
 
     def update(self):
-        # it would be way too slow to get the device-services from the alerts table, which is huge, so we prepared it in this table
-        #self._serv_alert_keys_cache = mon_icinga_log_device_services.objects.all().values_list("device_id", "service_id", "service_info")
-        # TODO: remove  mon_icinga_log_device_services in case new system works out
-        # mon_icinga_log_device_services.objects.all().values_list("device_id", "service_id", "service_info")
-        # possibly TODO: also do same optimization with hosts. if each host has at least one service, we can just use the table above
-        #relevant_host_alerts = mon_icinga_log_raw_host_alert_data.objects.filter(device_independent=False)
-        #self._host_alert_keys_cache = relevant_host_alerts.values_list("device", flat=True).distinct()
-
         self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
         self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
 
@@ -155,6 +146,7 @@ class icinga_log_aggregator(object):
                 mon_icinga_log_full_system_dump.objects.filter(date__lte=(start_time)).latest('date').date
             )
         except mon_icinga_log_full_system_dump.DoesNotExist:
+            # no earlier date
             pass
         dump_times.extend(
             mon_icinga_log_full_system_dump.objects.filter(date__range=(start_time, end_time)).values_list('date', flat=True)
