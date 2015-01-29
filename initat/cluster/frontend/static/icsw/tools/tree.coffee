@@ -136,14 +136,6 @@ class tree_node
             return "label label-primary"
         else
             return "label label-default"
-    self_and_descendants_selected: () =>
-        @recalc_sel_descendants()
-        num_selectable_children = @get_num_selectable_children()
-        if num_selectable_children == 18
-            @get_num_selectable_children(true)
-        console.log @, @_sel_descendants, num_selectable_children, @is_selectable, @selected, @_show_select
-        return @_sel_descendants == num_selectable_children and
-               (@selected or not @is_selectable())
     is_selectable: () =>
         return typeof(@_show_select) == "undefined" or @_show_select
     all_selectable_descendant_and_self_selected: () =>
@@ -274,12 +266,7 @@ class tree_config
          # if all selected, deselect
          # otw select all
          change_sel_rec = (entry, flag) ->
-             if true
-                @start_tracking_changes()
              entry.set_selected(flag)
-             if true
-                @stop_tracking_changes()
-                @selection_changed(entry)
              if flag
                 entry.expand = true
              for sub_entry in entry.children
@@ -287,10 +274,13 @@ class tree_config
 
          # TODO: remove this and its code in case it won't be used in final version
          #if entry.self_and_descendants_selected()
+         @start_tracking_changes()
          if entry.all_selectable_descendant_and_self_selected()
              change_sel_rec(entry, false)
          else
              change_sel_rec(entry, true)
+         @stop_tracking_changes()
+         @selection_changed(entry)
     toggle_tree_state: (entry, flag, signal=true) =>
         if entry == undefined
             (@toggle_tree_state(_entry, flag, signal) for _entry in @root_nodes)
