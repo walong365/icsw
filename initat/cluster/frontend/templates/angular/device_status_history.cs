@@ -55,7 +55,7 @@ status_history_template = """
 """
 
 device_status_history_template = """
-<h3>{{device_rest.name }}</h3>
+<h3>{{device_rest.full_name}}</h3>
 
 <div class="row" style="width: 650px">
     <div class="col-md-12">
@@ -101,8 +101,15 @@ device_status_history_template = """
 
 status_history_module = angular.module("icsw.device.status_history", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "status_utils"])
 
-status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout",
-    ($scope, $compile, $filter, $templateCache, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "msgbus",
+    ($scope, $compile, $filter, $templateCache, restDataSource, sharedDataSource, $q, $modal, $timeout, msgbus) ->
+
+        $scope.device_pks = []
+
+        msgbus.emit("devselreceiver")
+        msgbus.receive("devicelist", $scope, (name, args) ->
+            $scope.devicepks = args[1]
+        )
 ]).directive("devicestatushistory", ($templateCache, status_utils_functions, Restangular) ->
     return {
         restrict : "EA"
@@ -114,7 +121,10 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
         link : (scope, el, attrs) ->
             scope.device_id = attrs.device
             scope.device_chart_id = "device_chart_" + scope.device_id
-            scope.device_rest = Restangular.one("{% url 'rest:device_list' %}".slice(1)).get({'idx': scope.device_id})
+            scope.device_rest = undefined
+            Restangular.one("{% url 'rest:device_list' %}".slice(1)).get({'idx': scope.device_id}).then((new_data)->
+                scope.device_rest = new_data[0]
+            )
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
             scope.extract_service_value = (service, key) ->
@@ -150,10 +160,14 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
 
             scope.update()
 
+
 }).directive("statushistory", ($templateCache, status_utils_functions) ->
     return {
         restrict : "EA"
         template : $templateCache.get("status_history_template.html")
+        scope : {
+            devicepks: '='
+        }
         link : (scope, el, attrs) ->
             scope.devicepks = []
             #scope.startdate = moment().startOf("day")
