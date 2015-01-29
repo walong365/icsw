@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -119,8 +119,10 @@ class ctrl_type(object):
     @staticmethod
     def ctrl(key):
         if ctrl_type._all_types:
+            # server call
             return ctrl_type._all_types[key]
         else:
+            # client call
             return globals()["ctrl_type_{}".format(key)](dummy_mod(), quiet=True)
 
     def exec_command(self, com_line, **kwargs):
@@ -142,15 +144,15 @@ class ctrl_type(object):
         return cur_stat, lines
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self._module.log("[ct {}] {}".format(self.name, what), log_level)
+       self._module.log("[ct {}] {}".format(self.name, what), log_level)
 
     def _scan(self):
-        self.scanned = time.time()
-        self.log("scanning for {} controller".format(self.name))
-        self.check_for_exec()
-        if self._check_exec:
-            self.log("scanning for {}".format(self.Meta.description))
-            self.scan_ctrl()
+       self.scanned = time.time()
+       self.log("scanning for {} controller".format(self.name))
+       self.check_for_exec()
+       if self._check_exec:
+           self.log("scanning for {}".format(self.Meta.description))
+           self.scan_ctrl()
 
     def _update(self, ctrl_ids):
         if not self.scanned:
@@ -771,16 +773,26 @@ class ctrl_type_ips(ctrl_type):
                                                                int(cd_info[1].split()[-1]))
                                     except:
                                         con_info = "error parsing con_info %s" % (phys["reported_location"])
-                            phys_dict.setdefault(s_state, []).append("c%d/id%d%s" % (phys["channel"],
-                                                                                     phys["scsi_id"],
-                                                                                     " (%s)" % (con_info) if con_info else ""))
+                            phys_dict.setdefault(
+                                s_state, []
+                            ).append(
+                                "c%d/id%d%s" % (
+                                    phys["channel"],
+                                    phys["scsi_id"],
+                                    " (%s)" % (con_info) if con_info else ""
+                                )
+                            )
                 act_field.extend(["%s: %s" % (key, ",".join(phys_dict[key])) for key in sorted(phys_dict.keys())])
             if "task_list" in c_stuff:
                 for act_task in c_stuff["task_list"]:
-                    act_field.append("%s on logical device %s: %s, %d %%" % (act_task.get("header", "unknown task"),
-                                                                             act_task.get("logical device", "?"),
-                                                                             act_task.get("current operation", "unknown op"),
-                                                                             int(act_task.get("percentage complete", "0"))))
+                    act_field.append(
+                        "%s on logical device %s: %s, %d %%" % (
+                            act_task.get("header", "unknown task"),
+                            act_task.get("logical device", "?"),
+                            act_task.get("current operation", "unknown op"),
+                            int(act_task.get("percentage complete", "0"))
+                        )
+                    )
             # check controller warnings
             ctrl_field = []
             if c_stuff["controller"]:
@@ -795,9 +807,13 @@ class ctrl_type_ips(ctrl_type):
                     if ov_temp == "yes":
                         num_error += 1
                         ctrl_field.append("over temperature")
-            ret_f.append("c%d (%s): %s" % (c_num,
-                                           ", ".join(ctrl_field) or "---",
-                                           ", ".join(act_field)))
+            ret_f.append(
+                "c%d (%s): %s" % (
+                    c_num,
+                    ", ".join(ctrl_field) or "---",
+                    ", ".join(act_field)
+                )
+            )
             if num_error:
                 ret_state = limits.nag_STATE_CRITICAL
             elif num_warn:
@@ -835,9 +851,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         "info": " ".join(line_p),
                         "logical_lines": {}
                     }
-                    self.log("Found Controller '{}' with ID {:d}".format(
-                        self._dict[ctrl_num]["info"],
-                        ctrl_num))
+                    self.log(
+                        "Found Controller '{}' with ID {:d}".format(
+                            self._dict[ctrl_num]["info"],
+                            ctrl_num
+                        )
+                    )
 
     def process(self, ccs):
         _com_line, ctrl_id, run_type = ccs.run_info["command"]
@@ -958,8 +977,13 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                 "yes": True
                             }.get(value.lower(), value)
                             ctrl_stuff["bbu_keys"].setdefault(main_key, {})[act_key] = value
-            # store in ccs
+        if run_type == "enc":
+            # last run type, store in ccs
             ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
+
+    def set_result_from_cache(self, srv_com, cur_ns):
+        for _key, _value in self._dict.iteritems():
+            ccs.srv_com["result:ctrl_{:d}".format(_key)] = _value
 
     def update_ok(self, srv_com):
         if self._dict:
@@ -995,7 +1019,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if "virt" not in ctrl_stuff:
                 # rewrite from old to new format
                 ctrl_stuff["virt"] = {
-                    key: {"lines": [(line[0].lower().replace(" ", "_"), line[1]) for line in value]} for key, value in ctrl_stuff["logical_lines"].iteritems()}
+                    key: {
+                        "lines": [
+                            (line[0].lower().replace(" ", "_"), line[1]) for line in value
+                        ]
+                    } for key, value in ctrl_stuff["logical_lines"].iteritems()
+                }
             for log_num, log_stuff in ctrl_stuff.get("virt", {}).iteritems():
                 # pprint.pprint(log_dict)
                 log_dict = dict(log_stuff["lines"])
@@ -1005,12 +1034,15 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     status = log_dict["state"]
                     if not status.lower().startswith("optimal"):
                         num_e += 1
-                    drive_stats.append("ld %d (ctrl %d, %s, %s): %s" % (
-                        log_num,
-                        ctrl_num,
-                        log_dict.get("size", "???"),
-                        logging_tools.get_plural("disc", num_drives),
-                        status))
+                    drive_stats.append(
+                        "ld %d (ctrl %d, %s, %s): %s" % (
+                            log_num,
+                            ctrl_num,
+                            log_dict.get("size", "???"),
+                            logging_tools.get_plural("disc", num_drives),
+                            status
+                        )
+                    )
                 if "ongoing_progresses" in log_dict:
                     num_w += 1
                     drive_stats.append(log_dict["ongoing_progresses"])
@@ -1039,7 +1071,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     drive_stats.append(
                         "{} missing: {}".format(
                             logging_tools.get_plural("drive", len(drives_missing)),
-                            ", ".join(["{:d}".format(m_drive) for m_drive in sorted(drives_missing)])
+                            ", ".join(
+                                ["{:d}".format(m_drive) for m_drive in sorted(drives_missing)]
+                            )
                         )
                     )
             if "virt" not in ctrl_stuff:
@@ -1172,7 +1206,7 @@ class ctrl_type_gdth(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return ["/bin/true %s" % (ctrl_id) for ctrl_id in ctrl_list]
+        return ["/bin/true {}".format(ctrl_id) for ctrl_id in ctrl_list]
 
     def scan_ctrl(self):
         gdth_dir = "/proc/scsi/gdth"
@@ -1329,7 +1363,7 @@ class ctrl_type_gdth(ctrl_type):
                 if lll.endswith("started"):
                     ret_state, ret_str = (limits.nag_STATE_WARNING, "Warning")
             out_f.append(last_log_line)
-        return ret_state, "%s: %s" % (ret_str, ", ".join(out_f))
+        return ret_state, "{}: {}".format(ret_str, ", ".join(out_f))
 
 
 class ctrl_type_hpacu(ctrl_type):
@@ -1559,7 +1593,8 @@ class ctrl_type_hpacu(ctrl_type):
                 "+".join([logging_tools.get_size_str(act_size_log) for act_size_log in size_log]),
                 logging_tools.get_plural("phys.drive", num_phys),
                 logging_tools.get_size_str(size_phys),
-                error_str)
+                error_str
+            )
 
 
 class ctrl_type_ibmbcraid(ctrl_type):
@@ -1728,10 +1763,19 @@ class aac_status_command(hm_classes.hm_command):
 
 
 class megaraid_sas_status_command(hm_classes.hm_command):
+    def __init__(self, name):
+        self.__cache = {}
+        hm_classes.hm_command.__init__(self, name)
+        self.parser.add_argument("--cache", dest="cache", default=False, action="store_true")
+
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("megaraid_sas")
-        if ctrl_type.ctrl("megaraid_sas").update_ok(srv_com):
-            return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("megaraid_sas"), [])
+        _ctrl = ctrl_type.ctrl("megaraid_sas")
+        if cur_ns.cache:
+            _ctrl.set_result_from_cache(srv_com, cur_ns)
+        else:
+            if _ctrl.update_ok(srv_com):
+                return ctrl_check_struct(self.log, srv_com, _ctrl, [])
 
     def interpret(self, srv_com, cur_ns):
         ctrl_dict = {}

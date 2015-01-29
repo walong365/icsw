@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2011-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -37,7 +37,8 @@ def client_code(global_config):
             print "{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str)
     conn_str = "tcp://{}:{:d}".format(
         global_config["HOST"],
-        global_config["COM_PORT"])
+        global_config["COM_PORT"]
+    )
     arg_stuff = global_config.get_argument_stuff()
     arg_list = arg_stuff["arg_list"]
     com_name = arg_list.pop(0)

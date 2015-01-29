@@ -242,13 +242,13 @@ class hm_command(object):
                 # self.parser.add_argument("arguments", nargs="+", help="additional arguments")
                 self.parser.add_argument("arguments", nargs="+", help=kwargs.get("arguments_name", "additional arguments"))
             else:
-                raise ValueError("positonal_argument flag not in [1, True, False]")
+                raise ValueError("positional_argument flag not in [1, True, False]")
         # monkey patch parsers
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.module.main_proc.log("[{}] {}".format(self.name, what), log_level)
+        self.module.main_proc.log(u"[{}] {}".format(self.name, what), log_level)
 
     def _parser_exit(self, status=0, message=None):
         raise ValueError, (status, message)
