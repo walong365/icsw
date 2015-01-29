@@ -29,8 +29,7 @@ from initat.cluster.backbone.models.monitoring import mon_icinga_log_last_read,\
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_file,\
     mon_icinga_log_raw_service_flapping_data,\
     mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_service_data,\
-    mon_icinga_log_aggregated_timespan, mon_icinga_log_full_system_dump,\
-    mon_icinga_log_device_services
+    mon_icinga_log_aggregated_timespan, mon_icinga_log_full_system_dump
 
 
 class Command(BaseCommand):
@@ -41,7 +40,6 @@ class Command(BaseCommand):
         mon_icinga_log_last_read.objects.all().delete()
 
         mon_icinga_log_full_system_dump.objects.all().delete()
-        mon_icinga_log_device_services.objects.all().delete()
 
         mon_icinga_log_raw_host_alert_data.objects.all().delete()
         mon_icinga_log_raw_service_alert_data.objects.all().delete()

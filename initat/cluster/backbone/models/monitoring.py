@@ -1294,23 +1294,14 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
         backup = False
 
 
-class mon_icinga_log_device_services(models.Model):
-    # saves which services have at some point been defined for a device
-    # make sure to keep the values distinct
-    idx = models.AutoField(primary_key=True)
-    device = models.ForeignKey("backbone.device", null=True, db_index=True)
-    service = models.ForeignKey(mon_check_command, null=True, db_index=True)
-    service_info = models.TextField(blank=True, null=True, db_index=True)
-
-    class CSW_Meta:
-        backup = False
-
-
 class mon_icinga_log_full_system_dump(models.Model):
     # save dates of all full system dumps, i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
     # this is needed for faster access, the alerts-tables are too huge
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True)
+
+    class CSW_Meta:
+        backup = False
 
 
 class mon_icinga_log_raw_service_flapping_data(mon_icinga_log_raw_base):
@@ -1403,6 +1394,9 @@ class mon_icinga_log_aggregated_timespan(models.Model):
     duration = models.IntegerField()  # seconds
     duration_type = models.IntegerField(db_index=True)  # durations pseudo enum from functions
 
+    class Meta:
+        app_label = "backbone"
+
 
 class mon_icinga_log_aggregated_host_data(models.Model):
     STATE_FLAPPING = "FL"  # this is also a state type
@@ -1420,6 +1414,9 @@ class mon_icinga_log_aggregated_host_data(models.Model):
 
     # ratio of time span spent in this (state_type, state)
     value = models.FloatField()
+
+    class Meta:
+        app_label = "backbone"
 
 
 class mon_icinga_log_aggregated_service_data(models.Model):
@@ -1442,3 +1439,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
 
     # ratio of time span spent in this (state_type, state)
     value = models.FloatField()
+
+    class Meta:
+        app_label = "backbone"
+
