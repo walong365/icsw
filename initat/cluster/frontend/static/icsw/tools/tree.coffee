@@ -1,75 +1,3 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-{% verbatim %}
-
-_tree_root_node = """
-<ul class="dynatree-container">
-    <span ng-show="!treeconfig.root_nodes.length">No entries</span>
-    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'dynatree-lastsib' || ''">
-        <subnode entry="entry" treeconfig="treeconfig"></subnode>
-        <subtree ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" single="single" treeconfig="treeconfig"></subtree>
-    </li>
-</ul>
-"""
-
-_subtree_node = """
-<ul>
-    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''" ng-if="!entry.pruned">
-        <subnode entry="entry" treeconfig="treeconfig"></subnode>
-        <subtree ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" treeconfig="treeconfig"></subtree>
-    </li>
-</ul>
-"""
-
-_subtree_node_single = """
-<ul>
-    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''" ng-if="!entry.pruned">
-        <subnode entry="entry" treeconfig="treeconfig"></subnode>
-    </li>
-</ul>
-"""
-
-_subnode = """
-<span ng-class="treeconfig.get_span_class(entry, $last)">
-    <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
-    <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
-    <span ng-if="treeconfig.show_select && entry._show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
-    <span ng-show="treeconfig.show_icons" ng-class="treeconfig.get_icon_class(entry)" style="width: 16px; margin-left: 0px"></span>
-    <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
-        <input type="button" ng-class="entry.select_button_class" ng-value="entry.select_button_letter" ng-click="treeconfig.toggle_select_new(entry)" title="select subtree"></input>
-        <!--
-            <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
-            <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
-            <input type="button" class="btn btn-warning" value="C" ng-click="treeconfig.toggle_tree_state(entry, -1)" title="deselect subtree"></input>
-        -->
-    </div>
-    <div ng-if="entry._depth == 0 && entry._num_childs && treeconfig.show_tree_expand_buttons" class="btn-group btn-group-xs">
-        <input type="button" class="btn btn-success" value="e" ng-click="treeconfig.toggle_expand_tree(1, false)" title="expand all"></input>
-        <input ng-if="treeconfig.show_select" type="button" class="btn btn-primary" value="s" ng-click="treeconfig.toggle_expand_tree(1, true)" title="expand selected"></input>
-        <input type="button" class="btn btn-danger" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
-    </div>
-    <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)">
-        {{ entry.obj }}
-        <span ng-class="treeconfig.get_name_class(entry)" title="{{ treeconfig.get_title(entry) }}">{{ treeconfig.get_name(entry) }}</span>
-        <span ng-if="treeconfig.show_childs && !treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
-        <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">
-            <span ng-class="entry.get_label_class()">
-                <span ng-show="treeconfig.show_total_descendants">{{ entry._num_descendants }}</span>
-                <span ng-show="!treeconfig.show_total_descendants">{{ entry._num_nd_descendants }}</span>
-                <span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span>
-            </span>
-        </span>
-    </a>
-</span>
-"""
-
-_a = """<tree ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></tree>"""
-
-{% endverbatim %}
 
 class tree_node
     constructor: (args) ->
@@ -458,9 +386,10 @@ class tree_config
             r_class.push "dynatree-exp-c"
         return r_class
 
-add_tree_directive = (mod) ->
-    mod.directive("tree", ["$compile",
-        ($compile) ->
+tree_module = angular.module("icsw.tools.tree",
+    []
+).directive("tree", ["$compile", "$templateCache",
+        ($compile, $templateCache) ->
             return {
                 restrict : "E"
                 scope    : {
@@ -474,10 +403,10 @@ add_tree_directive = (mod) ->
                         #console.log scope, iAttr["treeconfig"], tAttr, iAttr
                         #scope.treeconfig = scope.$eval(tAttr["treeconfig"])
                         #console.log scope.treeconfig
-                        iElement.append($compile(_tree_root_node)(scope))
+                        iElement.append($compile($templateCache.get("tree_root_node"))(scope))
                 } 
-    ]).directive("subtree", ["$compile",
-        ($compile) ->
+    ]).directive("subtree", ["$compile", "$templateCache",
+        ($compile, $templateCache) ->
             return {
                 restrict : "E"
                 scope    : {
@@ -488,10 +417,10 @@ add_tree_directive = (mod) ->
                 replace : true
                 compile: (tElement, tAttr) ->
                     return (scope, iElement, iAttr) ->
-                        iElement.append($compile(if scope.single then _subtree_node_single else _subtree_node)(scope))
+                        iElement.append($compile(if scope.single then $templateCache.get("tree_subtree_node_single") else $templateCache.get("tree_subtree_node"))(scope))
                 } 
-    ]).directive("subnode", ["$compile",
-        ($compile) ->
+    ]).directive("subnode", ["$compile", "$templateCache",
+        ($compile, $templateCache) ->
             return {
                 restrict : "E"
                 scope    : {
@@ -501,14 +430,9 @@ add_tree_directive = (mod) ->
                 replace : true
                 compile: (tElement, tAttr) ->
                     return (scope, iElement, iAttr) ->
-                        iElement.append($compile(_subnode)(scope))
+                        iElement.append($compile($templateCache.get("tree_subnode"))(scope))
                 } 
     ])
 
 root = exports ? this
 root.tree_config = tree_config
-root.add_tree_directive = add_tree_directive
-
-{% endinlinecoffeescript %}
-
-</script>

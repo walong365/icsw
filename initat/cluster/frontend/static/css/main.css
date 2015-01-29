@@ -20,7 +20,7 @@ ul.dynatree-container span.ip_ok {
 /* for sidebar */
 .noborder {
     border : none;
-    padding : 0mm;
+    padding : 0;
 }
 .noborder.ui-tabs .ui-tabs-panel {
     padding: 0 0 0 0 ;

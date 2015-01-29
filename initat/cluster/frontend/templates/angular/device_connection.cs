@@ -99,8 +99,8 @@ device_connection_template = """
 
 device_connection_module = angular.module("icsw.device.connection", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
-device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI) ->
+device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools) ->
         $scope.devsel_list = []
         # ac settings
         $scope.ac_type = "master"
@@ -142,14 +142,14 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
             ])
             $q.all(wait_list).then((data) ->
                 _devs = data[0]
-                $scope.devices = build_lut(_devs)
+                $scope.devices = icswTools.build_lut(_devs)
                 $scope.cd_devs = []
                 for entry in _devs
                     if entry.device_type_identifier == "CD" and entry.idx in $scope.devsel_list
                         entry.master_list = []
                         entry.slave_list = []
                         $scope.cd_devs.push(entry)
-                $scope.cd_lut = build_lut($scope.cd_devs)
+                $scope.cd_lut = icswTools.build_lut($scope.cd_devs)
                 for _cd in data[1]
                     if _cd.parent of $scope.cd_lut
                         $scope.cd_lut[_cd.parent].slave_list.push(_cd)

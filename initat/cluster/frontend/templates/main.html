@@ -22,7 +22,7 @@
     <meta name="viewport" content="width=device-width"/>
     
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
-
+    <link rel="icon" type="image/png" href="/cluster/static/images/noctua_favicon.png" />
     {% stylesheet 'part1' %}
 
     <style type="text/css">
@@ -166,71 +166,82 @@
     <!-- All JavaScript at the bottom, except this Modernizr build.
          Modernizr enables HTML5 elements & feature detects for optimal performance.
          Create your own custom Modernizr build: www.modernizr.com/download/ -->
-        <!--[if lt IE 9]>
-            <script type="text/javascript" src='{% static "js/libs/modernizr-2.7.1.ie8.js" %}'></script>
-            <script type="text/javascript" src='{% static "js/libs/jquery-1.11.1.js" %}'></script>
-            <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
-            <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
-        <![endif]-->
-        <!--[if gte IE 9]><!-->{% javascript 'js_jquery_new' %}<!--<![endif]-->
-        <script type="text/javascript">
-        {% inlinecoffeescript %}
-        # attach global permissions and license info to window object (== global variable)
-        window.INIT_PRODUCT_NAME = "{{ settings.INIT_PRODUCT_NAME }}"
-        window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }}
-        window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
-        window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
-        window.CURRENT_USER = {{ CURRENT_USER | safe }}
-        window.NUM_BACKGROUND_JOBS = {{ NUM_BACKGROUND_JOBS }}
-        window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }}
-        window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }}
-        window.USER_VARS = {{ USER_VARS | safe }}
-        window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
-        window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
-        {% endinlinecoffeescript %}
-        </script>
-        {% javascript 'js_base' %}
-        {% javascript 'js_extra1' %}
-        <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
-        {% javascript 'js_gmaps' %}
-        {% include "angular/common_functions.cs" %}
-        {% include "angular/piechart.cs" %}
-        {% include "angular/tree.cs" %}
-        {% include "angular/app.cs" %}
-        {% include "javascript/init.js" %}
-        {% include "angular/deviceinfo.cs" %}
-        {% include "angular/rrd.cs" %}
-        {# common angular modules #}
-        {% include "angular/smart_table_utils.cs" %}
-        {% include "angular/status_utils.cs" %}
-        {% include "angular/login.cs" %}
-        {% include "angular/user.cs" %}
-        {% include "angular/device.cs" %}
-        {% include "angular/server_info.cs" %}
-        {% include "angular/rms.cs" %}
-        {% include "angular/device_config.cs" %}
-        {% include "angular/device_boot.cs" %}
-        {% include "angular/device_livestatus.cs" %}
-        {% include "angular/device_connection.cs" %}
-        {% include "angular/device_status_history.cs" %}
-        {% include "angular/device_network.cs" %}
-        {% include "angular/device_variable.cs" %}
-        {% include "angular/monitoring_device.cs" %}
-        {% include "angular/monitoring_basic.cs" %}
-        {% include "angular/monitoring_extended.cs" %}
-        {% include "angular/monitoring_overview.cs" %}
-        {% include "angular/monitoring_build_info.cs" %}
-        {% include "angular/network.cs" %}
-        {% include "angular/lic.cs" %}
-        {% include "angular/category_tree.cs" %}
-        {% include "angular/domain_name_tree.cs" %}
-        {% include "angular/config.cs" %}
-        {% include "angular/partition_table.cs" %}
-        {% include "angular/background_job_info.cs" %}
-        {% include "angular/kernel.cs" %}
-        {% include "angular/image.cs" %}
-        {% include "angular/package.cs" %}
-        {% include "angular/settings.cs" %}
+    <!--[if lt IE 9]>
+        <script type="text/javascript" src='{% static "js/libs/modernizr-2.7.1.ie8.js" %}'></script>
+        <script type="text/javascript" src='{% static "js/libs/jquery-1.11.1.js" %}'></script>
+        <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
+        <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
+    <![endif]-->
+    <!--[if gte IE 9]><!-->{% javascript 'js_jquery_new' %}<!--<![endif]-->
+    <script type="text/javascript">
+    {% inlinecoffeescript %}
+    # attach global permissions and license info to window object (== global variable)
+    window.INIT_PRODUCT_NAME = "{{ settings.INIT_PRODUCT_NAME }}"
+    window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }}
+    window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
+    window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
+    window.CURRENT_USER = {{ CURRENT_USER | safe }}
+    window.NUM_BACKGROUND_JOBS = {{ NUM_BACKGROUND_JOBS }}
+    window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }}
+    window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }}
+    window.USER_VARS = {{ USER_VARS | safe }}
+    window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
+    window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
+    window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %}
+    window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %}
+    {% if doc_page %}
+    window.DOC_PAGE = "{{ doc_page }}"
+    {% else %}
+    window.DOC_PAGE = null
+    {% endif %}
+    {% endinlinecoffeescript %}
+    </script>
+    {% javascript 'js_base' %}
+    {% javascript 'js_extra1' %}
+    <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
+    {% javascript 'js_gmaps' %}
+    {% include "angular/common_functions.cs" %}
+    {% include "angular/piechart.cs" %}
+    <script type="text/javascript">
+    {% inlinecoffeescript %}
+    {% include "angular/app.cs" %}
+    {% endinlinecoffeescript %}
+    </script>
+    {% include "javascript/init.js" %}
+    {% include "angular/deviceinfo.cs" %}
+    {# common angular modules #}
+    {% javascript 'icsw_cs1' %}
+    {% include "angular/rrd.cs" %}
+    {% include "angular/smart_table_utils.cs" %}
+    {% include "angular/status_utils.cs" %}
+    {% include "angular/login.cs" %}
+    {% include "angular/user.cs" %}
+    {% include "angular/device.cs" %}
+    {% include "angular/server_info.cs" %}
+    {% include "angular/rms.cs" %}
+    {% include "angular/device_config.cs" %}
+    {% include "angular/device_boot.cs" %}
+    {% include "angular/device_livestatus.cs" %}
+    {% include "angular/device_connection.cs" %}
+    {% include "angular/device_status_history.cs" %}
+    {% include "angular/device_network.cs" %}
+    {% include "angular/device_variable.cs" %}
+    {% include "angular/monitoring_device.cs" %}
+    {% include "angular/monitoring_basic.cs" %}
+    {% include "angular/monitoring_extended.cs" %}
+    {% include "angular/monitoring_overview.cs" %}
+    {% include "angular/monitoring_build_info.cs" %}
+    {% include "angular/network.cs" %}
+    {% include "angular/lic.cs" %}
+    {% include "angular/category_tree.cs" %}
+    {% include "angular/domain_name_tree.cs" %}
+    {% include "angular/config.cs" %}
+    {% include "angular/partition_table.cs" %}
+    {% include "angular/kernel.cs" %}
+    {% include "angular/image.cs" %}
+    {% include "angular/package.cs" %}
+    {% include "angular/settings.cs" %}
+    {% include "angular/angular-dimple-init.cs" %}
 
 </head>
 <body>
@@ -246,8 +257,9 @@
         {% endblock %}
     </header>
     <div id="icsw.app">
+        {% include "tools/tree.html" %}
         <div block-ui="main" class="block-ui-main"></div>
-        {% include "menu.html" %}
+        {% include "menu/menu.html" %}
         <div id="icsw_wrapper">
     
             {% include 'sidebar.html' %}

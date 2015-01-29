@@ -361,8 +361,8 @@ device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$fil
     $templateCache.put("devconfvars.html", devconf_vars_template)
 )
 
-device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus) ->
+device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, icswTools) ->
         access_level_service.install($scope)
         $scope.devices = []
         $scope.configs = []
@@ -407,7 +407,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     $scope.all_devices.push(entry)
                 $scope.configs = data[1]
                 $scope.config_catalogs = data[2]
-                $scope.cc_lut = build_lut(data[2])
+                $scope.cc_lut = icswTools.build_lut(data[2])
                 $scope.init_devices(pre_sel)
                 $scope.new_filter_set($scope.name_filter, false)
             )

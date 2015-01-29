@@ -1,14 +1,12 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
-
-{% block title %}{% trans "Indexpage" %}{% endblock %}
+{% block title %}Indexpage{% endblock %}
 
 {% block content %}
 
 {% verbatim %}
 
-<div ng-controller="index_base" ng-cloack ng-show="show_index">
+<script type="text/ng-template" id="index_template.html">
     <h2 class="center">Please select a device from the tree on the left side</h2>
     <accordion close-others="no">
         <accordion-group is-open="quick_open">
@@ -16,7 +14,6 @@
                 Quicklinks
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quick_open, 'glyphicon-chevron-right': !quick_open}"></i>
             </accordion-heading>
-            {% endverbatim %}
             <ul class="list-group">
                 <li class="list-group-item">
                     <div class="row">
@@ -24,7 +21,7 @@
                             Change account settings (password, contact data)
                         </div>
                         <div class="col-md-4">
-                            <a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a>
+                            <a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}">Account Info</a>
                         </div>
                     </div>
                 </li>
@@ -34,19 +31,17 @@
                             Add a new device
                         </div>
                         <div class="col-md-4">
-                            <a href="{% url 'mon:create_device' %}">{% trans "Create device" %}</a>
+                            <a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create device</a>
                         </div>
                     </div>
                 </li>
             </ul>
-            {% verbatim %}
         </accordion-group>
         <accordion-group is-open="ext_open">
             <accordion-heading>
                 External links
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': ext_open, 'glyphicon-chevron-right': !ext_open}"></i>
             </accordion-heading>
-            {% endverbatim %}
             <ul class="list-group">
                 <li class="list-group-item">
                     <div class="row">
@@ -54,7 +49,7 @@
                             Changelog of the current development master
                         </div>
                         <div class="col-md-4">
-                            <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >{% trans "Changelog" %}</a>
+                            <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >Changelog</a>
                         </div>
                     </div>
                 </li>
@@ -64,7 +59,7 @@
                             Software support forum (register, discuss and ask questions)
                         </div>
                         <div class="col-md-4">
-                            <a href="http://www.initat.org/phpBB3/index.php" target="_blank">{% trans "Forum" %}</a>
+                            <a href="http://www.initat.org/phpBB3/index.php" target="_blank">Forum</a>
                         </div>
                     </div>
                 </li>
@@ -74,12 +69,11 @@
                             Mailing list (subscribe)
                         </div>
                         <div class="col-md-4">
-                            <a href="http://www.initat.org/mailman/listinfo" target="_blank">{% trans "Mailman" %}</a>
+                            <a href="http://www.initat.org/mailman/listinfo" target="_blank">MailMan</a>
                         </div>
                     </div>
                 </li>
             </ul>
-            {% verbatim %}
         </accordion-group>
         <accordion-group is-open="diskusage_open">
             <accordion-heading>
@@ -98,7 +92,7 @@
                 Virtual desktops
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': vdesktop_open, 'glyphicon-chevron-right': !vdesktop_open}"></i>
             </accordion-heading>
-            
+
             <div ng-controller="account_ctrl">
                 <vncwebviewer object="edit_obj">
                 </vncwebviewer>
@@ -107,7 +101,7 @@
         </accordion-group>
         <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled">
             <accordion-heading>
-               Job info
+                Job info
                 <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>
             </accordion-heading>
             <div ng-controller="jobinfo_ctrl">
@@ -115,12 +109,13 @@
             </div>
         </accordion-group>
     </accordion>
+</script>
+
+<div id="center_deviceinfo" ng-controller="device_info_ctrl">
+    <index-view ng-controller="index_base" ng-show="!show"></index-view>
+    <deviceoverview devicepk="devicepk" multi="1" ng-show="show"></deviceoverview>
 </div>
 
 {% endverbatim %}
-
-<div id="center_deviceinfo" ng-controller="device_info_ctrl" ng-show="show" mode="{{ DEVICE_MODE }}">
-    <deviceoverview devicepk="devicepk" multi="1"></deviceoverview>
-</div>
 
 {% endblock %}

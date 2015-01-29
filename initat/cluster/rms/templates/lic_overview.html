@@ -105,6 +105,9 @@
                         <label for="cb_{{li.idx}}">{{li.name}} {{li.usage}}</label>
                         </input>
                     </div>
+                    <div ng-show="ext_license_list.length == 0">
+                        No licenses found.
+                    </div>
                 </div>
             </div>
         </div> <!-- left panel end -->

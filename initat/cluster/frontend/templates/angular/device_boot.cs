@@ -198,8 +198,8 @@ device_log_row_template = """
 
 device_boot_module = angular.module("icsw.device.boot", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
 
-device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus) ->
+device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
@@ -373,18 +373,18 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     dev.latest_log = 0
                     dev.num_logs = 0
                     dev.log_lines = []
-                $scope.log_source_lut = build_lut(data[6])
-                $scope.log_status_lut = build_lut(data[7])
-                $scope.user_lut = build_lut(data[8])
-                $scope.device_lut = build_lut($scope.devices)
+                $scope.log_source_lut = icswTools.build_lut(data[6])
+                $scope.log_status_lut = icswTools.build_lut(data[7])
+                $scope.user_lut = icswTools.build_lut(data[8])
+                $scope.device_lut = icswTools.build_lut($scope.devices)
                 $scope.kernels = data[1]
                 $scope.images = data[2]
                 # only use entries valid for nodeboot
                 $scope.partitions = (entry for entry in data[3] when entry.nodeboot and entry.valid and entry.enabled)
-                $scope.kernel_lut = build_lut($scope.kernels)
-                $scope.image_lut = build_lut($scope.images)
-                $scope.partition_lut = build_lut($scope.partitions)
-                $scope.mother_servers = build_lut(data[9])
+                $scope.kernel_lut = icswTools.build_lut($scope.kernels)
+                $scope.image_lut = icswTools.build_lut($scope.images)
+                $scope.partition_lut = icswTools.build_lut($scope.partitions)
+                $scope.mother_servers = icswTools.build_lut(data[9])
                 if $scope.update_info_timeout
                     $timeout.cancel($scope.update_info_timeout)
                 prod_nets = (entry for entry in data[5] when entry.network_type_identifier == "p")

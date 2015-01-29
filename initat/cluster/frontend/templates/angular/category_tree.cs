@@ -44,8 +44,8 @@ class category_tree_edit extends tree_config
 
 cat_ctrl = category_tree_module.controller("cat_base", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, FileUploader, blockUI) ->
+    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, FileUploader, blockUI, icswTools) ->
         $scope.cat = new category_tree_edit($scope, {})            
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
@@ -187,7 +187,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
             )
         $scope.rebuild_cat = () ->
             # check location gfx refs
-            $scope.gfx_lut = build_lut($scope.location_gfxs)
+            $scope.gfx_lut = icswTools.build_lut($scope.location_gfxs)
             for entry in $scope.location_gfxs
                 entry.num_dml = 0
             for entry in $scope.dml_list

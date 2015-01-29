@@ -10,8 +10,8 @@ monitoring_build_info_module = angular.module("icsw.monitoring_build_info", ["ng
 
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-monitoring_build_info_module.controller("mon_build_info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
+monitoring_build_info_module.controller("mon_build_info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, icswTools) ->
         access_level_service.install($scope)
         $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)
         $scope.masters = []
@@ -32,7 +32,7 @@ monitoring_build_info_module.controller("mon_build_info_ctrl", ["$scope", "$comp
                         if slave.device not in slave_list
                             slave_list.push(slave.device)
                 $scope.all_slaves = slave_list
-                $scope.servers = build_lut(data[1])
+                $scope.servers = icswTools.build_lut(data[1])
             )
         $scope.get_diff_time = (dt) ->
             if dt

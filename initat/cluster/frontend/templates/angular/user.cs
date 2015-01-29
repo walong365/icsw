@@ -6,34 +6,6 @@
 
 root = exports ? this
 
-enter_password_template = """
-<div class="modal-header"><h3>Please enter the new password</h3></div>
-<div class="modal-body">
-    <form name="form">
-        <div ng-class="dyn_check(pwd.pwd1)">
-            <label>Password:</label>
-            <input type="password" ng-model="pwd.pwd1" placeholder="enter password" ng-trim="false" class="form-control"></input>
-        </div>
-        <div ng-class="dyn_check(pwd.pwd2)">
-            <label>again:</label>
-            <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" ng-trim="false" class="form-control"></input>
-        </div>
-    </form>
-</div>
-<div class="modal-footer">
-    <div ng-class="pwd_error_class">
-       {% verbatim %}
-           {{ pwd_error }}
-       {% endverbatim %}
-    </div>
-    <div>
-        <button class="btn btn-primary" ng-click="check()">Check</button>
-        <button class="btn btn-success" ng-click="ok()" ng-show="check()">Save</button>
-        <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
-    </div>
-</div>
-"""
-
 {% verbatim %}
 
 vncwebviewer_template = """
@@ -388,9 +360,7 @@ permissions_template = """
 password_test_module = angular.module(
     "icsw.password.test",
     ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"]
-).run(($templateCache) ->
-    $templateCache.put("set_password.html", enter_password_template)
-).controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+).controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.$on("icsw.enter_password", () ->
             $modal.open
@@ -429,7 +399,23 @@ password_test_module = angular.module(
                     scope: () ->
                         return $scope
         )
-])
+]).directive("accountDetail", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("account_detail_form.html")
+        link: (scope, element, attrs) ->
+            scope._cur_user = null
+            scope.$watch(attrs["user"], (new_val) ->
+                if new_val
+                    scope._cur_user = new_val
+            )
+            scope.update_account = () ->
+                scope._cur_user.put().then(
+                   (data) ->
+                   (resp) ->
+                )
+    }
+)
 
 user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.password.test"])
 
@@ -1511,8 +1497,9 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
     $templateCache.put("jobinfo.html", jobinfo_template)
     $templateCache.put("diskusage.html", diskusage_template)
     $templateCache.put("vncwebviewer.html", vncwebviewer_template)
-).controller("index_base", ["$scope", "$timeout", "$window", "msgbus",
-    ($scope, $timeout, $window, msgbus) ->
+).controller("index_base", ["$scope", "$timeout", "$window", "ICSW_URLS",
+    ($scope, $timeout, $window, ICSW_URLS) ->
+        $scope.ICSW_URLS = ICSW_URLS
         $scope.show_index = true
         $scope.quick_open = true
         $scope.ext_open = false
@@ -1531,24 +1518,13 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 return true
             else
                 return false
-        $scope.use_devs = (dev_list, devg_list, md_list) ->
-            if dev_list.length
-                $scope.show_index = false
-                $scope.show_devices = true
-                # not needed here, emitted by sidebar
-                # msgbus.emit("devicelist", [dev_list, dev_list, devg_list, md_list])
-            else
-                # check for active device_info
-                if window.ICSW_DEV_INFO?
-                    window.ICSW_DEV_INFO.close()
-                $scope.show_devices = false
-                $scope.show_index = true
-                #$("div#center_deviceinfo").hide()
-        # hack for late init of sidebar_base
-        #root.target_devsel_link = [$scope.use_devs, true]
-        # unified app, to be improved, FIXME
-        #root.install_devsel_link($scope.use_devs, true)
-]).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService",
+]).directive("indexView", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("index_template.html")
+        link : (scope, element, attrs) ->
+    }
+).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.DeviceOverviewService = DeviceOverviewService
@@ -1840,7 +1816,6 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         msgbus.receive("devselreceiver", $scope, (name, args) ->
             $scope.devsel_receiver++
         )
-        
 ]).controller("sidebar_sep", ["$scope", "$window",
     ($scope, $window) ->
         # init display of sidebar

@@ -1,37 +1,29 @@
-{% load coffeescript %}
+{% load staticfiles %}
+# Naming conventions
+#
+#- where possible use CamelCase
+#- controllers end with "Ctrl"
+#- module names start with "icsw.", separation with dots (no CamelCase)
+#- second part is the name of the directory
+#- then the (optional) functionality (for example icsw.device.network)
+#- directives use '-' as separator, CamelCase in code
+#- service, provider and factory names end with service and also use CamelCase
+#
+#Directory setup
+#
+#- below templates
+#- top level equals the second part of the module name
+#- second level (optional) for functionality (icsw.device.network -> templates/device/network/ )
+#- shared functions in utils.{function} (app icsw.utils) [init.csw.filters -> icsw.utils.filters]
+#
+#File separation inside directories
+#
+#- one or more file(s) for HTML and cs / js code
+#- no templates in coffeescript files
+#- templates in .html via script type=ng-template/script
+#- name of templates start with the name of the module with underscores, ending is ".html"
+#- no root. bindings
 
-<script type="text/javascript">
-
-{% comment %}
-
-Naming conventions
-
-- where possible use CamelCase
-- controllers end with "Ctrl"
-- module names start with "icsw.", separation with dots (no CamelCase)
-- second part is the name of the directory
-- then the (optional) functionality (for example icsw.device.network)
-- directives use '-' as separator, CamelCase in code
-- service, provider and factory names end with service and also use CamelCase
-
-Directory setup
-
-- below templates
-- top level equals the second part of the module name
-- second level (optional) for functionality (icsw.device.network -> templates/device/network/ )
-- shared functions in utils.{function} (app icsw.utils) [init.csw.filters -> icsw.utils.filters]
-
-File separation inside directories
-
-- one or more file(s) for HTML and cs / js code
-- no templates in coffeescript files
-- templates in .html via script type=ng-template/script
-- name of templates start with the name of the module with underscores, ending is ".html"
-- no root. bindings
-
-{% endcomment %}
-
-{% inlinecoffeescript %}
 
 root = exports ? this
 
@@ -39,7 +31,7 @@ ics_app = angular.module(
     "icsw.app",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
-        "blockUI",
+        "blockUI", "icsw.tools.tree",
         "icsw.menu_app", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
         "icsw.config", "icsw.config.gen",
         "icsw.rms", "icsw.lic", "icsw.server.info",
@@ -51,7 +43,7 @@ ics_app = angular.module(
         "icsw.login", "icsw.package", "icsw.settings",
         "icsw.monitoring_basic", "icsw.monitoring_extended",
         "icsw.partition_table", "icsw.kernel", "icsw.image",
-        "icsw.background_job_info",
+        "icsw.info.background",
     ]
 )
 
@@ -61,10 +53,51 @@ ics_app.config(() ->
     blockUIConfig.delay = 0
     blockUIConfig.message = "Loading, please wait ..."
     blockUIConfig.autoBlock = false
-    blockUIConfig.autoInjectBodyBlock = false;
-)
-
-add_tree_directive(ics_app)
+    blockUIConfig.autoInjectBodyBlock = false
+).constant("ICSW_URLS", {
+    {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
+    "MENU_GFX_URL": "{% static gfx_name %}"
+    {% endwith %}
+    "ADMIN_INDEX": "{% url 'admin:index' %}"
+    "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
+    "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
+    "BOOT_SHOW_BOOT": "{% url 'boot:show_boot' %}"
+    "CONFIG_SHOW_CONFIGS": "{% url 'config:show_configs' %}"
+    "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
+    "DEVICE_SHOW_CONFIGS": "{% url 'device:show_configs' %}"
+    "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
+    "DEVICE_VARIABLES": "{% url 'device:variables' %}"
+    "DOC_PAGE": "/cluster/doc/main.pdf"
+    "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
+    "INFO_PAGE": "{% url 'main:info_page' %}"
+    "LIC_LICENSE_LIVEVIEW": "{% url 'lic:license_liveview' %}"
+    "LIC_OVERVIEW": "{% url 'lic:overview' %}"
+    "MAIN_INDEX":  "{% url 'main:index' %}"
+    "MON_BUILD_INFO": "{% url 'mon:build_info' %}"
+    "MON_CALL_ICINGA": "{% url 'mon:call_icinga' %}"
+    "MON_CREATE_DEVICE": "{% url 'mon:create_device' %}"
+    "MON_CREATE_CONFIG": "{% url 'mon:create_config' %}"
+    "MON_DEVICE_CONFIG": "{% url 'mon:device_config' %}"
+    "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"
+    "MON_OVERVIEW": "{% url 'mon:overview' %}"
+    "MON_SETUP_CLUSTER": "{% url 'mon:setup_cluster' %}"
+    "MON_SETUP_ESCALATION": "{% url 'mon:setup_escalation' %}"
+    "MON_SETUP": "{% url 'mon:setup' %}"
+    "NETWORK_DEVICE_NETWORK": "{% url 'network:device_network' %}"
+    "NETWORK_DOMAIN_NAME_TREE": "{% url 'network:domain_name_tree' %}"
+    "NETWORK_SHOW_NETWORKS": "{% url 'network:show_networks' %}"
+    "PACK_REPO_OVERVIEW": "{% url 'pack:repo_overview' %}"
+    "REST_BACKGROUND_JOB_LIST": "{% url 'rest:background_job_list' %}"
+    "RMS_OVERVIEW": "{% url 'rms:overview' %}"
+    "SESSION_LOGOUT": "{% url 'session:logout' %}"
+    "SETUP_IMAGE_OVERVIEW": "{% url 'setup:image_overview' %}"
+    "SETUP_KERNEL_OVERVIEW": "{% url 'setup:kernel_overview' %}"
+    "SETUP_PARTITION_OVERVIEW": "{% url 'setup:partition_overview' %}"
+    "USER_ACCOUNT_INFO": "{% url 'user:account_info' %}"
+    "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
+    "USER_GLOBAL_SETTINGS": "{% url 'user:global_settings' %}"
+    "USER_OVERVIEW": "{% url 'user:overview' %}"
+})
 
 root.ics_app = ics_app
 
@@ -175,7 +208,3 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
 ]).controller("form_ctrl", ["$scope",
     ($scope) ->
 ])
-
-{% endinlinecoffeescript %}
-
-</script>

@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import group, user, user_variable, csw_permi
     csw_object_permission, group_object_permission, \
     user_object_permission, device
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
-from initat.cluster.backbone.render import permission_required_mixin, render_me
+from initat.cluster.backbone.render import permission_required_mixin, render_me, render_string
 from initat.cluster.backbone import routing
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form, global_settings_form
@@ -182,10 +182,12 @@ class change_object_permission(View):
                     new_obj = group_object_permission.objects.create(group=auth_obj, csw_object_permission=csw_objp, level=level)
                     new_obj.date = 0
                     request.xml_response["new_obj"] = json.dumps(group_object_permission_serializer(new_obj).data)
-                logger.info("added csw_object_permission %s to %s" % (
-                    unicode(csw_objp),
-                    unicode(auth_obj),
-                    ))
+                logger.info(
+                    "added csw_object_permission {} to {}".format(
+                        unicode(csw_objp),
+                        unicode(auth_obj),
+                    )
+                )
             else:
                 logger.info("permission '%s' for '%s' already set" % (unicode(set_perm), unicode(perm_model)))
         else:
@@ -196,21 +198,27 @@ class change_object_permission(View):
                         object_pk=perm_model.pk
                         ))
                 except csw_object_permission.MultipleObjectsReturned:
-                    logger.critical("multiple objects returned for csw_object_permission (perm=%s, pk=%d, auth_obj=%s)" % (
-                        unicode(set_perm),
-                        perm_model.pk,
-                        unicode(auth_obj),
-                        ))
-                    csw_object_permission.objects.filter(Q(
-                        csw_permission=set_perm,
-                        object_pk=perm_model.pk
-                        )).delete()
+                    logger.critical(
+                        "multiple objects returned for csw_object_permission (perm=%s, pk=%d, auth_obj=%s)" % (
+                            unicode(set_perm),
+                            perm_model.pk,
+                            unicode(auth_obj),
+                        )
+                    )
+                    csw_object_permission.objects.filter(
+                        Q(
+                            csw_permission=set_perm,
+                            object_pk=perm_model.pk
+                        )
+                    ).delete()
                 except csw_object_permission.DoesNotExist:
-                    logger.error("csw_object_permission doest not exist (perm=%s, pk=%d, auth_obj=%s)" % (
-                        unicode(set_perm),
-                        perm_model.pk,
-                        unicode(auth_obj),
-                        ))
+                    logger.error(
+                        "csw_object_permission doest not exist (perm=%s, pk=%d, auth_obj=%s)" % (
+                            unicode(set_perm),
+                            perm_model.pk,
+                            unicode(auth_obj),
+                        )
+                    )
                 else:
                     if auth_obj._meta.model_name == "user":
                         user_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(user=auth_obj)).delete()
@@ -229,15 +237,9 @@ class account_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def get(self, request):
-        cur_user = request.user
-        cur_form = account_detail_form(
-            instance=cur_user,
-            auto_id="user__%d__%%s" % (cur_user.pk),
-        )
         return render_me(
             request, "account_info.html", {
-                "form": cur_form,
-                "user": cur_user,
+                "form": account_detail_form()
             }
         )()
 

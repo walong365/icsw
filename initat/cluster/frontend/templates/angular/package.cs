@@ -228,8 +228,8 @@ update_pdc = (srv_pdc, client_pdc) ->
       "installed_name", "installed_version", "installed_release"] 
         client_pdc[attr_name] = srv_pdc[attr_name]
         
-package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI) ->
+package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools) ->
         # devices
         $scope.entries = []
         $scope.devices = []
@@ -367,9 +367,9 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 $timeout.cancel($scope.reload_promise)
             $scope.devices = data
             # device lookup table
-            $scope.device_lut = build_lut($scope.devices)
+            $scope.device_lut = icswTools.build_lut($scope.devices)
             # package lut
-            $scope.package_lut = build_lut($scope.entries)
+            $scope.package_lut = icswTools.build_lut($scope.entries)
             #console.log $scope.entries.length, $scope.devices.length
             for dev in $scope.devices
                 dev.latest_contact = 0

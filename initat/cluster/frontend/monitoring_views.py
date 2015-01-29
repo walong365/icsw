@@ -488,36 +488,41 @@ class get_hist_device_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_id = request.GET["device_id"]
+        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
         data = []
         if timespan_db:
-            data = mon_icinga_log_aggregated_host_data.objects.filter(device_id=device_id, timespan=timespan_db).values('state', 'state_type', 'value')
+            data = mon_icinga_log_aggregated_host_data.objects.filter(device_id__in=device_ids, timespan=timespan_db).values('device_id', 'state', 'state_type', 'value')
 
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
+        data_per_device = {device_id: [] for device_id in device_ids}
         for d in data:
             d['state'] = trans[d['state']].capitalize()
+            data_per_device[d['device_id']].append(d)
 
-        data_merged_state_types = _device_status_history_util.merge_state_types(data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED].capitalize())
+        data_merged_state_types = {}
+        for device_id, device_data in data_per_device.iteritems():
+            data_merged_state_types[device_id] = _device_status_history_util.merge_state_types(device_data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
 
-        return Response(data_merged_state_types)
+        return Response([data_merged_state_types])  # fake a list, see coffeescript
 
 
 class get_hist_service_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_id = request.GET["device_id"]
+        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
-        data = defaultdict(lambda: [])
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
-        queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id=device_id, timespan=timespan_db)
+        queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan=timespan_db)
         # can't do regular prefetch_related for queryset, this seems to work
+
+        data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
         for entry in queryset.prefetch_related(Prefetch("service")):
 
             relevant_data_from_entry = {
@@ -528,23 +533,28 @@ class get_hist_service_data(ListAPIView):
 
             service_name = entry.service.name if entry.service else ""
 
-            data["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
+            data_per_device[entry.device_id]["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
 
         # this mode is for an overview of the services of a device without saying anything about a particular service
-
         if int(request.GET.get("merge_services", 0)):
-            # it's not obvious how to aggregate service states
-            # we now just add the values, but we could e.g. also use the most common state of a service as it's state
-            # then we could say "4 services were ok, 3 were critical".
-            data_concat = list(itertools.chain.from_iterable(service_data for service_data in data.itervalues()))
-            data = _device_status_history_util.merge_state_types(data_concat, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
+            return_data = {}
+            for device_id, device_data in data_per_device.iteritems():
+                # it's not obvious how to aggregate service states
+                # we now just add the values, but we could e.g. also use the most common state of a service as it's state
+                # then we could say "4 services were ok, 3 were critical".
+                data_concat = list(itertools.chain.from_iterable(service_data for service_data in device_data.itervalues()))
+                device_data = _device_status_history_util.merge_state_types(data_concat, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED])
 
-            # normalize to 1.0, else the values are meaningless
-            total = sum(entry['value'] for entry in data)
-            for entry in data:
-                entry['value'] /= total
+                # normalize to 1.0, else the values are meaningless
+                total = sum(entry['value'] for entry in device_data)
+                for entry in device_data:
+                    entry['value'] /= total
+                return_data[device_id] = device_data
         else:
-            # we should always return a list here for easier REST handling
-            data = [data]
+            return_data = {}
+            # merge state types for each service in each device
+            for device_id, device_service_data in data_per_device.iteritems():
+                return_data[device_id] = {service_key: _device_status_history_util.merge_state_types(service_data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]) for
+                                          service_key, service_data in device_service_data.iteritems()}
 
-        return Response(data)
+        return Response([return_data])  # fake a list, see coffeescript

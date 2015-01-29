@@ -96,8 +96,8 @@ angular_add_mixin_list_controller(
                 ]
                 es.fn_lut.q.all(q_list).then((data) ->
                     es.iplist = data[0]
-                    netdevices = build_lut(data[1])
-                    devices = build_lut(data[2])
+                    netdevices = es.icswTools.build_lut(data[1])
+                    devices = es.icswTools.build_lut(data[2])
                     for entry in es.iplist
                         nd = netdevices[entry.netdevice]
                         entry.netdevice_name = nd.devname

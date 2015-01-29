@@ -583,8 +583,8 @@ class hs_node
             parent = parent.parent
         _clicked.iter_childs((obj) -> obj.show = true)
     
-device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -739,7 +739,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         $scope.selected_mcs.push(entry.idx)
                 $scope.cat_tree_lut = cat_tree_lut
                 $scope.cat_tree.show_selected(false)
-                $scope.dev_tree_lut = build_lut(data[1])
+                $scope.dev_tree_lut = icswTools.build_lut(data[1])
                 $scope.load_data()
             )
         $scope.load_data = (mode) ->
@@ -1061,18 +1061,21 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 struct[depth].push(node)
                 return _num
             scope.$watch("data", (data) ->
-                if data
+                if data?
+                    data_ok = true
                     if scope.hidegroup
-                        # skip first two levels
-                        console.log 'data', data
-                        console.log data.children
-                        console.log data.children[0]
-                        data = data.children[0].children[0]
-                    scope.set_focus_service(null)
-                    scope.sunburst_data = data
-                    scope.name = scope.sunburst_data.name
-                    scope.draw_data()
-            )
+                        if data.children.length > 0  # if not proper livestatus is available, data does not have any children
+                            # skip first two levels
+                            data = data.children[0].children[0]
+                        else
+                            data_ok = false
+
+                    if data_ok
+                        scope.set_focus_service(null)
+                        scope.sunburst_data = data
+                        scope.name = scope.sunburst_data.name
+                        scope.draw_data()
+                )
             scope.$watch("redraw_burst", (data) ->
                 if scope.sunburst_data?
                     scope.draw_data()
