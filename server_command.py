@@ -364,7 +364,10 @@ class srv_command(object):
             if el_type == "int":
                 value = int(value)
             elif el_type == "bool":
-                value = bool(value)
+                if isinstance(value, basestring):
+                    value = True if len(value) and value[0].lower() in ["t", "1", "y"] else False
+                else:
+                    value = bool(value)
             elif el_type == "date":
                 value_dt = datetime.datetime.strptime(value, "%Y-%m-%d")
                 value = datetime.date(value_dt.year, value_dt.month, value_dt.day)
