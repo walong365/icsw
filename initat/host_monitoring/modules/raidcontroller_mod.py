@@ -983,7 +983,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
     def set_result_from_cache(self, srv_com, cur_ns):
         for _key, _value in self._dict.iteritems():
-            ccs.srv_com["result:ctrl_{:d}".format(_key)] = _value
+            srv_com["result:ctrl_{:d}".format(_key)] = _value
 
     def update_ok(self, srv_com):
         if self._dict:
@@ -992,11 +992,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
             srv_com.set_result(
                 "no controller found",
                 server_command.SRV_REPLY_STATE_ERROR
-            )
+)
             return False
 
     def _interpret(self, ctrl_dict, cur_ns):
-        def get_status(lines):
+        def get_status_lines(lines):
             stat_keys = [_key for _key, _value in lines if _key.endswith("_status")]
             if stat_keys:
                 # status keys found, return last status
@@ -1004,12 +1004,191 @@ class ctrl_type_megaraid_sas(ctrl_type):
             else:
                 # not status keys found, return first value
                 return lines[0][1]
+
+        def get_log_dict(lines):
+            return {key: value for key, value in lines}
+
+        def check_status(key, lines, check):
+            _entity_type = key.split(":")[-1][0]
+            if check == "status":
+                _val = [_val for _key, _val in lines if _key.endswith("_status")][0]
+            else:
+                _val = [_val for _key, _val in lines if _key == check][0]
+            # _checked not needed right now ?
+            _checked, _ret_state = (False, limits.nag_STATE_CRITICAL)
+            _info_str = ""
+            if _entity_type == "v":
+                _checked = True
+                if check == "state":
+                    _ld = get_log_dict(lines)
+                    _info_str = "vd {virtual_drive}, RAID level {raid_level}, size={size}, drives={number_of_drives}".format(**_ld)
+                    if _val.lower().startswith("optimal"):
+                        _ret_state = limits.nag_STATE_OK
+
+                elif check == "current_cache_policy":
+                    if _val.lower().strip().split()[0].startswith("writeback"):
+                        _ret_state = limits.nag_STATE_OK
+                    else:
+                        _ret_state = limits.nag_STATE_CRITICAL
+            elif _entity_type == "d":
+                if _val.lower() == "online, spun up":
+                    _ret_state = limits.nag_STATE_OK
+            elif _entity_type == "f":
+                if _val.lower() == "ok":
+                    _ret_state = limits.nag_STATE_OK
+            elif _entity_type == "s":
+                if _val.lower() == "ok":
+                    _ret_state = limits.nag_STATE_OK
+            elif _entity_type == "b":
+                if _val.lower() == "operational":
+                    _ret_state = limits.nag_STATE_OK
+            return _ret_state, _val, _info_str, _entity_type
+
+        def get_check_list(d_type, lines):
+            if d_type == "virt":
+                _keys = [_key for _key, _value in lines]
+                return list(set(_keys) & set(["state", "current_cache_policy"]))
+            elif d_type == "pd":
+                _keys = [_key for _key, _value in lines]
+                return ["firmware_state"]
+            elif d_type == "bbu":
+                return ["battery state"]
+            else:
+                status = get_status_lines(lines).lower()
+                if status in set(["not installed", "unknown", "medium speed", "normal speed", "low speed", "high speed", "not available"]):
+                    return None
+                else:
+                    return ["status"]
+
+        def _prune(in_dict):
+            return {_key: _prune(_value) if type(_value) is dict else _value for _key, _value in in_dict.iteritems() if _value}
+
+        def reorder_dict(in_dict):
+            _result =  {"c{:02d}".format(_idx): _interpret_dict("ctrl", _value) for _idx, _value in in_dict.iteritems()}
+            # prune twice to remove empty subdicts
+            _result = _prune(_prune(_result))
+            return _result
+
+        def emit_keys(in_dict):
+            if type(in_dict) == dict:
+                r_list = sum(
+                    [
+                        [
+                            "{}{}{}".format(_key, ":" if sub_key else "", sub_key) for sub_key in emit_keys(_value)
+                        ] for _key, _value in in_dict.iteritems() if _key not in ["lines", "_checks"]
+                    ],
+                    []
+                )
+                if "_checks" in in_dict:
+                    r_list.append("")
+                return r_list
+            else:
+                return [""]
+
+        def _interpret_dict(d_type, in_dict):
+            map_dict = {
+                "enclosures": ("e", "enclosure"),
+                "fans": ("f", "fan"),
+                "power_supplies": ("p", "psu"),
+                "slots": ("s", "slot"),
+                "temperature_senors": ("t", "tempsensor"),
+                "virt": ("v", "virt"),
+                "pd": ("d", "pd"),
+                "bbus": ("b", "bbu"),
+            }
+            r_dict = {}
+            for _key, _t in map_dict.iteritems():
+                r_dict.update(
+                    {"{}{:02d}".format(_t[0], _idx): _interpret_dict(_t[1], _value) for _idx, _value in in_dict.get(_key, {}).iteritems() if type(_idx) == int}
+                )
+            if in_dict.get("lines", []):
+                r_dict["lines"] = in_dict["lines"]
+                _checks = get_check_list(d_type, in_dict["lines"])
+                if _checks:
+                    r_dict["_checks"] = _checks
+            return r_dict
+
+        def get_source(_ro_dict, _key):
+            # return lines and check_list for given key
+            _res = _ro_dict
+            for _skey in _key.split(":"):
+                _res = _res[_skey]
+            return (_res["lines"], _res["_checks"])
+
+        def _expand_key(entity_type):
+            return {
+                "c": "Ctrl",
+                "v": "Virt",
+                "p": "PSU",
+                "s": "Slot",
+                "e": "Encl",
+                "b": "BBU",
+                "f": "Fan",
+                "d": "Disc",
+            }[entity_type]
+
+        def _full_key(_part):
+            return "{}{:d}".format(
+                {
+                    "c": "ctrl",
+                    "v": "virt",
+                    "p": "psu",
+                    "s": "slot",
+                    "e": "encl",
+                    "b": "bbu",
+                    "f": "fan",
+                    "d": "disc",
+                }[_part[0]],
+                int(_part[1:])
+            )
+
+        def get_info(_key, _lines, _check):
+            return "{} {}".format(
+                "/".join([_full_key(_part) for _part in _key.split(":")]),
+                _check,
+            )
+
+        # rewrite bbu info
+        for _c_id, _c_dict in ctrl_dict.iteritems():
+            if "main" in _c_dict.get("bbu_keys", {}):
+                _c_dict["bbus"] = {0 : {"lines": [(_key, _value) for _key, _value in _c_dict["bbu_keys"]["main"].iteritems()]}}
+                del _c_dict["bbu_keys"]
+
+        # reorder dict
+        _ro_dict = reorder_dict(ctrl_dict)
+        _key_list = emit_keys(_ro_dict)
+        _ok_dict = {}
+        _ret_list = []
+        _g_ret_state = limits.nag_STATE_OK
+        for _key in sorted(_key_list):
+            _lines, _checks = get_source(_ro_dict, _key)
+            for _check in _checks:
+                _info = get_info(_key, _lines, _check)
+                _ret_state, _result, _info_str, _entity_type = check_status(_key, _lines, _check)
+                # print _info, _ret_state, _result
+                if _ret_state != limits.nag_STATE_OK:
+                    _ret_list.append("{}: {}".format(_info, _result))
+                else:
+                    _ok_dict.setdefault(_entity_type, []).append(0)
+                if _info_str:
+                    _ret_list.append(_info_str)
+                _g_ret_state = max(_g_ret_state, _ret_state)
+        if _ok_dict:
+            _num_ok = sum([len(_val) for _val in _ok_dict.itervalues()])
+            _ret_list.append(
+                "{}: {}".format(
+                    logging_tools.get_plural("OK check", _num_ok),
+                    ", ".join([logging_tools.get_plural(_expand_key(_key), len(_val)) for _key, _val in _ok_dict.iteritems()])
+                )
+            )
+        return _g_ret_state, ", ".join(_ret_list)
+
+        # old code, used for reference
         num_c, num_d, num_e, num_w = (len(ctrl_dict.keys()), 0, 0, 0)
         ret_state = limits.nag_STATE_OK
         drive_stats = []
         num_enc = 0
-        #import pprint
-        #pprint.pprint(ctrl_dict)
+        # pprint.pprint(ctrl_dict)
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
             bbu_mc = ctrl_stuff.get("bbu_keys", {}).get("main", {})
             if bbu_mc:
@@ -1095,7 +1274,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         if cur_num:
                             loc_problems = 0
                             for cur_idx in xrange(cur_num):
-                                cur_stat = get_status(enc_dict[key][cur_idx]["lines"])
+                                cur_stat = get_status_lines(enc_dict[key][cur_idx]["lines"])
                                 #if key.count("temperature"):
                                 #    if int(cur_stat) > 50:
                                 #        problem = True
