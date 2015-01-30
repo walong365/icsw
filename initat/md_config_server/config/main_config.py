@@ -512,7 +512,7 @@ class main_config(object):
             ("command_check_interval", "5s"),
             ("lock_file", "%s/%s" % (self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
             ("temp_file", "%s/temp.tmp" % (self.__r_dir_dict["var"])),
-            ("log_rotation_method", "h"),
+            ("log_rotation_method", "d"),
             ("log_archive_path", self.__r_dir_dict["var/archives"]),
             ("use_syslog", 0),
             ("host_inter_check_delay_method", "s"),
