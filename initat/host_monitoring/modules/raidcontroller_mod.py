@@ -1009,19 +1009,24 @@ class ctrl_type_megaraid_sas(ctrl_type):
             return {key: value for key, value in lines}
 
         def check_status(key, lines, check):
+            _info_str = ""
             _entity_type = key.split(":")[-1][0]
             if check == "status":
                 _val = [_val for _key, _val in lines if _key.endswith("_status")][0]
             else:
-                _val = [_val for _key, _val in lines if _key == check][0]
+                _val = [_val for _key, _val in lines if _key == check]
+                if _val:
+                    _val = _val[0]
+                else:
+                    # correct key not found
+                    _val = "not present"
             # _checked not needed right now ?
             _checked, _ret_state = (False, limits.nag_STATE_CRITICAL)
-            _info_str = ""
             if _entity_type == "v":
                 _checked = True
                 if check == "state":
                     _ld = get_log_dict(lines)
-                    _info_str = "vd {virtual_drive}, RAID level {raid_level}, size={size}, drives={number_of_drives}".format(**_ld)
+                    _info_str = "vd {virtual_drive}, RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(**_ld)
                     if _val.lower().startswith("optimal"):
                         _ret_state = limits.nag_STATE_OK
 
@@ -1029,7 +1034,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     if _val.lower().strip().split()[0].startswith("writeback"):
                         _ret_state = limits.nag_STATE_OK
                     else:
-                        _ret_state = limits.nag_STATE_CRITICAL
+                        _ret_state = limits.nag_STATE_WARNING
             elif _entity_type == "d":
                 if _val.lower() == "online, spun up":
                     _ret_state = limits.nag_STATE_OK
@@ -1153,9 +1158,19 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if "main" in _c_dict.get("bbu_keys", {}):
                 _c_dict["bbus"] = {0 : {"lines": [(_key, _value) for _key, _value in _c_dict["bbu_keys"]["main"].iteritems()]}}
                 del _c_dict["bbu_keys"]
-
+            if "virt" not in _c_dict:
+                # rewrite from old to new format
+                _c_dict["virt"] = {
+                    key: {
+                        "lines": [
+                            (line[0].lower().replace(" ", "_").replace("virtual_disk", "virtual_drive"), line[1]) for line in value
+                        ]
+                    } for key, value in _c_dict["logical_lines"].iteritems()
+                }
+                del _c_dict["logical_lines"]
         # reorder dict
         _ro_dict = reorder_dict(ctrl_dict)
+        pprint.pprint(ctrl_dict)
         _key_list = emit_keys(_ro_dict)
         _ok_dict = {}
         _ret_list = []
@@ -1195,15 +1210,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 bbu_present = bbu_mc.get("exit code") == "0x00"
             else:
                 bbu_present = False
-            if "virt" not in ctrl_stuff:
-                # rewrite from old to new format
-                ctrl_stuff["virt"] = {
-                    key: {
-                        "lines": [
-                            (line[0].lower().replace(" ", "_"), line[1]) for line in value
-                        ]
-                    } for key, value in ctrl_stuff["logical_lines"].iteritems()
-                }
             for log_num, log_stuff in ctrl_stuff.get("virt", {}).iteritems():
                 # pprint.pprint(log_dict)
                 log_dict = dict(log_stuff["lines"])
