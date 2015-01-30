@@ -36,7 +36,7 @@ menu_module = angular.module(
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
         $scope.show_time = () ->
-            $scope.cur_time = #moment().format("ddd, Do MMMM YYYY HH:mm:ss")
+            $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
             $timeout($scope.show_time, 1000)
         $scope.update_progress_bar = () ->
             call_ajax
