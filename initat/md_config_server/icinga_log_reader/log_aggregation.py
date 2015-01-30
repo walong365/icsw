@@ -68,7 +68,7 @@ class icinga_log_aggregator(object):
 
         # aggregate in order of how often data is used, then you can quickly see results
         for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
-            self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
+            #self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
             try:
                 last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
                 next_start_time = last_entry.end_date
@@ -90,7 +90,7 @@ class icinga_log_aggregator(object):
                     self.log("creating entry for {} starting at {}".format(duration_type.__name__, next_start_time))
                     next_last_service_alert_cache = self._create_timespan_entry(next_start_time, next_end_time, duration_type, next_last_service_alert_cache)
                 else:
-                    self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
+                    #self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
                     do_loop = False
 
                 # check if we are supposed to die
