@@ -1,4 +1,4 @@
-# Copyright (C) 2010,2012-2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2010,2012-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -196,11 +196,14 @@ class libvirt_status_command(hm_classes.hm_command):
     def _interpret(self, r_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
         if "info" in r_dict:
-            out_f.append("type is {}, version is {:d}.{:d} on an {}".format(
-                r_dict["type"],
-                int((r_dict["version"] / 1000)),
-                int(r_dict["version"] % 1000),
-                r_dict["info"][0]))
+            out_f.append(
+                "type is {}, version is {:d}.{:d} on an {}".format(
+                    r_dict["type"],
+                    int((r_dict["version"] / 1000)),
+                    int(r_dict["version"] % 1000),
+                    r_dict["info"][0]
+                )
+            )
         else:
             ret_state = limits.nag_STATE_CRITICAL
             out_f.append("libvirt is not running")
@@ -286,13 +289,15 @@ class domain_status_command(hm_classes.hm_command):
             if "desc" in dom_dict and dom_dict["desc"]:
                 xml_doc = etree.fromstring(dom_dict["desc"])  # @UndefinedVariable
                 # print etree.tostring(xml_doc, pretty_print=True)
-                out_f.append("{}, memory {}, {}, {}, VNC port is {:d}".format(
-                    xml_doc.find(".//name").text,
-                    logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
-                    logging_tools.get_plural("disk", len(xml_doc.findall(".//disk"))),
-                    logging_tools.get_plural("iface", len(xml_doc.findall(".//interface"))),
-                    int(xml_doc.find(".//graphics").attrib["port"]) - 5900
-                ))
+                out_f.append(
+                    "{}, memory {}, {}, {}, VNC port is {:d}".format(
+                        xml_doc.find(".//name").text,
+                        logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
+                        logging_tools.get_plural("disk", len(xml_doc.findall(".//disk"))),
+                        logging_tools.get_plural("iface", len(xml_doc.findall(".//interface"))),
+                        int(xml_doc.find(".//graphics").attrib["port"]) - 5900
+                    )
+                )
             else:
                 if "cm" in dom_dict and dom_dict["cm"]:
                     ret_state = limits.nag_STATE_CRITICAL

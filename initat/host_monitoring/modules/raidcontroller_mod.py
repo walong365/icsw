@@ -1170,7 +1170,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 del _c_dict["logical_lines"]
         # reorder dict
         _ro_dict = reorder_dict(ctrl_dict)
-        pprint.pprint(ctrl_dict)
+        # pprint.pprint(ctrl_dict)
         _key_list = emit_keys(_ro_dict)
         _ok_dict = {}
         _ret_list = []
