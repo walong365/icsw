@@ -9,11 +9,11 @@
                         <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
                     </div>
                     <span class="input-group-btn">
-                        <button class="btn btn-success" type="button" ng-click="call_devsel_func()" ng-show="devsel_receiver">
-                            <span title="use selection" class="glyphicon glyphicon-chevron-right"></span>
+                        <button class="btn btn-success fa fa-chevron-right" title="Use selection" type="button" ng-click="call_devsel_func()" ng-show="devsel_receiver">
+                             Use
                         </button>
-                        <button class="btn btn-warning" type="button" ng-click="clear_selection()">
-                            <span title="clear selection" class="glyphicon glyphicon-remove"></span>
+                        <button class="btn btn-warning fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection()">
+                             Clear
                         </button>
                     </span>  
                 </div>

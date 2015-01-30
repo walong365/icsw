@@ -192,7 +192,7 @@ rrd_graph_template = """
                 <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
                 <span class="input-group-btn">
                     <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
-                    <button class="btn btn-warning" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-remove"></span></button>
+                    <button class="btn btn-warning fa fa-remove" type="button" ng-click="clear_selection()"> Clear Selection</button>
                 </span>
             </div>
             <tree treeconfig="g_tree"></tree>
