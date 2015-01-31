@@ -67,7 +67,7 @@ class special_megaraid_sas(SpecialBase):
             "megaraid_sas_status",
         )
         if not hints:
-            hints = [self._transform_to_hint(entry) for entry in self.RCClass()._dummy_hint()]
+            hints = [self._transform_to_hint(entry) for entry in self.RCClass()._dummy_hints()]
         sc_array = []
         for hint in hints:
             _trigger_passive = hint.key == "all" and hint.value_string == "all"
