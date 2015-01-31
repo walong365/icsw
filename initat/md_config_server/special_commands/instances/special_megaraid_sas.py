@@ -37,26 +37,28 @@ class special_megaraid_sas(SpecialBase):
         command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ --passive-check-postfix $ARG3$"
         description = "detailed checks for MegaRaid SAS controllers"
 
+    def RCClass(self):
+        return raidcontroller_mod.ctrl_type.ctrl_class("megaraid_sas")
+
     def to_hint(self, srv_reply):
         cur_ns = Namespace(get_hints=True)
         # transform from srv_reply to dict, see code in raidcontroller_mod (megaraid_sas_status_command.interpret)
         ctrl_dict = {}
         for res in srv_reply["result"]:
             ctrl_dict[int(res.tag.split("}")[1].split("_")[-1])] = srv_reply._interpret_el(res)
-        _res = raidcontroller_mod.ctrl_type.ctrl_class("megaraid_sas")._interpret(ctrl_dict, cur_ns)
-        _hints = []
-        for key, check, info, _active in _res:
-            _hints.append(
-                monitoring_hint(
-                    key=key,
-                    v_type="s",
-                    value_string=check,
-                    info=info,
-                    persistent=True,
-                    is_active=_active,
-                )
-            )
-        return _hints
+        _res = self.RCClass()._interpret(ctrl_dict, cur_ns)
+        return [self._transform_to_hint(entry) for entry in _res]
+
+    def _transform_to_hint(self, entry):
+        key, check, info, _active = entry
+        return monitoring_hint(
+            key=key,
+            v_type="s",
+            value_string=check,
+            info=info,
+            persistent=True,
+            is_active=_active,
+        )
 
     def _call(self):
         # print self.host, self.s_check
@@ -64,6 +66,8 @@ class special_megaraid_sas(SpecialBase):
         hints = self.collrelay(
             "megaraid_sas_status",
         )
+        if not hints:
+            hints = [self._transform_to_hint(entry) for entry in self.RCClass()._dummy_hint()]
         sc_array = []
         for hint in hints:
             _trigger_passive = hint.key == "all" and hint.value_string == "all"
