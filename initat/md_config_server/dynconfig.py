@@ -129,8 +129,9 @@ class dynconfig_process(threading_tools.process_obj):
                 # mon check command not found, ignore
                 pass
             else:
+                _mc.check_command_pk = _mc.pk
                 _mc.mccs_id = _mcs.pk
-                _postifx = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
+                _postfix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
         return _postfix
 
     def _create_hints_ipmi(self, cur_dev, mon_info):
