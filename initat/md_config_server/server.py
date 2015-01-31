@@ -198,6 +198,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             cur_mccs = mon_check_command_special.objects.get(Q(name=mdef.name))
         except mon_check_command_special.DoesNotExist:
             cur_mccs = mon_check_command_special(name=mdef.name)
+        # also used in snmp/struct.py and generic_net_handler.py
         for attr_name in ["command_line", "info", "description", "is_active", "meta", "identifier"]:
             setattr(cur_mccs, attr_name, getattr(mdef, attr_name))
         cur_mccs.parent = parent
