@@ -91,7 +91,7 @@ class id_discovery(object):
 
     def send_result(self, host_mes, result=None):
         id_discovery.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)  # @UndefinedVariable
-        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
+        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.get_result(result)[0])
         self.close()
 
     def error(self, zmq_sock):

@@ -426,7 +426,7 @@ class host_message(object):
     def get_runtime(self, cur_time):
         return abs(cur_time - self.s_time)
 
-    def get_result(self, result, relayer_process):
+    def get_result(self, result, relayer_process=None):
         if result is None:
             result = self.srv_com
         if self.xml_input:
@@ -454,10 +454,11 @@ class host_message(object):
             else:
                 self.set_result(result)
                 ret_str = unicode(self.srv_com)
-            if result.passive_results:
-                relayer_process.send_passive_results_to_master(result.passive_results)
-            if result.ascii_chunk:
-                relayer_process.send_passive_results_as_chunk_to_master(result.ascii_chunk)
+            if relayer_process:
+                if result.passive_results:
+                    relayer_process.send_passive_results_to_master(result.passive_results)
+                if result.ascii_chunk:
+                    relayer_process.send_passive_results_as_chunk_to_master(result.ascii_chunk)
         else:
             if not self.xml_input:
                 ret_str = u"%s\0%s" % (
