@@ -1380,6 +1380,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
             logging_tools.get_plural("enclosure", num_enc),
             ", ".join(drive_stats))
 
+    @staticmethod
+    def _dummy_hints():
+        return [("all", "all", "all Controllers", True), ]
+
 
 class ctrl_type_megaraid(ctrl_type):
     class Meta:
