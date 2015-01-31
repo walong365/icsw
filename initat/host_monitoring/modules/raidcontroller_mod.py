@@ -1188,7 +1188,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _ctrl_key = _key.split(":")[0]
                 if _ctrl_key not in _ctrl_found:
                     _ctrl_found.add(_ctrl_key)
-                    r_list.extend([("all", "all", "Controller {}".format(_ctrl_key), True), ])
+                    r_list.extend([("all", "all", "SAS Controller {}".format(_ctrl_key), True), ])
                 _lines, _checks = get_source(_ro_dict, _key)
                 r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
             return r_list
@@ -1382,7 +1382,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
     @staticmethod
     def _dummy_hints():
-        return [("all", "all", "all Controllers", True), ]
+        return [("all", "all", "SAS Controllers", True), ]
 
 
 class ctrl_type_megaraid(ctrl_type):
