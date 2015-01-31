@@ -333,6 +333,8 @@ class mon_check_command_special(models.Model):
     meta = models.BooleanField(default=False)
     # for commands from a meta-command
     parent = models.ForeignKey("self", null=True)
+    # identifier, to find certain checks, for internal use only
+    identifier = models.CharField(max_length=64, default="")
 
     @property
     def md_name(self):
