@@ -86,10 +86,11 @@ class MonCheckDefinition(object):
         name = "notset"
         meta = False
         is_active = True
+        identifier = ""
 
     def __init__(self, handler):
         # copy keys when needed
-        _keys = ["meta", "is_active", "name", "description", "info", "command_line"]
+        _keys = ["meta", "is_active", "name", "description", "info", "command_line", "identifier"]
         for _key in _keys:
             if not hasattr(self.Meta, _key) and hasattr(MonCheckDefinition.Meta, _key):
                 # copy key from default Meta

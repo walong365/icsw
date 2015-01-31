@@ -31,11 +31,12 @@ class SNMPHandler(object):
         initial = False
         tl_oids = []
         priority = 0
+        identifier = ""
 
     def __init__(self, log_com):
         self.__log_com = log_com
         # copy keys when needed
-        _keys = ["description", "vendor_name", "name", "version", "tl_oids", "priority", "initial"]
+        _keys = ["description", "vendor_name", "name", "version", "tl_oids", "priority", "initial", "identifier"]
         for _key in _keys:
             if not hasattr(self.Meta, _key) and hasattr(SNMPHandler.Meta, _key):
                 # copy key from default Meta
