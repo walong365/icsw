@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -21,11 +21,11 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import partition, lvm_lv
-from initat.md_config_server.special_commands.base import special_base, arg_template
+from initat.md_config_server.special_commands.base import SpecialBase
 import logging_tools
 
 
-class special_disc(special_base):
+class special_disc(SpecialBase):
     class Meta:
         info = "Discs via collserver"
         command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"

@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Bernhard Mallinger, init.at
+# Copyright (C) 2014-2015 Bernhard Mallinger, init.at
 #
 # this file is part of md-config-server
 #
@@ -811,7 +811,11 @@ class host_service_id_util(object):
         Create a string by which we can identify the service. Used to write to icinga log file.
         '''
         retval = None
-        if s_check.check_command_pk is not None:
+        if s_check.mccs_id is not None:
+            # special service check
+            # formt is similar to regular service check, other prefix and we also set the pk of the special_command
+            retval = "s_host_check:{}:{}:{}:{}".format(host_pk, s_check.check_command_pk, s_check.mccs_id, info)
+        elif s_check.check_command_pk is not None:
             # regular service check
             # format is: service_check:${mon_check_command_pk}:$info
             # since a mon_check_command_pk can have multiple actual service checks, we add the info string to identify it
@@ -830,9 +834,14 @@ class host_service_id_util(object):
         retval = (None, None, None)
         if len(data) == 2:
             if data[0] == 'host_check':
-                service_data = data[1].split(":")
-                if len(service_data) == 3:
+                if data[1].count(":") > 2:
+                    service_data = data[1].split(":", 2)
                     host_pk, service_pk, info = service_data
+                    retval = (int(host_pk), int(service_pk), info)
+            elif data[0] == "s_host_check":
+                if data[1].count(":") > 3:
+                    service_data = data[1].split(":", 3)
+                    host_pk, service_pk, s_check_pk, info = service_data
                     retval = (int(host_pk), int(service_pk), info)
             elif data[0] == 'unstructured':
                 pass

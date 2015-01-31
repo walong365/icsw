@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -47,6 +47,7 @@ class check_command(object):
         self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
         self.servicegroup_pks = kwargs.get("servicegroup_pks", [])
         self.check_command_pk = kwargs.get("check_command_pk", None)
+        self.special_command_pk = kwargs.get("special_command_pk", None)
         self.is_event_handler = kwargs.get("is_event_handler", False)
         self.event_handler = kwargs.get("event_handler", None)
         self.event_handler_enabled = kwargs.get("event_handler_enabled", True)

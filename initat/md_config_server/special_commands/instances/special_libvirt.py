@@ -21,11 +21,11 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import monitoring_hint
-from initat.md_config_server.special_commands.base import special_base
+from initat.md_config_server.special_commands.base import SpecialBase
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
 
 
-class special_libvirt(special_base):
+class special_libvirt(SpecialBase):
     class Meta:
         server_contact = True
         info = "libvirt"

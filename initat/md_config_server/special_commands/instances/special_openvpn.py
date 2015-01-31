@@ -20,10 +20,10 @@
 """ openvpn special """
 
 from initat.cluster.backbone.models import monitoring_hint
-from initat.md_config_server.special_commands.base import special_base
+from initat.md_config_server.special_commands.base import SpecialBase
 
 
-class special_openvpn(special_base):
+class special_openvpn(SpecialBase):
     class Meta:
         server_contact = True
         info = "OpenVPN check"

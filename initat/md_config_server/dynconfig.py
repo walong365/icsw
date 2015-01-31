@@ -34,7 +34,12 @@ from lxml import etree  # @UnresolvedImport @UnusedImport
 import logging_tools
 import pprint  # @UnusedImport
 import server_command
+import process_tools
 import threading_tools
+import bz2
+import time
+import base64
+import json
 
 
 class dynconfig_process(threading_tools.process_obj):
@@ -48,12 +53,41 @@ class dynconfig_process(threading_tools.process_obj):
         )
         connection.close()
         self.register_func("monitoring_info", self._monitoring_info)
+        self.register_func("passive_check_results_as_chunk", self._pcr_as_chunk)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
     def loop_post(self):
         self.__log_template.close()
+
+    def _pcr_as_chunk(self, *args, **kwargs):
+        in_com = server_command.srv_command(source=args[0])
+        _chunk = json.loads(bz2.decompress(base64.b64decode(in_com["*ascii_chunk"])))
+        _postfix = _chunk["postfix"]
+        try:
+            cur_dev = device.objects.get(Q(pk=_postfix.split(":")[1]))
+        except:
+            self.log(
+                "error getting device from postfix '{}': {}".format(
+                    _postfix,
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            ocsp_lines = []
+            for _info, _ret_state, _result, _info_str in _chunk["list"]:
+                _srv_info = "{}{}".format(_postfix, _info)
+                ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
+                    int(time.time()),
+                    cur_dev.full_name,
+                    _srv_info,
+                    _ret_state,
+                    _result
+                )
+                ocsp_lines.append(ocsp_line)
+            self.send_pool_message("ocsp_results", ocsp_lines)
 
     def _monitoring_info(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])

@@ -262,13 +262,16 @@ class all_commands(host_type_config):
                 ),
             ]
         all_mccs = mon_check_command_special.objects.all()
-        check_coms += [
-            mon_check_command(
+        for ccs in all_mccs:
+            # create a mon_check_command instance for every special command
+            special_cc = mon_check_command(
                 name=ccs.md_name,
                 command_line=ccs.command_line or "/bin/true",
                 description=ccs.description,
-            ) for ccs in all_mccs
-        ]
+            )
+            # set pk of special command
+            special_cc.spk = ccs.pk
+            check_coms.append(special_cc)
         check_coms += [
             mon_check_command(
                 name="ochp-command",
@@ -331,6 +334,7 @@ class all_commands(host_type_config):
                 build_safe_name(ngc.description) if safe_names else ngc.description,
                 exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
                 icinga_name=_nag_name,
+                # link to mon_check_command_special
                 mccs_id=ngc.mon_check_command_special_id,
                 servicegroup_names=cats,
                 servicegroup_pks=cat_pks,
@@ -338,7 +342,10 @@ class all_commands(host_type_config):
                 is_event_handler=ngc.is_event_handler,
                 event_handler=ngc.event_handler,
                 event_handler_enabled=ngc.event_handler_enabled,
+                # id of check_command
                 check_command_pk=ngc.pk,
+                # id of mon_check_command_special
+                special_command_pk=getattr(ngc, "spk", None),
                 db_entry=ngc,
                 volatile=ngc.volatile,
             )

@@ -19,10 +19,10 @@
 #
 """ special check for all disks """
 
-from initat.md_config_server.special_commands.base import special_base
+from initat.md_config_server.special_commands.base import SpecialBase
 
 
-class special_disc_all(special_base):
+class special_disc_all(SpecialBase):
     class Meta:
         info = "report fullest disc"
         command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"

@@ -735,14 +735,23 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         start_time = time.time()
         # set some vars
         host_nc = cur_gc["device.d"]
+        # we always check for passive checks
+        #if cur_gc.master:
+        #    check_for_passive_checks = True
+        #else:
+        #    check_for_passive_checks = False
+        #checks_are_active = True
+        #if check_for_passive_checks:
+        #    if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
+        #        checks_are_active = False
+        # check if host is actively checked via current server
         if cur_gc.master:
-            check_for_passive_checks = True
-        else:
-            check_for_passive_checks = False
-        checks_are_active = True
-        if check_for_passive_checks:
             if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
-                checks_are_active = False
+                host_is_actively_checked = False
+            else:
+                host_is_actively_checked = True
+        else:
+            host_is_actively_checked = True
         # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         self.__cached_mach_name = host.full_name
         # cache logs
@@ -751,7 +760,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         glob_log_str = "device {:<48s}{} ({}), d={:>3s}".format(
             host.full_name[:48],
             "*" if len(host.name) > 48 else " ",
-            "a" if checks_are_active else "p",
+            "a" if host_is_actively_checked else "p",
             "{:3d}".format(d_map[host.pk]) if d_map.get(host.pk) >= 0 else "---",
         )
         self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.full_name)
@@ -888,8 +897,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.not_period_id].name
                     # removed because this line screws active / passive checks
                     # act_host["checks_enabled"] = 1
-                    act_host["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
-                    act_host["{}_checks_enabled".format("passive" if checks_are_active else "active")] = 0
+                    # we allow passive and active checks
+                    act_host["active_checks_enabled"] = 1
+                    act_host["passive_checks_enabled"] = 1
+                    # act_host["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
+                    # act_host["{}_checks_enabled".format("passive" if checks_are_active else "active")] = 0
                     act_host["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and act_def_dev.flap_detection_enabled) else 0
                     if host.flap_detection_enabled and act_def_dev.flap_detection_enabled:
                         # add flap fields
@@ -902,8 +914,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         if not n_field:
                             n_field.append("o")
                         act_host["flap_detection_options"] = n_field
-                    if checks_are_active and not cur_gc.master:
-                        # trace changes
+                    #if checks_are_active and not cur_gc.master:
+                    #    # trace changes
+                    # always enable obsess_over_host
+                    if True:
                         act_host["obsess_over_host"] = 1
                     host_groups = set(contact_group_dict.get(host.full_name, []))
                     act_host["contact_groups"] = list(host_groups) if host_groups else self.gc["NONE_CONTACT_GROUP"]
@@ -918,7 +932,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             act_host["check_command"] = "check-host-ok"
                         else:
                             if act_def_dev.host_check_command:
-                                if checks_are_active:
+                                if host_is_actively_checked:
                                     act_host["check_command"] = act_def_dev.host_check_command.name
                                 else:
                                     self.mach_log("disabling host check_command (passive)")
@@ -1029,7 +1043,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         for conf_name in conf_names:
                             self._add_config(
                                 host, act_host, conf_name, used_checks, _counter, _bc,
-                                mccs_dict, cur_gc, act_def_serv, host_groups, checks_are_active, host_config_list
+                                mccs_dict, cur_gc, act_def_serv, host_groups, host_is_actively_checked, host_config_list
                             )
                         # add cluster checks
                         mhc_checks = _bc.get_cluster("hc", host.pk)
@@ -1045,7 +1059,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                         host,
                                         act_host,
                                         s_check,
-                                        [special_commands.arg_template(
+                                        [special_commands.ArgTemplate(
                                             s_check,
                                             self._get_cc_name("{}{}{}".format(s_check.get_description(), _bc.join_char, mhc_check.description)),
                                             arg1=mhc_check.description,
@@ -1059,14 +1073,14 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                          ],
                                         act_def_serv,
                                         serv_cgs,
-                                        checks_are_active,
+                                        host_is_actively_checked,
                                         serv_temp,
                                         cur_gc)
                                     host_config_list.extend(sub_list)
                                     _counter.ok(len(sub_list))
                                 else:
                                     self.mach_log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
-                        # add service checks
+                        # add cluster service checks
                         msc_checks = _bc.get_cluster("sc", host.pk)
                         if len(msc_checks):
                             self.mach_log("adding {}".format(logging_tools.get_plural("service_cluster check", len(msc_checks))))
@@ -1083,7 +1097,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                             act_host,
                                             s_check,
                                             [
-                                                special_commands.arg_template(
+                                                special_commands.ArgTemplate(
                                                     s_check,
                                                     self._get_cc_name("{} / {}".format(s_check.get_description(), c_com.get_description())),
                                                     arg1=msc_check.description,
@@ -1109,7 +1123,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                             ],
                                             act_def_serv,
                                             serv_cgs,
-                                            checks_are_active,
+                                            host_is_actively_checked,
                                             serv_temp,
                                             cur_gc,
                                         )
@@ -1259,13 +1273,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
-        if _counter.num_error > 0:
+        if _counter.num_error > 0 or self.gc["DEBUG"]:
             _write_logs = True
         self.close_mach_log(write_logs=_write_logs)
 
     def _add_config(
         self, host, act_host, conf_name, used_checks, _counter, _bc, mccs_dict, cur_gc,
-        act_def_serv, host_groups, checks_are_active, host_config_list
+        act_def_serv, host_groups, host_is_actively_checked, host_config_list
     ):
         s_check = cur_gc["command"][conf_name]
         if s_check.name in used_checks:
@@ -1279,8 +1293,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             _counter.warning()
         else:
             used_checks.add(s_check.name)
+            # s_check: instance of check_command
             if s_check.mccs_id:
-                # map to mccs
+                # map to mccs (mon_check_command_special instance from backbone)
                 mccs = mccs_dict[s_check.mccs_id]  #
                 # store name of mccs (for parenting)
                 mccs_name = mccs.name
@@ -1299,10 +1314,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         self.mach_log,
                         self,
                         # get mon_check_command (we need arg_ll)
-                        cur_gc["command"][com_mccs.md_name],
-                        host,
-                        self.gc,
-                        _bc,
+                        s_check=cur_gc["command"][com_mccs.md_name],
+                        parent_check=s_check,
+                        host=host,
+                        global_config=self.gc,
+                        build_cache=_bc,
                         cache_mode=cur_gc.cache_mode,
                     )
                 except:
@@ -1318,6 +1334,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
                     try:
                         if mccs_name != mccs.name:
+                            # for meta specials
                             sc_array = cur_special(instance=mccs_name)
                         else:
                             sc_array = cur_special()
@@ -1331,6 +1348,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     finally:
                         cur_special.cleanup()
                     if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
+                        # dive in subcommands, for instance 'all SNMP checks'
                         # check for configs not really configured
                         _dead_coms = [_entry for _entry in sc_array if not hasattr(mccs_dict[_entry], "check_command_name")]
                         if _dead_coms:
@@ -1339,17 +1357,18 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         for _com_name in _com_names:
                             self._add_config(
                                 host, act_host, _com_name, used_checks, _counter, _bc,
-                                mccs_dict, cur_gc, act_def_serv, host_groups, checks_are_active, host_config_list
+                                mccs_dict, cur_gc, act_def_serv, host_groups, host_is_actively_checked, host_config_list
                             )
                         sc_array = []
             else:
+                # no special command, empty rewrite_lut, simple templating
                 _rewrite_lut = {}
-                sc_array = [special_commands.arg_template(s_check, s_check.get_description())]
+                sc_array = [special_commands.ArgTemplate(s_check, s_check.get_description())]
                 # contact_group is only written if contact_group is responsible for the host and the service_template
             if sc_array:
                 serv_temp = _bc.serv_templates[s_check.get_template(act_def_serv.name)]
                 serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
-                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, **_rewrite_lut)
+                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, cur_gc, **_rewrite_lut)
                 host_config_list.extend(sc_list)
                 _counter.ok(len(sc_list))
 
@@ -1369,13 +1388,16 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if nccom[0] in ccoms:
             return True
         else:
-            self.mach_log("Checkcommand '{}' config ({}) not found in configs ({}) for {} '{}'".format(
-                nccom[0],
-                nccom[2],
-                ", ".join(sorted(ccoms)) or "none defined",
-                c_type,
-                unicode(device),
-                ), logging_tools.LOG_LEVEL_ERROR)
+            self.mach_log(
+                "Checkcommand '{}' config ({}) not found in configs ({}) for {} '{}'".format(
+                    nccom[0],
+                    nccom[2],
+                    ", ".join(sorted(ccoms)) or "none defined",
+                    c_type,
+                    unicode(device),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             return False
 
     def _get_number_of_hosts(self, cur_gc, hosts):
@@ -1705,7 +1727,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
         )
 
-    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc, **kwargs):
+    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, cur_gc, **kwargs):
         ev_defined = True if s_check.event_handler else False
         self.mach_log(
             "  adding check {:<30s} ({:2d} p), template {}, {}, {}".format(
@@ -1728,16 +1750,22 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name
                 act_serv["event_handler_enabled"] = "1" if s_check.event_handler_enabled else "0"
-            if arg_temp.is_active:
-                act_serv["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
-                act_serv["{}_checks_enabled".format("passive" if checks_are_active else "active")] = 0
+            if arg_temp.check_active is not None:
+                # check flag overrides device specific setting
+                act_serv["{}_checks_enabled".format("active" if arg_temp.check_active else "passive")] = 1
+                act_serv["{}_checks_enabled".format("passive" if arg_temp.check_active else "active")] = 0
             else:
-                act_serv["passive_checks_enabled"] = 1
-                act_serv["active_checks_enabled"] = 0
+                if arg_temp.is_active:
+                    act_serv["{}_checks_enabled".format("active" if host_is_actively_checked else "passive")] = 1
+                    act_serv["{}_checks_enabled".format("passive" if host_is_actively_checked else "active")] = 0
+                else:
+                    act_serv["passive_checks_enabled"] = 1
+                    act_serv["active_checks_enabled"] = 0
             # display this in icinga webfrontend
             info = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["display_name"] = info
             # create identifying string for log
+            #print "::", s_check.check_command_pk, s_check.special_command_pk, s_check.mccs_id
             act_serv["service_description"] = host_service_id_util.create_host_service_description(host.pk, s_check, info)
             act_serv["host_name"] = host.full_name
             # volatile
@@ -1753,10 +1781,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["contact_groups"] = serv_cgs
             else:
                 act_serv["contact_groups"] = self.gc["NONE_CONTACT_GROUP"]
-            if not checks_are_active:
+            if not host_is_actively_checked:
                 act_serv["check_freshness"] = 0
                 act_serv["freshness_threshold"] = 3600
-            if checks_are_active and not cur_gc.master:
+            if host_is_actively_checked and not cur_gc.master:
                 # trace
                 act_serv["obsess_over_service"] = 1
             act_serv["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and serv_temp.flap_detection_enabled) else 0

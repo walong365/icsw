@@ -19,5 +19,5 @@
 #
 """ special tasks for md-config-server, load from submodule instances """
 
-from initat.md_config_server.special_commands.base import special_base, arg_template
+from initat.md_config_server.special_commands.base import SpecialBase, ArgTemplate
 from initat.md_config_server.special_commands.instances import *

@@ -31,12 +31,12 @@ import time
 
 
 __all__ = [
-    "special_base",
-    "arg_template",
+    "SpecialBase",
+    "ArgTemplate",
 ]
 
 
-class special_base(object):
+class SpecialBase(object):
     class Meta:
         # number of retries in case of error, can be zero
         retries = 1
@@ -57,17 +57,18 @@ class special_base(object):
         # meta, triggers a cascade of checks
         meta = False
 
-    def __init__(self, log_com, build_proc=None, s_check=None, host=None, global_config=None, build_cache=None, **kwargs):
+    def __init__(self, log_com, build_proc=None, s_check=None, host=None, global_config=None, build_cache=None, parent_check=None, **kwargs):
         self.__log_com = log_com
-        for key in dir(special_base.Meta):
+        for key in dir(SpecialBase.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
-                setattr(self.Meta, key, getattr(special_base.Meta, key))
+                setattr(self.Meta, key, getattr(SpecialBase.Meta, key))
         self.Meta.name = self.__class__.__name__.split("_", 1)[1]
         self.ds_name = self.Meta.name
         # print "ds_name=", self.ds_name
         self.cache_mode = kwargs.get("cache_mode", DEFAULT_CACHE_MODE)
         self.build_process = build_proc
         self.s_check = s_check
+        self.parent_check = parent_check
         self.host = host
         self.build_cache = build_cache
 
@@ -313,15 +314,18 @@ class special_base(object):
         return cur_ret
 
     def get_arg_template(self, *args, **kwargs):
-        return arg_template(self.s_check, *args, is_active=self.Meta.is_active, **kwargs)
+        return ArgTemplate(self.s_check, *args, is_active=self.Meta.is_active, **kwargs)
 
 
-class arg_template(dict):
+class ArgTemplate(dict):
     def __init__(self, s_base, *args, **kwargs):
         dict.__init__(self)
         self._addon_dict = {}
         self.info = args[0]
+        # active flag for command
         self.is_active = kwargs.pop("is_active", True)
+        # active flag for check (in case of special commands where more than one check is generated)
+        self.check_active = kwargs.pop("check_active", None)
         if s_base is not None:
             if s_base.__class__.__name__ == "check_command":
                 self.__arg_lut, self.__arg_list = s_base.arg_ll

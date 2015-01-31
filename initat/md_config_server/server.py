@@ -161,8 +161,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         for key in dir(special_commands):
             _entry = getattr(special_commands, key)
             if key.startswith("special_"):
-                if inspect.isclass(_entry) and _entry != special_commands.special_base:
-                    if issubclass(_entry, special_commands.special_base):
+                if inspect.isclass(_entry) and _entry != special_commands.SpecialBase:
+                    if issubclass(_entry, special_commands.SpecialBase):
                         _inst = _entry(self.log)
                         cur_mccs = self._check_mccs(_inst.Meta)
                         mccs_dict[cur_mccs.name] = cur_mccs
@@ -175,7 +175,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         # delete stale
         del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
         if del_mccs:
-            self.log("removing {}".format(logging_tools.get_plural("stale mccs", len(del_mccs))))
+            self.log(
+                "removing {}: {}".format(
+                    logging_tools.get_plural("stale mccs", len(del_mccs)),
+                    ", ".join([unicode(_del) for _del in del_mccs])
+                )
+            )
             del_mccs.delete()
         # rewrite
         for to_rewrite in mon_check_command.objects.filter(Q(name__startswith="@")):
@@ -397,7 +402,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         out_line = "[{:d}] {};{}".format(
             int(time.time()),
             target_com,
-            ";".join(targ_list))
+            ";".join(targ_list)
+        )
         self._write_external_cmd_file(out_line)
 
     def _write_external_cmd_file(self, lines):
@@ -497,6 +503,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     if "sync_id" in srv_com:
                         self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
                         send_return = True
+                elif cur_com in ["passive_check_results", "passive_check_results_as_chunk"]:
+                    self.send_to_process("dynconfig", cur_com, unicode(srv_com))
                 else:
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:

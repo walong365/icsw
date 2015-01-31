@@ -21,11 +21,11 @@
 
 from initat.cluster.backbone.models import monitoring_hint
 from initat.host_monitoring.modules import supermicro_mod
-from initat.md_config_server.special_commands.base import special_base
+from initat.md_config_server.special_commands.base import SpecialBase
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
 
 
-class special_supermicro(special_base):
+class special_supermicro(SpecialBase):
     class Meta:
         server_contact = True
         info = "SuperMicro"
