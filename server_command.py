@@ -140,9 +140,12 @@ class srv_command(object):
     def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
         if "result" not in self:
             self["result"] = None
-        self["result"].attrib.update({
-            "reply": ret_str,
-            "state": "{:d}".format(level)})
+        self["result"].attrib.update(
+            {
+                "reply": ret_str,
+                "state": "{:d}".format(level)
+            }
+        )
 
     def builder(self, tag_name=None, *args, **kwargs):
         if tag_name is None:
@@ -336,7 +339,7 @@ class srv_command(object):
             if sub_el is not None:
                 cur_element = sub_el
             else:
-                sub_el = self.builder(cur_key)  # getattr(self.__builder, cur_key)()
+                sub_el = self.builder(cur_key) # getattr(self.__builder, cur_key)()
                 cur_element.append(sub_el)
             cur_element = sub_el
         return cur_element
