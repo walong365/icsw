@@ -27,7 +27,9 @@ dynamically creates config entries for devices (for devices queried via IPMI or 
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, monitoring_hint
+from initat.cluster.backbone.models import device, monitoring_hint, mon_check_command_special, \
+    mon_check_command
+from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config
 from lxml import etree  # @UnresolvedImport @UnusedImport
@@ -106,8 +108,36 @@ class dynconfig_process(threading_tools.process_obj):
     def _create_hints(self, cur_dev, mon_info):
         self._create_hints_ipmi(cur_dev, mon_info)
 
+    def _get_ipmi_service_postfix(self, cur_dev):
+        _postfix = None
+        # better cache this info ?
+        # special check command
+        try:
+            _mcs = mon_check_command_special.objects.get(
+                Q(identifier="ipmi_passive_checks")
+            )
+        except mon_check_command_special.DoesNotExist:
+            pass
+        else:
+            # mon command for current device
+            try:
+                _mc = mon_check_command.objects.get(
+                    Q(config__device_config__device=cur_dev) &
+                    Q(mon_check_command_special=_mcs)
+                )
+            except mon_check_command.DoesNotExist:
+                # mon check command not found, ignore
+                pass
+            else:
+                _mc.mccs_id = _mcs.pk
+                _postifx = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
+        return _postfix
+
     def _create_hints_ipmi(self, cur_dev, mon_info):
         cur_hints = {(cur_h.m_type, cur_h.key): cur_h for cur_h in monitoring_hint.objects.filter(Q(device=cur_dev))}
+        _ocsp_postfix = self._get_ipmi_service_postfix(cur_dev)
+        if not _ocsp_postfix:
+            self.log("cannot get postfix for IPMI service results for device {}".format(unicode(cur_dev)))
         ocsp_lines = []
         # pprint.pprint(cur_hints)
         n_updated, n_created = (0, 0)
@@ -131,14 +161,16 @@ class dynconfig_process(threading_tools.process_obj):
                     info=_val.get("info"),
                 )
                 created = True
-            limit_dict = {"{}_{}".format(
-                {
-                    "l": "lower",
-                    "u": "upper"
-                }[_key[0]], {
-                    "w": "warn",
-                    "c": "crit"
-                }[_key[1]]): float(_val.attrib[_key]) for _key in ["lc", "uc", "lw", "uw"] if _key in _val.attrib
+            limit_dict = {
+                "{}_{}".format(
+                    {
+                        "l": "lower",
+                        "u": "upper"
+                    }[_key[0]], {
+                        "w": "warn",
+                        "c": "crit"
+                    }[_key[1]]
+                ): float(_val.attrib[_key]) for _key in ["lc", "uc", "lw", "uw"] if _key in _val.attrib
             }
             _value = _val.get("value")
             if _val.get("v_type") == "f":
@@ -159,13 +191,14 @@ class dynconfig_process(threading_tools.process_obj):
             ocsp_line = "[{}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
                 mon_info.get("time"),
                 cur_dev.full_name,
-                _val.get("info"),
+                "{}:{}".format(_ocsp_postfix, _val.get("info")),
                 ret_code,
                 ret_str,
             )
             ocsp_lines.append(ocsp_line)
         # pprint.pprint(ocsp_lines)
-        self.send_pool_message("ocsp_results", ocsp_lines)
+        if _ocsp_postfix:
+            self.send_pool_message("ocsp_results", ocsp_lines)
         if updated or created:
             self.log("for {}: created {:d}, updated {:d}".format(unicode(cur_dev), n_created, n_updated))
 

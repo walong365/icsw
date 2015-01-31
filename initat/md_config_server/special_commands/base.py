@@ -56,6 +56,8 @@ class SpecialBase(object):
         description = "no description available"
         # meta, triggers a cascade of checks
         meta = False
+        # identifier
+        identifier = ""
 
     def __init__(self, log_com, build_proc=None, s_check=None, host=None, global_config=None, build_cache=None, parent_check=None, **kwargs):
         self.__log_com = log_com

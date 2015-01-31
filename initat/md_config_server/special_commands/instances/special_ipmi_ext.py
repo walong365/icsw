@@ -30,6 +30,7 @@ class special_ipmi_ext(SpecialBase):
         is_active = False
         info = "IPMI as passive checks via collectd"
         description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
+        identifier = "ipmi_passive_checks"
 
     def _call(self):
         sc_array = []
