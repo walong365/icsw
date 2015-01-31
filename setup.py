@@ -24,7 +24,7 @@ if symlinks:
     sys.exit(1)
 
 setup(name="initat",
-      version="2.0.0",
+      version="2.5",
       package_dir={"initat": "src/initat"},
       packages=["initat", "initat.core", "initat.core.templatetags", "initat.core.alfresco",
                 "initat.core.management", "initat.core.management.commands"],
