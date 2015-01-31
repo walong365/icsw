@@ -988,9 +988,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
             # last run type, store in ccs
             ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
 
-    def set_result_from_cache(self, srv_com, cur_ns):
-        for _key, _value in self._dict.iteritems():
-            srv_com["result:ctrl_{:d}".format(_key)] = _value
+    #def set_result_from_cache(self, srv_com, cur_ns):
+    #    for _key, _value in self._dict.iteritems():
+    #        srv_com["result:ctrl_{:d}".format(_key)] = _value
 
     def update_ok(self, srv_com):
         if self._dict:
@@ -2012,11 +2012,8 @@ class megaraid_sas_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("megaraid_sas")
         _ctrl = ctrl_type.ctrl("megaraid_sas")
-        if cur_ns.cache:
-            _ctrl.set_result_from_cache(srv_com, cur_ns)
-        else:
-            if _ctrl.update_ok(srv_com):
-                return ctrl_check_struct(self.log, srv_com, _ctrl, [])
+        if _ctrl.update_ok(srv_com):
+            return ctrl_check_struct(self.log, srv_com, _ctrl, [])
 
     def interpret(self, srv_com, cur_ns):
         # also done in special_megaraid_sas
