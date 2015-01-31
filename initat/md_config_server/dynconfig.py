@@ -192,7 +192,7 @@ class dynconfig_process(threading_tools.process_obj):
             ocsp_line = "[{}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
                 mon_info.get("time"),
                 cur_dev.full_name,
-                "{}:{}".format(_ocsp_postfix, _val.get("info")),
+                "{}{}".format(_ocsp_postfix, _val.get("info")),
                 ret_code,
                 ret_str,
             )
