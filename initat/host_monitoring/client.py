@@ -23,6 +23,7 @@
 """ host-monitoring, with 0MQ and twisted support """
 
 from initat.host_monitoring import limits
+from initat.host_monitoring.struct import ExtReturn
 import difflib
 import net_tools
 import os
@@ -53,7 +54,7 @@ def client_code(global_config):
         try:
             cur_ns, rest = com_struct.handle_commandline(arg_list)
         except ValueError, what:
-            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "error parsing: {}".format(what[1]))
+            ret = ExtReturn(limits.nag_STATE_CRITICAL, "error parsing: {}".format(what[1]))
         else:
             # see also struct.py in collrelay
             if hasattr(cur_ns, "arguments"):
@@ -78,30 +79,33 @@ def client_code(global_config):
                     error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
                     if error_result:
                         error_result = error_result[0]
-                        ret_state, ret_str = (
+                        ret = ExtReturn(
                             int(error_result.attrib["state"]),
-                            error_result.attrib["reply"])
+                            error_result.attrib["reply"]
+                        )
                     else:
                         if hasattr(com_struct, "interpret"):
-                            ret_state, ret_str = com_struct.interpret(result, cur_ns)
+                            ret = ExtReturn.get_ext_return(com_struct.interpret(result, cur_ns))
                         else:
                             _result = result.xpath(".//ns:result", smart_strings=False)[0]
-                            ret_str = _result.attrib["reply"]
-                            ret_state = server_command.srv_reply_to_nag_state(int(_result.attrib["state"]))
+                            ret = ExtReturn(
+                                server_command.srv_reply_to_nag_state(int(_result.attrib["state"])),
+                                result.attrib["reply"]
+                            )
                 else:
                     ret_str, ret_state = result.get_log_tuple()
-                    ret_state = server_command.srv_reply_to_nag_state(ret_state)
+                    ret = ExtReturn(server_command.srv_reply_to_nag_state(ret_state), ret_str)
             else:
-                ret_state, ret_str = (limits.nag_STATE_CRITICAL, "timeout")
+                ret = ExtReturn(limits.nag_STATE_CRITICAL, "timeout")
     else:
         c_matches = difflib.get_close_matches(com_name, modules.command_dict.keys())
         if c_matches:
             cm_str = "close matches: {}".format(", ".join(c_matches))
         else:
             cm_str = "no matches found"
-        ret_state, ret_str = (
+        ret = ExtReturn(
             limits.nag_STATE_CRITICAL,
             "unknown command {}, {}".format(com_name, cm_str)
         )
-    print ret_str
-    return ret_state
+    print ret.ret_str
+    return ret.ret_state

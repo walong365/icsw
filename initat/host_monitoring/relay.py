@@ -475,7 +475,7 @@ class relay_code(threading_tools.process_pool):
                 cur_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
                 cur_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
                 if sock_type == zmq.PULL:  # @UndefinedVariable
-                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command_ipc)  # @UndefinedVariable
         self.client_socket = process_tools.get_socket(
             self.zmq_context,
             "ROUTER",
@@ -519,7 +519,7 @@ class relay_code(threading_tools.process_pool):
                     uuid
                 )
             )
-            self.register_poller(client, zmq.POLLIN, self._recv_command)  # @UndefinedVariable
+            self.register_poller(client, zmq.POLLIN, self._recv_command_net)  # @UndefinedVariable
             self.network_socket = client
 
     def _resolve_address_noresolve(self, target):
@@ -594,7 +594,14 @@ class relay_code(threading_tools.process_pool):
                 self.log("ip resolving: {} -> {}".format(orig_target, ip_addr))
         return ip_addr
 
-    def _recv_command(self, zmq_sock):
+    def _recv_command_ipc(self, zmq_sock):
+        # to be improved via network_mixins, TODO
+        return self._recv_command(zmq_sock, "ipc")
+
+    def _recv_command_net(self, zmq_sock):
+        return self._recv_command(zmq_sock, "net")
+
+    def _recv_command(self, zmq_sock, src):
         data = zmq_sock.recv()
         if zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             src_id = data
@@ -605,6 +612,7 @@ class relay_code(threading_tools.process_pool):
         srv_com = None
         if xml_input:
             srv_com = server_command.srv_command(source=data)
+            srv_com["source_socket"] = src
             if src_id is None:
                 src_id = srv_com["identity"].text
             else:
@@ -817,6 +825,28 @@ class relay_code(threading_tools.process_pool):
         else:
             # add to cache ?
             self._send_to_master(srv_com)
+
+    def send_passive_results_to_master(self, result_list):
+        self.log("sending {} to master".format(logging_tools.get_plural("passive result", len(result_list))))
+        srv_com = server_command.srv_command(
+            command="passive_check_results"
+        )
+        _bldr = srv_com.builder()
+        srv_com["results"] = _bldr.passive_results(
+            *[
+                # FIXME, TODO
+                _bldr.passive_result("d")
+            ]
+        )
+        self._send_to_master(srv_com)
+
+    def send_passive_results_as_chunk_to_master(self, ascii_chunk):
+        self.log("sending passive chunk (size {:d}) to master".format(len(ascii_chunk)))
+        srv_com = server_command.srv_command(
+            command="passive_check_results_as_chunk",
+            ascii_chunk=ascii_chunk,
+        )
+        self._send_to_master(srv_com)
 
     def _send_to_master(self, srv_com):
         if self.master_ip:

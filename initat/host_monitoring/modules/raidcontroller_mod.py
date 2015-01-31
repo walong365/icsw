@@ -18,10 +18,12 @@
 """ checks for various RAID controllers """
 
 from initat.host_monitoring import limits, hm_classes
+from initat.host_monitoring.struct import ExtReturn
 import base64
 import bz2
 import commands
 import datetime
+import json
 import logging_tools
 import marshal
 import os
@@ -125,6 +127,11 @@ class ctrl_type(object):
             # client call
             return globals()["ctrl_type_{}".format(key)](dummy_mod(), quiet=True)
 
+    @staticmethod
+    def ctrl_class(key):
+        # client call
+        return globals()["ctrl_type_{}".format(key)]
+
     def exec_command(self, com_line, **kwargs):
         if com_line.startswith(" "):
             com_line = "{}{}".format(self._check_exec, com_line)
@@ -144,15 +151,15 @@ class ctrl_type(object):
         return cur_stat, lines
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-       self._module.log("[ct {}] {}".format(self.name, what), log_level)
+        self._module.log("[ct {}] {}".format(self.name, what), log_level)
 
     def _scan(self):
-       self.scanned = time.time()
-       self.log("scanning for {} controller".format(self.name))
-       self.check_for_exec()
-       if self._check_exec:
-           self.log("scanning for {}".format(self.Meta.description))
-           self.scan_ctrl()
+        self.scanned = time.time()
+        self.log("scanning for {} controller".format(self.name))
+        self.check_for_exec()
+        if self._check_exec:
+            self.log("scanning for {}".format(self.Meta.description))
+            self.scan_ctrl()
 
     def _update(self, ctrl_ids):
         if not self.scanned:
@@ -995,7 +1002,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
 )
             return False
 
-    def _interpret(self, ctrl_dict, cur_ns):
+    @staticmethod
+    def _interpret(ctrl_dict, cur_ns):
         def get_status_lines(lines):
             stat_keys = [_key for _key, _value in lines if _key.endswith("_status")]
             if stat_keys:
@@ -1014,7 +1022,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if check == "status":
                 _val = [_val for _key, _val in lines if _key.endswith("_status")][0]
             else:
-                _val = [_val for _key, _val in lines if _key == check]
+                _val = [_val for _key, _val in lines if _key == check or _key.replace(" ", "_") == check]
                 if _val:
                     _val = _val[0]
                 else:
@@ -1057,7 +1065,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _keys = [_key for _key, _value in lines]
                 return ["firmware_state"]
             elif d_type == "bbu":
-                return ["battery state"]
+                return ["battery_state"]
             else:
                 status = get_status_lines(lines).lower()
                 if status in set(["not installed", "unknown", "medium speed", "normal speed", "low speed", "high speed", "not available"]):
@@ -1170,33 +1178,78 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 del _c_dict["logical_lines"]
         # reorder dict
         _ro_dict = reorder_dict(ctrl_dict)
-        # pprint.pprint(ctrl_dict)
+        #pprint.pprint(ctrl_dict)
         _key_list = emit_keys(_ro_dict)
-        _ok_dict = {}
-        _ret_list = []
-        _g_ret_state = limits.nag_STATE_OK
-        for _key in sorted(_key_list):
-            _lines, _checks = get_source(_ro_dict, _key)
-            for _check in _checks:
-                _info = get_info(_key, _lines, _check)
-                _ret_state, _result, _info_str, _entity_type = check_status(_key, _lines, _check)
-                # print _info, _ret_state, _result
-                if _ret_state != limits.nag_STATE_OK:
-                    _ret_list.append("{}: {}".format(_info, _result))
+        #print cur_ns
+        if cur_ns.get_hints:
+            r_list = []
+            _ctrl_found = set()
+            for _key in sorted(_key_list):
+                _ctrl_key = _key.split(":")[0]
+                if _ctrl_key not in _ctrl_found:
+                    _ctrl_found.add(_ctrl_key)
+                    r_list.extend([("all", "all", "Controller {}".format(_ctrl_key), True), ])
+                _lines, _checks = get_source(_ro_dict, _key)
+                r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
+            return r_list
+        else:
+            _passive_dict = {
+                "postfix": cur_ns.passive_check_postfix,
+                "list": [],
+            }
+            _store_passive = cur_ns.passive_check_postfix != "-"
+            if cur_ns.key != "all":
+                single_key = True
+                _key_list = list(set(_key_list) & set([cur_ns.key]))
+            else:
+                single_key = False
+            if cur_ns.check != "all":
+                target_checks = set([cur_ns.check])
+            else:
+                target_checks = None
+            _ok_dict = {}
+            _ret_list = []
+            _g_ret_state = limits.nag_STATE_OK
+            for _key in sorted(_key_list):
+                _lines, _checks = get_source(_ro_dict, _key)
+                if target_checks:
+                    _checks = list(set(_checks) & target_checks)
+                for _check in _checks:
+                    _info = get_info(_key, _lines, _check)
+                    _ret_state, _result, _info_str, _entity_type = check_status(_key, _lines, _check)
+                    if _store_passive:
+                        _passive_dict["list"].append(
+                            # format: info, ret_state, result (always show), info (only shown in case of non-OK)
+                            (
+                                _info, _ret_state, _result, _info_str
+                            )
+                        )
+                    # print _info, _ret_state, _result
+                    if _ret_state != limits.nag_STATE_OK:
+                        _ret_list.append("{}: {}".format(_info, _result))
+                    else:
+                        if single_key:
+                            _ret_list.append(_result)
+                        _ok_dict.setdefault(_entity_type, []).append(0)
+                    if _info_str:
+                        _ret_list.append(_info_str)
+                    _g_ret_state = max(_g_ret_state, _ret_state)
+            if _store_passive:
+                ascii_chunk = base64.b64encode(bz2.compress(json.dumps(_passive_dict)))
+            else:
+                ascii_chunk = ""
+            if _ok_dict:
+                _num_ok = sum([len(_val) for _val in _ok_dict.itervalues()])
+                if _num_ok == 1 and single_key:
+                    pass
                 else:
-                    _ok_dict.setdefault(_entity_type, []).append(0)
-                if _info_str:
-                    _ret_list.append(_info_str)
-                _g_ret_state = max(_g_ret_state, _ret_state)
-        if _ok_dict:
-            _num_ok = sum([len(_val) for _val in _ok_dict.itervalues()])
-            _ret_list.append(
-                "{}: {}".format(
-                    logging_tools.get_plural("OK check", _num_ok),
-                    ", ".join([logging_tools.get_plural(_expand_key(_key), len(_val)) for _key, _val in _ok_dict.iteritems()])
-                )
-            )
-        return _g_ret_state, ", ".join(_ret_list)
+                    _ret_list.append(
+                        "{}: {}".format(
+                            logging_tools.get_plural("OK check", _num_ok),
+                            ", ".join([logging_tools.get_plural(_expand_key(_key), len(_val)) for _key, _val in _ok_dict.iteritems()])
+                        )
+                    )
+            return ExtReturn(_g_ret_state, ", ".join(_ret_list), ascii_chunk=ascii_chunk)
 
         # old code, used for reference
         num_c, num_d, num_e, num_w = (len(ctrl_dict.keys()), 0, 0, 0)
@@ -1281,7 +1334,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             loc_problems = 0
                             for cur_idx in xrange(cur_num):
                                 cur_stat = get_status_lines(enc_dict[key][cur_idx]["lines"])
-                                #if key.count("temperature"):
+                                # if key.count("temperature"):
                                 #    if int(cur_stat) > 50:
                                 #        problem = True
                                 #    else:
@@ -1951,7 +2004,10 @@ class megaraid_sas_status_command(hm_classes.hm_command):
     def __init__(self, name):
         self.__cache = {}
         hm_classes.hm_command.__init__(self, name)
-        self.parser.add_argument("--cache", dest="cache", default=False, action="store_true")
+        self.parser.add_argument("--get-hints", dest="get_hints", default=False, action="store_true")
+        self.parser.add_argument("--key", default="all", type=str)
+        self.parser.add_argument("--check", default="all", type=str)
+        self.parser.add_argument("--passive-check-postfix", default="-", type=str)
 
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("megaraid_sas")
@@ -1963,6 +2019,7 @@ class megaraid_sas_status_command(hm_classes.hm_command):
                 return ctrl_check_struct(self.log, srv_com, _ctrl, [])
 
     def interpret(self, srv_com, cur_ns):
+        # also done in special_megaraid_sas
         ctrl_dict = {}
         for res in srv_com["result"]:
             ctrl_dict[int(res.tag.split("}")[1].split("_")[-1])] = srv_com._interpret_el(res)
@@ -1973,7 +2030,7 @@ class megaraid_sas_status_command(hm_classes.hm_command):
         return self._interpret(ctrl_dict, cur_ns)
 
     def _interpret(self, ctrl_dict, cur_ns):
-        return ctrl_type.ctrl("megaraid_sas")._interpret(ctrl_dict, cur_ns)
+        return ctrl_type.ctrl_class("megaraid_sas")._interpret(ctrl_dict, cur_ns)
 
 
 class megaraid_status_command(hm_classes.hm_command):

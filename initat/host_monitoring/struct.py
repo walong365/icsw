@@ -31,9 +31,34 @@ import time
 import zmq
 
 
-class sr_probe(object):
-    __slots__ = ["host_con", "__val", "__time"]
+class ExtReturn(object):
+    # extended return, for results where more than nag_state / nag_str
+    # has to be returned (passive results for instance)
+    # __slots__ = []
+    def __init__(self, ret_state, ret_str, passive_results=[], ascii_chunk=""):
+        self.ret_state = ret_state
+        self.ret_str = ret_str
+        self.passive_results = passive_results
+        self.ascii_chunk = ascii_chunk
 
+    @staticmethod
+    def get_state_str(in_val):
+        # always return state / str
+        if isinstance(in_val, ExtReturn):
+            return in_val.ret_state, in_val.ret_str
+        else:
+            return in_val
+
+    @staticmethod
+    def get_ext_return(in_val):
+        # always return ExtReturn
+        if isinstance(in_val, ExtReturn):
+            return in_val
+        else:
+            return ExtReturn(in_val[0], in_val[1])
+
+class SRProbe(object):
+    __slots__ = ["host_con", "__val", "__time"]
     def __init__(self, host_con):
         self.host_con = host_con
         self.__val = {
@@ -83,7 +108,7 @@ class host_connection(object):
         self.__conn_str = conn_str
         self.tcp_con = kwargs.get("dummy_connection", False)
         host_connection.hc_dict[self.hc_dict_key] = self
-        self.sr_probe = sr_probe(self)
+        self.sr_probe = SRProbe(self)
         self.messages = {}
         self.__open = False
 
@@ -253,8 +278,17 @@ class host_connection(object):
                 )
 
     def send_result(self, host_mes, result=None):
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)  # @UndefinedVariable
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
+        _result, _src_socket = host_mes.get_result(result, host_connection.relayer_process)
+        if host_mes.xml_input:
+            # determine returning socket
+            if _src_socket == "ipc":
+                _send_sock = host_connection.relayer_process.sender_socket
+            else:
+                _send_sock = host_connection.relayer_process.network_socket
+        else:
+            _send_sock = host_connection.relayer_process.sender_socket
+        _send_sock.send_unicode(host_mes.src_id, zmq.SNDMORE)  # @UndefinedVariable
+        _send_sock.send_unicode(_result)
         del self.messages[host_mes.src_id]
         del host_connection.message_lut[host_mes.src_id]
         del host_mes
@@ -303,9 +337,9 @@ class host_connection(object):
             # self.send_result(cur_mes, None)
         else:
             try:
-                res_tuple = cur_mes.interpret(result)
+                ret = ExtReturn.get_ext_return(cur_mes.interpret(result))
             except:
-                res_tuple = (
+                ret = ExtReturn(
                     limits.nag_STATE_CRITICAL,
                     "error interpreting result: {}".format(
                         process_tools.get_except_info()
@@ -314,7 +348,7 @@ class host_connection(object):
                 exc_info = process_tools.exception_info()
                 for line in exc_info.log_lines:
                     host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
-            self.send_result(cur_mes, res_tuple)
+            self.send_result(cur_mes, ret)
             # self.send_result(cur_mes, res_tuple)
 
     def _handle_old_result(self, mes_id, result, is_error):
@@ -353,8 +387,11 @@ class host_message(object):
         self.sent = False
         self.sr_probe = None
 
-    def set_result(self, state, res_str):
-        self.srv_com.set_result(res_str, state)
+    def set_result(self, state, res_str=None):
+        if isinstance(state, ExtReturn):
+            self.srv_com.set_result(state.ret_str, state.ret_state)
+        else:
+            self.srv_com.set_result(res_str, state)
 
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
@@ -389,11 +426,15 @@ class host_message(object):
     def get_runtime(self, cur_time):
         return abs(cur_time - self.s_time)
 
-    def get_result(self, result):
+    def get_result(self, result, relayer_process):
         if result is None:
             result = self.srv_com
+        if self.xml_input:
+            _src_socket = self.srv_com["*source_socket"]
+        else:
+            _src_socket = None
         if type(result) == tuple:
-            # from interpret
+            # tuple result from interpret
             if not self.xml_input:
                 ret_str = u"%d\0%s" % (
                     result[0],
@@ -403,6 +444,20 @@ class host_message(object):
                 # shortcut
                 self.set_result(result[0], result[1])
                 ret_str = unicode(self.srv_com)
+        elif isinstance(result, ExtReturn):
+            # extended return from interpret
+            if not self.xml_input:
+                ret_str = u"%d\0%s" % (
+                    result.ret_state,
+                    result.ret_str,
+                )
+            else:
+                self.set_result(result)
+                ret_str = unicode(self.srv_com)
+            if result.passive_results:
+                relayer_process.send_passive_results_to_master(result.passive_results)
+            if result.ascii_chunk:
+                relayer_process.send_passive_results_as_chunk_to_master(result.ascii_chunk)
         else:
             if not self.xml_input:
                 ret_str = u"%s\0%s" % (
@@ -411,7 +466,7 @@ class host_message(object):
                 )
             else:
                 ret_str = unicode(result)
-        return ret_str
+        return ret_str, _src_socket
 
     def interpret(self, result):
         if self.sr_probe:
@@ -419,8 +474,10 @@ class host_message(object):
             self.sr_probe = None
         server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
         if server_error:
-            return (int(server_error[0].attrib["state"]),
-                    server_error[0].attrib["reply"])
+            return (
+                int(server_error[0].attrib["state"]),
+                server_error[0].attrib["reply"]
+            )
         else:
             return self.com_struct.interpret(result, self.ns)
 
