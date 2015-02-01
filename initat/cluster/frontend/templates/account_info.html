@@ -12,34 +12,6 @@
 
 {% verbatim %}
 
-<script type="text/ng-template" id="set_password.html">
-    <div class="modal-header"><h3>Please enter the new password</h3></div>
-    <div class="modal-body">
-        <form name="form">
-            <div ng-class="dyn_check(pwd.pwd1)">
-                <label>Password:</label>
-                <input type="password" ng-model="pwd.pwd1" placeholder="enter password" ng-trim="false" class="form-control"/>
-            </div>
-            <div ng-class="dyn_check(pwd.pwd2)">
-                <label>again:</label>
-                <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" ng-trim="false" class="form-control"/>
-            </div>
-        </form>
-    </div>
-    <div class="modal-footer">
-        <div ng-class="pwd_error_class">
-           {% verbatim %}
-               {{ pwd_error }}
-           {% endverbatim %}
-        </div>
-        <div>
-            <button class="btn btn-primary" ng-click="check()">Check</button>
-            <button class="btn btn-success" ng-click="ok()" ng-show="check()">Save</button>
-            <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
-        </div>
-    </div>
-</script>
-
 <div>
     <div ng-controller="account_ctrl" ng-model="cur_user">
         <div ng-controller="password_ctrl">
