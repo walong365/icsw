@@ -347,6 +347,7 @@ class all_commands(host_type_config):
                 # id of mon_check_command_special
                 special_command_pk=getattr(ngc, "spk", None),
                 db_entry=ngc,
+                is_active=ngc.is_active,
                 volatile=ngc.volatile,
             )
             nag_conf = cc_s.get_mon_config()

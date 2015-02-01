@@ -327,6 +327,7 @@ class ArgTemplate(dict):
         # active flag for command
         self.is_active = kwargs.pop("is_active", True)
         # active flag for check (in case of special commands where more than one check is generated)
+        # or checks where is_active is False
         self.check_active = kwargs.pop("check_active", None)
         if s_base is not None:
             if s_base.__class__.__name__ == "check_command":

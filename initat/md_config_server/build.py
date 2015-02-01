@@ -1363,7 +1363,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             else:
                 # no special command, empty rewrite_lut, simple templating
                 _rewrite_lut = {}
-                sc_array = [special_commands.ArgTemplate(s_check, s_check.get_description())]
+                sc_array = [special_commands.ArgTemplate(s_check, s_check.get_description(), check_active=False if not s_check.is_active else None)]
                 # contact_group is only written if contact_group is responsible for the host and the service_template
             if sc_array:
                 serv_temp = _bc.serv_templates[s_check.get_template(act_def_serv.name)]

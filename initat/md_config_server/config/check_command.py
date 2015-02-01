@@ -49,6 +49,7 @@ class check_command(object):
         self.check_command_pk = kwargs.get("check_command_pk", None)
         self.special_command_pk = kwargs.get("special_command_pk", None)
         self.is_event_handler = kwargs.get("is_event_handler", False)
+        self.is_active = kwargs.get("is_active", True)
         self.event_handler = kwargs.get("event_handler", None)
         self.event_handler_enabled = kwargs.get("event_handler_enabled", True)
         self.__descr = descr.replace(",", ".")

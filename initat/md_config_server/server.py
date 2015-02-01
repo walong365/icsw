@@ -504,8 +504,10 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     if "sync_id" in srv_com:
                         self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
                         send_return = True
-                elif cur_com in ["passive_check_results", "passive_check_results_as_chunk"]:
+                elif cur_com in ["passive_check_results", "passive_check_results_as_chunk", "passive_check_result"]:
                     self.send_to_process("dynconfig", cur_com, unicode(srv_com))
+                    if cur_com == "passive_check_result":
+                        send_return = True
                 else:
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:

@@ -55,7 +55,8 @@ class dynconfig_process(threading_tools.process_obj):
         )
         connection.close()
         self.register_func("monitoring_info", self._monitoring_info)
-        self.register_func("passive_check_results_as_chunk", self._pcr_as_chunk)
+        self.register_func("passive_check_result", self._pcr)
+        self.register_func("passive_check_results_as_chunk", self._pcrs_as_chunk)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -63,7 +64,41 @@ class dynconfig_process(threading_tools.process_obj):
     def loop_post(self):
         self.__log_template.close()
 
-    def _pcr_as_chunk(self, *args, **kwargs):
+    def _pcr(self, *args, **kwargs):
+        in_com = server_command.srv_command(source=args[0])
+        _device_name = in_com["*device"]
+        _check_name = in_com["*check"]
+        _dev = device.get_device(_device_name)
+        if _dev:
+            try:
+                _check = mon_check_command.objects.get(Q(name=_check_name))
+            except:
+                self.log("no valid mon_check_command with name '{}' found".format(_check_name), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                if _check.is_active:
+                    self.log("mon_check_command {} is active".format(unicode(_check)), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    _check.check_command_pk = _check.pk
+                    _check.mccs_id = None
+                    # print _check, _dev
+                    _ocsp_postfix = host_service_id_util.create_host_service_description(_dev.pk, _check, "")
+                    ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
+                        int(time.time()),
+                        _dev.full_name,
+                        "{}{}".format(_ocsp_postfix, _check.description),
+                        {
+                            "OK": 0,
+                            "WARN": 1,
+                            "CRITICAL": 2
+                        }.get(in_com["*state"], 2),
+                        in_com["*output"],
+                    )
+                    self.log("translated passive_check_result to '{}'".format(ocsp_line))
+                    self.send_pool_message("ocsp_results", [ocsp_line])
+        else:
+            self.log("no valid device with name '{}' found".format(_device_name), logging_tools.LOG_LEVEL_ERROR)
+
+    def _pcrs_as_chunk(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])
         _chunk = json.loads(bz2.decompress(base64.b64decode(in_com["*ascii_chunk"])))
         _postfix = _chunk["postfix"]
