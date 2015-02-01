@@ -188,6 +188,9 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
     except:
         pass
 
+# use X-Forwarded-Host header
+USE_X_FORWARDED_HOST = True
+
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 # URL prefix for static files.
