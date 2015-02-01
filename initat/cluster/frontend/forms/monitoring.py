@@ -1164,8 +1164,9 @@ class mon_check_command_form(ModelForm):
                 placeholder="please select a special command",
                 filter="{name:$select.search}",
                 null=True,
+                wrapper_ng_show="_edit_obj.is_active",
             ),
-            Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special"),
+            Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special && _edit_obj.is_active"),
             HTML("""
 <div class='form-group' ng-show="_edit_obj.mon_check_command_special">
     <label class="control-label col-sm-2">Info</label>
@@ -1180,7 +1181,7 @@ class mon_check_command_form(ModelForm):
 </div>
             """),
             HTML("""
-<div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
+<div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active">
     <label class='control-label col-sm-2'>Tools</label>
     <div class='controls col-sm-9'>
         <div class="form-inline">
@@ -1195,7 +1196,7 @@ class mon_check_command_form(ModelForm):
 </div>
             """),
             HTML("""
-<div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
+<div class='form-group' ng-show="!_edit_obj.mon_check_command_special && _edit_obj.is_active">
     <label class="control-label col-sm-2">Info</label>
     <div class="col-sm-9 list-group">
         <ul>
@@ -1224,6 +1225,23 @@ class mon_check_command_form(ModelForm):
                 null=True,
                 wrapper_ng_show="!_edit_obj.is_event_handler"
             ),
+        ),
+        Fieldset(
+            "Active / passive settings",
+            Field("is_active"),
+            HTML("""
+<div class='form-group col-sm-12' ng-show="!_edit_obj.is_active">
+    <b>Set result via</b>
+</div>
+<div class='form-group col-sm-12' ng-show="!_edit_obj.is_active">
+    <tt>
+    {% verbatim %}
+    /opt/cluster/bin/set_passive_checkresult.py --device &lt;FQDN&gt; --check {{ _edit_obj.name }} --state {OK|WARN|CRITICAL} --output &lt;OUTPUT&gt;
+    {% endverbatim %}
+    </tt>
+</div>
+"""),
+            ng_show="!_edit_obj.mon_check_command_special",
         ),
         Fieldset(
             "Flags",
@@ -1261,7 +1279,8 @@ class mon_check_command_form(ModelForm):
         fields = (
             "name", "mon_service_templ", "command_line",
             "description", "enable_perfdata", "volatile", "is_event_handler",
-            "event_handler", "event_handler_enabled", "mon_check_command_special"
+            "event_handler", "event_handler_enabled", "mon_check_command_special",
+            "is_active",
         )
         widgets = {
             "mon_check_command_special": ui_select_widget(),

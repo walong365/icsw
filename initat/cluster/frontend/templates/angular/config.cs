@@ -252,6 +252,7 @@ mon_table_template = """
             <th>description</th>
             <th>special</th>
             <th>command line</th>
+            <!-- <th>active</th> -->
             <th>vol</th>
             <th>perf</th>
             <th>is event</th>
@@ -267,7 +268,7 @@ mon_table_template = """
             <td>{{ obj.mon_service_templ | array_lookup:mon_service_templ:'name':'-' }}</td>
             <td>{{ obj.description }}</td>
             <td>{{ obj.mon_check_command_special && 'yes' || 'no' }}</td>
-            <td title="{{ get_mon_command_line(obj) }}">
+            <td title="{{ get_mon_command_line(obj) }}" ng-if="obj.is_active">
                 <input
                     type="button"
                     title="expand / collapse full command line"
@@ -277,6 +278,10 @@ mon_table_template = """
                 <span ng-if="!obj._show_full_command">{{ get_mon_command_line(obj) | limit_text:40:true }}</span>
                 <span ng-if="obj._show_full_command">{{ get_mon_command_line(obj) }}</span>
             </td>
+            <td title="{{ get_mon_command_line(obj) }}" ng-if="!obj.is_active">
+                Passive check
+            </td>
+            <!-- <td>{{ obj.is_active | yesno2 }}</td> -->
             <td>{{ obj.volatile | yesno1 }}</td>
             <td>{{ obj.enable_perfdata | yesno1 }}</td>
             <td>{{ obj.is_event_handler | yesno1 }}</td>
@@ -831,6 +836,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                 return {
                     "config" : config.idx
                     "name" : c_name
+                    "is_active": true
                     "description" : "Check command"
                     "command_line" : "$USER2$ -m $HOSTADDRESS$ uptime"
                     "categories" : []
