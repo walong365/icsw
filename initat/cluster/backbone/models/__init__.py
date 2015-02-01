@@ -530,6 +530,18 @@ class device(models.Model):
         else:
             return self.name
 
+    @staticmethod
+    def get_device(fqdn):
+        if fqdn.count("."):
+            _sn, _domain = fqdn.split(".", 1)
+        else:
+            _sn, _domain = (fqdn, "")
+        try:
+            _dev = device.objects.get(Q(name=_sn) & Q(domain_tree_node__full_name=_domain))
+        except:
+            _dev = None
+        return _dev
+
     @property
     def display_name(self):
         # like full_name but replaces METADEV_ with group
