@@ -845,7 +845,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             for _devg in _bdat.children
                 _devg.children = (entry for entry in _devg.children when entry.children.length)
             _bdat.children = (entry for entry in _bdat.children when entry.children.length)
-            console.log 'bdat', _bdat
             $scope.burstData = _bdat
         $scope._sanitize_entries = (entry) ->
             entry.state = parseInt(entry.state)

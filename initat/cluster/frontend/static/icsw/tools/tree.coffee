@@ -114,16 +114,7 @@ class tree_node
             @_num_descendants += _desc[0]
             @_num_nd_descendants += _desc[1]
         return [@_num_descendants, @_num_nd_descendants]
-    get_num_selectable_children: (debug=false) =>
-        selectable_desc = (true for entry in @children when entry.is_selectable).length
-        if debug
-            console.log @, 'dir child sel ', selectable_desc, ": ", (entry for entry in @children when entry.is_selectable)
-            for entry in @children
-                console.log entry._show_select, entry.selected, entry.is_selectable()
-        for child in @children
-            selectable_desc += child.get_num_selectable_children()
-        return selectable_desc
-    recalc_sel_descendants: () => 
+    recalc_sel_descendants: () =>
         @_sel_descendants = (true for entry in @children when entry.selected).length
         for child in @children
             @_sel_descendants += child.recalc_sel_descendants()
@@ -140,7 +131,6 @@ class tree_node
         return typeof(@_show_select) == "undefined" or @_show_select
     all_selectable_descendant_and_self_selected: () =>
         if @is_selectable() and not @selected
-            console.log "not selected: ", @obj, @
             return false
         for child in @children
             if ! child.all_selectable_descendant_and_self_selected()
@@ -264,7 +254,7 @@ class tree_config
             @selection_changed(entry)
     toggle_select_new: (entry) =>
          # if all selected, deselect
-         # otw select all
+         # otherwise select all
          change_sel_rec = (entry, flag) ->
              entry.set_selected(flag)
              if flag
@@ -272,8 +262,6 @@ class tree_config
              for sub_entry in entry.children
                  change_sel_rec(sub_entry, flag)
 
-         # TODO: remove this and its code in case it won't be used in final version
-         #if entry.self_and_descendants_selected()
          @start_tracking_changes()
          if entry.all_selectable_descendant_and_self_selected()
              change_sel_rec(entry, false)
