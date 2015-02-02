@@ -39,7 +39,7 @@
     <div ng-if="entry._depth == 0 && entry._num_childs && treeconfig.show_tree_expand_buttons" class="btn-group btn-group-xs">
         <input type="button" class="btn btn-success" value="e" ng-click="treeconfig.toggle_expand_tree(1, false)" title="expand all"></input>
         <input ng-if="treeconfig.show_select" type="button" class="btn btn-primary" value="s" ng-click="treeconfig.toggle_expand_tree(1, true)" title="expand selected"></input>
-        <input type="button" class="btn btn-danger" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
+        <input type="button" class="btn btn-warning" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
     </div>
     <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)">
         <span ng-class="treeconfig.get_name_class(entry)" title="{{ treeconfig.get_title(entry) }}">{{ treeconfig.get_name(entry) }}</span>

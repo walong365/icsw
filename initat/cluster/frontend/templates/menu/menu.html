@@ -101,16 +101,16 @@
     <ul class="nav navbar-nav navbar-right">
         <li>
             <p class="navbar-text">
-                <button type="button" class="btn btn-danger btn-xs" title="cluster server information" ng-click="redirect_to_info()">
-                    <span class="glyphicon glyphicon-stats" style="font-size:12px;"></span>
+                <button type="button" class="btn btn-danger btn-xs fa fa-info-circle" title="cluster server information" ng-click="redirect_to_info()">
+                     Server Information
                 </button>
                 &nbsp;
-                <button ng-show="HANDBOOK_PDF_PRESENT" type="button" class="btn btn-primary btn-xs" title="show cluster handbook as PDF" ng-click="redirect_to_handbook()">
-                    <span class="glyphicon glyphicon-print" style="font-size:12px;"></span>
+                <button ng-show="HANDBOOK_PDF_PRESENT" type="button" class="btn btn-primary btn-xs fa fa-book" title="show cluster handbook as PDF" ng-click="redirect_to_handbook()">
+                     PDF Handbook
                 </button>
                 &nbsp;
                 <button ng-show="HANDBOOK_CHUNKS_PRESENT" type="button" class="btn btn-success btn-xs" title="show {{ HANDBOOK_PAGE }}" ng-click="show_handbook_page()">
-                    <span class="glyphicon glyphicon-question-sign" style="font-size:12px;"></span>
+                     HTML Handbook
                 </button>
                 &nbsp;
                 <button type="button" ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</button>

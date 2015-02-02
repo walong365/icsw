@@ -147,7 +147,7 @@ class call_icinga(View):
                 request.user.login,
                 # fixme, if no password is set (due to automatic login) use no_passwd
                 base64.b64decode(request.session.get("password", "no_passwd")),
-                request.META["HTTP_HOST"]
+                request.get_host()
             )
         )
         return resp

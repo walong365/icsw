@@ -162,8 +162,8 @@ dev_row_template = """
 <td>
     <div class="input-group-btn" ng-show="enable_modal && acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
         <div class="btn-group btn-xs">
-            <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
-                Create new <span class="caret"></span>
+            <button type="button" class="btn btn-success btn-xs dropdown-toggle fa fa-chevron-down" data-toggle="dropdown">
+                Create new
             </button>
             <ul class="dropdown-menu">
                 <li ng-click="create_netdevice(ndip_obj, $event)"><a href="#">Netdevice</a></li>
@@ -171,7 +171,7 @@ dev_row_template = """
                 <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
             </ul>
         </div>
-        <button type="button" class="btn btn-warning btn-xs"
+        <button type="button" class="btn btn-warning btn-xs fa fa-refresh"
             ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')"
             ng-click="scan_device_network(ndip_obj, $event)">
         update network

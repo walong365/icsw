@@ -392,15 +392,15 @@ mh_row_template = """
         <em><strike>{{ hint.key }}</strike></em>
     </span>
 </td>
-<td>{{ hint.persistent | yesno1 }}</td>
 <td>{{ hint.datasource }}</td>
-<td>{{ hint.persistent | yesno2 }}</td>
+<td class="text-center">{{ hint.persistent | yesno2 }}</td>
 <td>{{ get_v_type() }}</td>
 <td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
 <td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
 <td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
 <td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
 <td class="text-right success">{{ get_value() }}</td>>
+<td class="text-center">{{ hint.is_active | yesno2 }}</td>
 <td class="text-center">
     <input ng-show="hint.datasource != 'p'" type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_hint(hint)"></input>
 </td>
@@ -419,15 +419,15 @@ mh_table_template = """
         <tr>
             <th>Source</th>
             <th>key</th>
-            <th title="entry is persistent">pers</th>
             <th title="datasource">ds</th>
-            <th>persistent</th>
+            <th title="entry is persistent">persistent</th>
             <th>Type</th>
             <th>lower crit</th>
             <th>lower warn</th>
             <th>upper warn</th>
             <th>upper crit</th>
             <th>value</th>
+            <th title="check">active check</th>
             <th colspan="3">action</th>
             <th>info</th>
         </tr>

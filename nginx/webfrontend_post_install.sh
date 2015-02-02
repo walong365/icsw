@@ -19,9 +19,9 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     echo "done"
 
     if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
-	touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
+        touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
     else
-	echo "no reload-dir found, please restart uwsgi-init"
+        echo "no reload-dir found, please restart uwsgi-init"
     fi
 
     # restart memcached to clean compiled coffeescript snippets
@@ -31,5 +31,3 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     # removed, should be done via cluster-setup
     # /opt/python-init/lib/python/site-packages/initat/cluster/manage.py migrate static_precompiler
 fi
-
-
