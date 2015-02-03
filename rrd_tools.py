@@ -210,13 +210,14 @@ class RRA(object):
         return in_str.split("-")[1]
 
     @staticmethod
-    def parse_width_str(in_str, step=60):
+    def parse_width_str(in_str, step=60, **kwargs):
         _res_dict = None
         # returns
         # - slot width in seconds
         # - total width in seconds
         # - number of slots
         # - primary datapoints needed
+        correct_zero_pdp = kwargs.get("correct_zero_pdp", False)
         _cm = WS_RE.match(in_str)
         if _cm:
             _lut = {
@@ -234,6 +235,10 @@ class RRA(object):
                 num_rows = total_width / slot_width
                 total_width = num_rows * slot_width
                 num_pdp = slot_width / step
+                if not num_pdp and correct_zero_pdp:
+                    num_pdp = 1
+                    slot_width = step
+                    num_rows = int(total_width / slot_width)
                 if num_pdp:
                     _res_dict = {
                         "width": slot_width,
