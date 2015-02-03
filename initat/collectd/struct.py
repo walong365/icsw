@@ -92,7 +92,7 @@ class file_creator(object):
             self.__main_dir,
             uuid,
             "perfdata",
-            "ipd_{}.rrd".format(
+            "ipd_{}{}.rrd".format(
                 self.sane_name(_t_obj.file_name),
                 "-{}".format(self.sane_name(pd_tuple[1])) if pd_tuple[1] else "",
             )
