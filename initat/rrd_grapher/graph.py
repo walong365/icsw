@@ -793,8 +793,10 @@ class RRDGraph(object):
                 # needed ?
                 def_xml = copy.deepcopy(def_xmls[0])
                 def_xml.attrib["file_name"] = _parent.get("file_name")
+                # copy name to part
+                def_xml.attrib["part"] = def_xml.attrib["name"] #def_xml.attrib["key"].split(".")[-1]
+                # overwrite name
                 def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
-                def_xml.attrib["part"] = def_xml.attrib["key"].split(".")[-1]
                 yield (_parent.get("info"), def_xml)
             else:
                 self.log("no elements found for XPath('{}')".format(_xpath_str), logging_tools.LOG_LEVEL_WARN)
