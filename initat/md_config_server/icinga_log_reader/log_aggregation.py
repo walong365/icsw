@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from django.conf import settings
 
 import logging_tools
 import operator
@@ -63,60 +64,63 @@ class icinga_log_aggregator(object):
         self.log_reader.log(*args, **kwargs)
 
     def update(self):
-        self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
-        self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
+        if 'sqlite' in settings.DATABASES['default']['ENGINE']:
+            self.log("log aggregation is not supported with the sqlite database backend", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
+            self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
 
-        # aggregate in order of how often data is used, then you can quickly see results
-        for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
-            #self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
-            try:
-                last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
-                next_start_time = last_entry.end_date
-                self.log("last icinga aggregated entry for {} from {} to {}".format(duration_type.__name__, last_entry.start_date, last_entry.end_date))
-            except mon_icinga_log_aggregated_timespan.DoesNotExist:
-                earliest_date1 = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
-                earliest_date2 = mon_icinga_log_raw_service_alert_data.objects.earliest("date").date
-                earliest_date = min(earliest_date1, earliest_date2)
-                next_start_time = duration_type.get_time_frame_start(earliest_date)
-                self.log("no archive data for duration type {}, starting new data at {}".format(duration_type.__name__, next_start_time))
+            # aggregate in order of how often data is used, then you can quickly see results
+            for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
+                #self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
+                try:
+                    last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
+                    next_start_time = last_entry.end_date
+                    self.log("last icinga aggregated entry for {} from {} to {}".format(duration_type.__name__, last_entry.start_date, last_entry.end_date))
+                except mon_icinga_log_aggregated_timespan.DoesNotExist:
+                    earliest_date1 = mon_icinga_log_raw_host_alert_data.objects.earliest("date").date
+                    earliest_date2 = mon_icinga_log_raw_service_alert_data.objects.earliest("date").date
+                    earliest_date = min(earliest_date1, earliest_date2)
+                    next_start_time = duration_type.get_time_frame_start(earliest_date)
+                    self.log("no archive data for duration type {}, starting new data at {}".format(duration_type.__name__, next_start_time))
 
-            do_loop = True
-            i = 0
-            next_last_service_alert_cache = None
-            while do_loop:
-                next_end_time = duration_type.get_end_time_for_start(next_start_time)
-                last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
-                if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(last_read_obj.timestamp, cluster_timezone):  # have sufficient data
-                    self.log("creating entry for {} starting at {}".format(duration_type.__name__, next_start_time))
-                    next_last_service_alert_cache = self._create_timespan_entry(next_start_time, next_end_time, duration_type, next_last_service_alert_cache)
-                else:
-                    #self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
-                    do_loop = False
+                do_loop = True
+                i = 0
+                next_last_service_alert_cache = None
+                while do_loop:
+                    next_end_time = duration_type.get_end_time_for_start(next_start_time)
+                    last_read_obj = mon_icinga_log_last_read.objects.get_last_read()  # @UndefinedVariable
+                    if last_read_obj and next_end_time < datetime.datetime.fromtimestamp(last_read_obj.timestamp, cluster_timezone):  # have sufficient data
+                        self.log("creating entry for {} starting at {}".format(duration_type.__name__, next_start_time))
+                        next_last_service_alert_cache = self._create_timespan_entry(next_start_time, next_end_time, duration_type, next_last_service_alert_cache)
+                    else:
+                        #self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
+                        do_loop = False
 
-                # check if we are supposed to die
-                self.log_reader.step()
+                    # check if we are supposed to die
+                    self.log_reader.step()
+                    if self.log_reader["exit_requested"]:
+                        self.log("exit requested")
+                        do_loop = False
+
+                    i += 1
+
+                    #def printfun(s):
+                    #    import time
+                    #    prof_file_name = "/tmp/db_calls.out.{}".format(time.time())
+
+                    #    with open(prof_file_name, "a") as f:
+                    #        f.write(s)
+                    #        f.write("\n")
+                    #show_database_calls(printfun=printfun, full=True)
+
+                    #if i == 2:
+                    #    break
+
+                    next_start_time = next_end_time
+
                 if self.log_reader["exit_requested"]:
-                    self.log("exit requested")
-                    do_loop = False
-
-                i += 1
-
-                #def printfun(s):
-                #    import time
-                #    prof_file_name = "/tmp/db_calls.out.{}".format(time.time())
-
-                #    with open(prof_file_name, "a") as f:
-                #        f.write(s)
-                #        f.write("\n")
-                #show_database_calls(printfun=printfun, full=True)
-
-                #if i == 2:
-                #    break
-
-                next_start_time = next_end_time
-
-            if self.log_reader["exit_requested"]:
-                break
+                    break
 
     def _create_timespan_entry(self, start_time, end_time, duration_type, next_last_service_alert_cache=None):
         timespan_seconds = (end_time - start_time).total_seconds()
