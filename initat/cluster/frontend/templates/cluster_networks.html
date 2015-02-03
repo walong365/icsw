@@ -104,7 +104,7 @@
 
 
 <tabset>
-    <tab heading="Network device types">
+    <tab heading="Network device types" ng-controller="empty">
 
         <h3>Network device types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
 
@@ -145,18 +145,42 @@
                 </tr>
             </tbody>
         </table>
+
     </tab>
-    <tab heading="Network types">
-        <div ng-controller="network_type_base">
-            <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
-            <table class="table table-condensed table-hover" style="width:auto;">
-                <thead networktypehead></thead>
-                <tbody>
-                    <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true" ></tr>
-                </tbody>
-            </table>
-        </div>
+
+    <tab heading="Network types" ng-controller="empty">
+
+        <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
+
+        <table st-table="entries_displayed" st-safe-src="entries"
+               class="table table-hover table-condensed table-striped" style="width:auto;">
+
+            <icsw-rest-table
+                    target-list="entries"
+                    config-service="icswNetworkTypesService">
+            </icsw-rest-table>
+
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th colspan="2" class="text-center">action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr ng-repeat="obj in entries_displayed | orderBy:'-identifier':true">
+                    <td>{{ obj.identifier }}</td>
+                    <td>{{ obj.description }}</td>
+                    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)"
+                       value="modify"/></td>
+                    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+                </tr>
+            </tbody>
+        </table>
+
     </tab>
+
     <tab heading="Networks">
         <div ng-controller="network_base">
             <h2>

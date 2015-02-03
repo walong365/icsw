@@ -112,7 +112,7 @@ class network_type_form(ModelForm):
             Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
             Field(
                 "identifier",
-                repeat="value.value as value in settings.network_types",
+                repeat="value.value as value in config_service.network_types",
                 display="name",
                 placeholder="network type type",
             ),

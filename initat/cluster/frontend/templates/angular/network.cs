@@ -6,6 +6,14 @@
 
 root = exports ? this
 
+nw_types_dict = [
+    {"value":"b", "name":"boot"}
+    {"value":"p", "name":"prod"}
+    {"value":"s", "name":"slave"}
+    {"value":"o", "name":"other"}
+    {"value":"l", "name":"local"}
+]
+
 network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"]
 ).directive('icswModifyButton', () ->
     # TODO: move to common
@@ -29,12 +37,7 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
 
             scope.config_service.use_modal ?= true
 
-            displayGetter = $parse(attrs.targetList);
-            displaySetter = displayGetter.assign;
-
-
             scope.data_received = (data) ->
-                console.log 'a'
                 scope[attrs.targetList] = data
 
             scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
@@ -42,14 +45,13 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
 
             # interface functions to use in directive body
             scope.edit = (event, obj) ->
-                console.log 'edit called', event, obj
                 scope.pre_edit_obj = angular.copy(obj)
                 scope.create_or_edit(event, false, obj)
             scope.create = (event) ->
                 if typeof(scope.config_service.new_object) == "function"
                     scope.new_obj = scope.config_service.new_object(scope)
                 else
-                scope.new_obj = scope.config_service.new_object
+                    scope.new_obj = scope.config_service.new_object
                 scope.create_or_edit(event, true, scope.new_obj)
             scope.create_or_edit = (event, create_or_edit, obj) ->
                 scope.edit_obj = obj
@@ -140,10 +142,10 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
                 )
 }).service('icswNetworkDeviceTypesService', () -> return {
     # TODO: move to icsw.network in new dir structure
-    delete_confirm_str: (obj) ->
+    rest_url           : "{% url 'rest:network_device_type_list' %}"
+    delete_confirm_str : (obj) ->
         return "Really delete Network type '#{obj.description}' ?"
-    edit_template: "network_device_type.html"
-    rest_url: "{% url 'rest:network_device_type_list' %}"
+    edit_template      : "network_device_type.html"
     new_object: {
             "identifier"  : "eth"
             "description" : "new network device type"
@@ -151,15 +153,16 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
             "mac_bytes"   : 6
             "allow_virtual_interfaces" : true
     }
-})
+}).service('icswNetworkTypesService', () -> return {
+    # TODO: move to icsw.network in new dir structure
+    rest_url            : "{% url 'rest:network_type_list' %}"
+    edit_template       : "network_type.html"
+    delete_confirm_str  : (obj) -> return "Really delete Network type '#{obj.description}' ?"
+    new_object          : {"identifier" : "p", description : ""}
+    object_created      : (new_obj) -> new_obj.description = ""
+    network_types       : nw_types_dict  # for create/edit dialog
+}).controller('empty', () -> )
 
-nw_types_dict = [
-    {"value":"b", "name":"boot"}
-    {"value":"p", "name":"prod"}
-    {"value":"s", "name":"slave"}
-    {"value":"o", "name":"other"}
-    {"value":"l", "name":"local"}
-]
 
 angular_add_simple_list_controller(
     network_module,
@@ -171,7 +174,7 @@ angular_add_simple_list_controller(
         template_cache_list : ["network_type_row.html", "network_type_head.html"]
         new_object          : {"identifier" : "p", description : ""}
         object_created  : (new_obj) -> new_obj.description = ""
-        network_types       : nw_types_dict 
+        network_types       : nw_types_dict
     }
 )
 
