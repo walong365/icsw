@@ -102,8 +102,8 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         re_list = []
         for key in globals().keys():
             obj = globals()[key]
-            if type(obj) == type and obj != perfdata_object:
-                if issubclass(obj, perfdata_object):
+            if type(obj) == type and obj != PerfdataObject:
+                if issubclass(obj, PerfdataObject):
                     obj = obj()
                     re_list.append((obj.PD_RE, obj))
         self.__pd_re_list = re_list

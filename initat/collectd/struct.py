@@ -86,13 +86,14 @@ class file_creator(object):
         return _targ_dir
 
     def get_pd_file_path(self, uuid, pd_tuple):
+        _t_obj = getattr(initat.collectd.collectd_types, pd_tuple[0])()
         # file path for pd entries
         _targ_dir = os.path.join(
             self.__main_dir,
             uuid,
             "perfdata",
             "ipd_{}.rrd".format(
-                self.sane_name(pd_tuple[0]),
+                self.sane_name(_t_obj.file_name),
                 "-{}".format(self.sane_name(pd_tuple[1])) if pd_tuple[1] else "",
             )
         )
@@ -152,7 +153,7 @@ class file_creator(object):
                 _rv = ["v:GAUGE:U:U"]
         else:
             if v_type.startswith("ipd_"):
-                _tn = "{}_pdata".format(v_type[4:])
+                _tn = v_type[4:]
                 _t_obj = getattr(initat.collectd.collectd_types, _tn)()
                 _rv = [
                     "{}:{}".format(

@@ -1,7 +1,7 @@
 #
 # this file is part of collectd-init
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,16 +24,16 @@ import re
 import server_command
 
 __all__ = [
-    "perfdata_value", "perfdata_object",
-    "win_memory_pdata", "win_disk_pdata",
-    "win_load_pdata", "load_pdata",
-    "smc_chassis_psu_pdata", "ping_pdata",
+    "perfdata_value", "PerfdataObject",
+    "WinMemoryPerfdata", "WinDiskPerfdata",
+    "WinLoadPerfdata", "LinuxLoadPerfdata",
+    "SMCChassisPSUPerfdata", "PingPerfdata",
+    "HTTPRequestPerfdata",
     "value",
 ]
 
 
 class perfdata_value(object):
-    PD_NAME = "unique_name"
 
     def __init__(self, name, info, unit="1", v_type="f", key="", rrd_spec="GAUGE:0:100", base=1):
         self.name = name
@@ -56,11 +56,11 @@ class perfdata_value(object):
         )
 
 
-class perfdata_object(object):
+class PerfdataObject(object):
     def _wrap(self, _host_info, _xml, v_list, rsi=0):
         # rsi: report start index, used to skip values from v_list which should not be graphed
         # add name, host and timestamp values
-        pd_tuple = (self.PD_NAME, self.get_type_instance(v_list))
+        pd_tuple = (self.__class__.__name__, self.get_type_instance(v_list))
         _send_info = _host_info.feed_perfdata(pd_tuple)
         if _send_info:
             _send_xml = self.build_perfdata_info(_host_info, pd_tuple, v_list)  # mach_values
@@ -90,6 +90,10 @@ class perfdata_object(object):
         return ""
 
     @property
+    def file_name(self):
+        return self.__class__.__name__
+
+    @property
     def default_xml_info(self):
         return self.get_pd_xml_info([])
 
@@ -101,7 +105,7 @@ class perfdata_object(object):
         new_com["hostname"] = host_info.name
         new_com["uuid"] = host_info.uuid
         # new_com["uuid"] =
-        new_com["pd_type"] = self.PD_NAME
+        new_com["pd_type"] = self.__class__.__name__
         new_com["file_name"] = host_info.target_file_name(pd_tuple)
         info = self.get_pd_xml_info(v_list)
         if pd_tuple[1]:
@@ -110,13 +114,16 @@ class perfdata_object(object):
         return new_com
 
 
-class win_memory_pdata(perfdata_object):
+class WinMemoryPerfdata(PerfdataObject):
     PD_RE = re.compile("^Memory usage=(?P<used>\d+\.\d+)Mb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$", re.I)
-    PD_NAME = "win_memory"
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("used", "memory in use", v_type="i", unit="B", rrd_spec="GAUGE:0:U", base=1024, key="memory.used").get_xml(),
         perfdata_value("total", "memory total", v_type="i", unit="B", rrd_spec="GAUGE:0:U", base=1024, key="memory.total").get_xml(),
     )
+
+    @property
+    def file_name(self):
+        return "win_memory"
 
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
@@ -128,9 +135,12 @@ class win_memory_pdata(perfdata_object):
         )
 
 
-class win_disk_pdata(perfdata_object):
+class WinDiskPerfdata(PerfdataObject):
     PD_RE = re.compile("^(?P<disk>.): Used Space=(?P<used>\d+\.\d+)Gb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$")
-    PD_NAME = "win_disk"
+
+    @property
+    def file_name(self):
+        return "win_disk"
 
     @property
     def default_xml_info(self):
@@ -156,15 +166,18 @@ class win_disk_pdata(perfdata_object):
         return "{}".format(v_list[0])
 
 
-class win_load_pdata(perfdata_object):
+class WinLoadPerfdata(PerfdataObject):
     PD_RE = re.compile("^1 min avg Load=(?P<load1>\d+)%\S+ 5 min avg Load=(?P<load5>\d+)%\S+ 15 min avg Load=(?P<load15>\d+)%\S+$")
-    PD_NAME = "win_load"
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("load1", "mean load of the last minute", rrd_spec="GAUGE:0:10000", unit="%", v_type="i").get_xml(),
         perfdata_value("load5", "mean load of the 5 minutes", rrd_spec="GAUGE:0:10000", unit="%", v_type="i").get_xml(),
         perfdata_value("load15", "mean load of the 15 minutes", rrd_spec="GAUGE:0:10000", unit="%", v_type="i").get_xml(),
     )
 
+    @property
+    def file_name(self):
+        return "win_load"
+
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
             _host_info,
@@ -173,15 +186,18 @@ class win_load_pdata(perfdata_object):
         )
 
 
-class load_pdata(perfdata_object):
+class LinuxLoadPerfdata(PerfdataObject):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
-    PD_NAME = "load"
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("load1", "mean load of the last minute", rrd_spec="GAUGE:0:10000").get_xml(),
         perfdata_value("load5", "mean load of the 5 minutes", rrd_spec="GAUGE:0:10000").get_xml(),
         perfdata_value("load15", "mean load of the 15 minutes", rrd_spec="GAUGE:0:10000").get_xml(),
     )
 
+    @property
+    def file_name(self):
+        return "load"
+
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
             _host_info,
@@ -190,9 +206,8 @@ class load_pdata(perfdata_object):
         )
 
 
-class smc_chassis_psu_pdata(perfdata_object):
+class SMCChassisPSUPerfdata(PerfdataObject):
     PD_RE = re.compile("^smcipmi\s+psu=(?P<psu_num>\d+)\s+temp=(?P<temp>\S+)\s+amps=(?P<amps>\S+)\s+fan1=(?P<fan1>\d+)\s+fan2=(?P<fan2>\d+)$")
-    PD_NAME = "smc_chassis_psu"
 
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
@@ -201,6 +216,10 @@ class smc_chassis_psu_pdata(perfdata_object):
             [int(in_dict["psu_num"]), float(in_dict["temp"]), float(in_dict["amps"]), int(in_dict["fan1"]), int(in_dict["fan2"])],
             rsi=1,
         )
+
+    @property
+    def file_name(self):
+        return "smc_chassis_psu"
 
     @property
     def default_xml_info(self):
@@ -228,9 +247,8 @@ class smc_chassis_psu_pdata(perfdata_object):
         return "{:d}".format(v_list[0])
 
 
-class ping_pdata(perfdata_object):
+class PingPerfdata(PerfdataObject):
     PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) sent=(?P<sent>\d+) loss=(?P<loss>\d+)$")
-    PD_NAME = "ping"
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("sent", "packets sent", v_type="i", rrd_spec="GAUGE:0:100").get_xml(),
         perfdata_value("loss", "packets lost", v_type="i", rrd_spec="GAUGE:0:100").get_xml(),
@@ -239,11 +257,41 @@ class ping_pdata(perfdata_object):
         perfdata_value("max", "maximum package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
     )
 
+    @property
+    def file_name(self):
+        return "ping"
+
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
             _host_info,
             _xml,
             [int(in_dict["sent"]), int(in_dict["loss"]), float(in_dict["rta"]), float(in_dict["min"]), float(in_dict["max"])]
+        )
+
+
+class HTTPRequestPerfdata(PerfdataObject):
+    PD_RE = re.compile("^time=(?P<time>\S+)\s+size=(?P<size>\S+)\s+time_connect=(?P<time_connect>\S+)\s+time_headers=(?P<time_headers>\S+)\s+time_firstbyte=(?P<time_firstbyte>\S+)\s+time_transfer=(?P<time_transfer>\S+)$")
+    PD_XML_INFO = E.perfdata_info(
+        perfdata_value("time", "time needed for request", key="request.time.total", v_type="f", rrd_spec="GAUGE:0:10000").get_xml(),
+        perfdata_value("size", "size of response", key="request.size", v_type="i", rrd_spec="GAUGE:0:1000000").get_xml(),
+        perfdata_value("connect", "time needed for connect", key="request.time.connect", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
+        perfdata_value("headers", "time needed for headers", key="request.time.headers", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
+        perfdata_value("firstbyte", "time needed until first byte", key="request.time.firstbyte", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
+        perfdata_value("transfer", "time needed for transfer", key="request.time.transfer", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
+    )
+
+    def build_values(self, _host_info, _xml, in_dict):
+        return self._wrap(
+            _host_info,
+            _xml,
+            [
+                float(in_dict["time"].split(";")[0][:-1]),
+                int(in_dict["size"].split(";")[0][:-1]),
+                float(in_dict["time_connect"].split(";")[0][:-1]),
+                float(in_dict["time_headers"].split(";")[0][:-1]),
+                float(in_dict["time_firstbyte"].split(";")[0][:-1]),
+                float(in_dict["time_transfer"].split(";")[0][:-1]),
+            ]
         )
 
 
