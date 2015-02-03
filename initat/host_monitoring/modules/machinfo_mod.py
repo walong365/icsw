@@ -1494,10 +1494,10 @@ class load_command(hm_classes.hm_command):
 
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
-        load1 = float(result["load1"])
-        load5 = float(result["load5"])
-        load15 = float(result["load15"])
-        maxload = max(load1, load5, load15)
+        load_1 = float(result["load1"])
+        load_5 = float(result["load5"])
+        load_15 = float(result["load15"])
+        maxload = max(load_1, load_5, load_15)
         ret_state = limits.check_ceiling(maxload, parsed_coms.warn, parsed_coms.crit)
         return ret_state, "load (1/5/15): %.2f %.2f %.2f | load1=%.2f load5=%.2f load15=%.2f" % (
             load_1, load_5, load_15,
