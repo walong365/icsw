@@ -344,7 +344,7 @@ class HTTPsRequestPerfdata(PerfdataObject):
                 float(in_dict["time"].split(";")[0][:-1]),
                 int(in_dict["size"].split(";")[0][:-1]),
                 float(in_dict["time_connect"].split(";")[0][:-1]),
-                float(in_dict["ssl"].split(";")[0][:-1]),
+                float(in_dict["time_ssl"].split(";")[0][:-1]),
                 float(in_dict["time_headers"].split(";")[0][:-1]),
                 float(in_dict["time_firstbyte"].split(";")[0][:-1]),
                 float(in_dict["time_transfer"].split(";")[0][:-1]),

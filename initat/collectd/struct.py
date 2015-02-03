@@ -172,8 +172,8 @@ class file_creator(object):
 
     def get_rra_spec(self, _step, _heartbeat):
         _rv = []
-        _dict = {_key: rrd_tools.RRA.parse_width_str(_key, _step) for _key in self.rrd_coverage}
-        for _value in _dict.itervalues():
+        for _key in self.rrd_coverage:
+            _value = rrd_tools.RRA.parse_width_str(_key, _step, correct_zero_pdp=True)
             if _value:
                 for _cf in self.__cfs:
                     _rv.append(
