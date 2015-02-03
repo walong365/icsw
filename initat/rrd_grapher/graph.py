@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -779,12 +779,13 @@ class RRDGraph(object):
         _split = _key.split(".")
         if _type in ["pde", "mvl"]:
             # performance data from icinga or vector list data
+            _xpath_str = ".//{}[@name='{}']/value[@key='{}']".format(
+                _type,
+                ".".join(_split[:1]),
+                ".".join(_split[1:]),
+            )
             def_xmls = vector.xpath(
-                ".//{}[@name='{}']/value[@key='{}']".format(
-                    _type,
-                    ".".join(_split[:len(_split) - 1]),
-                    _split[-1]
-                ),
+                _xpath_str,
                 smart_strings=False
             )
             if len(def_xmls):
@@ -793,8 +794,10 @@ class RRDGraph(object):
                 def_xml = copy.deepcopy(def_xmls[0])
                 def_xml.attrib["file_name"] = _parent.get("file_name")
                 def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
-                def_xml.attrib["part"] = def_xml.attrib["key"]
+                def_xml.attrib["part"] = def_xml.attrib["key"].split(".")[-1]
                 yield (_parent.get("info"), def_xml)
+            else:
+                self.log("no elements found for XPath('{}')".format(_xpath_str), logging_tools.LOG_LEVEL_WARN)
         elif _type == "cve":
             if compound is not None:
                 def_xml = compound.find(".//cve[@name='{}']".format(_key))
