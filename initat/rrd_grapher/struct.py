@@ -309,6 +309,7 @@ class data_store(object):
             self.store_name = self.xml_vector.attrib.get("store_name", "")
             all_mves = self.xml_vector.xpath(".//mve/@name", smart_strings=False)
             changed = False
+            # check for duplicates
             if len(all_mves) != len(set(all_mves)):
                 self.log("found duplicate entries, removing them")
                 removed = 0
@@ -319,6 +320,13 @@ class data_store(object):
                         removed += 1
                         changed = True
                 self.log("removed {}".format(logging_tools.get_plural("entry", removed)))
+            # check for entries ending with Perfdata
+            del_entries = [_entry for _entry in self.xml_vector.xpath(".//pde[@name]") if _entry.attrib["name"].endswith("Perfdata")]
+            if del_entries:
+                changed = True
+                self.log("removing {}".format(logging_tools.get_plural("stale Perfdata entries", len(del_entries))))
+                for _del in del_entries:
+                    _del.getparent().remove(_del)
             for fix_el in self.xml_vector.xpath(".//*[@file_name and not(@active)]", smart_strings=False):
                 fix_el.attrib["active"] = "1"
                 changed = True
