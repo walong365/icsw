@@ -23,15 +23,6 @@ from lxml.builder import E  # @UnresolvedImports
 import re
 import server_command
 
-__all__ = [
-    "perfdata_value", "PerfdataObject",
-    "WinMemoryPerfdata", "WinDiskPerfdata",
-    "WinLoadPerfdata", "LinuxLoadPerfdata",
-    "SMCChassisPSUPerfdata", "PingPerfdata",
-    "HTTPRequestPerfdata",
-    "value",
-]
-
 
 class perfdata_value(object):
 
@@ -94,6 +85,10 @@ class PerfdataObject(object):
         return self.__class__.__name__
 
     @property
+    def pd_name(self):
+        return self.__class__.__name__
+
+    @property
     def default_xml_info(self):
         return self.get_pd_xml_info([])
 
@@ -105,7 +100,7 @@ class PerfdataObject(object):
         new_com["hostname"] = host_info.name
         new_com["uuid"] = host_info.uuid
         # new_com["uuid"] =
-        new_com["pd_type"] = self.__class__.__name__
+        new_com["pd_type"] = self.pd_name
         new_com["file_name"] = host_info.target_file_name(pd_tuple)
         info = self.get_pd_xml_info(v_list)
         if pd_tuple[1]:
@@ -125,6 +120,10 @@ class WinMemoryPerfdata(PerfdataObject):
     def file_name(self):
         return "win_memory"
 
+    @property
+    def pd_name(self):
+        return "win_memory"
+
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
             _host_info,
@@ -140,6 +139,10 @@ class WinDiskPerfdata(PerfdataObject):
 
     @property
     def file_name(self):
+        return "win_disk"
+
+    @property
+    def pd_name(self):
         return "win_disk"
 
     @property
@@ -176,6 +179,10 @@ class WinLoadPerfdata(PerfdataObject):
 
     @property
     def file_name(self):
+        return "win_load"
+
+    @property
+    def pd_name(self):
         return "win_load"
 
     def build_values(self, _host_info, _xml, in_dict):
@@ -222,6 +229,10 @@ class SMCChassisPSUPerfdata(PerfdataObject):
         return "smc_chassis_psu"
 
     @property
+    def pd_name(self):
+        return "smc_chassis_psu"
+
+    @property
     def default_xml_info(self):
         return self.get_pd_xml_info([0])
 
@@ -261,6 +272,10 @@ class PingPerfdata(PerfdataObject):
     def file_name(self):
         return "ping"
 
+    @property
+    def pd_name(self):
+        return "ping"
+
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
             _host_info,
@@ -270,7 +285,10 @@ class PingPerfdata(PerfdataObject):
 
 
 class HTTPRequestPerfdata(PerfdataObject):
-    PD_RE = re.compile("^time=(?P<time>\S+)\s+size=(?P<size>\S+)\s+time_connect=(?P<time_connect>\S+)\s+time_headers=(?P<time_headers>\S+)\s+time_firstbyte=(?P<time_firstbyte>\S+)\s+time_transfer=(?P<time_transfer>\S+)$")
+    PD_RE = re.compile(
+        "^time=(?P<time>\S+)\s+size=(?P<size>\S+)\s+time_connect=(?P<time_connect>\S+)\s+"
+        "time_headers=(?P<time_headers>\S+)\s+time_firstbyte=(?P<time_firstbyte>\S+)\s+time_transfer=(?P<time_transfer>\S+)$"
+    )
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("time", "time needed for request", key="request.time.total", v_type="f", rrd_spec="GAUGE:0:10000").get_xml(),
         perfdata_value("size", "size of response", key="request.size", v_type="i", rrd_spec="GAUGE:0:1000000").get_xml(),
@@ -279,6 +297,10 @@ class HTTPRequestPerfdata(PerfdataObject):
         perfdata_value("firstbyte", "time needed until first byte", key="request.time.firstbyte", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
         perfdata_value("transfer", "time needed for transfer", key="request.time.transfer", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
     )
+
+    @property
+    def pd_name(self):
+        return "http_request"
 
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(
@@ -296,7 +318,10 @@ class HTTPRequestPerfdata(PerfdataObject):
 
 
 class HTTPsRequestPerfdata(PerfdataObject):
-    PD_RE = re.compile("^time=(?P<time>\S+)\s+size=(?P<size>\S+)\s+time_connect=(?P<time_connect>\S+)\s+time_ssl=(?P<time_ssl>\S+)\s+time_headers=(?P<time_headers>\S+)\s+time_firstbyte=(?P<time_firstbyte>\S+)\s+time_transfer=(?P<time_transfer>\S+)$")
+    PD_RE = re.compile(
+        "^time=(?P<time>\S+)\s+size=(?P<size>\S+)\s+time_connect=(?P<time_connect>\S+)\s+"
+        "time_ssl=(?P<time_ssl>\S+)\s+time_headers=(?P<time_headers>\S+)\s+time_firstbyte=(?P<time_firstbyte>\S+)\s+time_transfer=(?P<time_transfer>\S+)$"
+    )
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("time", "time needed for request", key="request.time.total", v_type="f", rrd_spec="GAUGE:0:10000").get_xml(),
         perfdata_value("size", "size of response", key="request.size", v_type="i", rrd_spec="GAUGE:0:1000000").get_xml(),
@@ -306,6 +331,10 @@ class HTTPsRequestPerfdata(PerfdataObject):
         perfdata_value("firstbyte", "time needed until first byte", key="request.time.firstbyte", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
         perfdata_value("transfer", "time needed for transfer", key="request.time.transfer", v_type="f", unit="s", rrd_spec="GAUGE:0:100").get_xml(),
     )
+
+    @property
+    def pd_name(self):
+        return "https_request"
 
     def build_values(self, _host_info, _xml, in_dict):
         return self._wrap(

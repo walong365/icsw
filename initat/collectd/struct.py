@@ -123,7 +123,7 @@ class file_creator(object):
                         _args = [
                             str(_path),
                             "--step",
-                            "{:d}".format(self.__step),
+                            "{:d}".format(_step),
                         ] + _ds_list + _rra_list
                         rrdtool.create(*_args)
                     except:
@@ -146,26 +146,28 @@ class file_creator(object):
         if v_type == "icval":
             cols = kwargs.get("cols", None)
             if cols:
+                # for multi-value icvals
                 _rv = [
                     "{}:GAUGE:U:U".format(_name) for _name in cols
                 ]
             else:
+                # single-value icvals
                 _rv = ["v:GAUGE:U:U"]
+        elif v_type.startswith("ipd_"):
+            _tn = v_type[4:]
+            _t_obj = getattr(initat.collectd.collectd_types, _tn)()
+            _rv = [
+                "{}:{}".format(
+                    _e.get("name"),
+                    _e.get("rrd_spec")
+                ) for _e in _t_obj.default_xml_info.xpath(
+                    ".//value[@rrd_spec]",
+                    smart_strings=False,
+                )
+            ]
         else:
-            if v_type.startswith("ipd_"):
-                _tn = v_type[4:]
-                _t_obj = getattr(initat.collectd.collectd_types, _tn)()
-                _rv = [
-                    "{}:{}".format(
-                        _e.get("name"),
-                        _e.get("rrd_spec")
-                    ) for _e in _t_obj.default_xml_info.xpath(
-                        ".//value[@rrd_spec]",
-                        smart_strings=False,
-                    )
-                ]
-            else:
-                _rv = []
+            self.log("unknown v_type '{}'".format(v_type), logging_tools.LOG_LEVEL_ERROR)
+            _rv = []
         return ["DS:{}:{:d}:{}".format(":".join(_val.split(":")[0:2]), self.__heartbeat, ":".join(_val.split(":")[2:])) for _val in _rv]
 
     def get_rra_spec(self, _step, _heartbeat):
