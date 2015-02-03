@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -1499,8 +1499,10 @@ class load_command(hm_classes.hm_command):
         load15 = float(result["load15"])
         maxload = max(load1, load5, load15)
         ret_state = limits.check_ceiling(maxload, parsed_coms.warn, parsed_coms.crit)
-        ret_str = "load (1/5/15): %.2f %.2f %.2f" % (load1, load5, load15)
-        return ret_state, ret_str
+        return ret_state, "load (1/5/15): %.2f %.2f %.2f | load1=%.2f load5=%.2f load15=%.2f" % (
+            load_1, load_5, load_15,
+            load_1, load_5, load_15
+        )
 
 
 class uptime_command(hm_classes.hm_command):
