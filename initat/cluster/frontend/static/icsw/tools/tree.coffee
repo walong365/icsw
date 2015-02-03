@@ -73,11 +73,9 @@ class tree_node
             @parent.notify_child_selection_changed()
         #if @self_and_descendants_selected()
         if @all_selectable_descendant_and_self_selected()
-            @select_button_letter = "C"
-            @select_button_class = "btn btn-warning"
+            @select_button_class = "btn btn-success fa fa-check"
         else
-            @select_button_letter = "S"
-            @select_button_class = "btn btn-success"
+            @select_button_class = "btn btn-default fa fa-check"
     add_child: (child, sort_func) =>
         child.parent = @
         child._depth = @_depth + 1
