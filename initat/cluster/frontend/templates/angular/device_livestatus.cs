@@ -1339,7 +1339,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 
 class mc_table
     constructor : (@xml, paginatorSettings) ->
-        @name = xml.prop("tagName")
+        @name = @xml.prop("tagName")
         @short_name = @name.replace(/_/g, "").replace(/list$/, "")
         @attr_list = new Array()
         @entries = []
