@@ -836,15 +836,19 @@ angular.module(
             if typeof(in_array) == "string"
                 # handle strings for chaining
                 in_array = (parseInt(value) for value in in_array.split(/,\s*/))
-            res = (value for key, value of f_array when typeof(value) == "object" and value and value.idx in in_array)
-            #ret_str = (f_array[key][n2m_key] for key in in_array).join(", ")
-            if res.length
-                return (value[n2m_key] for value in res).join(", ")
+
+            if null_msg
+                ret = null_msg
             else
-                if null_msg
-                    return null_msg
-                else
-                    return "N/A"
+                ret = "N/A"
+
+            if in_array
+                res = (value for key, value of f_array when typeof(value) == "object" and value and value.idx in in_array)
+                #ret_str = (f_array[key][n2m_key] for key in in_array).join(", ")
+                if res.length
+                    ret = (value[n2m_key] for value in res).join(", ")
+
+            return ret
 
 ).filter(
     "follow_fk", () ->
