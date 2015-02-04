@@ -880,6 +880,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.md_filter_changed = () ->
             get_filter = (node) ->
                if node.check?
+                   # filter for services
                    return node.check.ct == "service"
                else
                    return false
@@ -1086,6 +1087,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 if "recalc" of attrs
                     scope.recalc_burst++
             scope.draw_data = () ->
+                # struct: dict of concentric circles, beginning with the innermost
                 struct = {}
                 _size = scope.get_children(scope.sunburst_data, 0, struct)
                 scope.max_depth = (idx for idx of struct).length
@@ -1100,59 +1102,72 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         return sum + obj.width
                     0
                 )
-                if not _len
-                    return
-                end_arc = 0
-                end_num = 0
                 outer = scope.get_inner(idx)
                 inner = scope.get_outer(idx)
-                # legend radii
-                inner_legend = (outer + inner) / 2
-                outer_legend = scope.outer * 1.125
-                for part in nodes
-                    if part.width
-                        start_arc = end_arc #+ 1 * Math.PI / 180
-                        start_sin = Math.sin(start_arc)
-                        start_cos = Math.cos(start_arc)
-                        end_num += part.width
-                        end_arc = 2 * Math.PI * end_num / _len
-                        mean_arc = (start_arc + end_arc) / 2
-                        mean_sin = Math.sin(mean_arc)
-                        mean_cos = Math.cos(mean_arc)
-                        end_sin = Math.sin(end_arc)
-                        end_cos = Math.cos(end_arc)
-                        if end_arc > start_arc + Math.PI
-                            _large_arc_flag = 1
-                        else
-                            _large_arc_flag = 0
-                        if mean_cos < 0
-                            legend_x = -outer_legend * 1.2
-                            part.legend_anchor = "end"
-                        else
-                            legend_x = outer_legend * 1.2
-                            part.legend_anchor = "start"
-                        part.legend_x = legend_x
-                        part.legend_y = mean_sin * outer_legend
-                        part.legendpath = "#{mean_cos * inner_legend},#{mean_sin * inner_legend} #{mean_cos * outer_legend},#{mean_sin * outer_legend} " + \
-                            "#{legend_x},#{mean_sin * outer_legend}"
-                        if part.width == _len
-                            # trick: draw 2 semicircles
-                            part.path = "M#{outer},0 " + \
-                                "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
-                                "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
-                                "L#{outer},0 " + \
-                                "M#{inner},0 " + \
-                                "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
-                                "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
-                                "L#{inner},0 " + \
-                                "Z"
-                        else
-                            part.path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
-                                "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
-                                "L#{end_cos * inner},#{end_sin * inner} " + \
-                                "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
-                                "Z"
-                        scope.nodes.push(part)
+                if not _len
+                    # create a dummy part
+                    dummy_part = {}
+                    dummy_part.children = {}
+                    dummy_part.path = "M#{outer},0 " + \
+                        "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
+                        "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
+                        "L#{outer},0 " + \
+                        "M#{inner},0 " + \
+                        "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
+                        "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
+                        "L#{inner},0 " + \
+                        "Z"
+                    scope.nodes.push(dummy_part)
+                else
+                    end_arc = 0
+                    end_num = 0
+                    # legend radii
+                    inner_legend = (outer + inner) / 2
+                    outer_legend = scope.outer * 1.125
+                    for part in nodes
+                        if part.width
+                            start_arc = end_arc #+ 1 * Math.PI / 180
+                            start_sin = Math.sin(start_arc)
+                            start_cos = Math.cos(start_arc)
+                            end_num += part.width
+                            end_arc = 2 * Math.PI * end_num / _len
+                            mean_arc = (start_arc + end_arc) / 2
+                            mean_sin = Math.sin(mean_arc)
+                            mean_cos = Math.cos(mean_arc)
+                            end_sin = Math.sin(end_arc)
+                            end_cos = Math.cos(end_arc)
+                            if end_arc > start_arc + Math.PI
+                                _large_arc_flag = 1
+                            else
+                                _large_arc_flag = 0
+                            if mean_cos < 0
+                                legend_x = -outer_legend * 1.2
+                                part.legend_anchor = "end"
+                            else
+                                legend_x = outer_legend * 1.2
+                                part.legend_anchor = "start"
+                            part.legend_x = legend_x
+                            part.legend_y = mean_sin * outer_legend
+                            part.legendpath = "#{mean_cos * inner_legend},#{mean_sin * inner_legend} #{mean_cos * outer_legend},#{mean_sin * outer_legend} " + \
+                                "#{legend_x},#{mean_sin * outer_legend}"
+                            if part.width == _len
+                                # trick: draw 2 semicircles
+                                part.path = "M#{outer},0 " + \
+                                    "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
+                                    "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
+                                    "L#{outer},0 " + \
+                                    "M#{inner},0 " + \
+                                    "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
+                                    "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
+                                    "L#{inner},0 " + \
+                                    "Z"
+                            else
+                                part.path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
+                                    "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
+                                    "L#{end_cos * inner},#{end_sin * inner} " + \
+                                    "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
+                                    "Z"
+                            scope.nodes.push(part)
             scope.get_inner = (idx) ->
                 _inner = scope.inner + (scope.outer - scope.inner) * idx / scope.max_depth
                 return _inner
@@ -1339,7 +1354,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 
 class mc_table
     constructor : (@xml, paginatorSettings) ->
-        @name = xml.prop("tagName")
+        @name = @xml.prop("tagName")
         @short_name = @name.replace(/_/g, "").replace(/list$/, "")
         @attr_list = new Array()
         @entries = []

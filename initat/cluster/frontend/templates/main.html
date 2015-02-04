@@ -257,35 +257,10 @@
         {% endblock %}
     </header>
     <div id="icsw.app">
-        <script type="text/ng-template" id="set_password.html">
-            <div class="modal-header"><h3>Please enter the new password</h3></div>
-            <div class="modal-body">
-                <form name="form">
-                    <div ng-class="dyn_check(pwd.pwd1)">
-                        <label>Password:</label>
-                        <input type="password" ng-model="pwd.pwd1" placeholder="enter password" ng-trim="false" class="form-control"/>
-                    </div>
-                    <div ng-class="dyn_check(pwd.pwd2)">
-                        <label>again:</label>
-                        <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" ng-trim="false" class="form-control"/>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <div ng-class="pwd_error_class">
-                       {{ pwd_error }}
-                </div>
-                <div>
-                    <button class="btn btn-primary" ng-click="check()">Check</button>
-                    <button class="btn btn-success" ng-click="ok()" ng-show="check()">Save</button>
-                    <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
-                </div>
-            </div>
-        </script>
-
-        {% include "tools/tree.html" %}
+        {% for ssi_file in settings.SSI_FILES %}
+            {% ssi ssi_file %}
+        {% endfor %}
         <div block-ui="main" class="block-ui-main"></div>
-        {% include "menu/menu.html" %}
         <div id="icsw_wrapper">
     
             {% include 'sidebar.html' %}
