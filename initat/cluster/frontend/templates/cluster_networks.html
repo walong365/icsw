@@ -180,7 +180,7 @@
         <h3>
             Networks ({{entries.length}} entries),
             <div class="btn-group">
-                <input type="button" class="btn btn-primary btn-sm" value="create new" ng-click="edit_mixin.create($event)"/> TODO: test create
+                <input type="button" class="btn btn-primary btn-sm" value="create new" ng-click="create($event)"/> TODO: test create
                 <input type="button" class="btn btn-success btn-sm" value="reload" ng-click="reload()"/> TODO: implement reload
             </div>
         </h3>
@@ -228,17 +228,16 @@
                     <td class="text-right">{{ obj.num_ip }}</td>
                     <td>{{ obj.penalty }}</td>
                     <td>{{ obj.enforce_unique_ips | yesno1 }}</td>
-                    <td>{{ obj.network_type | array_lookup:rest_data.network_types:'description' }}</td>
+                    <td>{{ obj.network_type | array_lookup:config_service.network_types:'description' }}</td>
                     <td>{{ obj.master_network | array_lookup:entries:'identifier':'---' }}</td>
-                    <td>{{ obj.network_device_type | resolve_n2m:rest_data.network_device_types:'identifier':'---' }}</td>
-                    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_mixin.edit(obj, $event)"
-                               value="modify"/></td>
+                    <td>{{ obj.network_device_type | resolve_n2m:config_service.network_device_types:'identifier':'---' }}</td>
+                    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
                     <td>
                         <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0"
                                ng-click="edit_mixin.delete_obj(obj)" value="delete"/>
                         <input type="button" class="btn btn-success btn-xs" ng-show="obj.num_ip > 0"
                                ng-click="show_network(obj)" value="show"/>
-                        TODO: make buttons work
+                        TODO: make show buttons work
                     </td>
                 </tr>
             </tbody>

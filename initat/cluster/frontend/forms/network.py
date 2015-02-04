@@ -36,8 +36,7 @@ class network_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "_edit_obj"
-    helper.ng_submit = "edit_mixin.modify()"
+    helper.ng_model = "edit_obj"
     master_network = ModelChoiceField(queryset=empty_query_set(), empty_label="No master network", required=False, widget=ui_select_widget)
     network_type = ModelChoiceField(queryset=empty_query_set(), empty_label=None, widget=ui_select_widget)
     network_device_type = ModelMultipleChoiceField(queryset=empty_query_set(), required=False, widget=ui_select_multiple_widget)
@@ -45,17 +44,17 @@ class network_form(ModelForm):
         HTML("<h2>Network</h2>"),
         Fieldset(
             "Base data",
-            Field("identifier", wrapper_class="ng-class:edit_mixin.form_error('identifier')", placeholder="Identifier"),
-            Field("network", wrapper_class="ng-class:edit_mixin.form_error('network')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
-            Field("netmask", wrapper_class="ng-class:edit_mixin.form_error('netmask')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
-            Field("broadcast", wrapper_class="ng-class:edit_mixin.form_error('broadcast')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
-            Field("gateway", wrapper_class="ng-class:edit_mixin.form_error('gateway')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
+            Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
+            Field("network", wrapper_class="ng-class:form_error('network')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
+            Field("netmask", wrapper_class="ng-class:form_error('netmask')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
+            Field("broadcast", wrapper_class="ng-class:form_error('broadcast')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
+            Field("gateway", wrapper_class="ng-class:form_error('gateway')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
         ),
         Fieldset(
             "Additional settings",
             Field(
                 "network_type",
-                repeat="value.idx as value in rest_data.network_types",
+                repeat="value.idx as value in config_service.network_types",
                 display="description",
                 placeholder="network type",
                 filter="{description:$select.search}",
@@ -72,7 +71,7 @@ class network_form(ModelForm):
             ),
             Field(
                 "network_device_type",
-                repeat="value.idx as value in rest_data.network_device_types",
+                repeat="value.idx as value in config_service.network_device_types",
                 display="identifier",
                 placeholder="network device types",
                 filter="{identifier:$select.search}",
@@ -84,7 +83,7 @@ class network_form(ModelForm):
             Field("gw_pri"),
         ),
         FormActions(
-            Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
         ),
     )
 
