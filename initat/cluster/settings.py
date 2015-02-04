@@ -189,6 +189,16 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
 
+SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", "frontend", "static", "icsw"))
+SSI_FILES = []
+for _dir, _dirlist, _filelist in os.walk(SSI_ROOT):
+    if _dir == SSI_ROOT:
+        continue
+    for _file in _filelist:
+        if _file.endswith(".html"):
+            SSI_FILES.append(os.path.join(_dir, _file))
+ALLOWED_INCLUDE_ROOTS = [SSI_ROOT]
+
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 # URL prefix for static files.
@@ -198,8 +208,6 @@ STATIC_URL = "{}/static/".format(SITE_ROOT)
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True
-
-ALLOWED_INCLUDE_ROOTS = True
 
 # Make this unique, and don't share it with anybody.
 # SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
