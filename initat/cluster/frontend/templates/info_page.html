@@ -9,7 +9,7 @@
 {% verbatim %}
 
 <div>
-    <div ng-controller="server_info_ctrl">
+    <div ng-controller="icswServerInfoOverviewCtrl">
         <accordion close-others="no">
             <accordion-group is-open="is_open_roles">
                 <accordion-heading>
@@ -92,7 +92,7 @@
                             <td>{{ get_runs_on(instance) }}</td>
                             <td>{{ server_info_list[0].get_check_source(instance) }}</td>
                             <td ng-repeat="srv_info in server_info_list">
-                                <instanceinfo></instanceinfo>
+                                <icsw-server-info-instance></icsw-server-info-instance>
                             </td>
                         </tr>
                     </tbody>

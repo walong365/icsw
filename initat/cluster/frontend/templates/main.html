@@ -176,6 +176,8 @@
     <script type="text/javascript">
     {% inlinecoffeescript %}
     # attach global permissions and license info to window object (== global variable)
+    window.LOGIN_HINTS = {{ login_hints | safe }}
+    window.LOGIN_SCREEN_TYPE = "{{ LOGIN_SCREEN_TYPE }}"
     window.INIT_PRODUCT_NAME = "{{ settings.INIT_PRODUCT_NAME }}"
     window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }}
     window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
@@ -189,6 +191,8 @@
     window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
     window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %}
     window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %}
+    window.ROUTING = {{ routing | safe }}
+    window.LOCAL_DEVICE = "{{ local_device }}"
     {% if doc_page %}
     window.DOC_PAGE = "{{ doc_page }}"
     {% else %}
@@ -212,10 +216,8 @@
     {# common angular modules #}
     {% javascript 'icsw_cs1' %}
     {% include "angular/status_utils.cs" %}
-    {% include "angular/login.cs" %}
     {% include "angular/user.cs" %}
     {% include "angular/device.cs" %}
-    {% include "angular/server_info.cs" %}
     {% include "angular/rms.cs" %}
     {% include "angular/device_config.cs" %}
     {% include "angular/device_boot.cs" %}

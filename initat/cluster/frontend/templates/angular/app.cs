@@ -72,6 +72,8 @@ ics_app.config(() ->
     "INFO_PAGE": "{% url 'main:info_page' %}"
     "LIC_LICENSE_LIVEVIEW": "{% url 'lic:license_liveview' %}"
     "LIC_OVERVIEW": "{% url 'lic:overview' %}"
+    "MAIN_GET_SERVER_INFO": "{% url 'main:get_server_info' %}"
+    "MAIN_SERVER_CONTROL": "{% url 'main:server_control' %}"
     "MAIN_INDEX":  "{% url 'main:index' %}"
     "MON_BUILD_INFO": "{% url 'mon:build_info' %}"
     "MON_CALL_ICINGA": "{% url 'mon:call_icinga' %}"

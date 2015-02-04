@@ -1,72 +1,3 @@
-{% load i18n coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-{% verbatim %}
-
-instance_info = """
-<div ng-switch on="get_state()">
-    <div class="text-warning" ng-switch-when="0">
-        ---
-    </div>
-    <div class="row" style="width:520px;" ng-switch-when="1">
-        <div class="col-xs-3 text-right">
-            <span ng-class="get_version_class()" ng-bind-html="get_version()"></span>
-        </div>
-        <div class="col-xs-2 text-center" style="white-space:nowrap;">
-            <span ng-class="get_run_class()">{{ get_run_info() }}
-            </span>
-        </div>
-        <div class="col-xs-2 text-right">{{ get_mem_info() | get_size:1:1024 }}</div>
-        <div class="col-xs-3" style="height:10px;">
-            <progressbar value="get_mem_value()" animate="false"></progressbar>
-        </div>
-        <div class="col-xs-2" ng-show="acl_modify(null, 'backbone.user.server_control') &&  has_startstop()"">
-            <div class="btn-group">
-                <button type="button" class="btn btn-xs btn-warning dropdown-toggle" data-toggle="dropdown">
-                    Action <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-show="stop_allowed()" ng-click="action('stop')"><a href="#">Stop</a></li>
-                    <li ng-show="has_force_option()" ng-click="action('force-stop')"><a href="#">Force Stop</a></li>
-                    <li ng-click="action('restart')"><a href="#">Restart</a></li>
-                    <li ng-show="has_force_option()" ng-click="action('force-restart')"><a href="#">Force Restart</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    <div class="row" ng-switch-when="2">
-        <div class="col-xs-3 text-right">
-            <span ng-class="get_version_class()" ng-bind-html="get_version()"></span>
-        </div>
-        <div class="col-xs-7 text-danger">
-            not running
-        </div>
-        <div class="col-xs-2">
-            <div class="btn-group" ng-show="has_startstop()">
-                <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown">
-                    Action <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-click="action('start')"><a href="#">Start</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    <div class="row" ng-switch-when="3">
-        <div class="col-xs-12 text-warning">
-            not installed
-        </div>
-    </div>
-</div> 
-"""
-
-{% endverbatim %}
-
-info_module = angular.module("icsw.server.info", ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"])
-
 class server_info
     constructor: (@xml) ->
         _round = 8 * 1024 * 1024
@@ -178,8 +109,10 @@ class server_info
     get_check_source: (instance) ->
         return @xml.find("instance[name='#{instance}']").attr("check_source")
         
-info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_service", "blockUI",
-    ($scope, $timeout, access_level_service, blockUI) ->
+info_module = angular.module("icsw.server.info", ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"])
+
+info_module.controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS",
+    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS) ->
         access_level_service.install($scope)
         $scope.show_server = true
         $scope.show_roles = false
@@ -187,7 +120,7 @@ info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_
         $scope.cur_to = null
         $scope.reload_server_info = () ->
             call_ajax
-                url     : "{% url 'main:get_server_info' %}"
+                url     : ICSW_URLS.MAIN_GET_SERVER_INFO
                 hidden  : true
                 success : (xml) =>
                     $scope.server_info_list = []
@@ -219,7 +152,7 @@ info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_
                 $timeout.cancel($scope.cur_to)
             blockUI.start()
             call_ajax
-                url     : "{% url 'main:server_control' %}"
+                url     : ICSW_URLS.MAIN_SERVER_CONTROL
                 data    : {
                     "cmd" : angular.toJson(
                         "server_id" : srv_info.get_server_id()
@@ -231,10 +164,10 @@ info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_
                     parse_xml_response(xml)
                     blockUI.stop()
                     $scope.cur_to = $timeout($scope.reload_server_info, 100)
-        $scope.local_device = "{{ local_device }}"
-        $scope.routing_info = {{ routing | safe }}
+        $scope.local_device = $window.LOCAL_DEVICE
+        $scope.routing_info = $window.ROUTING
         $scope.reload_server_info()
-]).directive("instanceinfo", ($templateCache, $compile) ->
+]).directive("icswServerInfoInstance", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         link : (scope, element, attrs) ->
@@ -260,15 +193,7 @@ info_module.controller("server_info_ctrl", ["$scope", "$timeout", "access_level_
                 return scope.srv_info.stop_allowed(scope.instance)
             scope.action = (type) ->
                 scope.do_action(scope.srv_info, scope.instance, type)
-            new_el = $compile($templateCache.get("instance_info.html"))
+            new_el = $compile($templateCache.get("icsw.info.server.state"))
             element.append(new_el(scope))
     }
-).run(($templateCache) ->
-    $templateCache.put("instance_info.html", instance_info)
 )
-
-{% endinlinecoffeescript %}
-
-</script>
-
-
