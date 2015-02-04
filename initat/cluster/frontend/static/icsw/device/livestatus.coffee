@@ -113,8 +113,8 @@ class hs_node
             parent = parent.parent
         _clicked.iter_childs((obj) -> obj.show = true)
     
-device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "ICSWDeviceLivestatusCategoryTree",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools, ICSW_URLS, category_tree) ->
+device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -149,7 +149,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         # paginator settings
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         # category tree
-        $scope.cat_tree = new category_tree($scope, {})
+        $scope.cat_tree = new icswDeviceLivestatusCategoryTreeService($scope, {})
         # selected categories
         $scope.selected_mcs = []
         $scope.master_cat_pk = 0
@@ -463,7 +463,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             if $scope.cur_xhr?
                 $scope.cur_xhr.abort()
         )
-]).service("ICSWDeviceLivestatusCategoryTree", () ->
+]).service("icswDeviceLivestatusCategoryTreeService", () ->
     class category_tree extends tree_config
         constructor: (@scope, args) ->
             super(args)
@@ -491,7 +491,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 return cat.full_name
             else
                 return "TOP"
-).directive("serviceinfo", ["$templateCache", ($templateCache) ->
+).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict : "E"
         template : $templateCache.get("ICSW.device.livestatus.serviceinfo")

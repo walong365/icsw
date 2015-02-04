@@ -7,7 +7,7 @@
 #- second part is the name of the directory
 #- then the (optional) functionality (for example icsw.device.network)
 #- directives use '-' as separator, CamelCase in code
-#- service, provider and factory names end with service and also use CamelCase
+#- service, provider and factory names end with service, provider, factory and also use CamelCase
 #
 #Directory setup
 #
