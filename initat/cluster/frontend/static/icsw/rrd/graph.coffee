@@ -1,237 +1,3 @@
-{% load coffeescript %} 
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-{% verbatim %}
-
-rrd_graph_template = """
-<div>
-    <p class="text-danger">{{ error_string }}</p>
-    <h4 ng-show="vector_valid">
-        <div class="input-group form-inline">
-            <div class="form-group">
-                Vector info:
-                <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
-                <span class="label label-primary" title="data entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
-            </div>
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="show_tree=!show_tree">
-                        <span class="glyphicon glyphicon-align-left"></span>
-                        tree
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-xs btn-success" ladda="is_drawing" ng-show="cur_selected.length && dt_valid" ng-click="draw_graph()">
-                        <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
-                     </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-zoom-in"></span>
-                            {{ cur_dim }} <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-time"></span>
-                            timerange <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="active_ts && 'btn-primary'" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-dashboard"></span>
-                            timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
-                            <span class="glyphicon glyphicon-tasks"></span>
-                            {{ get_job_mode(job_mode) }}<span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)"><a href="#">{{ get_job_mode(_jm) }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-success btn-xs" ng-click="move_to_now()" title="move current timeframe to now">
-                        <span class="glyphicon glyphicon-step-forward"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" class="btn btn-success btn-xs" ng-click="set_to_now()" title="set endpoint to now">
-                        <span class="glyphicon glyphicon-fast-forward"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="hide_empty && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="hide_empty=!hide_empty" title="hide empty (==always zero) graphs">
-                        <span class="glyphicon glyphicon-ban-circle"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="include_zero && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="include_zero=!include_zero" title="scale graph to always include y=0">
-                        <span class="glyphicon glyphicon-download"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="show_forecast && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_forecast=!show_forecast" title="show forecast">
-                        <span class="glyphicon glyphicon-eye-open"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="show_values && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="show_values=!show_values" title="show numeric values">
-                        <span class="glyphicon glyphicon-list"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group" ng-show="!merge_cd">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_cd && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="toggle_merge_cd()" title="Merge RRDs from controlling devices">
-                        <span class="glyphicon glyphicon-off"></span>
-                    </button>
-                </div>
-            </div>&nbsp;
-            <div class="form-group" ng-show="devsel_list.length > 1">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="scale_y && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="scale_y=!scale_y" title="scale ordinate to be able to compare graphs">
-                        <span class="glyphicon glyphicon-sort"></span>
-                    </button>
-                </div>
-                <div class="input-group-btn">
-                    <button type="button" ng-class="merge_devices && 'btn btn-xs btn-success' || 'btn btn-xs'" ng-click="merge_devices=!merge_devices" title="show data from all devices on one graph">
-                        <span class="glyphicon glyphicon-th"></span>
-                    </button>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         from
-                    </span>
-                    <input type="text" class="form-control" ng-model="from_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                 <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                            </ul>
-                        </div>
-                    </span>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         to
-                    </span>
-                    <input type="text" class="form-control" ng-model="to_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                 <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                            </ul>
-                        </div>
-                    </span>
-                </div>
-            </div>
-        </div>
-    </h4>
-    <div class="row">
-        <div class="col-md-3" ng-show="show_tree">  
-            <div class="input-group">
-                <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
-                <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
-                    <button class="btn btn-warning fa fa-remove" type="button" ng-click="clear_selection()"> Clear Selection</button>
-                </span>
-            </div>
-            <tree treeconfig="g_tree"></tree>
-        </div>
-        <div ng-class="show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-            <h4>{{ graph_list.length }} graphs, {{ graph_list[0].get_tv(graph_list[0].ts_start_mom) }} to {{ graph_list[0].get_tv(graph_list[0].ts_end_mom) }}</h4>
-            <table class="table-condensed">
-                <tr ng-repeat="gkey in get_graph_keys()">
-                    <td ng-repeat="(dkey, graph) in graph_mat[gkey]" style="vertical-align:top;">
-                        <h4 ng-show="!graph.error">
-                            <span class="label label-default" ng-click="graph.toggle_expand()">
-                                <span ng-class="graph.get_expand_class()"></span>
-                                graph \#{{ graph.num }}
-                            </span>&nbsp;
-                            <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
-                        </h4>
-                        <h4 ng-show="graph.removed_keys.length">
-                            {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
-                        </h4>
-                        <h4 class="text-danger" ng-show="graph.error">Error loading graph ({{ graph.num }})</h4>
-                        <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
-                            <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
-                        </span>
-                        <div ng-show="graph.active && !graph.error && graph.src">
-                            <img-cropped ng-src="{{ graph.src }}" graph="graph">
-                            </img-cropped>
-                        </div>
-                        <div ng-show="!graph.src">
-                            <span class="text-warning">no graph created</span>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-    </div>
-</div>
-"""
-
-{% endverbatim %}
 
 class d_graph
     constructor: (@num, @xml) ->
@@ -286,38 +52,6 @@ class d_graph
     toggle_expand: () ->
         @active = !@active
       
-class rrd_tree extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        @show_selection_buttons = true
-        @show_icons = false
-        @show_select = true
-        @show_descendants = true
-        @show_total_descendants = false
-        @show_childs = false
-    get_name : (t_entry) ->
-        if t_entry._node_type == "h"
-            return "vector"
-        else
-            node_name = t_entry._display_name
-            if t_entry._dev_pks.length > 1
-                return "#{node_name} (#{t_entry._dev_pks.length})"
-            else
-                return node_name
-    get_title: (t_entry) ->
-        if t_entry._node_type == "e"
-            return t_entry._g_key
-        else
-            return ""
-    handle_click: (entry, event) =>
-        if entry._node_type == "s"
-            entry.expand = ! entry.expand
-        else if entry._node_type == "e"
-            entry.set_selected(!entry.selected)
-            @scope.selection_changed()
-    selection_changed: () =>
-        @scope.selection_changed()
-            
 DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
 class pd_timerange
@@ -338,9 +72,10 @@ class pd_timerange
 class pd_timeshift
     constructor: (@name, @seconds) ->
 
-        
-root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+rrd_graph_module = angular.module("icsw.rrd.graph", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
+
+rrd_graph_module.controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
@@ -391,7 +126,7 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
         $scope.scale_y = true
         $scope.merge_devices = false
         $scope.show_tree = true
-        $scope.g_tree = new rrd_tree($scope)
+        $scope.g_tree = new icswRRDGraphTreeService($scope)
         $scope.$watch("from_date_mom", (new_val) ->
             $scope.update_dt() 
         )
@@ -455,7 +190,7 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
             if $scope.merge_cd and not $scope.cds_already_merged
                 $scope.cds_already_merged = true
                 call_ajax
-                    url  : "{% url 'rrd:merge_cds' %}"
+                    url  : ICSW_URLS.RRD_MERGE_CDS
                     data : {
                         "pks" : $scope.devsel_list
                     }
@@ -466,7 +201,7 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
         $scope.reload = () ->
             $scope.vector_valid = false
             call_ajax
-                url  : "{% url 'rrd:device_rrds' %}"
+                url  : ICSW_URLS.RRD_DEVICE_RRDS
                 data : {
                     "pks" : $scope.devsel_list
                 }
@@ -684,7 +419,7 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
             if !$scope.is_drawing
                 $scope.is_drawing = true
                 call_ajax
-                    url  : "{% url 'rrd:graph_rrds' %}"
+                    url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
                         "keys"       : angular.toJson($scope.cur_selected)
                         "pks"        : angular.toJson($scope.devsel_list)
@@ -730,10 +465,10 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
         $scope.$on("$destroy", () ->
             #console.log "dest"
         )                
-]).directive("rrdgraph", ($templateCache) ->
+]).directive("icswRrdGraph", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("rrd_graph_template.html")
+        template : $templateCache.get("icsw.rrd.graph.overview")
         link : (scope, el, attrs) ->
             if attrs["selectkeys"]?
                 scope.auto_select_keys = attrs["selectkeys"].split(",")
@@ -752,13 +487,48 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
                 scope.selected_job = attrs["selectedjob"]
             scope.draw_on_init = attrs["draw"] ? false
             scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.new_devsel(new_val)
+                if angular.isArray(new_val)
+                    if new_val.length
+                        scope.new_devsel(new_val)
+                else
+                    if new_val
+                        scope.new_devsel([new_val])
             )
     }
-).run(($templateCache) ->
-    $templateCache.put("rrd_graph_template.html", rrd_graph_template)
-).directive("imgCropped", () ->
+).service("icswRRDGraphTreeService", () ->
+    class rrd_tree extends tree_config
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = true
+            @show_icons = false
+            @show_select = true
+            @show_descendants = true
+            @show_total_descendants = false
+            @show_childs = false
+        get_name : (t_entry) ->
+            if t_entry._node_type == "h"
+                return "vector"
+            else
+                node_name = t_entry._display_name
+                if t_entry._dev_pks.length > 1
+                    return "#{node_name} (#{t_entry._dev_pks.length})"
+                else
+                    return node_name
+        get_title: (t_entry) ->
+            if t_entry._node_type == "e"
+                return t_entry._g_key
+            else
+                return ""
+        handle_click: (entry, event) =>
+            if entry._node_type == "s"
+                entry.expand = ! entry.expand
+            else if entry._node_type == "e"
+                entry.set_selected(!entry.selected)
+                @scope.selection_changed()
+        selection_changed: () =>
+            @scope.selection_changed()
+
+).directive("icswRrdImageCropped", () ->
     return {
         restrict: "E"
         replace: true
@@ -807,7 +577,3 @@ root.ics_app.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$template
             scope.$on("$destroy", clear)
     }
 )
-
-{% endinlinecoffeescript %}
-
-</script>

@@ -33,7 +33,7 @@ ics_app = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "blockUI", "icsw.tools.tree",
         "icsw.menu_app", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
-        "icsw.config", "icsw.config.gen",
+        "icsw.config", "icsw.config.gen", "icsw.rrd.graph",
         "icsw.rms", "icsw.lic", "icsw.server.info",
         "icsw.network.device", "icsw.device.info",
         "icsw.category_tree", "icsw.domain_name_tree",
@@ -105,6 +105,9 @@ ics_app.config(() ->
     "REST_NETWORK_LIST": "{% url 'rest:network_list' %}"
     "REST_NETWORK_TYPE_LIST": "{% url 'rest:network_type_list' %}"
     "RMS_OVERVIEW": "{% url 'rms:overview' %}"
+    "RRD_DEVICE_RRDS": "{% url 'rrd:device_rrds' %}"
+    "RRD_GRAPH_RRDS": "{% url 'rrd:graph_rrds' %}"
+    "RRD_MERGE_CDS": "{% url 'rrd:merge_cds' %}"
     "SESSION_LOGOUT": "{% url 'session:logout' %}"
     "SETUP_IMAGE_OVERVIEW": "{% url 'setup:image_overview' %}"
     "SETUP_KERNEL_OVERVIEW": "{% url 'setup:kernel_overview' %}"

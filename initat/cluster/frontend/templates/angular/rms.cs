@@ -836,8 +836,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
 <div class="panel panel-default">
     <div class="panel-body">
         <h2>#{title}</h2>
-        <div ng-controller='rrd_ctrl'>
-            <rrdgraph
+        <div ng-controller='icswGraphOverviewCtrl'>
+            <icsw-rrd-graph
                 devicepk='#{dev_pks}'
                 selectkeys="load.*,net.all.*,mem.used.phys$,^swap.*"
                 draw="1"
@@ -848,7 +848,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 jobmode="#{job_mode}"
                 selectedjob="#{selected_job}"
             >
-            </rrdgraph>
+            </icsw-rrd-graph>
         </div>
     </div>
 </div>

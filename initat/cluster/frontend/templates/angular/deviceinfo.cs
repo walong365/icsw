@@ -138,9 +138,9 @@ dev_info_template = """
             Graph{{ addon_text }}
         </tab-heading>
         <div class="panel panel-default"><div class="panel-body">
-            <div ng-controller="rrd_ctrl">
-                <rrdgraph devicepk="pk_list['graphing']" disablemodal="true">
-                </rrdgraph>
+            <div ng-controller="icswGraphOverviewCtrl">
+                <icsw-rrd-graph devicepk="pk_list['graphing']" disablemodal="true">
+                </icsw-rrd-graph>
             </div>
         </div></div>
     </tab>
