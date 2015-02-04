@@ -1,64 +1,6 @@
-{% load coffeescript staticfiles %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-{% verbatim %}
-
-paginator_template = 
-"""
-<form class="form-inline">
-    <span ng-show="pages.length > 0">
-        <div class="form-group">
-            <!-- small pager -->
-            <ul class="pagination pagination-sm" ng-show="numPages > 1 && numPages < 11"  style="margin-top:0px; margin-bottom:0px;">
-                <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
-                    <a href="#" ng-click="selectPage(pag_num)">{{ pag_num }}</a>
-                </li>
-            </ul>
-            <!-- large pager with back/forward buttons -->
-            <ul class="pagination pagination-sm" ng-show="numPages > 1 && numPages > 10"  style="margin-top:0px; margin-bottom:0px;">
-                <li ng-class="{disabled: currentPage == 1}">
-                    <a href="#" ng-click="selectPage(currentPage-1)">&laquo;</a>
-                </li>
-                <li ng-class="{disabled: currentPage == numPages}">
-                    <a href="#" ng-click="selectPage(currentPage+1)">&raquo;</a>
-                </li>
-                <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
-                    <a href="#" ng-click="selectPage(pag_num)">{{ pag_num }}</a>
-                </li>
-            </ul>
-        </div>
-        <span ng-show="numPages > 5">
-            <select class="form-control input-sm" ng-model="currentPage" ng-change="selectPage(currentPage)"
-                ng-options="idx as get_range_info(idx, stItemsByPage, numPages) for idx in [] | range:numPages"
-            >
-            </select>
-        </span>
-        <span ng-show="numPages > 1">, </span>
-        <span ng-show="numPages < 6">
-            showing entries {{ ((currentPage-1)  * stItemsByPage) + 1 }} to {{ Math.min(currentPage  * stItemsByPage, table_controller.getNumberOfTotalEntries()) }},
-        </span>
-    </span>
-    <span ng-show="pages.length == 0">
-        no entries to show,
-    </span>
-    <span ng-show="true"> <!-- pagSettings.conf.modify_epp -->
-        show
-        <div class="form-group">
-            <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in possibleItemsByPage"></select>
-        </div> per page,
-    </span>
-</form>
-"""
-
-{% endverbatim %}
-
-root = exports ? this
 
 angular.module(
-    "smart_table_utils", []
+    "icsw.tools.table", []
 ).directive('icswPagination', ($templateCache) ->
     return {
         restrict: 'EA',
@@ -131,11 +73,7 @@ angular.module(
                 if e_val > ctrl.getNumberOfTotalEntries()
                     e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
-}).run(($templateCache) ->
-    $templateCache.put("paginator.html", paginator_template)
+}).run(() ->
 )
 
 
-{% endinlinecoffeescript %}
-
-</script>

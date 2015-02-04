@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "smart_table_utils", "icsw.tools"])
+device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "icsw.tools.table", "icsw.tools"])
 
 angular_add_simple_list_controller(
     device_module,
