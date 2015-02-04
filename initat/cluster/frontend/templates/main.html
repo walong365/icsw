@@ -254,7 +254,6 @@
         {% endblock %}
     </header>
     <div id="icsw.app">
-        {% include "forms/network_forms.html" %}
         {% for ssi_file in settings.SSI_FILES %}
             {% ssi ssi_file %}
         {% endfor %}
