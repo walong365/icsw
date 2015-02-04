@@ -312,7 +312,10 @@ if not SLAVE_MODE:
         raise ImproperlyConfigured("no {} found".format(PIPELINE_YUGLIFY_BINARY))
 PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
 PIPELINE_YUGLIFY_JS_ARGUMENTS = "--terminal"
-STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
+if DEBUG:
+    STATICFILES_STORAGE = "pipeline.storage.PipelineStorage"
+else:
+    STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
 
 # List of finder classes that know how to find static files in
 # various locations.
