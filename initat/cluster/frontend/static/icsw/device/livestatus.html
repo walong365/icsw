@@ -1,0 +1,492 @@
+
+<script type="text/ng-template" id="ICSW.device.livestatus.map_overview">
+    <svg ng-show="loc_gfx" ng-attr-width="{{ loc_gfx.width }}" ng-attr-height="{{ loc_gfx.height }}"
+        ng-attr-viewBox="0 0 {{ loc_gfx.width }} {{ loc_gfx.height }}">
+        <g>
+            <image
+                xlink:href="{{ loc_gfx.image_url }}"
+                ng-attr-width="{{ loc_gfx.width }}"
+                ng-attr-height="{{ loc_gfx.height }}"
+                preserveAspectRatio="none"
+            >
+            </image>
+            <devnode ng-repeat="dml in loc_gfx.dml_list"></devnode>
+            <!--<g>
+                <defs>
+                    <linearGradient id="MyGradient">
+                        <stop offset="0%" stop-color="#ff6000" />
+                        <stop offset="100%" stop-color="#00ff0f" />
+                    </linearGradient>
+                    <marker id='start' orient='auto' markerWidth='30' markerHeight='30'
+                        refX='15' refY='15'
+                        markerUnits="userSpaceOnUse"
+                    >
+                        <path d='M0,0 L30,15 L0,30 Z' fill="#00ff0f"/>
+                    </marker>
+                    <marker id='starts' orient='auto' markerWidth='30' markerHeight='30'
+                        refX='15' refY='15'
+                        markerUnits="userSpaceOnUse"
+                    >
+                        <path d='M0,0 L30,15 L0,30 Z' fill="none" stroke="black" stroke-width="2"/>
+                    </marker>
+                </defs>
+                <path
+                    d="M10,20 S 200,100 300,300"
+                    marker-end="url(#starts)"
+                    stroke="black"
+                    stroke-width="12"
+                    stroke-linecap="round""
+                    fill="none"
+                />
+                <path
+                    d="M10,20 S 200,100 300,300"
+                    marker-end="url(#start)"
+                    stroke="url(#MyGradient)"
+                    stroke-width="10"
+                    stroke-linecap="round"
+                    fill="none"
+                />
+                <g transform="translate(100,100)">
+                    <rect x="-20" y="-10" width="40" height="20"
+                        fill="none" stroke="black" stroke-width="2">
+                    </rect>
+                    <rect x="-20" y="-10" width="40" height="20"
+                        fill="white">
+                    </rect>
+                    <text
+                        text-anchor="middle"
+                        alignment-baseline="middle"
+                        fill="black"
+                    >
+                    in/out
+                    </text>
+                </g>
+            </g>-->
+        </g>
+    </svg>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.device_node">
+    <g ng-attr-transform="{{ transform }}" ng-switch="data_source">
+        <g ng-switch-when="">
+            <circle r='20' fill='grey' stroke='black' stroke-width='1'></circle>
+            <text text-anchor="middle" alignment-baseline="middle" stroke="white" font-weight="bold" stroke-width="2">{{ dml.device_name }}</text>
+            <text text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold" stroke-width="0">{{ dml.device_name }}</text>
+        </g>
+        <g ng-switch-when="b">
+            <newburst
+                data="dml.sunburst"
+                redraw="dml.redraw"
+                innerradius="20"
+                outerradius="50"
+                showname="1"
+                fontstroke="1"
+            ></newburst>
+        </g>
+        <g ng-switch-default>
+            <path d="M-40,0 a40,40 0 0,1 80,0 z"
+                fill="red" stroke="black" stroke-width="1"
+            />
+        </g>
+    </g>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.overview">
+    <h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
+        <span ng-show="location_gfx_list.length"> on
+            <ng-pluralize count="location_gfx_list.length" when="{'1' : '1 map', 'other' : '{} maps'}"/>
+        </span>
+    </h3>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label>Filter options:</label>
+                <div class="btn-group">
+                    <input ng-repeat="entry in md_states" type="button"
+                        ng-class="get_mds_class(entry[0])"
+                        ng-value="entry[1]"
+                        ng-click="toggle_mds(entry[0])"
+                        title="{{ entry[3] }}"
+                    />
+                </div>
+                <div class="btn-group">
+                    <input ng-repeat="entry in sh_states" type="button"
+                        ng-class="get_shs_class(entry[0])"
+                        ng-value="entry[1]"
+                        ng-click="toggle_shs(entry[0])"
+                        title="{{ entry[3] }}"
+                    />
+                </div>
+                <label>show:</label>
+                <div class="btn-group">
+                    <input type="button" class="btn btn-xs" ng-class="cat_tree_show && 'btn-success' || 'btn-default'" ng-click="cat_tree_show=!cat_tree_show" value="categories"/>
+                    <input type="button" class="btn btn-xs" ng-class="burst_show && 'btn-success' || 'btn-default'" ng-click="burst_show=!burst_show" value="burst"/>
+                    <input type="button" class="btn btn-xs" ng-show="location_gfx_list.length" ng-class="map_show && 'btn-success' || 'btn-default'" ng-click="map_show=!map_show" value="map"/>
+                    <input type="button" class="btn btn-xs" ng-class="table_show && 'btn-success' || 'btn-default'" ng-click="table_show=!table_show" value="table"/>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <h4 ng-show="cat_tree_show">Monitoring categories</h4>
+            <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
+        </div>
+    </div>
+    <div class="row" ng-show="burst_show">
+        <div class="col-md-6">
+            <svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+                <g transform="translate(300,160)">
+                    <newburst
+                        data="burstData"
+                        redraw="redrawSunburst"
+                        recalc="recalcSunburst"
+                        innerradius="60"
+                        servicefocus="focusService"
+                        zoom="1"
+                    ></newburst>
+                </g>
+            </svg>
+        </div>
+        <div class="col-md-6">
+            <icsw-device-livestatus-service-info service="focus_service"></icsw-device-livestatus-service-info>
+        </div>
+    </div>
+    <tabset ng-show="map_show">
+        <tab ng-repeat="loc_gfx in location_gfx_list">
+            <tab-heading>
+                {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
+            </tab-heading>
+            <h4>{{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span></h4>
+            <monmap gfx="loc_gfx"></monmap>
+        </tab>
+    </tabset>
+    <hr ng-show="table_show"/>
+    <div class="row" ng-show="table_show">
+        <div class="btn-group col-md-12">
+            <div class="form-group">
+                <label>Show table columns:</label>
+                <input ng-repeat="entry in show_options" type="button"
+                    ng-class="get_so_class(entry[0])"
+                    ng-value="entry[1]"
+                    ng-click="toggle_so(entry[0])"
+                />
+            </div>
+        </div>
+    </div>
+    <table class="table table-condensed table-hover table-striped" style="font-size:100%;" ng-show="table_show">
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <span paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <input placeholder="filter..." ng-model="md_filter_str" class="form-control input-sm" ng-change="md_filter_changed()">
+                            </input>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th ng-repeat="entry in show_options"
+                    ng-show="so_enabled[entry[0]]"
+                    ng-click="entry[3] && toggle_order(entry[0])"
+                    ng-class="get_header_class(entry)"
+                >
+                <span ng-if="entry[3]" ng-class="get_order_glyph(entry[0])"></span>
+                {{ entry[1] }}
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:pagSettings">
+                <td ng-show="so_enabled['host_name']" ng-class="get_host_class(entry)">
+                    {{ entry.host_name }}
+                    <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
+                    <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+                </td>
+                <td ng-show="so_enabled['state']" ng-class="get_service_state_class(entry)">
+                    {{ get_service_state_string(entry) }}
+                    <span ng-show="show_attempt_info(entry)" class="badge pull-right">{{ get_attempt_info(entry) }}</span>
+                    <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+                </td>
+                <td class="nowrap" ng-show="so_enabled['description']">{{ entry.description }}</td>
+                <td class="nowrap" ng-show="so_enabled['cats']">{{ get_categories(entry) }}</td>
+                <td class="nowrap" ng-show="so_enabled['state_type']">{{ get_state_type(entry) }}</td>
+                <td class="nowrap" ng-show="so_enabled['last_check']">{{ get_last_check(entry) }}</td>
+                <td class="nowrap" ng-show="so_enabled['last_change']">{{ get_last_change(entry) }}</td>
+                <td ng-show="so_enabled['plugin_output']">{{ entry.plugin_output }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.brief">
+    <svg width="40" height="40" font-family="'Open-Sans', sans-serif" font-size="10pt">
+        <g transform="translate(20,20)">
+            <newburst
+                data="burstData"
+                innerradius="0"
+                outerradius="19"
+                noninteractive="true"
+                hidegroup="true"
+            ></newburst>
+        </g>
+    </svg>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.monconfig">
+    <div ng-show="!reload_pending">
+        Action:
+        <div class="btn-group btn-xs">
+            <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
+                reload config <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-click="load_data('ALWAYS')"><a href="#">cached (fast)</a></li>
+                <li ng-click="load_data('REFRESH')"><a href="#">refresh (contact device if necessary)</a></li>
+            </ul>
+        </div>
+    </div>
+    <accordion close-others="no" ng-show="!reload_pending">
+        <accordion-group is-open="monconfig_open">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monconfig_open, 'glyphicon-chevron-right': !monconfig_open}"></i>
+                Monitoring config, {{ mc_tables.length }} tables shown,
+            </accordion-heading>
+            <tabset>
+                <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
+                    <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3>
+                    <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                        <thead>
+                            <tr>
+                                <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+                            </tr>
+                            <tr>
+                                <th colspan="{{ value.attr_list.length }}">
+                                    <div class="btn-group btn-group-xs">
+                                        <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
+                                    </div>
+                                </th>
+                            </tr>
+                            <tr>
+                                <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
+                                    <span ng-class="value.get_order_glyph(attr)"></span>
+                                    {{ get_short_attr_name(attr) }}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
+                                <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
+                                    {{ entry[attr] }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </tab>
+            </tabset>
+        </accordion-group>
+        <accordion-group is-open="monhint_open">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monhint_open, 'glyphicon-chevron-right': !monhint_open}"></i>
+                Monitoring hint ({{ devices.length }} devices)
+            </accordion-heading>
+            <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Device</th>
+                        <th>Group</th>
+                        <th>Comment</th>
+                        <th>Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+                    <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
+                        <td colspan="9"><monitoringhinttable></monitoringhinttable></td>
+                    </tr>
+                </tbody>
+            </table>
+        </accordion-group>
+    </accordion>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.serviceinfo">
+    <h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
+    <div ng-switch="service.ct">
+        <div ng-switch-when="system">
+           <ul class="list-group">
+               <li class="list-group-item">System</li>
+           </ul>
+        </div>
+        <div ng-switch-when="group">
+           <ul class="list-group">
+               <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
+               <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
+           </ul>
+        </div>
+        <div ng-switch-when="host">
+            <ul class="list-group">
+                <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
+                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
+                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
+                <li class="list-group-item">State<span ng-class="get_host_state_class(service)">{{ get_host_state_string(service) }}</span></li>
+                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
+                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
+                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+            </ul>
+        </div>
+        <div ng-switch-when="service">
+            <ul class="list-group">
+                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
+                <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
+                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
+                <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
+                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
+                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
+                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+            </ul>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.device_row">
+    <td>
+        <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
+            <span ng_class="get_expand_class(obj)"/>
+            {{ obj.device_variable_set.length }}
+            <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown</span>
+        </button>
+    <td/>
+    <td>{{ obj.full_name }}</td>
+    <td>{{ obj.device_group_name }}</td>
+    <td>{{ obj.comment }}</td>
+    <td>hints : {{ obj.monitoring_hint_set.length }}</td>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.hint_row">
+    <td title="from run {{ hint.call_idx }}">
+        <span ng-show="hint.enabled">
+            {{ hint.m_type }}
+        </span>
+        <span ng-show="!hint.enabled">
+            <em><strike>{{ hint.m_type }}</strike></em>
+        </span>
+    </td>
+    <td>
+        <span ng-show="hint.enabled">
+            {{ hint.key }}
+        </span>
+        <span ng-show="!hint.enabled">
+            <em><strike>{{ hint.key }}</strike></em>
+        </span>
+    </td>
+    <td>{{ hint.datasource }}</td>
+    <td class="text-center">{{ hint.persistent | yesno2 }}</td>
+    <td>{{ get_v_type() }}</td>
+    <td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
+    <td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
+    <td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
+    <td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
+    <td class="text-right success">{{ get_value() }}</td>>
+    <td class="text-center">{{ hint.is_active | yesno2 }}</td>
+    <td class="text-center">
+        <input ng-show="hint.datasource != 'p'" type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_hint(hint)"/>
+    </td>
+    <td class="text-center">
+        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint)"/></input>
+    </td>
+    <td class="text-center">
+        <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_hint(hint, $event)"/></input>
+    </td>
+    <td>{{ hint.info }}</td>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.hint_table">
+    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+        <thead>
+            <tr>
+                <th>Source</th>
+                <th>key</th>
+                <th title="datasource">ds</th>
+                <th title="entry is persistent">persistent</th>
+                <th>Type</th>
+                <th>lower crit</th>
+                <th>lower warn</th>
+                <th>upper warn</th>
+                <th>upper crit</th>
+                <th>value</th>
+                <th title="check">active check</th>
+                <th colspan="3">action</th>
+                <th>info</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr mhrow ng-repeat="hint in obj.monitoring_hint_set"></tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="ICSW.device.livestatus.network_graph">
+    <g>
+        <path
+            ng-repeat="node in nodes track by $index"
+            ng-attr-d="{{ node.path }}"
+            stroke="black"
+            ng-attr-fill="{{ get_fill_color(node) }}"
+            ng-attr-fill-opacity="{{ get_fill_opacity(node) }}"
+            stroke-width="0.5"
+            ng-mouseenter="mouse_enter(node)"
+            ng-mouseleave="mouse_leave(node)"
+            ng-click="mouse_click(node)"
+        >
+        </path>
+        <polyline
+            ng-repeat="node in nodes track by $index"
+            ng-attr-points="{{ node.legendpath }}"
+            stroke="black"
+            fill="none"
+            stroke-width="0.5"
+            ng-show="node.legend_show"
+        >
+        </polyline>
+        <g ng-repeat="node in nodes track by $index">
+            <text
+                ng-if="font_stroke"
+                ng-attr-x="{{ node.legend_x }}"
+                ng-attr-y="{{ node.legend_y }}"
+                text-anchor="{{ node.legend_anchor }}"
+                ng-show="node.legend_show"
+                alignment-baseline="middle"
+                stroke="white"
+                stroke-width="4"
+            >{{ node.name }}</text>
+            <text
+                ng-attr-x="{{ node.legend_x }}"
+                ng-attr-y="{{ node.legend_y }}"
+                text-anchor="{{ node.legend_anchor }}"
+                ng-show="node.legend_show"
+                alignment-baseline="middle"
+            >{{ node.name }}</text>
+        </g>
+        <g ng-show="show_name">
+            <text
+                ng-if="font_stroke"
+                text-anchor="middle"
+                alignment-baseline="middle"
+                font-weight="bold"
+                fill="black"
+                stroke="white"
+                stroke-width="2"
+            >{{ name }}</text>
+            <text
+                text-anchor="middle"
+                alignment-baseline="middle"
+                font-weight="bold"
+                fill="black"
+            >{{ name }}</text>
+        </g>
+    </g>
+</script>

@@ -7,7 +7,7 @@
 #- second part is the name of the directory
 #- then the (optional) functionality (for example icsw.device.network)
 #- directives use '-' as separator, CamelCase in code
-#- service, provider and factory names end with service and also use CamelCase
+#- service, provider and factory names end with service, provider, factory and also use CamelCase
 #
 #Directory setup
 #
@@ -77,7 +77,10 @@ ics_app.config(() ->
     "MON_CALL_ICINGA": "{% url 'mon:call_icinga' %}"
     "MON_CREATE_DEVICE": "{% url 'mon:create_device' %}"
     "MON_CREATE_CONFIG": "{% url 'mon:create_config' %}"
+    "MON_DELETE_HINT": "{% url 'mon:delete_hint' %}"
     "MON_DEVICE_CONFIG": "{% url 'mon:device_config' %}"
+    "MON_GET_NODE_CONFIG": "{% url 'mon:get_node_config' %}"
+    "MON_GET_NODE_STATUS": "{% url 'mon:get_node_status' %}"
     "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"
     "MON_OVERVIEW": "{% url 'mon:overview' %}"
     "MON_SETUP_CLUSTER": "{% url 'mon:setup_cluster' %}"
@@ -88,7 +91,14 @@ ics_app.config(() ->
     "NETWORK_SHOW_NETWORKS": "{% url 'network:show_networks' %}"
     "PACK_REPO_OVERVIEW": "{% url 'pack:repo_overview' %}"
     "REST_BACKGROUND_JOB_LIST": "{% url 'rest:background_job_list' %}"
+    "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"
+    "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
+    "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
+    "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
+    "REST_FETCH_FORMS": "{% url 'rest:fetch_forms' %}"
+    "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
+    "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
     "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
     "REST_NET_IP_LIST": "{% url 'rest:net_ip_list' %}"
     "REST_NETWORK_DEVICE_TYPE_LIST": "{% url 'rest:network_device_type_list' %}"

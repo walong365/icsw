@@ -138,8 +138,6 @@ class tree_node
         return true
 
 
-
-
 class tree_config
     constructor: (args) ->
         # not really needed, enter more flags here
@@ -367,22 +365,22 @@ class tree_config
 tree_module = angular.module("icsw.tools.tree",
     []
 ).directive("tree", ["$compile", "$templateCache",
-        ($compile, $templateCache) ->
-            return {
-                restrict : "E"
-                scope    : {
-                    treeconfig : "="
-                    # true: only one nesting level (device group tree)
-                    single     : "="
-                }
-                replace : true
-                compile: (tElement, tAttr) ->
-                    return (scope, iElement, iAttr) ->
-                        #console.log scope, iAttr["treeconfig"], tAttr, iAttr
-                        #scope.treeconfig = scope.$eval(tAttr["treeconfig"])
-                        #console.log scope.treeconfig
-                        iElement.append($compile($templateCache.get("tree_root_node"))(scope))
-                } 
+    ($compile, $templateCache) ->
+        return {
+            restrict : "E"
+            scope    : {
+                treeconfig : "="
+                # true: only one nesting level (device group tree)
+                single     : "="
+            }
+            replace : true
+            compile: (tElement, tAttr) ->
+                return (scope, iElement, iAttr) ->
+                    #console.log scope, iAttr["treeconfig"], tAttr, iAttr
+                    #scope.treeconfig = scope.$eval(tAttr["treeconfig"])
+                    #console.log scope.treeconfig
+                    iElement.append($compile($templateCache.get("tree_root_node"))(scope))
+        }
     ]).directive("subtree", ["$compile", "$templateCache",
         ($compile, $templateCache) ->
             return {

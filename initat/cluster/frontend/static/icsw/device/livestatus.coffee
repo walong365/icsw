@@ -1,445 +1,3 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-{% verbatim %}
-
-map_template = """
-<svg ng-show="loc_gfx" ng-attr-width="{{ loc_gfx.width }}" ng-attr-height="{{ loc_gfx.height }}"
-    ng-attr-viewBox="0 0 {{ loc_gfx.width }} {{ loc_gfx.height }}">
-    <g>
-        <image
-            xlink:href="{{ loc_gfx.image_url }}"
-            ng-attr-width="{{ loc_gfx.width }}"
-            ng-attr-height="{{ loc_gfx.height }}"
-            preserveAspectRatio="none"
-        >
-        </image>
-        <devnode ng-repeat="dml in loc_gfx.dml_list"></devnode>
-        <!--<g>
-            <defs>
-                <linearGradient id="MyGradient">
-                    <stop offset="0%" stop-color="#ff6000" />
-                    <stop offset="100%" stop-color="#00ff0f" />
-                </linearGradient>
-                <marker id='start' orient='auto' markerWidth='30' markerHeight='30'
-                    refX='15' refY='15'
-                    markerUnits="userSpaceOnUse"
-                >
-                    <path d='M0,0 L30,15 L0,30 Z' fill="#00ff0f"/>
-                </marker>
-                <marker id='starts' orient='auto' markerWidth='30' markerHeight='30'
-                    refX='15' refY='15'
-                    markerUnits="userSpaceOnUse"
-                >
-                    <path d='M0,0 L30,15 L0,30 Z' fill="none" stroke="black" stroke-width="2"/>
-                </marker>
-            </defs>
-            <path
-                d="M10,20 S 200,100 300,300"
-                marker-end="url(#starts)"
-                stroke="black"
-                stroke-width="12"
-                stroke-linecap="round""
-                fill="none"
-            />
-            <path
-                d="M10,20 S 200,100 300,300" 
-                marker-end="url(#start)"
-                stroke="url(#MyGradient)"
-                stroke-width="10"
-                stroke-linecap="round"
-                fill="none"
-            />
-            <g transform="translate(100,100)">
-                <rect x="-20" y="-10" width="40" height="20"
-                    fill="none" stroke="black" stroke-width="2">
-                </rect>
-                <rect x="-20" y="-10" width="40" height="20"
-                    fill="white">
-                </rect>
-                <text
-                    text-anchor="middle"
-                    alignment-baseline="middle"
-                    fill="black"
-                >
-                in/out
-                </text>
-            </g>
-        </g>-->
-    </g>
-</svg>
-"""
-
-devnode_template = """
-<g ng-attr-transform="{{ transform }}" ng-switch="data_source">
-    <g ng-switch-when="">
-        <circle r='20' fill='grey' stroke='black' stroke-width='1'></circle>
-        <text text-anchor="middle" alignment-baseline="middle" stroke="white" font-weight="bold" stroke-width="2">{{ dml.device_name }}</text>
-        <text text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold" stroke-width="0">{{ dml.device_name }}</text>
-    </g>
-    <g ng-switch-when="b">
-        <newburst
-            data="dml.sunburst"
-            redraw="dml.redraw"
-            innerradius="20"
-            outerradius="50"
-            showname="1"
-            fontstroke="1"
-        ></newburst>
-    </g>
-    <g ng-switch-default>
-        <path d="M-40,0 a40,40 0 0,1 80,0 z"
-            fill="red" stroke="black" stroke-width="1"
-        />
-    </g>
-</g>
-"""
-
-livestatus_templ = """
-<h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
-    <span ng-show="location_gfx_list.length"> on
-        <ng-pluralize count="location_gfx_list.length" when="{'1' : '1 map', 'other' : '{} maps'}"/>
-    </span>
-</h3>
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label>Filter options:</label>
-            <div class="btn-group">
-                <input ng-repeat="entry in md_states" type="button"
-                    ng-class="get_mds_class(entry[0])"
-                    ng-value="entry[1]"
-                    ng-click="toggle_mds(entry[0])"
-                    title="{{ entry[3] }}"
-                />
-            </div>
-            <div class="btn-group">
-                <input ng-repeat="entry in sh_states" type="button"
-                    ng-class="get_shs_class(entry[0])"
-                    ng-value="entry[1]"
-                    ng-click="toggle_shs(entry[0])"
-                    title="{{ entry[3] }}"
-                />
-            </div>
-            <label>show:</label>
-            <div class="btn-group">
-                <input type="button" class="btn btn-xs" ng-class="cat_tree_show && 'btn-success' || 'btn-default'" ng-click="cat_tree_show=!cat_tree_show" value="categories"/>
-                <input type="button" class="btn btn-xs" ng-class="burst_show && 'btn-success' || 'btn-default'" ng-click="burst_show=!burst_show" value="burst"/>
-                <input type="button" class="btn btn-xs" ng-show="location_gfx_list.length" ng-class="map_show && 'btn-success' || 'btn-default'" ng-click="map_show=!map_show" value="map"/>
-                <input type="button" class="btn btn-xs" ng-class="table_show && 'btn-success' || 'btn-default'" ng-click="table_show=!table_show" value="table"/>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <h4 ng-show="cat_tree_show">Monitoring categories</h4>
-        <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
-    </div>
-</div>
-<div class="row" ng-show="burst_show">
-    <div class="col-md-6">
-        <svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
-            <g transform="translate(300,160)">
-                <newburst
-                    data="burstData"
-                    redraw="redrawSunburst"
-                    recalc="recalcSunburst"
-                    innerradius="60"
-                    servicefocus="focusService"
-                    zoom="1"
-                ></newburst>
-            </g>
-        </svg>
-    </div>
-    <div class="col-md-6">
-        <serviceinfo service="focus_service"></serviceinfo>
-    </div>
-</div>
-<tabset ng-show="map_show">
-    <tab ng-repeat="loc_gfx in location_gfx_list">
-        <tab-heading>
-            {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
-        </tab-heading>
-        <h4>{{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span></h4>
-        <monmap gfx="loc_gfx"></monmap>
-    </tab>
-</tabset>
-<hr/ ng-show="table_show">
-<div class="row" ng-show="table_show">
-    <div class="btn-group col-md-12">
-        <div class="form-group">
-            <label>Show table columns:</label>
-            <input ng-repeat="entry in show_options" type="button"
-                ng-class="get_so_class(entry[0])"
-                ng-value="entry[1]"
-                ng-click="toggle_so(entry[0])"
-            />
-        </div>
-    </div>
-</div>
-<table class="table table-condensed table-hover table-striped" style="font-size:100%;" ng-show="table_show">
-    <thead>
-        <tr>
-            <td colspan="99">
-                <div class="row">
-                    <div class="col-md-6">
-                        <span paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></span>
-                    </div>
-                    <div class="col-md-6">
-                        <input placeholder="filter..." ng-model="md_filter_str" class="form-control input-sm" ng-change="md_filter_changed()">
-                        </input>
-                    </div>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <th ng-repeat="entry in show_options"
-                ng-show="so_enabled[entry[0]]"
-                ng-click="entry[3] && toggle_order(entry[0])"
-                ng-class="get_header_class(entry)"
-            >
-            <span ng-if="entry[3]" ng-class="get_order_glyph(entry[0])"></span>
-            {{ entry[1] }}
-            </th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:pagSettings">
-            <td ng-show="so_enabled['host_name']" ng-class="get_host_class(entry)">
-                {{ entry.host_name }}
-                <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
-                <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-            </td>
-            <td ng-show="so_enabled['state']" ng-class="get_service_state_class(entry)">
-                {{ get_service_state_string(entry) }}
-                <span ng-show="show_attempt_info(entry)" class="badge pull-right">{{ get_attempt_info(entry) }}</span>
-                <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-            </td>
-            <td class="nowrap" ng-show="so_enabled['description']">{{ entry.description }}</td>
-            <td class="nowrap" ng-show="so_enabled['cats']">{{ get_categories(entry) }}</td>
-            <td class="nowrap" ng-show="so_enabled['state_type']">{{ get_state_type(entry) }}</td>
-            <td class="nowrap" ng-show="so_enabled['last_check']">{{ get_last_check(entry) }}</td>
-            <td class="nowrap" ng-show="so_enabled['last_change']">{{ get_last_change(entry) }}</td>
-            <td ng-show="so_enabled['plugin_output']">{{ entry.plugin_output }}</td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-livestatus_brief_templ = """
-<svg width="40" height="40" font-family="'Open-Sans', sans-serif" font-size="10pt">
-    <g transform="translate(20,20)">
-        <newburst
-            data="burstData"
-            innerradius="0"
-            outerradius="19"
-            noninteractive="true"
-            hidegroup="true"
-        ></newburst>
-    </g>
-</svg>
-"""
-
-monconfig_templ = """
-<div ng-show="!reload_pending">
-    Action:
-    <div class="btn-group btn-xs">
-        <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
-            reload config <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li ng-click="load_data('ALWAYS')"><a href="#">cached (fast)</a></li>
-            <li ng-click="load_data('REFRESH')"><a href="#">refresh (contact device if necessary)</a></li>
-        </ul>
-    </div>
-</div>
-<accordion close-others="no" ng-show="!reload_pending">
-    <accordion-group is-open="monconfig_open">
-        <accordion-heading>
-            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monconfig_open, 'glyphicon-chevron-right': !monconfig_open}"></i>
-            Monitoring config, {{ mc_tables.length }} tables shown,
-        </accordion-heading>
-        <tabset>
-            <tab ng-repeat="value in mc_tables" heading="{{ value.name }} ({{ value.entries.length }})">
-                <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
-                <table class="table table-condensed table-hover table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-                        </tr>
-                        <tr>
-                            <th colspan="{{ value.attr_list.length }}">
-                                <div class="btn-group btn-group-xs">
-                                    <button type="button" ng-repeat="attr in value.attr_list" class="btn btn-xs" ng-click="value.toggle_column(attr)" ng-class="value.columns_enabled[attr] && 'btn-success' || 'btn-default'" title="{{ get_long_attr_name(attr) }}" value="{{ get_short_attr_name(attr) }}">{{ get_short_attr_name(attr) }}</button>
-                                </div>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-show="value.columns_enabled[attr]" ng-click="value.toggle_order(attr)">
-                                <span ng-class="value.get_order_glyph(attr)"></span>
-                                {{ get_short_attr_name(attr) }}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
-                            <td ng-repeat="attr in value.attr_list" ng-show="value.columns_enabled[attr]">
-                                {{ entry[attr] }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </tab>
-        </tabset>
-    </accordion-group>
-    <accordion-group is-open="monhint_open">
-        <accordion-heading>
-            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': monhint_open, 'glyphicon-chevron-right': !monhint_open}"></i>
-            Monitoring hint ({{ devices.length }} devices)
-        </accordion-heading>
-        <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Device</th>
-                    <th>Group</th>
-                    <th>Comment</th>
-                    <th>Info</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
-                <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
-                    <td colspan="9"><monitoringhinttable></monitoringhinttable></td>
-                </tr>
-            </tbody>
-        </table>
-    </accordion-group>
-</accordion>
-"""
-
-serviceinfo_templ = """
-<h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
-<div ng-switch="service.ct">
-    <div ng-switch-when="system">
-       <ul class="list-group">
-           <li class="list-group-item">System</li>
-       </ul>
-    </div>
-    <div ng-switch-when="group">
-       <ul class="list-group">
-           <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-           <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
-       </ul>
-    </div>
-    <div ng-switch-when="host">
-        <ul class="list-group">
-            <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-            <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
-            <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-            <li class="list-group-item">State<span ng-class="get_host_state_class(service)">{{ get_host_state_string(service) }}</span></li>
-            <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
-            <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
-            <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
-        </ul>
-    </div>
-    <div ng-switch-when="service">
-        <ul class="list-group">
-            <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
-            <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
-            <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-            <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
-            <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
-            <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
-            <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
-        </ul>
-    </div>
-</div>
-"""
-
-mh_devrow_template = """
-<td>
-    <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
-        <span ng_class="get_expand_class(obj)">
-        </span> {{ obj.device_variable_set.length }}
-        <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
-    </button>
-</td>
-<td>{{ obj.full_name }}</td>
-<td>{{ obj.device_group_name }}</td>
-<td>{{ obj.comment }}</td>
-<td>hints : {{ obj.monitoring_hint_set.length }}</td>
-"""
-
-mh_row_template = """
-<td title="from run {{ hint.call_idx }}">
-    <span ng-show="hint.enabled">
-        {{ hint.m_type }}
-    </span>
-    <span ng-show="!hint.enabled">
-        <em><strike>{{ hint.m_type }}</strike></em>
-    </span>
-</td>
-<td>
-    <span ng-show="hint.enabled">
-        {{ hint.key }}
-    </span>
-    <span ng-show="!hint.enabled">
-        <em><strike>{{ hint.key }}</strike></em>
-    </span>
-</td>
-<td>{{ hint.datasource }}</td>
-<td class="text-center">{{ hint.persistent | yesno2 }}</td>
-<td>{{ get_v_type() }}</td>
-<td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
-<td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
-<td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
-<td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
-<td class="text-right success">{{ get_value() }}</td>>
-<td class="text-center">{{ hint.is_active | yesno2 }}</td>
-<td class="text-center">
-    <input ng-show="hint.datasource != 'p'" type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_hint(hint)"></input>
-</td>
-<td class="text-center">
-    <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint)"/></input>
-</td>
-<td class="text-center">
-    <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_hint(hint, $event)"/></input>
-</td>
-<td>{{ hint.info }}</td>
-"""
-
-mh_table_template = """
-<table class="table table-condensed table-hover table-bordered" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Source</th>
-            <th>key</th>
-            <th title="datasource">ds</th>
-            <th title="entry is persistent">persistent</th>
-            <th>Type</th>
-            <th>lower crit</th>
-            <th>lower warn</th>
-            <th>upper warn</th>
-            <th>upper crit</th>
-            <th>value</th>
-            <th title="check">active check</th>
-            <th colspan="3">action</th>
-            <th>info</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr mhrow ng-repeat="hint in obj.monitoring_hint_set"></tr>
-    </tbody>
-</table>
-"""
-
-{% endverbatim %}
-
 device_livestatus_module = angular.module("icsw.device.livestatus", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
 get_service_state_string = (entry) ->
@@ -511,34 +69,6 @@ get_check_type = (entry) ->
         1 : "passive"
     }[entry.check_type]
 
-class category_tree extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        #@show_selection_buttons = false
-        @show_icons = false
-        @show_select = true
-        @show_descendants = false
-        @show_childs = false
-    selection_changed: () =>
-        sel_list = @get_selected((node) ->
-            if node.selected
-                return [node.obj.idx]
-            else
-                return []
-        )
-        @scope.new_mc_selection(sel_list)
-    get_name : (t_entry) ->
-        cat = t_entry.obj
-        if cat.depth > 1
-            r_info = "#{cat.full_name} (#{cat.name})"
-            #if cat.num_refs
-            #    r_info = "#{r_info} (refs=#{cat.num_refs})"
-            return r_info# + "#{cat.idx}"
-        else if cat.depth
-            return cat.full_name
-        else
-            return "TOP"
-
 class hs_node
     # hierarchical structure node
     constructor: (@name, @depth=0) ->
@@ -583,8 +113,8 @@ class hs_node
             parent = parent.parent
         _clicked.iter_childs((obj) -> obj.show = true)
     
-device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools) ->
+device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -619,7 +149,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         # paginator settings
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         # category tree
-        $scope.cat_tree = new category_tree($scope, {})
+        $scope.cat_tree = new icswDeviceLivestatusCategoryTreeService($scope, {})
         # selected categories
         $scope.selected_mcs = []
         $scope.master_cat_pk = 0
@@ -702,10 +232,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             return _class
         $scope.load_static_data = () ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:category_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_meta_devices" : false, "ignore_cdg" : true}])
-                restDataSource.reload(["{% url 'rest:location_gfx_list' %}", {"device_mon_location__device__in": angular.toJson($scope.devsel_list), "_distinct": true}])
-                restDataSource.reload(["{% url 'rest:device_mon_location_list' %}", {"device__in": angular.toJson($scope.devsel_list)}])
+                restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_meta_devices" : false, "ignore_cdg" : true}])
+                restDataSource.reload([ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": angular.toJson($scope.devsel_list), "_distinct": true}])
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": angular.toJson($scope.devsel_list)}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.location_gfx_list = data[2]
@@ -745,7 +275,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.load_data = (mode) ->
             $scope.cur_timeout = $timeout($scope.load_data, 20000)#20000)
             $scope.cur_xhr = call_ajax
-                url  : "{% url 'mon:get_node_status' %}"
+                url  : ICSW_URLS.MON_GET_NODE_STATUS
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
                 },
@@ -933,10 +463,38 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             if $scope.cur_xhr?
                 $scope.cur_xhr.abort()
         )
-]).directive("serviceinfo", ["$templateCache", ($templateCache) ->
+]).service("icswDeviceLivestatusCategoryTreeService", () ->
+    class category_tree extends tree_config
+        constructor: (@scope, args) ->
+            super(args)
+            #@show_selection_buttons = false
+            @show_icons = false
+            @show_select = true
+            @show_descendants = false
+            @show_childs = false
+        selection_changed: () =>
+            sel_list = @get_selected((node) ->
+                if node.selected
+                    return [node.obj.idx]
+                else
+                    return []
+            )
+            @scope.new_mc_selection(sel_list)
+        get_name : (t_entry) ->
+            cat = t_entry.obj
+            if cat.depth > 1
+                r_info = "#{cat.full_name} (#{cat.name})"
+                #if cat.num_refs
+                #    r_info = "#{r_info} (refs=#{cat.num_refs})"
+                return r_info # + "#{cat.idx}"
+            else if cat.depth
+                return cat.full_name
+            else
+                return "TOP"
+).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict : "E"
-        template : $templateCache.get("serviceinfo_template.html")
+        template : $templateCache.get("ICSW.device.livestatus.serviceinfo")
         scope : {
             type : "=type"
             service : "=service"
@@ -957,74 +515,12 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.get_check_type = (entry) ->
                 return get_check_type(entry)
     }
-]).directive("newburst", ["$compile", ($compile) ->
+]).directive("newburst", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "E"
         replace: true
         templateNamespace: "svg"
-        template: """
-{% verbatim %}
-<g>
-    <path
-        ng-repeat="node in nodes track by $index"
-        ng-attr-d="{{ node.path }}"
-        stroke="black"
-        ng-attr-fill="{{ get_fill_color(node) }}"
-        ng-attr-fill-opacity="{{ get_fill_opacity(node) }}"
-        stroke-width="0.5"
-        ng-mouseenter="mouse_enter(node)"
-        ng-mouseleave="mouse_leave(node)"
-        ng-click="mouse_click(node)"
-    >
-    </path>
-    <polyline
-        ng-repeat="node in nodes track by $index"
-        ng-attr-points="{{ node.legendpath }}"
-        stroke="black"
-        fill="none"
-        stroke-width="0.5"
-        ng-show="node.legend_show"
-    >
-    </polyline>
-    <g ng-repeat="node in nodes track by $index">
-        <text
-            ng-if="font_stroke"
-            ng-attr-x="{{ node.legend_x }}"
-            ng-attr-y="{{ node.legend_y }}"
-            text-anchor="{{ node.legend_anchor }}"
-            ng-show="node.legend_show"
-            alignment-baseline="middle"
-            stroke="white"
-            stroke-width="4"
-        >{{ node.name }}</text>
-        <text
-            ng-attr-x="{{ node.legend_x }}"
-            ng-attr-y="{{ node.legend_y }}"
-            text-anchor="{{ node.legend_anchor }}"
-            ng-show="node.legend_show"
-            alignment-baseline="middle"
-        >{{ node.name }}</text>
-    </g>
-    <g ng-show="show_name">
-        <text
-            ng-if="font_stroke"
-            text-anchor="middle"
-            alignment-baseline="middle"
-            font-weight="bold"
-            fill="black"
-            stroke="white"
-            stroke-width="2"
-        >{{ name }}</text>
-        <text
-            text-anchor="middle"
-            alignment-baseline="middle"
-            font-weight="bold"
-            fill="black"
-        >{{ name }}</text>
-    </g>
-</g>
-{% endverbatim %}
-"""
+        template: $templateCache.get("ICSW.device.livestatus.network_graph")
         scope:
             data: "=data"
             redraw_burst: "=redraw"
@@ -1232,7 +728,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ]).directive("livestatus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("livestatus_template.html")
+        template : $templateCache.get("ICSW.device.livestatus.overview")
         link : (scope, el, attrs) ->
             if attrs.devicepk?
                 scope.$watch(attrs["devicepk"], (new_val) ->
@@ -1311,7 +807,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ).directive("livestatusBrief", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("livestatus_brief_template.html")
+        template : $templateCache.get("ICSW.device.livestatus.brief")
         link : (scope, element, attrs) ->
             scope.$watch(("devicepk"), (data) ->
                 if data
@@ -1321,7 +817,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("map.html")
+        template: $templateCache.get("ICSW.device.livestatus.map_overview")
         scope:
             gfx : "=gfx"
         link : (scope, element, attrs) ->
@@ -1334,7 +830,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
     return {
         restrict : "EA"
         replace: true
-        template: $templateCache.get("devnode.html")
+        template: $templateCache.get("ICSW.device.livestatus.device_node")
         link: (scope, element, attrs) ->
             dml = scope.dml
             scope.data_source = ""
@@ -1344,12 +840,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     scope.data_source = "b"
             )
     }    
-).run(($templateCache) ->
-    $templateCache.put("livestatus_template.html", livestatus_templ)
-    $templateCache.put("livestatus_brief_template.html", livestatus_brief_templ)
-    $templateCache.put("serviceinfo_template.html", serviceinfo_templ)
-    $templateCache.put("map.html", map_template)
-    $templateCache.put("devnode.html", devnode_template)
 )
 
 class mc_table
@@ -1393,12 +883,12 @@ class mc_table
             _class = "glyphicon"
         return _class
         
-device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service) ->
+device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring_hint_form.html"
-        $scope.hint_edit.modify_rest_url = "{% url 'rest:monitoring_hint_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.hint_edit.modify_rest_url = ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2)
         $scope.hint_edit.modify_data_before_put = (hint) ->
             $scope.restore_values(hint, true)
         $scope.hint_edit.new_object_at_tail = false
@@ -1434,7 +924,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         $scope.load_data = (mode) ->
             $scope.reload_pending = true
             $scope.cur_xhr = call_ajax
-                url  : "{% url 'mon:get_node_config' %}"
+                url  : ICSW_URLS.MON_GET_NODE_CONFIG
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
                     "mode"    : mode
@@ -1450,8 +940,8 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                         )
                         restDataSource.reset()
                         wait_list = restDataSource.add_sources([
-                            ["{% url 'rest:device_tree_list' %}", {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
-                            ["{% url 'rest:fetch_forms' %}", {
+                            [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
+                            [ICSW_URLS.REST_FETCH_FORMS, {
                                 "forms" : angular.toJson([
                                     "monitoring_hint_form"
                                  ])
@@ -1489,11 +979,11 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         $scope.remove_hint = (hint) ->
             _.remove($scope.device_lut[hint.device].monitoring_hint_set, (entry) -> return entry.idx == hint.idx)
             call_ajax
-                url     : "{% url 'mon:delete_hint' %}"
+                url     :ICSW_URLS.MON_DELETE_HINT
                 data    :
                     hint_pk : hint.idx
         $scope.save_hint = (hint) ->
-            Restangular.restangularizeElement(null, hint, "{% url 'rest:monitoring_hint_detail' 1 %}".slice(1).slice(0, -2))
+            Restangular.restangularizeElement(null, hint, ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2))
             hint.put()
         $scope.backup_values = (hint) ->
             if hint.v_type == "f"
@@ -1537,7 +1027,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
 ]).directive("monconfig", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("monconfig_template.html")
+        template : $templateCache.get("ICSW.device.livestatus.monconfig")
         link : (scope, el, attrs) ->
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val and new_val.length
@@ -1547,7 +1037,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
 ).directive("mhdevrow", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("mhdevrow.html")
+        template : $templateCache.get("ICSW.device.livestatus.hint_row")
     }
 ).directive("mhrow", ($templateCache) ->
     return {
@@ -1597,16 +1087,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
 ).directive("monitoringhinttable", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("mhtable.html")
+        template : $templateCache.get("ICSW.device.livestatus.hint_table")
         link : (scope) ->
     }
-).run(($templateCache) ->
-    $templateCache.put("monconfig_template.html", monconfig_templ)
-    $templateCache.put("mhdevrow.html", mh_devrow_template)
-    $templateCache.put("mhrow.html", mh_row_template)
-    $templateCache.put("mhtable.html", mh_table_template)
 )
-
-{% endinlinecoffeescript %}
-
-</script>
