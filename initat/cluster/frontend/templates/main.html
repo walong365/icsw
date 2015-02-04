@@ -230,7 +230,6 @@
     {% include "angular/monitoring_extended.cs" %}
     {% include "angular/monitoring_overview.cs" %}
     {% include "angular/monitoring_build_info.cs" %}
-    {% include "angular/network.cs" %}
     {% include "angular/lic.cs" %}
     {% include "angular/category_tree.cs" %}
     {% include "angular/domain_name_tree.cs" %}
@@ -256,6 +255,7 @@
         {% endblock %}
     </header>
     <div id="icsw.app">
+        {% include "forms/network_forms.html" %}
         {% for ssi_file in settings.SSI_FILES %}
             {% ssi ssi_file %}
         {% endfor %}

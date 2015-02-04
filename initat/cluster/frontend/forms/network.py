@@ -62,12 +62,12 @@ class network_form(ModelForm):
             ),
             Field(
                 "master_network",
-                repeat="value.idx as value in get_production_networks(this)",
+                repeat="value.idx as value in get_production_networks()",
                 display="identifier",
                 placeholder="master network",
                 filter="{identifier:$select.search}",
                 null=True,
-                wrapper_ng_show="is_slave_network(this, _edit_obj.network_type)",
+                wrapper_ng_show="is_slave_network(_edit_obj.network_type)",
             ),
             Field(
                 "network_device_type",
