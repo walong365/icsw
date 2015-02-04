@@ -176,12 +176,12 @@
 
     </tab>
 
-    <tab heading="Networks" ng-controller="icswCommonDummyCtrl">
+    <tab heading="Networks" ng-controller="icswCommonDummyCtrl" active="true">
         <h3>
             Networks ({{entries.length}} entries),
             <div class="btn-group">
-                <input type="button" class="btn btn-primary btn-sm" value="create new" ng-click="create($event)"/> TODO: test create
-                <input type="button" class="btn btn-success btn-sm" value="reload" ng-click="reload()"/> TODO: implement reload
+                <input type="button" class="btn btn-primary btn-sm" value="create new" ng-click="create($event)"/>
+                <input type="button" class="btn btn-success btn-sm" value="reload" ng-click="reload()"/>
             </div>
         </h3>
 
@@ -234,37 +234,39 @@
                     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
                     <td>
                         <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0"
-                               ng-click="edit_mixin.delete_obj(obj)" value="delete"/>
+                               ng-click="delete(obj)" value="delete"/>
                         <input type="button" class="btn btn-success btn-xs" ng-show="obj.num_ip > 0"
-                               ng-click="show_network(obj)" value="show"/>
-                        TODO: make show buttons work
+                               ng-click="config_service.show_network(obj)" value="show" ng-value="config_service.network_display.active_network == obj && 'hide' || 'show'"/>
                     </td>
                 </tr>
             </tbody>
 
         </table>
 
-        <div ng-show="active_network">
+        <div class="panel panel-default" ng-show="config_service.network_display.active_network" >
+            <div class="panel-body">
             <h3>Network {{ active_network.identifier }}, {{ active_network.num_ip }} IP addresses</h3>
-            <table class="table table-condensed table-hover" style="width:auto;">
+            <table st-table="network_entries_displayed" st-safe-src="config_service.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
                 <thead>
                     <tr>
-                        <th>IP</th>
-                        <th>Netdevice</th>
-                        <th>Device</th>
+                        <td colspan="99">
+                            <div icsw-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="ip">IP</th>
+                        <th st-sort="netdevice_name">Netdevice</th>
+                        <th st-sort="device_full_name">Device</th>
                     </tr>
                 </thead>
                 <tbody>
-                <!--
-                    <tr><td colspan="9" paginator entries="iplist" pag_settings="ippager" per_page="15"></td></tr>
-                    <tr ng-repeat="obj in iplist | paginator:this:'ippager'">
+                    <tr ng-repeat="obj in network_entries_displayed">
                        <td>{{ obj.ip }}</td>
                        <td>{{ obj.netdevice_name }}</td>
                        <td>{{ obj.device_full_name }}</td>
                     </tr>
-                    -->
                 </tbody>
-            </table>
+            </table></div>
         </div>
     </tab>
 </tabset>

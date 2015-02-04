@@ -44,6 +44,9 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
 
             scope.reload = () ->
                 scope.rest.getList().then(scope.data_received)
+                if scope.config_service.after_reload
+                    scope.config_service.after_reload()
+
 
             scope.reload()
 
@@ -171,11 +174,24 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
     }
 ).controller('icswCommonDummyCtrl', () ->
     # TODO: move to common
-).service('icswNetworksService', (Restangular) ->
+).service('icswNetworksService', (Restangular, $q, icswTools) ->
 
     networks_rest = Restangular.all("{% url 'rest:network_list' %}".slice(1)).getList({"_with_ip_info" : true}).$object
     network_types_rest = Restangular.all("{% url 'rest:network_type_list' %}".slice(1)).getList({"_with_ip_info" : true}).$object
     network_device_types_rest = Restangular.all("{% url 'rest:network_device_type_list' %}".slice(1)).getList({"_with_ip_info" : true}).$object
+
+    network_display = {}
+    get_defer = (q_type) ->
+        d = $q.defer()
+        result = q_type.then(
+           (response) ->
+               d.resolve(response)
+        )
+        return d.promise
+
+    hide_network =  () ->
+        network_display.active_network = null
+        network_display.iplist = []
 
     return {
         # TODO: move to icsw.network in new dir structure
@@ -192,41 +208,31 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
                 "enforce_unique_ips" : true
                 "num_ip"       : 0
             }
-        # function dict, scope gets extended with it
-        fn:
-            before_load: () ->
-                es = this.edit_scope
-                es.ippager = es.fn_lut.paginatorSettings.get_paginator("iplist", es)
-                es.iplist = []
-            after_entries_set : () ->
-                es = this.edit_scope
-                es.active_network = null
-                es.iplist = []
-            get_defer : (q_type) ->
-                d = this.fn_lut.q.defer()
-                result = q_type.then(
-                   (response) ->
-                       d.resolve(response)
-                )
-                return d.promise
-            show_network : (obj) ->
-                es = this.edit_scope
-                es.active_network = obj
+        network_display     : network_display
+        show_network        : (obj) ->
+            if network_display.active_network == obj
+                hide_network()
+            else
+                network_display.active_network = obj
                 q_list = [
-                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:net_ip_list' %}".slice(1)).getList({"network" : obj.idx, "_order_by" : "ip"}))
-                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:netdevice_list' %}".slice(1)).getList({"net_ip__network" : obj.idx}))
-                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:device_list' %}".slice(1)).getList({"netdevice__net_ip__network" : obj.idx}))
+                    get_defer(Restangular.all("{% url 'rest:net_ip_list' %}".slice(1)).getList({"network" : obj.idx, "_order_by" : "ip"}))
+                    get_defer(Restangular.all("{% url 'rest:netdevice_list' %}".slice(1)).getList({"net_ip__network" : obj.idx}))
+                    get_defer(Restangular.all("{% url 'rest:device_list' %}".slice(1)).getList({"netdevice__net_ip__network" : obj.idx}))
                 ]
-                es.fn_lut.q.all(q_list).then((data) ->
-                    es.iplist = data[0]
-                    netdevices = es.icswTools.build_lut(data[1])
-                    devices = es.icswTools.build_lut(data[2])
-                    for entry in es.iplist
+                $q.all(q_list).then((data) ->
+                    iplist = data[0]
+                    netdevices = icswTools.build_lut(data[1])
+                    devices = icswTools.build_lut(data[2])
+                    for entry in iplist
                         nd = netdevices[entry.netdevice]
                         entry.netdevice_name = nd.devname
                         entry.device_full_name = devices[nd.device].full_name
-                    es.ippager.set_entries(es.iplist)
+                    network_display.iplist = iplist
                 )
+        hide_network : hide_network
+        after_reload : () ->
+             hide_network()
+        fn:
             get_production_networks : ($scope) ->
                 prod_idx = (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
                 return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
