@@ -15,7 +15,7 @@ nw_types_dict = [
 ]
 
 network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"]
-).directive('icswModifyButton', () ->
+).directive('icswCommonModifyButton', () ->
     # TODO: move to common
     return {
         restrict: 'E',
@@ -161,7 +161,72 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
     new_object          : {"identifier" : "p", description : ""}
     object_created      : (new_obj) -> new_obj.description = ""
     network_types       : nw_types_dict  # for create/edit dialog
-}).controller('empty', () -> )
+}).controller('icswCommonDummyCtrl', () ->
+    # TODO: move to common
+).service('icswNetworksService', () -> return {
+    # TODO: move to icsw.network in new dir structure
+    rest_url            : "{% url 'rest:network_list' %}"
+    edit_template       : "network.html"
+    rest_map            : [
+        {"short" : "network"             , "url" : "{% url 'rest:network_list' %}", "options" : {"_with_ip_info" : true}}
+        {"short" : "network_types"       , "url" : "{% url 'rest:network_type_list' %}"}
+        {"short" : "network_device_types", "url" : "{% url 'rest:network_device_type_list' %}"}
+    ]
+    delete_confirm_str  : (obj) -> return "Really delete Network '#{obj.identifier}' ?"
+    new_object          : ($scope) ->
+        return {
+            "identifier"   : "new network",
+            "network_type" : (entry["idx"] for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
+            "enforce_unique_ips" : true
+            "num_ip"       : 0
+        }
+    # function dict, scope gets extended with it
+    fn:
+        before_load: () ->
+            es = this.edit_scope
+            es.ippager = es.fn_lut.paginatorSettings.get_paginator("iplist", es)
+            es.iplist = []
+        after_entries_set : () ->
+            es = this.edit_scope
+            es.active_network = null
+            es.iplist = []
+        get_defer : (q_type) ->
+            d = this.fn_lut.q.defer()
+            result = q_type.then(
+               (response) ->
+                   d.resolve(response)
+            )
+            return d.promise
+        show_network : (obj) ->
+            es = this.edit_scope
+            es.active_network = obj
+            q_list = [
+                es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:net_ip_list' %}".slice(1)).getList({"network" : obj.idx, "_order_by" : "ip"}))
+                es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:netdevice_list' %}".slice(1)).getList({"net_ip__network" : obj.idx}))
+                es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:device_list' %}".slice(1)).getList({"netdevice__net_ip__network" : obj.idx}))
+            ]
+            es.fn_lut.q.all(q_list).then((data) ->
+                es.iplist = data[0]
+                netdevices = es.icswTools.build_lut(data[1])
+                devices = es.icswTools.build_lut(data[2])
+                for entry in es.iplist
+                    nd = netdevices[entry.netdevice]
+                    entry.netdevice_name = nd.devname
+                    entry.device_full_name = devices[nd.device].full_name
+                es.ippager.set_entries(es.iplist)
+            )
+        get_production_networks : ($scope) ->
+            prod_idx = (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
+            return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
+        is_slave_network : ($scope, nw_type) ->
+            if nw_type
+                return (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
+            else
+                return false
+        has_master_network : (edit_obj) ->
+            return if edit_obj.master_network then true else false
+    }
+)
 
 
 angular_add_simple_list_controller(
