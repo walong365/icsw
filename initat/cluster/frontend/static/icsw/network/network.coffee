@@ -91,9 +91,9 @@ network_module = angular.module("icsw.network",
         hide_network : hide_network
         after_reload : () ->
             hide_network()
-        get_production_networks : ($scope) ->
+        get_production_networks : () ->
             prod_idx = (entry for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
-            return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
+            return (entry for key, entry of networks_rest when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
         is_slave_network : (nw_type) ->
             if nw_type
                 return (entry for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"

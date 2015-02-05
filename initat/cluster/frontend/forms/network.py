@@ -58,16 +58,16 @@ class network_form(ModelForm):
                 display="description",
                 placeholder="network type",
                 filter="{description:$select.search}",
-                readonly="has_master_network(_edit_obj)",
+                readonly="has_master_network(edit_obj)",
             ),
             Field(
                 "master_network",
-                repeat="value.idx as value in get_production_networks()",
+                repeat="value.idx as value in config_service.get_production_networks()",
                 display="identifier",
                 placeholder="master network",
                 filter="{identifier:$select.search}",
                 null=True,
-                wrapper_ng_show="is_slave_network(_edit_obj.network_type)",
+                wrapper_ng_show="config_service.is_slave_network(edit_obj.network_type)",
             ),
             Field(
                 "network_device_type",
@@ -78,7 +78,7 @@ class network_form(ModelForm):
             ),
         ),
         Fieldset(
-            "Flags and priority",  # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
+            "Flags and priority",  # {% verbatim %}{{ edit_obj }}{% endverbatim %}",
             Field("enforce_unique_ips"),
             Field("gw_pri"),
         ),
