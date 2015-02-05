@@ -98,8 +98,6 @@ angular.module(
                     scope.rest.getList().then(scope.data_received)
 
                 scope.reload()
-            #else
-            #    console.log $parse(attrs.targetList)(scope)
 
             # interface functions to use in directive body
             scope.edit = (event, obj) ->

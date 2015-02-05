@@ -8,24 +8,24 @@ button_module = angular.module(
     return {
         restrict: 'E',
         template: """
-<input ng-type="type" name="button" class="btn btn-primary btn-xs" value="icsw modify"/></td>
+<input ng-attr-type="{{type}}" name="button" class="btn btn-primary {{additional_class}}" value="modify"/></input>
 """
-#<input type="button" class="btn btn-primary btn-xs" ng-click="local_click($event)" value="modify new"/></td>
         scope:
-            click: '&'
+            click: '&'  # http://stackoverflow.com/questions/17556703/angularjs-directive-call-function-specified-in-attribute-and-pass-an-argument-to
         link: (scope, element, attrs) ->
             if attrs.type?
                 scope.type = attrs.type
             else
                 scope.type = "button"
 
-            # TODO: xs vs primaryAction
-
+            if attrs.size?
+                scope.additional_class = "btn-xs"
+            else
+                scope.additional_class = ""
 
             element.bind("click", (ev) ->
-                attrs.click({event: ev})
+                if scope.click?
+                    scope.click({event: ev})
             )
-            scope.local_click = (ev) ->
-                scope.attr({event: ev})
 
 })
