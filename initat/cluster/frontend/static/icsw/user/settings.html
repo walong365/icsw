@@ -1,0 +1,25 @@
+<script type="text/ng-template" id="icsw.user.settings.overview">
+    <icsw-user-settings-form></icsw-user-settings-form>
+    <h3>License settings</h3>
+    <table class="table table-condensed table-hover" style="width:auto;">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Enabled</th>
+                <th colspan="10">Services needed</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="lic in edit_obj.cluster_license_set">
+                <td>{{ lic.name }}</td>
+                <td>{{ lic.description }}</td>
+                <td>
+                    <input type="button" ng-class="get_lic_class(lic)" ng-value="get_lic_value(lic)" ng-click="change_lic(lic)"></input>
+                </td>
+                <td ng-show="get_services(lic.name).length == 0">---</td>
+                <td ng-repeat="srv in get_services(lic.name)" ng-class="get_service_state(srv)">{{ srv }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>

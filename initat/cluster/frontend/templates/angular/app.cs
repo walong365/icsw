@@ -32,7 +32,7 @@ ics_app = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "blockUI", "icsw.tools.tree",
-        "icsw.menu_app", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
+        "icsw.layout.menu", "icsw.layout.sidebar", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
         "icsw.config", "icsw.config.gen", "icsw.rrd.graph",
         "icsw.rms", "icsw.lic", "icsw.server.info",
         "icsw.network.device", "icsw.device.info",
@@ -40,7 +40,7 @@ ics_app = angular.module(
         "icsw.monitoring.create", "icsw.monitoring_build_info", "icsw.monitoring.device", "icsw.monitoring_overview",
         "icsw.device.config", "icsw.device", "icsw.device.variables", "icsw.device.connection",
         "icsw.device.livestatus", "icsw.device.boot", "icsw.device.status_history",
-        "icsw.login", "icsw.package.install", "icsw.settings",
+        "icsw.login", "icsw.package.install", "icsw.user.settings",
         "icsw.monitoring_basic", "icsw.monitoring_extended",
         "icsw.partition_table", "icsw.kernel", "icsw.image",
         "icsw.info.background",
@@ -68,6 +68,7 @@ ics_app.config(() ->
     "CONFIG_SHOW_CONFIGS": "{% url 'config:show_configs' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
     "DEVICE_SHOW_CONFIGS": "{% url 'device:show_configs' %}"
+    "DEVICE_SET_SELECTION": "{% url 'device:set_selection' %}"
     "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
     "DEVICE_VARIABLES": "{% url 'device:variables' %}"
     "DOC_PAGE": "/cluster/doc/main.pdf"
@@ -103,8 +104,11 @@ ics_app.config(() ->
     "REST_BACKGROUND_JOB_LIST": "{% url 'rest:background_job_list' %}"
     "REST_CATEGORY_DETAIL": "{% url 'rest:category_detail' 1 %}"
     "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
+    "REST_CLUSTER_LICENSE_DETAIL": "{% url 'rest:cluster_license_detail' 1 %}"
+    "REST_CLUSTER_SETTING_LIST": "{% url 'rest:cluster_setting_list' %}"
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
+    "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
@@ -137,7 +141,7 @@ ics_app.config(() ->
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "USER_GLOBAL_SETTINGS": "{% url 'user:global_settings' %}"
     "USER_OVERVIEW": "{% url 'user:overview' %}"
-
+    "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
 })
 
 root.ics_app = ics_app

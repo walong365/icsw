@@ -1,6 +1,4 @@
-{% load i18n coffeescript %}
-
-<div ng-cloack>
+<script type="text/ng-template" id="icsw.layout.sidebar">
     <div id="sidebar-wrapper" ng-controller="sidebar_base" ng-show="is_authenticated">
         <div>
             <div>
@@ -15,7 +13,7 @@
                         <button class="btn btn-warning fa fa-remove" title="Clear selection" type="button" ng-click="clear_selection()">
                              Clear
                         </button>
-                    </span>  
+                    </span>
                 </div>
                 <tabset>
                     <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
@@ -29,8 +27,8 @@
                     </tab>
                 </tabset>
             </div>
-            <div id="ajax_info"></div> 
+            <div id="ajax_info"></div>
         </div>
     </div>
     <div id="sidebar-sep" ng-controller="sidebar_sep" ng-click="sep_click()" ng-show="is_authenticated"></div>
-</div>
+</script>

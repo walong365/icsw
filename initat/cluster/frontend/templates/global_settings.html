@@ -1,42 +1,19 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n crispy_forms_tags %}
 
 {% block title %}{% trans "Global settings" %}{% endblock %}
 
 {% block content %}
 
+<script type="text/ng-template" id="icsw.user.settings.form">
+    {% crispy form form.helper %}
+</script>
+
 {% verbatim %}
 
-<div>
-    <div ng-controller="settings_ctrl">
-        {% endverbatim %}
-            {% crispy form form.helper %}
-        {% verbatim %}
-        <h3>License settings</h3>
-        <table class="table table-condensed table-hover" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Enabled</th>
-                    <th colspan="10">Services needed</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="lic in edit_obj.cluster_license_set">
-                    <td>{{ lic.name }}</td>
-                    <td>{{ lic.description }}</td>
-                    <td>
-                        <input type="button" ng-class="get_lic_class(lic)" ng-value="get_lic_value(lic)" ng-click="change_lic(lic)"></input>
-                    </td>
-                    <td ng-show="get_services(lic.name).length == 0">---</td>
-                    <td ng-repeat="srv in get_services(lic.name)" ng-class="get_service_state(srv)">{{ srv }}</td>
-                </tr>
-            </tbody>
-        </table>
-        
-    </div>
+<div ng-controller="icswUserSettingsCtrl">
+    <icsw-user-settings-overview></icsw-user-settings-overview>
 </div>
 
 {% endverbatim %}

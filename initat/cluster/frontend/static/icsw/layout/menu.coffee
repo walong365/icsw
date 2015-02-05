@@ -1,6 +1,6 @@
 
 menu_module = angular.module(
-    "icsw.menu_app",
+    "icsw.layout.menu",
     [
         "ngSanitize", "ui.bootstrap",
     ]
@@ -104,4 +104,9 @@ menu_module = angular.module(
                         $scope.progress_iters = 5
                         $scope.update_progress_bar()
         $scope.show_time()
-])
+]).directive("icswLayoutMenubar", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.layout.menubar")
+    }
+)

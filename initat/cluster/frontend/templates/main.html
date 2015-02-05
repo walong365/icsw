@@ -194,6 +194,7 @@
     window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %}
     window.ROUTING = {{ routing | safe }}
     window.LOCAL_DEVICE = "{{ local_device }}"
+    window.SIDEBAR_MODE = "{{ request.session.sidebar_mode }}"
     {% if doc_page %}
     window.DOC_PAGE = "{{ doc_page }}"
     {% else %}
@@ -236,7 +237,6 @@
     {% include "angular/partition_table.cs" %}
     {% include "angular/kernel.cs" %}
     {% include "angular/image.cs" %}
-    {% include "angular/settings.cs" %}
     {% include "angular/angular-dimple-init.cs" %}
 
 </head>
@@ -256,11 +256,10 @@
         {% for ssi_file in settings.SSI_FILES %}
             {% ssi ssi_file %}
         {% endfor %}
+        <icsw-layout-menubar></icsw-layout-menubar>
         <div block-ui="main" class="block-ui-main"></div>
         <div id="icsw_wrapper">
-    
-            {% include 'sidebar.html' %}
-    
+            <icsw-layout-sidebar></icsw-layout-sidebar>
             <div id="page-content-wrapper">
                 <div class="container-fluid">
                     {% block content %}
