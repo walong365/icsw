@@ -813,7 +813,7 @@ class host_service_id_util(object):
         retval = None
         if s_check.mccs_id is not None:
             # special service check
-            # formt is similar to regular service check, other prefix and we also set the pk of the special_command
+            # form is similar to regular service check, other prefix and we also set the pk of the special_command
             retval = "s_host_check:{}:{}:{}:{}".format(host_pk, s_check.check_command_pk, s_check.mccs_id, info)
         elif s_check.check_command_pk is not None:
             # regular service check
@@ -834,12 +834,12 @@ class host_service_id_util(object):
         retval = (None, None, None)
         if len(data) == 2:
             if data[0] == 'host_check':
-                if data[1].count(":") > 2:
+                if data[1].count(":") >= 2:
                     service_data = data[1].split(":", 2)
                     host_pk, service_pk, info = service_data
                     retval = (int(host_pk), int(service_pk), info)
             elif data[0] == "s_host_check":
-                if data[1].count(":") > 3:
+                if data[1].count(":") >= 3:
                     service_data = data[1].split(":", 3)
                     host_pk, service_pk, s_check_pk, info = service_data
                     retval = (int(host_pk), int(service_pk), info)
