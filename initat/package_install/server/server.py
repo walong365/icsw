@@ -297,4 +297,4 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
             if cur_c is not None:
                 self.send_reply(cur_c.uid, send_com)
             else:
-                self.log("no client with name '%s' found" % (target_name), logging_tools.LOG_LEVEL_WARN)
+                self.log("no client with name '{}' found".format(target_name), logging_tools.LOG_LEVEL_WARN)

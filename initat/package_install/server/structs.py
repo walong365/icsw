@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #

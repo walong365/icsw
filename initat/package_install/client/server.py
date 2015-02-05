@@ -298,32 +298,45 @@ class server_process(threading_tools.process_pool):
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
             data.append(zmq_sock.recv())
+        batch_list = []
         if len(data) == 2:
             src_id = data.pop(0)
             data = data[0]
-            srv_com = server_command.srv_command(source=data)
-            srv_com.update_source()
-            cur_com = srv_com["command"].text
-            self.log("got {} (length: {:d}) from {}".format(cur_com, len(data), src_id))
-            srv_com["result"] = None
-            if cur_com == "get_0mq_id":
-                srv_com["zmq_id"] = self.bind_id
-                srv_com.set_result(
-                    "0MQ_ID is {}".format(self.bind_id)
-                )
-            elif cur_com == "status":
-                # FIXME, Todo
-                srv_com.set_result(
-                    "everything OK :-)"
+            try:
+                srv_com = server_command.srv_command(source=data)
+            except:
+                self.log(
+                    "error decoding command from {}: {}, '{}'".format(
+                        src_id,
+                        process_tools.get_except_info(),
+                        data[:30],
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                srv_com.set_result(
-                    "unknown command '{}'".format(cur_com),
-                    server_command.SRV_REPLY_STATE_ERROR
-                )
-            zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-            zmq_sock.send_unicode(unicode(srv_com))
-            del srv_com
+                srv_com.update_source()
+                cur_com = srv_com["command"].text
+                self.log("got {} (length: {:d}) from {}".format(cur_com, len(data), src_id))
+                srv_com["result"] = None
+                if cur_com == "get_0mq_id":
+                    srv_com["zmq_id"] = self.bind_id
+                    srv_com.set_result(
+                        "0MQ_ID is {}".format(self.bind_id)
+                    )
+                elif cur_com == "status":
+                    # FIXME, Todo
+                    srv_com.set_result(
+                        "everything OK :-)"
+                    )
+                elif cur_com == "new_config":
+                    self._get_new_config()
+                elif cur_com == "sync_repos":
+                    self._get_repos()
+                else:
+                    batch_list.append(srv_com)
+                zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+                zmq_sock.send_unicode(unicode(srv_com))
+                del srv_com
         else:
             self.log(
                 "cannot receive more data, already got '{}'".format(
@@ -331,47 +344,15 @@ class server_process(threading_tools.process_pool):
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-
-    def _recv(self, zmq_sock):
-        batch_list = []
-        while True:
-            raw_data = []
-            raw_data.append(zmq_sock.recv_unicode())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-                break
-            # rewrite to srv_coms
-            data = []
-            while raw_data:
-                raw_data.pop(0)
-                try:
-                    in_com = server_command.srv_command(source=raw_data.pop(0))
-                except:
-                    self.log("error decoding command: {}".format(process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    rcv_com = in_com["command"].text
-                    self.log("got command {}".format(rcv_com))
-                    if rcv_com == "new_config":
-                        self._get_new_config()
-                    elif rcv_com == "sync_repos":
-                        self._get_repos()
-                    else:
-                        data.append(in_com)
-                if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
-                    break
-            batch_list.extend(data)
-            if not zmq_sock.poll(zmq.POLLIN):  # @UndefinedVariable
-                break
-        # batch_list = self._optimize_list(batch_list)
-        self.send_to_process(
-            "install",
-            "command_batch",
-            [
-                unicode(cur_com) for cur_com in batch_list
-            ]
-        )
-    # def _optimize_list(self, in_list):
-    #    return in_list
+        if batch_list:
+            self.log("... batch list valid ({})".format(batch_list[0]["*command"]))
+            self.send_to_process(
+                "install",
+                "command_batch",
+                [
+                    unicode(cur_com) for cur_com in batch_list
+                ]
+            )
 
     def _int_error(self, err_cause):
         self.__exit_cause = err_cause
