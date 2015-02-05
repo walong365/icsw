@@ -1,24 +1,20 @@
 
-<!-- toto title:
-Cluster networks
--->
-
 <script type="text/ng-template" id="icswNetworkPage">
 
 <tabset>
-    <tab heading="Network device types" ng-controller="icswCommonDummyCtrl">
+    <tab heading="Network device types" ng-controller="icswToolsDummyCtrl">
 
         <h3>Network device types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
 
         <table st-table="entries_displayed" st-safe-src="entries"
                class="table table-hover table-condensed table-striped" style="width:auto;">
 
-            <icsw-rest-table target-list="entries" config-service="icswNetworkDeviceTypesService"> </icsw-rest-table>
+            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkDeviceTypesService"> </icsw-tools-rest-table>
 
             <thead>
                 <tr>
                     <td colspan="99">
-                        <div icsw-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                     </td>
                 </tr>
                 <tr>
@@ -48,14 +44,14 @@ Cluster networks
 
     </tab>
 
-    <tab heading="Network types" ng-controller="icswCommonDummyCtrl">
+    <tab heading="Network types" ng-controller="icswToolsDummyCtrl">
 
         <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
 
         <table st-table="entries_displayed" st-safe-src="entries"
                class="table table-hover table-condensed table-striped" style="width:auto;">
 
-            <icsw-rest-table target-list="entries" config-service="icswNetworkTypesService"> </icsw-rest-table>
+            <icsw-tools-rest-table target-list="entries" config-service="icswNetworkTypesService"> </icsw-tools-rest-table>
 
             <thead>
                 <tr>
@@ -78,7 +74,7 @@ Cluster networks
 
     </tab>
 
-    <tab heading="Networks" ng-controller="icswCommonDummyCtrl">
+    <tab heading="Networks" ng-controller="icswToolsDummyCtrl">
         <h3>
             Networks ({{entries.length}} entries),
             <div class="btn-group">
@@ -90,12 +86,12 @@ Cluster networks
         <table st-table="entries_displayed" st-safe-src="entries"
                class="table table-hover table-condensed table-striped" style="width:auto;">
 
-            <icsw-rest-table target-list="entries" config-service="icswNetworksService"> </icsw-rest-table>
+            <icsw-tools-rest-table target-list="entries" config-service="icswNetworksService"> </icsw-tools-rest-table>
 
             <thead>
                 <tr>
                     <td colspan="99">
-                        <div icsw-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                     </td>
                 </tr>
                 <tr>
@@ -151,7 +147,7 @@ Cluster networks
                 <thead>
                     <tr>
                         <td colspan="99">
-                            <div icsw-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                         </td>
                     </tr>
                     <tr>
