@@ -1,7 +1,10 @@
 
-category_tree_module = angular.module("icsw.config.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps".ns(), "angularFileUpload"])
-
-cat_ctrl = category_tree_module.controller("icswConfigCategoryTreeCtrl", [
+angular.module(
+    "icsw.config.category_tree",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps".ns(), "angularFileUpload"
+    ]
+).controller("icswConfigCategoryTreeCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window",
     "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, sharedDataSource, $q, $modal, access_level_service, FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService) ->

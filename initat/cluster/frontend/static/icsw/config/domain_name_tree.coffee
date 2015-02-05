@@ -1,5 +1,4 @@
-
-domain_name_tree_module = angular.module(
+angular.module(
     "icsw.config.domain_name_tree",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"

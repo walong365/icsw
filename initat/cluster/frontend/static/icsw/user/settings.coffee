@@ -1,4 +1,4 @@
-settings_module = angular.module(
+angular.module(
     "icsw.user.settings",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
