@@ -70,15 +70,15 @@
                     </select>
                 </div>
             </form>
-            <from class="form-inline">
+            <form class="form-inline">
                 <label class="control-label">Filter:</label>
                 <div class="form-group">
-                    <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
+                    <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"/>
                 </div>
 
                 <div class="form-group">
-                    <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"></input>
-                    <input type="button" class="btn btn-sm btn-info" value="deselect all" ng-click="deselect_all()"></input>
+                    <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"/>
+                    <input type="button" class="btn btn-sm btn-info" value="deselect all" ng-click="deselect_all()"/>
                 </div>
             </form>
         </div>
@@ -111,9 +111,9 @@
 <script type="text/ng-template" id="device_tree_meta_row.html">
     <td colspan="2"><strong>{{ obj.device_group_obj.name }}</strong>
         <div class="btn-group btn-group-xs pull-right" ng-show="obj.device_group_obj.num_devices">
-            <input type="button" class="btn btn-success" ng-click="change_dg_sel(1)" value="S"></input>
-            <input type="button" class="btn btn-primary" ng-click="change_dg_sel(0)" value="T"></input>
-            <input type="button" class="btn btn-warning" ng-click="change_dg_sel(-1)" value="C"></input>
+            <input type="button" class="btn btn-success" ng-click="change_dg_sel(1)" value="S"/>
+            <input type="button" class="btn btn-primary" ng-click="change_dg_sel(0)" value="T"/>
+            <input type="button" class="btn btn-warning" ng-click="change_dg_sel(-1)" value="C"/>
         </div>
     </td>
     <td>{{ obj.device_group_obj.description }}</td>
@@ -134,7 +134,7 @@
 
 <script type="text/ng-template" id="device_tree_row.html">
     <td>{{ obj.name }}</td>
-    <td><input type="button" ng-class="get_dev_sel_class()" ng-model="obj.selected" ng-click="toggle_dev_sel()" value="sel"></input></td>
+    <td><input type="button" ng-class="get_dev_sel_class()" ng-model="obj.selected" ng-click="toggle_dev_sel()" value="sel"/></td>
     <td>{{ obj.comment }}</td>
     <td>
         <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>

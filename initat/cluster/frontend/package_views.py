@@ -1,7 +1,6 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -41,7 +40,9 @@ from rest_framework.renderers import JSONRenderer
 from lxml.builder import E  # @UnresolvedImports @UnusedImport
 import logging
 import logging_tools
+import process_tools
 import json
+import pprint
 import server_command
 
 logger = logging.getLogger("cluster.package")
@@ -115,6 +116,8 @@ class use_package(View):
                 request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
             except ValidationError, what:
                 request.xml_response.error("error creating: %s" % (unicode(what)), logger)
+            except:
+                request.xml_response.info("unknown error: {}".format(process_tools.get_except_info()), logger)
             else:
                 request.xml_response.info("copied package_result", logger)
 

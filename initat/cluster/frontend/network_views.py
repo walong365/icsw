@@ -66,7 +66,7 @@ class show_cluster_networks(permission_required_mixin, View):
             "network_form": network_form(),
             "network_device_type_form": network_device_type_form(),
             "network_type_form": network_type_form(),
-            })()
+        })()
 
 
 class json_network(View):

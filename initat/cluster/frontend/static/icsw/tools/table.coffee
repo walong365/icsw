@@ -73,26 +73,33 @@ angular.module(
                 if e_val > ctrl.getNumberOfTotalEntries()
                     e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
-}).directive('icswToolsRestTable', (Restangular, $parse, $injector, $compile, $templateCache, $modal) ->
+    }
+).directive('icswToolsRestTable', (Restangular, $parse, $injector, $compile, $templateCache, $modal) ->
     return {
-        restrict: 'E',
+        restrict: 'EA'
+        scope: true
         link: (scope, element, attrs) ->
             scope.config_service = $injector.get(attrs.configService)
 
             scope.config_service.use_modal ?= true
 
+            if scope.config_service.init_fn?
+                scope.config_service.init_fn(scope)
             scope.data_received = (data) ->
-                scope[attrs.targetList] = data
-
-            scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
-
-            scope.reload = () ->
-                scope.rest.getList().then(scope.data_received)
+                $parse(attrs.targetList).assign(scope, data)
                 if scope.config_service.after_reload
-                    scope.config_service.after_reload()
+                    scope.config_service.after_reload(scope)
 
+            if scope.config_service.rest_url?
+                $parse(attrs.targetList).assign(scope, [])
+                scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
 
-            scope.reload()
+                scope.reload = () ->
+                    scope.rest.getList().then(scope.data_received)
+
+                scope.reload()
+            #else
+            #    console.log $parse(attrs.targetList)(scope)
 
             # interface functions to use in directive body
             scope.edit = (event, obj) ->
@@ -137,8 +144,8 @@ angular.module(
                         scope.edit_obj.put().then(
                             (data) ->
                                 handle_reset(data, scope.entries, scope.edit_obj.idx)
-                                if scope.fn and scope.fn.object_modified
-                                    scope.fn.object_modified(scope.edit_obj, data, scope)
+                                if scope.config_service.object_modified
+                                    scope.config_service.object_modified(scope.edit_obj, data, scope)
                                 scope.close_modal()
                             (resp) -> handle_reset(resp.data, scope.entries, scope.edit_obj.idx)
                         )
@@ -186,12 +193,10 @@ angular.module(
                         obj.remove().then((resp) ->
                             noty
                                 text : "deleted instance"
-                            remove_by_idx(scope.entries, obj.idx)
+                            remove_by_idx($parse(attrs.targetList)(scope), obj.idx)
                             if scope.config_service.post_delete
                                 scope.config_service.post_delete(scope, obj)
                         )
                 )
-}). run(() ->
+    }
 )
-
-

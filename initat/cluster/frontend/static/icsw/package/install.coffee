@@ -1,237 +1,84 @@
-{% load coffeescript %}
 
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-package_module = angular.module("icsw.package", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
-
-angular_add_simple_list_controller(
-    package_module,
-    "package_repo_base",
-    {
-        rest_url            : "{% url 'rest:package_repo_list' %}"
+package_module = angular.module(
+    "icsw.package.install",
+    ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
+    "icsw.tools.table", ]
+).service("icswPackageInstallRepositoryService", (Restangular, ICSW_URLS) ->
+    return {
+        rest_url            : ICSW_URLS.REST_PACKAGE_REPO_LIST
         delete_confirm_str  : (obj) -> return "Really delete Package repository '#{obj.name}' ?"
-        template_cache_list : ["package_repo_row.html", "package_repo_head.html"]
-        rest_map            : [
-            {"short" : "service", "url" : "{% url 'rest:package_service_list' %}"}
-        ]
-        init_fn : ($scope, timeout) ->
-            $scope.show_enabled = false
-            $scope.show_published = false
-        fn :
-            get_service_name : ($scope, repo) ->
-                if repo.service
-                    return (entry for entry in $scope.rest_data["service"] when entry.idx == repo.service)[0].name
-                else
-                    return "---"
-            toggle : (obj) ->
-                obj.publish_to_nodes = if obj.publish_to_nodes then false else true
-                obj.put()
-            rescan : ($scope) ->
-                # $.blockUI()
-                call_ajax
-                    url     : "{% url 'pack:repo_overview' %}"
-                    data    : {
-                        "mode" : "rescan_repos"
-                    }
-                    success : (xml) ->
-                        # $.unblockUI()
-                        if parse_xml_response(xml)
-                            $scope.reload()
-            sync : () ->
-                # $.blockUI()
-                call_ajax
-                    url     : "{% url 'pack:repo_overview' %}"
-                    data    : {
-                        "mode" : "sync_repos"
-                    }
-                    success : (xml) ->
-                        # $.unblockUI()
-                        parse_xml_response(xml)
-            clearcaches : () ->
-                # $.blockUI()
-                call_ajax
-                    url     : "{% url 'pack:repo_overview' %}"
-                    data    : {
-                        "mode" : "clear_caches"
-                    }
-                    success : (xml) ->
-                        # $.unblockUI()
-                        parse_xml_response(xml)
-            filter_repo : (obj, $scope) ->
-                _show = true
-                if $scope.show_enabled and not obj.enabled
-                    _show = false
-                if $scope.show_published and not obj.publish_to_nodes
-                    _show = false
-                return _show
+        get_service_name : ($scope, repo) ->
+            if repo.service
+                return (entry for entry in $scope.rest_data["service"] when entry.idx == repo.service)[0].name
+            else
+                return "---"
+        toggle : (obj) ->
+            obj.publish_to_nodes = if obj.publish_to_nodes then false else true
+            obj.put()
+        filter_repo : (obj, $scope) ->
+            _show = true
+            if $scope.show_enabled and not obj.enabled
+                _show = false
+            if $scope.show_published and not obj.publish_to_nodes
+                _show = false
+            return _show
     }
-)
-
-angular_add_simple_list_controller(
-    package_module,
-    "package_search_base",
-    {
-        rest_url            : "{% url 'rest:package_search_list' %}"
-        edit_template       : "package_search.html"
-        rest_map            : [
-            {"short" : "user", "url" : "{% url 'rest:user_list' %}"}
-        ]
+).service("icswPackageInstallSearchService", (Restangular, ICSW_URLS) ->
+    user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
+    return {
+        user_rest           : user_rest
+        rest_url            : ICSW_URLS.REST_PACKAGE_SEARCH_LIST
+        edit_template       : "icsw.package.install.package.search"
         delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
-        template_cache_list : ["package_search_row.html", "package_search_head.html"]
         entries_filter      : {deleted : false}
-        post_delete : ($scope, del_obj) ->
-            if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == del_obj.idx
-                $scope.shared_data.result_obj = undefined
-        fn:
-            object_modified : (edit_obj, srv_data, $scope) ->
-                call_ajax
-                    url     : "{% url 'pack:retry_search' %}"
-                    data    : {
-                        "pk" : edit_obj.idx
-                    }
-                    success : (xml) ->
-                        parse_xml_response(xml)
-                        $scope.reload()
-            retry : ($scope, obj) ->
-                if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == obj.idx
-                    $scope.shared_data.result_obj = undefined
-                call_ajax
-                    url     : "{% url 'pack:retry_search' %}"
-                    data    : {
-                        "pk" : obj.idx
-                    }
-                    success : (xml) ->
-                        parse_xml_response(xml)
-                        $scope.reload()
-            show : ($scope, obj) ->
-                $scope.shared_data.result_obj = obj
-            create_search : ($scope) ->
-                if $scope.search_string
-                    $scope.Restangular.all("{% url 'rest:package_search_list' %}".slice(1)).post({"search_string" : $scope.search_string, "user" : {{ request.user.pk }}}).then((data) ->
-                        call_ajax
-                            url     : "{% url 'pack:repo_overview' %}"
-                            data    : {
-                                "mode" : "reload_searches"
-                            }
-                            success : (xml) ->
-                                parse_xml_response(xml)
-                                $scope.reload()
-                        $scope.search_string = ""
-                    )
-        init_fn:
-            ($scope, $timeout, Restangular) ->
-                $scope.Restangular = Restangular
-                $scope.search_string = ""
-                $scope.$timeout = $timeout
-                $scope.reload_searches = () ->
-                    # check all search states
-                    if (obj.current_state for obj in $scope.entries when obj.current_state != "done").length and not $scope.modal_active
-                        $scope.reload()
-                    $timeout($scope.reload_searches, 5000)
-                $timeout(
-                    $scope.reload_searches,
-                    5000
-                )
+        post_delete : (scope, del_obj) ->
+            scope.clear_active_search(del_obj)
+        object_modified : (edit_obj, srv_data, $scope) ->
+            call_ajax
+                url     : ICSW_URLS.PACK_RETRY_SEARCH
+                data    : {
+                    "pk" : edit_obj.idx
+                }
+                success : (xml) ->
+                    parse_xml_response(xml)
+                    $scope.reload()
+        init_fn: (scope) ->
+            scope.init_search(scope)
     }
-)
-
-angular_add_simple_list_controller(
-    package_module,
-    "package_base",
-    {
-        rest_url            : "{% url 'rest:package_list' %}"
+).service("icswPackageInstallPackageListService", (ICSW_URLS) ->
+    return {
+        rest_url            : ICSW_URLS.REST_PACKAGE_LIST
         #edit_template       : "package_search.html"
-        rest_map            : [
-            {"short" : "package_repo", "url" : "{% url 'rest:package_repo_list' %}"}
-        ]
         delete_confirm_str  : (obj) -> return "Really delete Package '#{obj.name}-#{obj.version}' ?"
-        template_cache_list : ["package_row.html", "package_head.html"]
-        init_fn:
-            ($scope) ->
-                # true for device / pdc, false for pdc / device style
-                $scope.dp_style = true
-                $scope.shared_data.package_list_changed = 0
-                $scope.$watch(
-                    () -> return $scope.shared_data.package_list_changed
-                    (new_el) ->
-                        $scope.reload()
-                )
-        fn:
-            toggle_grid_style : ($scope) ->
-                $scope.dp_style = !$scope.dp_style
-            get_grid_style : ($scope) ->
-                return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
+        init_fn: (scope) ->
+            scope.init_package_list(scope)
+        after_reload: (scope) ->
+            scope.salt_package_list()
+        toggle_grid_style : ($scope) ->
+            $scope.dp_style = !$scope.dp_style
+        get_grid_style : ($scope) ->
+            return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
     }
-)
-
-angular_add_simple_list_controller(
-    package_module,
-    "package_search_result_base",
-    {
-        #rest_url            : "{% url 'rest:package_search_list' %}"
+).service("icswPackageInstallSearchResultService", (ICSW_URLS)->
+    return {
         edit_template       : "package_search.html"
-        rest_map            : [
-            {"short" : "package_repo", "url" : "{% url 'rest:package_repo_list' %}"}
-        ]
         delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
-        template_cache_list : ["package_search_result_row.html", "package_search_result_head.html"]
-        init_fn:
-            ($scope) ->
-                $scope.$watch(
-                    () -> return $scope.shared_data.result_obj
-                    (new_el) ->
-                        if $scope.shared_data.result_obj
-                            $scope.pagSettings.clear_filter()
-                            # $.blockUI()
-                            $scope.load_data(
-                                "{% url 'rest:package_search_result_list' %}",
-                                {"package_search" : $scope.shared_data.result_obj.idx}
-                            ).then(
-                                (data) ->
-                                    # $.unblockUI()
-                                    $scope.entries = data
-                                    for entry in $scope.entries
-                                        entry.target_repo = 0
-                            )
-                        else
-                            $scope.entries = []
-                )
-        fn:
-            show_repo : ($scope, obj) ->
-                if obj.target_repo
-                    return $scope.rest_data["package_repo"][obj.target_repo].name
-                else
-                    return "ignore"
-            take : ($scope, obj, exact) ->
-                obj.copied = 1
-                call_ajax
-                    url     : "{% url 'pack:use_package' %}"
-                    data    : {
-                        "pk"          : obj.idx
-                        "exact"       : if exact then 1 else 0
-                        "target_repo" : obj.target_repo
-                    }
-                    success : (xml) ->
-                        if parse_xml_response(xml)
-                            $scope.shared_data.package_list_changed += 1
-                        else
-                            obj.copied = 0
     }
-)
-
-update_pdc = (srv_pdc, client_pdc) ->
-    for attr_name in ["installed", "package", "response_str", "response_type", "target_state", "install_time",
-      "installed_name", "installed_version", "installed_release"] 
-        client_pdc[attr_name] = srv_pdc[attr_name]
-        
-package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools) ->
+).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window",
+    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window) ->
+        # flags
+        $scope.show_enabled_repos = true
+        $scope.show_published_repos = true
+        # lists
+        $scope.entries =
+            "repos" : []
+            "searches": []
+            "searchresults": []
+            # installable packages
+            "packages" : []
+        # active search
+        $scope.active_search = undefined
         # devices
-        $scope.entries = []
         $scope.devices = []
         # image / kernel list
         $scope.srv_image_list = []
@@ -243,11 +90,11 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
         $scope.shared_data = sharedDataSource.data
-        $scope.device_tree_url = "{% url 'rest:device_tree_list' %}"
+        $scope.device_tree_url = ICSW_URLS.REST_DEVICE_TREE_LIST
         wait_list = restDataSource.add_sources([
             [$scope.device_tree_url, {"ignore_meta_devices" : true}]
-            ["{% url 'rest:image_list' %}", {}]
-            ["{% url 'rest:kernel_list' %}", {}]
+            [ICSW_URLS.REST_IMAGE_LIST, {}]
+            [ICSW_URLS.REST_KERNEL_LIST, {}]
         ])
         $scope.inst_rest_data = {}
         $q.all(wait_list).then((data) ->
@@ -255,6 +102,109 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             $scope.srv_image_list = data[1]
             $scope.srv_kernel_list = data[2]
         )
+        $scope.rescan_repos = (reload_func) ->
+            blockUI.start()
+            call_ajax
+                url     : ICSW_URLS.PACK_REPO_OVERVIEW
+                data    : {
+                    "mode" : "rescan_repos"
+                }
+                success : (xml) ->
+                    blockUI.stop()
+                    if parse_xml_response(xml)
+                        reload_func()
+        $scope.clear_active_search = (del_obj) ->
+            if $scope.active_search and $scope.active_search.idx == del_obj.idx
+                $scope.active_search = undefined
+        $scope.retry_search = (obj, reload_func) ->
+            if $scope.active_search?
+                $scope.active_search = undefined
+            call_ajax
+                url     : ICSW_URLS.PACK_RETRY_SEARCH
+                data    : {
+                    "pk" : obj.idx
+                }
+                success : (xml) ->
+                    parse_xml_response(xml)
+                    reload_func()
+        $scope.reload_searches = () ->
+            # check all search states
+            if (obj.current_state for obj in $scope.entries.searches when obj.current_state != "done").length and not $scope.modal_active
+                $scope.search_scope.reload()
+            $timeout($scope.reload_searches, 5000)
+        $scope.show_search_result = (obj) ->
+            $scope.active_search = obj
+            if $scope.active_search?
+                blockUI.start()
+                Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_RESULT_LIST.slice(1)).getList({"package_search" : $scope.active_search.idx}).then((new_data) ->
+                    blockUI.stop()
+                    $scope.entries.searchresults = new_data
+                    for entry in $scope.entries
+                        entry.target_repo = 0
+                )
+            else
+                $scope.entries.searchresults = []
+        $scope.create_search = () ->
+            if $scope.search_scope.search_string
+                Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_scope.search_string, "user" : $window.CURRENT_USER.idx}).then((data) ->
+                    call_ajax
+                        url     : ICSW_URLS.PACK_REPO_OVERVIEW
+                        data    : {
+                            "mode" : "reload_searches"
+                        }
+                        success : (xml) ->
+                            parse_xml_response(xml)
+                            $scope.search_scope.reload()
+                    $scope.search_scope.search_string = ""
+                )
+        $scope.init_search = (local_scope) ->
+            local_scope.search_string = ""
+            $scope.search_scope = local_scope
+            $timeout($scope.reload_searches, 5000)
+        $scope.take_search_result = (obj, exact) ->
+            obj.copied = 1
+            call_ajax
+                url     : ICSW_URLS.PACK_USE_PACKAGE
+                data    : {
+                    "pk"          : obj.idx
+                    "exact"       : if exact then 1 else 0
+                    "target_repo" : if obj.target_repo then obj.target_repo else obj.package_repo
+                }
+                success : (xml) ->
+                    if parse_xml_response(xml)
+                        # reload package list
+                        $scope.package_list_scope.reload()
+                    else
+                        obj.copied = 0
+        $scope.show_repo = (obj) ->
+            if obj.target_repo
+                return (entry for entry in $scope.entries.repos when obj.target_repo == entry.idx)[0].name
+            else
+                return "ignore"
+        $scope.init_package_list = (scope) ->
+            # true for device / pdc, false for pdc / device style
+            $scope.dp_style = true
+            $scope.package_list_scope = scope
+        $scope.sync_repos = () ->
+            blockUI.start()
+            call_ajax
+                url     : ICSW_URLS.PACK_REPO_OVERVIEW
+                data    : {
+                    "mode" : "sync_repos"
+                }
+                success : (xml) ->
+                    blockUI.stop()
+                    parse_xml_response(xml)
+        $scope.clear_caches = () ->
+            blockUI.start()
+            call_ajax
+                url     : ICSW_URLS.PACK_REPO_OVERVIEW
+                data    : {
+                    "mode" : "clear_caches"
+                }
+                success : (xml) ->
+                    blockUI.stop()
+                    parse_xml_response(xml)
         #$scope.load_devices = (url, options) ->
         #    return Restangular.all(url.slice(1)).getList(options)
         $scope.reload_devices = () ->
@@ -263,12 +213,16 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 $scope.set_devices(data)
                 blockUI.stop()
             )
-        # not working right now, f*ck, will draw to many widgets
         $scope.reload_state = () ->
-            #console.log "rls"
-            Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"package_state" : true, "ignore_meta_devices" : true}).then(
+            update_pdc = (srv_pdc, client_pdc) ->
+                for attr_name in [
+                    "installed", "package", "response_str", "response_type", "target_state", "install_time",
+                    "installed_name", "installed_version", "installed_release"
+                ]
+                    client_pdc[attr_name] = srv_pdc[attr_name]
+
+            Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"package_state" : true, "ignore_meta_devices" : true}).then(
                 (data) ->
-                    #console.log "reload"
                     for dev in data
                         # check if device is still in lut
                         if dev.idx of $scope.device_lut
@@ -285,14 +239,13 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                                     $scope.state_dict[dev.idx][pdc.package] = pdc
                     $scope.reload_promise = $timeout($scope.reload_state, 10000)
             )
-        $scope.$watch("entries", (new_val) ->
+        $scope.salt_package_list = () ->
             # init dummy pdc entries when new packages are added / removed to / from the entries list
-            for pack in $scope.entries
+            for pack in $scope.entries.packages
                 for dev_idx of $scope.device_lut
                     dev_idx = parseInt(dev_idx)
                     # dummy entry for newly added packages
                     $scope.state_dict[dev_idx][pack.idx]  = {"device" : dev_idx, "package" : pack.idx}
-        )
         $scope.change_package_sel = (cur_p, t_state) ->
             for d_key, d_value of $scope.state_dict
                 csd = d_value[cur_p.idx]
@@ -369,7 +322,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             # device lookup table
             $scope.device_lut = icswTools.build_lut($scope.devices)
             # package lut
-            $scope.package_lut = icswTools.build_lut($scope.entries)
+            $scope.package_lut = icswTools.build_lut($scope.entries.packages)
             #console.log $scope.entries.length, $scope.devices.length
             for dev in $scope.devices
                 dev.latest_contact = 0
@@ -377,9 +330,10 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 if not (dev.idx of $scope.state_dict)
                     $scope.state_dict[dev.idx] = {}
                 dev_dict = $scope.state_dict[dev.idx]
-                for pack in $scope.entries
+                for pack in $scope.entries.packages
                     if not (pack.idx of dev_dict)
                         dev_dict[pack.idx] = {"device" : dev.idx, "package" : pack.idx}
+            $scope.salt_package_list()
             $scope.reload_state()
         # attach / detach calls
         $scope.attach = (obj) ->
@@ -389,7 +343,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     if pdc.selected and parseInt(pack_idx) == obj.idx
                         attach_list.push([parseInt(dev_idx), obj.idx])
             call_ajax
-                url     : "{% url 'pack:add_package' %}"
+                url     : ICSW_URLS.PACK_ADD_PACKAGE
                 data    : {
                     "add_list" : angular.toJson(attach_list)
                 }
@@ -411,7 +365,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         delete pdc.idx
                         #pdc.remove_pdc()
             call_ajax
-                url     : "{% url 'pack:remove_package' %}"
+                url     : ICSW_URLS.PACK_REMOVE_PACKAGE
                 data    : {
                     "remove_list" : angular.toJson(remove_list)
                 }
@@ -450,7 +404,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     pdc["image_list"] = (_v for _v in $scope.edit_obj.image_list)
             #console.log change_dict
             call_ajax
-                url     : "{% url 'pack:change_pdc' %}"
+                url     : ICSW_URLS.PACK_CHANGE_PDC
                 data    : {
                     "change_dict" : angular.toJson(change_dict)
                 }
@@ -468,7 +422,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 "kernel_list" : []
                 "image_list" : []
             } 
-            $scope.action_div = $compile($templateCache.get("package_action.html"))($scope)
+            $scope.action_div = $compile($templateCache.get("icsw.package.install.package.action"))($scope)
             $scope.action_div.simplemodal
                 position     : [event.pageY, event.pageX]
                 #autoResize   : true
@@ -494,7 +448,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.send_sync = (event) ->
             blockUI.start()
             call_ajax
-                url     : "{% url 'pack:repo_overview' %}"
+                url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "new_config"
                 }
@@ -504,7 +458,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.send_clear_caches = (event) ->
             blockUI.start()
             call_ajax
-                url     : "{% url 'pack:repo_overview' %}"
+                url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "clear_caches"
                 }
@@ -516,10 +470,10 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 return moment.unix(dev.latest_contact).fromNow(true)
             else
                 return "never"
-]).directive("packageinstall", ($templateCache, msgbus) ->
+]).directive("icswPackageInstallOverview", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("package_install.html")
+        template : $templateCache.get("icsw.package.install.overview")
         link : (scope, el, attrs) ->
             if not attrs["devicepk"]?
                 msgbus.emit("devselreceiver")
@@ -527,6 +481,46 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     # args is not needed here, fix controller
                     scope.reload_devices(args[1])
                 )
+    }
+).directive("icswPackageInstallRepositoryRow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.package.repo.row")
+    }
+).directive("icswPackageInstallRepositoryHead", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.package.repo.head")
+    }
+).directive("icswPackageInstallSearchRow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.package.search.row")
+    }
+).directive("icswPackageInstallSearchHead", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.package.search.head")
+    }
+).directive("icswPackageInstallSearchResultHead", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.search.result.head")
+    }
+).directive("icswPackageInstallSearchResultRow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.search.result.row")
+    }
+).directive("icswPackageInstallPackageHead", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.package.list.head")
+    }
+).directive("icswPackageInstallPackageRow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.package.list.row")
     }
 ).directive("istate", ($templateCache, $compile) ->
     return {
@@ -636,9 +630,9 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 scope.draw = () ->
                     iElement.children().remove()
                     if scope.mode == "a"
-                        new_el = $compile($templateCache.get("pdc_state.html"))
+                        new_el = $compile($templateCache.get("icsw.package.install.pdc.state"))
                     else if scope.mode == "v"
-                        new_el = $compile($templateCache.get("pdc_version.html"))
+                        new_el = $compile($templateCache.get("icsw.package.install.pdc.version"))
                     iElement.append(new_el(scope))
                 scope.$watch("mode", () ->
                     scope.draw()
@@ -646,7 +640,3 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 scope.draw()
     }
 )
-
-{% endinlinecoffeescript %}
-
-</script>

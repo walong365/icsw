@@ -40,7 +40,7 @@ ics_app = angular.module(
         "icsw.monitoring.create", "icsw.monitoring_build_info", "icsw.monitoring.device", "icsw.monitoring_overview",
         "icsw.device.config", "icsw.device", "icsw.device.variables", "icsw.device.connection",
         "icsw.device.livestatus", "icsw.device.boot", "icsw.device.status_history",
-        "icsw.login", "icsw.package", "icsw.settings",
+        "icsw.login", "icsw.package.install", "icsw.settings",
         "icsw.monitoring_basic", "icsw.monitoring_extended",
         "icsw.partition_table", "icsw.kernel", "icsw.image",
         "icsw.info.background",
@@ -91,14 +91,20 @@ ics_app.config(() ->
     "NETWORK_DEVICE_NETWORK": "{% url 'network:device_network' %}"
     "NETWORK_DOMAIN_NAME_TREE": "{% url 'network:domain_name_tree' %}"
     "NETWORK_SHOW_NETWORKS": "{% url 'network:show_networks' %}"
+    "PACK_ADD_PACKAGE": "{% url 'pack:add_package' %}"
+    "PACK_CHANGE_PDC": "{% url 'pack:change_pdc' %}"
+    "PACK_REMOVE_PACKAGE": "{% url 'pack:remove_package' %}"
     "PACK_REPO_OVERVIEW": "{% url 'pack:repo_overview' %}"
+    "PACK_RETRY_SEARCH": "{% url 'pack:retry_search' %}"
+    "PACK_USE_PACKAGE": "{% url 'pack:use_package' %}"
     "REST_BACKGROUND_JOB_LIST": "{% url 'rest:background_job_list' %}"
     "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
-    "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
     "REST_FETCH_FORMS": "{% url 'rest:fetch_forms' %}"
+    "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
+    "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
     "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
     "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
@@ -106,6 +112,12 @@ ics_app.config(() ->
     "REST_NETWORK_DEVICE_TYPE_LIST": "{% url 'rest:network_device_type_list' %}"
     "REST_NETWORK_LIST": "{% url 'rest:network_list' %}"
     "REST_NETWORK_TYPE_LIST": "{% url 'rest:network_type_list' %}"
+    "REST_PACKAGE_LIST": "{% url 'rest:package_list' %}"
+    "REST_PACKAGE_REPO_LIST": "{% url 'rest:package_repo_list' %}"
+    "REST_PACKAGE_SEARCH_LIST": "{% url 'rest:package_search_list' %}"
+    "REST_PACKAGE_SEARCH_RESULT_LIST": "{% url 'rest:package_search_result_list' %}"
+    "REST_PACKAGE_SERVICE_LIST": "{% url 'rest:package_service_list' %}"
+    "REST_USER_LIST": "{% url 'rest:user_list' %}"
     "RMS_OVERVIEW": "{% url 'rms:overview' %}"
     "RRD_DEVICE_RRDS": "{% url 'rrd:device_rrds' %}"
     "RRD_GRAPH_RRDS": "{% url 'rrd:graph_rrds' %}"
@@ -118,6 +130,7 @@ ics_app.config(() ->
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "USER_GLOBAL_SETTINGS": "{% url 'user:global_settings' %}"
     "USER_OVERVIEW": "{% url 'user:overview' %}"
+
 })
 
 root.ics_app = ics_app
