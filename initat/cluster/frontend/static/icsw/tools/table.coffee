@@ -1,7 +1,9 @@
 
 angular.module(
-    "icsw.tools.table", ["restangular"]
-).directive('icswToolsPagination', ($templateCache) ->
+    "icsw.tools.table", [
+        "restangular"
+    ]
+).directive('icswToolsPagination', ["$templateCache", ($templateCache) ->
     return {
         restrict: 'EA',
         require: '^stTable',
@@ -74,7 +76,7 @@ angular.module(
                     e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
     }
-).directive('icswToolsRestTable', (Restangular, $parse, $injector, $compile, $templateCache, $modal) ->
+]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$comile", "$templateCache", "$modal", (Restangular, $parse, $injector, $compile, $templateCache, $modal) ->
     return {
         restrict: 'EA'
         scope: true
@@ -197,4 +199,4 @@ angular.module(
                         )
                 )
     }
-)
+])
