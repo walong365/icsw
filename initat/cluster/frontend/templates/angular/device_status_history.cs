@@ -170,8 +170,8 @@ status_history_module.controller("status_history_ctrl", ["$scope", "$compile", "
         }
         link : (scope, el, attrs) ->
             scope.devicepks = []
-            #scope.startdate = moment().startOf("day")
-            scope.startdate = moment('Wed Jan 07 2015 00:00:00 GMT+0100 (CET)')
+            scope.startdate = moment().startOf("day").subtract(1, "days")
+            #scope.startdate = moment('Wed Jan 07 2015 00:00:00 GMT+0100 (CET)')
             scope.timerange = 'day'
 
             scope.set_timerange = (tr) ->
