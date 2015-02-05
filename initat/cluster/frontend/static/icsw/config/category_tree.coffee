@@ -1,52 +1,11 @@
-{% load i18n coffeescript pipeline staticfiles %}
 
-<script type="text/javascript">
+category_tree_module = angular.module("icsw.config.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps".ns(), "angularFileUpload"])
 
-{% inlinecoffeescript %}
-
-category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps".ns(), "angularFileUpload"])
-
-class category_tree_edit extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        @show_selection_buttons = false
-        @show_icons = false
-        @show_select = false
-        @show_descendants = true
-        @show_childs = false
-        @location_re = new RegExp("^/location/.*$")
-    get_name : (t_entry) ->
-        cat = t_entry.obj
-        is_loc = @location_re.test(cat.full_name)
-        if cat.depth > 1
-            r_info = "#{cat.full_name} (#{cat.name})"
-            if cat.num_refs
-                r_info = "#{r_info} (refs=#{cat.num_refs})"
-            if is_loc
-                if cat.physical
-                    r_info = "#{r_info}, physical"
-                else
-                    r_info = "#{r_info}, structural"
-                if cat.locked
-                    r_info = "#{r_info}, locked"
-        else if cat.depth
-            r_info = cat.full_name
-        else
-            r_info = "TOP"
-        return r_info
-    handle_click: (entry, event) =>
-        @clear_active()
-        cat = entry.obj
-        if cat.depth > 1
-            @scope.edit_obj(cat, event)
-        else if cat.depth == 1
-            @scope.create_new(event, cat.full_name.split("/")[1])
-
-cat_ctrl = category_tree_module.controller("cat_base", [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, FileUploader, blockUI, icswTools) ->
-        $scope.cat = new category_tree_edit($scope, {})            
+cat_ctrl = category_tree_module.controller("icswConfigCategoryTreeCtrl", [
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window",
+    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, sharedDataSource, $q, $modal, access_level_service, FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService) ->
+        $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
         # mixins
@@ -56,29 +15,29 @@ cat_ctrl = category_tree_module.controller("cat_base", [
         $scope.edit_mixin.use_promise = true
         $scope.edit_mixin.new_object = (scope) -> return scope.new_object()
         $scope.edit_mixin.delete_confirm_str = (obj) -> return "Really delete category node '#{obj.name}' ?"
-        $scope.edit_mixin.modify_rest_url = "{% url 'rest:category_detail' 1 %}".slice(1).slice(0, -2)
-        $scope.edit_mixin.create_rest_url = Restangular.all("{% url 'rest:category_list' %}".slice(1))
-        $scope.edit_mixin.edit_template = "category.html"
+        $scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2)
+        $scope.edit_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
+        $scope.edit_mixin.edit_template = "icsw.config.category.tree.category"
         # edit mixin for location gfxs
         $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "gfx")
         $scope.gfx_mixin.use_modal = true
         $scope.gfx_mixin.use_promise = true
         $scope.gfx_mixin.new_object = (scope) -> return scope.new_location_gfx()
         $scope.gfx_mixin.delete_confirm_str = (obj) -> return "Really delete location graphic '#{obj.name}' ?"
-        $scope.gfx_mixin.modify_rest_url = "{% url 'rest:location_gfx_detail' 1 %}".slice(1).slice(0, -2)
-        $scope.gfx_mixin.create_rest_url = Restangular.all("{% url 'rest:location_gfx_list' %}".slice(1))
-        $scope.gfx_mixin.create_template = "location_gfx.html"
-        $scope.gfx_mixin.edit_template = "location_gfx.html"
+        $scope.gfx_mixin.modify_rest_url = ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2)
+        $scope.gfx_mixin.create_rest_url = ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1)
+        $scope.gfx_mixin.create_template = "icsw.config.category.tree.location_gfx"
+        $scope.gfx_mixin.edit_template = "icsw.config.category.tree.location_gfx"
         $scope.form = {}
         $scope.locations = []
         $scope.uploader = new FileUploader(
             scope : $scope
-            url : "{% url 'base:upload_location_gfx' %}"
+            url : ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
             queueLimit : 1
             alias : "gfx"
             formData : [
                  "location_id" : 0
-                 "csrfmiddlewaretoken" : '{{ csrf_token }}'
+                 "csrfmiddlewaretoken" : $window.CSRF_TOKEN
             ]
             removeAfterUpload : true
         )
@@ -101,7 +60,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
         $scope.uploader.onCompleteItem = (item, response, status, headers) ->
             xml = $.parseXML(response)
             if parse_xml_response(xml)
-                Restangular.one("{% url 'rest:location_gfx_detail' 1 %}".slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
+                Restangular.one(ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
                     for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
                         $scope.cur_location_gfx[_copy] = data[_copy]
                 )
@@ -148,9 +107,9 @@ cat_ctrl = category_tree_module.controller("cat_base", [
         }
         $scope.reload = () ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:category_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:location_gfx_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:device_mon_location_list' %}"])
+                restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_LOCATION_GFX_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.entries = data[0]
@@ -289,7 +248,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                 () =>
                     blockUI.start()
                     call_ajax
-                        url     : "{% url 'base:prune_categories' %}"
+                        url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
                         success : (xml) ->
                             parse_xml_response(xml)
                             $scope.reload()
@@ -368,7 +327,7 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                 data = {"id" : obj.idx, "mode": data}
             blockUI.start()
             call_ajax
-                url : "{% url 'base:modify_location_gfx' %}"
+                url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
                 data: data
                 success: (xml) ->
                     blockUI.stop()
@@ -378,25 +337,62 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                             obj.icon_url = $(xml).find("value[name='icon_url']").text()
                         )
         $scope.reload()
-]).directive("cathead", ($templateCache) ->
+]).service("icswConfigCategoryTreeService", () ->
+    class category_tree_edit extends tree_config
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = false
+            @show_select = false
+            @show_descendants = true
+            @show_childs = false
+            @location_re = new RegExp("^/location/.*$")
+        get_name : (t_entry) ->
+            cat = t_entry.obj
+            is_loc = @location_re.test(cat.full_name)
+            if cat.depth > 1
+                r_info = "#{cat.full_name} (#{cat.name})"
+                if cat.num_refs
+                    r_info = "#{r_info} (refs=#{cat.num_refs})"
+                if is_loc
+                    if cat.physical
+                        r_info = "#{r_info}, physical"
+                    else
+                        r_info = "#{r_info}, structural"
+                    if cat.locked
+                        r_info = "#{r_info}, locked"
+            else if cat.depth
+                r_info = cat.full_name
+            else
+                r_info = "TOP"
+            return r_info
+        handle_click: (entry, event) =>
+            @clear_active()
+            cat = entry.obj
+            if cat.depth > 1
+                @scope.edit_obj(cat, event)
+            else if cat.depth == 1
+                @scope.create_new(event, cat.full_name.split("/")[1])
+
+).directive("icswConfigCategoryTreeHead", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("cat_head.html")
+        template : $templateCache.get("icsw.config.category.tree.head")
     }
-).directive("catrow", ($templateCache) ->
+).directive("icswConfigCategoryTreeRow", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("cat_row.html")
+        template : $templateCache.get("icsw.config.category.tree.row")
         link : (scope, el, attrs) ->
             scope.get_tr_class = (obj) ->
                 return if obj.depth > 1 then "" else "success"
             scope.get_space = (depth) ->
                 return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
     }
-).directive("edittemplate", ($compile, $templateCache) ->
+).directive("icswConfigCategoryTreeEditTemplate", ($compile, $templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("category.html")
+        template : $templateCache.get("icsw.config.category.tree.category")
         link : (scope, element, attrs) ->
             scope.form_error = (field_name) ->
                 if scope.form[field_name].$valid
@@ -404,10 +400,11 @@ cat_ctrl = category_tree_module.controller("cat_base", [
                 else
                     return "has-error"
     }
+).directive("icswConfigCategoryTree", ($compile, $templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.config.category.tree")
+    }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
 )
-
-{% endinlinecoffeescript %}
-
-</script>

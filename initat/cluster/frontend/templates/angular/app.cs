@@ -36,7 +36,7 @@ ics_app = angular.module(
         "icsw.config", "icsw.config.gen", "icsw.rrd.graph",
         "icsw.rms", "icsw.lic", "icsw.server.info",
         "icsw.network.device", "icsw.device.info",
-        "icsw.category_tree", "icsw.domain_name_tree",
+        "icsw.config.category_tree", "icsw.config.domain_name_tree",
         "icsw.monitoring.create", "icsw.monitoring_build_info", "icsw.monitoring.device", "icsw.monitoring_overview",
         "icsw.device.config", "icsw.device", "icsw.device.variables", "icsw.device.connection",
         "icsw.device.livestatus", "icsw.device.boot", "icsw.device.status_history",
@@ -61,6 +61,9 @@ ics_app.config(() ->
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
+    "BASE_MODIFY_LOCATION_GFX": "{% url 'base:modify_location_gfx' %}"
+    "BASE_PRUNE_CATEGORIES": "{% url 'base:prune_categories' %}"
+    "BASE_UPLOAD_LOCATION_GFX": "{% url 'base:upload_location_gfx' %}"
     "BOOT_SHOW_BOOT": "{% url 'boot:show_boot' %}"
     "CONFIG_SHOW_CONFIGS": "{% url 'config:show_configs' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
@@ -98,13 +101,17 @@ ics_app.config(() ->
     "PACK_RETRY_SEARCH": "{% url 'pack:retry_search' %}"
     "PACK_USE_PACKAGE": "{% url 'pack:use_package' %}"
     "REST_BACKGROUND_JOB_LIST": "{% url 'rest:background_job_list' %}"
+    "REST_CATEGORY_DETAIL": "{% url 'rest:category_detail' 1 %}"
     "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
+    "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
+    "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
     "REST_FETCH_FORMS": "{% url 'rest:fetch_forms' %}"
     "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
     "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
+    "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
     "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
     "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"

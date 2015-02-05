@@ -176,6 +176,7 @@
     <script type="text/javascript">
     {% inlinecoffeescript %}
     # attach global permissions and license info to window object (== global variable)
+    window.CSRF_TOKEN = "{{ csrf_token }}"
     window.LOGIN_HINTS = {{ login_hints | safe }}
     window.LOGIN_SCREEN_TYPE = "{{ LOGIN_SCREEN_TYPE }}"
     window.INIT_PRODUCT_NAME = "{{ settings.INIT_PRODUCT_NAME }}"
@@ -231,8 +232,6 @@
     {% include "angular/monitoring_overview.cs" %}
     {% include "angular/monitoring_build_info.cs" %}
     {% include "angular/lic.cs" %}
-    {% include "angular/category_tree.cs" %}
-    {% include "angular/domain_name_tree.cs" %}
     {% include "angular/config.cs" %}
     {% include "angular/partition_table.cs" %}
     {% include "angular/kernel.cs" %}

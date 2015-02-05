@@ -1,35 +1,12 @@
-{% load i18n crispy_forms_tags coffeescript %}
 
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-domain_name_tree_module = angular.module("icsw.domain_name_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"])
-
-class domain_name_tree extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        @show_selection_buttons = false
-        @show_icons = false
-        @show_select = false
-        @show_descendants = true
-        @show_childs = false
-    get_name : (t_entry) ->
-        dtn = t_entry.obj
-        if dtn.parent
-            return "#{dtn.name} (*#{dtn.node_postfix}.#{dtn.full_name})"
-        else
-            return "TOP"
-    handle_click: (entry, event) =>
-        @clear_active()
-        entry.active = true
-        dtn = entry.obj
-        if dtn.parent
-            @scope.edit_obj(dtn, event)
-
-dnt_ctrl = domain_name_tree_module.controller("dnt_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
-        $scope.dnt = new domain_name_tree($scope, {})
+domain_name_tree_module = angular.module(
+    "icsw.config.domain_name_tree",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
+    ]
+).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswConfigDomainNameTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswConfigDomainNameTreeService) ->
+        $scope.dnt = new icswConfigDomainNameTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("dtn_base", $scope)
         $scope.entries = []
         $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
@@ -41,13 +18,13 @@ dnt_ctrl = domain_name_tree_module.controller("dnt_base", ["$scope", "$compile",
             "create_short_names" : true
         }
         $scope.edit_mixin.delete_confirm_str = (obj) -> return "Really delete domain tree node '#{obj.name}' ?"
-        $scope.edit_mixin.modify_rest_url = "{% url 'rest:domain_tree_node_detail' 1 %}".slice(1).slice(0, -2)
-        $scope.edit_mixin.create_rest_url = Restangular.all("{% url 'rest:domain_tree_node_list' %}".slice(1))
-        $scope.edit_mixin.edit_template = "domain_name_tree.html"
+        $scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_DOMAIN_TREE_NODE_DETAIL.slice(1).slice(0, -2)
+        $scope.edit_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST.slice(1))
+        $scope.edit_mixin.edit_template = "icsw.config.domain.tree.node"
         $scope.form = {}
         $scope.reload = () ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
+                restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.entries = data[0]
@@ -111,23 +88,44 @@ dnt_ctrl = domain_name_tree_module.controller("dnt_base", ["$scope", "$compile",
             if $scope.cur_edit
                 $scope.cur_edit.close_modal()
         $scope.reload()
-]).directive("dtnhead", ($templateCache) ->
+]).service("icswConfigDomainNameTreeService", () ->
+    class domain_name_tree extends tree_config
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = false
+            @show_select = false
+            @show_descendants = true
+            @show_childs = false
+        get_name : (t_entry) ->
+            dtn = t_entry.obj
+            if dtn.parent
+                return "#{dtn.name} (*#{dtn.node_postfix}.#{dtn.full_name})"
+            else
+                return "TOP"
+        handle_click: (entry, event) =>
+            @clear_active()
+            entry.active = true
+            dtn = entry.obj
+            if dtn.parent
+                @scope.edit_obj(dtn, event)
+).directive("icswConfigDomainNameTreeHead", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("dtn_head.html")
+        template : $templateCache.get("icsw.config.domain.name.tree.head")
     }
-).directive("dtnrow", ($templateCache) ->
+).directive("icswConfigDomainNameTreeRow", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("dtn_row.html")
+        template : $templateCache.get("icsw.config.domain.name.tree.row")
         link : (scope, el, attrs) ->
             scope.get_space = (depth) ->
                 return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
     }
-).directive("edittemplate", ($compile, $templateCache) ->
+).directive("icswConfigDomainNameTreeEditTemplate", ($compile, $templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("domain_name_tree.html")
+        template : $templateCache.get("icsw.config.domain.name.tree.node")
         link : (scope, element, attrs) ->
             scope.form_error = (field_name) ->
                 if scope.form[field_name].$valid
@@ -135,11 +133,11 @@ dnt_ctrl = domain_name_tree_module.controller("dnt_base", ["$scope", "$compile",
                 else
                     return "has-error"
     }
+).directive("icswConfigDomainNameTree", ($compile, $templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.config.domain.name.tree")
+    }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
 )
-
-{% endinlinecoffeescript %}
-
-</script>
-
