@@ -1,4 +1,9 @@
-device_livestatus_module = angular.module("icsw.device.livestatus", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
+device_livestatus_module = angular.module(
+    "icsw.device.livestatus",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
+    ]
+)
 
 get_service_state_string = (entry) ->
     return {
@@ -725,7 +730,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     else
                         break
     }
-]).directive("livestatus", ($templateCache, msgbus) ->
+]).directive("livestatus", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         template : $templateCache.get("ICSW.device.livestatus.overview")
@@ -804,7 +809,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.get_attempt_info = (entry) ->
                 return get_attempt_info(entry)
     }
-).directive("livestatusBrief", ($templateCache) ->
+]).directive("livestatusBrief", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("ICSW.device.livestatus.brief")
@@ -814,7 +819,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     scope.new_devsel([scope.devicepk], [])
             )
     }
-).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
         template: $templateCache.get("ICSW.device.livestatus.map_overview")
@@ -826,7 +831,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 scope.loc_gfx = new_val
             )
     }
-]).directive("devnode", ($compile, $templateCache) ->
+]).directive("devnode", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         replace: true
@@ -840,7 +845,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     scope.data_source = "b"
             )
     }    
-)
+])
 
 class mc_table
     constructor : (@xml, paginatorSettings) ->
@@ -1024,7 +1029,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             if $scope.cur_xhr?
                 $scope.cur_xhr.abort()
         )
-]).directive("monconfig", ($templateCache) ->
+]).directive("monconfig", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("ICSW.device.livestatus.monconfig")
@@ -1034,12 +1039,12 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                     scope.new_devsel(new_val)
             )
     }
-).directive("mhdevrow", ($templateCache) ->
+]).directive("mhdevrow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("ICSW.device.livestatus.hint_row")
     }
-).directive("mhrow", ($templateCache) ->
+]).directive("mhrow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("mhrow.html")
@@ -1084,10 +1089,10 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                 hint.enabled = !hint.enabled
                 scope.save_hint(hint)
     }
-).directive("monitoringhinttable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("monitoringhinttable", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("ICSW.device.livestatus.hint_table")
         link : (scope) ->
     }
-)
+])

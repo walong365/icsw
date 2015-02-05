@@ -377,12 +377,12 @@ angular.module(
             else if cat.depth == 1
                 @scope.create_new(event, cat.full_name.split("/")[1])
 
-).directive("icswConfigCategoryTreeHead", ($templateCache) ->
+).directive("icswConfigCategoryTreeHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.head")
     }
-).directive("icswConfigCategoryTreeRow", ($templateCache) ->
+]).directive("icswConfigCategoryTreeRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.row")
@@ -392,7 +392,7 @@ angular.module(
             scope.get_space = (depth) ->
                 return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
     }
-).directive("icswConfigCategoryTreeEditTemplate", ($compile, $templateCache) ->
+]).directive("icswConfigCategoryTreeEditTemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.category")
@@ -403,11 +403,11 @@ angular.module(
                 else
                     return "has-error"
     }
-).directive("icswConfigCategoryTree", ($compile, $templateCache) ->
+]).directive("icswConfigCategoryTree", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree")
     }
-).run(($templateCache) ->
+]).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
 )

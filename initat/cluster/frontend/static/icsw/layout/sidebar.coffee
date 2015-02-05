@@ -380,12 +380,12 @@ sidebar_module = angular.module(
                     value : _close
                     type: "bool"
             return false
-]).directive("icswLayoutSidebar", ($templateCache) ->
+]).directive("icswLayoutSidebar", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.layout.sidebar")
     }
-)
+])
 
 virtual_desktop_utils = {
     get_viewer_command_line: (vdus, ip) ->

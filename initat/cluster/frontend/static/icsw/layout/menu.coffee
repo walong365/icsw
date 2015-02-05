@@ -104,9 +104,9 @@ menu_module = angular.module(
                         $scope.progress_iters = 5
                         $scope.update_progress_bar()
         $scope.show_time()
-]).directive("icswLayoutMenubar", ($templateCache) ->
+]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.layout.menubar")
     }
-)
+])

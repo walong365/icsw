@@ -171,7 +171,7 @@ angular.module(
         get_check_source: (instance) ->
             return @xml.find("instance[name='#{instance}']").attr("check_source")
 
-).directive("icswLayoutServerInfoInstance", ($templateCache, $compile) ->
+).directive("icswLayoutServerInfoInstance", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         link : (scope, element, attrs) ->
@@ -200,9 +200,9 @@ angular.module(
             new_el = $compile($templateCache.get("icsw.layout.server.info.state"))
             element.append(new_el(scope))
     }
-).directive("icswLayoutServerInfoOverview", ($templateCache, $compile) ->
+]).directive("icswLayoutServerInfoOverview", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.layout.server.info.overview")
     }
-)
+])

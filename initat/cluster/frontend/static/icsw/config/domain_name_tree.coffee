@@ -108,12 +108,12 @@ angular.module(
             dtn = entry.obj
             if dtn.parent
                 @scope.edit_obj(dtn, event)
-).directive("icswConfigDomainNameTreeHead", ($templateCache) ->
+).directive("icswConfigDomainNameTreeHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.domain.name.tree.head")
     }
-).directive("icswConfigDomainNameTreeRow", ($templateCache) ->
+]).directive("icswConfigDomainNameTreeRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.domain.name.tree.row")
@@ -121,7 +121,7 @@ angular.module(
             scope.get_space = (depth) ->
                 return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
     }
-).directive("icswConfigDomainNameTreeEditTemplate", ($compile, $templateCache) ->
+]).directive("icswConfigDomainNameTreeEditTemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.domain.name.tree.node")
@@ -132,11 +132,11 @@ angular.module(
                 else
                     return "has-error"
     }
-).directive("icswConfigDomainNameTree", ($compile, $templateCache) ->
+]).directive("icswConfigDomainNameTree", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.domain.name.tree")
     }
-).run(($templateCache) ->
+]).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
 )
