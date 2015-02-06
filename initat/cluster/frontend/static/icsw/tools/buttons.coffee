@@ -5,7 +5,7 @@ button_module = angular.module(
     [
     ]
 ).service('icswToolsButtonConfigService', () ->
-    get_config_for_button_type = (type, scope) ->
+    get_config_for_button_type = (type) ->
         ret_obj = {}
         if type == "modify"
             ret_obj.css_class = "btn-primary"
@@ -30,13 +30,6 @@ button_module = angular.module(
         else if type == "show"
             ret_obj.css_class = "btn-success"
             ret_obj.icon_class = ""
-            scope.$watch(scope.isShow
-                (new_val) ->
-                    if new_val
-                        ret_obj.button_value = "show"
-                    else
-                        ret_obj.button_value = "hide"
-            )
         else
             console.error "Invalid button type: ", attrs.type
         return ret_obj
@@ -46,7 +39,7 @@ button_module = angular.module(
     }
 ).directive('icswToolsButton', ["icswToolsButtonConfigService", (icswToolsButtonsConfigService) ->
     return {
-        restrict: 'E',
+        restrict: "EA",
         template: """
     <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"">
         {{ value }} {{ button_value }}
@@ -62,8 +55,7 @@ button_module = angular.module(
             # - value: Custom text to display in button
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
-            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(attrs.type, scope))
-
+            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(attrs.type))
 
             if attrs.value?
                 scope.button_value = attrs.value
@@ -77,5 +69,14 @@ button_module = angular.module(
                 scope.additional_class = "btn-" + attrs.size
             else
                 scope.additional_class = ""
+
+            if attrs.type == "show"
+                scope.$watch(scope.isShow
+                    (new_val) ->
+                        if new_val
+                            scope.button_value = "show"
+                        else
+                            scope.button_value = "hide"
+                )
     }
 ])
