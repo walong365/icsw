@@ -50,7 +50,7 @@
 
         <icsw-tools-rest-table target-list="entries" config-service="icswNetworkTypesService">
 
-            <h3>Network types ({{entries.length}} entries), <icsw-tools-button type="create" click="create($event)"/></h3>
+            <h3>Network types ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" click="create($event)"/></h3>
 
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-hover table-condensed table-striped" style="width:auto;">

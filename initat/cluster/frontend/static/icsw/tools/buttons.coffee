@@ -20,6 +20,7 @@ button_module = angular.module(
             # attrs:
             # - type (mandatory): "modify", "create", "delete", "reload"
             # - click: gets executed on click
+            # - value: Custom text to display in button
             # - buttonType: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
 
@@ -53,6 +54,8 @@ button_module = angular.module(
             else
                 console.error "Invalid button type: ", attrs.type
 
+            if attrs.value?
+                scope.button_value = attrs.value
 
             if attrs.buttonType?
                 scope.button_type = attrs.buttonType
