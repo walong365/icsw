@@ -399,7 +399,7 @@ password_test_module = angular.module(
                     scope: () ->
                         return $scope
         )
-]).directive("accountDetail", ($templateCache) ->
+]).directive("accountDetail", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
         template: $templateCache.get("account_detail_form.html")
@@ -415,7 +415,7 @@ password_test_module = angular.module(
                    (resp) ->
                 )
     }
-)
+])
 
 user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.password.test"])
 
@@ -974,7 +974,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 return [jobidToString(i) for i in l].toString()
             else
                 return (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
-]).directive("grouptemplate", ($compile, $templateCache) ->
+]).directive("grouptemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "A"
         template : $templateCache.get("group_edit.html")
@@ -983,7 +983,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             scope.$parent.form = scope.form
             scope.obj_perms = scope.$parent.obj_perms
     }
-).directive("usertemplate", ($compile, $templateCache) ->
+]).directive("usertemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "A"
         template : $templateCache.get("user_edit.html")
@@ -992,7 +992,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             scope.$parent.$parent.form = scope.form
             scope.obj_perms = scope.$parent.$parent.obj_perms
     }
-).directive("permissions", ($compile, $templateCache) ->
+]).directive("permissions", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("permissions.html")
@@ -1023,7 +1023,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 else
                     return []
     }
-).directive("quotasettings", ($compile, $templateCache, icswTools) ->
+]).directive("quotasettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
     return {
         restrict : "EA"
         template : $templateCache.get("quotasettings.html")
@@ -1141,7 +1141,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         )
                 return r_stack
     }
-).directive("diskusage", ($compile, $templateCache, icswTools) ->
+]).directive("diskusage", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
     return {
         restrict : "EA"
         template : $templateCache.get("diskusage.html")
@@ -1222,11 +1222,11 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 else
                     return "no scan runs"
     }
-).directive("jobinfo", ($compile, $templateCache, icswTools) ->
+]).directive("jobinfo", ["$templateCache", ($templateCache) ->
         restrict : "EA"
         template : $templateCache.get("jobinfo.html")
         link: (scope, element, attrs) ->
-).directive("virtualdesktopsettings", ($compile, $templateCache, icswTools) ->
+]).directive("virtualdesktopsettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
         restrict : "EA"
         template : $templateCache.get("virtualdesktopsettings.html")
         link: (scope, element, attrs) ->
@@ -1359,7 +1359,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
 
                 scope._edit_obj.start_automatically = vdus.is_running
             
-).directive("vncwebviewer", ($compile, $templateCache, icswTools) ->
+]).directive("vncwebviewer", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
         restrict : "EA"
         template : $templateCache.get("vncwebviewer.html")
         link: (scope, element, attrs) ->
@@ -1429,7 +1429,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 blob = new Blob(content, {type: "text/plain;charset=utf-8"});
                 # use FileSaver.js
                 saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
-).run(($templateCache) ->
+]).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("quotasettings.html", quota_settings_template)
     $templateCache.put("virtualdesktopsettings.html", virtual_desktop_settings_template)
@@ -1458,13 +1458,13 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 return true
             else
                 return false
-]).directive("indexView", ($templateCache) ->
+]).directive("indexView", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("index_template.html")
         link : (scope, element, attrs) ->
     }
-)
+])
 
 virtual_desktop_utils = {
     get_viewer_command_line: (vdus, ip) ->
