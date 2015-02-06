@@ -2,10 +2,11 @@
 <script type="text/ng-template" id="icswNetworkPage">
 
 <tabset>
-    <tab heading="Network device types" ng-controller="icswToolsDummyCtrl">
+    <tab heading="Network device types">
 
         <icsw-tools-rest-table target-list="entries" config-service="icswNetworkDeviceTypesService">
-            <h3>Network device types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
+
+            <h3>Network device types ({{entries.length}} entries), <icsw-tools-button type="create" click="create($event)"/></h3>
 
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-hover table-condensed table-striped" style="width:auto;">
@@ -35,11 +36,12 @@
                         <td>{{ obj.mac_bytes }}</td>
                         <td>{{ obj.allow_virtual_interfaces | yesno1 }}</td>
                         <td>{{ obj.for_matching | yesno2 }}</td>
-                        <td><icsw-tools-button type="modify" click="edit(event, obj)" size="xs"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="modify" click="edit($event, obj)" size="xs"></icsw-tools-button></td>
                         <td><icsw-tools-button type="delete" click="delete(obj)" size="xs"></icsw-tools-button></td>
                     </tr>
                 </tbody>
             </table>
+
         </icsw-tools-rest-table>
 
     </tab>
@@ -48,7 +50,7 @@
 
         <icsw-tools-rest-table target-list="entries" config-service="icswNetworkTypesService">
 
-            <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-sm btn-primary" value="create new" ng-click="create($event)"/></h3>
+            <h3>Network types ({{entries.length}} entries), <icsw-tools-button type="create" click="create($event)"/></h3>
 
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-hover table-condensed table-striped" style="width:auto;">
@@ -66,9 +68,8 @@
                     <tr ng-repeat="obj in entries_displayed">
                         <td>{{ obj.identifier }}</td>
                         <td>{{ obj.description }}</td>
-                        <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)"
-                           value="modify"/></td>
-                        <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+                        <td><icsw-tools-button type="modify" click="edit($event, obj)" size="xs"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" click="delete(obj)" size="xs"></icsw-tools-button></td>
                     </tr>
                 </tbody>
             </table>
@@ -81,14 +82,13 @@
             <h3>
                 Networks ({{entries.length}} entries),
                 <div class="btn-group">
-                    <input type="button" class="btn btn-primary btn-sm" value="create new" ng-click="create($event)"/>
-                    <input type="button" class="btn btn-success btn-sm" value="reload" ng-click="reload()"/>
+                    <icsw-tools-button type="create" click="create($event)"></icsw-tools-button>
+                    <icsw-tools-button type="reload" click="reload()"></icsw-tools-button>
                 </div>
             </h3>
 
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-hover table-condensed table-striped" style="width:auto;">
-
 
                 <thead>
                 <tr>
@@ -134,14 +134,14 @@
                     <td>{{ obj.network_device_type | resolve_n2m:config_service.network_device_types:'identifier':'---'
                         }}
                     </td>
-                    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)"
-                               value="modify"/></td>
                     <td>
-                        <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0"
-                               ng-click="delete(obj)" value="delete"/>
-                        <input type="button" class="btn btn-success btn-xs" ng-show="obj.num_ip > 0"
-                               ng-click="config_service.show_network(obj)" value="show"
-                               ng-value="config_service.network_display.active_network == obj && 'hide' || 'show'"/>
+                        <icsw-tools-button type="modify" size="xs" click="edit($event, obj)"/>
+                    </td>
+                    <td>
+                        <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" click="delete(obj)" size="xs"></icsw-tools-button>
+                        <icsw-tools-button type="show" ng-show="obj.num_ip > 0" size="xs"
+                                           is-show="config_service.network_display.active_network != obj "
+                                           click="config_service.show_network(obj)"></icsw-tools-button>
                     </td>
                 </tr>
                 </tbody>

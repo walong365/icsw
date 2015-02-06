@@ -103,7 +103,7 @@
     <td ng-show="hide_lut['tln']">{{ obj.device_group_obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
-        <input type="button" class="btn btn-primary btn-sm" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/>
+        <icsw-tools-button type="modify" size="sm" click="edit('device_group', $event, obj.device_group_obj)"></icsw-tools-button>
     </td>
     <td></td>
 </script> 
@@ -124,11 +124,12 @@
     <td ng-show="hide_lut['tln']">{{ obj.device_group_obj.domain_tree_node | array_lookup:rest_data.domain_tree_node | show_dtn }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
-        <input type="button" class="btn btn-primary btn-xs" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/>
+        <icsw-tools-button type="modify" size="xs" click="edit('device_group', $event, obj.device_group_obj)"></icsw-tools-button>
     </td>
     <td>
-        <input ng-show="!obj.device_group_obj.num_devices" type="button" class="btn btn-danger btn-xs" ng-click="delete('device_group', obj.device_group_obj)" value="delete"/>
-        <input type="button" class="btn btn-success btn-xs" ng-click="create('device', $event, obj.device_group_obj)" value="create device"/>
+        <icsw-tools-button ng-show="!obj.device_group_obj.num_devices" type="delete" size="xs" click="delete('device_group', obj.device_group_obj)"></icsw-tools-button>
+        <icsw-tools-button type="create" size="xs" click="create('device', $event, obj.device_group_obj)"></icsw-tools-button>
+        <!-- create device? as value-->
     </td>
 </script> 
 
@@ -148,10 +149,10 @@
     <td ng-show="hide_lut['boot_master']">{{ obj.bootserver | array_lookup:rest_data.mother_server:"full_name" }}</td>
     <td ng-show="hide_lut['curl']">{{ obj.curl }}</td>
     <td>
-        <input type="button" class="btn btn-primary btn-xs" ng-click="edit('device', $event, obj)" value="modify"/>
+        <icsw-tools-button type="modify" size="xs" click="edit('device', $event, obj)"></icsw-tools-button>
     </td>
     <td>
-        <input type="button" class="btn btn-danger btn-xs" ng-click="delete('device', obj)" value="delete"/>
+        <icsw-tools-button type="delete" size="xs" click="delete('device', obj)"></icsw-tools-button>
     </td>
 </script> 
 
