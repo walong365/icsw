@@ -50,7 +50,7 @@ root = exports ? this
 
 angular.module(
     "status_utils", ["angular-piechart"]
-).directive('deviceHistStatusOverview', ($templateCache, $parse, status_utils_functions) ->
+).directive('deviceHistStatusOverview', ["$templateCache", "$parse", "status_utils_functions", ($templateCache, $parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     return {
         restrict: 'E',
@@ -97,8 +97,8 @@ angular.module(
                 scope.$watch('data', (unused) -> scope.update_from_local_data())
             else
                 scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
-
-}).directive('serviceHistStatusOverview', ($templateCache, $parse, status_utils_functions) ->
+    }
+]).directive('serviceHistStatusOverview', ["$templateCache", "$parse", "status_utils_functions", ($templateCache, $parse, status_utils_functions) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
     return {
         restrict: 'E',
