@@ -137,6 +137,6 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.domain.name.tree")
     }
-]).run(($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
-)
+]).run(["$templateCache", ($templateCache) ->
+    #$templateCache.put("simple_confirm.html", simple_modal_template)
+])

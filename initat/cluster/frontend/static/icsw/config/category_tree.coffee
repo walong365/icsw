@@ -408,6 +408,6 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree")
     }
-]).run(($templateCache) ->
+]).run(["$templateCache", ($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
-)
+])

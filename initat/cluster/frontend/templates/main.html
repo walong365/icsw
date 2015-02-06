@@ -202,7 +202,6 @@
     {% endif %}
     {% endinlinecoffeescript %}
     </script>
-    {% javascript 'js_angular' %}
     {% javascript 'js_base' %}
     {% javascript 'js_extra1' %}
     <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
@@ -220,25 +219,27 @@
     {% javascript 'icsw_cs1' %}
     {% include "angular/status_utils.cs" %}
     {% include "angular/user.cs" %}
+    {% include "angular/config.cs" %}
     {% include "angular/device.cs" %}
-    {% include "angular/rms.cs" %}
+    {% include "angular/device_network.cs" %}
     {% include "angular/device_config.cs" %}
-    {% include "angular/device_boot.cs" %}
     {% include "angular/device_connection.cs" %}
     {% include "angular/device_status_history.cs" %}
-    {% include "angular/device_network.cs" %}
+    {% include "angular/angular-dimple-init.cs" %}
+    {% comment %}
+    {% include "angular/device_boot.cs" %}
     {% include "angular/device_variable.cs" %}
+    {% include "angular/rms.cs" %}
     {% include "angular/monitoring_device.cs" %}
     {% include "angular/monitoring_basic.cs" %}
     {% include "angular/monitoring_extended.cs" %}
     {% include "angular/monitoring_overview.cs" %}
     {% include "angular/monitoring_build_info.cs" %}
     {% include "angular/lic.cs" %}
-    {% include "angular/config.cs" %}
     {% include "angular/partition_table.cs" %}
     {% include "angular/kernel.cs" %}
     {% include "angular/image.cs" %}
-    {% include "angular/angular-dimple-init.cs" %}
+    {% endcomment %}
 
 </head>
 <body>

@@ -33,30 +33,53 @@ ics_app = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "blockUI",
         "icsw.tools.tree",
-        "icsw.layout.menu", "icsw.layout.sidebar", "icsw.user", "icsw.password.test", "icsw.network", "icsw.tools",
+        "icsw.layout.menu",
+        "icsw.layout.sidebar",
+        "icsw.password.test",
+        "icsw.network",
+        "icsw.tools",
         "icsw.login",
-        "icsw.config", "icsw.config.gen", "icsw.rrd.graph",
-        "icsw.rms", "icsw.lic", "icsw.server.info",
-        "icsw.network.device", "icsw.device.info",
-        "icsw.config.category_tree", "icsw.config.domain_name_tree",
-        "icsw.monitoring.create", "icsw.monitoring_build_info", "icsw.monitoring.device", "icsw.monitoring_overview",
-        "icsw.device.config", "icsw.device", "icsw.device.variables", "icsw.device.connection",
-        "icsw.device.livestatus", "icsw.device.boot", "icsw.device.status_history",
-        "icsw.package.install", "icsw.user.settings",
-        "icsw.monitoring_basic", "icsw.monitoring_extended",
-        "icsw.partition_table", "icsw.kernel", "icsw.image",
+        "icsw.user",
+        "icsw.user.settings",
+        "icsw.rrd.graph",
         "icsw.info.background",
+        "icsw.server.info",
+        "icsw.config",
+        "icsw.config.gen",
+        "icsw.device.info",
+        "icsw.device",
+        "icsw.config.category_tree",
+        "icsw.config.domain_name_tree",
+        "icsw.network.device",
+        "icsw.device.config",
+        "icsw.device.connection",
+        "icsw.device.livestatus",
+        # "icsw.device.boot",
+        # "icsw.device.variables",
+        # "icsw.device.status_history",
+        # "icsw.rms",
+        # "icsw.lic"
+        # "icsw.monitoring.create",
+        # "icsw.monitoring_build_info",
+        # "icsw.monitoring.device",
+        # "icsw.monitoring_overview",
+        # "icsw.package.install",
+        # "icsw.monitoring_basic",
+        # "icsw.monitoring_extended",
+        # "icsw.partition_table",
+        # "icsw.kernel",
+        # "icsw.image",
     ]
 )
 
 ics_app.config(() ->
     console.log "config"
-).config((blockUIConfig) ->
+).config(["blockUIConfig", (blockUIConfig) ->
     blockUIConfig.delay = 0
     blockUIConfig.message = "Loading, please wait ..."
     blockUIConfig.autoBlock = false
     blockUIConfig.autoInjectBodyBlock = false
-).constant("ICSW_URLS", {
+]).constant("ICSW_URLS", {
     {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
     "MENU_GFX_URL": "{% static gfx_name %}"
     {% endwith %}

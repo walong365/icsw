@@ -432,7 +432,12 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
     }
 ])
 
-device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"])
+device_network_module = angular.module(
+    "icsw.network.device",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"
+    ]
+)
 
 device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools) ->
@@ -1049,7 +1054,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         template: $templateCache.get("peerrow.html")
         link : (scope, element, attrs) ->
     }
-]).run(($templateCache) ->
+]).run(["$templateCache", ($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("devicenetworks.html", device_networks_template)
     $templateCache.put("netdevicerow.html", nd_row_template)
@@ -1057,7 +1062,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
     $templateCache.put("peerrow.html", peer_row_template)
     $templateCache.put("devrow.html", dev_row_template)
     $templateCache.put("net_cluster_info.html", net_cluster_info_template)
-)
+])
 
 device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus) ->
