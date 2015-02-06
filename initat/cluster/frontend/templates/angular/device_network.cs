@@ -356,7 +356,7 @@ angular.module("icsw.svg_tools", []).factory("svg_tools", () ->
     }
 )
 
-angular.module("icsw.mouseCapture", []).factory('mouseCapture', ($rootScope) ->
+angular.module("icsw.mouseCapture", []).factory('mouseCapture', ["$rootScope", ($rootScope) ->
     $element = document
     mouse_capture_config = null
     mouse_move = (event) ->
@@ -383,7 +383,7 @@ angular.module("icsw.mouseCapture", []).factory('mouseCapture', ($rootScope) ->
                 $element.unbind("mousemove", mouse_move)
                 $element.unbind("mouseup", mouse_up)
     }
-).directive('mouseCapture', () ->
+]).directive('mouseCapture', () ->
     return {
         restrict: "A"
         controller: ($scope, $element, $attrs, mouseCapture) ->
@@ -392,7 +392,7 @@ angular.module("icsw.mouseCapture", []).factory('mouseCapture', ($rootScope) ->
 )
 
 angular.module("icsw.dragging", ["icsw.mouseCapture"]
-).factory("dragging", ($rootScope, mouseCapture) ->
+).factory("dragging", ["$rootScope", "mouseCapture", ($rootScope, mouseCapture) ->
     return {
         start_drag: (event, threshold, config) ->
             dragging = false
@@ -430,7 +430,7 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
             event.stopPropagation()
             event.preventDefault()
     }
-)
+])
 
 device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"])
 
@@ -993,7 +993,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     scope.new_devsel(args[1])
                 )
     }
-).directive("netdevicerow", ($templateCache, $compile) ->
+).directive("netdevicerow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("netdevicerow.html")
@@ -1025,13 +1025,13 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 else
                     return "warning text-center"
     }        
-).directive("netiprow", ($templateCache, $compile) ->
+]).directive("netiprow", ["$templatecache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("netiprow.html")
         link : (scope, element, attrs) ->
     }
-).directive("devrow", ($templateCache, $compile) ->
+]).directive("devrow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("devrow.html")
@@ -1043,13 +1043,13 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             #    else
             #        return "---"
     }
-).directive("netpeerrow", ($templateCache, $compile) ->
+]).directive("netpeerrow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("peerrow.html")
         link : (scope, element, attrs) ->
     }
-).run(($templateCache) ->
+]).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("devicenetworks.html", device_networks_template)
     $templateCache.put("netdevicerow.html", nd_row_template)

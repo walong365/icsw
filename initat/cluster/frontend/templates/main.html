@@ -202,6 +202,7 @@
     {% endif %}
     {% endinlinecoffeescript %}
     </script>
+    {% javascript 'js_angular' %}
     {% javascript 'js_base' %}
     {% javascript 'js_extra1' %}
     <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
@@ -219,6 +220,7 @@
     {% javascript 'icsw_cs1' %}
     {% include "angular/status_utils.cs" %}
     {% include "angular/user.cs" %}
+    {% comment %}
     {% include "angular/device.cs" %}
     {% include "angular/rms.cs" %}
     {% include "angular/device_config.cs" %}
@@ -238,6 +240,7 @@
     {% include "angular/kernel.cs" %}
     {% include "angular/image.cs" %}
     {% include "angular/angular-dimple-init.cs" %}
+    {% endcomment %}
 
 </head>
 <body>

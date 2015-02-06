@@ -185,40 +185,45 @@ device_info_module = angular.module(
             $scope.devicepk = json.idx
             $scope.permissions = access_json
             $scope.show = true
-]).service("DeviceOverviewService", (Restangular, $rootScope, $templateCache, $compile, $modal, $q, access_level_service, msgbus) ->
-    return {
-        "NewSingleSelection" : (dev) ->
-            if dev.device_type_identifier == "MD"
-                msgbus.emit("devicelist", [[dev.idx], [], [], [dev.idx]])
-            else
-                msgbus.emit("devicelist", [[dev.idx], [dev.idx], [], []])
-        "NewOverview" : (event, dev) ->
-            # create new modal for device
-            # device object with access_levels
-            sub_scope = $rootScope.$new()
-            access_level_service.install(sub_scope)
-            dev_idx = dev.idx
-            sub_scope.devicepk = dev_idx
-            sub_scope.disable_modal = true
-            if dev.device_type_identifier == "MD"
-                sub_scope.dev_pk_list = [dev_idx]
-                sub_scope.dev_pk_nmd_list = []
-            else
-                sub_scope.dev_pk_list = [dev_idx]
-                sub_scope.dev_pk_nmd_list = [dev_idx]
-            my_mixin = new angular_modal_mixin(
-                sub_scope,
-                $templateCache,
-                $compile
-                $modal
-                Restangular
-                $q
-            )
-            my_mixin.min_width = "800px"
-            my_mixin.template = "DeviceOverviewTemplate"
-            my_mixin.edit(null, dev_idx)
-            # todo: destroy sub_scope
-    }
+]).service(
+    "DeviceOverviewService",
+    [
+        "Restangular", "$rootScope", "$templateCache", "$compile", "$modal", "$q", "access_level_service", "msgbus",
+        (Restangular, $rootScope, $templateCache, $compile, $modal, $q, access_level_service, msgbus) ->
+            return {
+                "NewSingleSelection" : (dev) ->
+                    if dev.device_type_identifier == "MD"
+                        msgbus.emit("devicelist", [[dev.idx], [], [], [dev.idx]])
+                    else
+                        msgbus.emit("devicelist", [[dev.idx], [dev.idx], [], []])
+                "NewOverview" : (event, dev) ->
+                    # create new modal for device
+                    # device object with access_levels
+                    sub_scope = $rootScope.$new()
+                    access_level_service.install(sub_scope)
+                    dev_idx = dev.idx
+                    sub_scope.devicepk = dev_idx
+                    sub_scope.disable_modal = true
+                    if dev.device_type_identifier == "MD"
+                        sub_scope.dev_pk_list = [dev_idx]
+                        sub_scope.dev_pk_nmd_list = []
+                    else
+                        sub_scope.dev_pk_list = [dev_idx]
+                        sub_scope.dev_pk_nmd_list = [dev_idx]
+                    my_mixin = new angular_modal_mixin(
+                        sub_scope,
+                        $templateCache,
+                        $compile
+                        $modal
+                        Restangular
+                        $q
+                    )
+                    my_mixin.min_width = "800px"
+                    my_mixin.template = "DeviceOverviewTemplate"
+                    my_mixin.edit(null, dev_idx)
+                    # todo: destroy sub_scope
+            }
+    ]
 ).run(($templateCache) ->
     $templateCache.put(
         "DeviceOverviewTemplate",
@@ -232,7 +237,7 @@ device_info_module = angular.module(
         "set_mode": (mode) ->
             def_mode = mode
     }
-]).directive("deviceoverview", ($compile, DeviceOverviewSettings) ->
+]).directive("deviceoverview", ["$compile", "DeviceOverviewSettings", ($compile, DeviceOverviewSettings) ->
     return {
         restrict: "EA"
         replace: true
@@ -296,7 +301,7 @@ device_info_module = angular.module(
                     else if name in ["config", "variables", "graphing"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
-)
+])
 
 {% endinlinecoffeescript %}
 

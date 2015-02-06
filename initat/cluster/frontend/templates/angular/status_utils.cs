@@ -131,7 +131,7 @@ angular.module(
                 scope.$watch('data', (unused) -> scope.update_from_local_data())
             else
                 scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
-}).service('status_utils_functions', (Restangular) ->
+}).service('status_utils_functions', ["Restangular", (Restangular) ->
     get_device_data = (device_ids, start_date, timerange, cont) ->
         query_data = {
             'device_ids': device_ids.join(),
@@ -215,7 +215,7 @@ angular.module(
         preprocess_state_data: preprocess_state_data
         preprocess_service_state_data: preprocess_service_state_data
     }
-).run(($templateCache) ->
+]).run(($templateCache) ->
     $templateCache.put("device_hist_status.html", device_hist_status_template)
     $templateCache.put("service_hist_status.html", service_hist_status_template)
 )
