@@ -18,10 +18,10 @@ button_module = angular.module(
         link: (scope, element, attrs) ->
 
             # attrs:
-            # - type (mandatory): "modify", "create", "delete", "reload"
+            # - type (mandatory): "modify", "create", "delete", "reload", "show"
             # - click: gets executed on click
             # - value: Custom text to display in button
-            # - buttonType: inserted into type, so use "button" or "submit" (default is "button")
+            # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
 
             if attrs.type == "modify"
@@ -63,7 +63,7 @@ button_module = angular.module(
                 scope.button_type = "button"
 
             if attrs.size?
-                scope.additional_class = "btn-xs"
+                scope.additional_class = "btn-"+attrs.size
             else
                 scope.additional_class = ""
 
