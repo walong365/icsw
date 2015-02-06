@@ -378,7 +378,6 @@ PIPELINE_JS = {
     "js_jquery_new": {
         "source_filenames": {
             "js/libs/modernizr-2.8.1.min.js",
-            # "js/plugins.js",
             "js/libs/jquery-2.1.3.min.js",
         },
         "output_filename": "pipeline/js/jquery_new.js"
@@ -391,6 +390,7 @@ PIPELINE_JS = {
             # "js/libs/jquery.layout-latest.min.js",
             # "js/jquery.sprintf.js_8.txt",
             # "js/jquery.timers-1.2.js",
+            "js/libs/angular-1.3.12.js",
             "js/jquery.noty.packaged.js",
             "js/libs/lodash.min.js",
             "js/bluebird.js",
@@ -400,12 +400,11 @@ PIPELINE_JS = {
             "js/bootstrap.js",
             "js/libs/jquery.color.js",
             "js/libs/jquery.blockUI.js",
-            "js/libs/angular.min.js",
             "js/libs/moment-with-locales.min.js",
             "js/libs/jquery.Jcrop.min.js",
-            "js/spin.min.js",
-            "js/ladda.min.js",
-            "js/angular-ladda.min.js",
+            "js/spin.js",
+            "js/ladda.js",
+            "js/angular-ladda.js",
             "js/hamster.js",
             # not needed right now
             # "js/ng-jcrop.js",
