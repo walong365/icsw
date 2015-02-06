@@ -35,11 +35,12 @@ ics_app = angular.module(
         "icsw.tools.tree",
         "icsw.layout.menu",
         "icsw.layout.sidebar",
-        "icsw.password.test",
         "icsw.network",
         "icsw.tools",
         "icsw.login",
         "icsw.user",
+        "icsw.user.password",
+        "icsw.user.dashboard",
         "icsw.user.settings",
         "icsw.rrd.graph",
         "icsw.info.background",
@@ -56,19 +57,19 @@ ics_app = angular.module(
         "icsw.device.connection",
         "icsw.device.livestatus",
         "icsw.device.status_history",
-        # "icsw.device.boot",
-        # "icsw.rms",
         # "icsw.lic"
         # "icsw.monitoring.create",
         # "icsw.monitoring_build_info",
         # "icsw.monitoring.device",
         # "icsw.monitoring_overview",
-        # "icsw.package.install",
         # "icsw.monitoring_basic",
         # "icsw.monitoring_extended",
-        # "icsw.partition_table",
+        "icsw.package.install",
+        "icsw.device.boot",
         "icsw.kernel",
         "icsw.image",
+        "icsw.partition_table",
+        "icsw.rms",
     ]
 )
 
@@ -104,6 +105,7 @@ ics_app.config(() ->
     "MAIN_GET_SERVER_INFO": "{% url 'main:get_server_info' %}"
     "MAIN_SERVER_CONTROL": "{% url 'main:server_control' %}"
     "MAIN_INDEX":  "{% url 'main:index' %}"
+    "MAIN_VIRTUAL_DESKTOP_VIEWER": "{% url 'main:virtual_desktop_viewer' %}"
     "MON_BUILD_INFO": "{% url 'mon:build_info' %}"
     "MON_CALL_ICINGA": "{% url 'mon:call_icinga' %}"
     "MON_CREATE_DEVICE": "{% url 'mon:create_device' %}"
@@ -131,6 +133,9 @@ ics_app.config(() ->
     "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
     "REST_CLUSTER_LICENSE_DETAIL": "{% url 'rest:cluster_license_detail' 1 %}"
     "REST_CLUSTER_SETTING_LIST": "{% url 'rest:cluster_setting_list' %}"
+    "REST_CSW_OBJECT_LIST": "{% url 'rest:csw_object_list' %}"
+    "REST_CSW_PERMISSION_LIST": "{% url 'rest:csw_permission_list' %}"
+    "REST_DEVICE_GROUP_LIST": "{% url 'rest:device_group_list' %}"
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
     "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
@@ -138,6 +143,13 @@ ics_app.config(() ->
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
     "REST_FETCH_FORMS": "{% url 'rest:fetch_forms' %}"
+    "REST_GROUP_DETAIL": "{% url 'rest:group_detail' 1 %}"
+    "REST_GROUP_LIST": "{% url 'rest:group_list' %}"
+    "REST_GROUP_OBJECT_PERMISSION_DETAIL": "{% url 'rest:group_object_permission_detail' 1 %}"
+    "REST_GROUP_PERMISSION_DETAIL": "{% url 'rest:group_permission_detail' 1 %}"
+    "REST_GROUP_PERMISSION_LIST": "{% url 'rest:group_permission_list' %}"
+    "REST_HOME_EXPORT_LIST": "{% url 'rest:home_export_list' %}"
+    "REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST": "{% url 'rest:quota_capable_blockdevice_list' %}"
     "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
     "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
@@ -153,7 +165,15 @@ ics_app.config(() ->
     "REST_PACKAGE_SEARCH_LIST": "{% url 'rest:package_search_list' %}"
     "REST_PACKAGE_SEARCH_RESULT_LIST": "{% url 'rest:package_search_result_list' %}"
     "REST_PACKAGE_SERVICE_LIST": "{% url 'rest:package_service_list' %}"
+    "REST_USER_DETAIL": "{% url 'rest:user_detail' 1 %}"
     "REST_USER_LIST": "{% url 'rest:user_list' %}"
+    "REST_USER_OBJECT_PERMISSION_DETAIL": "{% url 'rest:user_object_permission_detail' 1 %}"
+    "REST_USER_PERMISSION_DETAIL": "{% url 'rest:user_permission_detail' 1 %}"
+    "REST_USER_PERMISSION_LIST": "{% url 'rest:user_permission_list' %}"
+    "REST_VIRTUAL_DESKTOP_PROTOCOL_LIST": "{% url 'rest:virtual_desktop_protocol_list' %}"
+    "REST_VIRTUAL_DESKTOP_USER_SETTING_LIST": "{% url 'rest:virtual_desktop_user_setting_list' %}"
+    "REST_WINDOW_MANAGER_LIST": "{% url 'rest:window_manager_list' %}"
+    "RMS_GET_RMS_JOBINFO": "{% url 'rms:get_rms_jobinfo' %}"
     "RMS_OVERVIEW": "{% url 'rms:overview' %}"
     "RRD_DEVICE_RRDS": "{% url 'rrd:device_rrds' %}"
     "RRD_GRAPH_RRDS": "{% url 'rrd:graph_rrds' %}"
@@ -164,9 +184,13 @@ ics_app.config(() ->
     "SETUP_PARTITION_OVERVIEW": "{% url 'setup:partition_overview' %}"
     "USER_ACCOUNT_INFO": "{% url 'user:account_info' %}"
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
+    "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"
+    "USER_CLEAR_HOME_DIR_CREATED": "{% url 'user:clear_home_dir_created' %}"
+    "USER_GET_DEVICE_IP": "{% url 'user:get_device_ip' %}"
     "USER_GLOBAL_SETTINGS": "{% url 'user:global_settings' %}"
     "USER_OVERVIEW": "{% url 'user:overview' %}"
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
+    "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
 })
 
 root.ics_app = ics_app

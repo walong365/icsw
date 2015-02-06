@@ -1,7 +1,7 @@
 sidebar_module = angular.module(
     "icsw.layout.sidebar",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.password.test", "icsw.device.info",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.info",
     ]
 ).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService) ->
@@ -86,7 +86,6 @@ sidebar_module = angular.module(
             $scope.tabs[tab_short] = tab_short == $scope.active_tab
         $scope.rest_data = {}
         # olp is the object level permission
-        #console.log "{{ device_object_level_permission }}"
         $scope.rest_map = [
             {
                 "short" : "device_tree",
@@ -96,7 +95,7 @@ sidebar_module = angular.module(
                     "tree_mode" : true
                     "all_devices" : true
                     "with_categories" : true
-                    "olp" : "{{ device_object_level_permission }}"
+                    "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
                 }
             } 
             {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
@@ -108,7 +107,7 @@ sidebar_module = angular.module(
                 # only reload the given devices
                 # build list of current values
                 prev_list = ([$scope.dev_lut[pk].domain_tree_node, (_entry for _entry in $scope.dev_lut[pk].categories)] for pk in pk_list)
-                Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(pk_list), "ignore_cdg" : false, "tree_mode" : true, "with_categories" : true, "olp" : "{{ device_object_level_permission }}"}).then((data) ->
+                Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(pk_list), "ignore_cdg" : false, "tree_mode" : true, "with_categories" : true, "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION}).then((data) ->
                     $scope.update_device(data, prev_list)
                 )
             else
@@ -386,8 +385,3 @@ sidebar_module = angular.module(
         template : $templateCache.get("icsw.layout.sidebar")
     }
 ])
-
-virtual_desktop_utils = {
-    get_viewer_command_line: (vdus, ip) ->
-        return "echo \"#{vdus.password}\" | vncviewer -autopass #{ip}:#{vdus.effective_port }\n"
-}

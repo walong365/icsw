@@ -1,424 +1,3 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-{% verbatim %}
-
-vncwebviewer_template = """
-<!-- vnc viewer mode -->
-<div ng-if="show_single_vdus && ips_loaded">
-    <vnc host="{{ ips_for_devices[single_vdus.device] }}" port="{{ single_vdus.websockify_effective_port  }}" is-connected="show_single_vdus" password="{{ single_vdus.password }}" ></vnc>
-</div>
-<!-- dashboard mode -->
-<div ng-if="virtual_desktop_sessions.length == 0">
-    No virtual desktop sessions 
-</div>
-<div ng-if="(!show_single_vdus) && ips_loaded">
-    <div class="panel panel-success" ng-repeat="vdus in virtual_desktop_sessions" style="width:650px">
-        <div class="panel-heading">
-            <h4 class="ng-binding panel-title">
-                {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
-            </h4>
-        </div>
-        <div class="panel-body">
-
-            <table class="table">
-                <tr>
-                    <td>Status</td>
-                    <td ng-class="(vdus.state == 1) && 'text-danger'">{{ vdus.state_description }}</td>
-                </tr>
-                <tr>
-                    <td>Server</td>
-                    <td>{{ips_for_devices[vdus.device]}}:{{ vdus.effective_port }}</td>
-                </tr>
-                <tr>
-                    <td>Password</td>
-                    <td>{{ vdus.password }}</td>
-                </tr>
-                <tr>
-                    <td>Command line</td>
-                    <td>{{ vdus.viewer_cmd_line }}</td>
-                </tr>
-
-                <tr ng-if="vdus.state != 1">
-                    <td colspan="2">
-                        <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">Open in new tab</button>
-                        <button type="button" ng-click="download_vdus_start_script(vdus)" class="btn btn-default">Download .vnc configuration file</button>
-                    </td>
-                </tr>
-            </table>
-            <table>
-                <!--
-                    <tr>
-                        <td>
-                            <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
-                            <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
-                                {{vdus.viewer_cmd_line}}
-                            </div>
-                        </td>
-                    </tr>
-                -->
-                <tr ng-if="vdus.state != 1">
-                    <td>
-                    </td>
-                    <td colspan="2">
-
-                        <accordion close-others="false">
-                           <accordion-group is-open="web_viewer">
-                               <accordion-heading>
-                                   Web viewer
-                                   <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
-                               </accordion-heading>
-                               <div ng-if="web_viewer">
-                                   <!--
-                                   ie10 warns about leaving the page if a vnc directive is in the dom, this way it is only the case if the user has explicitly opened it
-                                   -->
-                                   <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
-                               </div>
-                           </accordion-group>
-                           </accordion>
-
-                    </td>
-                </tr>
-            </table>
-
-        </div>
-   </div>
-</div>
-"""
-virtual_desktop_settings_template = """
-<fieldset  ng-show="true">
-    <legend>Virtual Desktops</legend>
-    <div ng-show="!virtual_desktop_device_available()">
-        <p>No device supporting a virtual desktop protocol and a window manager found</p>
-    </div>
-    <div id="div_id_device" class="form-group" ng_show="virtual_desktop_device_available()">
-        <label for="id_device" class="control-label col-sm-2">
-           Device
-        </label>
-        <div class="controls col-sm-8">
-            <div class='input-group' style='max-width:400px; min-width:240px;'>
-            <ui-select ng-model='_edit_obj.device' ng-disabled='false' ng-change="on_device_change()">
-                <ui-select-match placeholder='Select a device'>{{$select.selected.name}}</ui-select-match>
-                <ui-select-choices repeat='value.idx as value in virtual_desktop_devices()' group-by='&#39;model_name&#39;'>
-                    <div ng-bind-html='value.name | highlight: $select.search'></div>
-                </ui-select-choices>
-            </ui-select>
-            <span class='input-group-btn'>
-            <button type="button" ng-click="_edit_obj.device = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div>
-        </div>
-    </div>
-            
-   <div id="div_id_virtual_desktop_protocol" class="form-group " ng_show="_edit_obj.device" >
-       <label for="id_virtual_desktop_protocol" class="control-label col-sm-2">
-           Virtual desktop protocol
-       </label>
-       <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select an virtual desktop protocol'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='&#39;model_name&#39;'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div>
-   </div>
-
-   <div id="div_id_port" class="form-group " ng_show="_edit_obj.device" >
-       <label for="id_port" class="control-label col-sm-2">
-           Port
-       </label>
-       <div class="controls col-sm-8">
-           <input class="numberinput form-control" id="id_port" max="65535" min="0" name="port" ng-model="_edit_obj.port" placeholder="0" type="number" /> 
-       </div>
-   </div>
-
-   <div id="div_id_web_vnc_port" class="form-group " ng_show="_edit_obj.device" >
-       <label for="id_web_vnc_port" class="control-label col-sm-2">
-           Web VNC Port
-       </label>
-       <div class="controls col-sm-8">
-           <input class="numberinput form-control" id="id_web_vnc_port" max="65535" min="0" name="port" ng-model="_edit_obj.websockify_port" placeholder="0" type="number" /> 
-       </div>
-   </div>
-   
-   <div id="div_id_window_manager" class="form-group " ng_show="_edit_obj.device" ><label for="id_window_manager" class="control-label col-sm-2">
-           Window manager
-       </label>
-       <div class="controls col-sm-8">
-           <ui-select ng-model='_edit_obj.window_manager' style='max-width:400px; min-width:240px;' ng-disabled='false'>
-               <ui-select-match placeholder='Select a wm'>{{$select.selected.description}}</ui-select-match>
-               <ui-select-choices repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='&#39;model_name&#39;'>
-                   <div ng-bind-html='value.description | highlight: $select.search'></div>
-               </ui-select-choices>
-           </ui-select>
-       </div>
-  </div>
-
-  <div id="div_id_screen_size" class="form-group " ng_show="_edit_obj.device" >
-       <label for="id_screen_size" class="control-label col-sm-2">
-           Screen size
-       </label>
-       <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.screen_size' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='...'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value as value in available_screen_sizes'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div>
-   </div>
-
-  
-  <div>
-      <div class="control-label col-sm-2" > &nbsp; </div>
-      <div class="controls form-inline" ng_show="_edit_obj.device && _edit_obj.screen_size.manual">
-              <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_x"></input> x <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_y"></input>
-      </div>
-  </div>
-  
-  <div  ng-show="_edit_obj.device">
-      <!--<div  class="control-label col-sm-2" > &nbsp; </div>-->
-  <div class="form-group">
-      <div id="div_id_start_automatically" class="checkbox " >
-          <div class="controls col-lg-offset-0 col-sm-8">
-              <label for="id_start_automatically" class="">
-              <input class="checkboxinput checkbox" id="id_start_automatically" name="start_automatically" ng-model="_edit_obj.start_automatically" type="checkbox" />
-          Enabled (Check to make sure the server is always running)</label></div></div></div>
-  </div>
-               
-               
-  <input type="button" name="" value="{{ get_virtual_desktop_submit_mode() }}" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
-  <input type="button" name="" value="cancel" class="btn btn btn-sm btn-danger" id="button-id-" ng-click="cancel_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
-</fieldset>
-
-<table class="table table-condensed table-hover table-striped" style="width:100%;">
-    <thead>
-        <tr>
-            <th>Device</th>
-            <th>Protocol</th>
-            <th>Port</th>
-            <th>Web VNC Port</th>
-            <th>Window<br/>manager</th>
-            <th>Screen size</th>
-            <th>Enabled</th>
-            <th>State</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="vdus in get_virtual_desktop_user_setting_of_user(_edit_obj)">
-            <td> {{ get_device_by_index(vdus.device).name }} </td>
-            <td> {{ get_virtual_desktop_protocol_by_index(vdus.virtual_desktop_protocol).description }} </td>
-            <td> {{ vdus.port }} </td>
-            <td> {{ vdus.websockify_port }} </td>
-            <td> {{ get_window_manager_by_index(vdus.window_manager).description }} </td>
-            <td> {{ vdus.screen_size }} </td>
-            <td> {{ vdus.is_running | yesno2 }} </td>
-            <td> {{ vdus.state_description }} </td>
-            <td>
-                <button type="button" popover-placement="top" popover-title="Viewer command line" popover="{{ vdus.viewer_cmd_line }}" class="btn btn-xs btn-info">info</button>
-                <button type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_virtual_desktop_user_setting(vdus)">modify</button>
-                <button type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_virtual_desktop_user_setting(vdus)">delete</button>
-            </td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-jobinfo_template = """
-<table class="table table-hover table-bordered table-condensed" style="width:100%;" ng-show="jobinfo_valid">
-    <thead>
-        <tr>
-            <th></th>
-            <th>Number of jobs</th>
-            <th>Job ids</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        <tr>
-            <td> Jobs waiting </td>
-            <td> {{ jobs_waiting.length }} </td>
-            <td> {{ longListToString(jobs_waiting) }} </td>
-        </tr>
-        <tr>
-            <td> Jobs running </td>
-            <td> {{ jobs_running.length }} </td>
-            <td> {{ longListToString(jobs_running) }} </td>
-        </tr>
-        <tr>
-            <td>
-                Jobs finished in 
-                <div class="btn-group">
-                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-dashboard"></span>
-                        {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
-                    </ul>
-                 </div>
-            </td>
-            <td>{{ jobs_finished.length }}</td>
-            <td>{{ longListToString(jobs_finished) }}</td>
-        </tr>
-    </tbody>
-</table>
-<h4 ng-show="!jobinfo_valid">waiting for jobinfo ...</h4>
-"""
-
-diskusage_template = """
-<h4>{{ scan_run_info() }}<span ng-show="current_scan_run">, </span><input ng-show="current_scan_run" type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"></input></h4>
-<div ng-show="current_scan_run">
-    <tree treeconfig="du_tree"></tree>
-</div>
-"""
-
-quota_settings_template = """
-<table class="table table-hover table-bordered table-condensed table-striped" style="width:100%;" ng-show="quota_settings.length">
-    <thead>
-        <tr>
-            <th>Device</th>
-            <th>Path</th>
-            <th>Size</th>
-            <th>Flags</th>
-            <th>Bytes Graph</th>
-            <th>Bytes used</th>
-            <th>Bytes limit</th>
-            <th>INode Graph</th>
-            <th>INodes used</th>
-            <th>INodes limit</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="qs in quota_settings" ng-class="get_line_class(qs)">
-            <td>{{ qs.qcb.device.full_name }}</td>
-            <td>{{ qs.qcb.mount_path }}</td>
-            <td>{{ qs.qcb.size | get_size:1:1024 }}</td>
-            <td class="center">{{ qs.quota_flags }}</td>
-            <td style="width:300px;">
-                <div class="row">
-                    <div class="col-xs-2">
-                        <span class="label label-primary" ng_click="qs.show_abs = !qs.show_abs"><span ng-show="qs.show_abs">Total:</span><span ng-show="!qs.show_abs">Relative:</span></span>
-                    </div>
-                    <div class="col-xs-10">
-                        <progress ng-show="qs.bytes_quota && qs.show_abs">
-                            <bar ng-repeat="stack in qs.bytes_stacked_abs track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
-                        </progress>
-                        <progress ng-show="qs.bytes_quota && !qs.show_abs">
-                            <bar ng-repeat="stack in qs.bytes_stacked_rel track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
-                        </progress>
-                    </div>
-                </div>
-            </td>
-            <td class="text-center">{{ qs.bytes_used | get_size:1:1024 }}</td>
-            <td class="text-center">{{ get_bytes_limit(qs) }}</td>
-            <td style="width:120px;">
-                <progress ng-show="qs.files_quota">
-                    <bar ng-repeat="stack in qs.files_stacked track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
-                </progress>
-            </td>
-            <td class="text-center">{{ qs.files_used | get_size:1:1000:'' }}</td>
-            <td class="text-center">{{ get_files_limit(qs) }}</td>
-        </tr>
-    </tbody>
-</table>
-<h4 ng-show="!quota_settings.length">no quota info</h4>
-"""
-
-permissions_template = """
-<table class="table table-condensed table-hover table-striped" style="width:100%;">
-    <thead>
-        <tr>
-            <th>Type</th>
-            <th>Name</th>
-            <th>Code</th>
-            <th>Level</th>
-            <th>Object</th>
-            <th>Application</th>
-            <th>Model</th>
-            <th ng-show="action">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="perm in get_permission_set()">
-            <td>global</td>
-            <td>{{ perm.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
-            <td>{{ perm.csw_permission | array_lookup:csw_permission_list:'codename' }}</td>
-            <td>{{ get_perm_level(perm) }}</td>
-            <td>&nbsp;</td>
-            <td>{{ get_perm_app(perm) }}</td>
-            <td>{{ get_perm_model(perm) }}</td>
-            <td ng-show="action"><input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_permission(perm)"></input></td>
-        </tr>
-        <tr ng-repeat="perm in get_object_permission_set()">
-            <td>local</td>
-            <td>{{ perm.csw_object_permission.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
-            <td>{{ perm.csw_object_permission.csw_permission | array_lookup:csw_permission_list:'codename' }}</td>
-            <td>{{ get_perm_level(perm) }}</td>
-            <td>{{ get_perm_object(perm) }}</td>
-            <td>{{ get_perm_app(perm.csw_object_permission) }}</td>
-            <td>{{ get_perm_model(perm.csw_object_permission) }}</td>
-            <td ng-show="action"><input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_object_permission(perm)"></input></td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-{% endverbatim %}
-
-password_test_module = angular.module(
-    "icsw.password.test",
-    ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"]
-).controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
-        $scope.$on("icsw.enter_password", () ->
-            $modal.open
-                template : $templateCache.get("set_password.html")
-                controller : ($scope, $modalInstance, scope) ->
-                    $scope.pwd = {
-                        "pwd1" : ""
-                        "pwd2" : ""
-                    }
-                    $scope.dyn_check = (val) ->
-                        $scope.check()
-                        _rc = []
-                        if val.length < 8
-                            _rc.push("has-error")
-                        return _rc.join(" ")
-                    $scope.ok = () ->
-                        $modalInstance.close(true)
-                        scope.$emit("icsw.set_password", $scope.pwd.pwd1)
-                    $scope.check = () ->
-                        if $scope.pwd.pwd1 == "" and $scope.pwd.pwd1 == $scope.pwd.pwd2
-                            $scope.pwd_error = "empty passwords"
-                            $scope.pwd_error_class = "alert alert-warning"
-                            return false
-                        else if $scope.pwd.pwd1.length >= 8 and $scope.pwd.pwd1 == $scope.pwd.pwd2
-                            $scope.pwd_error = "passwords match"
-                            $scope.pwd_error_class = "alert alert-success"
-                            return true
-                        else
-                            $scope.pwd_error = "passwords do not match or too short"
-                            $scope.pwd_error_class = "alert alert-danger"
-                            return false
-                    $scope.cancel = () ->
-                        $modalInstance.dismiss("cancel")
-                backdrop : "static"
-                resolve:
-                    scope: () ->
-                        return $scope
-        )
-]).directive("accountDetail", ["$templateCache", ($templateCache) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("account_detail_form.html")
-        link: (scope, element, attrs) ->
-            scope._cur_user = null
-            scope.$watch(attrs["user"], (new_val) ->
-                if new_val
-                    scope._cur_user = new_val
-            )
-            scope.update_account = () ->
-                scope._cur_user.put().then(
-                   (data) ->
-                   (resp) ->
-                )
-    }
-])
-
-user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.password.test"])
-
 DT_FORM = "YYYY-MM-DD HH:mm"
 
 class user_tree extends tree_config
@@ -478,12 +57,12 @@ class diskusage_tree extends tree_config
 class screen_size
     constructor: (@x_size, @y_size) ->
         @idx = @constructor._count++   # must be same as index in list
-        @manual = @x_size == 0 and @y_size == 0 
+        @manual = @x_size == 0 and @y_size == 0
         @name = if @manual then "manual" else @x_size+"x"+@y_size
-    @_count = 0 
+    @_count = 0
     @parse_screen_size: (string) ->
         return string.split "x"
-                    
+
 available_screen_sizes = [
     new screen_size(0, 0),
     new screen_size(1920, 1200), new screen_size(1920, 1080),
@@ -494,9 +73,15 @@ available_screen_sizes = [
     new screen_size(1024, 768), new screen_size(800, 600),
     new screen_size(640, 420),
 ]
-        
-user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI) ->
+
+user_module = angular.module(
+    "icsw.user",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
+        "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
+    ]
+).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -508,8 +93,8 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.filterstr = ""
         # init edit mixins
         $scope.group_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
-        $scope.group_edit.modify_rest_url = "{% url 'rest:group_detail' 1 %}".slice(1).slice(0, -2)
-        $scope.group_edit.create_rest_url = Restangular.all("{% url 'rest:group_list' %}".slice(1))
+        $scope.group_edit.modify_rest_url = ICSW_URLS.REST_GROUP_DETAIL.slice(1).slice(0, -2)
+        $scope.group_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_GROUP_LIST.slice(1))
         $scope.group_edit.use_modal = false
         $scope.group_edit.change_signal = "icsw.user.groupchange"
         $scope.group_edit.new_object = () ->
@@ -527,8 +112,8 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             }
             return r_obj
         $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
-        $scope.user_edit.modify_rest_url = "{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2)
-        $scope.user_edit.create_rest_url = Restangular.all("{% url 'rest:user_list' %}".slice(1))
+        $scope.user_edit.modify_rest_url = ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2)
+        $scope.user_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1))
         $scope.user_edit.use_modal = false
         $scope.user_edit.change_signal = "icsw.user.userchange"
         $scope.user_edit.new_object = () ->
@@ -549,17 +134,17 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             }
             return r_obj
         wait_list = restDataSource.add_sources([
-            ["{% url 'rest:group_list' %}", {}]
-            ["{% url 'rest:user_list' %}", {}]
-            ["{% url 'rest:device_group_list' %}", {}]
-            ["{% url 'rest:csw_permission_list' %}", {}]
-            ["{% url 'rest:home_export_list' %}", {}]
-            ["{% url 'rest:csw_object_list' %}", {}]
-            ["{% url 'rest:quota_capable_blockdevice_list' %}", {}]
-            ["{% url 'rest:virtual_desktop_protocol_list' %}", {}]
-            ["{% url 'rest:window_manager_list' %}", {}]
-            ["{% url 'rest:device_list' %}", {}]
-            ["{% url 'rest:virtual_desktop_user_setting_list' %}", {}]
+            [ICSW_URLS.REST_GROUP_LIST, {}]
+            [ICSW_URLS.REST_USER_LIST, {}]
+            [ICSW_URLS.REST_DEVICE_GROUP_LIST, {}]
+            [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
+            [ICSW_URLS.REST_HOME_EXPORT_LIST, {}]
+            [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
+            [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
+            [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
+            [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
+            [ICSW_URLS.REST_DEVICE_LIST, {}]
+            [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
         ])
         $scope.init_csw_cache = (entry, e_type) ->
             entry.permission = null
@@ -608,7 +193,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.sync_users = () ->
             blockUI.start("Sending sync to server ...")
             call_ajax
-                url     : "{% url 'user:sync_users' %}"
+                url     : ICSW_URLS.USER_SYNC_USERS
                 title   : "syncing users"
                 success : (xml) =>
                     blockUI.stop()
@@ -736,7 +321,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.create_object_permission = () ->
             perm = $scope.csw_permission_lut[$scope._edit_obj.permission]
             call_ajax
-                url     : "{% url 'user:change_object_permission' %}"
+                url     : ICSW_URLS.USER_CHANGE_OBJECT_PERMISSION
                 data    :
                     # group or user
                     "auth_type" : $scope._edit_mode
@@ -761,10 +346,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.delete_permission = (perm) ->
             if $scope._edit_mode == "u"
                 ug_name = "user"
-                detail_url = "{% url 'rest:user_permission_detail' 1 %}".slice(1).slice(0, -2)
+                detail_url = ICSW_URLS.REST_USER_PERMISSION_DETAIL.slice(1).slice(0, -2)
             else
                 ug_name = "group"
-                detail_url = "{% url 'rest:group_permission_detail' 1 %}".slice(1).slice(0, -2)
+                detail_url = ICSW_URLS.REST_GROUP_PERMISSION_DETAIL.slice(1).slice(0, -2)
             ps_name = "#{ug_name}_permission_set"
             Restangular.restangularizeElement(null, perm, detail_url)
             perm.remove().then((data) ->
@@ -776,10 +361,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         $scope.delete_object_permission = (perm) ->
             if $scope._edit_mode == "u"
                 ug_name = "user"
-                detail_url = "{% url 'rest:user_object_permission_detail' 1 %}".slice(1).slice(0, -2)
+                detail_url = ICSW_URLS.REST_USER_OBJECT_PERMISSION_DETAIL.slice(1).slice(0, -2)
             else
                 ug_name = "group"
-                detail_url = "{% url 'rest:group_object_permission_detail' 1 %}".slice(1).slice(0, -2)
+                detail_url = ICSW_URLS.REST_GROUP_OBJECT_PERMISSION_DETAIL.slice(1).slice(0, -2)
             ps_name = "#{ug_name}_object_permission_set"
             Restangular.restangularizeElement(null, perm, detail_url)
             perm.remove().then((data) ->
@@ -792,10 +377,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             if $scope._edit_obj.permission
                 if $scope._edit_mode == "u"
                     ug_name = "user"
-                    list_url = "{% url 'rest:user_permission_list' %}".slice(1)
+                    list_url = ICSW_URLS.REST_USER_PERMISSION_LIST.slice(1)
                 else
                     ug_name = "group"
-                    list_url = "{% url 'rest:group_permission_list' %}".slice(1)
+                    list_url = ICSW_URLS.REST_GROUP_PERMISSION_LIST.slice(1)
                 ps_name = "#{ug_name}_permission_set"
                 if not (true for _e in $scope._edit_obj[ps_name] when _e.csw_permission == $scope._edit_obj.permission).length
                     new_obj = {
@@ -828,7 +413,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             return if obj.home_dir_created then "homedir exists" else "no homedir"
         $scope.clear_home_dir_created = (obj) ->
             call_ajax
-                url     : "{% url 'user:clear_home_dir_created' %}"
+                url     : ICSW_URLS.USER_CLEAR_HOME_DIR_CREATED
                 data    :
                     "user_pk" : obj.idx
                 success : (xml) =>
@@ -843,11 +428,11 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             return (_v.name for _v in $scope.ct_dict[key] when _v.idx == obj_perm.object_pk)[0]
 
         $scope.push_virtual_desktop_user_setting = (new_obj, then_fun) ->
-            url = "{% url 'rest:virtual_desktop_user_setting_list' %}".slice(1)
+            url = ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST.slice(1)
             Restangular.all(url).post(new_obj).then( then_fun )
         $scope.get_viewer_command_line = (vdus) ->
             call_ajax
-                url      : "{% url 'user:get_device_ip' %}"
+                url      : ICSW_URLS.USER_GET_DEVICE_IP
                 data     :
                     "device" : vdus.device
                 dataType : "json"
@@ -858,8 +443,8 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     # console.log "blob", blob
                     vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
                     console.log "set testurl", vdus.testurl
-]).controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "$window",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, $window) ->
         $scope.virtual_desktop_user_setting = []
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
@@ -869,15 +454,15 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
         ]
         $scope.update = () ->
             wait_list = restDataSource.add_sources([
-                ["{% url 'rest:csw_permission_list' %}", {}]
-                ["{% url 'rest:csw_object_list' %}", {}]
-                ["{% url 'rest:quota_capable_blockdevice_list' %}", {}]
-                ["{% url 'rest:virtual_desktop_user_setting_list' %}", {}]
-                ["{% url 'rest:virtual_desktop_protocol_list' %}", {}]
-                ["{% url 'rest:window_manager_list' %}", {}]
-                ["{% url 'rest:device_list' %}", {}]
+                [ICSW_URLS.REST_CSW_PERMISSION_LIST, {}]
+                [ICSW_URLS.REST_CSW_OBJECT_LIST, {}]
+                [ICSW_URLS.REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST, {}]
+                [ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}]
+                [ICSW_URLS.REST_VIRTUAL_DESKTOP_PROTOCOL_LIST, {}]
+                [ICSW_URLS.REST_WINDOW_MANAGER_LIST, {}]
+                [ICSW_URLS.REST_DEVICE_LIST, {}]
             ])
-            wait_list.push(Restangular.one("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2), {{ user.pk }}).get())
+            wait_list.push(Restangular.one(ICSW_URLS.REST_USER_DETAIL.slice(1).slice(0, -2), $window.CURRENT_USER.idx).get())
             $q.all(wait_list).then(
                 (data) ->
                     # update once per minute
@@ -928,74 +513,28 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
             $scope.$broadcast("icsw.enter_password")
         $scope.get_vdus = (idx) ->
         $scope.update()
-]).controller("jobinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal)->
-        $scope.jobs_waiting = []
-        $scope.jobs_running = []
-        $scope.jobs_finished = []
-        $scope.jobinfo_valid = false
-        class jobinfo_timedelta
-            constructor: (@name, @timedelta_description) ->
-        $scope.all_timedeltas = [
-            new jobinfo_timedelta("last 15 minutes", [15, "minutes"])
-            new jobinfo_timedelta("last hour", [1, "hours"])
-            new jobinfo_timedelta("last 4 hours", [4, "hours"])
-            new jobinfo_timedelta("last day", [1, "days"])
-            new jobinfo_timedelta("last week", [1, "weeks"])
-        ]
-        $scope.set_jobinfo_timedelta = (ts) ->
-            $scope.last_jobinfo_timedelta = ts
-            jobsfrom = moment().subtract(
-                ts.timedelta_description[0],
-                ts.timedelta_description[1]
-            ).unix()
-            call_ajax
-                  url      : "{% url 'rms:get_rms_jobinfo' %}"
-                  data     :
-                      "jobinfo_jobsfrom" : jobsfrom
-                  dataType : "json"
-                  success  : (json) =>
-                      $scope.$apply(
-                          $scope.jobinfo_valid = true
-                          $scope.jobs_running = json.jobs_running
-                          $scope.jobs_waiting = json.jobs_waiting
-                          $scope.jobs_finished = json.jobs_finished
-                      )
-        $scope.set_jobinfo_timedelta( $scope.all_timedeltas[1] )
-        listmax = 15
-        jobidToString = (j) -> 
-            if j[1] != ""
-                return " "+j[0]+":"+j[1]
-            else
-                return " "+j[0]
-                    
-        $scope.longListToString = (l) ->
-            if l.length < listmax
-                return [jobidToString(i) for i in l].toString()
-            else
-                return (jobidToString(i) for i in l[0..listmax]).toString() + ", ..."
-]).directive("grouptemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswUserGroupShow", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "A"
-        template : $templateCache.get("group_edit.html")
+        template : $templateCache.get("icsw.user.group.show")
         link : (scope, element, attrs) ->
             # not beautiful but working
             scope.$parent.form = scope.form
             scope.obj_perms = scope.$parent.obj_perms
     }
-]).directive("usertemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswUserUserShow", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "A"
-        template : $templateCache.get("user_edit.html")
+        template : $templateCache.get("icsw.user.user.show")
         link : (scope, element, attrs) ->
             # not beautiful but working
             scope.$parent.$parent.form = scope.form
             scope.obj_perms = scope.$parent.$parent.obj_perms
     }
-]).directive("permissions", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswUserPermissions", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("permissions.html")
+        template : $templateCache.get("icsw.user.permissions")
         link : (scope, element, attrs) ->
             scope.action = false
             scope.$watch(attrs["object"], (new_val) ->
@@ -1023,10 +562,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 else
                     return []
     }
-]).directive("quotasettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
+]).directive("icswUserQuotaSettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("quotasettings.html")
+        template : $templateCache.get("icsw.user.quota.settings")
         link: (scope, element, attrs) ->
             scope.object = undefined
             scope.quota_settings = []
@@ -1082,7 +621,7 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                     else
                         _info1 = "space"
                         if abs
-                            max_value = qs.qcb.size    
+                            max_value = qs.qcb.size
                         else
                             max_value = _hard
                         used_str = icswTools.get_size_str(_used, 1024, "B")
@@ -1141,10 +680,10 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                         )
                 return r_stack
     }
-]).directive("diskusage", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
+]).directive("icswUserDiskUsage", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("diskusage.html")
+        template : $templateCache.get("icsw.user.disk.usage")
         link: (scope, element, attrs) ->
             scope.object = undefined
             scope.scan_runs = []
@@ -1222,13 +761,9 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
                 else
                     return "no scan runs"
     }
-]).directive("jobinfo", ["$templateCache", ($templateCache) ->
+]).directive("icswUserVirtualDesktopSettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
         restrict : "EA"
-        template : $templateCache.get("jobinfo.html")
-        link: (scope, element, attrs) ->
-]).directive("virtualdesktopsettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
-        restrict : "EA"
-        template : $templateCache.get("virtualdesktopsettings.html")
+        template : $templateCache.get("icsw.user.vdu.settings")
         link: (scope, element, attrs) ->
             scope.available_screen_sizes = available_screen_sizes
             scope.current_vdus = null
@@ -1359,118 +894,9 @@ user_module.controller("user_tree", ["$scope", "$compile", "$filter", "$template
 
                 scope._edit_obj.start_automatically = vdus.is_running
             
-]).directive("vncwebviewer", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
-        restrict : "EA"
-        template : $templateCache.get("vncwebviewer.html")
-        link: (scope, element, attrs) ->
-            scope.object = undefined
-            
-            scope.ips_for_devices = {}
-            scope.ips_loaded = false
-
-            scope.single_vdus_index = {{ vdus_index }} # from django via get parameter
-            scope.single_vdus = undefined
-            scope.show_single_vdus = false
-
-            scope.virtual_desktop_sessions = []
-            scope.virtual_desktop_user_setting = []
-            scope.$watch(attrs["object"], (new_val) ->
-                scope.object = new_val
-                    
-                if scope.object?
-                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) ->  vdus.user == scope.object.idx && vdus.to_delete == false)
-                    # get all ips
-                    scope.retrieve_device_ip vdus.device for vdus in scope.virtual_desktop_sessions
-
-                    if scope.single_vdus_index
-                        scope.single_vdus = scope.virtual_desktop_user_setting.filter((vdus) -> vdus.idx == scope.single_vdus_index)[0]
-                        scope.show_single_vdus = true
-            )
-            scope.get_vnc_display_attribute_value = (geometry) ->
-                [w, h] = screen_size.parse_screen_size(geometry)
-                return "{width:"+w+",height:"+h+",fitTo:'width',}"
-            scope.get_device_by_index = (index) ->
-                return _.find(scope.device, (vd) -> vd.idx == index)
-            scope.get_virtual_desktop_protocol = (index) ->
-                return _.find(scope.virtual_desktop_protocol, (vd) -> vd.idx == index)
-            scope.get_window_manager = (index) ->
-                return _.find(scope.window_manager, (vd) -> vd.idx == index)
-            scope.open_vdus_in_new_tab = (vdus) ->
-                url = "{% url 'main:virtual_desktop_viewer' %}"
-                window.open(url + "?vdus_index="+vdus.idx)
-            scope.show_viewer_command_line = (vdus) ->
-                vdus.show_viewer_command_line = !vdus.show_viewer_command_line
-            scope.retrieve_device_ip = (index) ->
-                # set some dummy value so that the vnc directive doesn't complain
-                dummy_ip = "0.0.0.0"
-                scope.ips_for_devices[index] = dummy_ip
-                call_ajax
-                    url      : "{% url 'user:get_device_ip' %}"
-                    data     :
-                        "device" : index
-                    dataType : "json"
-                    success  : (json) =>
-                        scope.$apply(
-                            scope.ips_for_devices[index] = json.ip
-                            if _.indexOf(scope.ips_for_devices, dummy_ip) == -1
-                                # all are loaded
-                                scope.ips_loaded = true
-
-                                # calc command lines
-                                for vdus in scope.virtual_desktop_sessions
-                                    vdus.viewer_cmd_line = virtual_desktop_utils.get_viewer_command_line(vdus, scope.ips_for_devices[vdus.device]) 
-                        )
-                
-            scope.download_vdus_start_script = (vdus) ->
-                # create .vnc file (supported by at least tightvnc and realvnc on windows)
-                content = ["[Connection]\n",
-                          "Host=#{ scope.ips_for_devices[vdus.device] }:#{ vdus.effective_port }\n",
-                          "Password=#{ vdus.vnc_obfuscated_password }\n"]
-                blob = new Blob(content, {type: "text/plain;charset=utf-8"});
-                # use FileSaver.js
-                saveAs(blob, "#{ scope.get_device_by_index(vdus.device).name }.vnc");
-]).run(($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
-    $templateCache.put("quotasettings.html", quota_settings_template)
-    $templateCache.put("virtualdesktopsettings.html", virtual_desktop_settings_template)
-    $templateCache.put("permissions.html", permissions_template)
-    $templateCache.put("jobinfo.html", jobinfo_template)
-    $templateCache.put("diskusage.html", diskusage_template)
-    $templateCache.put("vncwebviewer.html", vncwebviewer_template)
-).controller("index_base", ["$scope", "$timeout", "$window", "ICSW_URLS",
-    ($scope, $timeout, $window, ICSW_URLS) ->
-        $scope.ICSW_URLS = ICSW_URLS
-        $scope.show_index = true
-        $scope.quick_open = true
-        $scope.ext_open = false
-        $scope.diskusage_open = true
-        $scope.vdesktop_open = true
-        $scope.jobinfo_open = true
-        $scope.show_devices = false
-        $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
-        $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
-        $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
-        $scope.NUM_QUOTA_SERVERS = $window.NUM_QUOTA_SERVERS
-        $scope.check_perm = (p_name) ->
-            if p_name of GLOBAL_PERMISSIONS
-                return true
-            else if p_name of OBJECT_PERMISSIONS
-                return true
-            else
-                return false
-]).directive("indexView", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("index_template.html")
-        link : (scope, element, attrs) ->
-    }
 ])
 
 virtual_desktop_utils = {
     get_viewer_command_line: (vdus, ip) ->
         return "echo \"#{vdus.password}\" | vncviewer -autopass #{ip}:#{vdus.effective_port }\n"
 }
-
-{% endinlinecoffeescript %}
-
-</script>

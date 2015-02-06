@@ -248,7 +248,7 @@ class group_detail_form(ModelForm):
                 ng_show="!create_mode && _edit_obj.permission && _edit_obj.object",
                 ng_click="create_object_permission()"
             ),
-            HTML("<div class='col-sm-12'><div permissions ng_if='!create_mode' object='_edit_obj' type='group' action='true'></div></div>"),
+            HTML("<div class='col-sm-12'><div icsw-user-permissions ng_if='!create_mode' object='_edit_obj' type='group' action='true'></div></div>"),
         ),
         # HTML("</tab></tabset>"),
         FormActions(
@@ -391,7 +391,7 @@ class user_detail_form(ModelForm):
             HTML("""
 <div class='form-group'>
     <div class='col-sm-12'>
-        <quotasettings object='_edit_obj' type='user'></quotasettings>
+        <icsw-user-quota-settings object='_edit_obj' type='user'></icsw-user-quota-settings>
     </div>
 </div>
             """),
@@ -475,12 +475,12 @@ class user_detail_form(ModelForm):
                 ng_show="!create_mode && _edit_obj.permission && _edit_obj.object",
                 ng_click="create_object_permission()"
             ),
-            HTML("<div class='col-sm-12'><div permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div>"),
+            HTML("<div class='col-sm-12'><div icsw-user-permissions ng_if='!create_mode' object='_edit_obj' type='user' action='true'></div></div>"),
         ),
         HTML("""
 <div class='form-group'>
     <div class='col-sm-12'>
-        <virtualdesktopsettings object='_edit_obj'></virtualdesktopsettings>
+        <icsw-user-virtual-desktop-settings object='_edit_obj'/>
     </div>
 </div>
         """),

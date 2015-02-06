@@ -1,16 +1,16 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n crispy_forms_tags %}
 
 {% block title %}{% trans "User Overview" %}{% endblock %}
 
 {% block content %}
 
-<script type="text/ng-template" id="group_edit.html">
+<script type="text/ng-template" id="icsw.user.group.show">
     {% crispy group_detail_form group_detail_form.helper %}
 </script>
 
-<script type="text/ng-template" id="user_edit.html">
+<script type="text/ng-template" id="icsw.user.user.show">
     {% crispy user_detail_form user_detail_form.helper %}
 </script>
 
@@ -34,10 +34,10 @@
         </div>
     </div>
     <div class="col-sm-8">
-        <div grouptemplate ng-if="_edit_mode == 'g' && modal_active" class="well well-sm">
+        <div icsw-user-group-show ng-if="_edit_mode == 'g' && modal_active" class="well well-sm">
         </div>
-        <div ng-controller="password_ctrl">
-            <div usertemplate ng-if="_edit_mode == 'u' && modal_active" class="well well-sm">
+        <div ng-controller="icswUserPasswordCtrl">
+            <div icsw-user-user-show ng-if="_edit_mode == 'u' && modal_active" class="well well-sm">
             </div>
         </div>
     </div>
