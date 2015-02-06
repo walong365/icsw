@@ -8,7 +8,7 @@ button_module = angular.module(
     return {
         restrict: 'E',
         template: """
-<button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}" title="{{button_value}}">
+<button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"">
     {{value}} {{button_value}}
 </button>
 """
@@ -42,14 +42,13 @@ button_module = angular.module(
                 scope.icon_class = "fa fa-refresh"
             else if attrs.type == "show"
                 scope.css_class = "btn-success"
-                scope.button_value = "show/hide"
                 scope.icon_class = ""
                 scope.$watch(scope.isShow
                     (new_val) ->
                         if new_val
-                            scope.value = "show"
+                            scope.button_value = "show"
                         else
-                            scope.value = "hide"
+                            scope.button_value = "hide"
                 )
             else
                 console.error "Invalid button type: ", attrs.type
