@@ -985,24 +985,7 @@ device_network_module.controller("network_ctrl",
         $scope.get_boot_value = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
             return "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
-]).directive("devicenetworks", ($templateCache, msgbus) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("devicenetworks.html")
-        link : (scope, el, attrs) ->
-            if attrs["disablemodal"]?
-                scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.new_devsel(new_val)
-            )
-            if not attrs["devicepk"]?
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[1])
-                )
-    }
-).directive("netdevicerow", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("netdevicerow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("netdevicerow.html")
@@ -1034,7 +1017,7 @@ device_network_module.controller("network_ctrl",
                 else
                     return "warning text-center"
     }        
-]).directive("netiprow", ["$templatecache", "$compile", ($templateCache, $compile) ->
+]).directive("netiprow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         template: $templateCache.get("netiprow.html")
@@ -1057,6 +1040,23 @@ device_network_module.controller("network_ctrl",
         restrict : "EA"
         template: $templateCache.get("peerrow.html")
         link : (scope, element, attrs) ->
+    }
+]).directive("devicenetworks", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("devicenetworks.html")
+        link : (scope, el, attrs) ->
+            if attrs["disablemodal"]?
+                scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
+            scope.$watch(attrs["devicepk"], (new_val) ->
+                if new_val and new_val.length
+                    scope.new_devsel(new_val)
+            )
+            if not attrs["devicepk"]?
+                msgbus.emit("devselreceiver")
+                msgbus.receive("devicelist", scope, (name, args) ->
+                    scope.new_devsel(args[1])
+                )
     }
 ]).run(["$templateCache", ($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)

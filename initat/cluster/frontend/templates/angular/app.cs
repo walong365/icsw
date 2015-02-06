@@ -46,6 +46,7 @@ ics_app = angular.module(
         "icsw.server.info",
         "icsw.config",
         "icsw.config.gen",
+        "icsw.device.variables",
         "icsw.device.info",
         "icsw.device",
         "icsw.config.category_tree",
@@ -54,9 +55,8 @@ ics_app = angular.module(
         "icsw.device.config",
         "icsw.device.connection",
         "icsw.device.livestatus",
+        "icsw.device.status_history",
         # "icsw.device.boot",
-        # "icsw.device.variables",
-        # "icsw.device.status_history",
         # "icsw.rms",
         # "icsw.lic"
         # "icsw.monitoring.create",
@@ -67,8 +67,8 @@ ics_app = angular.module(
         # "icsw.monitoring_basic",
         # "icsw.monitoring_extended",
         # "icsw.partition_table",
-        # "icsw.kernel",
-        # "icsw.image",
+        "icsw.kernel",
+        "icsw.image",
     ]
 )
 

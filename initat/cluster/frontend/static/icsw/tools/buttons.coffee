@@ -5,7 +5,7 @@ button_module = angular.module(
     [
     ]
 ).service('icswToolsButtonConfigService', () ->
-    get_config_for_button_type = (type) ->
+    get_config_for_button_type = (type, scope) ->
         ret_obj = {}
         if type == "modify"
             ret_obj.css_class = "btn-primary"
@@ -30,7 +30,7 @@ button_module = angular.module(
         else if type == "show"
             ret_obj.css_class = "btn-success"
             ret_obj.icon_class = ""
-            ret_obj.$watch(scope.isShow
+            scope.$watch(scope.isShow
                 (new_val) ->
                     if new_val
                         ret_obj.button_value = "show"
@@ -49,7 +49,7 @@ button_module = angular.module(
         restrict: 'E',
         template: """
     <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"">
-        {{value}} {{button_value}}
+        {{ value }} {{ button_value }}
     </button>
     """
         scope:
@@ -62,7 +62,7 @@ button_module = angular.module(
             # - value: Custom text to display in button
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
-            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(attrs.type))
+            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(attrs.type, scope))
 
 
             if attrs.value?

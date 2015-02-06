@@ -72,9 +72,12 @@ class pd_timerange
 class pd_timeshift
     constructor: (@name, @seconds) ->
 
-rrd_graph_module = angular.module("icsw.rrd.graph", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
-
-rrd_graph_module.controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService",
+angular.module(
+    "icsw.rrd.graph",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
+    ]
+).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
@@ -465,7 +468,7 @@ rrd_graph_module.controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$fi
         $scope.$on("$destroy", () ->
             #console.log "dest"
         )                
-]).directive("icswRrdGraph", ($templateCache) ->
+]).directive("icswRrdGraph", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.rrd.graph.overview")
@@ -495,7 +498,7 @@ rrd_graph_module.controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$fi
                         scope.new_devsel([new_val])
             )
     }
-).service("icswRRDGraphTreeService", () ->
+]).service("icswRRDGraphTreeService", () ->
     class rrd_tree extends tree_config
         constructor: (@scope, args) ->
             super(args)
