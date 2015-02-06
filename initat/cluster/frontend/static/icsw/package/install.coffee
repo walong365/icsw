@@ -3,7 +3,7 @@ package_module = angular.module(
     "icsw.package.install",
     ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select",
     "icsw.tools.table", ]
-).service("icswPackageInstallRepositoryService", (Restangular, ICSW_URLS) ->
+).service("icswPackageInstallRepositoryService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     return {
         rest_url            : ICSW_URLS.REST_PACKAGE_REPO_LIST
         delete_confirm_str  : (obj) -> return "Really delete Package repository '#{obj.name}' ?"
@@ -23,7 +23,7 @@ package_module = angular.module(
                 _show = false
             return _show
     }
-).service("icswPackageInstallSearchService", (Restangular, ICSW_URLS) ->
+]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
     return {
         user_rest           : user_rest
@@ -45,7 +45,7 @@ package_module = angular.module(
         init_fn: (scope) ->
             scope.init_search(scope)
     }
-).service("icswPackageInstallPackageListService", (ICSW_URLS) ->
+]).service("icswPackageInstallPackageListService", ["ICSW_URLS", (ICSW_URLS) ->
     return {
         rest_url            : ICSW_URLS.REST_PACKAGE_LIST
         #edit_template       : "package_search.html"
@@ -59,12 +59,12 @@ package_module = angular.module(
         get_grid_style : ($scope) ->
             return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
     }
-).service("icswPackageInstallSearchResultService", (ICSW_URLS)->
+]).service("icswPackageInstallSearchResultService", ["ICSW_URLS", (ICSW_URLS)->
     return {
         edit_template       : "package_search.html"
         delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
     }
-).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window",
+]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window",
     ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window) ->
         # flags
         $scope.show_enabled_repos = true

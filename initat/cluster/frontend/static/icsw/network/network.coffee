@@ -4,7 +4,7 @@ network_module = angular.module("icsw.network",
          "icsw.tools.table", "icsw.tools.utils"]
 ).directive('icswNetwork', ($templateCache) ->
     template: $templateCache.get("icswNetworkPage")
-).service('icswNetworkDeviceTypesService', (ICSW_URLS) ->
+).service('icswNetworkDeviceTypesService', ["ICSW_URLS", (ICSW_URLS) ->
     return {
         rest_url           : ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST
         delete_confirm_str : (obj) ->
@@ -18,7 +18,7 @@ network_module = angular.module("icsw.network",
                 "allow_virtual_interfaces" : true
         }
     }
-).service('icswNetworkTypesService', (ICSW_URLS) ->
+]).service('icswNetworkTypesService', ["ICSW_URLS", (ICSW_URLS) ->
     nw_types_dict = [
         {"value":"b", "name":"boot"}
         {"value":"p", "name":"prod"}
@@ -34,7 +34,7 @@ network_module = angular.module("icsw.network",
         object_created      : (new_obj) -> new_obj.description = ""
         network_types       : nw_types_dict  # for create/edit dialog
     }
-).service('icswNetworksService', (Restangular, $q, icswTools, ICSW_URLS) ->
+]).service('icswNetworksService', ["Restangular", "$q", "icswTools", "ICSW_URLS", (Restangular, $q, icswTools, ICSW_URLS) ->
 
     networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     network_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -102,4 +102,4 @@ network_module = angular.module("icsw.network",
         has_master_network : (edit_obj) ->
             return if edit_obj.master_network then true else false
     }
-)
+])

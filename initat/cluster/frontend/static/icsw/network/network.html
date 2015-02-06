@@ -35,8 +35,8 @@
                         <td>{{ obj.mac_bytes }}</td>
                         <td>{{ obj.allow_virtual_interfaces | yesno1 }}</td>
                         <td>{{ obj.for_matching | yesno2 }}</td>
-                        <td><icsw-tools-modify-button click="edit(event, obj)" size="xs"></icsw-tools-modify-button></td>
-                        <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+                        <td><icsw-tools-button type="modify" click="edit(event, obj)" size="xs"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" click="delete(obj)" size="xs"></icsw-tools-button></td>
                     </tr>
                 </tbody>
             </table>
