@@ -162,7 +162,8 @@ dev_row_template = """
 <td>
     <div class="input-group-btn" ng-show="enable_modal && acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
         <div class="btn-group btn-xs">
-            <button type="button" class="btn btn-success btn-xs dropdown-toggle fa fa-chevron-down" data-toggle="dropdown">
+
+            <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class_for_button_type('create') }}" data-toggle="dropdown">
                 Create new
             </button>
             <ul class="dropdown-menu">
@@ -171,11 +172,9 @@ dev_row_template = """
                 <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
             </ul>
         </div>
-        <button type="button" class="btn btn-warning btn-xs fa fa-refresh"
+        <icsw-tools-button type="reload" value="update network" size="xs"
             ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')"
-            ng-click="scan_device_network(ndip_obj, $event)">
-        update network
-        </button>
+            ng-click="scan_device_network(ndip_obj, $event)"/>
     </div>
 </td>
 """
@@ -232,17 +231,18 @@ nd_row_template = """
 </td>
 <td>
     <div ng-show="!dev_lut[ndip_obj.device].active_scan">
-        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+        <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event)" size="xs"
+                ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
     </div>
 </td>
 <td>
     <div ng-show="!dev_lut[ndip_obj.device].active_scan">
-        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
     </div>
 </td>
 <td>
     <div class="btn-group btn-xs" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
-        <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
+        <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class_for_button_type('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
             Create new <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
@@ -264,12 +264,12 @@ ip_row_template = """
 </td>
 <td>
     <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"/>
     </div>
 </td>
 <td>
     <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
     </div>
 <td>
 """
@@ -297,10 +297,10 @@ peer_row_template = """
     {{ ndip_obj.peer.info }}
 </td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></input>
+    <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"/>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"></input>
+    <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
 </td>
 """
 
@@ -434,8 +434,12 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
 
 device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"])
 
-device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools) ->
+device_network_module.controller("network_ctrl",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource",
+     "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
+     $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService) ->
+        $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
         $scope.enable_modal = true
         # accordion flags

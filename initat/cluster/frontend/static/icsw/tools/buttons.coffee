@@ -4,54 +4,66 @@ button_module = angular.module(
     "icsw.tools.button",
     [
     ]
-).directive('icswToolsButton', () ->
+).service('icswToolsButtonConfigService', () ->
+    get_config_for_button_type = (type) ->
+        ret_obj = {}
+        if type == "modify"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.button_value = "modify"
+            ret_obj.icon_class = "fa fa-wrench"
+        else if type == "create"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "create"
+            ret_obj.icon_class = "fa fa-plus-circle"
+        else if type == "delete"
+            ret_obj.css_class = "btn-danger"
+            ret_obj.button_value = "delete"
+            ret_obj.icon_class = "fa fa-trash"
+        else if type == "reload"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = "reload"
+            ret_obj.icon_class = "fa fa-refresh"
+        else if type == "clear_selection"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = "clear selection"
+            ret_obj.icon_class = "fa fa-remove"
+        else if type == "show"
+            ret_obj.css_class = "btn-success"
+            ret_obj.icon_class = ""
+            ret_obj.$watch(scope.isShow
+                (new_val) ->
+                    if new_val
+                        ret_obj.button_value = "show"
+                    else
+                        ret_obj.button_value = "hide"
+            )
+        else
+            console.error "Invalid button type: ", attrs.type
+        return ret_obj
+    return {
+        get_config_for_button_type: get_config_for_button_type
+        get_css_class_for_button_type: (type) -> return get_config_for_button_type(type).css_class
+    }
+).directive('icswToolsButton', ["icswToolsButtonConfigService", (icswToolsButtonsConfigService) ->
     return {
         restrict: 'E',
         template: """
-<button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"">
-    {{value}} {{button_value}}
-</button>
-"""
+    <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"">
+        {{value}} {{button_value}}
+    </button>
+    """
         scope:
-            click: '&'  # http://stackoverflow.com/questions/17556703/angularjs-directive-call-function-specified-in-attribute-and-pass-an-argument-to
             isShow: '&'
         link: (scope, element, attrs) ->
 
             # attrs:
-            # - type (mandatory): "modify", "create", "delete", "reload", "show"
+            # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection"
             # - click: gets executed on click
             # - value: Custom text to display in button
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
+            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(attrs.type))
 
-            if attrs.type == "modify"
-                scope.css_class = "btn-primary"
-                scope.button_value = "modify"
-                scope.icon_class = "fa fa-wrench"
-            else if attrs.type == "create"
-                scope.css_class = "btn-success"
-                scope.button_value = "create"
-                scope.icon_class = "fa fa-plus-circle"
-            else if attrs.type == "delete"
-                scope.css_class = "btn-danger"
-                scope.button_value = "delete"
-                scope.icon_class = "fa fa-trash"
-            else if attrs.type == "reload"
-                scope.css_class = "btn-warning"
-                scope.button_value = "reload"
-                scope.icon_class = "fa fa-refresh"
-            else if attrs.type == "show"
-                scope.css_class = "btn-success"
-                scope.icon_class = ""
-                scope.$watch(scope.isShow
-                    (new_val) ->
-                        if new_val
-                            scope.button_value = "show"
-                        else
-                            scope.button_value = "hide"
-                )
-            else
-                console.error "Invalid button type: ", attrs.type
 
             if attrs.value?
                 scope.button_value = attrs.value
@@ -62,13 +74,8 @@ button_module = angular.module(
                 scope.button_type = "button"
 
             if attrs.size?
-                scope.additional_class = "btn-"+attrs.size
+                scope.additional_class = "btn-" + attrs.size
             else
                 scope.additional_class = ""
-
-            element.bind("click", (ev) ->
-                if scope.click?
-                    scope.click({$event: ev})
-            )
-
-})
+    }
+])

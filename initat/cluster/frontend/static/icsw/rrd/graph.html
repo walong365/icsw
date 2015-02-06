@@ -182,7 +182,8 @@
                     <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"/>
                     <span class="input-group-btn">
                         <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ladda="is_drawing" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
-                        <button class="btn btn-warning fa fa-remove" type="button" ng-click="clear_selection()"> Clear Selection</button>
+
+                        <icsw-tools-button type="clear_selection" ng-click="clear_selection()"/>
                     </span>
                 </div>
                 <tree treeconfig="g_tree"></tree>
