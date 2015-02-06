@@ -17,6 +17,7 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     threading._DummyThread._Thread__stop = lambda x: 42  # @IgnorePep8
 
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
+LOCAL_STATIC = "LOCAL_STATIC" in os.environ
 PIPELINE_ENABLED = not DEBUG
 TEMPLATE_DEBUG = DEBUG
 
@@ -178,7 +179,10 @@ STATIC_ROOT_DEBUG = "/tmp/.icsw/static/"
 if DEBUG:
     STATIC_ROOT = STATIC_ROOT_DEBUG
 else:
-    STATIC_ROOT = "/srv/www/htdocs/icsw/static"
+    if LOCAL_STATIC:
+        STATIC_ROOT = STATIC_ROOT_DEBUG
+    else:
+        STATIC_ROOT = "/srv/www/htdocs/icsw/static"
 
 if not os.path.isdir(STATIC_ROOT_DEBUG):
     try:
