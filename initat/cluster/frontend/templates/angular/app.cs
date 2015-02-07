@@ -66,8 +66,8 @@ ics_app = angular.module(
         # "icsw.monitoring_extended",
         "icsw.package.install",
         "icsw.device.boot",
-        "icsw.kernel",
-        "icsw.image",
+        "icsw.config.kernel",
+        "icsw.config.image",
         "icsw.partition_table",
         "icsw.rms",
     ]
@@ -128,6 +128,7 @@ ics_app.config(() ->
     "PACK_REPO_OVERVIEW": "{% url 'pack:repo_overview' %}"
     "PACK_RETRY_SEARCH": "{% url 'pack:retry_search' %}"
     "PACK_USE_PACKAGE": "{% url 'pack:use_package' %}"
+    "REST_ARCHITECTURE_LIST": "{% url 'rest:architecture_list' %}"
     "REST_BACKGROUND_JOB_LIST": "{% url 'rest:background_job_list' %}"
     "REST_CATEGORY_DETAIL": "{% url 'rest:category_detail' 1 %}"
     "REST_CATEGORY_LIST": "{% url 'rest:category_list' %}"
@@ -182,6 +183,9 @@ ics_app.config(() ->
     "SETUP_IMAGE_OVERVIEW": "{% url 'setup:image_overview' %}"
     "SETUP_KERNEL_OVERVIEW": "{% url 'setup:kernel_overview' %}"
     "SETUP_PARTITION_OVERVIEW": "{% url 'setup:partition_overview' %}"
+    "SETUP_RESCAN_IMAGES": "{% url 'setup:rescan_images' %}"
+    "SETUP_RESCAN_KERNELS": "{% url 'setup:rescan_kernels' %}"
+    "SETUP_USE_IMAGE": "{% url 'setup:use_image' %}"
     "USER_ACCOUNT_INFO": "{% url 'user:account_info' %}"
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"

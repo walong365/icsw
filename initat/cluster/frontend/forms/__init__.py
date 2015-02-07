@@ -412,7 +412,7 @@ class kernel_form(ModelForm):
             type="button"
             disabled="disabled"
             ng-class="edit_obj.stage1_lo_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-            ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
+            ng-value="config_service.get_flag_value(edit_obj, 'stage1_lo_present')"
             ></input>{% endverbatim %}
     </div>
 </div>
@@ -425,7 +425,7 @@ class kernel_form(ModelForm):
             type="button"
             disabled="disabled"
             ng-class="edit_obj.stage1_cpio_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-            ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
+            ng-value="config_service.get_flag_value(edit_obj, 'stage1_cpio_present')"
             ></input>{% endverbatim %}
     </div>
 </div>
@@ -438,7 +438,7 @@ class kernel_form(ModelForm):
             type="button"
             disabled="disabled"
             ng-class="edit_obj.stage1_cramfs_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-            ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
+            ng-value="config_service.get_flag_value(edit_obj, 'stage1_cramfs_present')"
             ></input>{% endverbatim %}
     </div>
 </div>
@@ -451,7 +451,7 @@ class kernel_form(ModelForm):
             type="button"
             disabled="disabled"
             ng-class="edit_obj.stage2_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-            ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
+            ng-value="config_service.get_flag_value(edit_obj, 'stage2_present')"
             ></input>{% endverbatim %}
     </div>
 </div>

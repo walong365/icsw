@@ -93,9 +93,6 @@ class kernel_overview(View):
         return render_me(
             request,
             "kernel_overview.html",
-            {
-                "kernel_form": kernel_form(),
-            }
         )()
 
 

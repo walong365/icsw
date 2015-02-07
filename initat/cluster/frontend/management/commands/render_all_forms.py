@@ -41,6 +41,7 @@ import inspect
 import logging
 import logging_tools
 import time
+import os
 
 
 class Command(BaseCommand):
@@ -71,13 +72,29 @@ class Command(BaseCommand):
         _temp_str = "\n".join(render_template)
         _temp = Template(_temp_str)
         _result = _temp.render(Context(r_dict))
+        # remove all whitespaces
+        _result = _result.replace("\t", " ")
+        while True:
+            if _result.count("  "):
+                _result = _result.replace("  ", " ")
+            elif _result.count("\n\n"):
+                _result = _result.replace("\n\n", "\n")
+            elif _result.count("\n \n"):
+                _result = _result.replace("\n \n", "\n")
+            else:
+                break
         e_time = time.time()
+        targ_file = os.path.join(
+            settings.SSI_ROOT,
+            "forms",
+            "all_forms.html"
+        )
+        file(targ_file, "w").write(_result)
         print(
-            "rendered {} to {} in {}".format(
+            "rendered {} to {} in {}, filename is {}".format(
                 logging_tools.get_plural("template", len(r_dict)),
                 logging_tools.get_size_str(len(_result)),
                 logging_tools.get_diff_time_str(e_time - s_time),
+                targ_file,
             )
         )
-        print settings.SSI_ROOT
-        print len(_result)

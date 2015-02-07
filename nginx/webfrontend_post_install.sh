@@ -3,6 +3,7 @@
 # delete modules install via npm
 rm -rf /opt/cluster/lib/node_modules/yuglify/node_modules
 
+MANAGE=/opt/python-init/lib/python/site-packages/initat/cluster/manage.py
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static
 WEBCACHE_DIR=/opt/cluster/share/webcache
@@ -15,8 +16,10 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     # already configured; run collectstatic
 
     echo -ne "collecting static ..."
-    /opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput -c > /dev/null
+    ${MANAGE} collectstatic --noinput -c > /dev/null
     echo "done"
+    echo "compiling all forms ..."
+    ${MANAGE} render_all_forms
 
     if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
         touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
@@ -29,5 +32,5 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
 
     # migrate static_precompiler if needed
     # removed, should be done via cluster-setup
-    # /opt/python-init/lib/python/site-packages/initat/cluster/manage.py migrate static_precompiler
+    # ${MANAGE} migrate static_precompiler
 fi
