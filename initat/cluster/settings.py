@@ -251,6 +251,13 @@ MIDDLEWARE_CLASSES = (
     "pipeline.middleware.MinifyHTMLMiddleware",
 )
 
+if not DEBUG:
+    MIDDLEWARE_CLASSES = tuple(
+        ["django.middleware.gzip.GZipMiddleware"] +
+        list(
+            MIDDLEWARE_CLASSES
+        )
+    )
 ROOT_URLCONF = "initat.cluster.urls"
 
 # Python dotted path to the WSGI application used by Django's runserver.
@@ -387,7 +394,6 @@ PIPELINE_JS = {
             "js/libs/jquery-ui-1.10.2.custom.js",
             # "js/libs/jquery-migrate-1.2.1.min.js",
             # now via bootstrap
-            # "js/libs/jquery.layout-latest.min.js",
             # "js/jquery.sprintf.js_8.txt",
             # "js/jquery.timers-1.2.js",
             "js/libs/angular-1.3.12.js",
