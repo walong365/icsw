@@ -36,7 +36,7 @@ from initat.cluster.backbone.serializers import device_serializer, \
     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, device_serializer_only_boot, network_with_ip_serializer
 from initat.cluster.frontend import forms
-from initat.core.render import render_string
+from initat.cluster.backbone.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated

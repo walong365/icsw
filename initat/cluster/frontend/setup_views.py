@@ -1,7 +1,6 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -45,12 +44,16 @@ logger = logging.getLogger("cluster.setup")
 class partition_overview(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "part_overview.html", {
-            "partition_table_form": partition_table_form(),
-            "partition_disc_form": partition_disc_form(),
-            "partition_sys_form": partition_sys_form(),
-            "partition_form": partition_form(),
-            })()
+        return render_me(
+            request,
+            "part_overview.html",
+            {
+                "partition_table_form": partition_table_form(),
+                "partition_disc_form": partition_disc_form(),
+                "partition_sys_form": partition_sys_form(),
+                "partition_form": partition_form(),
+            }
+        )()
 
 
 class validate_partition(View):
@@ -64,7 +67,7 @@ class validate_partition(View):
             "partition_disc_set__partition_set__partition_fs",
             "lvm_vg_set",
             "lvm_lv_set__lvm_vg",
-            ).order_by("name").get(Q(pk=_post["pt_pk"]))
+        ).order_by("name").get(Q(pk=_post["pt_pk"]))
         prob_list = cur_part.validate()
         request.xml_response["response"] = E.problems(
             valid="1" if cur_part.valid else "0",
@@ -75,17 +78,25 @@ class validate_partition(View):
 class image_overview(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "image_overview.html", {
-            "image_form": image_form(),
-            })()
+        return render_me(
+            request,
+            "image_overview.html",
+            {
+                "image_form": image_form(),
+            }
+        )()
 
 
 class kernel_overview(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "kernel_overview.html", {
-            "kernel_form": kernel_form(),
-            })()
+        return render_me(
+            request,
+            "kernel_overview.html",
+            {
+                "kernel_form": kernel_form(),
+            }
+        )()
 
 
 class scan_for_images(View):
