@@ -36,13 +36,14 @@ from initat.cluster.backbone import routing
 from django.template import Template, Context
 from django.template.loader import render_to_string
 from django.forms import Form, ModelForm
+from django.conf import settings
 import inspect
 import logging
 import logging_tools
 import time
 
-class Command(BaseCommand):
 
+class Command(BaseCommand):
     option_list = BaseCommand.option_list + ()
     help = ("Renders all known forms")
     args = ""
@@ -78,4 +79,5 @@ class Command(BaseCommand):
                 logging_tools.get_diff_time_str(e_time - s_time),
             )
         )
+        print settings.SSI_ROOT
         print len(_result)
