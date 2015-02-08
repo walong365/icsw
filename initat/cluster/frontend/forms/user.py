@@ -53,6 +53,11 @@ class authentication_form(Form):
                 Field("password", placeholder="password"),
                 Field("next", type="hidden"),
             ),
+#            HTML(
+#                """
+#<input type="hidden" name="csrfmiddlewaretoken" value="{% verbatim %}{{ CSRF_TOKEN }}{% endverbatim %}"></input>
+#"""
+#            ),
             FormActions(
                 Submit("submit", "Submit", css_class="btn btn-primary"),
             ),

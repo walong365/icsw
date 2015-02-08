@@ -84,6 +84,9 @@ ics_app.config(() ->
     {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
     "MENU_GFX_URL": "{% static gfx_name %}"
     {% endwith %}
+    {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
+    "MENU_GFX_BIG_URL": "{% static gfx_name %}"
+    {% endwith %}
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
@@ -176,8 +179,16 @@ ics_app.config(() ->
     "REST_VIRTUAL_DESKTOP_PROTOCOL_LIST": "{% url 'rest:virtual_desktop_protocol_list' %}"
     "REST_VIRTUAL_DESKTOP_USER_SETTING_LIST": "{% url 'rest:virtual_desktop_user_setting_list' %}"
     "REST_WINDOW_MANAGER_LIST": "{% url 'rest:window_manager_list' %}"
+    "RMS_CHANGE_JOB_PRIORITY": "{% url 'rms:change_job_priority' %}"
+    "RMS_CONTROL_JOB": "{% url 'rms:control_job' %}"
+    "RMS_CONTROL_QUEUE": "{% url 'rms:control_queue' %}"
+    "RMS_GET_FILE_CONTENT": "{% url 'rms:get_file_content' %}"
+    "RMS_GET_NODE_INFO": "{% url 'rms:get_node_info' %}"
     "RMS_GET_RMS_JOBINFO": "{% url 'rms:get_rms_jobinfo' %}"
+    "RMS_GET_RMS_JSON": "{% url 'rms:get_rms_json' %}"
+    "RMS_GET_USER_SETTING": "{% url 'rms:get_user_setting' %}"
     "RMS_OVERVIEW": "{% url 'rms:overview' %}"
+    "RMS_SET_USER_SETTING": "{% url 'rms:set_user_setting' %}"
     "RRD_DEVICE_RRDS": "{% url 'rrd:device_rrds' %}"
     "RRD_GRAPH_RRDS": "{% url 'rrd:graph_rrds' %}"
     "RRD_MERGE_CDS": "{% url 'rrd:merge_cds' %}"

@@ -1,452 +1,7 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-{% verbatim %}
-
-running_table = """
-<table class="table table-condensed table-hover table-striped" style="width:auto;">
-    <thead>
-        <tr>
-            <td colspan="20" paginator entries="run_list" pag_settings="pagRun" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-        </tr>
-        <tr headers struct="running_struct" class="info"></tr>
-    </thead>
-    <tbody>
-        <tr rmsrunline ng-repeat-start="data in run_list | paginator2:pagRun" ></tr>
-        <tr ng-repeat-end ng-show="data.files.value != '0' && running_struct.toggle['files']">
-            <td colspan="99"><fileinfo job="data" files="files" fis="fis"></fileinfo></td>
-        </tr>
-    </tbody>
-    <tfoot>
-        <tr headertoggle ng-show="header_filter_set" struct="running_struct"></tr>
-    </tfoot>
-</table>
-"""
-
-waiting_table = """
-<table class="table table-condensed table-hover table-striped" style="width:auto;">
-    <thead>
-        <tr>
-            <td colspan="20" paginator entries="wait_list" pag_settings="pagWait" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-        </tr>
-        <tr headers struct="waiting_struct" class="info"></tr>
-    </thead>
-    <tbody>
-        <tr rmswaitline ng-repeat="data in wait_list | paginator2:pagWait"></tr>
-    </tbody>
-    <tfoot>
-        <tr headertoggle ng-show="header_filter_set" struct="waiting_struct"></tr>
-    </tfoot>
-</table>
-"""
-
-done_table ="""
-<table class="table table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <td colspan="20" paginator entries="done_list" pag_settings="pagDone" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-        </tr>
-        <tr headers struct="done_struct" class="info"></tr>
-    </thead>
-    <tbody>
-        <tr rmsdoneline ng-repeat="data in done_list | paginator2:pagDone"></tr>
-    </tbody>
-    <tfoot>
-        <tr headertoggle ng-show="header_filter_set" struct="done_struct"></tr>
-    </tfoot>
-</table>
-"""
-
-node_table = """
-<table class="table table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <td colspan="20" paginator entries="node_list" pag_settings="pagNode" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-        </tr>
-        <tr headers struct="node_struct" class="info"></tr>
-    </thead>
-    <tbody>
-        <tr rmsnodeline ng-repeat="data in node_list | paginator2:pagNode" ng-class="get_class(data)"></tr>
-    </tbody>
-    <tfoot>
-        <tr headertoggle ng-show="header_filter_set" struct="node_struct"></tr>
-    </tfoot>
-</table>
-"""
-
-iostruct = """
-    <h4>
-        {{ io_struct.get_file_info() }}, 
-        <input type="button" class="btn btn-sm btn-warning" value="close" ng-click="close_io(io_struct)"></input>
-        <input type="button" ng-class="io_struct.update && 'btn btn-sm btn-success' || 'btn btn-sm'" value="update" ng_click="io_struct.update = !io_struct.update"></input>
-    </h4>
-    <div>
-        <tt>
-            <textarea ui-codemirror="editorOptions" ng-model="io_struct.text">
-            </textarea>
-        </tt>
-    </div>
-"""
-
-headers = """
-<th ng-repeat="entry in struct.display_headers()" colspan="{{ struct.get_span(entry) }}">{{ struct.get_header(entry) }}</th>
-"""
-
-header_toggle = """
-<th colspan="{{ struct.headers.length }}">
-    <form class="inline">
-        <input
-            ng-repeat="entry in struct.headers"
-            type="button"
-            ng-class="struct.get_btn_class(entry)"
-            value="{{ struct.get_header(entry) }}"
-            ng-click="struct.change_entry(entry)"
-            ng-show="struct.header_not_hidden(entry)"
-        ></input>
-    </form>
-</th>
-"""
-
-filesinfo = """
-<div ng-repeat="file in jfiles">
-    <div>
-        <input
-            type="button"
-            ng-class="fis[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs'"
-            ng-click="fis[file[0]].show = !fis[file[0]].show"
-            ng-value="fis[file[0]].show && 'hide' || 'show'"></input>
-        {{ file[0] }}, {{ file[2] }} Bytes
-    </div>
-    <div ng-show="fis[file[0]].show">
-        <textarea rows="{{ file[4] }}" cols="120" readonly="readonly">{{ file[1] }}</textarea>
-    </div>
-</div>
-"""
-
-rmsnodeline = """
-<td ng-show="node_struct.toggle['host']">
-    {{ data.host.value }}&nbsp;<button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
-        <span class="glyphicon glyphicon-pencil"></span>
-    </button>
-</td>
-<td ng-show="node_struct.toggle['queues']">
-    <queuestate operator="rms_operator" host="data"></queuestate>
-</td>
-<td ng-show="node_struct.toggle['type']">
-    {{ data.type.value }}
-</td>
-<td ng-show="node_struct.toggle['complex']">
-    {{ data.complex.value }}
-</td>
-<td ng-show="node_struct.toggle['pe_list']">
-    {{ data.pe_list.value }}
-</td>
-<td ng-show="node_struct.toggle['load']">
-    <span ng-switch on="valid_load(data.load)">
-        <span ng-switch-when="1">
-            <div class="row">
-                <div class="col-sm-3"><b>{{ data.load.value }}</b>&nbsp;</div>
-                <div class="col-sm-9" style="width:140px; height:20px;">
-                    <progressbar value="get_load(data.load)" animate="false"></progressbar>
-                </div>
-            </div>
-        </span>
-        <span ng-switch-when="0">
-            <b>{{ data.load.value }}</b>
-        </span>    
-    </span>
-</td>
-<td ng-show="node_struct.toggle['slots_used']">
-    <div ng-repeat="entry in data.load_vector" class="row">
-         <div class="col-sm-12" style="width:140px; height:20px;">
-             <progressbar max="entry[0]" value="entry[1]" animate="false" type="info"><span style="color:black;">{{ entry[1] }} / {{ entry[0] }}</span></progressbar>
-         </div>
-    </div>
-</td>
-<td ng-show="node_struct.toggle['slots_used']">
-    {{ data.slots_used.value }}
-</td>
-<td ng-show="node_struct.toggle['slots_reserved']">
-    {{ data.slots_reserved.value }}
-</td>
-<td ng-show="node_struct.toggle['slots_total']">
-    {{ data.slots_total.value }}
-</td>
-<td ng-show="node_struct.toggle['jobs']">
-    {{ data.jobs.value }}
-</td>
-"""
-
-queuestateoper = """
-<div ng-repeat="(queue, state) in get_states()" ng-show="queues_defined()" class="row">
-    <div class="col-sm-12 btn-group">
-        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(state, 'btn')" data-toggle="dropdown">
-            {{ queue }} : {{ state }} <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li ng-show="enable_ok(state)" ng-click="queue_control('enable', queue)">
-                <a href="#">Enable {{ queue }}@{{ host.host.value }}</a>
-            </li>
-            <li ng-show="disable_ok(state)" ng-click="queue_control('disable', queue)">
-                <a href="#">Disable {{ queue }}@{{ host.host.value }}</a>
-            </li>
-            <li ng-show="clear_error_ok(state)" ng-click="queue_control('clear_error', queue)">
-                <a href="#">Clear error on {{ queue }}@{{ host.host.value }}</a>
-            </li>
-        </ul>
-    </div>
-</div>
-<span ng-show="!queues_defined()">
-    N/A
-</span>
-"""
-
-queuestate = """
-<div>
-    <span class="label" ng-class="get_queue_class(state, 'label')" ng-repeat="(queue, state) in get_states()">
-        {{ queue }} : {{ state }}
-    </span>
-</div>    
-"""
-
-jobactionoper = """
-<div>
-    <div class="btn-group">
-        <button type="button" class="btn btn-xs dropdown-toggle btn-primary" data-toggle="dropdown">
-            Action <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li ng-click="job_control('delete', false)">
-                <a href="#">Delete</a>
-            </li>
-            <li ng-click="job_control('delete', true)">
-                <a href="#">force Delete</a>
-            </li>
-            <li ng-show="mode=='w'" ng-click="change_priority()">
-                <a href="#">change priority</a>
-            </li>
-        </ul>
-    </div>
-</div>
-"""
-
-jobaction = """
-<div>
----
-</div>
-"""
-
-rmsdoneline = """
-<td ng-show="done_struct.toggle['job_id']">
-    {{ data.rms_job.jobid }}&nbsp;<button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data)" ng-click="show_done_rrd($event, data)">
-        <span class="glyphicon glyphicon-pencil"></span>
-    </button>
-</td>
-<td ng-show="done_struct.toggle['task_id']">
-    {{ data.rms_job.taskid }}
-</td>
-<td ng-show="done_struct.toggle['name']">
-    {{ data.rms_job.name }}
-</td>
-<td ng-show="done_struct.toggle['granted_pe']">
-    {{ data.granted_pe }}<span ng-show="data.granted_pe">({{ data.slots }})</span>
-</td>
-<td ng-show="done_struct.toggle['owner']">
-    {{ data.rms_job.owner }}
-</td>
-<td ng-show="done_struct.toggle['queue_time']">
-    {{ get_datetime(data.queue_time) }}
-</td>
-<td ng-show="done_struct.toggle['start_time']">
-    {{ get_datetime(data.start_time) }}
-</td>
-<td ng-show="done_struct.toggle['end_time']">
-    {{ get_datetime(data.end_time) }}
-</td>
-<td ng-show="done_struct.toggle['wait_time']">
-    {{ get_waittime(data) }}
-</td>
-<td ng-show="done_struct.toggle['run_time']">
-    {{ get_runtime(data) }}
-</td>
-<td ng-show="done_struct.toggle['queue']">
-    {{ data.rms_queue.name }}
-</td>
-<td ng-show="done_struct.toggle['exit_status']" ng-class="exit_status_wrapper_class(data)">
-    {{ get_exit_status_str(data) }} {{ data.exit_status_str }}
-    <div class="pull-right" ng-show="exit_status_class(data)">
-        <span ng-class="exit_status_class(data)"></span>
-    </div>
-</td>
-<td ng-show="done_struct.toggle['failed']" title="{{ get_failed_title(data) }}">
-    <span class="label" ng-class="get_failed_class(data)"><span ng-class="get_failed_glyphicon(data)"></span></span>&nbsp;{{ get_failed_str(data) }} {{ data.failed_str }}
-</td>
-<td ng-show="done_struct.toggle['failed']" class="text-center">
-    {{ data.failed }}
-</td>
-<td ng-show="done_struct.toggle['nodelist']">
-    {{ show_pe_info(data) }}
-</td>
-"""
-
-rmswaitline = """
-<td ng-show="waiting_struct.toggle['job_id']">
-    {{ data.job_id.value }}
-</td>
-<td ng-show="waiting_struct.toggle['task_id']">
-    {{ data.task_id.value }}
-</td>
-<td ng-show="waiting_struct.toggle['name']">
-    {{ data.name.value }}
-</td>
-<td ng-show="waiting_struct.toggle['requested_pe']">
-    {{ data.requested_pe.value }}
-</td>
-<td ng-show="waiting_struct.toggle['owner']">
-    {{ data.owner.value }}
-</td>
-<td ng-show="waiting_struct.toggle['state']">
-    <b>{{ data.state.value }}</b>
-</td>
-<td ng-show="waiting_struct.toggle['complex']">
-    {{ data.complex.value }}
-</td>
-<td ng-show="waiting_struct.toggle['queue']">
-    {{ data.queue.value }}
-</td>
-<td ng-show="waiting_struct.toggle['queue_time']">
-    {{ data.queue_time.value }}
-</td>
-<td ng-show="waiting_struct.toggle['wait_time']">
-    {{ data.wait_time.value }}
-</td>
-<td ng-show="waiting_struct.toggle['left_time']">
-    {{ data.left_time.value }}
-</td>
-<td ng-show="waiting_struct.toggle['exec_time']">
-    {{ data.exec_time.value }}
-</td>
-<td ng-show="waiting_struct.toggle['prio']">
-    {{ data.prio.value }}
-</td>
-<td ng-show="waiting_struct.toggle['priority']">
-    {{ data.priority.value }}
-</td>
-<td ng-show="waiting_struct.toggle['depends']">
-    {{ data.depends.value || '---' }}
-</td>
-<td ng-show="waiting_struct.toggle['action']">
-    <jobaction job="data" operator="rms_operator" mode="'w'"></jobaction>
-</td>
-"""
-
-rmsrunline = """
-<td ng-show="running_struct.toggle['job_id']">
-    {{ data.job_id.value }}&nbsp;<button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.nodelist)" ng-click="show_job_rrd($event, data)">
-        <span class="glyphicon glyphicon-pencil"></span>
-    </button>
-</td>
-<td ng-show="running_struct.toggle['task_id']">
-    {{ data.task_id.value }}
-</td>
-<td ng-show="running_struct.toggle['name']">
-    {{ data.name.value }}
-</td>
-<td ng-show="running_struct.toggle['real_user']">
-    {{ data.real_user.value }}
-</td>
-<td ng-show="running_struct.toggle['granted_pe']">
-    {{ data.granted_pe.value }}
-</td>
-<td ng-show="running_struct.toggle['owner']">
-    {{ data.owner.value }}
-</td>
-<td ng-show="running_struct.toggle['state']">
-    <b>{{ data.state.value }}</b>
-</td>
-<td ng-show="running_struct.toggle['complex']">
-    {{ data.complex.value }}
-</td>
-<td ng-show="running_struct.toggle['queue_name']">
-    {{ data.queue_name.value }}
-</td>
-<td ng-show="running_struct.toggle['start_time']">
-    {{ data.start_time.value }}
-</td>
-<td ng-show="running_struct.toggle['run_time']">
-    {{ data.run_time.value }}
-</td>
-<td ng-show="running_struct.toggle['left_time']">
-    {{ data.left_time.value }}
-</td>
-<td ng-show="running_struct.toggle['load']">
-    {{ data.load.value }}
-</td>
-<td ng-show="running_struct.toggle['stdout']">
-    <span ng-switch on="valid_file(data.stdout.value)">
-        <input type="button" ng-class="get_io_link_class(data, 'stdout')" ng-value="data.stdout.value" ng-click="activate_io(data, 'stdout')"></input>
-    </span>
-</td>
-<td ng-show="running_struct.toggle['stderr']">
-    <span ng-switch on="valid_file(data.stderr.value)">
-        <input type="button" ng-class="get_io_link_class(data, 'stderr')" ng-value="data.stderr.value" ng-click="activate_io(data, 'stderr')"></input>
-    </span>
-</td>
-<td ng-show="running_struct.toggle['files']">
-    {{ data.files.value }}
-</td>
-<td ng-show="running_struct.toggle['nodelist']">
-    {{ get_nodelist(data) }}
-</td>
-<td ng-show="running_struct.toggle['action']">
-    <jobaction job="data" operator="rms_operator" mode="'r'"></jobaction>
-</td>
-"""
-
-change_pri_template = """
-<div class="modal-header"><h3>Change priority of job {{ get_job_id() }}</h3></div>
-<div class="modal-body">
-    <h4>Allowed priority range:</h4>
-    <ul class="list-group">
-        <li class="list-group-item">lowest priority: <tt>-1023</tt></li>
-        <li class="list-group-item">highest priority: <tt>{{ get_max_priority() }}</tt></li>
-    </ul>
-    <form name="priform" class="form-horizontal">
-    <div class="row form-group">
-        <div class="col-md-4">
-            <label class="control-label pull-right">Priority (actual: {{ job.priority.value }}):</label>
-        </div>
-        <div class="controls col-md-8">
-            <input class="form-control input-sm" type="number" ng-model="cur_priority" min="-1023" max="{{ get_max_priority() }}" required></input>
-        </div>
-    </div>
-    </form>
-</div>
-<div class="modal-footer">
-    <button class="btn btn-primary" ng-click="ok()" ng-show="priform.$valid">Modify</button>
-    <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
-</div>
-"""
-
-lic_graph_template = """
-<progress max="1000">
-    <bar ng-repeat="stack in lic.license_stack track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
-</progress>
-"""
-
-{% endverbatim %}
-
-rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "ui.bootstrap.datetimepicker", "angular-ladda"])
-
 LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
-    constructor: (@table, h_struct, @hidden_headers) ->
+    constructor: (@table, h_struct, @hidden_headers, @ICSW_URLS) ->
         _dict = {}
         @headers = []
         @attributes = {}
@@ -471,7 +26,7 @@ class header_struct
     change_entry : (entry) =>
         @toggle[entry] = ! @toggle[entry]
         call_ajax
-            url      : "{% url 'rms:set_user_setting' %}"
+            url      : @ICSW_URLS.RMS_SET_USER_SETTING
             dataType : "json"
             data:
                 "data" : angular.toJson({"table" : @table, "row" : entry, "enabled" : @toggle[entry]})
@@ -546,14 +101,6 @@ class io_struct
             @update = false
             @refresh++
           
-rms_module.value('ui.config', {
-    codemirror : {
-        mode : 'text/x-php'
-        lineNumbers: true
-        matchBrackets: true
-    }
-})
-
 class device_info
     constructor: (@name, in_list) ->
         @pk = in_list[0]
@@ -576,12 +123,78 @@ class slot_info
         if in_vec[2]?
             @reserved += in_vec[2]
         
+
+class license_overview
+    constructor : (@xml) ->
+        for _sa in ["name", "attribute"]
+            @[_sa] = @xml.attr(_sa)
+        for _si in ["sge_used_issued", "external_used", "used",
+                    "reserved", "in_use", "free", "limit", "sge_used_requested",
+                    "total", "sge_used"]
+            @[_si] = parseInt(@xml.attr(_si))
+        @is_used = if parseInt(@xml.attr("in_use")) then true else false
+        @show = if parseInt(@xml.attr("show")) then true else false
+
+class license_server
+    constructor : (@xml) ->
+        @info = @xml.attr("info")
+        @port = parseInt(@xml.attr("port"))
+        @address = @xml.attr("address")
+
+class license
+    constructor : (@xml) ->
+        @open = false
+        @name = @xml.attr("name")
+        @key = @name
+        for _lc in ["used", "reserved", "free", "issued"]
+            @[_lc] = parseInt(@xml.attr(_lc))
+        @versions = (new license_version($(sub_xml), @) for sub_xml in @xml.find("version"))
+        @all_usages = []
+        for version in @versions
+            for usage in version.usages
+                @all_usages.push(usage)
+        usercount = {}
+        for usage in @all_usages
+            if usage.user not of usercount
+                usercount[usage.user] = 0
+            usercount[usage.user] += usage.num
+        for usage in @all_usages
+            usage.user_usage = usercount[usage.user]
+        @all_usages = _.sortBy(usage for usage in @all_usages, (entry) -> return entry.user)
+
+class license_version
+    constructor : (@xml, @license) ->
+        @vendor = @xml.attr("vendor")
+        @version = @xml.attr("version")
+        @key = @license.key + "." + @version
+        @usages = _.sortBy(new license_usage($(sub_xml), @) for sub_xml in @xml.find("usages > usage"), (entry) -> return entry.user)
+
+class license_usage
+    constructor: (@xml, @version) ->
+        for _ta in ["client_long", "client_short", "user", "client_version"]
+            @[_ta] = @xml.attr(_ta)
+        @num = parseInt(@xml.attr("num"))
+        @checkout_time = moment.unix(parseInt(@xml.attr("checkout_time")))
+        @absolute_co = @checkout_time.format("dd, Do MM YYYY, hh:mm:ss")
+        @relative_co = @checkout_time.fromNow()
+
 DT_FORM = "D. MMM YYYY, HH:mm:ss"
 
-rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", 
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce) ->
+rms_module = angular.module(
+    "icsw.rms",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "ui.bootstrap.datetimepicker", "angular-ladda"
+    ]
+).value('ui.config', {
+    codemirror : {
+        mode : 'text/x-php'
+        lineNumbers: true
+        matchBrackets: true
+    }
+}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS) ->
         access_level_service.install($scope)
-        $scope.rms_headers = {{ RMS_HEADERS | safe }}
+        $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
         $scope.pagWait = paginatorSettings.get_paginator("wait", $scope)
         $scope.pagDone = paginatorSettings.get_paginator("done", $scope)
@@ -653,10 +266,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             137 : [-1, "killed", "glyphicon-remove-circle"]
             99 : [0, "rescheduled", "glyphicon-repeat"]
         }
-        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [])
-        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [])
-        $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [])
-        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"])
+        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS)
+        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS)
+        $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS)
+        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS)
         $scope.rms_operator = false
         $scope.structs = {
             "running" : $scope.running_struct
@@ -689,7 +302,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             $scope.update_info_timeout = $timeout($scope.reload, 10000)
             if $scope.refresh
                 call_ajax
-                    url      : "{% url 'rms:get_rms_json' %}"
+                    url      : ICSW_URLS.RMS_GET_RMS_JSON
                     dataType : "json"
                     success  : (json) =>
                         $scope.$apply(() ->
@@ -750,7 +363,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             node_names = (entry[0].value for entry in json.node_table)
                             $scope.device_dict_set = true
                             call_ajax
-                                url      : "{% url 'rms:get_node_info' %}"
+                                url      : ICSW_URLS.RMS_GET_NODE_INFO
                                 data     :
                                     devnames : angular.toJson(node_names)
                                 dataType : "json"
@@ -768,7 +381,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                 fetch_list.push($scope.io_dict[_id].get_id())
                         if fetch_list.length
                             call_ajax
-                                url     : "{% url 'rms:get_file_content' %}"
+                                url     : ICSW_URLS.RMS_GET_FILE_CONTENT
                                 data    :
                                     "file_ids" : angular.toJson(fetch_list)
                                 success : (xml) =>
@@ -798,7 +411,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             delete $scope.io_dict[io_struct.get_id()]
         $scope.$on("queue_control", (event, host, command, queue) ->
             call_ajax
-                url      : "{% url 'rms:control_queue' %}"
+                url      : ICSW_URLS.RMS_CONTROL_QUEUE
                 data     : {
                     "queue"   : queue
                     "host"    : host.host.value
@@ -809,7 +422,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         )
         $scope.$on("job_control", (event, job, command, force) ->
             call_ajax
-                url      : "{% url 'rms:control_job' %}"
+                url      : ICSW_URLS.RMS_CONTROL_JOB
                 data     : {
                     "job_id"  : job.job_id.value
                     "task_id" : job.task_id.value
@@ -873,7 +486,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     $scope.refresh = true
                     $.simplemodal.close()
         call_ajax
-            url      : "{% url 'rms:get_user_setting' %}"
+            url      : ICSW_URLS.RMS_GET_USER_SETTING
             dataType : "json"
             success  : (json) =>
                 for key, value of json
@@ -882,34 +495,34 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     $scope.header_filter_set = true
                 )
                 $scope.reload()
-]).directive("rmsjobrunning", ($templateCache) ->
+]).directive("icswRmsJobRunningTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("running_table.html")
+        template : $templateCache.get("icsw.rms.job.running.table")
         link : (scope, el, attrs) ->
             if "filter" of attrs
                 scope.pagRun.conf.filter = attrs["filter"]
     }
-).directive("rmsjobwaiting", ($templateCache) ->
+]).directive("icswRmsJobWaitingTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("waiting_table.html")
+        template : $templateCache.get("icsw.rms.job.waiting.table")
         link : (scope, el, attrs) ->
             if "filter" of attrs
                 scope.pagWait.conf.filter = attrs["filter"]
     }
-).directive("rmsjobdone", ($templateCache) ->
+]).directive("icswRmsJobDoneTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("done_table.html")
+        template : $templateCache.get("icsw.rms.job.done.table")
         link : (scope, el, attrs) ->
             if "filter" of attrs
                 scope.pagDone.conf.filter = attrs["filter"]
     }
-).directive("rmsnode", ($templateCache) ->
+]).directive("icswRmsNodeTable", ["$templateCache",($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("node_table.html")
+        template : $templateCache.get("icsw.rms.node.table")
         link : (scope, el, attrs) ->
             scope.get_class = (data) ->
                 parts = data.state.raw.join("").split("")
@@ -920,24 +533,24 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else
                     return ""
     }
-).directive("iostruct", ($templateCache) ->
+]).directive("icswRmsIoStruct", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("iostruct.html")
+        template : $templateCache.get("icsw.rms.iostruct")
         link : (scope, el, attrs) ->
     }
-).directive("headers", ($templateCache) ->
+]).directive("icswRmsTableHeaders", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("headers.html")
+        template : $templateCache.get("icsw.rms.table.headers")
         scope:
             struct : "="
         link : (scope, el, attrs) ->
     }
-).directive("rmsdoneline", ($templateCache, $sce) ->
+]).directive("icswRmsJobDoneLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("rmsdoneline.html")
+        template : $templateCache.get("icsw.rms.job.done.line")
         link : (scope, el, attrs) ->
             scope.struct_name = attrs["struct"]
             scope.get_datetime = (dt) ->
@@ -1055,19 +668,19 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 else
                     return ""
     }
-).directive("rmswaitline", ($templateCache, $sce) ->
+]).directive("icswRmsJobWaitLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("rmswaitline.html")
+        template : $templateCache.get("icsw.rms.job.wait.line")
         link : (scope, el, attrs) ->
             scope.struct_name = attrs["struct"]
             scope.get_display_data = (data) ->
                 return scope[scope.struct_name].display_data(data)
     }
-).directive("rmsrunline", ($templateCache, $sce) ->
+]).directive("icswRmsJobRunLine", ["$templateCache", "$sce", ($templateCache, $sce) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("rmsrunline.html")
+        template : $templateCache.get("icsw.rms.job.run.line")
         link : (scope, el, attrs) ->
             scope.valid_file = (std_val) ->
                 # to be improved, transfer raw data (error = -1, 0 = no file, > 0 = file with content)
@@ -1102,10 +715,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     rrd_title = "running job #{job_id} on node " + rrd_nodes[0]
                 scope.show_rrd(event, rrd_nodes, job.start_time.raw, undefined, rrd_title, "selected", job_id)
     }
-).directive("rmsnodeline", ($templateCache, $sce, $compile) ->
+]).directive("icswRmsNodeLine", ["$templateCache", "$sce", "$compile", ($templateCache, $sce, $compile) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("rmsnodeline.html")
+        template : $templateCache.get("icsw.rms.node.line")
         link : (scope, el, attrs) ->
             scope.valid_load = (load) ->
                 # return 1 or 0, not true or false
@@ -1124,15 +737,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.show_node_rrd = (event, node) ->
                 scope.show_rrd(event, [node.host.value], undefined, undefined, "node #{node.host.value}", "none", 0)
     }
-).directive("headertoggle", ($templateCache) ->
+]).directive("icswRmsTableHeaderToggle", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("header_toggle.html")
+        template : $templateCache.get("icsw.rms.table.header.toggle")
         scope:
             struct : "="
-        link : (scope, el, attrs) ->
     }
-).directive("jobaction", ($compile, $templateCache, $modal) ->
+]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "$window", "ICSW_URLS", ($compile, $templateCache, $modal, $window, ICSW_URLS) ->
     return {
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
@@ -1147,7 +759,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     scope.$emit("job_control", scope.job, command, force)
                 if scope.operator
                     is_oper = true
-                else if scope.job.real_user == '{{ user.login }}'
+                else if scope.job.real_user == $window.CURRENT_USER.login
                     is_oper = true
                 else
                     is_oper = false
@@ -1171,7 +783,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                         $modalInstance.dismiss("cancel")
                 scope.change_priority = () ->
                     c_modal = $modal.open
-                        template : $templateCache.get("change_pri.html")
+                        template : $templateCache.get("icsw.rms.change.priority")
                         controller : cp_scope
                         backdrop : "static"
                         resolve :
@@ -1184,7 +796,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                             new_pri = _tuple[0]
                             job_id = _tuple[1]
                             call_ajax
-                                url      : "{% url 'rms:change_job_priority' %}"
+                                url      : ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
                                 data:
                                     "job_id": job_id
                                     "new_pri" : new_pri
@@ -1194,10 +806,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                             scope.job.priority.value = new_pri
                                         )
                     )
-                el.append($compile($templateCache.get(if is_oper then "job_action_oper.html" else "job_action.html"))(scope))
+                el.append($compile($templateCache.get(if is_oper then "icsw.rms.job.action.oper" else "icsw.rms.job.action"))(scope))
       
     }
-).directive("queuestate", ($compile, $templateCache) ->
+]).directive("icswRmsQueueState", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
@@ -1230,17 +842,17 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                         return "#{prefix}-success"
                 scope.queue_control = (command, queue) ->
                     scope.$emit("queue_control", scope.host, command, queue)
-                el.append($compile($templateCache.get(if scope.operator then "queue_state_oper.html" else "queue_state.html"))(scope))
+                el.append($compile($templateCache.get(if scope.operator then "icsw.rms.queue.state.oper" else "icsw.rms.queue.state"))(scope))
       
     }
-).directive("fileinfo", ($compile, $templateCache) ->
+]).directive("icswRmsFileInfo", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         scope:
             job   : "="
             files : "="
             fis   : "="
-        template : $templateCache.get("files_info.html")
+        template : $templateCache.get("icsw.rms.file.info")
         link : (scope, el, attrs) ->
             full_id = if scope.job.task_id.value then "#{scope.job.job_id.value}.#{scope.job.task_id.value}" else scope.job.job_id.value
             scope.full_id = full_id
@@ -1254,8 +866,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             else
                 scope.jfiles = []
     }
-).controller("lic_liveview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
+]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS) ->
         $scope.servers = []
         $scope.licenses = []
         $scope.lic_overview = []
@@ -1263,7 +875,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.overview_open = true
         $scope.update = () ->
             call_ajax
-                url      : "{% url 'lic:license_liveview' %}"
+                url      : ICSW_URLS.LIC_LICENSE_LIVEVIEW
                 dataType : "xml"
                 success  : (xml) =>
                     if parse_xml_response(xml)
@@ -1312,92 +924,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 )
             lic.license_stack = stack
         $scope.update()
-]).directive("ovlicgraph", ($compile, $templateCache) ->
+]).directive("icswRmsLicenseGraph", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         scope: true
-        template : $templateCache.get("lic_graph.html")
+        template : $templateCache.get("icsw.rms.license.graph")
         link : (scope, el, attrs) ->
             scope.$watch(attrs["license"], (new_val) ->
                 scope.lic = new_val
             )
     }
-).run(($templateCache) ->
-    $templateCache.put("running_table.html", running_table)
-    $templateCache.put("waiting_table.html", waiting_table)
-    $templateCache.put("done_table.html", done_table)
-    $templateCache.put("node_table.html", node_table)
-    $templateCache.put("headers.html", headers)
-    $templateCache.put("rmswaitline.html", rmswaitline)
-    $templateCache.put("rmsdoneline.html", rmsdoneline)
-    $templateCache.put("rmsrunline.html", rmsrunline)
-    $templateCache.put("rmsnodeline.html", rmsnodeline)
-    $templateCache.put("header_toggle.html", header_toggle)
-    $templateCache.put("iostruct.html", iostruct)
-    $templateCache.put("queue_state_oper.html", queuestateoper)
-    $templateCache.put("queue_state.html", queuestate)
-    $templateCache.put("job_action_oper.html", jobactionoper)
-    $templateCache.put("job_action.html", jobaction)
-    $templateCache.put("files_info.html", filesinfo)
-    $templateCache.put("change_pri.html", change_pri_template)
-    $templateCache.put("lic_graph.html", lic_graph_template)
-)
-
-class license_overview
-    constructor : (@xml) ->
-        for _sa in ["name", "attribute"]
-            @[_sa] = @xml.attr(_sa)
-        for _si in ["sge_used_issued", "external_used", "used",
-                    "reserved", "in_use", "free", "limit", "sge_used_requested",
-                    "total", "sge_used"]
-            @[_si] = parseInt(@xml.attr(_si))
-        @is_used = if parseInt(@xml.attr("in_use")) then true else false
-        @show = if parseInt(@xml.attr("show")) then true else false
-        
-class license_server
-    constructor : (@xml) ->
-        @info = @xml.attr("info")
-        @port = parseInt(@xml.attr("port"))
-        @address = @xml.attr("address")
-
-class license
-    constructor : (@xml) ->
-        @open = false
-        @name = @xml.attr("name")
-        @key = @name
-        for _lc in ["used", "reserved", "free", "issued"]
-            @[_lc] = parseInt(@xml.attr(_lc))
-        @versions = (new license_version($(sub_xml), @) for sub_xml in @xml.find("version"))
-        @all_usages = []
-        for version in @versions
-            for usage in version.usages
-                @all_usages.push(usage)
-        usercount = {}
-        for usage in @all_usages
-            if usage.user not of usercount
-                usercount[usage.user] = 0
-            usercount[usage.user] += usage.num
-        for usage in @all_usages
-            usage.user_usage = usercount[usage.user]
-        @all_usages = _.sortBy(usage for usage in @all_usages, (entry) -> return entry.user)
-
-class license_version
-    constructor : (@xml, @license) ->
-        @vendor = @xml.attr("vendor")
-        @version = @xml.attr("version")
-        @key = @license.key + "." + @version
-        @usages = _.sortBy(new license_usage($(sub_xml), @) for sub_xml in @xml.find("usages > usage"), (entry) -> return entry.user)
-
-class license_usage
-    constructor: (@xml, @version) ->
-        for _ta in ["client_long", "client_short", "user", "client_version"]
-            @[_ta] = @xml.attr(_ta)
-        @num = parseInt(@xml.attr("num"))
-        @checkout_time = moment.unix(parseInt(@xml.attr("checkout_time")))
-        @absolute_co = @checkout_time.format("dd, Do MM YYYY, hh:mm:ss")
-        @relative_co = @checkout_time.fromNow()
-
-        
-{% endinlinecoffeescript %}
-
-</script>
+])

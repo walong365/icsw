@@ -6,17 +6,22 @@
 
 {% block content %}
 
-<div ng-controller="login_ctrl">
+<script type="text/ng-template" id="authentication.form.working">
+    {% crispy login_form login_form.helper %}
+
+</script>
+
+{% verbatim %}
+
+<div ng-controller="icswLoginCtrl">
     <div class="row">
-        <div ng-class="medium_screen() && 'col-xs-4' || 'col-md-offset-4 col-md-4'" ng-style="medium_screen() && '' || 'margin-top:60px;'">
-            {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
-                <img width="100%;" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo"/>
-            {% endwith %}
+        <div ng-class="gfx_class()" ng-style="gfx_style()">
+            <img width="100%;" ng-src="{{ ICSW_URLS.MENU_GFX_BIG_URL }}" alt="{{ INIT_PRODUCT_NAME }} logo"/>
         </div>
-        <div ng-class="medium_screen() && 'col-xs-6' || 'col-md-offset-4 col-md-4'">
-            <div class="well"  style="margin-top:60px;"> 
-                {% crispy login_form login_form.helper %}
-                <p class="text-right">species : {{ settings.INIT_PRODUCT_FAMILY }} ({{ settings.INIT_PRODUCT_VERSION }}) on Django {{ DJANGO_VERSION }}</p>
+        <div ng-class="login_class()">
+            <div class="well"  style="margin-top:60px;">
+                <icsw-login-form></icsw-login-form>
+                <p class="text-right">species : {{ INIT_PRODUCT_FAMILY }} ({{ INIT_PRODUCT_VERSION }}) on Django {{ DJANGO_VERSION }}</p>
             </div>
         </div>
     </div>
@@ -29,11 +34,9 @@
                 <div class="panel-body">
                     <ul class="list-group">
                         <li class="list-group-item" ng-repeat="entry in login_hints">
-                            {% verbatim %}
                             <span ng-show="entry[2]">superuser </span>
                             <span ng-show="!entry[2]">user </span>
                             <code><b>{{ entry[0] }}</b></code> has password <code>'{{ entry[1] }}'</code>
-                            {% endverbatim %}
                         </li>
                     </ul>
                 </div>
@@ -41,5 +44,7 @@
         </div>
     </div>
 </div>
+
+{% endverbatim %}
 
 {% endblock %}
