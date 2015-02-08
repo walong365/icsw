@@ -30,7 +30,7 @@ device_module = angular.module(
             ['description', 'Description'],
             ['enabled', 'Enabled'],
             ['type', 'Type'],
-            ].concat($scope.hide_list.map((elem) -> [elem[0], elem[1]]))
+        ].concat($scope.hide_list.map((elem) -> [elem[0], elem[1]]))
 
         $scope.num_shown = (exclude_list) ->
             exclude_list = exclude_list ? []

@@ -1145,6 +1145,8 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
         $scope.new_devsel = (_dev_sel) ->
             $scope.devsel_list = _dev_sel
         $scope.dev_names = () ->
+            # FIXME
+            return $scope.devsel_list.join("::")
             return resolve_device_keys($scope.devsel_list)
         $scope._build_list = (ct) ->
             _r_list = [ct]

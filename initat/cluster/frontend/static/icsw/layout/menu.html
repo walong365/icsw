@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
-    <nav class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated">
+    <nav icsw-element-size="navbar_size" class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated">
         <ul class="nav navbar-nav">
             <li>
                 <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="glyphicon glyphicon-home"></span></a>
@@ -88,18 +88,18 @@
             <!-- {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
                 {% include add_menu %}
             {% endfor %} -->
-            <li class="visible-md visible-lg">
+            <li class="visible-lg">
                 <div ng-show="num_gauges" ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
                     <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></progressbar>
                 </div>
             </li>
-            <li ng-if="num_gauges == 0" class="visible-lg visible-md">
+            <li ng-if="num_gauges == 0" class="visible-lg">
                 <img height="42px" ng-attr-src="{{ ICSW_URLS.MENU_GFX_URL }}" ng-click="redirect_to_init()" title="{{ settings.INIT_PRODUCT_NAME }}" alt="{{ settings.INIT_PRODUCT_NAME }} logo"/>
             </li>
         </ul>
         <ul class="nav navbar-nav navbar-right">
             <li>
-                <p class="navbar-text">
+                <p class="navbar-text visible-lg">
                     <button type="button" class="btn btn-danger btn-xs fa fa-info-circle" title="cluster server information" ng-click="redirect_to_info()">
                          Server Information
                     </button>
@@ -110,6 +110,18 @@
                     &nbsp;
                     <button ng-show="HANDBOOK_CHUNKS_PRESENT" type="button" class="btn btn-success btn-xs" title="show {{ HANDBOOK_PAGE }}" ng-click="show_handbook_page()">
                          HTML Handbook
+                    </button>
+                    &nbsp;
+                    <button type="button" ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</button>
+                </p>
+                <p class="navbar-text hidden-lg">
+                    <button type="button" class="btn btn-danger btn-xs fa fa-info-circle" title="cluster server information" ng-click="redirect_to_info()">
+                    </button>
+                    &nbsp;
+                    <button ng-show="HANDBOOK_PDF_PRESENT" type="button" class="btn btn-primary btn-xs fa fa-book" title="show cluster handbook as PDF" ng-click="redirect_to_handbook()">
+                    </button>
+                    &nbsp;
+                    <button ng-show="HANDBOOK_CHUNKS_PRESENT" type="button" class="btn btn-success btn-xs" title="show {{ HANDBOOK_PAGE }}" ng-click="show_handbook_page()">
                     </button>
                     &nbsp;
                     <button type="button" ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</button>

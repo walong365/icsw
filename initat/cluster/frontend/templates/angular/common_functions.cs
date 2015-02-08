@@ -256,6 +256,21 @@ icsw_tools = angular.module(
         unbind = $rootScope.$on(msg, func)
         scope.$on("$destroy", unbind)
     return bus
+]).directive("icswElementSize", ["$parse", ($parse) ->
+    # save size of element in scope (specified via icswElementSize)
+    return (scope, element, attrs) ->
+        fn = $parse(attrs["icswElementSize"])
+        scope.$watch(
+            ->
+                return {
+                    "width": element.width()
+                    "height": element.height()
+                }
+            (new_val) ->
+                fn.assign(scope, new_val)
+            true
+        )
+
 ]).factory("icswTools", () ->
     return {
         "get_size_str" : (size, factor, postfix) ->
