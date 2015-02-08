@@ -19,6 +19,7 @@
 
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.struct import ExtReturn
+import argparse
 import base64
 import bz2
 import commands
@@ -866,6 +867,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     )
 
     def process(self, ccs):
+        def line_to_kv(line):
+            key, value = line.split(":", 1)
+            return key.strip().lower().replace(" ", "_"), line.strip()
         _com_line, ctrl_id, run_type = ccs.run_info["command"]
         ctrl_stuff = self._dict[ctrl_id]
         if run_type == "ld":
@@ -877,6 +881,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     mode_sense = True
                 else:
                     if mode_sense is True:
+                        # print cur_mode, parts
                         if (parts[0], cur_mode) == ("adapter", None):
                             cur_mode = "adp"
                             count_dict = {
@@ -889,6 +894,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             count_dict[cur_mode] += 1
                             count_dict["pd"] = -1
                             cur_dict = {"lines": []}
+                            if parts[0] == "virtual":
+                                # store line, needed for vd detection
+                                cur_dict["lines"].append(line_to_kv(line))
                             ctrl_stuff.setdefault("virt", {})[count_dict["virt"]] = cur_dict
                         elif (parts[0], cur_mode) in [("is", "virt"), ("raw", "pd")]:
                             # continuation, no change
@@ -903,7 +911,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             pass
                         else:
                             # unknown mode
-                            raise ValueError("cannot parse mode, ctrl_type_megaraid_sas: %s" % (str(line)))
+                            raise ValueError("cannot parse mode, ctrl_type_megaraid_sas: {}".format(str(line)))
                         mode_sense = False
                         # print cur_mode, mode_sense, count_dict, line
                     else:
@@ -1034,6 +1042,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _checked = True
                 if check == "state":
                     _ld = get_log_dict(lines)
+                    #pprint.pprint(lines)
+                    #pprint.pprint(_ld)
                     _info_str = "vd {virtual_drive}, RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(**_ld)
                     if _val.lower().startswith("optimal"):
                         _ret_state = limits.nag_STATE_OK
@@ -2125,3 +2135,33 @@ class ibmbcraid_status_command(hm_classes.hm_command):
 
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("ibmbcraid")._interpret(ctrl_dict, cur_ns)
+
+
+class dummy_ccs(object):
+    def __init__(self, srv_com, _type, _content):
+        self.run_info = {
+            "command": ["_bla", 0, _type]
+        }
+        self._content = _content
+        self.srv_com = srv_com
+    def read(self):
+        return self._content
+
+
+if __name__ == "__main__":
+    import sys
+    print("debugging")
+    _sas = ctrl_type_megaraid_sas(dummy_mod())
+    _sas._dict = {0: {"info": "???", "logical_lines": {}}}
+    srv_com = server_command.srv_command(command="result")
+    _sas.process(dummy_ccs(srv_com, "ld", file(sys.argv[1], "r").read()))
+    _sas.process(dummy_ccs(srv_com, "enc", file(sys.argv[2], "r").read()))
+
+    #print srv_com.pretty_print()
+
+    cur_ns = argparse.Namespace(get_hints=False, passive_check_postfix="xxx", key="all", check="all")
+    ctrl_dict = {}
+    for res in srv_com["result"]:
+        ctrl_dict[int(res.tag.split("}")[1].split("_")[-1])] = srv_com._interpret_el(res)
+    _res = ctrl_type_megaraid_sas._interpret(ctrl_dict, cur_ns)
+    print _res.ret_str

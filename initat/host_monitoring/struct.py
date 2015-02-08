@@ -57,6 +57,11 @@ class ExtReturn(object):
         else:
             return ExtReturn(in_val[0], in_val[1])
 
+    def unicode(self):
+        print "*"
+        return "{} ({:d})".format(self.ret_str, self.ret_state)
+
+
 class SRProbe(object):
     __slots__ = ["host_con", "__val", "__time"]
     def __init__(self, host_con):
