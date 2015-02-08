@@ -43,19 +43,19 @@ import server_command
 logger = logging.getLogger("cluster.device")
 
 
-class device_tree(permission_required_mixin, View):
-    all_required_permissions = ["backbone.user.modify_tree"]
-
-    def get(self, request):
-        return render_me(
-            request,
-            "device_tree.html",
-            {
-                "device_tree_form": device_tree_form(),
-                "device_group_tree_form": device_group_tree_form(),
-                "device_tree_many_form": device_tree_many_form(),
-            }
-        )()
+#class device_tree(permission_required_mixin, View):
+#    all_required_permissions = ["backbone.user.modify_tree"]
+#
+#    def get(self, request):
+#        return render_me(
+#            request,
+#            "device_tree.html",
+#            {
+#                "device_tree_form": device_tree_form(),
+#                "device_group_tree_form": device_group_tree_form(),
+#                "device_tree_many_form": device_tree_many_form(),
+#            }
+#        )()
 
 
 class device_tree_smart(permission_required_mixin, View):

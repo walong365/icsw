@@ -49,7 +49,7 @@ ics_app = angular.module(
         "icsw.config.gen",
         "icsw.device.variables",
         "icsw.device.info",
-        "icsw.device",
+        "icsw.device.tree",
         "icsw.config.category_tree",
         "icsw.config.domain_name_tree",
         "icsw.network.device",
@@ -92,6 +92,7 @@ ics_app.config(() ->
     "BASE_UPLOAD_LOCATION_GFX": "{% url 'base:upload_location_gfx' %}"
     "BOOT_SHOW_BOOT": "{% url 'boot:show_boot' %}"
     "CONFIG_SHOW_CONFIGS": "{% url 'config:show_configs' %}"
+    "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
     "DEVICE_SHOW_CONFIGS": "{% url 'device:show_configs' %}"
     "DEVICE_SET_SELECTION": "{% url 'device:set_selection' %}"
@@ -141,6 +142,7 @@ ics_app.config(() ->
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
     "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
+    "REST_DEVICE_TYPE_LIST": "{% url 'rest:device_type_list' %}"
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
     "REST_FETCH_FORMS": "{% url 'rest:fetch_forms' %}"

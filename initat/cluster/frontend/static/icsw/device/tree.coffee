@@ -1,45 +1,20 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-device_module = angular.module("icsw.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "icsw.tools.table", "icsw.tools"])
-
-angular_add_simple_list_controller(
-    device_module,
-    "device_base",
-    {
-        rest_url            : "{% url 'rest:device_list' %}"
-        delete_confirm_str  : (obj) -> return "Really delete Device '#{obj.name}' ?"
-        template_cache_list : ["device_row.html", "device_head.html"]
-    }
-)
-
-angular_add_simple_list_controller(
-    device_module,
-    "device_sel_base",
-    {
-        rest_url            : "{% url 'rest:device_tree_list' %}"
-        delete_confirm_str  : (obj) -> return "Really delete Device '#{obj.name}' ?"
-        template_cache_list : ["device_sel_row.html", "device_sel_head.html"]
-    }
-)
-
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools) ->
+device_module = angular.module(
+    "icsw.device.tree",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "icsw.tools.table", "icsw.tools"
+    ]
+).controller("icswDeviceTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS) ->
         $scope.initial_load = true
         $scope.rest_data = {}
         $scope.rest_map = [
-            {"short" : "device", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}} 
-            {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
-            {"short" : "device_type", "url" : "{% url 'rest:device_type_list' %}"}
-            {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
-            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
-            {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
-            {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
+            {"short" : "device", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}}
+            {"short" : "device_group", "url" : ICSW_URLS.REST_DEVICE_GROUP_LIST}
+            {"short" : "device_type", "url" : ICSW_URLS.REST_DEVICE_TYPE_LIST}
+            {"short" : "mother_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"all_mother_servers" : true}}
+            {"short" : "monitor_server", "url" : ICSW_URLS.REST_DEVICE_TREE_LIST, "options" : {"monitor_server_type" : true}}
+            {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
+            {"short" : "device_sel", "url" : ICSW_URLS.REST_DEVICE_SELECTION_LIST}
         ]
         $scope.hide_list = [
             # short, full, default
@@ -64,9 +39,9 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         for entry in $scope.hide_list
             $scope.hide_lut[entry[0]] = entry[2]
         $scope.edit_map = {
-            "device"       : "device_tree.html",
-            "device_group" : "device_group_tree.html",
-            "device_many"  : "device_tree_many.html",
+            "device"       : "device.tree.form"
+            "device_group" : "device.group.tree.form"
+            "device_many"  : "device.tree.many.form"
         }
         $scope.modal_active = false
         $scope.entries = []
@@ -172,7 +147,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         $scope.modify_many = () ->
             #console.log "mm", $scope.edit_obj
             call_ajax
-                url     : "{% url 'device:change_devices' %}"
+                url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
                 data    : {
                     "change_dict" : angular.toJson($scope.edit_obj)
                     "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
@@ -187,7 +162,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             simple_modal($modal, $q, "Really delete " + $scope.num_selected() + " devices ?").then(
                 () ->
                     call_ajax
-                        url     : "{% url 'device:change_devices' %}"
+                        url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
                         data    : {
                             "change_dict" : angular.toJson({"delete" : true})
                             "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
@@ -312,7 +287,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             return new_obj
         $scope.update_selected = () ->
             call_ajax
-                url     : "{% url 'device:set_selection' %}"
+                url     : ICSW_URLS.DEVICE_SET_SELECTION
                 data    : {
                     "angular_sel" : angular.toJson((entry.idx for entry in $scope.entries when entry.selected))
                 }
@@ -362,18 +337,23 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                         st_attrs['boot_master'] = array_lookupFilter(obj.bootserver, $scope.rest_data.mother_server, "full_name")
                         st_attrs['curl'] = obj.curl
                 obj.st_attrs = st_attrs
-]).directive("devicetreerow", ($templateCache, $compile) ->
+]).directive("icswDeviceTreeOverview", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.tree.overview")
+    }
+]).directive("icswDeviceTreeRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         link : (scope, element, attrs) ->
             if scope.obj.is_meta_device
                 if scope.obj.device_group_obj.cluster_device_group
-                    new_el = $compile($templateCache.get("device_tree_cdg_row.html"))
+                    new_el = $compile($templateCache.get("icsw.device.tree.cdg.row"))
                 else
                     scope.obj.device_group_obj.num_devices = (entry for entry in scope.entries when entry.device_group == scope.obj.device_group).length - 1
-                    new_el = $compile($templateCache.get("device_tree_meta_row.html"))
+                    new_el = $compile($templateCache.get("icsw.device.tree.meta.row"))
             else
-                new_el = $compile($templateCache.get("device_tree_row.html"))
+                new_el = $compile($templateCache.get("icsw.device.tree.row"))
             scope.get_dev_sel_class = () ->
                 if scope.obj.selected
                     return "btn btn-xs btn-success"
@@ -394,16 +374,16 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 scope.update_selected()
             element.append(new_el(scope))
     }
-).directive("devicetreehead", ($templateCache) ->
+]).directive("icswDeviceTreeHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("device_tree_head.html")
+        template : $templateCache.get("icsw.device.tree.head")
     }
-).directive("devicetreefilters", () ->
+]).directive("icswDeviceTreeFilters", () ->
     # controller to set the _show flag of entries according to filters
     return {
         restrict : "E"
-        templateUrl : "device_tree_filters.html"
+        templateUrl : "icsw.device.tree.filters"
         link : (scope, element, attrs) ->
             scope.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i"}
 
@@ -482,7 +462,3 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     if not entry.is_meta_device
                         entry.selected = false
 })
-
-{% endinlinecoffeescript %}
-
-</script>
