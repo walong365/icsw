@@ -106,7 +106,8 @@ menu_module = angular.module(
         $scope.show_time()
         $scope.$watch("navbar_size", (new_val) ->
             if new_val
-                $("body").css("padding-top", parseInt(new_val["height"]) + 1)
+                if $scope.is_authenticated
+                    $("body").css("padding-top", parseInt(new_val["height"]) + 1)
         )
 ]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
     return {
