@@ -10,9 +10,11 @@ cd angular-${ANG_VERS}
 
 TARG_DIR=../../js/libs
 
+cp -a angular.js ${TARG_DIR}/angular-${ANG_VERS}.js
 cp -a angular.min.js ${TARG_DIR}/angular-${ANG_VERS}.min.js
 cp -a angular.min.js.map ${TARG_DIR}/
 
+git add ${TARG_DIR}/angular-${ANG_VERS}.js
 git add ${TARG_DIR}/angular-${ANG_VERS}.min.js
 git add ${TARG_DIR}/angular.min.js.map
 
@@ -22,10 +24,11 @@ done
 
 cd ${TARG_DIR}
 
-rm angular.min.js
+rm angular.js angular.min.js
 
+ln -s angular-${ANG_VERS}.js angular.js
 ln -s angular-${ANG_VERS}.min.js angular.min.js
 
-git add angular.min.js
+git add angular.js angular.min.js
 
 
