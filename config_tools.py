@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -26,6 +26,8 @@ if __name__ == "__main__":
     # for testing
     import os
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+    import django
+    django.setup()
 
 from django.db.models import Q
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
@@ -73,16 +75,27 @@ class router_object(object):
         latest_gen = self.__cur_gen + 1
         if latest_gen != self.__cur_gen:
             s_time = time.time()
-            self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).\
-                exclude(Q(enabled=False)).\
-                filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)). \
-                values_list("idx", "device", "routing", "penalty", "inter_device_routing")
+            self.all_nds = netdevice.objects.exclude(
+                Q(device__device_type__identifier="MD")
+            ).exclude(
+                Q(enabled=False)
+            ).filter(
+                Q(device__enabled=True) & Q(device__device_group__enabled=True)
+            ).values_list(
+                "idx", "device", "routing", "penalty", "inter_device_routing"
+            )
             self.dev_dict = {}
             for cur_nd in self.all_nds:
                 if cur_nd[1] not in self.dev_dict:
                     self.dev_dict[cur_nd[1]] = []
                 self.dev_dict[cur_nd[1]].append(cur_nd)
-            self.nd_lut = {value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device") if value[1] in self.dev_dict}
+            self.nd_lut = {
+                value[0]: value[1] for value in netdevice.objects.exclude(
+                    Q(enabled=False)
+                ).values_list(
+                    "pk", "device"
+                ) if value[1] in self.dev_dict
+            }
             self.nd_dict = {cur_nd[0]: cur_nd for cur_nd in self.all_nds}
             self.log(
                 "init router helper object, {} / {}".format(
