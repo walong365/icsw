@@ -17,6 +17,7 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     threading._DummyThread._Thread__stop = lambda x: 42  # @IgnorePep8
 
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
+LOCAL_STATIC = "LOCAL_STATIC" in os.environ
 PIPELINE_ENABLED = not DEBUG
 TEMPLATE_DEBUG = DEBUG
 
@@ -180,7 +181,10 @@ STATIC_ROOT_DEBUG = "/tmp/.icsw/static/"
 if DEBUG:
     STATIC_ROOT = STATIC_ROOT_DEBUG
 else:
-    STATIC_ROOT = "/srv/www/htdocs/icsw/static"
+    if LOCAL_STATIC:
+        STATIC_ROOT = STATIC_ROOT_DEBUG
+    else:
+        STATIC_ROOT = "/srv/www/htdocs/icsw/static"
 
 if not os.path.isdir(STATIC_ROOT_DEBUG):
     try:
@@ -190,6 +194,16 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
 
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
+
+SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", "frontend", "static", "icsw"))
+SSI_FILES = []
+for _dir, _dirlist, _filelist in os.walk(SSI_ROOT):
+    if _dir == SSI_ROOT:
+        continue
+    for _file in _filelist:
+        if _file.endswith(".html"):
+            SSI_FILES.append(os.path.join(_dir, _file))
+ALLOWED_INCLUDE_ROOTS = [SSI_ROOT]
 
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
@@ -201,8 +215,6 @@ STATIC_URL = "{}/static/".format(SITE_ROOT)
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True
 
-ALLOWED_INCLUDE_ROOTS = True
-
 # Make this unique, and don't share it with anybody.
 # SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
 
@@ -213,8 +225,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.request",
     "django.core.context_processors.media",
     "django.core.context_processors.debug",
-    "initat.core.context_processors.add_session",
-    "initat.core.context_processors.add_settings",
+    "initat.cluster.backbone.context_processors.add_session",
+    "initat.cluster.backbone.context_processors.add_settings",
     "initat.cluster.backbone.context_processors.add_csw_permissions",
 )
 
@@ -241,6 +253,13 @@ MIDDLEWARE_CLASSES = (
     "pipeline.middleware.MinifyHTMLMiddleware",
 )
 
+if not DEBUG:
+    MIDDLEWARE_CLASSES = tuple(
+        ["django.middleware.gzip.GZipMiddleware"] +
+        list(
+            MIDDLEWARE_CLASSES
+        )
+    )
 ROOT_URLCONF = "initat.cluster.urls"
 
 # Python dotted path to the WSGI application used by Django's runserver.
@@ -306,7 +325,10 @@ if not SLAVE_MODE:
         raise ImproperlyConfigured("no {} found".format(PIPELINE_YUGLIFY_BINARY))
 PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
 PIPELINE_YUGLIFY_JS_ARGUMENTS = "--terminal"
-STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
+if DEBUG:
+    STATICFILES_STORAGE = "pipeline.storage.PipelineStorage"
+else:
+    STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
 
 # List of finder classes that know how to find static files in
 # various locations.
@@ -365,7 +387,6 @@ PIPELINE_JS = {
     "js_jquery_new": {
         "source_filenames": {
             "js/libs/modernizr-2.8.1.min.js",
-            # "js/plugins.js",
             "js/libs/jquery-2.1.3.min.js",
         },
         "output_filename": "pipeline/js/jquery_new.js"
@@ -375,9 +396,9 @@ PIPELINE_JS = {
             "js/libs/jquery-ui-1.10.2.custom.js",
             # "js/libs/jquery-migrate-1.2.1.min.js",
             # now via bootstrap
-            # "js/libs/jquery.layout-latest.min.js",
             # "js/jquery.sprintf.js_8.txt",
             # "js/jquery.timers-1.2.js",
+            "js/libs/angular-1.3.12.js",
             "js/jquery.noty.packaged.js",
             "js/libs/lodash.min.js",
             "js/bluebird.js",
@@ -387,12 +408,11 @@ PIPELINE_JS = {
             "js/bootstrap.js",
             "js/libs/jquery.color.js",
             "js/libs/jquery.blockUI.js",
-            "js/libs/angular.min.js",
             "js/libs/moment-with-locales.min.js",
             "js/libs/jquery.Jcrop.min.js",
-            "js/spin.min.js",
-            "js/ladda.min.js",
-            "js/angular-ladda.min.js",
+            "js/spin.js",
+            "js/ladda.js",
+            "js/angular-ladda.js",
             "js/hamster.js",
             # not needed right now
             # "js/ng-jcrop.js",

@@ -2,6 +2,7 @@
 
 from django.core.exceptions import ImproperlyConfigured
 from initat.cluster.backbone.models import AC_MASK_DICT
+from django.conf import settings
 
 
 class csw_obj_lut(object):
@@ -101,3 +102,11 @@ def add_csw_permissions(request):
     return {
         "csw_perms": csw_perm_proxy(request),
     }
+
+
+def add_session(request):
+    return {"session": request.session}
+
+
+def add_settings(request):
+    return {"settings": settings}

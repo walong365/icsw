@@ -481,6 +481,12 @@ class mon_check_command(models.Model):
         permissions = (
             ("setup_monitoring", "Change monitoring settings", False),
         )
+        fk_ignore_list = [
+            "mon_icinga_log_raw_service_alert_data",
+            "mon_icinga_log_raw_service_flapping_data",
+            "mon_icinga_log_raw_service_notification_data",
+            "mon_icinga_log_aggregated_service_data",
+        ]
 
     def __unicode__(self):
         return "mcc_{}".format(self.name)
