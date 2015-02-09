@@ -103,9 +103,8 @@ dev_info_template = """
             Status History
         </tab-heading>
         <div class="panel panel-default"><div class="panel-body">
-            <div ng-controller="status_history_ctrl">
-                <statushistory devicepks="pk_list['status_history']">
-                </statushistory>
+            <div ng-controller="icswDeviceStatusHistoryCtrl">
+                <icsw-device-status-history-overview devicepks="pk_list['status_history']"/>
             </div>
         </div></div>
     </tab>
