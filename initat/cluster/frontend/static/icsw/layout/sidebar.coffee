@@ -147,6 +147,7 @@ sidebar_module = angular.module(
             $scope.get_tc($scope.active_tab).clear_selected()
             $scope.search_ok = true
             $scope.selection_changed()
+            $scope.call_devsel_func()
         $scope.activate_tab = (t_type) ->
             if $scope.is_authenticated
                 if $scope.hidden_tabs[t_type]
