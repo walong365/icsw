@@ -927,7 +927,6 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = (mode) ->
-            console.log "reload"
             $scope.reload_pending = true
             $scope.cur_xhr = call_ajax
                 url  : ICSW_URLS.MON_GET_NODE_CONFIG
@@ -952,9 +951,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                             $scope.devices = []
                             $scope.device_lut = {}
                             for entry in data[0]
-                                console.log entry
                                 entry.expanded = true
-                                console.log entry.monitoring_hint_set
                                 $scope.devices.push(entry)
                                 $scope.device_lut[entry.idx] = entry
                             $scope.reload_pending = false
