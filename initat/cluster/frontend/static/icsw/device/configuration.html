@@ -1,0 +1,135 @@
+<script type="text/ng-template" id="icsw.device.configuration.simplerow">
+    <td>
+        <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
+            <span ng_class="get_expand_class(obj)">
+            </span> {{ obj.device_variable_set.length }}
+            <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
+        </button>
+    </td>
+    <td>{{ get_name(obj) }}</td>
+    <td>{{ obj.device_group_name }}</td>
+    <td>{{ obj.comment }}</td>
+    <td>local: {{ obj.local_selected.length }}<span ng-show="obj.device_type_identifier != 'MD'">, meta: {{ meta_devices[devg_md_lut[obj.device_group]].local_selected.length }}</span></td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.configuration.table">
+    <table ng-show="active_configs.length" class="table table-condensed table-hover table-bordered" style="width:auto;">
+        <tbody>
+            <tr ng-repeat="sub_list in line_list">
+                <td ng-repeat="conf_idx in sub_list" ng-class="get_td_class(obj, conf_idx, false)" ng-click="click(obj, conf_idx)">
+                    <div ng-show="show_config(obj, conf_idx)">
+                        <span ng-class="get_config_class_icon(obj, conf_idx, false)"></span>&nbsp;{{ get_config_info(conf_idx) }}&nbsp;<span class="pull-right badge" ng-bind-html="get_config_type(conf_idx)"></span>
+                    </div>
+                    <span ng-show="!show_config(obj, conf_idx) && config_exists(conf_idx)">---</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.device.configuration.row">
+   <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
+   <td class="text-center">{{ dev.local_selected.length }}</td>
+   <td class="text-center"><span ng-show="dev.device_type_identifier != 'MD'">{{ meta_devices[devg_md_lut[dev.device_group]].local_selected.length }}</span></td>
+   <td ng-repeat="conf in active_configs" class="text-center" ng-class="get_td_class(dev, conf.idx, true)" ng-click="click(dev, conf.idx)">
+        <div ng-show="show_config(dev, conf.idx)">
+           <span ng-class="get_config_class_icon(dev, conf.idx, true)"></span>
+        </div>
+        <span ng-show="!show_config(dev, conf.idx) && config_exists(conf.idx)"><span class="glyphicon glyphicon-remove-sign"></span></span>
+   </td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.configuration.overview">
+    <h2>
+        Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ active_configs.length }} shown)
+    </h2>
+    <div class="form-inline">
+        <input class="form-control" ng-model="name_filter" placeholder="filter"></input>,
+        <input
+            type="button"
+            ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
+            ng-click="only_selected = !only_selected"
+            value="only selected"
+            title="show only configs selected anywhere in the current selection"
+        ></input>
+        <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
+            <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
+            <div class="btn-group" ng-show="new_config_name">
+                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                    Create in catalog <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <accordion ng-show="devices.length" close-others="false">
+        <accordion-group is-open="table_mode">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': table_mode, 'glyphicon-chevron-right': !table_mode}"></i>
+                Table mode
+            </accordion-heading>
+            <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th colspan="3">&nbsp;</th>
+                        <th class="rotate" ng-repeat="conf in active_configs">
+                             <div><span>{{ get_config_info(conf.idx) }}</span></div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>Type</th>
+                        <td>local</td>
+                        <td>meta</td>
+                        <th ng-repeat="conf in active_configs">
+                             <span class="badge">{{ get_config_type(conf.idx) }}</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                     <tr icsw-device-configuration-row icsw-device-configuration-helper ng-repeat="dev in devices"></tr>
+                </tbody>
+            </table>
+        </accordion-group>
+        <accordion-group is-open="list_mode">
+            <accordion-heading>
+                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': list_mode, 'glyphicon-chevron-right': !list_mode}"></i>
+                List mode
+            </accordion-heading>
+            <table class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Device</th>
+                        <th>Group</th>
+                        <th>Comment</th>
+                        <th>Info</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr icsw-device-configuration-simple-row ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+                    <tr ng-repeat-end ng-if="obj.expanded">
+                        <td colspan="9">
+                            <icsw-device-configuration-table icsw-device-configuration-helper></icsw-device-configuration-table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </accordion-group>
+    </accordion>
+</script>
+
+<script type="text/ng-template" id="icsw.device.configuration.var.overview">
+    <h2>Config variables for {{ devsel_list.length }} devices, <input type="button" class="btn btn-xs btn-primary" value="show vars" ng-click="load_vars()"></input></h2>
+    <div class="row">
+        <div class="col-sm-5 form-inline" ng-show="loaded">
+            <div class="form-group">
+                <input class="form-control" ng-model="var_filter" placeholder="filter"></input>
+            </div>
+        </div>
+    </div>
+    <div ng-show="loaded">
+        <tree treeconfig="devvar_tree"></tree>
+    </div>
+</script>

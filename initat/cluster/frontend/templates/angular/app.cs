@@ -53,10 +53,13 @@ ics_app = angular.module(
         "icsw.config.category_tree",
         "icsw.config.domain_name_tree",
         "icsw.network.device",
-        "icsw.device.config",
+        "icsw.device.configuration",
         "icsw.device.connection",
+        "icsw.device.category",
         "icsw.device.livestatus",
+        "icsw.device.location",
         "icsw.device.status_history",
+        "icsw.device.partition",
         "icsw.license.overview"
         "icsw.monitoring.overview",
         # "icsw.monitoring.create",
@@ -89,6 +92,7 @@ ics_app.config(() ->
     {% endwith %}
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
+    "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
     "BASE_GET_GAUGE_INFO": "{% url 'base:get_gauge_info' %}"
     "BASE_MODIFY_LOCATION_GFX": "{% url 'base:modify_location_gfx' %}"
     "BASE_PRUNE_CATEGORIES": "{% url 'base:prune_categories' %}"
@@ -100,10 +104,12 @@ ics_app.config(() ->
     "BOOT_SOFT_CONTROL": "{% url 'boot:soft_control' %}"
     "BOOT_UPDATE_DEVICE": "{% url 'boot:update_device' 1 %}"
     "CONFIG_COPY_MON": "{% url 'config:copy_mon' %}"
+    "CONFIG_ALTER_CONFIG_CB": "{% url 'config:alter_config_cb' %}"
     "CONFIG_DELETE_OBJECTS": "{% url 'config:delete_objects' %}"
     "CONFIG_DOWNLOAD_CONFIGS": "{% url 'config:download_configs' 1 %}"
     "CONFIG_GENERATE_CONFIG": "{% url 'config:generate_config' %}"
     "CONFIG_GET_CACHED_UPLOADS": "{% url 'config:get_cached_uploads' %}"
+    "CONFIG_GET_DEVICE_CVARS": "{% url 'config:get_device_cvars' %}"
     "CONFIG_HANDLE_CACHED_CONFIG": "{% url 'config:handle_cached_config' %}"
     "CONFIG_SHOW_CONFIGS": "{% url 'config:show_configs' %}"
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
@@ -128,10 +134,12 @@ ics_app.config(() ->
     "MAIN_VIRTUAL_DESKTOP_VIEWER": "{% url 'main:virtual_desktop_viewer' %}"
     "MON_BUILD_INFO": "{% url 'mon:build_info' %}"
     "MON_CALL_ICINGA": "{% url 'mon:call_icinga' %}"
+    "MON_CLEAR_PARTITION": "{% url 'mon:clear_partition' %}"
     "MON_CREATE_CONFIG": "{% url 'mon:create_config' %}"
     "MON_CREATE_DEVICE": "{% url 'mon:create_device' %}"
     "MON_DELETE_HINT": "{% url 'mon:delete_hint' %}"
     "MON_DEVICE_CONFIG": "{% url 'mon:device_config' %}"
+    "MON_FETCH_PARTITION": "{% url 'mon:fetch_partition' %}"
     "MON_GET_HIST_DEVICE_DATA": "{% url 'mon:get_hist_device_data' %}"
     "MON_GET_HIST_SERVICE_DATA": "{% url 'mon:get_hist_service_data' %}"
     "MON_GET_HIST_TIMESPAN": "{% url 'mon:get_hist_timespan' %}"
@@ -143,6 +151,7 @@ ics_app.config(() ->
     "MON_SETUP_CLUSTER": "{% url 'mon:setup_cluster' %}"
     "MON_SETUP_ESCALATION": "{% url 'mon:setup_escalation' %}"
     "MON_SETUP": "{% url 'mon:setup' %}"
+    "MON_USE_PARTITION": "{% url 'mon:use_partition' %}"
     "NETWORK_DEVICE_NETWORK": "{% url 'network:device_network' %}"
     "NETWORK_DOMAIN_NAME_TREE": "{% url 'network:domain_name_tree' %}"
     "NETWORK_SHOW_NETWORKS": "{% url 'network:show_networks' %}"
@@ -163,13 +172,11 @@ ics_app.config(() ->
     "REST_CONFIG_BOOL_LIST": "{% url 'rest:config_bool_list'%}"
     "REST_CONFIG_CATALOG_DETAIL": "{% url 'rest:config_catalog_detail' 1 %}"
     "REST_CONFIG_CATALOG_LIST": "{% url 'rest:config_catalog_list' %}"
-    "REST_CONFIG_CATALOG_LIST": "{% url 'rest:config_catalog_list'%}"
     "REST_CONFIG_DETAIL": "{% url 'rest:config_detail' 1 %}"
     "REST_CONFIG_HINT_LIST": "{% url 'rest:config_hint_list' %}"
     "REST_CONFIG_INT_DETAIL": "{% url 'rest:config_int_detail' 1 %}"
     "REST_CONFIG_INT_LIST": "{% url 'rest:config_int_list'%}"
     "REST_CONFIG_LIST": "{% url 'rest:config_list' %}"
-    "REST_CONFIG_LIST": "{% url 'rest:config_list'%}"
     "REST_CONFIG_SCRIPT_DETAIL": "{% url 'rest:config_script_detail' 1 %}"
     "REST_CONFIG_SCRIPT_LIST": "{% url 'rest:config_script_list'%}"
     "REST_CONFIG_STR_DETAIL": "{% url 'rest:config_str_detail' 1 %}"
@@ -177,7 +184,9 @@ ics_app.config(() ->
     "REST_CSW_OBJECT_LIST": "{% url 'rest:csw_object_list' %}"
     "REST_CSW_PERMISSION_LIST": "{% url 'rest:csw_permission_list' %}"
     "REST_DEVICE_GROUP_LIST": "{% url 'rest:device_group_list' %}"
+    "REST_DEVICE_DETAIL": "{% url 'rest:device_detail' 1 %}"
     "REST_DEVICE_LIST": "{% url 'rest:device_list' %}"
+    "REST_DEVICE_MON_LOCATION_DETAIL": "{% url 'rest:device_mon_location_detail' 1 %}"
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
     "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
@@ -200,11 +209,14 @@ ics_app.config(() ->
     "REST_LOG_SOURCE_LIST": "{% url 'rest:log_source_list' %}"
     "REST_LOG_STATUS_LIST": "{% url 'rest:log_status_list' %}"
     "REST_MACBOOTLOG_LIST": "{% url 'rest:macbootlog_list' %}"
+    "REST_MIN_ACCESS_LEVELS": "{% url 'rest:min_access_levels' %}"
     "REST_MON_CHECK_COMMAND_DETAIL": "{% url 'rest:mon_check_command_detail' 1 %}"
     "REST_MON_CHECK_COMMAND_LIST": "{% url 'rest:mon_check_command_list'%}"
     "REST_MON_CHECK_COMMAND_SPECIAL_LIST": "{% url 'rest:mon_check_command_special_list' %}"
-    "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
+    "REST_MON_DEVICE_TEMPL_LIST": "{% url 'rest:mon_device_templ_list' %}"
+    "REST_MON_EXT_HOST_LIST": "{% url 'rest:mon_ext_host_list' %}"
     "REST_MON_SERVICE_TEMPL_LIST": "{% url 'rest:mon_service_templ_list' %}"
+    "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
     "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
     "REST_NET_IP_LIST": "{% url 'rest:net_ip_list' %}"
     "REST_NETWORK_DEVICE_TYPE_LIST": "{% url 'rest:network_device_type_list' %}"

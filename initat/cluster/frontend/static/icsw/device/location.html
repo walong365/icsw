@@ -1,0 +1,69 @@
+<script type="text/ng-template" id="icsw.device.location.overview">
+    <h2>Device location for <ng-pluralize count="device_pks.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize></h2>
+    <div class="row">
+        <div class="col-md-6">
+            <h3>Tree</h3>
+            <tree treeconfig="loc_tree"></tree>
+        </div>
+        <div class="col-md-6" ng-show="gfx_cat">
+            <icsw-device-location-list></icsw-device-location-list>
+        </div>
+    </div>
+    <div class="row" ng-show="gfx_cat && active_loc_gfx">
+        <div class="col-md-3">
+            <icsw-device-monitoring-location-list></icsw-device-monitoring-location-list>
+        </div>
+        <div class="col-md-9">
+            <icsw-device-location-map></icsw-device-location-map>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.monitoring.location.list">
+    <h3>Locations ({{ set_pks.length }} of {{ dev_pks.length }} set)<span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}</h3>
+    <div ng-show="set_pks.length">
+        <h4>Set devices:</h4>
+        <ul class="list-group">
+            <li class="list-group-item" ng-repeat="pk in set_pks">
+                {{ dev_lut[pk].full_name }}, {{ set_lut[pk].pos_x }} / {{ set_lut[pk].pos_y }}
+                <span class="pull-right">
+                    <div class="btn-group">
+                        <input type="button" class="btn btn-xs" ng-class="{'btn-warning': is_locked(pk), 'btn-success': !is_locked(pk)}" ng-value="is_locked(pk) && 'unlock' || 'lock'" ng-click="toggle_locked(pk)"></input>
+                        <input type="button" class="btn btn-xs btn-danger" ng-show='!is_locked(pk)', value="remove" ng-click="remove(pk)"></input>
+                    </div>
+                </span>
+            </li>
+        </ul>
+    </div>
+    <div ng-show="unset_pks.length">
+        <h4>Unset devices:</h4>
+        <ul class="list-group">
+            <li class="list-group-item" ng-repeat="unset in unset_pks">
+                {{ dev_lut[unset].full_name }}
+                <input type="button" class="pull-right btn btn-xs btn-primary" value="set" ng-click="use_device(unset)"></input>
+            </li>
+        </ul>
+    </div>
+    <div ng-show="extra_dml_list.length">
+        <h4>Extra devices:</h4>
+        <ul class="list-group">
+            <li class="list-group-item" ng-repeat="dml in extra_dml_list">
+                {{ dml.device_name }}, {{ dml.pos_x }} / {{ dml.pos_y }}
+            </li>
+        </ul>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.location.list">
+    <h3><ng-pluralize count="gfx_cat.location_gfxs.length" when="{'0': 'No Location maps for {{ gfx_cat.full_name }}', 'one': 'One Location map for {{ gfx_cat.full_name }}', 'other': '{} location maps for {{ gfx_cat.full_name }}'}"></ng-pluralize></h3>
+    <ul class="list-group">
+        <li class="list-group-item" ng-repeat="loc_gfx in get_location_gfxs(gfx_cat)">
+            <span ng-show="DEBUG">[{{ loc_gfx.idx }}]</span><input type="button" ng-class="get_button_class(loc_gfx)" value="show" ng-click="activate_loc_gfx(loc_gfx)"></input>
+            {{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+            <ng-pluralize count="get_num_devices(loc_gfx)" when="{'0': '', 'one' : ', one device', 'other' : ', {} devices'}"></ng-pluralize>
+            <span ng-show="get_num_devices(loc_gfx)" class="glyphicon glyphicon-info-sign" tooltip="{{ get_device_list(loc_gfx) }}" tooltip-placement="right"></span>
+            , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+            <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+        </li>
+    </ul>
+</script>

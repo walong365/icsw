@@ -351,7 +351,7 @@ sidebar_module = angular.module(
         # init display of sidebar
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         # 2 ... fully open
-        $scope.sidebar_state = 0
+        $scope.sidebar_state = 2
         if $scope.is_authenticated
             if "sidebar_state" of $window.USER_VARS
                 $scope.sidebar_state = parseInt($window.USER_VARS["sidebar_state"])
