@@ -1,0 +1,37 @@
+
+<script type="text/ng-template" id="icsw.tools.device_hist_status">
+    <div ng-if="show_table"> <!-- use full layout -->
+        <div class="row">
+            <div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
+                <div style="float: right">
+                    <icsw-tools-piechart diameter="120" data="pie_data"></icsw-tools-piechart>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <table class="table table-condensed table-hover table-striped">
+                    <!--
+                    <thead>
+                        <tr>
+                            <th>State</th>
+                            <th>Ratio of state</th>
+                        </tr>
+                    </thead>
+                    -->
+                    <tbody>
+                        <tr ng-repeat="state in host_data">
+                            <td> {{ state.state }} </td>
+                            <td class="text-right"> {{ state.value }} </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div ng-if="!show_table"> <!-- only chart -->
+        <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.tools.service_hist_status">
+    <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
+</script>
