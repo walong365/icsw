@@ -4,165 +4,16 @@
 
 {% block title %}{% trans "License Overview" %}{% endblock %}
 
-{% block angular %}{% include "angular/lic.cs" %}{% endblock %}
-
 {% block content %}
 
 {% verbatim %}
 
-
 <h2 style="margin-bottom:1em">License Overview</h2>
-<div id="icsw.lic">
-    <div ng-controller="lic_ctrl">
-
-
-<div class="container-fluid">
-    <div class="row">
-
-        <div class="col-md-2">
-        
-            <div class="panel panel-default">
-
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        Time range
-                    </h3>
-                </div>
-
-                <div class="panel-body">
-
-                    <p>
-                        <button type="button" ng-class="multi_view && 'btn btn-small btn-warning' || 'btn btn-small'" ng-click="multi_view = !multi_view" title="show data for current year, month and day side by side">Multi view</button>
-                    </p>
-
-                    <div ng-show="!multi_view"> <!-- this must not be an ng-if, otherwise data binding breaks -->
-
-                        <div class="form-group" style="margin-bottom: 0px">
-                            <div class="input-group">
-                                <input type="text" class="form-control" ng-model="licdaterangestart"></input>
-                                <span class="dropdown-toggle input-group-addon">
-                                    <div class="dropdown">
-                                         <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                         <i class="glyphicon glyphicon-calendar"></i>
-                                         </button>
-                                         <ul class="dropdown-menu" role="menu">
-                                             <datetimepicker ng-model="licdaterangestart"
-                                                 data-datetimepicker-config="{ startView:'day', minView:'day' }" />
-                                         </ul>
-                                    </div>
-                                </span>
-                            </div>
-                            <div class="input-group-btn">
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                                        <span class="glyphicon glyphicon-time"></span>
-                                        {{timerange}} <span class="caret"></span>
-                                    </button>
-                                    <ul class="dropdown-menu">
-                                        <li ng-click="set_timerange('day')"><a href="#">day</a></li>
-                                        <li ng-click="set_timerange('week')"><a href="#">week</a></li>
-                                        <li ng-click="set_timerange('month')"><a href="#">month</a></li>
-                                        <li ng-click="set_timerange('year')"><a href="#">year</a></li>
-                                        <!-- values parsed by rest_views.py -->
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel panel-default">
-
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        Display options
-                    </h3>
-                </div>
-
-                <div class="panel-body">
-                    <button type="button" ng-class="(view_mode == 'show_min_max') && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_min_max')" title="show minimal and maximal usage values">min/max</button>
-                    <button type="button" ng-class="(view_mode == 'show_version') && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_version')" title="show license versions">version</button>
-                    <button type="button" ng-class="(view_mode == 'show_user')    && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_user')" title="show license user">user</button>
-                    <button type="button" ng-class="(view_mode == 'show_device')  && 'btn btn-xs btn-warning' || 'btn btn-xs'" ng-click="set_view_mode('show_device')" title="show device using license">device</button>
-                </div>
-                
-            </div>
-
- 
-            <div class="panel panel-default">
-
-                <div class="panel-heading">
-                    <h3 class="panel-title">
-                        Licenses
-                    </h3>
-                </div>
-
-                <div class="panel-body">
-                    <div ng-repeat="li in ext_license_list">
-                        <input type="button" ng-class="get_li_sel_class(li)" ng-click="toggle_li_sel(li)" value="sel">
-                        <!-- <input type="checkbox" id="cb_{{li.idx}}" ng-model="li.selected" ng-change="license_select_change()"> -->
-                        <label for="cb_{{li.idx}}">{{li.name}} {{li.usage}}</label>
-                        </input>
-                    </div>
-                    <div ng-show="ext_license_list.length == 0">
-                        No licenses found.
-                    </div>
-                </div>
-            </div>
-        </div> <!-- left panel end -->
-
-        <div class="col-md-10">
-            <div ng-if="ext_license_selected.length == 0">
-                <h4>Please select a time range and licenses in the panel to the left.</h4>
-            </div>
-            <div class="row" ng-repeat="li in ext_license_selected">
-                <div ng-if="!multi_view">
-                    <div class="well well-sm" style="width:550px">
-                        <!-- <h3>License: {{li.name}}</h3> -->
-                        <licgraph lic="{{li.idx}}" licname="{{li.name}}" dimpleloaded="dimpleloaded" timerange="timerange" licdaterangestart="licdaterangestart" viewmode="view_mode"></licgraph>
-                    </div>
-                </div>
-                <div ng-if="multi_view">
-                    <div class="well well-sm" style="width:1550px">
-                        <h3>License: {{li.name}}</h3>
-                        <table>
-                            <tr> <!-- force single (overlong) line  -->
-                                <td>
-                                    <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="year"  fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
-                                </td>
-                                <td>
-                                    <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="month" fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
-                                </td>
-                                <td>
-                                    <licgraph lic="{{li.idx}}" dimpleloaded="dimpleloaded" fixedtimerange="day"   fixedlicdaterangestart="{{cur_time}}" viewmode="view_mode"></licgraph>
-                                </td>
-                            </tr>
-                        </table>
-                    </div>
-                 <div>
-             </div>
-        </div>
-    </div>
-</div>
-
-            
-    </div>
+<div ng-controller="icswLicenseOverviewCtrl">
+    <icsw-license-overview></icsw-license-overview>
 </div>
 
 {% endverbatim %}
-
- <script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.lic']"), ["icsw.lic"])
-)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}
 

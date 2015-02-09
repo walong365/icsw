@@ -57,7 +57,7 @@ ics_app = angular.module(
         "icsw.device.connection",
         "icsw.device.livestatus",
         "icsw.device.status_history",
-        # "icsw.lic"
+        "icsw.license.overview"
         # "icsw.monitoring.create",
         # "icsw.monitoring_build_info",
         # "icsw.monitoring.device",
@@ -104,7 +104,12 @@ ics_app.config(() ->
     "DOC_PAGE": "/cluster/doc/main.pdf"
     "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
     "INFO_PAGE": "{% url 'main:info_page' %}"
+    "LIC_GET_LICENSE_OVERVIEW_STEPS": "{% url 'lic:get_license_overview_steps' %}"
+    "LIC_LICENSE_DEVICE_COARSE_LIST": "{% url 'lic:license_device_coarse_list' %}"
     "LIC_LICENSE_LIVEVIEW": "{% url 'lic:license_liveview' %}"
+    "LIC_LICENSE_STATE_COARSE_LIST": "{% url 'lic:license_state_coarse_list' %}"
+    "LIC_LICENSE_USER_COARSE_LIST": "{% url 'lic:license_user_coarse_list' %}"
+    "LIC_LICENSE_VERSION_STATE_COARSE_LIST": "{% url 'lic:license_version_state_coarse_list' %}"
     "LIC_OVERVIEW": "{% url 'lic:overview' %}"
     "MAIN_GET_SERVER_INFO": "{% url 'main:get_server_info' %}"
     "MAIN_SERVER_CONTROL": "{% url 'main:server_control' %}"
@@ -148,6 +153,7 @@ ics_app.config(() ->
     "REST_DEVICE_TYPE_LIST": "{% url 'rest:device_type_list' %}"
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
+    "REST_EXT_LICENSE_LIST": "{% url 'rest:ext_license_list' %}"
     "REST_FETCH_FORMS": "{% url 'rest:fetch_forms' %}"
     "REST_GROUP_DETAIL": "{% url 'rest:group_detail' 1 %}"
     "REST_GROUP_LIST": "{% url 'rest:group_list' %}"
