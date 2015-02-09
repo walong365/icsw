@@ -1,128 +1,14 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-{% verbatim %}
-
-dv_head_template = """
-<tr>
-    <th>Info</th>
-    <th>Name</th>
-    <th>Group</th>
-    <th>Comment</th>
-    <th colspan="1">Action</th>
-</tr>
-"""    
-
-dv_row_template = """
-<td>
-    <button class="btn btn-primary btn-xs" ng-disabled="!num_vars(obj)" ng-click="expand_vt(obj)">
-        <span ng_class="get_expand_class(obj)">
-        </span> {{ obj.device_variable_set.length }}
-        <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown</span>
-        <span ng-if="parent_vars_defined(obj)">&nbsp;({{ num_parent_vars(obj) }} inherit)</span>
-        <span ng-if="any_shadowed_vars(obj)">&nbsp;({{ num_shadowed_vars(obj) }} shadow)</span>
-    </button>
-</td>
-<td>{{ get_name(obj) }}</td>
-<td>{{ obj.device_group_name }}</td>
-<td>{{ obj.comment }}</td>
-<td><input ng-show="enable_modal" type="button" class="btn btn-success btn-xs" ng-click="create(obj, $event)" value="create"/></td>
-"""
-
-vartable_template = """
-<table ng-show="device.expanded || device.num_filtered" class="table table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Value</th>
-            <th>Public</th>
-            <th>source</th>
-            <th colspan="2">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="obj in device.device_variable_set | filter_name:filtervalue | orderBy:'name'">
-            <td>{{ obj.name }}</td>
-            <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
-            <td>{{ get_value(obj) }}</td>
-            <td>{{ obj.is_public|yesno1 }}</td>
-            <td>direct</td>
-            <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public && enable_modal" ng-click="edit_mixin.edit(obj, $event)" value="modify"></input></td>
-            <td><input type="button" class="btn btn-danger btn-xs" ng-click="edit_mixin.delete_obj(obj)" value="delete"></input></td>
-        </tr>
-        <tr ng-repeat="obj in get_parent_vars(device, 'g') | filter_name:filtervalue | orderBy:'name'">
-            <td>{{ obj.name }}</td>
-            <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
-            <td>{{ get_value(obj) }}</td>
-            <td>{{ obj.is_public|yesno1 }}</td>
-            <td>group</td>
-            <td colspan="2">
-                <input ng-show="obj.local_copy_ok" type="button" class="btn btn-xs btn-warning" value="local copy" ng-click="local_copy(obj, 'g')"></input>
-            </td>
-        </tr>
-        <tr ng-repeat="obj in get_parent_vars(device, 'c') | filter_name:filtervalue | orderBy:'name'">
-            <td>{{ obj.name }}</td>
-            <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
-            <td>{{ get_value(obj) }}</td>
-            <td>{{ obj.is_public|yesno1 }}</td>
-            <td>cluster</td>
-            <td colspan="2">
-                <input ng-show="obj.local_copy_ok" type="button" class="btn btn-xs btn-warning" value="local copy" ng-click="local_copy(obj, 'c')"></input>
-            </td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-device_vars_template = """
-<h2>
-    Device variables ({{ entries.length }} devices),
-    <input ng-show="enable_modal" type="button" value="create new" title="create a new variable for all shown devices" class="btn btn-sm btn-success" ng-click="create_for_all($event)"/>
-</h2>
-<div class="row">
-    <div class="col-sm-5 form-inline">
-        <div class="form-group">
-            <input class="form-control" ng-model="var_filter" placeholder="filter"></input>
-        </div>,
-        <div class="form-group">
-            <input
-                type="button"
-                ng-class="get_hide_class()"
-                ng-click="pagSettings.conf.filter_settings.hide_empty = !pagSettings.conf.filter_settings.hide_empty"
-                value="hide empty"
-            ></input>
-        </div>
-    </div>
-</div>
-
-<table class="table table-condensed table-hover" style="width:auto;">
-    <thead dvhead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-        <tr dvrow ng-repeat-start="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
-        <tr ng-repeat-end ng-if="obj.expanded">
-            <td colspan="9"><vartable device="obj" filtervalue="var_filter"></vartable></td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-{% endverbatim %}
-
-device_variable_module = angular.module("icsw.device.variables", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
-
-device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools) ->
+device_variable_module = angular.module(
+    "icsw.device.variables",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
+    ]
+).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS) ->
         $scope.enable_modal = true
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device.variable.new.form"
-        $scope.base_edit.create_rest_url = Restangular.all("{% url 'rest:device_variable_list' %}".slice(1))
+        $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
         $scope.base_edit.new_object = (scope) -> 
             return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0}
         $scope.base_edit.change_signal = "icsw.dv.changed"
@@ -131,7 +17,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             $scope._obj = obj
             $scope.base_edit.create_list = obj.device_variable_set
             call_ajax
-                url : "{% url 'mon:get_mon_vars' %}"
+                url : ICSW_URLS.MON_GET_MON_VARS
                 data : {
                     device_pk : obj.idx
                 }
@@ -175,7 +61,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 return "btn btn-sm"
         $scope.new_devsel = (dev_pks, group_pks) ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson(dev_pks), "with_variables" : true, "with_meta_devices" : true, "ignore_cdg" : false, "olp" : "backbone.device.change_variables"}])
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"pks" : angular.toJson(dev_pks), "with_variables" : true, "with_meta_devices" : true, "ignore_cdg" : false, "olp" : "backbone.device.change_variables"}])
             ]
             $q.all(wait_list).then((data) ->
                 entries = data[0]
@@ -255,7 +141,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             $.simplemodal.close()
         $scope.modify = () ->
             if not $scope.form.$invalid
-                $scope.create_rest_url = Restangular.all("{% url 'rest:device_variable_list' %}".slice(1))
+                $scope.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
                 $scope.close_modal()
                 blockUI.start()
                 $scope.add_list = []
@@ -280,15 +166,15 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             # trigger redisplay of vars
             $scope.new_filter_set($scope.var_filter, false)
         )
-]).directive("dvhead", ($templateCache) ->
+]).directive("icswDeviceVariableHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("dv_head.html")
+        template : $templateCache.get("icsw.device.variable.head")
     }
-).directive("dvrow", ($templateCache) ->
+]).directive("icswDeviceVariableRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("dv_row.html")
+        template : $templateCache.get("icsw.device.variable.row")
         link : (scope) ->
             scope.num_parent_vars = (obj) ->
                 my_names = (entry.name for entry in obj.device_variable_set)
@@ -321,25 +207,23 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             scope.any_shadowed_vars = (obj) ->
                 return if scope.num_shadowed_vars(obj) then true else false
     }
-).run(($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
-).filter("filter_name", ["$filter", ($filter) ->
+]).filter("filter_name", ["$filter", ($filter) ->
     return (arr, f_string) ->
         try
             cur_re = new RegExp(f_string, "gi")
         catch exc
             cur_re = new RegExp("^$", "gi")
         return (entry for entry in arr when entry.name.match(cur_re))
-]).directive("vartable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswDeviceVariableTable", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("vartable.html")
+        template : $templateCache.get("icsw.device.variable.table")
         link : (scope, el, attrs) ->
             scope.device = scope.$eval(attrs["device"])
             scope.filtervalue = scope.$eval(attrs["filtervalue"])
             scope.edit_mixin = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
             scope.edit_mixin.delete_confirm_str = (obj) -> "Really delete variable '#{obj.name}' ?"
-            scope.edit_mixin.modify_rest_url = "{% url 'rest:device_variable_detail' 1 %}".slice(1).slice(0, -2)
+            scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
             scope.edit_mixin.delete_list = scope.device.device_variable_set
             scope.edit_mixin.edit_template = "device.variable.form"
             scope.edit_mixin.change_signal = "icsw.dv.changed"
@@ -391,14 +275,14 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             scope.local_copy = (d_var, src) ->
                 new_var = angular.copy(d_var)
                 new_var.device = scope.obj.idx
-                Restangular.all("{% url 'rest:device_variable_list' %}".slice(1)).post(new_var).then((data) ->
+                Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then((data) ->
                     scope.obj.device_variable_set.push(data)
                 )
     }
-).directive("devicevars", ($templateCache, msgbus) ->
+]).directive("icswDeviceVariableOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("device_vars.html")
+        template : $templateCache.get("icsw.device.variable.overview")
         link : (scope, el, attrs) ->
             if attrs["disablemodal"]?
                 scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
@@ -412,13 +296,4 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                     scope.new_devsel(args[0])                    
                 )
     }
-).run(($templateCache) ->
-    $templateCache.put("dv_head.html", dv_head_template)
-    $templateCache.put("dv_row.html", dv_row_template)
-    $templateCache.put("vartable.html", vartable_template)
-    $templateCache.put("device_vars.html", device_vars_template)
-)
-
-{% endinlinecoffeescript %}
-
-</script>
+])
