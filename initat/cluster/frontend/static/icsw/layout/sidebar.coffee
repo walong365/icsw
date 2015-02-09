@@ -3,7 +3,7 @@ sidebar_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.info",
     ]
-).controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService",
+).controller("icswSidebarCtrl", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService",
     ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.DeviceOverviewService = DeviceOverviewService
@@ -346,39 +346,39 @@ sidebar_module = angular.module(
                 return @scope.dev_lut[t_entry.obj]
         selection_changed: () =>
             @scope.selection_changed()
-).controller("sidebar_sep", ["$scope", "$window",
-    ($scope, $window) ->
+).controller("icswSidebarSeparatorCtrl", ["$scope", "$window", "ICSW_URLS",
+    ($scope, $window, ICSW_URLS) ->
         # init display of sidebar
         $scope.is_authenticated = $window.IS_AUTHENTICATED
-        _wrapper = $("div#icsw_wrapper")
+        # 2 ... fully open
+        $scope.sidebar_state = 2
         if $scope.is_authenticated
-            if "sidebar_close" of $window.USER_VARS
-                if $window.USER_VARS.sidebar_close
-                    _close = true
-                else
-                    _close = false
+            if "sidebar_state" of $window.USER_VARS
+                $scope.sidebar_state = parseInt($window.USER_VARS["sidebar_state"])
+        $scope.set_sidebar = () ->
+            max_width = 350
+            if $scope.sidebar_state == 2
+                width = max_width
+            else if $scope.sidebar_state == 1
+                width = max_width * 0.6
             else
-                _close = false
-        else
-            _close = true
-        if _close
-            _wrapper.addClass("toggled")
-        else
-            _wrapper.removeClass("toggled")
+                width = 0
+            # console.log $scope.sidebar_state, width, max_width - width
+            $("div#icsw-wrapper").css("padding-left", width)
+            $("div#icsw-sidebar-sep").css("left", width)
+            $("div#icsw-sidebar-wrapper").css("width", width).css("left", width).css("margin-left", -width)
+        $scope.set_sidebar()
         $scope.sep_click = () ->
-            _wrapper = $("div#icsw_wrapper")
-            if _wrapper.hasClass("toggled")
-                _wrapper.removeClass("toggled")
-                _close = "false"
-            else
-                _wrapper.addClass("toggled")
-                _close = "true"
+            $scope.sidebar_state--
+            if $scope.sidebar_state < 0
+                $scope.sidebar_state = 2
+            $scope.set_sidebar()
             call_ajax
                 url: ICSW_URLS.USER_SET_USER_VAR
                 data:
-                    key: "sidebar_close"
-                    value : _close
-                    type: "bool"
+                    key: "sidebar_state"
+                    value : $scope.sidebar_state
+                    type: "int"
             return false
 ]).directive("icswLayoutSidebar", ["$templateCache", ($templateCache) ->
     return {
