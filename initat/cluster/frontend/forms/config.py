@@ -70,7 +70,7 @@ class config_form(ModelForm):
                 display="name",
                 filter="{name:$select.search}",
             ),
-            HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
+            HTML("<div icswConfigCategoryChoice edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),

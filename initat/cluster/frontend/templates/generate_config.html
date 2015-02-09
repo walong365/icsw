@@ -4,47 +4,8 @@
 
 {% verbatim %}
 
-<script type="text/ng-template" id="generate_config.html">
-<div>
-    <input type="button" class="btn btn-success btn-sm" value="generate device config" ng-show="devsel_list.length" ng-click="generate_config()"></input>
-    <span ng-show="devsel_list.length">
-        for {{ dev_names() }}
-    </span>
-    <div ng-show="result_trees.length">
-        <tabset>
-            <tab ng-repeat="dev_conf in result_trees" heading="{{ dev_conf.name }}">
-                <h4><span ng-class="get_info_class(dev_conf)">{{ dev_conf.info_str }}</span></h4>
-                <div class="row">
-                    <div class="col-md-5">
-                        <tree treeconfig="dev_conf.tree"></tree>
-                    </div>
-                    <div class="col-md-7">
-                        <div ng-show="dev_conf.active_error.length">
-                            <h4>Error Detail ({{ dev_conf.active_error.length}} lines)</h4>
-                            <div style="font-family:monospace;">
-                                <span ng-repeat="line in dev_conf.active_error track by $index">
-                                    <strong>{{ $index + 1 }} : </strong>{{ line }}<br>
-                                </span>
-                            </div>
-                        </div>
-                        <div ng-show="dev_conf.active_content.length">
-                            <h4>Content Detail ({{ dev_conf.active_content.length}} lines)</h4>
-                            <div style="font-family:monospace;">
-                                <span ng-repeat="line in dev_conf.active_content track by $index">
-                                    <strong>{{ $index + 1 }} : </strong>{{ line }}<br>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </tab>
-        </tabset>
-    </div>
-</div>
-</script>
-
-<div ng-controller="config_gen_ctrl">
-    <generateconfig></generateconfig>
+<div ng-controller="icswConfigGenerateCtrl">
+    <icsw-config-generate-config></icsw-config-generate-config>
 </div>
 
 {% endverbatim %}

@@ -55,8 +55,8 @@ class authentication_form(Form):
             ),
 #            HTML(
 #                """
-#<input type="hidden" name="csrfmiddlewaretoken" value="{% verbatim %}{{ CSRF_TOKEN }}{% endverbatim %}"></input>
-#"""
+# <input type="hidden" name="csrfmiddlewaretoken" value="{% verbatim %}{{ CSRF_TOKEN }}{% endverbatim %}"></input>
+# """
 #            ),
             FormActions(
                 Submit("submit", "Submit", css_class="btn btn-primary"),

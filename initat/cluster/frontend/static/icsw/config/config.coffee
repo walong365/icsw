@@ -1,342 +1,44 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-{% verbatim %}
-
-catalog_table_template = """
-<h2>{{ config_catalogs.length }} catalogs, <input type="button" class="btn btn-sm btn-success" value="create new catalog" ng-click="catalog_edit.create($event)"></input></h2>
-<table class="table table-condensed table-hover table-bordered" style="width:auto;">
-    <thead>
-        <tr>
-            <th>name</th>
-            <th>URL</th>
-            <th>Author</th>
-            <th>Version</th>
-            <th>#configs<th>
-            <th colspan="2">action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="catalog in config_catalogs">
-            <td>{{ catalog.name }}</td>
-            <td>{{ catalog.url }}</td>
-            <td>{{ catalog.author }}</td>
-            <td>{{ catalog.version }}</td>
-            <td>{{ get_num_configs(catalog) }}</td>
-            <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_catalog(catalog, $event)" value="modify"></input></td>
-            <td><input type="button" ng-show="get_num_configs(catalog) == 0" class="btn btn-danger btn-xs" ng-click="delete_catalog(catalog)" value="delete"></input></td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-config_table_template = """
-<h2>{{ entries.length }} configurations, shown: {{ pagSettings.conf.filtered_len }},
-    <input type="button" class="btn btn-sm btn-success" value="create new config" ng-click="config_edit.create($event)">
-    </input>
-    <span ng-show="selected_objects.length">
-    , {{ selected_objects.length }} selected,
-    <div class="btn-group btn-sm">
-        <input type="button" class="btn btn-sm btn-primary" value="clear selection" ng-click="unselect_objects()"></input>
-        <input type="button" class="btn btn-sm btn-warning" value="modify selected" ng-click="modify_selected_objects()"></input>
-        <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"></input>
-    </div>
-    </span>
-</h2>
-<table class="table table-condensed table-hover table-bordered" style="width:auto;">
-    <thead>
-        <tr>
-            <td colspan="13">
-                <div class="row" style="width:900px;">
-                    <div class="col-sm-4">
-                        <div class="input-group">
-                            <input ng-model="pagSettings.conf.filter_settings.filter_str" class="form-control" placeholder="filter">
-                            </input>
-                            <span class="input-group-btn">
-                                <button class="btn btn-danger" type="button" ng-click="clear_filter()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
-                            </span>
-                        </div>
-                    </div>
-                    <div class="col-sm-3">
-                        <div class="input-group btn-group">
-                            <input type="button" ng-class="get_filter_class('name')" value="name" ng-click="change_filter_setting('name')"></input>
-                            <input type="button" ng-class="get_filter_class('script')" value="script" ng-click="change_filter_setting('script')"></input>
-                            <input type="button" ng-class="get_filter_class('var')" value="var" ng-click="change_filter_setting('var')"></input>
-                            <input type="button" ng-class="get_filter_class('mon')" value="mon" ng-click="change_filter_setting('mon')"></input>
-                        </div>
-                    </div>
-                    <div class="col-sm-5" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="func" paginator-epp="15,30,100,200" paginator_filter_func="filter_conf">
-                    </div>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <th>Name</th>
-            <th>Pri</th>
-            <th>Flags</th>
-            <th>Catalog</th>
-            <th>enabled</th>
-            <th>Description</th>
-            <th>parent</th>
-            <th>var</th>
-            <th>script</th>
-            <th>mon</th>
-            <th>cats</th>
-            <th colspan="3">action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat-start="config in pagSettings.filtered_list.slice(pagSettings.conf.start_idx, pagSettings.conf.end_idx + 1)" ng-class="get_config_row_class(config)">
-            <td>
-                <span ng-show="config_has_info(config)" class="pull-right">
-                    <span class="glyphicon glyphicon-info-sign" title="{{ get_config_help_text(config) }}">
-                    </span>
-                </span>
-                {{ config.name }}
-            </td>
-            <td class="text-right">{{ config.priority }}</td>
-            <td class="text-center">
-                <div class="btn-group btn-group-xs">
-                    <!-- tooltips not working right now -->
-                    <input type="button" class="btn disabled" ng-class="config.server_config && 'btn-success'" value="S" data-toggle="tooltip" title="is server config"></input>
-                    <input type="button" class="btn disabled" ng-class="config.system_config && 'btn-success'" value="Y" data-toggle="tooltip" title="is system config" data-placement="bottom"></input>
-                </div>
-            </td>
-            <td>{{ config.config_catalog | array_lookup:config_catalogs:'name':'-' }}</td>
-            <td class="text-center">{{ config.enabled | yesno1 }}</td>
-            <td>{{ config.description }}</td>
-            <td>{{ show_parent_config(config) }}</td>
-            <td class="text-center">
-                <span ng-class="get_label_class(config, 'var')" ng-click="toggle_expand(config, 'var')">
-                    <span ng_class="get_expand_class(config, 'var')">
-                    </span>
-                    {{ config.var_num }}
-                </span>&nbsp;
-            </td>
-            <td class="text-center">
-                <span ng-class="get_label_class(config, 'script')" ng-click="toggle_expand(config, 'script')">
-                    <span ng_class="get_expand_class(config, 'script')">
-                    </span>
-                    {{ config.script_num }}
-                </span>
-            </td>
-            <td class="text-center">
-                <span ng-class="get_label_class(config, 'mon')" ng-click="toggle_expand(config, 'mon')">
-                    <span ng_class="get_expand_class(config, 'mon')">
-                    </span>
-                    {{ config.mon_num }}
-                </span>
-            </td>
-            <td class="text-center">{{ get_num_cats(config) }}</td>
-            <td>
-                <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="config_edit.edit(config, $event)"></input>
-            </td>
-            <td>
-                <div class="input-group-btn">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
-                            Create <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-click="create_script(config, $event)"><a href="#">Script</a></li>
-                            <li class="divider"></li>
-                            <li ng-click="create_var(config, 'str', $event)"><a href="#">String var</a></li>
-                            <li ng-click="create_var(config, 'int', $event)"><a href="#">Integer var</a></li>
-                            <li ng-click="create_var(config, 'bool', $event)"><a href="#">Bool var</a></li>
-                            <li class="divider"></li>
-                            <li ng-click="create_mon(config, $event)"><a href="#">Check command</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </td>
-            <td class="text-center">
-                <span ng-if="config.usecount" class="text-warning">
-                    refs: {{ config.usecount }}
-                </span>
-                <span ng-if="!config.usecount">
-                    <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="config_edit.delete_obj(config)"></input>
-                </span>
-            </td>
-        </tr>
-        <tr ng-show="config.var_expanded">
-            <td colspan="14">
-                <confvartable></confvartable>
-            </td>
-        </tr>
-        <tr ng-show="config.script_expanded">
-            <td colspan="14">
-                <scripttable></scripttable>
-            </td>
-        </tr>
-        <tr ng-repeat-end ng-show="config.mon_expanded">
-            <td colspan="14">
-                <montable></montable>
-            </td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-var_table_template = """
-<table ng-if="config.var_expanded" class="table table-condensed table-hover">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>value</th>
-            <th>description</th>
-            <th>type</th>
-            <th colspan="2">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="obj in get_config_vars(config)">
-            <td>
-                <span ng-show="var_has_info(config, obj)" class="pull-right">
-                    <span class="glyphicon glyphicon-info-sign" title="{{ get_var_help_text(config, obj) }}">
-                    </span>
-                </span>
-                {{ obj.name }}
-            </td>
-            <td>{{ get_value(obj) }}</td>
-            <td>{{ obj.description }}</td>
-            <td>{{ obj.v_type }}</td>
-            <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
-            <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_var(config, obj, $event)" value="modify"></input></td>
-            <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_var(config, obj)" value="delete"></input></td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-script_table_template = """
-<table ng-if="config.script_expanded" class="table table-condensed table-hover">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>value</th>
-            <th>descr</th>
-            <th>priority</th>
-            <th>enabled</th>
-            <th colspan="2">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="obj in config.config_script_set">
-            <td>{{ obj.name }}</td>
-            <td style="font-family:monospace; width:480px;">
-                <textarea ng-model="obj.value" class="form-control input-sm" rows="5" readonly>
-                </textarea>
-            </td>
-            <td>{{ obj.description }}</td>
-            <td>{{ obj.priority }}</td>
-            <td>{{ obj.enabled | yesno1 }}</td>
-            <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
-            <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_script(config, obj, $event)" value="modify"></input></td>
-            <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_script(config, obj)" value="delete"></input></td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-mon_table_template = """
-<table ng-if="config.mon_expanded" class="table table-condensed table-hover">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>template</th>
-            <th>description</th>
-            <th>special</th>
-            <th>command line</th>
-            <!-- <th>active</th> -->
-            <th>vol</th>
-            <th>perf</th>
-            <th>is event</th>
-            <th>event handler</th>
-            <th>eh enabled</th>
-            <th>cats</th>
-            <th colspan="2">Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="obj in config.mon_check_command_set | orderBy:'name'">
-            <td>{{ obj.name }}</td>
-            <td>{{ obj.mon_service_templ | array_lookup:mon_service_templ:'name':'-' }}</td>
-            <td>{{ obj.description }}</td>
-            <td>{{ obj.mon_check_command_special && 'yes' || 'no' }}</td>
-            <td title="{{ get_mon_command_line(obj) }}" ng-if="obj.is_active">
-                <input
-                    type="button"
-                    title="expand / collapse full command line"
-                    ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
-                    value="e" ng-click="obj._show_full_command = !obj._show_full_command">
-                </input>
-                <span ng-if="!obj._show_full_command">{{ get_mon_command_line(obj) | limit_text:40:true }}</span>
-                <span ng-if="obj._show_full_command">{{ get_mon_command_line(obj) }}</span>
-            </td>
-            <td title="{{ get_mon_command_line(obj) }}" ng-if="!obj.is_active">
-                Passive check
-            </td>
-            <!-- <td>{{ obj.is_active | yesno2 }}</td> -->
-            <td>{{ obj.volatile | yesno1 }}</td>
-            <td>{{ obj.enable_perfdata | yesno1 }}</td>
-            <td>{{ obj.is_event_handler | yesno1 }}</td>
-            <td>{{ get_event_handler(obj.event_handler) }}</td>
-            <td>{{ obj.event_handler_enabled }}</td>
-            <td>{{ get_num_cats(obj) }}</td>
-            <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
-            <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_mon(config, obj, $event)" value="modify"></input></td>
-            <td><input type="button" class="btn btn-warning btn-xs" ng-click="copy_mon(config, obj, $event)" value="duplicate"></input></td>
-            <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_mon(config, obj)" value="delete"></input></td>
-        </tr>
-    </tbody>
-</table>
-"""
-
-cached_upload_template = """
-<div>
-    <h3>upload ({{ upload.upload_key }}, {{ upload.list.length }} configs)</h3>
-    <ul class="list-group">
-        <li class="list-group-item" ng-repeat="conf in upload.list">
-            <cachedconfig config="conf" upload="upload" catalog="catalog"></cachedconfig>
-        </li>
-    </ul>
-</div>
-"""
-
-cached_config_template = """
-{{ config.name }} ({{ config.description }})
-<span class="label label-primary" title="number of config vars">{{ get_num_vars() }}</span>
-<span class="label label-primary" title="number of config script">{{ get_num_scripts() }}</span>
-<span class="label label-primary" title="number of monitoring check commands">{{ get_num_check_commands() }}</span>
-<span class="pull-right">
-    <input type="button" ng-show="!config._taken" class="btn btn-xs btn-success" value="take" ng-click="take_config()"></input>
-    <input type="button" ng-show="!config._taken" class="btn btn-xs btn-danger" value="delete" ng-click="delete_config()"></input>
-    <span class="label label-warning" ng-show="config._taken">already taken</span>
-</span>
-"""
-
-{% endverbatim %}
-
-config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select"])
-
-gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools) ->
+config_module = angular.module(
+    "icsw.config.config",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select"
+    ]
+).service("icswConfigCategoryTreeService", () ->
+    class cat_tree extends tree_config
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = false
+            @show_select = true
+            @show_descendants = false
+            @show_childs = false
+        get_name : (t_entry) ->
+            obj = t_entry.obj
+            if obj.comment
+                return "#{obj.name} (#{obj.comment})"
+            else
+                return obj.name
+        selection_changed: () =>
+            sel_list = @get_selected((node) ->
+                if node.selected
+                    return [node.obj.idx]
+                else
+                    return []
+            )
+            @scope.new_selection(sel_list)
+).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window) ->
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
         $scope.cached_uploads = []
         $scope.catalog = 0
         $scope.uploader = new FileUploader(
             scope : $scope
-            url : "{% url 'config:upload_config' %}"
+            url : ICSW_URLS.CONFIG_UPLOAD_CONFIG
             queueLimit : 1
             alias : "config"
             formData : [
-                 "csrfmiddlewaretoken" : '{{ csrf_token }}'
+                 "csrfmiddlewaretoken" : $window.CSRF_TOKEN
             ]
             removeAfterUpload : true
         )
@@ -397,10 +99,10 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             $scope.pagSettings.conf.filter_settings["filter_#{name}"] = ! $scope.pagSettings.conf.filter_settings["filter_#{name}"]
         # config edit
         $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
-        $scope.config_edit.create_template = "config_template.html"
-        $scope.config_edit.edit_template = "config_template.html"
-        $scope.config_edit.create_rest_url = Restangular.all("{% url 'rest:config_list'%}".slice(1))
-        $scope.config_edit.modify_rest_url = "{% url 'rest:config_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.config_edit.create_template = "config.form"
+        $scope.config_edit.edit_template = "config.form"
+        $scope.config_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_LIST.slice(1))
+        $scope.config_edit.modify_rest_url = ICSW_URLS.REST_CONFIG_DETAIL.slice(1).slice(0, -2)
         $scope.config_edit.create_list = $scope.entries
         $scope.config_edit.new_object_at_tail = false
         $scope.config_edit.change_signal = "icsw.new_config"
@@ -414,45 +116,45 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             return new_obj
         # catalog edit
         $scope.catalog_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.catalog_edit.create_template = "config_catalog_template.html"
-        $scope.catalog_edit.edit_template = "config_catalog_template.html"
-        $scope.catalog_edit.create_rest_url = Restangular.all("{% url 'rest:config_catalog_list'%}".slice(1))
-        $scope.catalog_edit.modify_rest_url = "{% url 'rest:config_catalog_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.catalog_edit.create_template = "config.catalog.form"
+        $scope.catalog_edit.edit_template = "config.catalog.form"
+        $scope.catalog_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1))
+        $scope.catalog_edit.modify_rest_url = ICSW_URLS.REST_CONFIG_CATALOG_DETAIL.slice(1).slice(0, -2)
         $scope.catalog_edit.create_list = $scope.config_catalogs
         $scope.catalog_edit.new_object_at_tail = false
         $scope.catalog_edit.use_promise = true
         $scope.catalog_edit.new_object = (scope) ->
             new_obj = {
-                "name" : "new catalog", "author" : "{{ request.user }}", "url" : "http://localhost/",
+                "name" : "new catalog", "author" : $window.CURRENT_USER.login, "url" : "http://localhost/",
             }
             return new_obj
         $scope.var_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
         $scope.var_edit.use_promise = true
         $scope.var_edit.new_object_at_tail = false
         $scope.script_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.script_edit.create_template = "config_script_template.html"
-        $scope.script_edit.edit_template = "config_script_template.html"
-        $scope.script_edit.create_rest_url = Restangular.all("{% url 'rest:config_script_list'%}".slice(1))
-        $scope.script_edit.modify_rest_url = "{% url 'rest:config_script_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.script_edit.create_template = "config.script.form"
+        $scope.script_edit.edit_template = "config.script.form"
+        $scope.script_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_CONFIG_SCRIPT_LIST.slice(1))
+        $scope.script_edit.modify_rest_url = ICSW_URLS.REST_CONFIG_SCRIPT_DETAIL.slice(1).slice(0, -2)
         $scope.script_edit.use_promise = true
         $scope.script_edit.new_object_at_tail = false
         $scope.script_edit.min_width = "1000px"
         $scope.mon_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.mon_edit.create_template = "mon_check_command_template.html"
-        $scope.mon_edit.edit_template = "mon_check_command_template.html"
-        $scope.mon_edit.create_rest_url = Restangular.all("{% url 'rest:mon_check_command_list'%}".slice(1))
-        $scope.mon_edit.modify_rest_url = "{% url 'rest:mon_check_command_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.mon_edit.create_template = "mon.check.command.form"
+        $scope.mon_edit.edit_template = "mon.check.command.form"
+        $scope.mon_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1))
+        $scope.mon_edit.modify_rest_url = ICSW_URLS.REST_MON_CHECK_COMMAND_DETAIL.slice(1).slice(0, -2)
         $scope.mon_edit.use_promise = true
         $scope.mon_edit.new_object_at_tail = false
         $scope.mon_edit.min_width = "820px"
         $scope.reload = () ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:config_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:mon_service_templ_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:category_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:config_catalog_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:config_hint_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:mon_check_command_special_list' %}", {}]),
+                restDataSource.reload([ICSW_URLS.REST_CONFIG_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_CONFIG_CATALOG_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_CONFIG_HINT_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_MON_CHECK_COMMAND_SPECIAL_LIST, {}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.mon_service_templ = data[1]
@@ -485,7 +187,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             )
         $scope.reload_upload = () ->
             call_ajax
-                url     : "{% url 'config:get_cached_uploads' %}"
+                url     : ICSW_URLS.CONFIG_GET_CACHED_UPLOADS
                 dataType : "json"
                 success : (json) ->
                     $scope.$apply(() ->
@@ -547,7 +249,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                         conf["config_#{obj.object_type}_set"] = ref_f
                     $scope._set_fields(conf)
                 call_ajax
-                    url     : "{% url 'config:delete_objects' %}"
+                    url     : ICSW_URLS.CONFIG_DELETE_OBJECTS
                     data    :
                         "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
                     success : (xml) =>
@@ -694,10 +396,10 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             v_type = _var.v_type
             $scope.var_edit.delete_list = config["config_#{v_type}_set"]
             $scope.var_edit.modify_rest_url = {
-                "str" : "{% url 'rest:config_str_detail' 1 %}"
-                "int" : "{% url 'rest:config_int_detail' 1 %}"
-                "bool" : "{% url 'rest:config_bool_detail' 1 %}"
-                "blob" : "{% url 'rest:config_blob_detail' 1 %}"
+                "str" : ICSW_URLS.REST_CONFIG_STR_DETAIL
+                "int" : ICSW_URLS.REST_CONFIG_INT_DETAIL
+                "bool" : ICSW_URLS.REST_CONFIG_BOOL_DETAIL
+                "blob" : ICSW_URLS.REST_CONFIG_BLOB_DETAIL
             }[v_type].slice(1).slice(0, -2)
             $scope.var_edit.delete_obj(_var).then((res) ->
                 if res
@@ -709,11 +411,11 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             $scope._config = config
             if ! obj.description
                 obj.description = "descr"
-            $scope.var_edit.edit_template = "config_#{v_type}_template.html"
+            $scope.var_edit.edit_template = "config.#{v_type}.form"
             $scope.var_edit.modify_rest_url = {
-                "str" : "{% url 'rest:config_str_detail' 1 %}"
-                "int" : "{% url 'rest:config_int_detail' 1 %}"
-                "bool" : "{% url 'rest:config_bool_detail' 1 %}"
+                "str" : ICSW_URLS.REST_CONFIG_STR_DETAIL
+                "int" : ICSW_URLS.REST_CONFIG_INT_DETAIL
+                "bool" : ICSW_URLS.REST_CONFIG_BOOL_DETAIL
             }[v_type].slice(1).slice(0, -2)
             $scope.var_edit.create_list = config["config_#{v_type}_set"]
             $scope.var_edit.edit(obj, event).then(
@@ -723,11 +425,11 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             )
         $scope.create_var = (config, v_type, event) ->
             $scope._config = config
-            $scope.var_edit.create_template = "config_#{v_type}_template.html"
+            $scope.var_edit.create_template = "config.#{v_type}.form"
             $scope.var_edit.create_rest_url = Restangular.all({
-                "str" : "{% url 'rest:config_str_list'%}"
-                "int" : "{% url 'rest:config_int_list'%}"
-                "bool" : "{% url 'rest:config_bool_list'%}"
+                "str" : ICSW_URLS.REST_CONFIG_STR_LIST
+                "int" : ICSW_URLS.REST_CONFIG_INT_LIST
+                "bool" : ICSW_URLS.REST_CONFIG_BOOL_LIST
             }[v_type].slice(1))
             $scope.var_edit.create_list = config["config_#{v_type}_set"]
             $scope.var_edit.new_object = (scope) ->
@@ -810,7 +512,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                 return obj.command_line 
         $scope.copy_mon = (config, obj, event) ->
             call_ajax
-                url     : "{% url 'config:copy_mon' %}"
+                url     : ICSW_URLS.CONFIG_COPY_MON
                 data    :
                     "config" : config.idx
                     "mon"    : obj.idx
@@ -867,7 +569,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             return ev_handlers
         $scope.download_selected = () ->
             hash = angular.toJson((entry.idx for entry in $scope.pagSettings.filtered_list))
-            window.location = "{% url 'config:download_configs' 1 %}".slice(0, -1) + hash
+            window.location = ICSW_URLS.CONFIG_DOWNLOAD_CONFIGS.slice(0, -1) + hash
         $scope.get_num_configs = (cat) ->
             return (entry for entry in $scope.entries when entry.config_catalog == cat.idx).length 
         $scope.edit_catalog = (cat, event) ->
@@ -929,20 +631,25 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             else
                 return ["no args parsed"]
         $scope.reload()
-]).directive("catalogtable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswConfigOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("catalog_table.html")
+        template : $templateCache.get("icsw.config.overview")
     }
-).directive("configtable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswConfigCatalogTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("config_table.html")
+        template : $templateCache.get("icsw.config.catalog.table")
     }
-).directive("confvartable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswConfigConfigTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("conf_var_table.html")
+        template : $templateCache.get("icsw.config.config.table")
+    }
+]).directive("icswConfigVarTable", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.var.table")
         link : (scope, el, attrs) ->
             scope.get_value = (obj) ->
                 if obj.v_type == "bool"
@@ -950,24 +657,24 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                 else
                     return obj.value
     }
-).directive("scripttable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswConfigScriptTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("script_table.html")
+        template : $templateCache.get("icsw.config.script.table")
     }
-).directive("montable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswConfigMonTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("mon_table.html")
+        template : $templateCache.get("icsw.config.mon.table")
     }
-).directive("category", ($templateCache, $compile, $modal, Restangular, restDataSource) ->
+]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigCategoryTreeService", ($templateCache, icswConfigCategoryTreeService) ->
     return {
         restrict : "EA"
         template : "<tree treeconfig='cat_tree'></tree></div>"
         link : (scope, el, attrs) ->
             # start at -1 because we dont count the Top level category
             scope.num_cats = -1
-            scope.cat_tree = new cat_tree(scope)
+            scope.cat_tree = new icswConfigCategoryTreeService(scope)
             cat_tree_lut = {}
             if attrs["mode"] == "conf"
                 sel_cat = scope._edit_obj.categories
@@ -992,20 +699,20 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             scope.new_selection = (new_sel) ->
                 scope._edit_obj.categories = new_sel
     }
-).directive("uploadinfo", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswConfigUploadInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("cached_upload_template.html")
+        template : $templateCache.get("icsw.config.cached.upload.info")
         scope : {
             "upload"  : "="
             "catalog" : "="
         }
         replace : true
     }
-).directive("cachedconfig", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("cached_config_template.html")
+        template : $templateCache.get("icsw.config.cached.upload")
         scope : {
             "config"  : "="
             "upload"  : "="
@@ -1032,7 +739,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             scope.take_config = () ->
                 # $.blockUI
                 call_ajax
-                    url     : "{% url 'config:handle_cached_config' %}"
+                    url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
                     data    : {
                         "upload_key" : scope.upload.upload_key
                         "name"       : scope.config.name
@@ -1046,7 +753,7 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
             scope.delete_config = () ->
                 # $.blockUI
                 call_ajax
-                    url     : "{% url 'config:handle_cached_config' %}"
+                    url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
                     data    : {
                         "upload_key" : scope.upload.upload_key
                         "name"       : scope.config.name
@@ -1057,89 +764,60 @@ gen_config_ctrl = config_module.controller("general_config_ctrl", ["$scope", "$c
                         parse_xml_response(xml)
                         scope.$emit("icsw.reload_upload")
     }
-).run(($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
-    $templateCache.put("config_table.html", config_table_template)
-    $templateCache.put("catalog_table.html", catalog_table_template)
-    $templateCache.put("conf_var_table.html", var_table_template)
-    $templateCache.put("script_table.html", script_table_template)
-    $templateCache.put("mon_table.html", mon_table_template)
-    $templateCache.put("cached_upload_template.html", cached_upload_template)
-    $templateCache.put("cached_config_template.html", cached_config_template)
-)
+])
 
-class cat_tree extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        @show_selection_buttons = false
-        @show_icons = false
-        @show_select = true
-        @show_descendants = false
-        @show_childs = false
-    get_name : (t_entry) ->
-        obj = t_entry.obj
-        if obj.comment
-            return "#{obj.name} (#{obj.comment})"
-        else
-            return obj.name 
-    selection_changed: () =>
-        sel_list = @get_selected((node) ->
-            if node.selected
-                return [node.obj.idx]
-            else
-                return []
-        )
-        @scope.new_selection(sel_list)
-
-config_gen_module = angular.module("icsw.config.gen", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror"])
-
-class config_tree extends tree_config
-    constructor: (@scope, args) ->
-        super(args)
-        @show_selection_buttons = false
-        @show_icons = true
-        @show_select = false
-        @show_descendants = false
-        @show_childs = false
-    get_name : (t_entry) ->
-        switch t_entry._node_type
-            when "eh"
-                return "errors"
-            when "e"
-                return "config " + t_entry.obj.key
-            when "c"
-                obj = t_entry.obj
-                content = obj.data
-                node_str = obj.name
-                attr_list = []
-                for attr_name in ["uid", "gid", "mode"]
-                    if content[attr_name]?
-                        attr_value = content[attr_name]
-                        if attr_name == "mode"
-                            attr_value = parseInt(attr_value).toString(8)
-                        attr_list.push("#{attr_name}=#{attr_value}")
-                if attr_list
-                    node_str = "#{node_str} (" + attr_list.join(", ") + ")"
-                return node_str
-            else
-                return "unknown _node_type '#{t_entry._node_type}'"
-    handle_click: (t_entry, event) =>
-        @clear_selected()
-        t_entry.selected = true
-        switch t_entry._node_type
-            when "eh"
-                @dev_conf.active_error = []
-            when "e"
-                @dev_conf.active_error = t_entry.obj.text.split("\n")
-            when "c"
-                content = t_entry.obj.data.content
-                if content?
-                    @dev_conf.active_content = content.split("\n")
+config_gen_module = angular.module(
+    "icsw.config.generate",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror"
+    ]
+).service("icswConfigConfigTreeService", () ->
+    class config_tree extends tree_config
+        constructor: (@scope, args) ->
+            super(args)
+            @show_selection_buttons = false
+            @show_icons = true
+            @show_select = false
+            @show_descendants = false
+            @show_childs = false
+        get_name : (t_entry) ->
+            switch t_entry._node_type
+                when "eh"
+                    return "errors"
+                when "e"
+                    return "config " + t_entry.obj.key
+                when "c"
+                    obj = t_entry.obj
+                    content = obj.data
+                    node_str = obj.name
+                    attr_list = []
+                    for attr_name in ["uid", "gid", "mode"]
+                        if content[attr_name]?
+                            attr_value = content[attr_name]
+                            if attr_name == "mode"
+                                attr_value = parseInt(attr_value).toString(8)
+                            attr_list.push("#{attr_name}=#{attr_value}")
+                    if attr_list
+                        node_str = "#{node_str} (" + attr_list.join(", ") + ")"
+                    return node_str
                 else
-                    @dev_conf.active_content = []
-
-config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI) ->
+                    return "unknown _node_type '#{t_entry._node_type}'"
+        handle_click: (t_entry, event) =>
+            @clear_selected()
+            t_entry.selected = true
+            switch t_entry._node_type
+                when "eh"
+                    @dev_conf.active_error = []
+                when "e"
+                    @dev_conf.active_error = t_entry.obj.text.split("\n")
+                when "c"
+                    content = t_entry.obj.data.content
+                    if content?
+                        @dev_conf.active_content = content.split("\n")
+                    else
+                        @dev_conf.active_content = []
+).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService) ->
         $scope.devsel_list = []
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->
@@ -1158,7 +836,7 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
             $scope.result_trees = []
             blockUI.start()
             call_ajax
-                url     : "{% url 'config:generate_config' %}"
+                url     : ICSW_URLS.CONFIG_GENERATE_CONFIG
                 data    : {
                     "pk_list" : angular.toJson($scope.devsel_list)
                 },
@@ -1168,7 +846,7 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
                     if parse_xml_response(xml)
                         _json = angular.fromJson($(xml).find("value[name='result']").text())
                         for cur_dev in _json["devices"]
-                            new_tree = new config_tree($scope)
+                            new_tree = new icswConfigConfigTreeService($scope)
                             new_conf = {
                                 state : parseInt(cur_dev.state_level)
                                 name : cur_dev.name
@@ -1222,10 +900,10 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
                 return "text-success"
             else
                 return "text-warning"
-]).directive("generateconfig", ($templateCache, msgbus) ->
+]).directive("icswConfigGenerateConfig", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("generate_config.html")
+        template : $templateCache.get("icsw.config.generate.config")
         link : (scope, el, attrs) ->
             if not attrs["devicepk"]?
                 msgbus.emit("devselreceiver")
@@ -1233,8 +911,5 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
                     scope.new_devsel(args[1])
                 )
     }
-)
+])
 
-{% endinlinecoffeescript %}
-
-</script>
