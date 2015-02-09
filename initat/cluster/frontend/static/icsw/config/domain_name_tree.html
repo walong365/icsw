@@ -24,7 +24,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree">
-    <h2>Domain name tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create_new($event)"/></h2>
+    <h2>Domain name tree ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create_new($event)" size="sm"/></h2>
     <div class="panel panel-default">
         <div class="panel-body">
             <div class="row">

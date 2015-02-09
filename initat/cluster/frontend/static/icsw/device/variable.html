@@ -21,7 +21,7 @@
     <td>{{ get_name(obj) }}</td>
     <td>{{ obj.device_group_name }}</td>
     <td>{{ obj.comment }}</td>
-    <td><input ng-show="enable_modal" type="button" class="btn btn-success btn-xs" ng-click="create(obj, $event)" value="create"/></td>
+    <td><icsw-tools-button ng-show="enable_modal" value="create" type="create" ng-click="create(obj, $event)" size="xs"/></td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.table">
@@ -73,7 +73,7 @@
 <script type="text/ng-template" id="icsw.device.variable.overview">
     <h2>
         Device variables ({{ entries.length }} devices),
-        <input ng-show="enable_modal" type="button" value="create new" title="create a new variable for all shown devices" class="btn btn-sm btn-success" ng-click="create_for_all($event)"/>
+        <icsw-tools-button ng-show="enable_modal" type="create" value="create new" title="create a new variable for all shown devices" ng-click="create_for_all($event)" size="sm"/>
     </h2>
     <div class="row">
         <div class="col-sm-5 form-inline">

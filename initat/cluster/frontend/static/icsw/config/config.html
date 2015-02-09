@@ -28,7 +28,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.catalog.table">
-    <h2>{{ config_catalogs.length }} catalogs, <input type="button" class="btn btn-sm btn-success" value="create new catalog" ng-click="catalog_edit.create($event)"/></h2>
+    <h2>{{ config_catalogs.length }} catalogs, <icsw-tools-button type="create" value="create new catalog" ng-click="catalog_edit.create($event)" size="sm"/></h2>
     <table class="table table-condensed table-hover table-bordered" style="width:auto;">
         <thead>
             <tr>
@@ -47,8 +47,8 @@
                 <td>{{ catalog.author }}</td>
                 <td>{{ catalog.version }}</td>
                 <td>{{ get_num_configs(catalog) }}</td>
-                <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_catalog(catalog, $event)" value="modify"/></td>
-                <td><input type="button" ng-show="get_num_configs(catalog) == 0" class="btn btn-danger btn-xs" ng-click="delete_catalog(catalog)" value="delete"/></td>
+                <td><icsw-tools-button type="modify" value="modify" ng-click="edit_catalog(catalog, $event)" size="xs"/></td>
+                <td><icsw-tools-button type="delete" value="delete" ng-show="get_num_configs(catalog) == 0" ng-click="delete_catalog(catalog)" size="xs"/></td>
             </tr>
         </tbody>
     </table>
@@ -56,7 +56,7 @@
 
 <script type="text/ng-template" id="icsw.config.config.table">
     <h2>{{ entries.length }} configurations, shown: {{ pagSettings.conf.filtered_len }},
-        <input type="button" class="btn btn-sm btn-success" value="create new config" ng-click="config_edit.create($event)">
+        <icsw-tools-button type="create" value="create new config" ng-click="config_edit.create($event)" size="sm"/>
         </input>
         <span ng-show="selected_objects.length">
         , {{ selected_objects.length }} selected,
@@ -153,12 +153,12 @@
                 </td>
                 <td class="text-center">{{ get_num_cats(config) }}</td>
                 <td>
-                    <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="config_edit.edit(config, $event)"/>
+                    <icsw-tools-button type="modify" value="modify" ng-click="config_edit.edit(config, $event)" size="xs"/>
                 </td>
                 <td>
                     <div class="input-group-btn">
                         <div class="btn-group">
-                            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+                            <button type="button" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_class_for_button_type('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
                                 Create <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
@@ -178,7 +178,7 @@
                         refs: {{ config.usecount }}
                     </span>
                     <span ng-if="!config.usecount">
-                        <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="config_edit.delete_obj(config)"/>
+                        <icsw-tools-button type="delete" value="delete" ng-click="config_edit.delete_obj(config)" size="xs"/>
                     </span>
                 </td>
             </tr>
@@ -225,8 +225,8 @@
                 <td>{{ obj.description }}</td>
                 <td>{{ obj.v_type }}</td>
                 <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"/>
-                <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_var(config, obj, $event)" value="modify"/></td>
-                <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_var(config, obj)" value="delete"/></td>
+                <td><icsw-tools-button type="modify" value="modify" ng-click="edit_var(config, obj, $event)" size="xs"/></td>
+                <td><icsw-tools-button type="delete" value="delete" ng-click="delete_var(config, obj)" size="xs"/></td>
             </tr>
         </tbody>
     </table>
@@ -255,8 +255,8 @@
                 <td>{{ obj.priority }}</td>
                 <td>{{ obj.enabled | yesno1 }}</td>
                 <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"/>
-                <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_script(config, obj, $event)" value="modify"/></td>
-                <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_script(config, obj)" value="delete"/></td>
+                <td><icsw-tools-button type="modify" value="modify" ng-click="edit_script(config, obj, $event)" size="xs"/></td>
+                <td><icsw-tools-button type="delete" value="delete" ng-click="delete_script(config, obj)" size="xs"/></td>
             </tr>
         </tbody>
     </table>
@@ -308,9 +308,9 @@
                 <td>{{ obj.event_handler_enabled }}</td>
                 <td>{{ get_num_cats(obj) }}</td>
                 <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"/>
-                <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_mon(config, obj, $event)" value="modify"/></td>
+                <td><icsw-tools-button type="modify" value="modify" ng-click="edit_mon(config, obj, $event)" size="xs"/></td>
                 <td><input type="button" class="btn btn-warning btn-xs" ng-click="copy_mon(config, obj, $event)" value="duplicate"/></td>
-                <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_mon(config, obj)" value="delete"/></td>
+                <td><icsw-tools-button type="delete" value="delete" ng-click="delete_mon(config, obj)" size="xs"/></td>
             </tr>
         </tbody>
     </table>
