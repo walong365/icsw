@@ -44,9 +44,7 @@
       padding: 5px 10px;
     }
 
-    /* now handled in menu.coffee */
-    /* body { padding-top: 54px; }*/
-    #ics_wrapper {
+    #icsw-wrapper {
         padding-left: 0;
         -webkit-transition: all 0.5s ease;
         -moz-transition: all 0.5s ease;
@@ -54,18 +52,13 @@
         transition: all 0.5s ease;
     }
     
-    #icsw_wrapper.toggled {
-        padding-left: 250px;
-    }
-    
-    #sidebar-wrapper {
+    #icsw-sidebar-wrapper {
         z-index: 1000;
         position: fixed;
-        left: 350px;
         width: 0;
         height: 100%;
         padding-bottom: 54px;
-        margin-left: -350px;
+        padding-left:0px;
         overflow-y: auto;
         background-color: rgba(255, 255, 255, 1);
         -webkit-transition: all 0.2s ease;
@@ -74,11 +67,10 @@
         transition: all 0.2s ease;
     }
     
-    #sidebar-sep {
+    #icsw-sidebar-sep {
         z-index: 1000;
         position: fixed;
-        left: 350px;
-        width: 8px;
+        width: 12px;
         height: 100%;
         margin-left: 1px;
         margin-right: 1px;
@@ -91,46 +83,11 @@
         transition: all 0.2s ease;
     }
     
-    #icsw_wrapper.toggled #sidebar-wrapper {
-        width: 350px;
-    }
-    
     #page-content-wrapper {
         width: 100%;
         padding: 2px;
     }
     
-    #icsw_wrapper.toggled #page-content-wrapper {
-        position: absolute;
-        margin-right: -356px;
-    }
-    
-    @media(min-width:400px) {
-        #icsw_wrapper {
-            padding-left: 350px;
-        }
-        #icsw_wrapper.toggled {
-            padding-left: 4px;
-        }
-        #sidebar-wrapper {
-            width: 350px;
-        }
-        #icsw_wrapper.toggled #sidebar-wrapper {
-            width: 0;
-        }
-        #icsw_wrapper.toggled #sidebar-sep {
-            left: 0px;
-            width: 14px;
-        }
-    
-        #page-content-wrapper {
-            padding: 2px;
-        }
-        #icsw_wrapper.toggled #page-content-wrapper {
-            position: relative;
-            margin-right: 0;
-        }
-    }
     .CodeMirror {
         border-top: 1px solid black;
         border-bottom: 1px solid black;
@@ -261,7 +218,7 @@
         {% endfor %}
         <icsw-layout-menubar></icsw-layout-menubar>
         <div block-ui="main" class="block-ui-main"></div>
-        <div id="icsw_wrapper">
+        <div id="icsw-wrapper">
             <icsw-layout-sidebar></icsw-layout-sidebar>
             <div id="page-content-wrapper">
                 <div class="container-fluid">
