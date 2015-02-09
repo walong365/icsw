@@ -1,26 +1,13 @@
-{% load coffeescript staticfiles %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-{% verbatim %}
-
-{% endverbatim %}
-
-root = exports ? this
-
 
 angular.module(
-    "angular-piechart", []
-).directive("icswPiechart", () ->
+    "icsw.tools.piechart", []
+).directive("icswToolsPiechart", () ->
     return {
         restrict: "E"
         scope:
             data: "=data"
             diameter: "=diameter"
         template: """
-{% verbatim %}
 <div class="chart" ng-attr-style="width: {{diameter}}px; height: {{diameter}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
     <svg ng-show="data_active.length > 0" ng-attr-width="{{diameter}}" ng-attr-height="{{diameter}}" ng-attr-viewBox="0 0 {{diameter}} {{diameter}}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
         <g opacity="1">
@@ -32,12 +19,13 @@ angular.module(
     </svg>
     <div class="piechart-tooltip" ng-show="tooltip_text" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">{{tooltip_text}}</div>
 </div>
-{% endverbatim %}
 """
         link : (scope, el, attrs) ->
             scope.mouse_enter = (entry) ->
                 scope.tooltip_text = "#{entry.title}: #{entry.value}%"
+                console.log 'mouse enter'
             scope.mouse_leave = (entry) ->
+                console.log 'mouse leave'
                 scope.tooltip_text = undefined
             scope.mouse_move = (entry, event) ->
                 # not very elegant
@@ -108,10 +96,6 @@ angular.module(
 
                 scope.data_active = new_data
             )
-}).run(($templateCache) ->
+    }
 )
 
-
-{% endinlinecoffeescript %}
-
-</script>

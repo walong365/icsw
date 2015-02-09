@@ -73,7 +73,7 @@
                 <tr ng-repeat="entry in service_data">
                     <td> {{ extract_service_name(entry[0]) }} </td>
                     <td class="text-right">
-                        <icsw-piechart diameter="28" data="entry[2]"></icsw-piechart>
+                        <icsw-tools-piechart diameter="28" data="entry[2]"></icsw-tools-piechart>
                     </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Ok") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Warning") }} </td>

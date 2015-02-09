@@ -11,7 +11,7 @@ device_hist_status_template = """
     <div class="row">
         <div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
             <div style="float: right">
-                <icsw-piechart diameter="120" data="pie_data"></icsw-piechart>
+                <icsw-tools-piechart diameter="120" data="pie_data"></icsw-tools-piechart>
             </div>
         </div>
         <div class="col-md-4">
@@ -35,12 +35,12 @@ device_hist_status_template = """
     </div>
 </div>
 <div ng-if="!show_table"> <!-- only chart -->
-    <icsw-piechart diameter="40" data="pie_data"></icsw-piechart>
+    <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
 </div>
 """
 
 service_hist_status_template = """
-<icsw-piechart diameter="40" data="pie_data"></icsw-piechart>
+<icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
 """
 
 {% endverbatim %}
@@ -49,7 +49,7 @@ root = exports ? this
 
 
 angular.module(
-    "status_utils", ["angular-piechart"]
+    "status_utils", ["icsw.tools.piechart"]
 ).directive('deviceHistStatusOverview', ["$templateCache", "$parse", "status_utils_functions", ($templateCache, $parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     return {
