@@ -1,28 +1,13 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n%}
 
 {% block title %}{% trans "Boot" %}{% endblock %}
 
 {% block content %}
 
-<div>
-
-    <script type="text/ng-template" id="boot_form.html">
-        {% crispy boot_form boot_form.helper %}
-    </script>
-
-    <script type="text/ng-template" id="boot_single_form.html">
-        {% crispy boot_single_form boot_single_form.helper %}
-    </script>
-
-    <script type="text/ng-template" id="boot_many_form.html">
-        {% crispy boot_many_form boot_many_form.helper %}
-    </script>
-
-    <div ng-controller="boot_ctrl">
-        <boottable></boottable>
-    </div>
+<div ng-controller="icswDeviceBootCtrl">
+    <icsw-device-boot-table></icsw-device-boot-table>
 </div>
 
 {% endblock %}

@@ -1,21 +1,10 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-partition_table_module = angular.module("icsw.partition_table", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"])
-
-class part_edit_mixin extends angular_edit_mixin
-    constructor : (scope, templateCache, compile, modal, Restangular) ->
-        super(scope, templateCache, compile, modal, Restangular)
-        @change_signal = "icsw.part_changed"
-         
-
-partition_table_module.controller("partition_table_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+partition_table_module = angular.module(
+    "icsw.config.partition_table",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
+    ]
+).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS) ->
         $scope.entries = []
         $scope.edit_pts = []
         $scope.pagSettings = paginatorSettings.get_paginator("parts", $scope)
@@ -24,8 +13,8 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
         }
         $scope.reload = (cb_func) ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:partition_table_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:partition_fs_list' %}", {}]),
+                restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_PARTITION_FS_LIST, {}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.entries = data[0]
@@ -41,7 +30,7 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
                 new_name = if _idx then "new_part_#{_idx}" else "new_part"
                 if not (new_name in names)
                     break
-            Restangular.all("{% url 'rest:partition_table_list' %}".slice(1)).post(
+            Restangular.all(ICSW_URLS.REST_PARTITION_TABLE_LIST.slice(1)).post(
                 {
                     "name" : new_name
                     "sys_partition_set" : []
@@ -73,10 +62,10 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
             edit_part.tab_active = true
             $scope.edit_pts.push(edit_part)
         $scope.reload()
-]).directive("disklayout", ($compile, $modal, $templateCache, Restangular) ->
+]).directive("icswConfigDiskLayout", ["$compile", "$modal", "$templateCache", "Restangular", "ICSW_URLS", ($compile, $modal, $templateCache, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("layout.html")
+        template : $templateCache.get("icsw.config.disk.layout")
         scope  : true
         replace : false
         link : (scope, element, attrs) ->
@@ -110,7 +99,7 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
                 if !scope.part.idx?
                     return
                 call_ajax
-                    url : "{% url 'setup:validate_partition' %}"
+                    url : ICSW_URLS.SETUP_VALIDATE_PARTITION
                     data : {
                         "pt_pk" : scope.part.idx
                     }
@@ -137,9 +126,10 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
                 if not scope.create_mode
                     scope.validate()
             )
-            scope.layout_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-            scope.layout_edit.create_template = "partition_disc.html"
-            scope.layout_edit.create_rest_url = Restangular.all("{% url 'rest:partition_disc_list' %}".slice(1))
+            scope.layout_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.layout_edit.change_signal = "icsw.part_changed"
+            scope.layout_edit.create_template = "partition.disc.form"
+            scope.layout_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_PARTITION_DISC_LIST.slice(1))
             scope.layout_edit.create_list = scope.part.partition_disc_set
             scope.layout_edit.modify_data_after_post = (new_disc) ->
                 new_disc.partition_set = []
@@ -150,9 +140,10 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
                     "disc"              : "/dev/sd"
                     "label_type"        : "gpt"
                 }
-            scope.sys_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-            scope.sys_edit.create_template = "partition_sys.html"
-            scope.sys_edit.create_rest_url = Restangular.all("{% url 'rest:sys_partition_list'%}".slice(1))
+            scope.sys_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.sys_edit.change_signal = "icsw.part_changed"
+            scope.sys_edit.create_template = "partition.sys.form"
+            scope.sys_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_SYS_PARTITION_LIST.slice(1))
             scope.sys_edit.create_list = scope.part.sys_partition_set
             scope.sys_edit.new_object = (scope) ->
                 return {
@@ -164,30 +155,31 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
             scope.modify = () ->
                 scope.part.put()
     }
-).directive("partdata", ($compile, $templateCache, $modal, Restangular) ->
+]).directive("icswConfigPartitionTable", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         scope : false
-        template : $templateCache.get("partition_table.html")
+        template : $templateCache.get("partition.table.form")
         link : (scope, element, attrs) ->
              scope.edit_obj = scope.data
     }
-).directive("partdisc", ($compile, $templateCache, $modal, Restangular) ->
+]).directive("icswConfigPartitionTableDisc", ["$compile", "$templateCache", "$modal", "Restangular", "ICSW_URLS", ($compile, $templateCache, $modal, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
         #replace : true
         scope : true
-        template : $templateCache.get("part_disc.html")
+        template : $templateCache.get("icsw.config.partition.table.disc")
         link : (scope, element, attrs) ->
             if scope.disc.partition_set.length
                 # dirty hack but working
-                element.after($("<tr>").append($templateCache.get("part_header.html")))
+                element.after($("<tr>").append($templateCache.get("icsw.config.partition.table.header")))
             scope.partition_fs = scope.$eval(attrs["partitionFs"])
-            scope.disc_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-            scope.disc_edit.create_template = "partition.html"
-            scope.disc_edit.edit_template = "partition_disc.html"
-            scope.disc_edit.modify_rest_url = "{% url 'rest:partition_disc_detail' 1 %}".slice(1).slice(0, -2)
-            scope.disc_edit.create_rest_url = Restangular.all("{% url 'rest:partition_list' %}".slice(1))
+            scope.disc_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.disc_edit.change_signal = "icsw.part_changed"
+            scope.disc_edit.create_template = "partition.form"
+            scope.disc_edit.edit_template = "partition.disc.form"
+            scope.disc_edit.modify_rest_url = ICSW_URLS.REST_PARTITION_DISC_DETAIL.slice(1).slice(0, -2)
+            scope.disc_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_PARTITION_LIST.slice(1))
             scope.disc_edit.create_list = scope.disc.partition_set
             scope.disc_edit.delete_list = scope.edit_obj.partition_disc_set
             scope.disc_edit.delete_confirm_str = (obj) -> "Really delete disc '#{obj.disc}' ?"
@@ -205,37 +197,33 @@ partition_table_module.controller("partition_table_base", ["$scope", "$compile",
                     "partition_hex" : "82"
                 }
     }
-).directive("part", ($compile, $templateCache, $modal, Restangular) ->
+]).directive("icswConfigPartitionTablePartition", ["$compile", "$templateCache", "$modal", "Restangular", "ICSW_URLS", ($compile, $templateCache, $modal, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("part.html")
+        template : $templateCache.get("icsw.config.partition.table.partition")
         link : (scope, element, attrs) ->
-            scope.part_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-            scope.part_edit.edit_template = "partition.html"
-            scope.part_edit.modify_rest_url = "{% url 'rest:partition_detail' 1 %}".slice(1).slice(0, -2)
+            scope.part_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.part_edit.change_signal = "icsw.part_changed"
+            scope.part_edit.edit_template = "partition.form"
+            scope.part_edit.modify_rest_url = ICSW_URLS.REST_PARTITION_DETAIL.slice(1).slice(0, -2)
             scope.part_edit.delete_list = scope.disc.partition_set
             scope.part_edit.delete_confirm_str = (obj) -> "Really delete partition '#{obj.pnum}' ?"
     }
-).directive("partsys", ($compile, $templateCache, $modal, Restangular) ->
+]).directive("icswConfigPartitionTableSystemPartition", ["$compile", "$templateCache", "$modal", "Restangular", "ICSW_URLS", ($compile, $templateCache, $modal, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("sys_part.html")
+        template : $templateCache.get("icsw.config.partition.table.system.partition")
         link : (scope, element, attrs) ->
-            scope.sys_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-            scope.sys_edit.edit_template = "partition_sys.html"
-            scope.sys_edit.modify_rest_url = "{% url 'rest:sys_partition_detail' 1 %}".slice(1).slice(0, -2)
+            scope.sys_edit = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.sys_edit.change_signal = "icsw.part_changed"
+            scope.sys_edit.edit_template = "partition.sys.form"
+            scope.sys_edit.modify_rest_url = ICSW_URLS.REST_SYS_PARTITION_DETAIL.slice(1).slice(0, -2)
             scope.sys_edit.delete_list = scope.edit_obj.sys_partition_set
             scope.sys_edit.delete_confirm_str = (obj) -> "Really delete sys partition '#{obj.name}' ?"
     }
-).directive("partitiontablerow", ($compile, $templateCache, $modal, Restangular) ->
+]).directive("icswConfigPartitionTableRow", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("partition_table_row.html")
+        template : $templateCache.get("icsw.config.partition.table.row")
     }
-).run(($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
-)
-
-{% endinlinecoffeescript %}
-
-</script>
+])
