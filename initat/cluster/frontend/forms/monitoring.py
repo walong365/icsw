@@ -137,14 +137,14 @@ class mon_contact_form(ModelForm):
             "Base data",
             Field(
                 "user",
-                repeat="value.idx as value in rest_data.user | orderBy:'login'",
+                repeat="value.idx as value in config_service.user | orderBy:'login'",
                 display="info",
                 filter="{info:$select.search}",
                 placeholder="please select an user",
             ),
             Field(
                 "notifications",
-                repeat="value.idx as value in rest_data.mon_notification | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_notification | orderBy:'name'",
                 placeholder="Select one or more notifications",
                 display="name",
                 filter="{name:$select.search}",
@@ -155,7 +155,7 @@ class mon_contact_form(ModelForm):
             "Service settings",
             Field(
                 "snperiod",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -184,7 +184,7 @@ class mon_contact_form(ModelForm):
             "Host settings",
             Field(
                 "hnperiod",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -247,7 +247,7 @@ class mon_service_templ_form(ModelForm):
             "Check",
             Field(
                 "nsc_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -262,7 +262,7 @@ class mon_service_templ_form(ModelForm):
             "Notification",
             Field(
                 "nsn_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",

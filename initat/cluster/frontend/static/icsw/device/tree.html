@@ -67,7 +67,7 @@
     <th>Enabled</th>
     <th>Type</th>
     <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]">{{ entry[1] }}</th>
-    <th colspan="2" class="text-center">action</th>
+    <th colspan="2" class="text-center">Action</th>
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.cdg.row">
@@ -183,7 +183,7 @@
                         <th st-sort='st_attrs.enabled'>Enabled</th>
                         <th st-sort='st_attrs.type'>Type</th>
                         <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]" st-sort="{{'st_attrs.'+entry[0]}}">{{ entry[1] }}</th>
-                        <th colspan="2" class="text-center">action</th>
+                        <th colspan="2" class="text-center">Action</th>
                     </tr>
                 </thead>
 

@@ -110,7 +110,7 @@
         <th>planned</th>
         <th>Notifications</th>
         <th>Alias</th>
-        <th colspan="2" class="text-center">action</th>   
+        <th colspan="2" class="text-center">action</th>
     </tr>
 </script>
 
@@ -282,6 +282,15 @@
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
+
+
+
+    <h1 style="color: red">NEW:</h1>
+    <icsw-monitoring-basic></icsw-monitoring-basic>
+
+
+
+    <h1 style="color: red">OLD:</h1>
 
 <tabset ng-cloack>
     <tab heading="Periods">

@@ -61,8 +61,6 @@ ics_app = angular.module(
         "icsw.monitoring.overview",
         # "icsw.monitoring.create",
         # "icsw.monitoring_build_info",
-        # "icsw.monitoring.device",
-        # "icsw.monitoring_basic",
         # "icsw.monitoring_extended",
         "icsw.package.install",
         "icsw.device.boot",
@@ -70,6 +68,10 @@ ics_app = angular.module(
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
+
+        "icsw.monitoring.monitoring_basic",
+        "icsw.monitoring.device",
+        "icsw.monitoring_basic",
     ]
 )
 
@@ -168,7 +170,9 @@ ics_app.config(() ->
     "REST_GROUP_PERMISSION_DETAIL": "{% url 'rest:group_permission_detail' 1 %}"
     "REST_GROUP_PERMISSION_LIST": "{% url 'rest:group_permission_list' %}"
     "REST_HOME_EXPORT_LIST": "{% url 'rest:home_export_list' %}"
+    "REST_HOST_CHECK_COMMAND_LIST": "{% url 'rest:host_check_command_list' %}"
     "REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST": "{% url 'rest:quota_capable_blockdevice_list' %}"
+    "REST_MON_PERIOD_LIST": "{% url 'rest:mon_period_list' %}"
     "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
     "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
@@ -176,6 +180,12 @@ ics_app.config(() ->
     "REST_LOG_SOURCE_LIST": "{% url 'rest:log_source_list' %}"
     "REST_LOG_STATUS_LIST": "{% url 'rest:log_status_list' %}"
     "REST_MACBOOTLOG_LIST": "{% url 'rest:macbootlog_list' %}"
+    "REST_MON_CONTACT_LIST": "{% url 'rest:mon_contact_list' %}"
+    "REST_MON_CONTACTGROUP_LIST": "{% url 'rest:mon_contactgroup_list' %}"
+    "REST_MON_DEVICE_TEMPL_LIST": "{% url 'rest:mon_device_templ_list' %}"
+    "REST_MON_NOTIFICATION_LIST": "{% url 'rest:mon_notification_list' %}"
+    "REST_MON_PERIOD_LIST": "{% url 'rest:mon_period_list' %}"
+    "REST_MON_SERVICE_TEMPL_LIST": "{% url 'rest:mon_service_templ_list' %}"
     "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
     "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
     "REST_NET_IP_LIST": "{% url 'rest:net_ip_list' %}"
