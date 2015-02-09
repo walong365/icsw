@@ -161,8 +161,23 @@ class dynconfig_process(threading_tools.process_obj):
                     Q(mon_check_command_special=_mcs)
                 )
             except mon_check_command.DoesNotExist:
-                # mon check command not found, ignore
-                pass
+                # mon check command not found
+                self.log(
+                    "no mcc for mccs {} / device {} found".format(
+                        unicode(_mcs),
+                        unicode(cur_dev),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            except mon_check_command.MultipleObjectsReturned:
+                # more than one check command found
+                self.log(
+                    "more than one mcc for mccs {} / device {} found".format(
+                        unicode(_mcs),
+                        unicode(cur_dev),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 _mc.check_command_pk = _mc.pk
                 _mc.mccs_id = _mcs.pk
@@ -257,7 +272,7 @@ class dynconfig_process(threading_tools.process_obj):
                 _errors.append(
                     "{} {} threshold {}".format(
                         "below lower" if _lower else "above upper",
-                        {"w" : "warning", "c" : "critical"}[s_key[1]],
+                        {"w": "warning", "c": "critical"}[s_key[1]],
                         form_str.format(c_val),
                     )
                 )
