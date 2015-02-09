@@ -163,7 +163,7 @@ dev_row_template = """
     <div class="input-group-btn" ng-show="enable_modal && acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
         <div class="btn-group btn-xs">
 
-            <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class_for_button_type('create') }}" data-toggle="dropdown">
+            <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
                 Create new
             </button>
             <ul class="dropdown-menu">
@@ -242,7 +242,7 @@ nd_row_template = """
 </td>
 <td>
     <div class="btn-group btn-xs" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
-        <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class_for_button_type('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
+        <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
             Create new <span class="caret"></span>
         </button>
         <ul class="dropdown-menu">
