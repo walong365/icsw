@@ -1,6 +1,6 @@
 
 status_history_module = angular.module("icsw.device.status_history",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "status_utils"])
+        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "icsw.tools.status_history_utils"])
 
 status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$compile", "$filter", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "msgbus",
     ($scope, $compile, $filter, restDataSource, sharedDataSource, $q, $modal, $timeout, msgbus) ->

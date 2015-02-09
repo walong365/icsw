@@ -58,10 +58,10 @@ ics_app = angular.module(
         "icsw.device.livestatus",
         "icsw.device.status_history",
         "icsw.license.overview"
+        "icsw.monitoring.overview",
         # "icsw.monitoring.create",
         # "icsw.monitoring_build_info",
         # "icsw.monitoring.device",
-        # "icsw.monitoring_overview",
         # "icsw.monitoring_basic",
         # "icsw.monitoring_extended",
         "icsw.package.install",
@@ -132,6 +132,9 @@ ics_app.config(() ->
     "MON_CREATE_DEVICE": "{% url 'mon:create_device' %}"
     "MON_DELETE_HINT": "{% url 'mon:delete_hint' %}"
     "MON_DEVICE_CONFIG": "{% url 'mon:device_config' %}"
+    "MON_GET_HIST_DEVICE_DATA": "{% url 'mon:get_hist_device_data' %}"
+    "MON_GET_HIST_SERVICE_DATA": "{% url 'mon:get_hist_service_data' %}"
+    "MON_GET_HIST_TIMESPAN": "{% url 'mon:get_hist_timespan' %}"
     "MON_GET_NODE_CONFIG": "{% url 'mon:get_node_config' %}"
     "MON_GET_NODE_STATUS": "{% url 'mon:get_node_status' %}"
     "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"

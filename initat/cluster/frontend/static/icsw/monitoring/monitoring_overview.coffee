@@ -1,17 +1,13 @@
-{% load coffeescript %}
 
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-monitoring_overview_module = angular.module("icsw.monitoring_overview", 
+monitoring_overview_module = angular.module("icsw.monitoring.overview",
             ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
-             "icsw.tools.table", "status_utils", "icsw.device.livestatus"])
+             "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"])
 
-monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "status_utils_functions"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, status_utils_functions) ->
+monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
+    ["$scope", "$compile", "$filter", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+     "access_level_service", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
+    ($scope, $compile, $filter, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service,
+     $timeout, msgbus, status_utils_functions, ICSW_URLS) ->
         $scope.filter_settings = {"str_filter": "", "only_selected": true}
 
         $scope.filter_predicate = (entry) ->
@@ -32,7 +28,7 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
             return sf_flag and sel_flag
 
         wait_list = restDataSource.add_sources([
-            ["{% url 'rest:device_list' %}", {}],
+            [ICSW_URLS.REST_DEVICE_LIST, {}],
         ])
         $device_list = []
         $q.all(wait_list).then( (data) ->
@@ -113,14 +109,11 @@ monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$c
             $scope.new_devsel(args[1])
         )
 
-]).directive("monitoringoverview", ($templateCache, $timeout) ->
+]).directive("icswMonitoringOverview", () ->
     return {
         restrict : "EA"
         templateUrl: "monitoring_overview_template.html"
-        link : (scope, el, attrs) ->
-}).run(($templateCache) ->
+    }
 )
 
-{% endinlinecoffeescript %}
 
-</script>
