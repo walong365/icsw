@@ -123,8 +123,8 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
                     $scope.reload()
         # mixins
         $scope.cd_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.cd_edit.create_template = "cd_connection_form.html"
-        $scope.cd_edit.edit_template = "cd_connection_form.html"
+        $scope.cd_edit.create_template = "cd.connection.form"
+        $scope.cd_edit.edit_template = "cd.connection.form"
         $scope.cd_edit.create_rest_url = Restangular.all("{% url 'rest:cd_connection_list'%}".slice(1))
         $scope.cd_edit.modify_rest_url = "{% url 'rest:cd_connection_detail' 1 %}".slice(1).slice(0, -2)
         $scope.cd_edit.new_object_at_tail = true
@@ -138,7 +138,6 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson($scope.devsel_list), "cd_connections" : true, "olp" : "backbone.device.change_connection"}],
                 ["{% url 'rest:cd_connection_list' %}", {}]
-                ["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["cd_connection_form"])}]
             ])
             $q.all(wait_list).then((data) ->
                 _devs = data[0]
@@ -155,8 +154,6 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
                         $scope.cd_lut[_cd.parent].slave_list.push(_cd)
                     if _cd.child of $scope.cd_lut
                         $scope.cd_lut[_cd.child].master_list.push(_cd)
-                for cur_form in data[2] 
-                    $templateCache.put(cur_form.name, cur_form.form)
             )
         $scope.modify_cd = (cd, event) ->
             $scope.cd_edit.edit(cd, event).then(

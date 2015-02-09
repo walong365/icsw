@@ -154,7 +154,6 @@ ics_app.config(() ->
     "REST_DOMAIN_TREE_NODE_DETAIL": "{% url 'rest:domain_tree_node_detail' 1 %}"
     "REST_DOMAIN_TREE_NODE_LIST": "{% url 'rest:domain_tree_node_list' %}"
     "REST_EXT_LICENSE_LIST": "{% url 'rest:ext_license_list' %}"
-    "REST_FETCH_FORMS": "{% url 'rest:fetch_forms' %}"
     "REST_GROUP_DETAIL": "{% url 'rest:group_detail' 1 %}"
     "REST_GROUP_LIST": "{% url 'rest:group_list' %}"
     "REST_GROUP_OBJECT_PERMISSION_DETAIL": "{% url 'rest:group_object_permission_detail' 1 %}"
