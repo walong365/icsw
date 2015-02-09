@@ -1,56 +1,8 @@
-{% load coffeescript staticfiles %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-{% verbatim %}
-
-device_hist_status_template = """
-<div ng-if="show_table"> <!-- use full layout -->
-    <div class="row">
-        <div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
-            <div style="float: right">
-                <icsw-tools-piechart diameter="120" data="pie_data"></icsw-tools-piechart>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <table class="table table-condensed table-hover table-striped">
-                <!--
-                <thead>
-                    <tr>
-                        <th>State</th>
-                        <th>Ratio of state</th>
-                    </tr>
-                </thead>
-                -->
-                <tbody>
-                    <tr ng-repeat="state in host_data">
-                        <td> {{ state.state }} </td>
-                        <td class="text-right"> {{ state.value }} </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-<div ng-if="!show_table"> <!-- only chart -->
-    <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
-</div>
-"""
-
-service_hist_status_template = """
-<icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
-"""
-
-{% endverbatim %}
-
-root = exports ? this
 
 
 angular.module(
-    "status_utils", ["icsw.tools.piechart"]
-).directive('deviceHistStatusOverview', ["$templateCache", "$parse", "status_utils_functions", ($templateCache, $parse, status_utils_functions) ->
+    "icsw.tools.status_history_utils", ["icsw.tools.piechart", "restangular"]
+).directive('icswToolsDeviceHistStatusOverview', ["$parse", "status_utils_functions", ($parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     return {
         restrict: 'E',
@@ -60,7 +12,7 @@ angular.module(
             startdate: "="
             timerange: "="
         },
-        template: $templateCache.get("device_hist_status.html")
+        templateUrl: "icsw.tools.device_hist_status"
         link: (scope, element, attrs) ->
             scope.show_table = scope.$eval(attrs.showTable)
 
@@ -98,7 +50,7 @@ angular.module(
             else
                 scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
     }
-]).directive('serviceHistStatusOverview', ["$templateCache", "$parse", "status_utils_functions", ($templateCache, $parse, status_utils_functions) ->
+]).directive('icswToolsServiceHistStatusOverview', ["$parse", "status_utils_functions", ($parse, status_utils_functions) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
     return {
         restrict: 'E',
@@ -108,7 +60,7 @@ angular.module(
             startdate: "="
             timerange: "="
         },
-        template: $templateCache.get("service_hist_status.html")
+        templateUrl: "icsw.tools.service_hist_status"
         link: (scope, element, attrs) ->
 
             # TODO: see above
@@ -131,14 +83,15 @@ angular.module(
                 scope.$watch('data', (unused) -> scope.update_from_local_data())
             else
                 scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
-}]).service('status_utils_functions', ["Restangular", (Restangular) ->
+    }
+]).service('status_utils_functions', ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     get_device_data = (device_ids, start_date, timerange, cont) ->
         query_data = {
             'device_ids': device_ids.join(),
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
         }
-        base = Restangular.all("{% url 'mon:get_hist_device_data' %}".slice(1))
+        base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_DATA.slice(1))
         base.getList(query_data).then((new_data) ->
             # customGET fucks up the query data, so just fake lists
             obj = new_data.plain()[0]
@@ -153,7 +106,7 @@ angular.module(
             'duration_type': timerange,
             'merge_services': merge_services,
         }
-        base = Restangular.all("{% url 'mon:get_hist_service_data' %}".slice(1))
+        base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_DATA.slice(1))
         # we always return a list for easier REST handling
         base.getList(query_data).then((data_pseudo_list) ->
             # need plain() to get rid of restangular stuff
@@ -164,7 +117,7 @@ angular.module(
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
         }
-        base = Restangular.all("{% url 'mon:get_hist_timespan' %}".slice(1))
+        base = Restangular.all(ICSW_URLS.MON_GET_HIST_TIMESPAN.slice(1))
         base.getList(query_data).then(cont)
     float_format = (n) -> return (n*100).toFixed(2) + "%"
     preprocess_state_data = (new_data, weights, colors) ->
@@ -215,12 +168,5 @@ angular.module(
         preprocess_state_data: preprocess_state_data
         preprocess_service_state_data: preprocess_service_state_data
     }
-]).run(($templateCache) ->
-    $templateCache.put("device_hist_status.html", device_hist_status_template)
-    $templateCache.put("service_hist_status.html", service_hist_status_template)
-)
+])
 
-
-{% endinlinecoffeescript %}
-
-</script>

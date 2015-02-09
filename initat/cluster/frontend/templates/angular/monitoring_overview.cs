@@ -8,7 +8,7 @@ root = exports ? this
 
 monitoring_overview_module = angular.module("icsw.monitoring_overview", 
             ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
-             "icsw.tools.table", "status_utils", "icsw.device.livestatus"])
+             "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"])
 
 monitoring_overview_module.controller("monitoring_overview_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "status_utils_functions"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, status_utils_functions) ->
