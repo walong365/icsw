@@ -58,10 +58,10 @@ ics_app = angular.module(
         "icsw.device.livestatus",
         "icsw.device.status_history",
         "icsw.license.overview"
+        "icsw.monitoring.overview",
         # "icsw.monitoring.create",
         # "icsw.monitoring_build_info",
         # "icsw.monitoring.device",
-        # "icsw.monitoring_overview",
         # "icsw.monitoring_basic",
         # "icsw.monitoring_extended",
         "icsw.package.install",

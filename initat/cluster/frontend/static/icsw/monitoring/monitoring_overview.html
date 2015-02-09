@@ -1,0 +1,65 @@
+
+<script type="text/ng-template" id="monitoring_overview_template.html">
+    <div class="panel panel-default" style="width: auto">
+        <div class="panel-body">
+            <!-- entries_displayed is st-table interal -->
+            <form class="form-inline">
+                <label class="control-label">Filter:</label>
+                <div class="form-group">
+                    <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
+                </div>
+                ,
+
+                <input type="button" ng-class="filter_settings.only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
+                    ng-click="filter_settings.only_selected = ! filter_settings.only_selected" value="only selected"></input>
+
+            </form>
+            <table st-table="entries_displayed" st-safe-src="entries_filtered" class="table table-hover table-condensed table-striped" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort='name' rowspan="2">Name</th>
+                        <!-- todo: sort -->
+                        <th rowspan="2">Now</th>
+                        <th colspan="2" class="text-center">Yesterday</th>
+                        <th colspan="2" class="text-center">Last Week</th>
+                    </tr>
+                    <tr>
+                        <th class="text-center">Host</th>
+                        <th class="text-center">Services</th>
+                        <th class="text-center">Host</th>
+                        <th class="text-center">Services</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="entry in entries_displayed">
+                        <td>{{entry.name}}</td>
+                        <td>
+                            <!-- unnice workaround to get device pk into directive over the controller. in a nice design, the controller wouldn't be necessary. -->
+                            <div style="display: none">{{ devicepk_livestatus_ctrl = entry.idx }}</div>
+                            <div ng-controller='livestatus_ctrl'>
+                                <livestatus-brief devicepk="devicepk"></livestatus-brief>
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <icsw-tools-device-hist-status-overview data="entry.device_data_yesterday" show-table="false"></device-hist-status-overview>
+                        </td>
+                        <td class="text-center">
+                            <icsw-tools-service-hist-status-overview data="entry.service_data_yesterday" show-table="false"></service-hist-status-overview>
+                        </td>
+                        <td class="text-center">
+                            <icsw-tools-device-hist-status-overview data="entry.device_data_last_week" show-table="false"></device-hist-status-overview>
+                        </td>
+                        <td class="text-center">
+                            <icsw-tools-service-hist-status-overview data="entry.service_data_last_week" show-table="false"></service-hist-status-overview>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>
