@@ -23,9 +23,7 @@ angular.module(
         link : (scope, el, attrs) ->
             scope.mouse_enter = (entry) ->
                 scope.tooltip_text = "#{entry.title}: #{entry.value}%"
-                console.log 'mouse enter'
             scope.mouse_leave = (entry) ->
-                console.log 'mouse leave'
                 scope.tooltip_text = undefined
             scope.mouse_move = (entry, event) ->
                 # not very elegant
