@@ -499,7 +499,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ).directive("icswDeviceLivestatusServiceInfo", ["$templateCache", ($templateCache) ->
     return {
         restrict : "E"
-        template : $templateCache.get("ICSW.device.livestatus.serviceinfo")
+        template : $templateCache.get("icsw.device.livestatus.serviceinfo")
         scope : {
             type : "=type"
             service : "=service"
@@ -525,7 +525,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         restrict : "E"
         replace: true
         templateNamespace: "svg"
-        template: $templateCache.get("ICSW.device.livestatus.network_graph")
+        template: $templateCache.get("icsw.device.livestatus.network_graph")
         scope:
             data: "=data"
             redraw_burst: "=redraw"
@@ -733,7 +733,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ]).directive("livestatus", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("ICSW.device.livestatus.overview")
+        template : $templateCache.get("icsw.device.livestatus.overview")
         link : (scope, el, attrs) ->
             if attrs.devicepk?
                 scope.$watch(attrs["devicepk"], (new_val) ->
@@ -812,7 +812,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ]).directive("livestatusBrief", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("ICSW.device.livestatus.brief")
+        template : $templateCache.get("icsw.device.livestatus.brief")
         link : (scope, element, attrs) ->
             scope.$watch(("devicepk"), (data) ->
                 if data
@@ -822,7 +822,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
 ]).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("ICSW.device.livestatus.map_overview")
+        template: $templateCache.get("icsw.device.livestatus.map.overview")
         scope:
             gfx : "=gfx"
         link : (scope, element, attrs) ->
@@ -835,7 +835,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
     return {
         restrict : "EA"
         replace: true
-        template: $templateCache.get("ICSW.device.livestatus.device_node")
+        template: $templateCache.get("icsw.device.livestatus.device.node")
         link: (scope, element, attrs) ->
             dml = scope.dml
             scope.data_source = ""
@@ -892,7 +892,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
-        $scope.hint_edit.edit_template = "monitoring_hint_form.html"
+        $scope.hint_edit.edit_template = "monitoring.hint.form"
         $scope.hint_edit.modify_rest_url = ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2)
         $scope.hint_edit.modify_data_before_put = (hint) ->
             $scope.restore_values(hint, true)
@@ -927,6 +927,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = (mode) ->
+            console.log "reload"
             $scope.reload_pending = true
             $scope.cur_xhr = call_ajax
                 url  : ICSW_URLS.MON_GET_NODE_CONFIG
@@ -946,22 +947,16 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                         restDataSource.reset()
                         wait_list = restDataSource.add_sources([
                             [ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
-                            [ICSW_URLS.REST_FETCH_FORMS, {
-                                "forms" : angular.toJson([
-                                    "monitoring_hint_form"
-                                 ])
-                            }],
                         ])
                         $q.all(wait_list).then((data) ->
                             $scope.devices = []
                             $scope.device_lut = {}
                             for entry in data[0]
+                                console.log entry
                                 entry.expanded = true
+                                console.log entry.monitoring_hint_set
                                 $scope.devices.push(entry)
                                 $scope.device_lut[entry.idx] = entry
-                            # forms
-                            for cur_form in data[1] 
-                                $templateCache.put(cur_form.name, cur_form.form)
                             $scope.reload_pending = false
                         )
                     else
@@ -1032,7 +1027,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
 ]).directive("monconfig", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("ICSW.device.livestatus.monconfig")
+        template : $templateCache.get("icsw.device.livestatus.monconfig")
         link : (scope, el, attrs) ->
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val and new_val.length
@@ -1042,12 +1037,12 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
 ]).directive("mhdevrow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("ICSW.device.livestatus.hint_row")
+        template : $templateCache.get("icsw.device.livestatus.device.row")
     }
 ]).directive("mhrow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("mhrow.html")
+        template : $templateCache.get("icsw.device.livestatus.hint.row")
         link : (scope) ->
             scope.get_v_type = () ->
                 return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
@@ -1092,7 +1087,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
 ]).directive("monitoringhinttable", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("ICSW.device.livestatus.hint_table")
+        template : $templateCache.get("icsw.device.livestatus.hint.table")
         link : (scope) ->
     }
 ])

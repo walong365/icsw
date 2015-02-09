@@ -121,7 +121,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools) ->
         $scope.enable_modal = true
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
-        $scope.base_edit.create_template = "device_variable_new_form.html"
+        $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all("{% url 'rest:device_variable_list' %}".slice(1))
         $scope.base_edit.new_object = (scope) -> 
             return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0}
@@ -176,7 +176,6 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
         $scope.new_devsel = (dev_pks, group_pks) ->
             wait_list = [
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson(dev_pks), "with_variables" : true, "with_meta_devices" : true, "ignore_cdg" : false, "olp" : "backbone.device.change_variables"}])
-                restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_variable_form", "device_variable_new_form"])}])
             ]
             $q.all(wait_list).then((data) ->
                 entries = data[0]
@@ -192,8 +191,6 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 for entry in $scope.entries
                     entry.expanded = false
                     entry.num_filtered = entry.device_variable_set.length
-                for cur_form in data[1] 
-                    $templateCache.put(cur_form.name, cur_form.form)
             )
         $scope.get_tr_class = (obj) ->
             if obj.is_cluster_device_group
@@ -232,15 +229,18 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             $scope.pagSettings.set_entries($scope.entries)
         $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
         $scope.form_error = (field_name) =>
-            if $scope.form[field_name].$valid
-                return ""
+            if $scope.form?
+                if $scope.form[field_name].$valid
+                    return ""
+                else
+                    return "has-error"
             else
-                return "has-error"
+                return ""
         $scope.create_for_all = (event) ->
             new_obj = {"var_type" : "i", "name" : "var_name"}
             $scope._edit_obj = new_obj
             $scope.action_string = "create for all"
-            $scope.edit_div = $compile($templateCache.get("device_variable_new_form.html"))($scope)
+            $scope.edit_div = $compile($templateCache.get("device.variable.new.form"))($scope)
             $scope.edit_div.simplemodal
                 position     : [event.pageY, event.pageX]
                 #autoResize   : true
@@ -341,7 +341,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             scope.edit_mixin.delete_confirm_str = (obj) -> "Really delete variable '#{obj.name}' ?"
             scope.edit_mixin.modify_rest_url = "{% url 'rest:device_variable_detail' 1 %}".slice(1).slice(0, -2)
             scope.edit_mixin.delete_list = scope.device.device_variable_set
-            scope.edit_mixin.edit_template = "device_variable_form.html"
+            scope.edit_mixin.edit_template = "device.variable.form"
             scope.edit_mixin.change_signal = "icsw.dv.changed"
             scope.get_value = (obj) ->
                 if obj.var_type == "s"

@@ -454,24 +454,24 @@ device_network_module.controller("network_ctrl",
         $scope.peer_open = false
         # mixins
         $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
-        $scope.netdevice_edit.create_template = "netdevice_form.html"
-        $scope.netdevice_edit.edit_template = "netdevice_form.html"
+        $scope.netdevice_edit.create_template = "netdevice.form"
+        $scope.netdevice_edit.edit_template = "netdevice.form"
         $scope.netdevice_edit.create_rest_url = Restangular.all("{% url 'rest:netdevice_list'%}".slice(1))
         $scope.netdevice_edit.modify_rest_url = "{% url 'rest:netdevice_detail' 1 %}".slice(1).slice(0, -2)
         $scope.netdevice_edit.new_object_at_tail = false
         $scope.netdevice_edit.use_promise = true
 
         $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "ni")
-        $scope.netip_edit.create_template = "net_ip_form.html"
-        $scope.netip_edit.edit_template = "net_ip_form.html"
+        $scope.netip_edit.create_template = "net.ip.form"
+        $scope.netip_edit.edit_template = "net.ip.form"
         $scope.netip_edit.create_rest_url = Restangular.all("{% url 'rest:net_ip_list'%}".slice(1))
         $scope.netip_edit.modify_rest_url = "{% url 'rest:net_ip_detail' 1 %}".slice(1).slice(0, -2)
         $scope.netip_edit.new_object_at_tail = false
         $scope.netip_edit.use_promise = true
 
         $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "np")
-        $scope.peer_edit.create_template = "peer_information_form.html"
-        $scope.peer_edit.edit_template = "peer_information_form.html"
+        $scope.peer_edit.create_template = "peer.information.form"
+        $scope.peer_edit.edit_template = "peer.information.form"
         #$scope.peer_edit.edit_template = "netip_template.html"
         $scope.peer_edit.create_rest_url = Restangular.all("{% url 'rest:peer_information_list'%}".slice(1))
         $scope.peer_edit.modify_rest_url = "{% url 'rest:peer_information_detail' 1 %}".slice(1).slice(0, -2)
@@ -479,14 +479,14 @@ device_network_module.controller("network_ctrl",
         $scope.peer_edit.use_promise = true
 
         $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nb")
-        $scope.boot_edit.edit_template = "device_boot_form.html"
+        $scope.boot_edit.edit_template = "device.boot.form"
         $scope.boot_edit.put_parameters = {"only_boot" : true}
         $scope.boot_edit.modify_rest_url = "{% url 'rest:device_tree_detail' 1 %}".slice(1).slice(0, -2)
         $scope.boot_edit.new_object_at_tail = false
         $scope.boot_edit.use_promise = true
 
         $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.scan_mixin.template = "device_network_scan_form.html"
+        $scope.scan_mixin.template = "device.network.scan.form"
         
         $scope.devsel_list = []
         $scope.devices = []
@@ -506,16 +506,6 @@ device_network_module.controller("network_ctrl",
                 # 6
                 restDataSource.reload(["{% url 'rest:netdevice_peer_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:snmp_network_type_list' %}", {}])
-                # 8
-                restDataSource.reload(["{% url 'rest:fetch_forms' %}", {
-                    "forms" : angular.toJson([
-                        "netdevice_form"
-                        "net_ip_form"
-                        "peer_information_form"
-                        "device_network_scan_form"
-                        "device_boot_form"
-                     ])
-                }]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -532,9 +522,6 @@ device_network_module.controller("network_ctrl",
                 # snmp network types
                 $scope.snt = data[7]
                 $scope.snt_lut = icswTools.build_lut($scope.snt)
-                # forms
-                for cur_form in data[8] 
-                    $templateCache.put(cur_form.name, cur_form.form)
             )
         $scope.build_luts = () ->
             $scope.dev_lut = {}

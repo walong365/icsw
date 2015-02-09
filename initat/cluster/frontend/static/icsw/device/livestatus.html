@@ -1,5 +1,5 @@
 
-<script type="text/ng-template" id="ICSW.device.livestatus.map_overview">
+<script type="text/ng-template" id="icsw.device.livestatus.map.overview">
     <svg ng-show="loc_gfx" ng-attr-width="{{ loc_gfx.width }}" ng-attr-height="{{ loc_gfx.height }}"
         ng-attr-viewBox="0 0 {{ loc_gfx.width }} {{ loc_gfx.height }}">
         <g>
@@ -66,7 +66,7 @@
     </svg>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.device_node">
+<script type="text/ng-template" id="icsw.device.livestatus.device.node">
     <g ng-attr-transform="{{ transform }}" ng-switch="data_source">
         <g ng-switch-when="">
             <circle r='20' fill='grey' stroke='black' stroke-width='1'></circle>
@@ -91,7 +91,7 @@
     </g>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.overview">
+<script type="text/ng-template" id="icsw.device.livestatus.overview">
     <h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
         <span ng-show="location_gfx_list.length"> on
             <ng-pluralize count="location_gfx_list.length" when="{'1' : '1 map', 'other' : '{} maps'}"/>
@@ -221,7 +221,7 @@
     </table>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.brief">
+<script type="text/ng-template" id="icsw.device.livestatus.brief">
     <svg width="40" height="40" font-family="'Open-Sans', sans-serif" font-size="10pt">
         <g transform="translate(20,20)">
             <newburst
@@ -235,7 +235,7 @@
     </svg>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.monconfig">
+<script type="text/ng-template" id="icsw.device.livestatus.monconfig">
     <div ng-show="!reload_pending">
         Action:
         <div class="btn-group btn-xs">
@@ -313,7 +313,7 @@
     </accordion>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.serviceinfo">
+<script type="text/ng-template" id="icsw.device.livestatus.serviceinfo">
     <h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
     <div ng-switch="service.ct">
         <div ng-switch-when="system">
@@ -352,7 +352,7 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.device_row">
+<script type="text/ng-template" id="icsw.device.livestatus.device.row">
     <td>
         <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
             <span ng_class="get_expand_class(obj)"/>
@@ -366,7 +366,7 @@
     <td>hints : {{ obj.monitoring_hint_set.length }}</td>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.hint_row">
+<script type="text/ng-template" id="icsw.device.livestatus.hint.row">
     <td title="from run {{ hint.call_idx }}">
         <span ng-show="hint.enabled">
             {{ hint.m_type }}
@@ -404,7 +404,7 @@
     <td>{{ hint.info }}</td>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.hint_table">
+<script type="text/ng-template" id="icsw.device.livestatus.hint.table">
     <table class="table table-condensed table-hover table-bordered" style="width:auto;">
         <thead>
             <tr>
@@ -429,7 +429,7 @@
     </table>
 </script>
 
-<script type="text/ng-template" id="ICSW.device.livestatus.network_graph">
+<script type="text/ng-template" id="icsw.device.livestatus.network_graph">
     <g>
         <path
             ng-repeat="node in nodes track by $index"

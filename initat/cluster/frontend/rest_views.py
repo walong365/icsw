@@ -388,38 +388,6 @@ class form_serializer(serializers.Serializer):
     form = serializers.CharField()
 
 
-class fetch_forms(viewsets.ViewSet):
-    display_name = "fetch_forms"
-
-    @rest_logging
-    def list(self, request):
-        form_list = json.loads(request.QUERY_PARAMS["forms"])
-        ext_list = []
-        for cur_form in form_list:
-            if cur_form in dir(forms):
-                ext_list.append(
-                    {
-                        "name": "{}.html".format(cur_form),
-                        "form": render_string(
-                            request,
-                            "crispy_form.html",
-                            {
-                                "form": getattr(forms, cur_form)()
-                            }
-                        )
-                    }
-                )
-            else:
-                ext_list.append(
-                    {
-                        "name": "{}.html".format(cur_form),
-                        "form": "<strong>form '{}' not found</strong>".format(cur_form)
-                    }
-                )
-        _ser = form_serializer(ext_list, many=True)
-        return Response(_ser.data)
-
-
 class ext_peer_object(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, **kwargs)
