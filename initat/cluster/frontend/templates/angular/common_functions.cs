@@ -990,6 +990,7 @@ class angular_edit_mixin
         @use_promise = false
         @put_parameters = {}
         @min_width = "600px"
+        @change_signal = undefined
     create : (event) =>
         if @new_object
             @scope.new_obj = @new_object(@scope)

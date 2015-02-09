@@ -1,205 +1,12 @@
-{% load coffeescript staticfiles %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-{% verbatim %}
-
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-device_boot_template = """
-<h2>
-    <span class="label label-danger" ng-show="conn_problems" title="number of connection problems">{{ conn_problems }}</span> Boot config for {{ devices.length }} devices<span ng-show="num_selected">, {{ num_selected }} selected</span>{{ get_global_bootserver_info() }}
-</h2>
-<form class="form-inline">
-    <div class="btn-group">
-        <input ng-repeat="entry in boot_options" type="button" ng-class="get_bo_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_bo(entry[0])"></input>
-    </div>
-    <input class="form-control" ng-model="device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"></input>
-</form>
-<table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Group</th>
-            <th>Device</th>
-            <th class="center">sel</th>
-            <th>state</th>
-            <th>network</th>
-            <th ng-repeat="entry in boot_options" ng-show="bo_enabled[entry[0]] && entry[2] < 3">
-                {{ entry[1] }}
-            </th>
-            <th ng-show="any_type_1_selected">
-                action
-            </th>
-            <th ng-show="any_type_3_selected">
-                log
-            </th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr devicerow ng-repeat-start="dev in devices"></tr>
-        <tr ng-repeat-end ng-show="bo_enabled['l'] && dev.show_log">
-            <td colspan="100">
-                <devicelogs></devicelogs>
-            </td>
-        </tr>
-    </tbody>
-    <tfoot ng-show="devices.length > 1">
-        <tr>
-            <td colspan="2">Global actions</td>
-            <td>
-                <div class="btn-group btn-group-xs">
-                    <input type="button" class="btn btn-success" value="S" ng-click="toggle_gdev_sel(1)" title="select all devices"></input>
-                    <input type="button" class="btn btn-primary" value="T" ng-click="toggle_gdev_sel(0)" title="toggle device selection"></input>
-                    <input type="button" class="btn btn-warning" value="C" ng-click="toggle_gdev_sel(-1)" title="clear device selection"></input>
-                </div>
-            </td>
-            <td></td>
-            <td></td>
-            <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]"></td>
-            <td ng-show="bo_enabled['s']">
-                <div class="btn-group" ng-show="num_selected">
-                    <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
-                        action ({{ num_selected }})<span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-click="soft_control('', 'reboot')"><a href="#">reboot</a></li>
-                        <li ng-click="soft_control('', 'halt')"><a href="#">halt</a></li>
-                        <li ng-click="soft_control('', 'poweroff')"><a href="#">poweroff</a></li>
-                    </ul>
-                </div>
-            </td>
-            <td ng-show="bo_enabled['h']">
-                <div class="btn-group" ng-show="num_selected_hc()">
-                    <button type="button" class="btn btn-xs btn-warning" data-toggle="dropdown">
-                        control ({{ num_selected_hc() }}) <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-click="hard_control('', 'cycle')"><a href="#">cycle</a></li>
-                        <li ng-click="hard_control('', 'on')"><a href="#">on</a></li>
-                        <li ng-click="hard_control('', 'off')"><a href="#">off</a></li>
-                    </ul>
-                </div>
-            </td>
-            <td>
-                <input type="button" class="btn btn-xs btn-primary" ng-show="num_selected && any_type_1_selected" value="modify ({{ num_selected }})" ng-click="modify_many($event)"></input>
-            </td>
-        </tr>
-    </tfoot>
-</table>
-<form class="form-inline">
-    <div class="btn-group">
-        <input type="button" ng-class="show_mbl && 'btn btn-sm btn-success' || 'btn btn-sm'" value="macbootlog" ng-click="toggle_show_mbl()">
-        </input>
-    </div>
-</form>
-<div ng-show="show_mbl">
-    <h4>Showing {{ mbl_entries.length }} Macbootlog entries</h4>
-    <table class="table table-condensed table-hover table-striped" style="width:auto;">
-        <thead>
-            <tr>
-                <th>Device</th>
-                <th>type</th>
-                <th>IP</th>
-                <th>MAC</th>
-                <th>Logsource</th>
-                <th>created</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="mbl in mbl_entries">
-                <td>{{ mbl.device_name }}</td>
-                <td>{{ mbl.entry_type }}</td>
-                <td>{{ mbl.ip_action }}</td>
-                <td>{{ mbl.macaddr }}</td>
-                <td style="white-space:nowrap;">{{ mbl.log_source | follow_fk:this:'log_source_lut':'name' }}</td>
-                <td>{{ get_mbl_created(mbl) }}</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-"""
-
-device_row_template = """
-    <td>{{ dev.device_group_name }}</td>
-    <td ng-class="get_device_name_class(dev)">{{ dev.full_name }}{{ get_bootserver_info(dev) }}</td>
-    <td class="center"><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev, 0)" value="sel"></button></td>
-    <td ng-class="dev.recvreq_state">{{ dev.recvreq_str }}</td>
-    <td ng-class="dev.network_state">{{ dev.network }}</td>
-    <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)" ng-bind-html="show_boot_option(entry)">
-    </td>
-    <td ng-show="bo_enabled['s']">
-        <div class="btn-group" ng-show="valid_net_state()">
-            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
-                action <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="soft_control(dev, 'reboot')"><a href="#">reboot</a></li>
-                <li ng-click="soft_control(dev, 'halt')"><a href="#">halt</a></li>
-                <li ng-click="soft_control(dev, 'poweroff')"><a href="#">poweroff</a></li>
-            </ul>
-        </div>
-        <span class='glyphicon glyphicon-ban-circle' ng-show="!valid_net_state()"></span>
-    </td>
-    <td ng-show="bo_enabled['h']">
-        <div class="btn-group" ng-repeat="cd_con in dev.slave_connections">
-            <button type="button" ng-class="get_hc_class(cd_con)" ng-disabled="get_hc_disabled(cd_con)" data-toggle="dropdown">
-                {{ get_hc_info(cd_con) }} <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="hard_control(cd_con, 'cycle')"><a href="#">cycle</a></li>
-                <li ng-click="hard_control(cd_con, 'on')"><a href="#">on</a></li>
-                <li ng-click="hard_control(cd_con, 'off')"><a href="#">off</a></li>
-            </ul>
-            <span ng-show="!$last">,</span>
-        </div>
-        <span ng-show="!dev.slave_connections">
-            waiting...
-        </span>
-        <span ng-show="dev.slave_connections && dev.slave_connections.length == 0">
-            ---
-        </span>
-    </td>
-    <td ng-show="any_type_1_selected">
-        <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_device(dev, $event)"></input>
-    </td>
-    <td ng-show="any_type_3_selected">
-        <input type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"></input>
-    </td>
-"""
-
-device_log_row_template = """
-<table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-    <tr>
-        <th>Source</th>
-        <th>User</th>
-        <th>Status</th>
-        <th>
-            <form class="form-inline">
-                Number of log lines: {{ dev.num_logs }}, show
-                <select ng-model="num_show" class="form-control input-sm" ng-options="value as value for value in [5, 20, 50, 100]">
-                </select>
-            </form>
-        </th>
-        <th>when</th>
-    </tr>
-    <tr ng-repeat="line in get_log_lines()">
-        <td style="white-space:nowrap;">{{ line[2] | follow_fk:this:'log_source_lut':'name' }}</td>
-        <td style="white-space:nowrap;">{{ line[3] | follow_fk:this:'user_lut':'login':'---' }}</td>
-        <td style="white-space:nowrap;">{{ line[4] | follow_fk:this:'log_status_lut':'name' }}</td>
-        <td>{{ line[5] }}</td>
-        <td style="white-space:nowrap;">{{ get_date(line[6]) }}</td>
-    </tr>
-</table>
-"""
-
-{% endverbatim %}
-
-device_boot_module = angular.module("icsw.device.boot", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"])
-
-device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools) ->
+device_boot_module = angular.module(
+    "icsw.device.boot",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
+    ]
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
@@ -313,7 +120,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             $scope.num_selected = (dev for dev in $scope.devices when dev.selected).length
         # mixins
         $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.device_edit.modify_rest_url = "{% url 'boot:update_device' 1 %}".slice(1).slice(0, -2)
+        $scope.device_edit.modify_rest_url = ICSW_URLS.BOOT_UPDATE_DEVICE.slice(1).slice(0, -2)
         $scope.device_edit.use_promise = true
         $scope.device_edit.modify_data_before_put = (data) ->
             # rewrite new_state / prod_link
@@ -345,20 +152,20 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             $scope.reload()
         $scope.reload = () ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_boot"}]),
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_boot"}]),
                 # 1
-                restDataSource.reload(["{% url 'rest:kernel_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:image_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:partition_table_list' %}", {}])
+                restDataSource.reload([ICSW_URLS.REST_KERNEL_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_IMAGE_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_PARTITION_TABLE_LIST, {}])
                 # 4
-                restDataSource.reload(["{% url 'rest:status_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:network_list' %}", {}])
+                restDataSource.reload([ICSW_URLS.REST_STATUS_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
                 # 6
-                restDataSource.reload(["{% url 'rest:log_source_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:log_status_list' %}", {}])
+                restDataSource.reload([ICSW_URLS.REST_LOG_SOURCE_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_LOG_STATUS_LIST, {}])
                 # 8
-                restDataSource.reload(["{% url 'rest:user_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"all_mother_servers" : true}])
+                restDataSource.reload([ICSW_URLS.REST_USER_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"all_mother_servers" : true}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -441,7 +248,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     "call_mother" : 1
                 }
                 call_ajax
-                    url     : "{% url 'boot:get_boot_info_json' %}"
+                    url     : ICSW_URLS.BOOT_GET_BOOT_INFO_JSON
                     data    : send_data
                     success : (xml) =>
                         $scope.update_info_timeout = $timeout($scope.update_info, 10000)
@@ -509,7 +316,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                         "sel_list" : angular.toJson(([dev.idx, dev.latest_log] for dev in $scope.devices))
                     }
                     call_ajax
-                        url      : "{% url 'boot:get_devlog_info' %}"
+                        url      : ICSW_URLS.BOOT_GET_DEVLOG_INFO
                         data     : send_data
                         dataType : "json"
                         success  : (json) =>
@@ -528,7 +335,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             else
                 dev_pk_list = (dev.idx for dev in $scope.devices when dev.selected)
             call_ajax
-                url     : "{% url 'boot:soft_control' %}"
+                url     : ICSW_URLS.BOOT_SOFT_CONTROL
                 data    : {
                     "dev_pk_list" : angular.toJson(dev_pk_list)
                     "command"     : command
@@ -545,7 +352,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                         for slave_con in dev.slave_connections
                             cd_pk_list.push(slave_con.idx)
             call_ajax
-                url     : "{% url 'boot:hard_control' %}"
+                url     : ICSW_URLS.BOOT_HARD_CONTROL
                 data    : {
                     "cd_pk_list" : angular.toJson(cd_pk_list)
                     "command"    : command
@@ -554,7 +361,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     parse_xml_response(xml)
         $scope.modify_device = (dev, event) ->
             $scope.device_info_str = dev.full_name
-            $scope.device_edit.edit_template = "boot_single_form.html"
+            $scope.device_edit.edit_template = "boot.single.form"
             dev.bo_enabled = $scope.bo_enabled
             if dev.bootnetdevice
                 dev.macaddr = dev.bootnetdevice.macaddr
@@ -567,7 +374,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             )
         $scope.modify_many = (event) ->
             $scope.device_info_str = "#{$scope.num_selected} devices"
-            $scope.device_edit.edit_template = "boot_many_form.html"
+            $scope.device_edit.edit_template = "boot.many.form"
             sel_devices = (dev for dev in $scope.devices when dev.selected)
             dev = {
                 "idx" : 0
@@ -631,22 +438,22 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             if $scope.show_mbl
                 $scope.fetch_macbootlog_entries()
         $scope.fetch_macbootlog_entries = () ->
-            Restangular.all("{% url 'rest:macbootlog_list' %}".slice(1)).getList({"_num_entries" : 50, "_order_by" : "-pk"}).then(
+            Restangular.all(ICSW_URLS.REST_MACBOOTLOG_LIST.slice(1)).getList({"_num_entries" : 50, "_order_by" : "-pk"}).then(
                 (data) ->
                     $scope.mbl_entries = data
                     $scope.mbl_timeout = $timeout($scope.fetch_macbootlog_entries, 5000)
             )
         $scope.get_mbl_created = (mbl) ->
             return moment.unix(mbl.created).format(DT_FORM)
-]).directive("boottable", ($templateCache) ->
+]).directive("icswDeviceBootTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("deviceboottable.html")
+        template : $templateCache.get("icsw.device.boot.table")
     }
-).directive("devicerow", ($templateCache) ->
+]).directive("icswDeviceBootRow", ["$templateCaceh", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("devicebootrow.html")
+        template : $templateCache.get("icsw.device.boot.row")
         link : (scope, el, attrs) ->
             scope.get_td_class = (entry) ->
                 dev = scope.dev
@@ -741,10 +548,10 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     else
                         return "<span class='glyphicon glyphicon-arrow-right'> #{new_val_str}"
     }
-).directive("devicelogs", ($templateCache) ->
+]).directive("icswDeviceBootLogTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("devicelogrow.html")
+        template : $templateCache.get("icsw.device.boot.log.table")
         link : (scope, el, attrs) ->
             scope.num_show = 5
             scope.get_date = (ts) ->
@@ -753,14 +560,4 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             scope.get_log_lines = () ->
                 return scope.dev.log_lines[0..scope.num_show]
     }
-).run(($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
-    $templateCache.put("deviceboottable.html", device_boot_template)
-    $templateCache.put("devicebootrow.html", device_row_template)
-    $templateCache.put("devicelogrow.html", device_log_row_template)
-)
-
-{% endinlinecoffeescript %}
-
-</script>
-
+])

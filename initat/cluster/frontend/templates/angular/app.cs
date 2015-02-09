@@ -68,7 +68,7 @@ ics_app = angular.module(
         "icsw.device.boot",
         "icsw.config.kernel",
         "icsw.config.image",
-        "icsw.partition_table",
+        "icsw.config.partition_table",
         "icsw.rms",
     ]
 )
@@ -93,7 +93,12 @@ ics_app.config(() ->
     "BASE_MODIFY_LOCATION_GFX": "{% url 'base:modify_location_gfx' %}"
     "BASE_PRUNE_CATEGORIES": "{% url 'base:prune_categories' %}"
     "BASE_UPLOAD_LOCATION_GFX": "{% url 'base:upload_location_gfx' %}"
+    "BOOT_GET_BOOT_INFO_JSON": "{% url 'boot:get_boot_info_json' %}"
+    "BOOT_GET_DEVLOG_INFO": "{% url 'boot:get_devlog_info' %}"
+    "BOOT_HARD_CONTROL": "{% url 'boot:hard_control' %}"
     "BOOT_SHOW_BOOT": "{% url 'boot:show_boot' %}"
+    "BOOT_SOFT_CONTROL": "{% url 'boot:soft_control' %}"
+    "BOOT_UPDATE_DEVICE": "{% url 'boot:update_device' 1 %}"
     "CONFIG_SHOW_CONFIGS": "{% url 'config:show_configs' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
@@ -165,6 +170,9 @@ ics_app.config(() ->
     "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
+    "REST_LOG_SOURCE_LIST": "{% url 'rest:log_source_list' %}"
+    "REST_LOG_STATUS_LIST": "{% url 'rest:log_status_list' %}"
+    "REST_MACBOOTLOG_LIST": "{% url 'rest:macbootlog_list' %}"
     "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
     "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
     "REST_NET_IP_LIST": "{% url 'rest:net_ip_list' %}"
@@ -176,6 +184,15 @@ ics_app.config(() ->
     "REST_PACKAGE_SEARCH_LIST": "{% url 'rest:package_search_list' %}"
     "REST_PACKAGE_SEARCH_RESULT_LIST": "{% url 'rest:package_search_result_list' %}"
     "REST_PACKAGE_SERVICE_LIST": "{% url 'rest:package_service_list' %}"
+    "REST_PARTITION_DETAIL": "{% url 'rest:partition_detail' 1 %}"
+    "REST_PARTITION_DISC_DETAIL": "{% url 'rest:partition_disc_detail' 1 %}"
+    "REST_PARTITION_DISC_LIST": "{% url 'rest:partition_disc_list' %}"
+    "REST_PARTITION_FS_LIST": "{% url 'rest:partition_fs_list' %}"
+    "REST_PARTITION_LIST": "{% url 'rest:partition_list' %}"
+    "REST_PARTITION_TABLE_LIST": "{% url 'rest:partition_table_list' %}"
+    "REST_SYS_PARTITION_DETAIL": "{% url 'rest:sys_partition_detail' 1 %}"
+    "REST_SYS_PARTITION_LIST": "{% url 'rest:sys_partition_list'%}"
+    "REST_STATUS_LIST": "{% url 'rest:status_list' %}"
     "REST_USER_DETAIL": "{% url 'rest:user_detail' 1 %}"
     "REST_USER_LIST": "{% url 'rest:user_list' %}"
     "REST_USER_OBJECT_PERMISSION_DETAIL": "{% url 'rest:user_object_permission_detail' 1 %}"
@@ -204,6 +221,7 @@ ics_app.config(() ->
     "SETUP_RESCAN_IMAGES": "{% url 'setup:rescan_images' %}"
     "SETUP_RESCAN_KERNELS": "{% url 'setup:rescan_kernels' %}"
     "SETUP_USE_IMAGE": "{% url 'setup:use_image' %}"
+    "SETUP_VALIDATE_PARTITION": "{% url 'setup:validate_partition' %}"
     "USER_ACCOUNT_INFO": "{% url 'user:account_info' %}"
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"
