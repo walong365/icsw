@@ -1,15 +1,13 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}{% trans "Device variables" %}{% endblock %}
 
 {% block content %}
 
-<div>
-    <div ng-controller="dv_base">
-        <devicevars></devicevars>
-    </div>
+<div ng-controller="icswDeviceVariableCtrl">
+    <icsw-device-variable-overview></icsw-device-variable-overview>
 </div>
 
 {% endblock %}
