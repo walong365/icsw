@@ -5,8 +5,8 @@ device_boot_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS) ->
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
@@ -247,7 +247,7 @@ device_boot_module = angular.module(
                     "sel_list" : $scope.devsel_list
                     "call_mother" : 1
                 }
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.BOOT_GET_BOOT_INFO_JSON
                     data    : send_data
                     success : (xml) =>
@@ -315,7 +315,7 @@ device_boot_module = angular.module(
                     send_data = {
                         "sel_list" : angular.toJson(([dev.idx, dev.latest_log] for dev in $scope.devices))
                     }
-                    call_ajax
+                    icswCallAjaxService
                         url      : ICSW_URLS.BOOT_GET_DEVLOG_INFO
                         data     : send_data
                         dataType : "json"
@@ -334,7 +334,7 @@ device_boot_module = angular.module(
                 dev_pk_list = [dev.idx]
             else
                 dev_pk_list = (dev.idx for dev in $scope.devices when dev.selected)
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.BOOT_SOFT_CONTROL
                 data    : {
                     "dev_pk_list" : angular.toJson(dev_pk_list)
@@ -351,7 +351,7 @@ device_boot_module = angular.module(
                     if dev.selected and dev.slave_connections.length
                         for slave_con in dev.slave_connections
                             cd_pk_list.push(slave_con.idx)
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.BOOT_HARD_CONTROL
                 data    : {
                     "cd_pk_list" : angular.toJson(cd_pk_list)

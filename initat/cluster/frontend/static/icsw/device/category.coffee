@@ -37,8 +37,8 @@ device_configuration_module = angular.module(
                 return cat.full_name
             else
                 return "TOP"
-).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService) ->
+).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService) ->
         access_level_service.install($scope)
         $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})
         $scope.reload = (pk_list) ->
@@ -84,7 +84,7 @@ device_configuration_module = angular.module(
         $scope.new_md_selection = (entry) ->
             # for multi-device selection
             cat = entry.obj
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"
@@ -103,7 +103,7 @@ device_configuration_module = angular.module(
                     )
         $scope.new_selection = (sel_list) =>
             # only for single-device mode
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"
