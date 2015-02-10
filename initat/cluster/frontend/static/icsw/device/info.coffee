@@ -75,12 +75,12 @@ device_info_module = angular.module(
                     # todo: destroy sub_scope
             }
     ]
-).run(($templateCache) ->
+).run(["$templateCache", ($templateCache) ->
     $templateCache.put(
         "DeviceOverviewTemplate",
         "<deviceoverview devicepk='devicepk'></deviceoverview>"
     )
-).service("DeviceOverviewSettings", [() ->
+]).service("DeviceOverviewSettings", [() ->
     def_mode = ""
     return {
         "get_mode" : () ->

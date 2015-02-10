@@ -57,7 +57,7 @@ angular.module(
                         blockUI.stop()
                         parse_xml_response(xml)
                         $scope.reload()
-]).directive("icswDevicePartitionOverview", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswDevicePartitionOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.partition.overview")
@@ -67,4 +67,4 @@ angular.module(
                     scope.new_devsel(new_val)
             )
     }
-)
+])

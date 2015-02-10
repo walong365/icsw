@@ -114,7 +114,7 @@ device_configuration_module = angular.module(
                     parse_xml_response(xml)
                     # selectively reload sidebar tree
                     reload_sidebar_tree([$scope.devices[0].idx])
-]).directive("icswDeviceCategoryOverview", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         link : (scope, el, attrs) ->
@@ -123,4 +123,4 @@ device_configuration_module = angular.module(
                     scope.reload(new_val)
             )
     }
-)
+])
