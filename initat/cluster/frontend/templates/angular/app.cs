@@ -24,9 +24,6 @@
 #- name of templates start with the name of the module with underscores, ending is ".html"
 #- no root. bindings
 
-
-root = exports ? this
-
 ics_app = angular.module(
     "icsw.app",
     [
@@ -52,7 +49,7 @@ ics_app = angular.module(
         "icsw.device.tree",
         "icsw.config.category_tree",
         "icsw.config.domain_name_tree",
-        "icsw.network.device",
+        "icsw.device.network",
         "icsw.device.configuration",
         "icsw.device.connection",
         "icsw.device.category",
@@ -69,14 +66,13 @@ ics_app = angular.module(
         # "icsw.monitoring_extended",
         "icsw.package.install",
         "icsw.device.boot",
+        "icsw.device.create",
         "icsw.config.kernel",
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
     ]
-)
-
-ics_app.config(() ->
+).config(() ->
     console.log "config"
 ).config(["blockUIConfig", (blockUIConfig) ->
     blockUIConfig.delay = 0
@@ -115,6 +111,7 @@ ics_app.config(() ->
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
+    "DEVICE_SCAN_DEVICE_NETWORK": "{% url 'device:scan_device_network' %}"
     "DEVICE_SET_SELECTION": "{% url 'device:set_selection' %}"
     "DEVICE_SHOW_CONFIGS": "{% url 'device:show_configs' %}"
     "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
@@ -148,12 +145,17 @@ ics_app.config(() ->
     "MON_GET_NODE_STATUS": "{% url 'mon:get_node_status' %}"
     "MON_LIVESTATUS": "{% url 'mon:livestatus' %}"
     "MON_OVERVIEW": "{% url 'mon:overview' %}"
+    "MON_RESOLVE_NAME": "{% url 'mon:resolve_name' %}"
     "MON_SETUP_CLUSTER": "{% url 'mon:setup_cluster' %}"
     "MON_SETUP_ESCALATION": "{% url 'mon:setup_escalation' %}"
     "MON_SETUP": "{% url 'mon:setup' %}"
     "MON_USE_PARTITION": "{% url 'mon:use_partition' %}"
+    "NETWORK_COPY_NETWORK": "{% url 'network:copy_network' %}"
     "NETWORK_DEVICE_NETWORK": "{% url 'network:device_network' %}"
     "NETWORK_DOMAIN_NAME_TREE": "{% url 'network:domain_name_tree' %}"
+    "NETWORK_GET_ACTIVE_SCANS": "{% url 'network:get_active_scans' %}"
+    "NETWORK_GET_CLUSTERS": "{% url 'network:get_clusters' %}"
+    "NETWORK_JSON_NETWORK": "{% url 'network:json_network' %}"
     "NETWORK_SHOW_NETWORKS": "{% url 'network:show_networks' %}"
     "PACK_ADD_PACKAGE": "{% url 'pack:add_package' %}"
     "PACK_CHANGE_PDC": "{% url 'pack:change_pdc' %}"
@@ -217,8 +219,12 @@ ics_app.config(() ->
     "REST_MON_EXT_HOST_LIST": "{% url 'rest:mon_ext_host_list' %}"
     "REST_MON_SERVICE_TEMPL_LIST": "{% url 'rest:mon_service_templ_list' %}"
     "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
-    "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
+    "REST_NET_IP_DETAIL": "{% url 'rest:net_ip_detail' 1 %}"
     "REST_NET_IP_LIST": "{% url 'rest:net_ip_list' %}"
+    "REST_NETDEVICE_DETAIL": "{% url 'rest:netdevice_detail' 1 %}"
+    "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
+    "REST_NETDEVICE_PEER_LIST": "{% url 'rest:netdevice_peer_list' %}"
+    "REST_NETDEVICE_SPEED_LIST": "{% url 'rest:netdevice_speed_list' %}"
     "REST_NETWORK_DEVICE_TYPE_LIST": "{% url 'rest:network_device_type_list' %}"
     "REST_NETWORK_LIST": "{% url 'rest:network_list' %}"
     "REST_NETWORK_TYPE_LIST": "{% url 'rest:network_type_list' %}"
@@ -233,7 +239,10 @@ ics_app.config(() ->
     "REST_PARTITION_FS_LIST": "{% url 'rest:partition_fs_list' %}"
     "REST_PARTITION_LIST": "{% url 'rest:partition_list' %}"
     "REST_PARTITION_TABLE_LIST": "{% url 'rest:partition_table_list' %}"
+    "REST_PEER_INFORMATION_DETAIL": "{% url 'rest:peer_information_detail' 1 %}"
+    "REST_PEER_INFORMATION_LIST": "{% url 'rest:peer_information_list' %}"
     "REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST": "{% url 'rest:quota_capable_blockdevice_list' %}"
+    "REST_SNMP_NETWORK_TYPE_LIST": "{% url 'rest:snmp_network_type_list' %}"
     "REST_STATUS_LIST": "{% url 'rest:status_list' %}"
     "REST_SYS_PARTITION_DETAIL": "{% url 'rest:sys_partition_detail' 1 %}"
     "REST_SYS_PARTITION_LIST": "{% url 'rest:sys_partition_list'%}"
@@ -277,112 +286,3 @@ ics_app.config(() ->
     "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
 })
 
-root.ics_app = ics_app
-
-create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular"])
-
-create_controller = create_module.controller("create_base", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI",
-    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI) ->
-        $scope.base_open = true
-        $scope.resolve_pending = false
-        $scope.device_data = {
-            full_name        : ""
-            comment          : "new device"
-            device_group     : "newgroup"
-            ip               : ""
-            resolve_via_ip   : true
-            routing_capable  : false
-            peer             : 0
-            icon_name        : "linux40"
-        }
-        $scope.peers = []
-        $scope.rest_map = [
-            {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
-            {"short" : "device_type", "url" : "{% url 'rest:device_type_list' %}"}
-            {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
-            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
-            {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
-            {"short" : "peers", "url" : "{% url 'rest:netdevice_peer_list' %}" },
-            {"short" : "mon_ext_host", "url" : "{% url 'rest:mon_ext_host_list' %}"}
-        ]
-        $scope.rest_data = {}
-        $scope.all_peers = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
-        $scope.reload = () ->
-            blockUI.start()
-            wait_list = []
-            for value, idx in $scope.rest_map
-                $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
-                wait_list.push($scope.rest_data[value.short])
-            $q.all(wait_list).then((data) ->
-                for value, idx in data
-                    $scope.rest_data[$scope.rest_map[idx].short] = value
-                # build image lut
-                $scope.img_lut = {}
-                for value in $scope.rest_data.mon_ext_host
-                    $scope.img_lut[value.name] = value.data_image
-                # create info strings
-                for entry in $scope.rest_data.peers
-                    entry.info = "#{entry.devname} on #{entry.device_name}"
-                $scope.peers = (entry for entry in $scope.rest_data.peers when entry.routing)
-                r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
-                for entry in $scope.peers 
-                    r_list.push(entry)
-                $scope.all_peers = r_list
-                blockUI.stop()
-            )
-        $scope.get_image_src = () ->
-            img_url = ""
-            if $scope.img_lut?
-                if $scope.device_data.icon_name of $scope.img_lut
-                    img_url = $scope.img_lut[$scope.device_data.icon_name]
-            return img_url
-        $scope.device_name_changed = () ->
-            if not $scope.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
-                $scope.resolve_name()
-        $scope.resolve_name = () ->
-            # clear ip
-            $scope.device_data.ip = ""
-            $scope.resolve_pending = true
-            call_ajax
-                url  : "{% url 'mon:resolve_name' %}"
-                data : {
-                    "fqdn" : $scope.device_data.full_name
-                }
-                success : (xml) =>
-                    $scope.$apply(
-                        $scope.resolve_pending = false
-                    )
-                    if parse_xml_response(xml)
-                        if $(xml).find("value[name='ip']").length and not $scope.device_data.ip
-                            $scope.$apply(
-                                $scope.device_data.ip = $(xml).find("value[name='ip']").text()
-                            )
-        $scope.device_groups = () ->
-            return (entry.name for entry in $scope.rest_data.device_group when entry.cluster_device_group == false and entry.enabled)
-        $scope.any_peers = () ->
-            return if $scope.peers.length > 0 then true else false
-        $scope.build_device_dict = () ->
-            return {
-                "full_name" : $scope.full_name
-                "comment"   : $scope.comment
-                "device_group" : $scope.device_group
-                "ip"           : $scope.ip
-            }
-        $scope.create_device = () ->
-            d_dict = $scope.device_data
-            blockUI.start()
-            call_ajax
-                url  : "{% url 'mon:create_device' %}"
-                data : {
-                    "device_data" : angular.toJson(d_dict)
-                }
-                success : (xml) =>
-                    parse_xml_response(xml)
-                    reload_sidebar_tree()
-                    blockUI.stop()
-                    $scope.reload()
-        $scope.reload()
-
-]).controller("form_ctrl", ["$scope",
-    ($scope) ->
-])
