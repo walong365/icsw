@@ -30,6 +30,10 @@ button_module = angular.module(
         else if type == "show"
             ret_obj.css_class = "btn-success"
             ret_obj.icon_class = ""
+        else if type == "download"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "download"
+            ret_obj.icon_class = "fa fa-download"
         else
             console.error "Invalid button type: ", attrs.type
         return ret_obj
@@ -50,7 +54,7 @@ button_module = angular.module(
         link: (scope, element, attrs) ->
 
             # attrs:
-            # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection"
+            # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"
             # - click: gets executed on click
             # - value: Custom text to display in button
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
