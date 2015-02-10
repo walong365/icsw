@@ -1,342 +1,7 @@
-{% load coffeescript staticfiles %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-{% verbatim %}
-
-device_networks_template = """
-<h3>
-    Network config for {{ devices.length }} devices ({{ get_nd_objects().length }} netdevices, {{ get_ip_objects().length }} IPs, {{ get_peer_objects().length }} peers)
-</h3>
-<accordion close-others="no">
-    <accordion-group is-open="device_open">
-        <accordion-heading>
-            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
-            {{ devices.length }} devices
-        </accordion-heading>
-        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Device</th>
-                    <th>ScanInfo</th>
-                    <th>BootInfo</th>
-                    <th>#Ports</th>
-                    <th>#IPs</th>
-                    <th>#peers</th>
-                    <th>SNMP schemes</th>
-                    <th colspan="2">action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr devrow ng-repeat="ndip_obj in devices"></tr>
-            </tbody>
-        </table>
-    </accordion-group>
-    <accordion-group is-open="netdevice_open">
-        <accordion-heading>
-            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
-            {{ get_nd_objects().length }} netdevices
-        </accordion-heading>
-        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Device</th>
-                    <th>idx</th>
-                    <th>Port</th>
-                    <th>#IPs</th>
-                    <th>#peers</th>
-                    <th>Bridge</th>
-                    <th>MAC</th>
-                    <th>Devtype</th>
-                    <th>MTU</th>
-                    <th>speed</th>
-                    <th>penalty</th>
-                    <th>flags</th>
-                    <th>status</th>
-                    <th colspan="4">action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr netdevicerow ng-repeat="ndip_obj in get_nd_objects()"></tr>
-            </tbody>
-        </table>
-    </accordion-group>
-    <accordion-group is-open="netip_open">
-        <accordion-heading>
-            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
-            {{ get_ip_objects().length }} IPs
-        </accordion-heading>
-        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Device</th>
-                    <th>Port</th>
-                    <th>IP</th>
-                    <th>Network</th>
-                    <th>DTN</th>
-                    <th>alias</th>
-                    <th colspan="2">action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr netiprow ng-repeat="ndip_obj in get_ip_objects()"></tr>
-            </tbody>
-        </table>
-    </accordion-group>
-    <accordion-group is-open="peer_open">
-        <accordion-heading>
-            <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
-            {{ get_peer_objects().length }} peer connections
-        </accordion-heading>
-        <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Device</th>
-                    <th>Port</th>
-                    <th>IPs</th>
-                    <th>cost</th>
-                    <th>Dest</th>
-                    <th>type</th>
-                    <th>Autocreated</th>
-                    <th>Info</th>
-                    <th colspan="2">action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr netpeerrow ng-repeat="ndip_obj in get_peer_objects()"></tr>
-            </tbody>
-        </table>
-    </accordion-group>
-</accordion>
-"""
-
-dev_row_template = """
-<td>
-    {{ ndip_obj.full_name }}
-</td>
-<td>
-    {{ ndip_obj.active_scan || "---" }}
-</td>
-<td>
-    <input
-        type="button"
-        class="btn btn-xs btn-warning"
-        ng-class="get_bootdevice_info_class(ndip_obj)"
-        ng-show="get_num_bootips(ndip_obj)"
-        ng-value="get_boot_value(ndip_obj)"
-        ng-click="edit_boot_settings(ndip_obj, $event)">
-    </input>
-    <span ng-show="!get_num_bootips(ndip_obj)">N/A</span>
-    <!--<button class="btn btn-primary btn-xs" ladda="true" data-style="expand-left">xxx</button>-->
-</td>
-<td>
-    {{ get_num_netdevices(ndip_obj) }}
-</td>
-<td>
-    {{ get_num_netips_dev(ndip_obj) }}
-</td>
-<td>
-    {{ get_num_peers_dev(ndip_obj) }}
-</td>
-<td>
-    <span class="label label-info" ng-repeat="obj in ndip_obj.snmp_schemes">
-        {{ obj.full_name }}
-        <span class="glyphicon glyphicon-remove"></span>
-    </span>
-</td>
-<td>
-    <button type="button" class="btn btn-xs btn-success pull-right"
-        tooltip-placement="bottom"
-        tooltip-html-unsafe="<div class='text-left'>
-        devicegroup: {{ ndip_obj.device_group_name }}<br>
-        comment: {{ ndip_obj.comment }}<br>
-        </div>
-        ">
-        <span class="glyphicon glyphicon-info-sign"></span>
-    </button>
-</td>
-<td>
-    <div class="input-group-btn" ng-show="enable_modal && acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
-        <div class="btn-group btn-xs">
-
-            <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class_for_button_type('create') }}" data-toggle="dropdown">
-                Create new
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="create_netdevice(ndip_obj, $event)"><a href="#">Netdevice</a></li>
-                <li ng-show="ndip_obj.netdevice_set.length && networks.length" ng-click="create_netip_dev(ndip_obj, $event)"><a href="#">IP Address</a></li>
-                <li ng-show="ndip_obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information_dev(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
-            </ul>
-        </div>
-        <icsw-tools-button type="reload" value="update network" size="xs"
-            ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')"
-            ng-click="scan_device_network(ndip_obj, $event)"/>
-    </div>
-</td>
-"""
-
-nd_row_template = """
-<td>
-    {{ dev_lut[ndip_obj.device].full_name }}
-</td>
-<td>
-    <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
-<td>
-    <span ng-show="ndip_obj.enabled">
-        {{ get_netdevice_name(ndip_obj) }}
-    </span>
-    <span ng-show="!ndip_obj.enabled">
-        <em><strike>{{ get_netdevice_name(ndip_obj) }}</strike></em>
-    </span>
-</td>
-<td>
-    {{ get_num_netips_nd(ndip_obj) }}
-</td>
-<td>
-    {{ get_num_peers_nd(ndip_obj) }}
-</td>
-<td>{{ get_bridge_info(ndip_obj) }}</td>
-<td>{{ ndip_obj.macaddr }}</td>
-<td>{{ get_network_type(ndip_obj) }}</td>
-<td class="text-right">{{ ndip_obj.mtu }}</td>
-<td>{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}</td>
-<td class="text-right">{{ ndip_obj.penalty }}</td>
-<td>{{ get_flags(ndip_obj) }}</td>
-<td ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
-<td>
-    <button type="button" class="btn btn-xs btn-success"
-     tooltip-placement="right"
-     tooltip-html-unsafe="<div class='text-left'>
-        device: {{ get_netdevice_name(ndip_obj) }}<br>
-        SNMP: {{ ndip_obj.snmp_idx && 'yes' || 'no' }}<span ng-show='ndip_obj.snmp'> ( {{ ndip_obj.snmp_idx }} )</span><br>
-        enabled: {{ ndip_obj.enabled | yesno2 }}<br>
-        <hr>  
-        driver: {{ ndip_obj.driver }}<br>
-        driver options: {{ ndip_obj.driver_options }}<br>
-        fake MACAddress: {{ ndip_obj.fake_macaddr }}<br>
-        force write DHCP: {{ ndip_obj.dhcp_device | yesno2 }}
-        <hr>
-        Autonegotiation: {{ ethtool_options(ndip_obj, 'a')}}<br>
-        Duplex: {{ ethtool_options(ndip_obj, 'd')}}<br>
-        Speed: {{ ethtool_options(ndip_obj, 's')}}
-        <hr>
-        Monitoring: {{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }} 
-     </div>">
-     <span class="glyphicon glyphicon-info-sign"></span>
-     </button>
-</td>
-<td>
-    <div ng-show="!dev_lut[ndip_obj.device].active_scan">
-        <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event)" size="xs"
-                ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
-    </div>
-</td>
-<td>
-    <div ng-show="!dev_lut[ndip_obj.device].active_scan">
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
-    </div>
-</td>
-<td>
-    <div class="btn-group btn-xs" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
-        <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class_for_button_type('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
-            Create new <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li ng-show="networks.length" ng-click="create_netip_nd(ndip_obj, $event)"><a href="#">IP Address</a></li>
-            <li ng-click="create_peer_information_nd(ndip_obj, $event)"><a href="#">Network topology connection</a></li>
-        </ul>
-    </div>
-</td>
-"""
-
-ip_row_template = """
-<td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-<td>{{ get_netdevice_name(ndip_obj.netdevice) }}</td>
-<td>{{ ndip_obj.ip }}</td>
-<td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
-<td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
-<td>
-    <span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} <span ng-show="ndip_obj.alias_excl">( exclusive )</span></span>
-</td>
-<td>
-    <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"/>
-    </div>
-</td>
-<td>
-    <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
-    </div>
-<td>
-"""
-
-peer_row_template = """
-<td>{{ dev_lut[nd_lut[ndip_obj.netdevice].device].full_name }}</td>
-<td>{{ get_netdevice_name(ndip_obj.netdevice) }} ({{ nd_lut[ndip_obj.netdevice].penalty }})</td>
-<td>
-    <span ng-repeat="ip in get_ip_objects(nd_lut[ndip_obj.netdevice])">{{ ip.ip }}&nbsp;</span>
-</td>
-<td>
-    with cost {{ ndip_obj.peer.penalty }}
-    &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
-</td>
-<td>
-    to {{ get_peer_target(ndip_obj) }}
-</td>
-<td>
-    {{ get_peer_type(ndip_obj) }}
-</td>
-<td class="text-center">
-    {{ ndip_obj.peer.autocreated | yesno2 }}
-</td>
-<td>
-    {{ ndip_obj.peer.info }}
-</td>
-<td>
-    <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"/>
-</td>
-<td>
-    <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
-</td>
-"""
-
-net_cluster_info_template = """
-<div class="modal-header">
-    <h3 class="modal-title">Devices in cluster ({{ cluster.device_pks.length }})</h3>
-</div>
-<div class="modal-body">
-    <ul>
-        <li ng-repeat="device in devices">
-            {{ device.full_name }} ({{ device.device_group_name }})
-        </li>
-    </ul>
-    Selected: <b>{{ selected.item }}</b>
-</div>
-<div class="modal-footer">
-    <button class="btn btn-primary" ng-click="ok()">close</button>
-</div>
-"""
-
-{% endverbatim %}
-
-#removeClassSVG = (obj, remove) ->
-#    classes = obj.attr("class")
-#    if !classes
-#        return false
-#    index = classes.search(remove);
-#    if index == -1
-#        return false
-#    else
-#        classes = classes.substring(0, index) + classes.substring((index + remove.length), classes.length)
-#        obj.attr("class", classes)
-#        return true
-
-
-angular.module("icsw.svg_tools", []).factory("svg_tools", () ->
+angular.module(
+    "icsw.svg_tools",
+    []
+).factory("svg_tools", () ->
     return {
         has_class_svg: (obj, has) ->
             classes = obj.attr("class")
@@ -356,7 +21,10 @@ angular.module("icsw.svg_tools", []).factory("svg_tools", () ->
     }
 )
 
-angular.module("icsw.mouseCapture", []).factory('mouseCapture', ["$rootScope", ($rootScope) ->
+angular.module(
+    "icsw.mouseCapture",
+    []
+).factory('mouseCaptureFactory', ["$rootScope", ($rootScope) ->
     $element = document
     mouse_capture_config = null
     mouse_move = (event) ->
@@ -383,16 +51,21 @@ angular.module("icsw.mouseCapture", []).factory('mouseCapture', ["$rootScope", (
                 $element.unbind("mousemove", mouse_move)
                 $element.unbind("mouseup", mouse_up)
     }
-]).directive('mouseCapture', () ->
+]).directive('icswMouseCapture', () ->
     return {
         restrict: "A"
-        controller: ($scope, $element, $attrs, mouseCapture) ->
-            mouseCapture.register_element($element)
+        controller: ["$scope", "$element", "mouseCaptureFactory", ($scope, $element, mouseCaptureFactory) ->
+            mouseCaptureFactory.register_element($element)
+        ]
     }
 )
 
-angular.module("icsw.dragging", ["icsw.mouseCapture"]
-).factory("dragging", ["$rootScope", "mouseCapture", ($rootScope, mouseCapture) ->
+angular.module(
+    "icsw.dragging",
+    [
+        "icsw.mouseCapture"
+    ]
+).factory("dragging", ["$rootScope", "mouseCaptureFactory", ($rootScope, mouseCaptureFactory) ->
     return {
         start_drag: (event, threshold, config) ->
             dragging = false
@@ -419,10 +92,10 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
                     if config.clicked
                         config.clicked()
             mouse_up = (event) ->
-                mouseCapture.release()
+                mouseCaptureFactory.release()
                 event.stopPropagation()
                 event.preventDefault()
-            mouseCapture.acquire(event, {
+            mouseCaptureFactory.acquire(event, {
                 mouse_move: mouse_move
                 mouse_up: mouse_up
                 released: released
@@ -432,18 +105,16 @@ angular.module("icsw.dragging", ["icsw.mouseCapture"]
     }
 ])
 
-device_network_module = angular.module(
-    "icsw.network.device",
+angular.module(
+    "icsw.device.network",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools",
     ]
-)
-
-device_network_module.controller("network_ctrl",
+).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource",
-     "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService"
+     "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
-     $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService) ->
+     $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
         $scope.enable_modal = true
@@ -457,7 +128,7 @@ device_network_module.controller("network_ctrl",
         $scope.netdevice_edit.create_template = "netdevice.form"
         $scope.netdevice_edit.edit_template = "netdevice.form"
         $scope.netdevice_edit.create_rest_url = Restangular.all("{% url 'rest:netdevice_list'%}".slice(1))
-        $scope.netdevice_edit.modify_rest_url = "{% url 'rest:netdevice_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.netdevice_edit.modify_rest_url = ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2)
         $scope.netdevice_edit.new_object_at_tail = false
         $scope.netdevice_edit.use_promise = true
 
@@ -465,7 +136,7 @@ device_network_module.controller("network_ctrl",
         $scope.netip_edit.create_template = "net.ip.form"
         $scope.netip_edit.edit_template = "net.ip.form"
         $scope.netip_edit.create_rest_url = Restangular.all("{% url 'rest:net_ip_list'%}".slice(1))
-        $scope.netip_edit.modify_rest_url = "{% url 'rest:net_ip_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.netip_edit.modify_rest_url = ICSW_URLS.REST_NET_IP_DETAIL.slice(1).slice(0, -2)
         $scope.netip_edit.new_object_at_tail = false
         $scope.netip_edit.use_promise = true
 
@@ -474,7 +145,7 @@ device_network_module.controller("network_ctrl",
         $scope.peer_edit.edit_template = "peer.information.form"
         #$scope.peer_edit.edit_template = "netip_template.html"
         $scope.peer_edit.create_rest_url = Restangular.all("{% url 'rest:peer_information_list'%}".slice(1))
-        $scope.peer_edit.modify_rest_url = "{% url 'rest:peer_information_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.peer_edit.modify_rest_url = ICSW_URLS.REST_PEER_INFORMATION_DETAIL.slice(1).slice(0, -2)
         $scope.peer_edit.new_object_at_tail = false
         $scope.peer_edit.use_promise = true
 
@@ -495,17 +166,17 @@ device_network_module.controller("network_ctrl",
             $scope.reload()
         $scope.reload= () ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
-                restDataSource.reload(["{% url 'rest:peer_information_list' %}", {}]),
+                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
+                restDataSource.reload([ICSW_URLS.REST_PEER_INFORMATION_LIST, {}]),
                 # 2
-                restDataSource.reload(["{% url 'rest:netdevice_speed_list' %}", {}]),
-                restDataSource.reload(["{% url 'rest:network_device_type_list' %}", {}])
+                restDataSource.reload([ICSW_URLS.REST_NETDEVICE_SPEED_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST, {}])
                 # 4
-                restDataSource.reload(["{% url 'rest:network_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
+                restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
                 # 6
-                restDataSource.reload(["{% url 'rest:netdevice_peer_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:snmp_network_type_list' %}", {}])
+                restDataSource.reload([ICSW_URLS.REST_NETDEVICE_PEER_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_SNMP_NETWORK_TYPE_LIST, {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -678,7 +349,7 @@ device_network_module.controller("network_ctrl",
             # intermediate state to trigger reload
             _dev.active_scan = "waiting"
             call_ajax
-                url     : "{% url 'device:scan_device_network' %}"
+                url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
                 data    :
                     "dev" : angular.toJson($scope.scan_device)
                 success : (xml) ->
@@ -687,7 +358,7 @@ device_network_module.controller("network_ctrl",
                     $scope.scan_mixin.close_modal()
                     $scope.update_scans()
         $scope.update_scans = () ->
-            Restangular.all("{% url 'network:get_active_scans' %}".slice(1)).getList({"pks" : angular.toJson($scope.devsel_list)}).then(
+            Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList({"pks" : angular.toJson($scope.devsel_list)}).then(
                 (data) ->
                     any_scans_running = false
                     for obj in data
@@ -697,9 +368,9 @@ device_network_module.controller("network_ctrl",
                         if dev.active_scan != dev.previous_scan
                             if not dev.active_scan
                                 # scan finished
-                                Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"}).then(
+                                Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"}).then(
                                     (dev_data) ->
-                                        Restangular.all("{% url 'rest:network_list' %}".slice(1)).getList().then((data) ->
+                                        Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList().then((data) ->
                                             $scope.networks = data
                                             $scope.network_lut = icswTools.build_lut($scope.networks)
                                             $scope.update_device(dev_data[0])
@@ -945,7 +616,7 @@ device_network_module.controller("network_ctrl",
             if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
                 blockUI.start()
                 call_ajax
-                    url     : "{% url 'network:copy_network' %}"
+                    url     : ICSW_URLS.NETWORK_COPY_NETWORK
                     data    : {
                         "source_dev" : src_obj.idx
                         "all_devs"   : angular.toJson(@devsel_list)
@@ -972,10 +643,10 @@ device_network_module.controller("network_ctrl",
         $scope.get_boot_value = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
             return "#{num_bootips} IPs (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
-]).directive("netdevicerow", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswDeviceNetworkNetdeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("netdevicerow.html")
+        template: $templateCache.get("icsw.device.network.netdevice.row")
         link : (scope, element, attrs) ->
             scope.get_network_type = (ndip_obj) ->
                 if ndip_obj.snmp_network_type
@@ -1004,37 +675,28 @@ device_network_module.controller("network_ctrl",
                 else
                     return "warning text-center"
     }        
-]).directive("netiprow", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswDeviceNetworkIpRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("netiprow.html")
-        link : (scope, element, attrs) ->
+        template: $templateCache.get("icsw.device.network.ip.row")
     }
-]).directive("devrow", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswDeviceNetworkDeviceRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("devrow.html")
-        link : (scope, element, attrs) ->
-            #scope.get_snmp_scheme_info = (obj) ->
-            #    _sc = obj.snmp_schemes
-            #    if _sc.length
-            #        return ("#{_entry.snmp_scheme_vendor.name}.#{_entry.name}" for _entry in _sc).join(", ")
-            #    else
-            #        return "---"
+        template: $templateCache.get("icsw.device.network.device.row")
     }
-]).directive("netpeerrow", ["$templateCache", "$compile", ($templateCache, $compile) ->
+]).directive("icswDeviceNetworkPeerRow", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
-        template: $templateCache.get("peerrow.html")
-        link : (scope, element, attrs) ->
+        template: $templateCache.get("icsw.device.network.peer.row")
     }
-]).directive("devicenetworks", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+]).directive("icswDeviceNetworkOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("devicenetworks.html")
+        template : $templateCache.get("icsw.device.network.overview")
         link : (scope, el, attrs) ->
             if attrs["disablemodal"]?
-                scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
+                scope.enable_modal = if attrs["disablemodal"] in ["true", "1"] then false else true
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val and new_val.length
                     scope.new_devsel(new_val)
@@ -1045,18 +707,23 @@ device_network_module.controller("network_ctrl",
                     scope.new_devsel(args[1])
                 )
     }
-]).run(["$templateCache", ($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
-    $templateCache.put("devicenetworks.html", device_networks_template)
-    $templateCache.put("netdevicerow.html", nd_row_template)
-    $templateCache.put("netiprow.html", ip_row_template)
-    $templateCache.put("peerrow.html", peer_row_template)
-    $templateCache.put("devrow.html", dev_row_template)
-    $templateCache.put("net_cluster_info.html", net_cluster_info_template)
-])
+]).directive("icswDeviceNetworkTotal", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.network.total")
+    }
+]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS) ->
+        cluster_info_ctrl = ($scope, $modalInstance, Restangular, ICSW_URLS, cluster) ->
+            $scope.cluster = cluster
+            $scope.devices = []
+            Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
+                (data) ->
+                    $scope.devices = data
+            )
+            $scope.ok = () ->
+                $modalInstance.close()
 
-device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus) ->
         access_level_service.install($scope)
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.devices = args[1] 
@@ -1067,7 +734,7 @@ device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter
             $scope.devices = _dev_sel
         $scope.reload = () ->
             call_ajax
-                url      : "{% url 'network:get_clusters' %}"
+                url      : ICSW_URLS.NETWORK_GET_CLUSTERS
                 dataType : "json"
                 success  : (json) =>
                     $scope.$apply(
@@ -1079,7 +746,7 @@ device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter
         $scope.show_cluster = (cluster) ->
             _modal = $modal.open(
                 {
-                    templateUrl : "net_cluster_info.html"
+                    templateUrl : "icsw.device.network.cluster.info"
                     controller  : cluster_info_ctrl
                     size : "lg"
                     resolve : {
@@ -1088,26 +755,14 @@ device_network_module.controller("cluster_ctrl", ["$scope", "$compile", "$filter
                 }
             )          
         $scope.reload()
-])
-
-cluster_info_ctrl = ($scope, $modalInstance, Restangular, cluster) ->
-    $scope.cluster = cluster
-    $scope.devices = []
-    Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
-        (data) ->
-            $scope.devices = data
-    )
-    $scope.ok = () -> 
-        $modalInstance.close()
-
-device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
         $scope.graph_sel = "none"
         $scope.devices = []
         $scope.new_devsel = (_dev_sel) ->
             $scope.devices = _dev_sel
-]).directive("nethostnode", ["dragging", (dragging) ->
+]).directive("icswDeviceNetworkHostNode", ["dragging", "$templateCache", (dragging, $templateCache) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
@@ -1115,19 +770,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
         scope: 
             node: "=node"
             redraw: "=redraw"
-        template: """
-{% verbatim %}
-<g class="node draggable" node_id="{{ node.id }}"
-    ng-mouseenter="mouse_enter()"
-    ng-mouseleave="mouse_leave()"
-    ng-click="mouse_click()"
-    ng-dblclick="double_click($event)"
->
-    <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
-    <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
-</g>       
-{% endverbatim %}
-"""
+        template: $templateCache.get("icsw.device.network.host.node")
         link : (scope, element, attrs) ->
             scope.stroke_width = 1
             scope.focus = true
@@ -1162,7 +805,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 cur_di = new device_info(event, scope.node.id)
                 cur_di.show()
     }
-]).directive("nethostlink", () ->
+]).directive("icswDeviceNetworkHostLink", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
@@ -1170,12 +813,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
         scope: 
             link: "=link"
             redraw: "=redraw"
-        template: """
-{% verbatim %}
-<line stroke="#ff7788" stroke-width="2" opacity="1">
-</line>
-{% endverbatim %}
-"""
+        template: $templateCache.get("icsw.device.network.host.link")
         link : (scope, element, attrs) ->
             scope.$watch("link", (new_val) ->
                 scope.link = new_val
@@ -1189,23 +827,16 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 element.attr("y2", scope.link.y2c)
             )
     }
-).directive("networkgraph", (msgbus) ->
+]).directive("icswDeviceNetworkGraph", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         replace: true
-        template: """
-{% verbatim %}
-<div>
-    <h4>{{ zoom.factor | number:2 }}@({{ offset.x | number:0 }}, {{ offset.y | number:0 }})</h4>
-    <networkgraph2></networkgraph2>
-</div>
-{% endverbatim %}
-"""
+        template: $templateCache.get("icsw.device.network.graph")
         link: (scope, element, attrs) ->
             if not attrs["devicepk"]?
                 msgbus.emit("devselreceiver")
                 msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[1])                    
+                    scope.new_devsel(args[1])
                 )
             scope.prev_size = {width:100, height:100}
             scope.get_element_dimensions = () ->
@@ -1234,32 +865,12 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 scope.$apply()
             )
     }
-).directive("networkgraph2", ["d3_service", "dragging", "svg_tools", "blockUI", (d3_service, dragging, svg_tools, blockUI) ->
+]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
         replace: true
-        template: """
-{% verbatim %}
-<svg
-    class="draggable"
-    ng-attr-width="{{ size.width }}"
-    ng-attr-height="{{ size.height }}"
-    ng-attr-viewBox="0 0 {{ size.width }} {{ size.height }}"
-    preserveAspectRatio="xMidYMid"
-    pointer-events: "all"
-    msd-wheel="mouse_wheel($event, $delta, $deltax, $deltay)"
-    ng-mousedown="mouse_down($event)"
->
-    <!-- translate before scale: no need to scale offsets -->
-    <rect style="stroke:black;stroke-width:2px;fill-opacity:0" x="0" y="0" ng-attr-width="{{ size.width }}" ng-attr-height="{{ size.height }}"></rect>
-    <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }}) scale({{ zoom.factor }})">
-        <nethostlink ng-repeat="link in links" link="link" redraw="redraw_nodes"></nethostlink>
-        <nethostnode ng-repeat="node in nodes" node="node" redraw="redraw_nodes"></nethostnode>
-    </g>
-</svg>
-{% endverbatim %}
-""" 
+        template: $templateCache.get("icsw.device.network.graph2")
         link : (scope, element, attrs) ->
             scope.cur_scale = 1.0
             scope.cur_trans = [0, 0]
@@ -1278,7 +889,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                     "loading, please wait..."
                 )
                 call_ajax
-                    url      : "{% url 'network:json_network' %}"
+                    url      : ICSW_URLS.NETWORK_JSON_NETWORK
                     data     : 
                         "graph_sel" : scope.graph_sel
                     dataType : "json"
@@ -1395,7 +1006,3 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 )
     }
 ])
-
-{% endinlinecoffeescript %}
-
-</script>

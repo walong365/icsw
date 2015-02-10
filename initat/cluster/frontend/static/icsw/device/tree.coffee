@@ -1,10 +1,15 @@
 device_module = angular.module(
     "icsw.device.tree",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table", "icsw.tools.table", "icsw.tools"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table",
+        "icsw.tools.table", "icsw.tools", "icsw.tools.button"
     ]
-).controller("icswDeviceTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS) ->
+).controller("icswDeviceTreeCtrl",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout",
+     "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout,
+     $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService) ->
+        $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
         $scope.rest_map = [

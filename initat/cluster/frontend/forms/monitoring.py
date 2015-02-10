@@ -137,14 +137,14 @@ class mon_contact_form(ModelForm):
             "Base data",
             Field(
                 "user",
-                repeat="value.idx as value in rest_data.user | orderBy:'login'",
+                repeat="value.idx as value in config_service.user | orderBy:'login'",
                 display="info",
                 filter="{info:$select.search}",
                 placeholder="please select an user",
             ),
             Field(
                 "notifications",
-                repeat="value.idx as value in rest_data.mon_notification | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_notification | orderBy:'name'",
                 placeholder="Select one or more notifications",
                 display="name",
                 filter="{name:$select.search}",
@@ -155,7 +155,7 @@ class mon_contact_form(ModelForm):
             "Service settings",
             Field(
                 "snperiod",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -184,7 +184,7 @@ class mon_contact_form(ModelForm):
             "Host settings",
             Field(
                 "hnperiod",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -247,7 +247,7 @@ class mon_service_templ_form(ModelForm):
             "Check",
             Field(
                 "nsc_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -262,7 +262,7 @@ class mon_service_templ_form(ModelForm):
             "Notification",
             Field(
                 "nsn_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -426,21 +426,21 @@ class mon_contactgroup_form(ModelForm):
             "settings",
             Field(
                 "members",
-                repeat="value.idx as value in rest_data.mon_contact | orderBy:'user_name'",
+                repeat="value.idx as value in config_service.mon_contact | orderBy:'user_name'",
                 display="user_name",
                 placeholder="please select one or more users",
                 filter="{user_name:$select.search}",
             ),
             Field(
                 "device_groups",
-                repeat="value.idx as value in rest_data.device_group | orderBy:'name'",
+                repeat="value.idx as value in config_service.device_group | orderBy:'name'",
                 display="name",
                 placeholder="please select one or more device groups",
                 filter="{name:$select.search}",
             ),
             Field(
                 "service_templates",
-                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'",
                 display="name",
                 placeholder="please select one or more service templates",
                 filter="{name:$select.search}",
@@ -475,7 +475,7 @@ class mon_device_templ_form(ModelForm):
             Field("name"),
             Field(
                 "mon_service_templ",
-                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'",
                 display="name",
                 placeholder="please select a service template",
                 filter="{name:$select.search}",
@@ -485,14 +485,14 @@ class mon_device_templ_form(ModelForm):
             "Check",
             Field(
                 "host_check_command",
-                repeat="value.idx as value in rest_data.host_check_command | orderBy:'name'",
+                repeat="value.idx as value in config_service.host_check_command | orderBy:'name'",
                 display="name",
                 placeholder="please select a host check command",
                 filter="{name:$select.search}",
             ),
             Field(
                 "mon_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -507,7 +507,7 @@ class mon_device_templ_form(ModelForm):
             "Notification",
             Field(
                 "not_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -1060,7 +1060,7 @@ class device_monitoring_form(ModelForm):
             "Basic settings",
             Field(
                 "md_cache_mode",
-                repeat="value.idx as value in settings.md_cache_modes",
+                repeat="value.idx as value in config_service.md_cache_modes",
                 display="name",
                 placeholder="please select a cache mode",
                 filter="{name:$select.search}",
@@ -1068,7 +1068,7 @@ class device_monitoring_form(ModelForm):
             ),
             Field(
                 "mon_device_templ",
-                repeat="value.idx as value in rest_data.mon_device_templ",
+                repeat="value.idx as value in config_service.mon_device_templ",
                 display="name",
                 placeholder="please select a device template",
                 filter="{name:$select.search}",
@@ -1076,7 +1076,7 @@ class device_monitoring_form(ModelForm):
             ),
             Field(
                 "mon_ext_host",
-                repeat="value.idx as value in rest_data.mon_ext_host",
+                repeat="value.idx as value in config_service.mon_ext_host",
                 display="name",
                 placeholder="please select an icon",
                 filter="{name:$select.search}",
@@ -1085,7 +1085,7 @@ class device_monitoring_form(ModelForm):
             ),
             Field(
                 "monitor_server",
-                repeat="value.idx as value in rest_data.mon_server",
+                repeat="value.idx as value in config_service.mon_server",
                 display="name",
                 placeholder="please select a monitoring server",
                 filter="{name:$select.search}",
@@ -1122,7 +1122,7 @@ class device_monitoring_form(ModelForm):
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            Button("fetch", "Fetch disk layout", css_class="btn-warning", ng_click="settings.fn.fetch(this.edit_obj)"),
+            Button("fetch", "Fetch disk layout", css_class="btn-warning", ng_click="config_service.fetch(this.edit_obj)"),
         ),
     )
 

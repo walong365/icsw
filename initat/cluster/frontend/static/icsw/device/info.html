@@ -44,9 +44,9 @@
                 Network{{ addon_text_nmd }}
             </tab-heading>
             <div class="panel panel-default"><div class="panel-body">
-                <div ng-controller="network_ctrl">
-                    <devicenetworks devicepk="pk_list['network']" disablemodal="true">
-                    </devicenetworks>
+                <div ng-controller="icswDeviceNetworkCtrl">
+                    <icsw-device-network-overview devicepk="pk_list['network']" disablemodal="true">
+                    </icsw-device-network-overview>
                 </div>
             </div></div>
         </tab>

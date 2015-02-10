@@ -67,7 +67,7 @@
     <th>Enabled</th>
     <th>Type</th>
     <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]">{{ entry[1] }}</th>
-    <th colspan="2" class="text-center">action</th>
+    <th colspan="2" class="text-center">Action</th>
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.cdg.row">
@@ -145,12 +145,15 @@
 
                     <tr>
                         <td colspan="99">
-
                             <div class="btn-group">
-                                <input type="button" class="btn btn-success" value="create device" ng-show="dg_present()" ng-click="create('device', $event)"></button>
-                                <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
-                                <input ng-disabled="num_selected() == 0" type="button" class="btn btn-primary" value="modify selected" ng-click="edit_many($event)"></button>
-                                <input ng-disabled="num_selected() == 0" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
+                                <button ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('create')}}"
+                                       ng-show="dg_present()" ng-click="create('device', $event)"> create device</button>
+                                <button ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('create')}}"
+                                       ng-click="create('device_group', $event)"> create devicegroup</button>
+                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('modify')}}"
+                                       ng-click="edit_many($event)"> modify selected</button>
+                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{icswToolsButtonConfigService.get_css_and_icon_class('delete')}}"
+                                       ng-click="delete_many($event)"> delete selected</button>
                             </div>
                         </td>
                     </tr>
@@ -183,7 +186,7 @@
                         <th st-sort='st_attrs.enabled'>Enabled</th>
                         <th st-sort='st_attrs.type'>Type</th>
                         <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]" st-sort="{{'st_attrs.'+entry[0]}}">{{ entry[1] }}</th>
-                        <th colspan="2" class="text-center">action</th>
+                        <th colspan="2" class="text-center">Action</th>
                     </tr>
                 </thead>
 

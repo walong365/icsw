@@ -2,78 +2,10 @@
 
 {% load i18n coffeescript crispy_forms_tags staticfiles %}
 
-{% block title %}{% trans "Monitoring,  device settings" %}{% endblock %}
+{% block title %}{% trans "Monitoring device settings" %}{% endblock %}
 
 {% block content %}
 
-<div>
-
-<script type="text/ng-template" id="monitoring_device.html">
-    {% crispy device_monitoring_form device_monitoring_form.helper %}
-</script>
-
-{% verbatim %}
-
-<script type="text/ng-template" id="mon_device_head.html">
-    <tr>
-        <th>Name</th>   
-        <th>Checks</th>
-        <th>Resolve</th>
-        <th>Template</th>
-        <th>Cache mode</th>
-        <th>Disk layout</th>
-        <th>Image</th>
-        <th>PerfData</th>
-        <th>Flap</th>
-        <th>NVroot</th>
-        <th>NVparent</th>
-        <th>MonServer</th>
-        <th colspan="1" class="text-center">action</th>
-    </tr>
-</script>
-
-<script type="text/ng-template" id="mon_device_row.html">
-    <td>{{ obj.full_name }}</td>
-    <td>{{ obj.monitor_checks | yesno1 }}</td>
-    <td>{{ obj.mon_resolve_name | yesno2 }}</td>
-    <td>{{ obj.mon_device_templ | array_lookup:rest_data.mon_device_templ:"name" }}</td>
-    <td>{{ obj.md_cache_mode | array_lookup:settings.md_cache_modes:"name" }}</td>
-    <td>{{ obj.act_partition_table | yesno1 }}</td>
-    <td class="text-center">
-        <span ng-if="obj.mon_ext_host"> 
-            <img ng-src="{{ obj.mon_ext_host | array_lookup:rest_data.mon_ext_host:'data_image' }}" width="24px" height="24px"></img>
-        </span>
-        <span ng-if="obj.mon_ext_host == null">
-            ---
-        </span> 
-    </td>
-    <td>{{ obj.enable_perfdata | yesno1 }}</td>
-    <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
-    <td>{{ obj.automap_root_nagvis | yesno1 }}</td>
-    <td>{{ obj.nagvis_parent | array_lookup:entries:"name" }}</td>
-    <td>{{ obj.monitor_server | array_lookup:rest_data.mon_server:"full_name":"Master" }}</td>
-    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
-</script>
-
-<script type="text/ng-template" id="mon_meta_device_row.html">
-    <td class="active" colspan="12">Devicegroup {{ obj.device_group_name }}</td>
-</script>
-
-<div ng-controller="mon_device_base">
-    <h2>Devices ({{ entries | array_length }} entries)</h2>
-    <table class="table table-condensed table-hover" style="width:auto;">
-        <thead mondevicehead></thead>
-        <tbody>
-            <tr><td colspan="12" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="1"></td></tr>
-            <tr mondevicerow ng-repeat="obj in entries | paginator:this"></tr>
-        </tbody>
-    </table>
-</div>
-
-{% endverbatim %}
-
-</div>
-
-<div id="mon_tables"></div>
+<icsw-monitoring-device></icsw-monitoring-device>
 
 {% endblock %}

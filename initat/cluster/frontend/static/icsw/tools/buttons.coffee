@@ -39,7 +39,11 @@ button_module = angular.module(
         return ret_obj
     return {
         get_config_for_button_type: get_config_for_button_type
-        get_css_class_for_button_type: (type) -> return get_config_for_button_type(type).css_class
+        get_css_class: (type) -> return get_config_for_button_type(type).css_class
+        get_icon_class: (type) -> return get_config_for_button_type(type).icon_class
+        get_css_and_icon_class: (type) ->
+            conf = get_config_for_button_type(type)
+            return conf.css_class + " " + conf.icon_class
     }
 ).directive('icswToolsButton', ["icswToolsButtonConfigService", (icswToolsButtonsConfigService) ->
     return {
