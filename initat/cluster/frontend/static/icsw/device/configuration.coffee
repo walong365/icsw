@@ -33,8 +33,8 @@ angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
-).controller("config_vars_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService) ->
+).controller("config_vars_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
         $scope.loaded = false
@@ -43,7 +43,7 @@ angular.module(
         $scope.load_vars = () ->
             if not $scope.loaded
                 $scope.loaded = true
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.CONFIG_GET_DEVICE_CVARS
                     data    :
                         "keys" : angular.toJson($scope.devsel_list)
@@ -273,7 +273,7 @@ angular.module(
                     scope.new_devsel(args[0])                    
                 )
     }
-]).directive("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+]).directive("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswCallAjaxService", (Restangular, ICSW_URLS, icswCallAjaxService) ->
     return {
         restrict : "EA"
         link: (scope, el, attrs) ->
@@ -313,7 +313,7 @@ angular.module(
                         value = 0
                     if conf_idx in meta_dev.local_selected
                         value = 0
-                    call_ajax
+                    icswCallAjaxService
                         url  : ICSW_URLS.CONFIG_ALTER_CONFIG_CB
                         data : {
                             "conf_pk" : conf_idx

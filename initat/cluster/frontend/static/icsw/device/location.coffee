@@ -66,8 +66,8 @@ angular.module(
                 @scope.active_loc_gfx = undefined
                 @scope.gfx_cat = undefined
             @show_active()
-).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS",
-    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS) ->
+).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService) ->
         access_level_service.install($scope)
         $scope.DEBUG = false
         $scope.loc_tree = new icswDeviceLocationTreeService($scope, {})
@@ -128,7 +128,7 @@ angular.module(
         $scope.new_md_selection = (entry) ->
             # for multi-device selection
             cat = entry.obj
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"
@@ -143,7 +143,7 @@ angular.module(
                         reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
                     )
         $scope.new_selection = (sel_list) =>
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.BASE_CHANGE_CATEGORY
                 data    :
                     "obj_type" : "device"

@@ -7,8 +7,10 @@ device_module = angular.module(
 ).controller("icswDeviceTreeCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout",
      "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
+     "icswCallAjaxService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout,
-     $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService) ->
+     $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
+     icswCallAjaxService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
@@ -151,7 +153,7 @@ device_module = angular.module(
             $scope.create_or_edit(event, false, edit_obj)
         $scope.modify_many = () ->
             #console.log "mm", $scope.edit_obj
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
                 data    : {
                     "change_dict" : angular.toJson($scope.edit_obj)
@@ -166,7 +168,7 @@ device_module = angular.module(
         $scope.delete_many = (event) ->
             simple_modal($modal, $q, "Really delete " + $scope.num_selected() + " devices ?").then(
                 () ->
-                    call_ajax
+                    icswCallAjaxService
                         url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
                         data    : {
                             "change_dict" : angular.toJson({"delete" : true})
@@ -291,7 +293,7 @@ device_module = angular.module(
                     new_obj.domain_tree_node = (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
             return new_obj
         $scope.update_selected = () ->
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.DEVICE_SET_SELECTION
                 data    : {
                     "angular_sel" : angular.toJson((entry.idx for entry in $scope.entries when entry.selected))

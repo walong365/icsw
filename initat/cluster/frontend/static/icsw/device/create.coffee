@@ -3,8 +3,8 @@ create_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "restangular"
     ]
-).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS",
-    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS) ->
+).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswCallAjaxService) ->
         $scope.base_open = true
         $scope.resolve_pending = false
         $scope.device_data = {
@@ -65,7 +65,7 @@ create_module = angular.module(
             # clear ip
             $scope.device_data.ip = ""
             $scope.resolve_pending = true
-            call_ajax
+            icswCallAjaxService
                 url  : ICSW_URLS.MON_RESOLVE_NAME
                 data : {
                     "fqdn" : $scope.device_data.full_name
@@ -93,7 +93,7 @@ create_module = angular.module(
         $scope.create_device = () ->
             d_dict = $scope.device_data
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url  : ICSW_URLS.MON_CREATE_DEVICE
                 data : {
                     "device_data" : angular.toJson(d_dict)
