@@ -97,7 +97,10 @@ angular.module(
                 scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
 
                 scope.reload = () ->
-                    scope.rest.getList().then(scope.data_received)
+
+                    options = if scope.config_service.rest_options? then  scope.config_service.rest_options else {}
+
+                    scope.rest.getList(options).then(scope.data_received)
 
                 scope.reload()
 

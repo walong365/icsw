@@ -28,7 +28,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     return data
 ]).service('icswMonitoringBasicService', ["ICSW_URLS", (ICSW_URLS) ->
     get_use_count =  (obj) ->
-            return obj.service_check_period.length# + obj.mon_device_templ_set.length
+            return obj.service_check_period.length   # + obj.mon_device_templ_set.length
     return {
         rest_url           : ICSW_URLS.REST_MON_PERIOD_LIST
         delete_confirm_str : (obj) ->

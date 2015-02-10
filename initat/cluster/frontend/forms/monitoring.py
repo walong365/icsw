@@ -1060,7 +1060,7 @@ class device_monitoring_form(ModelForm):
             "Basic settings",
             Field(
                 "md_cache_mode",
-                repeat="value.idx as value in settings.md_cache_modes",
+                repeat="value.idx as value in config_service.md_cache_modes",
                 display="name",
                 placeholder="please select a cache mode",
                 filter="{name:$select.search}",
@@ -1068,7 +1068,7 @@ class device_monitoring_form(ModelForm):
             ),
             Field(
                 "mon_device_templ",
-                repeat="value.idx as value in rest_data.mon_device_templ",
+                repeat="value.idx as value in config_service.mon_device_templ",
                 display="name",
                 placeholder="please select a device template",
                 filter="{name:$select.search}",
@@ -1076,7 +1076,7 @@ class device_monitoring_form(ModelForm):
             ),
             Field(
                 "mon_ext_host",
-                repeat="value.idx as value in rest_data.mon_ext_host",
+                repeat="value.idx as value in config_service.mon_ext_host",
                 display="name",
                 placeholder="please select an icon",
                 filter="{name:$select.search}",
@@ -1085,7 +1085,7 @@ class device_monitoring_form(ModelForm):
             ),
             Field(
                 "monitor_server",
-                repeat="value.idx as value in rest_data.mon_server",
+                repeat="value.idx as value in config_service.mon_server",
                 display="name",
                 placeholder="please select a monitoring server",
                 filter="{name:$select.search}",
@@ -1122,7 +1122,7 @@ class device_monitoring_form(ModelForm):
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-            Button("fetch", "Fetch disk layout", css_class="btn-warning", ng_click="settings.fn.fetch(this.edit_obj)"),
+            Button("fetch", "Fetch disk layout", css_class="btn-warning", ng_click="config_service.fetch(this.edit_obj)"),
         ),
     )
 
