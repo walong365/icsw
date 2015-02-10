@@ -1,17 +1,13 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
+{% load i18n %}
 
 {% block title %}{% trans "Device connections" %}{% endblock %}
 
 {% block content %}
 
-{% verbatim %}
-
-<div ng-controller="connection_ctrl">
-    <deviceconnection></deviceconnection>
+<div ng-controller="icswDeviceConnectionCtrl">
+    <icsw-device-connection-overview></icsw-device-connection-overview>
 </div>
-
-{% endverbatim %}
 
 {% endblock %}

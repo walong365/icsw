@@ -1,91 +1,11 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript staticfiles crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}{% trans "Device network settings" %}{% endblock %}
 
 {% block content %}
 
-{% verbatim %}
-
-<div>
-    <tabset>
-        <tab heading="settings">
-            <div ng-controller="network_ctrl">
-                <devicenetworks></devicenetworks>
-                <div class="input-group-btn" ng-show="devices.length > 1" ng-if="acl_create(null, 'backbone.device.change_network')">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
-                            Copy network from<span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </tab>
-        <tab heading="Network topology">
-            <div ng-controller="graph_ctrl">
-                <h3>
-                    Network topology for {{ devices.length }} devices
-                </h3>
-                <form class="form-inline">
-                    Show network topology for
-                    <div class="form-group">
-                        <select ng-model="graph_sel" class="form-control" ng-change="fetch_data()">
-                            <option value="none">none</option>
-                            <option value="all_with_peers" title="all devices with peers" ng-if="acl_read(null, 'backbone.network.show_clusters')">all peered</option>
-                            <option value="all" title="all devices">all</option>
-                            <option value="sel">selected</option>
-                            <option value="selp1" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 1 (next ring)</option>
-                            <option value="selp2" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 2</option>
-                            <option value="selp3" ng-if="acl_read(null, 'backbone.network.show_clusters')">selected + 3</option>
-                            <option value="core" ng-if="acl_read(null, 'backbone.network.show_clusters')">core (non-trivial)</option>
-                        </select>, mode:
-                    </div>
-                    <div class="form-group">
-                        <input type="button" class="btn btn-sm btn-success" value="Redraw" ng-click="fetch_data()"/>
-                    </div>              
-                </form>
-                <div mouse-capture>
-                <networkgraph></networkgraph>
-                </div>
-            </div>
-        </tab>
-        <tab heading="clusters" ng-show="acl_read(null, 'backbone.network.show_clusters') && true || false" ng-controller="cluster_ctrl">
-         <!--=""> -->
-            <div>
-                <h3>
-                    Network clusters ({{ clusters.length }}), <input type="button" class="btn btn-sm btn-warning" value="reload" ng-click="reload()"></input>
-                </h3>
-                <table class="table table-condensed table-hover table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <th>Index</th>
-                            <th>has netdevices</th>
-                            <th>devices</th>
-                            <th>netdevices</th>
-                            <th>selected</th>
-                            <th>action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="cluster in clusters">
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ cluster.with_netdevices | yesno2 }}</td>
-                            <td class="text-right">{{ cluster.devices }}</td>
-                            <td class="text-right">{{ cluster.net_devices }}</td>
-                            <td class="text-center">{{ is_selected(cluster) }}</td>
-                            <td><input type="button" class="btn btn-xs btn-primary" value="show" ng-click="show_cluster(cluster)"></input></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </tab>
-    </tabset>
-</div>
-
-{% endverbatim %}
+<icsw-device-network-total></icsw-device-network-total>
 
 {% endblock %}

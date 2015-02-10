@@ -1,7 +1,7 @@
 config_module = angular.module(
     "icsw.config.config",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
 ).service("icswConfigCategoryTreeService", () ->
     class cat_tree extends tree_config
@@ -26,8 +26,9 @@ config_module = angular.module(
                     return []
             )
             @scope.new_selection(sel_list)
-).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window) ->
+).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService) ->
+        $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
         $scope.cached_uploads = []

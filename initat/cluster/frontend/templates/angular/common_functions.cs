@@ -1375,5 +1375,3 @@ root.reload_sidebar_tree = reload_sidebar_tree
 {% endinlinecoffeescript %}
 
 </script>
-
-

@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}{% trans "Device Configuration" %}{% endblock %}
 
@@ -8,8 +8,8 @@
 
 {% verbatim %}
 
-<div ng-controller="config_ctrl">
-    <deviceconfig></deviceconfig>    
+<div ng-controller="icswDeviceConfigurationCtrl">
+    <icsw-device-configuration-overview></icsw-device-configuration-overview>
 </div>
 
 {% endverbatim %}

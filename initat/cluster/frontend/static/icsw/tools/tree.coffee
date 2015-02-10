@@ -362,7 +362,8 @@ class tree_config
             r_class.push "dynatree-exp-c"
         return r_class
 
-tree_module = angular.module("icsw.tools.tree",
+tree_module = angular.module(
+    "icsw.tools.tree",
     []
 ).directive("tree", ["$compile", "$templateCache",
     ($compile, $templateCache) ->
