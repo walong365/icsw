@@ -1,6 +1,4 @@
-#!/usr/bin/python -Otu
-#
-# Copyright (C) 2007-2008,2011-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2011-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -51,8 +49,12 @@ class write_etc_hosts(cs_base_class.server_com):
         dev_r = cluster_location.device_recognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))
         # get all peers to local machine and local netdevices
-        my_idxs = netdevice.objects.filter(
-            Q(device__in=server_idxs) & Q(device__enabled=True) & Q(device__device_group__enabled=True)
+        my_idxs = netdevice.objects.exclude(
+            Q(enabled=False)
+        ).filter(
+            Q(device__in=server_idxs) &
+            Q(device__enabled=True) &
+            Q(device__device_group__enabled=True)
         ).values_list("pk", flat=True)
         # ref_table
         route_obj = router_object(cur_inst.log)
