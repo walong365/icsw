@@ -55,7 +55,7 @@
                 Config{{ addon_text }}
             </tab-heading>
             <div class="panel panel-default"><div class="panel-body">
-                <div ng-controller="icswDeviceConfiguratonCtrl">
+                <div ng-controller="icswDeviceConfigurationCtrl">
                     <icsw-device-configuration-overview devicepk="pk_list['config']">
                     </icsw-device-configuration-overview>
                 </div>
@@ -82,9 +82,9 @@
                 Vars{{ addon_text }}
             </tab-heading>
             <div class="panel panel-default"><div class="panel-body">
-                <div ng-controller="dv_base">
-                    <devicevars devicepk="pk_list['variables']" disablemodal="true">
-                    </devicevars>
+                <div ng-controller="icswDeviceVariableCtrl">
+                    <icsw-device-variable-overview devicepk="pk_list['variables']" disablemodal="true">
+                    </icsw-device-variable-overview>
                 </div>
             </div></div>
         </tab>

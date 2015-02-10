@@ -368,7 +368,7 @@ angular.module(
 ]).directive("icswDeviceConfigurationTable", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icse.device.configuration.table")
+        template : $templateCache.get("icsw.device.configuration.table")
     }
 ]).directive("icswDeviceConfigurationSimpleRow", ["$templateCache", ($templateCache) ->
     return {
