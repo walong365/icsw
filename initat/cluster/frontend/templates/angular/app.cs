@@ -59,6 +59,8 @@ ics_app = angular.module(
         "icsw.device.status_history",
         "icsw.license.overview"
         "icsw.monitoring.overview",
+        "icsw.monitoring.monitoring_basic",
+        "icsw.monitoring.device",
         # "icsw.monitoring.create",
         # "icsw.monitoring_build_info",
         # "icsw.monitoring_extended",
@@ -69,9 +71,6 @@ ics_app = angular.module(
         "icsw.config.partition_table",
         "icsw.rms",
 
-        "icsw.monitoring.monitoring_basic",
-        "icsw.monitoring.device",
-        "icsw.monitoring_basic",
     ]
 )
 

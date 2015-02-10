@@ -5,7 +5,7 @@
 
     <tab heading="Periods">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringBasicService">
-            <h2>Periods ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"/></h2>
+            <h2>Periods ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-condensed table-hover" style="width:auto;">
                 <thead>
@@ -41,8 +41,8 @@
                         <td class="text-center">{{ obj.sat_range }}</td>
                         <td class="text-center">{{ obj.sun_range }}</td>
                         <td>{{ config_service.get_use_count(obj) }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-show="config_service.delete_ok(obj)" ng-click="delete(obj)"/></td>
+                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" size="xs" ng-show="config_service.delete_ok(obj)" ng-click="delete(obj)"></icsw-tools-button></td>
                     </tr>
                 </tbody>
             </table>
@@ -51,7 +51,7 @@
 
     <tab heading="Notifications">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringNotificationService">
-            <h2>Notifications ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"/></h2>
+            <h2>Notifications ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
                 <table st-table="entries_displayed" st-safe-src="entries"
                        class="table table-condensed table-hover" style="width:auto;">
                     <thead>
@@ -77,8 +77,8 @@
                             <td>{{ obj.subject | limit_text:30 }}</td>
                             <td>{{ obj.content | limit_text:50 }}</td>
                             <td>{{ obj.enabled | yesno1 }}</td>
-                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"/></td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
                         </tr>
                     </tbody>
                 </table>
@@ -89,7 +89,7 @@
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactService">
             <h2>Contacts ({{entries.length}} entries),
                 <icsw-tools-button ng-show="config_service.rest_data_present()" type="create" value="create new"
-                                   ng-click="create($event)"/>
+                                   ng-click="create($event)"></icsw-tools-button>
             </h2>
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-condensed table-hover" style="width:auto;">
@@ -140,16 +140,17 @@
                             notifications' }}
                         </td>
                         <td>{{ obj.alias || "---" }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"/></td>
+                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
                     </tr>
                 </tbody>
             </table>
         </icsw-tools-rest-table>
     </tab>
+
     <tab heading="Service templates">
         <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceTemplateService">
-            <h2>Service templates ({{entries.length}} entries), <icsw-tools-button ng-show="config_service.rest_data_present()" type="create" value="create new" ng-click="create($event)"/></h2>
+            <h2>Service templates ({{entries.length}} entries), <icsw-tools-button ng-show="config_service.rest_data_present()" type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
             <table st-table="entries_displayed" st-safe-src="entries"
                    class="table table-condensed table-hover" style="width:auto;">
                 <thead>
@@ -211,55 +212,157 @@
                         <td>{{ obj.flap_detect_unknown | yesno1 }}</td>
                         <td>{{ obj.check_freshness | yesno1 }}</td>
                         <td>{{ obj.freshness_threshold }}</td>
-                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"/></td>
-                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"/></td>
+                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
                     </tr>
                 </tbody>
             </table>
         </icsw-tools-rest-table>
     </tab>
+
     <tab heading="Device templates">
-        <div ng-controller="mon_device_templ_base">
-            <div ng-controller="mon_device_templ">
-                <h2>Device templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
-                <table class="table table-condensed table-hover" style="width:auto;">
-                    <thead mondevicetemplhead></thead>
-                    <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-                        <tr mondevicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceTemplateService">
+                <h2>Device templates ({{entries.length}} entries), <icsw-tools-button ng-show="config_service.rest_data_present()" type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+            <table st-table="entries_displayed" st-safe-src="entries"
+                   class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="name" st-sort-default="true">Name</th>
+                        <th st-sort="mon_service_templ">Service template</th>
+                        <th st-sort="host_check_command">Host check command</th>
+                        <th st-sort="not_period">Notify:</th>
+                        <th st-sort="ninterval">Interval</th>
+                        <th st-sort="mon_period">Mon period</th>
+                        <th st-sort="check_interval">check</th>
+                        <th st-sort="retry_interval">retry</th>
+                        <th st-sort="max_attempts">att</th>
+                        <th st-sort="nrecovery">rec</th>
+                        <th st-sort="ndown">down</th>
+                        <th st-sort="nunreachable">unr</th>
+                        <th st-sort="nflapping">flap</th>
+                        <th st-sort="nplanned_downtime">planned</th>
+                        <th st-sort="flap_detection_enabled">FlapDet</th>
+                        <th st-sort="low_flap_threshold">min</th>
+                        <th st-sort="high_flap_threshold">max</th>
+                        <th st-sort="flap_detect_up">up</th>
+                        <th st-sort="flap_detect_down">down</th>
+                        <th st-sort="flap_detect_unreachable">unr</th>
+                        <th st-sort="check_freshness">frsh</th>
+                        <th st-sort="freshness_threshold">fth</th>
+                        <th colspan="2" class="text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="obj in entries_displayed">
+                        <td>{{ obj.name }}</td>
+                        <td>{{ obj.mon_service_templ | array_lookup:config_service.mon_service_templ:'name' }}</td>
+                        <td>{{ obj.host_check_command | array_lookup:config_service.host_check_command:'name' }}</td>
+                        <td>{{ obj.not_period | array_lookup:config_service.mon_period:'name' }}</td>
+                        <td>{{ obj.ninterval }}</td>
+                        <td>{{ obj.mon_period | array_lookup:config_service.mon_period:'name' }}</td>
+                        <td>{{ obj.check_interval }}</td>
+                        <td>{{ obj.retry_interval }}</td>
+                        <td>{{ obj.max_attempts }}</td>
+                        <td>{{ obj.nrecovery | yesno1 }}</td>
+                        <td>{{ obj.ndown | yesno1 }}</td>
+                        <td>{{ obj.nunreachable | yesno1 }}</td>
+                        <td>{{ obj.nflapping | yesno1 }}</td>
+                        <td>{{ obj.nplanned_downtime | yesno1 }}</td>
+                        <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
+                        <td>{{ obj.low_flap_threshold }}</td>
+                        <td>{{ obj.high_flap_threshold }}</td>
+                        <td>{{ obj.flap_detect_up | yesno1 }}</td>
+                        <td>{{ obj.flap_detect_down | yesno1 }}</td>
+                        <td>{{ obj.flap_detect_unreachable | yesno1 }}</td>
+                        <td>{{ obj.check_freshness | yesno1 }}</td>
+                        <td>{{ obj.freshness_threshold }}</td>
+                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </icsw-tools-rest-table>
     </tab>
+
     <tab heading="Host check commands">
-        <div ng-controller="host_check_command_base">
-            <div ng-controller="host_check_command">
-                <h2>Host check commands ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
-                <table class="table table-condensed table-hover" style="width:auto;">
-                    <thead hostcheckcommandhead></thead>
-                    <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-                        <tr hostcheckcommandrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostCheckCommandService">
+            <h2>Host check commands ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+            <table st-table="entries_displayed" st-safe-src="entries"
+                   class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="name" st-sort-default="true">Name</th>
+                        <th st-sort="command_line">Command</th>
+                        <th colspan="2" class="text-center">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr ng-repeat="obj in entries_displayed">
+                        <td>{{ obj.name }}</td>
+                        <td>{{ obj.command_line }}</td>
+                        <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                        <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </icsw-tools-rest-table>
     </tab>
+
     <tab heading="Contactgroups">
-        <div ng-controller="mon_contactgroup_base">
-            <div ng-controller="mon_contactgroup">
-                <h2>Contactgroups ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
-                <table class="table table-condensed table-hover" style="width:auto;">
-                    <thead moncontactgrouphead></thead>
-                    <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
-                        <tr moncontactgrouprow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringContactgroupService">
+                <h2>Contactgroups ({{entries.length}} entries),  <icsw-tools-button type="create" value="create new" ng-click="create($event)"></icsw-tools-button></h2>
+            <table st-table="entries_displayed" st-safe-src="entries"
+                   class="table table-condensed table-hover" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="name" st-sort-default="true">Name</th>
+                        <th st-sort="alias">Alias</th>
+                        <th st-sort="members">Members</th>
+                        <th st-sort="device_groups">Devicegroups</th>
+                        <th st-sort="service_templates">Service templates</th>
+                        <th colspan="2" class="text-center">Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr ng-repeat="obj in entries_displayed">
+                        <td>{{ obj.name }}</td>
+                        <td>{{ obj.alias }}</td>
+                        <td>{{ obj.members | resolve_n2m:config_service.mon_contact:'user' |
+                            resolve_n2m:config_service.user:'login' }}
+                        </td>
+                        <td>{{ obj.device_groups | resolve_n2m:config_service.device_group:'name' }}</td>
+                        <td>{{ obj.service_templates | resolve_n2m:config_service.mon_service_templ:'name' }}</td>
+
+                        <td>
+                            <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
+                        </td>
+                        <td>
+                            <icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </icsw-tools-rest-table>
     </tab>
-    -->
     </tabset>
 </script>
