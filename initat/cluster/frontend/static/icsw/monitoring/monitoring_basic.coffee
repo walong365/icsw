@@ -7,7 +7,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         restrict:"EA"
         templateUrl: "icsw.monitoring.basic"
     }
-).service('icswMonitoringRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+).service('icswMonitoringBasicRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
     get_rest = (url) -> return Restangular.all(url).getList().$object
     data = {
         mon_period         : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
@@ -52,7 +52,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         new_object          : {"name" : "", "channel" : "mail", "not_type" : "service"}
         object_created      : (new_obj) -> new_obj.name = ""
     }
-]).service('icswMonitoringContactService', ["ICSW_URLS", "Restangular", "icswMonitoringRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringContactService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     ret = {
            rest_url: ICSW_URLS.REST_MON_CONTACT_LIST
            edit_template: "mon.contact.form"
@@ -75,7 +75,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     for k, v of icswMonitoringRestService  # shallow copy!
         ret[k] = v
     return ret
-]).service('icswMonitoringServiceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringServiceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     return {
         rest_url            : ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST
         edit_template       : "mon.service.templ.form"
@@ -100,7 +100,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         rest_data_present : () ->
             return icswMonitoringRestService._rest_data_present(["mon_period"])
     }
-]).service('icswMonitoringDeviceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringDeviceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     ret = {
         rest_url            : ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST
         edit_template       : "mon.device.templ.form"
@@ -130,7 +130,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     for k, v of icswMonitoringRestService  # shallow copy!
         ret[k] = v
     return ret
-]).service('icswMonitoringHostCheckCommandService', ["ICSW_URLS", "Restangular", "icswMonitoringRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringHostCheckCommandService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     return {
         rest_url: ICSW_URLS.REST_HOST_CHECK_COMMAND_LIST
         edit_template: "host.check.command.form"
@@ -139,7 +139,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         new_object: {"name": ""}
         object_created: (new_obj) -> new_obj.name = null
     }
-]).service('icswMonitoringContactgroupService', ["ICSW_URLS", "Restangular", "icswMonitoringRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
+]).service('icswMonitoringContactgroupService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     ret = {
         rest_url: ICSW_URLS.REST_MON_CONTACTGROUP_LIST
         edit_template: "mon.contactgroup.form"

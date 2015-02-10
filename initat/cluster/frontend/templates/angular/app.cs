@@ -61,9 +61,9 @@ ics_app = angular.module(
         "icsw.monitoring.overview",
         "icsw.monitoring.monitoring_basic",
         "icsw.monitoring.device",
+        "icsw.monitoring.cluster",
         # "icsw.monitoring.create",
         # "icsw.monitoring_build_info",
-        # "icsw.monitoring_extended",
         "icsw.package.install",
         "icsw.device.boot",
         "icsw.device.create",
@@ -223,11 +223,19 @@ ics_app = angular.module(
     "REST_MON_CHECK_COMMAND_SPECIAL_LIST": "{% url 'rest:mon_check_command_special_list' %}"
     "REST_MON_CONTACT_LIST": "{% url 'rest:mon_contact_list' %}"
     "REST_MON_CONTACTGROUP_LIST": "{% url 'rest:mon_contactgroup_list' %}"
+    "REST_MON_DEVICE_ESC_TEMPL_LIST": "{% url 'rest:mon_device_esc_templ_list' %}"
     "REST_MON_DEVICE_TEMPL_LIST": "{% url 'rest:mon_device_templ_list' %}"
     "REST_MON_EXT_HOST_LIST": "{% url 'rest:mon_ext_host_list' %}"
+    "REST_MON_HOST_CLUSTER_LIST": "{% url 'rest:mon_host_cluster_list' %}"
+    "REST_MON_HOST_DEPENDENCY_LIST": "{% url 'rest:mon_host_dependency_list' %}"
+    "REST_MON_HOST_DEPENDENCY_TEMPL_LIST": "{% url 'rest:mon_host_dependency_templ_list' %}"
     "REST_MON_NOTIFICATION_LIST": "{% url 'rest:mon_notification_list' %}"
     "REST_MON_PERIOD_LIST": "{% url 'rest:mon_period_list' %}"
     "REST_MON_SERVICE_TEMPL_LIST": "{% url 'rest:mon_service_templ_list' %}"
+    "REST_MON_SERVICE_CLUSTER_LIST": "{% url 'rest:mon_service_cluster_list' %}"
+    "REST_MON_SERVICE_DEPENDENCY_LIST": "{% url 'rest:mon_service_dependency_list' %}"
+    "REST_MON_SERVICE_DEPENDENCY_TEMPL_LIST": "{% url 'rest:mon_service_dependency_templ_list' %}"
+    "REST_MON_SERVICE_ESC_TEMPL_LIST": "{% url 'rest:mon_service_esc_templ_list' %}"
     "REST_MONITORING_HINT_DETAIL": "{% url 'rest:monitoring_hint_detail' 1 %}"
     "REST_NETDEVICE_LIST": "{% url 'rest:netdevice_list' %}"
     "REST_NET_IP_DETAIL": "{% url 'rest:net_ip_detail' 1 %}"

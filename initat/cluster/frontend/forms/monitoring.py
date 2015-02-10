@@ -346,7 +346,7 @@ class mon_service_esc_templ_form(ModelForm):
             Field("last_notification", min=1, max=10),
             Field(
                 "esc_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -586,7 +586,7 @@ class mon_device_esc_templ_form(ModelForm):
             Field("name"),
             Field(
                 "mon_service_esc_templ",
-                repeat="value.idx as value in rest_data.mon_service_esc_templ | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_service_esc_templ | orderBy:'name'",
                 display="name",
                 placeholder="please select a service escalation template",
                 filter="{name:$select.search}",
@@ -598,7 +598,7 @@ class mon_device_esc_templ_form(ModelForm):
             Field("last_notification", min=1, max=10),
             Field(
                 "esc_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a time period",
                 filter="{name:$select.search}",
@@ -657,14 +657,14 @@ class mon_host_cluster_form(ModelForm):
             "Devices",
             Field(
                 "main_device",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select a device",
                 filter="{name:$select.search}",
             ),
             Field(
                 "devices",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select one ore more devices",
                 filter="{name:$select.search}",
@@ -674,7 +674,7 @@ class mon_host_cluster_form(ModelForm):
             "Service",
             Field(
                 "mon_service_templ",
-                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'",
                 display="name",
                 placeholder="please select a service template",
                 filter="{name:$select.search}",
@@ -715,14 +715,14 @@ class mon_service_cluster_form(ModelForm):
             "Devices",
             Field(
                 "main_device",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select a device",
                 filter="{name:$select.search}",
             ),
             Field(
                 "devices",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select one ore more devices",
                 filter="{name:$select.search}",
@@ -732,14 +732,14 @@ class mon_service_cluster_form(ModelForm):
             "Service",
             Field(
                 "mon_service_templ",
-                repeat="value.idx as value in rest_data.mon_service_templ | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_service_templ | orderBy:'name'",
                 display="name",
                 placeholder="please select a service template",
                 filter="{name:$select.search}",
             ),
             Field(
                 "mon_check_command",
-                repeat="value.idx as value in rest_data.mon_check_command | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_check_command | orderBy:'name'",
                 display="name",
                 placeholder="please select a check command",
                 filter="{name:$select.search}",
@@ -777,7 +777,7 @@ class mon_host_dependency_templ_form(ModelForm):
             Field("name"),
             Field(
                 "dependency_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a period",
                 filter="{name:$select.search}",
@@ -843,7 +843,7 @@ class mon_host_dependency_form(ModelForm):
             "Basic settings",
             Field(
                 "mon_host_dependency_templ",
-                repeat="value.idx as value in rest_data.mon_host_dependency_templ | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_host_dependency_templ | orderBy:'name'",
                 display="name",
                 placeholder="please select a host dependency template",
                 filter="{name:$select.search}",
@@ -853,7 +853,7 @@ class mon_host_dependency_form(ModelForm):
             "Parent",
             Field(
                 "devices",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select one or more devices",
                 filter="{name:$select.search}",
@@ -863,7 +863,7 @@ class mon_host_dependency_form(ModelForm):
             "Child",
             Field(
                 "dependent_devices",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select one or more devices",
                 filter="{name:$select.search}",
@@ -873,7 +873,7 @@ class mon_host_dependency_form(ModelForm):
             "Cluster",
             Field(
                 "mon_host_cluster",
-                repeat="value.idx as value in rest_data.mon_host_cluster | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_host_cluster | orderBy:'name'",
                 display="name",
                 placeholder="please select a host cluster",
                 filter="{name:$select.search}",
@@ -909,7 +909,7 @@ class mon_service_dependency_templ_form(ModelForm):
             Field("name"),
             Field(
                 "dependency_period",
-                repeat="value.idx as value in rest_data.mon_period | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_period | orderBy:'name'",
                 display="name",
                 placeholder="please select a period",
                 filter="{name:$select.search}",
@@ -977,7 +977,7 @@ class mon_service_dependency_form(ModelForm):
             "Basic settings",
             Field(
                 "mon_service_dependency_templ",
-                repeat="value.idx as value in rest_data.mon_service_dependency_templ | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_service_dependency_templ | orderBy:'name'",
                 display="name",
                 placeholder="please select a service dependency template",
                 filter="{name:$select.search}",
@@ -987,14 +987,14 @@ class mon_service_dependency_form(ModelForm):
             "Parent",
             Field(
                 "devices",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select one or more devices",
                 filter="{name:$select.search}",
             ),
             Field(
                 "mon_check_command",
-                repeat="value.idx as value in rest_data.mon_check_command | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_check_command | orderBy:'name'",
                 display="name",
                 placeholder="please select a check command",
                 filter="{name:$select.search}",
@@ -1004,14 +1004,14 @@ class mon_service_dependency_form(ModelForm):
             "Child",
             Field(
                 "dependent_devices",
-                repeat="value.idx as value in rest_data.device | orderBy:'name'",
+                repeat="value.idx as value in config_service.device | orderBy:'name'",
                 display="name",
                 placeholder="please select one or more devices",
                 filter="{name:$select.search}",
             ),
             Field(
                 "dependent_mon_check_command",
-                repeat="value.idx as value in rest_data.mon_check_command | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_check_command | orderBy:'name'",
                 display="name",
                 placeholder="please select a check command",
                 filter="{name:$select.search}",
@@ -1021,7 +1021,7 @@ class mon_service_dependency_form(ModelForm):
             "Cluster",
             Field(
                 "mon_service_cluster",
-                repeat="value.idx as value in rest_data.mon_service_cluster | orderBy:'name'",
+                repeat="value.idx as value in config_service.mon_service_cluster | orderBy:'name'",
                 display="name",
                 placeholder="please select a service cluster",
                 filter="{name:$select.search}",
