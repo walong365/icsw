@@ -63,8 +63,7 @@ ics_app = angular.module(
         "icsw.monitoring.device",
         "icsw.monitoring.cluster",
         "icsw.monitoring.escalation",
-        # "icsw.monitoring.create",
-        # "icsw.monitoring_build_info",
+        "icsw.monitoring.build_info",
         "icsw.package.install",
         "icsw.device.boot",
         "icsw.device.create",
@@ -72,7 +71,6 @@ ics_app = angular.module(
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
-
     ]
 ).config(() ->
     console.log "config"
@@ -226,6 +224,8 @@ ics_app = angular.module(
     "REST_MON_CONTACTGROUP_LIST": "{% url 'rest:mon_contactgroup_list' %}"
     "REST_MON_DEVICE_ESC_TEMPL_LIST": "{% url 'rest:mon_device_esc_templ_list' %}"
     "REST_MON_DEVICE_TEMPL_LIST": "{% url 'rest:mon_device_templ_list' %}"
+    "REST_MON_DIST_MASTER_LIST": "{% url 'rest:mon_dist_master_list' %}"
+    "REST_MON_DIST_SLAVE_LIST": "{% url 'rest:mon_dist_slave_list' %}"
     "REST_MON_EXT_HOST_LIST": "{% url 'rest:mon_ext_host_list' %}"
     "REST_MON_HOST_CLUSTER_LIST": "{% url 'rest:mon_host_cluster_list' %}"
     "REST_MON_HOST_DEPENDENCY_LIST": "{% url 'rest:mon_host_dependency_list' %}"

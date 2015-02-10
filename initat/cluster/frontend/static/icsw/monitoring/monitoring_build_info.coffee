@@ -1,17 +1,14 @@
-{% load coffeescript %}
 
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-monitoring_build_info_module = angular.module("icsw.monitoring_build_info", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
+monitoring_build_info_module = angular.module("icsw.monitoring.build_info",
+    ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"])
 
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-monitoring_build_info_module.controller("mon_build_info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "icswTools",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, icswTools) ->
+monitoring_build_info_module.controller("icswMonitoringBuildInfoCtrl",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource",
+     "$q", "$modal", "access_level_service", "$timeout", "icswTools", "ICSW_URLS"
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
+     $q, $modal, access_level_service, $timeout, icswTools, ICSW_URLS) ->
         access_level_service.install($scope)
         $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)
         $scope.masters = []
@@ -19,9 +16,9 @@ monitoring_build_info_module.controller("mon_build_info_ctrl", ["$scope", "$comp
             # force reload
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
-                ["{% url 'rest:mon_dist_master_list' %}", {}]
+                [ICSW_URLS.REST_MON_DIST_MASTER_LIST, {}]
                 #["{% url 'rest:mon_dist_slave_list' %}", {}]
-                ["{% url 'rest:device_tree_list' %}", {"monitor_server_type" : true}]
+                [ICSW_URLS.REST_DEVICE_TREE_LIST, {"monitor_server_type" : true}]
             ])
             $q.all(wait_list).then((data) ->
                 $timeout($scope.reload, 5000)
@@ -87,9 +84,9 @@ monitoring_build_info_module.controller("mon_build_info_ctrl", ["$scope", "$comp
                         r_class = "warning"
             return r_class
         $scope.reload()
-])
-
-{% endinlinecoffeescript %}
-
-</script>
-
+]).directive('icswMonitoringBuildInfo', () ->
+    return {
+        restrict: 'EA'
+        templateUrl: 'icsw.monitoring.build_info'
+    }
+)
