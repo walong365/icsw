@@ -4,8 +4,8 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "CallAjaxService",
-    ($scope, $timeout, $window, ICSW_URLS, CallAjaxService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
@@ -92,7 +92,7 @@ menu_module = angular.module(
                 return "btn btn-xs btn-danger"
         $scope.rebuild_config = (cache_mode) ->
             console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
-            CallAjaxService
+            icswCallAjaxService
                 url     : ICSW_URLS.MON_CREATE_CONFIG
                 data    : {
                     "cache_mode" : cache_mode

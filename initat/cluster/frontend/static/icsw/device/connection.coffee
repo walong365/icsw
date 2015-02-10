@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS) ->
+).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService) ->
         $scope.devsel_list = []
         # ac settings
         $scope.ac_type = "master"
@@ -12,7 +12,7 @@ angular.module(
             $scope.ac_type = if $scope.ac_type == "master" then "slave" else "master"
         $scope.handle_ac = () ->
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url   : ICSW_URLS.DEVICE_MANUAL_CONNECTION
                 data  : {
                     "source" : $scope.ac_host

@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).controller("icswDevicePartitionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS) ->
+).controller("icswDevicePartitionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswCallAjaxService) ->
         $scope.entries = []
         $scope.active_dev = undefined
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -24,7 +24,7 @@ angular.module(
         $scope.clear = (pk) ->
             if pk?
                 blockUI.start()
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.MON_CLEAR_PARTITION
                     data    : {
                         "pk" : pk
@@ -36,7 +36,7 @@ angular.module(
         $scope.fetch = (pk) ->
             if pk?
                 blockUI.start()
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.MON_FETCH_PARTITION
                     data    : {
                         "pk" : pk
@@ -48,7 +48,7 @@ angular.module(
         $scope.use = (pk) ->
             if pk?
                 blockUI.start()
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.MON_USE_PARTITION
                     data    : {
                         "pk" : pk

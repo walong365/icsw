@@ -23,7 +23,7 @@ package_module = angular.module(
                 _show = false
             return _show
     }
-]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswCallAjaxService", (Restangular, ICSW_URLS, icswCallAjaxService) ->
     user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
     return {
         user_rest           : user_rest
@@ -34,7 +34,7 @@ package_module = angular.module(
         post_delete : (scope, del_obj) ->
             scope.clear_active_search(del_obj)
         object_modified : (edit_obj, srv_data, $scope) ->
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_RETRY_SEARCH
                 data    : {
                     "pk" : edit_obj.idx
@@ -64,8 +64,8 @@ package_module = angular.module(
         edit_template       : "package_search.html"
         delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
     }
-]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window",
-    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window) ->
+]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService",
+    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService) ->
         # flags
         $scope.show_enabled_repos = true
         $scope.show_published_repos = true
@@ -104,7 +104,7 @@ package_module = angular.module(
         )
         $scope.rescan_repos = (reload_func) ->
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "rescan_repos"
@@ -119,7 +119,7 @@ package_module = angular.module(
         $scope.retry_search = (obj, reload_func) ->
             if $scope.active_search?
                 $scope.active_search = undefined
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_RETRY_SEARCH
                 data    : {
                     "pk" : obj.idx
@@ -147,7 +147,7 @@ package_module = angular.module(
         $scope.create_search = () ->
             if $scope.search_scope.search_string
                 Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_scope.search_string, "user" : $window.CURRENT_USER.idx}).then((data) ->
-                    call_ajax
+                    icswCallAjaxService
                         url     : ICSW_URLS.PACK_REPO_OVERVIEW
                         data    : {
                             "mode" : "reload_searches"
@@ -163,7 +163,7 @@ package_module = angular.module(
             $timeout($scope.reload_searches, 5000)
         $scope.take_search_result = (obj, exact) ->
             obj.copied = 1
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_USE_PACKAGE
                 data    : {
                     "pk"          : obj.idx
@@ -187,7 +187,7 @@ package_module = angular.module(
             $scope.package_list_scope = scope
         $scope.sync_repos = () ->
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "sync_repos"
@@ -197,7 +197,7 @@ package_module = angular.module(
                     parse_xml_response(xml)
         $scope.clear_caches = () ->
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "clear_caches"
@@ -342,7 +342,7 @@ package_module = angular.module(
                 for pack_idx, pdc of dev_dict
                     if pdc.selected and parseInt(pack_idx) == obj.idx
                         attach_list.push([parseInt(dev_idx), obj.idx])
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_ADD_PACKAGE
                 data    : {
                     "add_list" : angular.toJson(attach_list)
@@ -364,7 +364,7 @@ package_module = angular.module(
                         delete $scope.selected_pdcs[pdc.idx]
                         delete pdc.idx
                         #pdc.remove_pdc()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_REMOVE_PACKAGE
                 data    : {
                     "remove_list" : angular.toJson(remove_list)
@@ -403,7 +403,7 @@ package_module = angular.module(
                 if $scope.edit_obj.image_change
                     pdc["image_list"] = (_v for _v in $scope.edit_obj.image_list)
             #console.log change_dict
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_CHANGE_PDC
                 data    : {
                     "change_dict" : angular.toJson(change_dict)
@@ -447,7 +447,7 @@ package_module = angular.module(
                 return "text-center"
         $scope.send_sync = (event) ->
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "new_config"
@@ -457,7 +457,7 @@ package_module = angular.module(
                     parse_xml_response(xml)
         $scope.send_clear_caches = (event) ->
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "clear_caches"

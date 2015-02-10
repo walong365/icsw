@@ -1,7 +1,7 @@
 LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
-    constructor: (@table, h_struct, @hidden_headers, @ICSW_URLS) ->
+    constructor: (@table, h_struct, @hidden_headers, @ICSW_URLS, @icswCallAjaxService) ->
         _dict = {}
         @headers = []
         @attributes = {}
@@ -25,7 +25,7 @@ class header_struct
         @togglec = _c
     change_entry : (entry) =>
         @toggle[entry] = ! @toggle[entry]
-        call_ajax
+        @icswCallAjaxService
             url      : @ICSW_URLS.RMS_SET_USER_SETTING
             dataType : "json"
             data:
@@ -191,8 +191,8 @@ rms_module = angular.module(
         lineNumbers: true
         matchBrackets: true
     }
-}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS) ->
+}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService) ->
         access_level_service.install($scope)
         $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
@@ -266,10 +266,10 @@ rms_module = angular.module(
             137 : [-1, "killed", "glyphicon-remove-circle"]
             99 : [0, "rescheduled", "glyphicon-repeat"]
         }
-        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS)
-        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS)
-        $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS)
-        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS)
+        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [], ICSW_URLS, icswCallAjaxService)
+        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [], ICSW_URLS, icswCallAjaxService)
+        $scope.done_struct = new header_struct("done", $scope.rms_headers.done_headers, [], ICSW_URLS, icswCallAjaxService)
+        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"], ICSW_URLS, icswCallAjaxService)
         $scope.rms_operator = false
         $scope.structs = {
             "running" : $scope.running_struct
@@ -301,7 +301,7 @@ rms_module = angular.module(
             # refresh every 10 seconds
             $scope.update_info_timeout = $timeout($scope.reload, 10000)
             if $scope.refresh
-                call_ajax
+                icswCallAjaxService
                     url      : ICSW_URLS.RMS_GET_RMS_JSON
                     dataType : "json"
                     success  : (json) =>
@@ -362,7 +362,7 @@ rms_module = angular.module(
                         if not $scope.device_dict_set
                             node_names = (entry[0].value for entry in json.node_table)
                             $scope.device_dict_set = true
-                            call_ajax
+                            icswCallAjaxService
                                 url      : ICSW_URLS.RMS_GET_NODE_INFO
                                 data     :
                                     devnames : angular.toJson(node_names)
@@ -380,7 +380,7 @@ rms_module = angular.module(
                             if $scope.io_dict[_id].update
                                 fetch_list.push($scope.io_dict[_id].get_id())
                         if fetch_list.length
-                            call_ajax
+                            icswCallAjaxService
                                 url     : ICSW_URLS.RMS_GET_FILE_CONTENT
                                 data    :
                                     "file_ids" : angular.toJson(fetch_list)
@@ -410,7 +410,7 @@ rms_module = angular.module(
             $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
             delete $scope.io_dict[io_struct.get_id()]
         $scope.$on("queue_control", (event, host, command, queue) ->
-            call_ajax
+            icswCallAjaxService
                 url      : ICSW_URLS.RMS_CONTROL_QUEUE
                 data     : {
                     "queue"   : queue
@@ -421,7 +421,7 @@ rms_module = angular.module(
                     parse_xml_response(xml)
         )
         $scope.$on("job_control", (event, job, command, force) ->
-            call_ajax
+            icswCallAjaxService
                 url      : ICSW_URLS.RMS_CONTROL_JOB
                 data     : {
                     "job_id"  : job.job_id.value
@@ -485,7 +485,7 @@ rms_module = angular.module(
                     # destroy scopes
                     $scope.refresh = true
                     $.simplemodal.close()
-        call_ajax
+        icswCallAjaxService
             url      : ICSW_URLS.RMS_GET_USER_SETTING
             dataType : "json"
             success  : (json) =>
@@ -744,7 +744,7 @@ rms_module = angular.module(
         scope:
             struct : "="
     }
-]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "$window", "ICSW_URLS", ($compile, $templateCache, $modal, $window, ICSW_URLS) ->
+]).directive("icswRmsJobAction", ["$compile", "$templateCache", "$modal", "$window", "ICSW_URLS", "icswCallAjaxService", ($compile, $templateCache, $modal, $window, ICSW_URLS, icswCallAjaxService) ->
     return {
         restrict : "EA"
         #template : $templateCache.get("queue_state.html")
@@ -795,7 +795,7 @@ rms_module = angular.module(
                         (_tuple) ->
                             new_pri = _tuple[0]
                             job_id = _tuple[1]
-                            call_ajax
+                            icswCallAjaxService
                                 url      : ICSW_URLS.RMS_CHANGE_JOB_PRIORITY
                                 data:
                                     "job_id": job_id
@@ -866,15 +866,15 @@ rms_module = angular.module(
             else
                 scope.jfiles = []
     }
-]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS) ->
+]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswCallAjaxService) ->
         $scope.servers = []
         $scope.licenses = []
         $scope.lic_overview = []
         $scope.server_open = false
         $scope.overview_open = true
         $scope.update = () ->
-            call_ajax
+            icswCallAjaxService
                 url      : ICSW_URLS.LIC_LICENSE_LIVEVIEW
                 dataType : "xml"
                 success  : (xml) =>

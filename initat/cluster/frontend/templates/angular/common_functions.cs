@@ -286,7 +286,7 @@ icsw_tools = angular.module(
                 lut[value.idx] = value
             return lut
     }
-).service("CallAjaxService", () ->
+).service("icswCallAjaxService", () ->
     default_ajax_dict =
         type       : "POST"
         timeout    : 50000
