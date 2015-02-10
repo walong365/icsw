@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -408,7 +408,9 @@ def do_etc_hosts(conf):
     all_paths = sorted([route_obj.add_penalty(cur_path) for cur_path in all_paths])
     all_nds = set([cur_path[-1] for penalty, cur_path in all_paths])
     nd_lut = {
-        cur_nd.pk: cur_nd for cur_nd in netdevice.objects.filter(
+        cur_nd.pk: cur_nd for cur_nd in netdevice.objects.exclude(
+            Q(enabled=False)
+        ).filter(
             Q(pk__in=all_nds)
         ).select_related("device").prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node")
     }
