@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -369,7 +369,9 @@ class build_process(threading_tools.process_obj):
             # node interfaces
             conf_dict["node_if"] = []
             taken_list, not_taken_list = ([], [])
-            for cur_net in b_dev.netdevice_set.all().prefetch_related(
+            for cur_net in b_dev.netdevice_set.exclude(
+                    Q(enabled=False)
+            ).prefetch_related(
                 "net_ip_set",
                 "net_ip_set__network",
                 "net_ip_set__network__network_type",
