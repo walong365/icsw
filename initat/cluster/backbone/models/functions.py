@@ -28,6 +28,7 @@ from django.db.models import Q
 import pytz
 import time
 import datetime
+import logging_tools
 
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])
@@ -151,6 +152,25 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
             )
         )
     return used_objs
+
+
+def can_delete_obj(obj, logger):
+    from initat.cluster.backbone.models import device
+    ignore_objs = {
+        "device_group": list(device.objects.filter(Q(device_group=obj.idx) & Q(device_type__identifier="MD")))
+    }.get(obj._meta.object_name, [])
+    num_refs = get_related_models(obj, ignore_objs=ignore_objs)
+    delete_ok = False
+    if num_refs:
+        logger.error("lock_list for {} contains {}:".format(unicode(obj), logging_tools.get_plural("entry", len(obj._lock_list))))
+        for _num, _entry in enumerate(obj._lock_list, 1):
+            logger.error(" - {:2d}: {}".format(_num, _entry))
+        raise ValueError("cannot delete {}: referenced {}".format(
+            obj._meta.object_name,
+            logging_tools.get_plural("time", num_refs)))
+    else:
+        delete_ok = True
+    return delete_ok
 
 
 def get_change_reset_list(s_obj, d_obj, required_changes=None):
