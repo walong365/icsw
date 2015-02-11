@@ -1216,6 +1216,69 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _check,
             )
 
+        def _shorten_list(in_list):
+            shorten_re = re.compile("^(?P<pre>c\d+:(v|e)\d+:(d|s))(?P<rest>\d+)$")
+            _shorten_dict = {}
+            new_list, _shorten_keys = ([], [])
+            for key, _check, _info, _flag in r_list:
+                _keep = True
+                _match = shorten_re.match(key)
+                if _match:
+                    _keep = False
+                    _gd = _match.groupdict()
+                    if _gd["pre"] not in _shorten_keys:
+                        _shorten_keys.append(_gd["pre"])
+                        _shorten_dict[_gd["pre"]] = {
+                            "list": [],
+                            "check": _check,
+                            "infos": [],
+                            "flag": _flag,
+                        }
+                    _sde = _shorten_dict[_gd["pre"]]
+                    if (_check, _flag) == (_sde["check"], _sde["flag"]):
+                        _sde["list"].append((key, _gd["rest"]))
+                        _sde["infos"].append(_info)
+                    else:
+                        _keep = True
+                if _keep:
+                    new_list.append((key, _check, _info, _flag))
+            for _shorten_key in _shorten_keys:
+                _sde = _shorten_dict[_shorten_key]
+                new_list.append((_shorten_key, _sde["check"], _compress_infos(_sde["infos"]), _sde["flag"]))
+            return new_list, _shorten_dict
+
+        def _generate_short_result(_struct, _lss):
+            _state_dict = {}
+            # all keys are needef for the passive check result lookup key
+            _all_keys = []
+            for _state, _output, _info, _skey in _lss:
+                # we ignore _info here to make things easier
+                _state_dict.setdefault(_state, {}).setdefault(_output, []).append(_skey)
+                _all_keys.append(_skey)
+            _ret_state = max(_state_dict.keys())
+            ret_list = []
+            for _state in sorted(_state_dict.keys()):
+                for _output in sorted(_state_dict[_state].keys()):
+                    ret_list.append(
+                        "{:d} {}: {}".format(
+                            len(_state_dict[_state][_output]),
+                            _output,
+                            _compress_infos(_state_dict[_state][_output])
+                        )
+                    )
+            return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list), ""
+
+        def _compress_infos(in_list):
+            # only working for standard input
+            _prefix, _what = in_list[0].split()
+            while _prefix[-1].isdigit():
+                _prefix = _prefix[:-1]
+            _ints = [int(_part.strip().split()[0][len(_prefix):]) for _part in in_list]
+            return "{}{} {}".format(
+                _prefix,
+                logging_tools.compress_num_list(_ints),
+                _what,
+            )
         # rewrite bbu info
         for _c_id, _c_dict in ctrl_dict.iteritems():
             if "main" in _c_dict.get("bbu_keys", {}):
@@ -1235,6 +1298,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     } for key, value in _c_dict["logical_lines"].iteritems()
                 }
                 del _c_dict["logical_lines"]
+        # print cur_ns
         # reorder dict
         _ro_dict = reorder_dict(ctrl_dict)
         # pprint.pprint(_ro_dict)
@@ -1251,6 +1315,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     r_list.extend([("all", "all", "SAS Controller {}".format(_ctrl_key), True), ])
                 _lines, _checks = get_source(_ro_dict, _key)
                 r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
+            if cur_ns.short_output:
+                # shorten list
+                r_list, _ignore_dict = _shorten_list(r_list)
             return r_list
         else:
             _passive_dict = {
@@ -1270,12 +1337,16 @@ class ctrl_type_megaraid_sas(ctrl_type):
             _ok_dict = {}
             _ret_list = []
             _g_ret_state = limits.nag_STATE_OK
+            # list for shortened output
+            r_list = []
             for _key in sorted(_key_list):
                 _lines, _checks = get_source(_ro_dict, _key)
                 if target_checks:
                     _checks = list(set(_checks) & target_checks)
                 for _check in _checks:
                     _info = get_info(_key, _lines, _check)
+                    if cur_ns.short_output:
+                        r_list.append((_key, _check, _info, None))
                     _ret_state, _result, _info_str, _entity_type = check_status(_key, _lines, _check)
                     if _store_passive:
                         _passive_dict["list"].append(
@@ -1284,6 +1355,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                 _info, _ret_state, _result, _info_str
                             )
                         )
+
                     # print _info, _ret_state, _result
                     if _ret_state != limits.nag_STATE_OK:
                         _ret_list.append("{}: {}".format(_info, _result))
@@ -1294,6 +1366,21 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     if _info_str:
                         _ret_list.append(_info_str)
                     _g_ret_state = max(_g_ret_state, _ret_state)
+            if cur_ns.short_output:
+                # pprint.pprint(_passive_dict)
+                r_list, shorten_dict = _shorten_list(r_list)
+                # passive lut
+                _pl = {_info: (_ret_state, _result, _info_str) for _info, _ret_state, _result, _info_str in _passive_dict["list"]}
+                # rewrite the passive dict
+                for _key, _struct in shorten_dict.iteritems():
+                    # pprint.pprint(_struct)
+                    # local state list
+                    _lss = [list(_pl[_info]) + [_info] for _info in _struct["infos"]]
+                    # remove from passive_dict.list
+                    _passive_dict["list"] = [(_a, _b, _c, _d) for _a, _b, _c, _d in _passive_dict["list"] if _a not in _struct["infos"]]
+                    # add summed result
+                    _passive_dict["list"].append(_generate_short_result(_struct, _lss))
+                # pprint.pprint(_passive_dict)
             if _store_passive:
                 ascii_chunk = base64.b64encode(bz2.compress(json.dumps(_passive_dict)))
             else:
@@ -1315,135 +1402,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     )
             # pprint.pprint(_ret_list)
             return ExtReturn(_g_ret_state, ", ".join(_ret_list), ascii_chunk=ascii_chunk)
-
-        # old code, used for reference
-        num_c, num_d, num_e, num_w = (len(ctrl_dict.keys()), 0, 0, 0)
-        ret_state = limits.nag_STATE_OK
-        drive_stats = []
-        num_enc = 0
-        # pprint.pprint(ctrl_dict)
-        for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
-            bbu_mc = ctrl_stuff.get("bbu_keys", {}).get("main", {})
-            if bbu_mc:
-                bbu_present = bbu_mc.get("exit code") == "0x00"
-            else:
-                bbu_present = False
-            for log_num, log_stuff in ctrl_stuff.get("virt", {}).iteritems():
-                # pprint.pprint(log_dict)
-                log_dict = dict(log_stuff["lines"])
-                num_d += 1
-                num_drives = int(log_dict["number_of_drives"])
-                if "state" in log_dict:
-                    status = log_dict["state"]
-                    if not status.lower().startswith("optimal"):
-                        num_e += 1
-                    drive_stats.append(
-                        "ld %d (ctrl %d, %s, %s): %s" % (
-                            log_num,
-                            ctrl_num,
-                            log_dict.get("size", "???"),
-                            logging_tools.get_plural("disc", num_drives),
-                            status
-                        )
-                    )
-                if "ongoing_progresses" in log_dict:
-                    num_w += 1
-                    drive_stats.append(log_dict["ongoing_progresses"])
-                if "current_cache_policy" in log_dict:
-                    _cur_cps = [entry.strip().lower() for entry in log_dict["current_cache_policy"].split(",") if entry.strip()]
-                    if _cur_cps and _cur_cps[0] != "writeback":
-                        if bbu_present:
-                            num_e += 1
-                            drive_stats.append("suboptimal cache mode: {}".format(_cur_cps[0]))
-                        else:
-                            num_w += 1
-                            drive_stats.append("suboptimal cache mode: {}, bbu absent".format(_cur_cps[0]))
-                drives_missing = []
-                if "pd" in log_stuff:
-                    for pd_num in xrange(num_drives):
-                        if not log_stuff["pd"].get(pd_num, {}).get("lines", None):
-                            drives_missing.append(pd_num)
-                        else:
-                            pd_dict = dict(log_stuff["pd"][pd_num]["lines"])
-                            cur_state = pd_dict.get("firmware_state", "unknown")
-                            if cur_state.lower() not in ["online, spun up"]:
-                                drive_stats.append("drive {:d}: {}".format(pd_num, cur_state))
-                                num_w += 1
-                if drives_missing:
-                    num_e += 1
-                    drive_stats.append(
-                        "{} missing: {}".format(
-                            logging_tools.get_plural("drive", len(drives_missing)),
-                            ", ".join(
-                                ["{:d}".format(m_drive) for m_drive in sorted(drives_missing)]
-                            )
-                        )
-                    )
-            if "virt" not in ctrl_stuff:
-                num_w += 1
-            if "enclosures" in ctrl_stuff:
-                for enc_num in sorted(ctrl_stuff["enclosures"].keys()):
-                    num_enc += 1
-                    enc_dict = ctrl_stuff["enclosures"][enc_num]
-                    enc_fields = []
-                    for key in sorted(enc_dict.keys()):
-                        s_key = {
-                            "fans": "fan",
-                            "alarms": "alarm",
-                            "power_supplies": "PS",
-                            "temperature_sensors": "temp",
-                            "slots": "slot"
-                        }.get(key, key)
-                        cur_num = int(enc_dict[key].get("num", "0"))
-                        if cur_num:
-                            loc_problems = 0
-                            for cur_idx in xrange(cur_num):
-                                cur_stat = get_status_lines(enc_dict[key][cur_idx]["lines"])
-                                # if key.count("temperature"):
-                                #    if int(cur_stat) > 50:
-                                #        problem = True
-                                #    else:
-                                #        problem = False
-                                if cur_stat.lower() in set(
-                                    [
-                                        "ok", "not installed", "unknown", "medium speed",
-                                        "normal speed", "low speed", "high speed", "not available"
-                                    ]
-                                ):
-                                    problem = False
-                                else:
-                                    problem = True
-                                if problem:
-                                    loc_problems += 1
-                                    num_e += 1
-                                    enc_fields.append(
-                                        "{} {:d}: {}".format(
-                                            s_key,
-                                            cur_idx,
-                                            cur_stat
-                                        )
-                                    )
-                            if cur_num > loc_problems:
-                                enc_fields.append(
-                                    "{} ok".format(
-                                        logging_tools.get_plural(s_key, cur_num - loc_problems)
-                                    )
-                                )
-                    drive_stats.append(
-                        "enc{:d}: {}".format(
-                            enc_num,
-                            ", ".join(enc_fields)
-                        )
-                    )
-        if num_e:
-            ret_state = limits.nag_STATE_CRITICAL
-        elif num_w:
-            ret_state = limits.nag_STATE_WARNING
-        return ret_state, "%s on %s (%s), %s" % (
-            logging_tools.get_plural("logical drive", num_d),
-            logging_tools.get_plural("controller", num_c),
-            logging_tools.get_plural("enclosure", num_enc),
-            ", ".join(drive_stats))
 
     @staticmethod
     def _dummy_hints():
@@ -2077,6 +2035,7 @@ class megaraid_sas_status_command(hm_classes.hm_command):
         self.parser.add_argument("--key", default="all", type=str)
         self.parser.add_argument("--check", default="all", type=str)
         self.parser.add_argument("--passive-check-postfix", default="-", type=str)
+        self.parser.add_argument("--short-output", default="0", type=str)
 
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("megaraid_sas")
@@ -2225,8 +2184,15 @@ if __name__ == "__main__":
 
     # print srv_com.pretty_print()
 
-    get_hints = False
-    cur_ns = argparse.Namespace(get_hints=get_hints, passive_check_postfix="xxx", key="all", check="all")
+    get_hints = True
+    short_output = 1
+    cur_ns = argparse.Namespace(
+        get_hints=get_hints,
+        passive_check_postfix="xxx",
+        key="all",
+        short_output=short_output,
+        check="all"
+    )
     ctrl_dict = {}
     for res in srv_com["result"]:
         ctrl_dict[int(res.tag.split("}")[1].split("_")[-1])] = srv_com._interpret_el(res)
