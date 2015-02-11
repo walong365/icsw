@@ -1166,6 +1166,14 @@ class mon_check_command_form(ModelForm):
                 null=True,
                 wrapper_ng_show="_edit_obj.is_active",
             ),
+            HTML("""
+            {% verbatim %}
+            <div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning()">
+                <span class="glyphicon glyphicon-exclamation-sign"></span>
+                {{ get_mccs_already_used_warning() }}
+            </div>
+            {% endverbatim %}
+            """),
             Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special && _edit_obj.is_active"),
             HTML("""
 <div class='form-group' ng-show="_edit_obj.mon_check_command_special">

@@ -156,6 +156,7 @@ config_module = angular.module(
                 restDataSource.reload([ICSW_URLS.REST_CONFIG_CATALOG_LIST, {}]),
                 restDataSource.reload([ICSW_URLS.REST_CONFIG_HINT_LIST, {}]),
                 restDataSource.reload([ICSW_URLS.REST_MON_CHECK_COMMAND_SPECIAL_LIST, {}]),
+                restDataSource.reload([ICSW_URLS.REST_MON_CHECK_COMMAND_LIST, {}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.mon_service_templ = data[1]
@@ -165,6 +166,7 @@ config_module = angular.module(
                 $scope.config_catalogs = data[3]
                 $scope.mccs_list = data[5]
                 $scope.mccs_lut = icswTools.build_lut(data[5])
+                $scope.check_commands = data[6]
                 # catalog for uploads
                 $scope.catalog = $scope.config_catalogs[0].idx
                 $scope.config_edit.create_list = $scope.entries
@@ -580,6 +582,20 @@ config_module = angular.module(
         $scope.delete_catalog = (cat) ->
             $scope.catalog_edit.delete_obj(cat).then((res) ->
             )
+        $scope.get_mccs_already_used_warning = () ->
+            cur_mccs = $scope._edit_obj.mon_check_command_special
+            warning = ""
+            if cur_mccs?
+                used_in_checks =  _.filter($scope.check_commands, (elem) -> return elem.mon_check_command_special == cur_mccs)
+                if used_in_checks.length > 0
+                    warning += ""
+                    warning += "This special check command is already used in "
+                    for elem in  used_in_checks
+                        warning += elem.name + ", "
+                    warning = warning.substring(0, warning.length - 2)
+                    warning += ". "
+                    warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
+            return warning
         $scope.get_mccs_info = () ->
             cur_mccs = $scope._edit_obj.mon_check_command_special
             if cur_mccs
