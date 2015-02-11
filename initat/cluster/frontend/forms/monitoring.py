@@ -1168,9 +1168,9 @@ class mon_check_command_form(ModelForm):
             ),
             HTML("""
             {% verbatim %}
-            <div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning()">
+            <div class="alert alert-danger" role="alert" ng-show="get_mccs_already_used_warning(_edit_obj)">
                 <span class="glyphicon glyphicon-exclamation-sign"></span>
-                {{ get_mccs_already_used_warning() }}
+                {{ get_mccs_already_used_warning(_edit_obj) }}
             </div>
             {% endverbatim %}
             """),

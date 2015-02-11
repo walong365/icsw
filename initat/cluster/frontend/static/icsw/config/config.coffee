@@ -495,6 +495,7 @@ config_module = angular.module(
         $scope.delete_mon = (config, _mon) ->
             $scope.mon_edit.delete_list = config.mon_check_command_set
             $scope.mon_edit.delete_obj(_mon).then((res) ->
+                $scope.check_commands = (entry for entry in $scope.check_commands when entry.idx != _mon.idx)
                 if res
                     $scope.unselect_object(_mon)
                     $scope.filter_conf(config, $scope)
@@ -582,18 +583,18 @@ config_module = angular.module(
         $scope.delete_catalog = (cat) ->
             $scope.catalog_edit.delete_obj(cat).then((res) ->
             )
-        $scope.get_mccs_already_used_warning = () ->
-            cur_mccs = $scope._edit_obj.mon_check_command_special
+        $scope.get_mccs_already_used_warning = (edit_obj) ->
+            cur_mccs = edit_obj.mon_check_command_special
             warning = ""
             if cur_mccs?
-                used_in_checks =  _.filter($scope.check_commands, (elem) -> return elem.mon_check_command_special == cur_mccs)
-                if used_in_checks.length > 0
+                problem_list = []
+                for config in $scope.entries
+                    for mcc in config.mon_check_command_set
+                        if mcc.idx != edit_obj.idx and mcc.mon_check_command_special == cur_mccs
+                            problem_list.push(mcc.name)
+                if problem_list.length
                     warning += ""
-                    warning += "This special check command is already used in "
-                    for elem in  used_in_checks
-                        warning += elem.name + ", "
-                    warning = warning.substring(0, warning.length - 2)
-                    warning += ". "
+                    warning += "This special check command is already used in " + problem_list.join(",") + "."
                     warning += "Multiple assignments of special check commands to check commands are not supported and may result in undefined behavior."
             return warning
         $scope.get_mccs_info = () ->
