@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2001-2007,2009-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001-2007,2009-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -554,7 +554,7 @@ class meta_server_info(object):
                     self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
                     self.__pid_names = {pid: "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
                     self.__pid_proc_names = {pid: "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
-                    self.__pid_fuzzy = dict([(cur_pid, (0, 0)) for cur_pid in set(self.__pids)])
+                    self.__pid_fuzzy = {cur_pid: (0, 0) for cur_pid in set(self.__pids)}
                     for opt, val_type, def_val in self.__prop_list:
                         if opt in act_dict:
                             cur_value = act_dict[opt]
@@ -728,7 +728,7 @@ class meta_server_info(object):
         return self.__pid_proc_names[pid]
 
     def get_info(self):
-        pid_dict = dict([(pid, self.__pids.count(pid)) for pid in self.__pids])
+        pid_dict = {pid: self.__pids.count(pid) for pid in self.__pids}
         all_pids = sorted(pid_dict.keys())
         return "{} ({}): {}".format(
             logging_tools.get_plural("unique pid", len(all_pids)),
@@ -816,13 +816,15 @@ class meta_server_info(object):
             self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
             self.__pid_names.update({key: self.__exe_name for key in pids_found})
             self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})
-        self.__pids_found = dict([(cur_pid, act_tc_dict[cur_pid]) for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()])
+        self.__pids_found = {cur_pid: act_tc_dict[cur_pid] for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()}
         # structure for check_scripts
         self.pids_found = sum([[cur_pid] * act_tc_dict.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
-        self.__pids_expected = dict([(cur_pid, (
-            self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[0],
-            self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[1])
-            ) for cur_pid in self.__pids])
+        self.__pids_expected = {
+            cur_pid: (
+                self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[0],
+                self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[1]
+            ) for cur_pid in self.__pids
+        }
         # print self.__name, self.__pids_found, self.__pids_expected, self.__pid_fuzzy
         # difference to requested threadcount
         bound_dict = {}
@@ -1845,11 +1847,11 @@ def fetch_sysinfo(root_dir="/"):
     import cpu_database
     log_lines, sys_dict = ([], {})
     try:
-        isl = [x.strip().lower() for x in open("{}/etc/issue".format(root_dir), "r").read().split("\n")]
-        if os.path.isfile("{}/etc/redhat-release".format(root_dir)):
-            isl.extend([x.strip().lower() for x in open("{}/etc/redhat-release".format(root_dir), "r").read().split("\n")])
-        if os.path.isfile("{}/etc/fedora-release".format(root_dir)):
-            isl.extend([x.strip().lower() for x in open("{}/etc/fedora-release".format(root_dir), "r").read().split("\n")])
+        isl = []
+        for _fname in ["/etc/issue", "/etc/redhat-release", "/etc/fedora-release"]:
+            _full = os.path.join(root_dir, _fname)
+            if os.path.isfile(_full):
+                isl.extend([_line.strip().lower() for _line in file(_full, "r").read().split("\n")])
     except:
         log_lines.append(("error invalid root_path '{}' ?".format(root_dir), logging_tools.LOG_LEVEL_CRITICAL))
     else:
@@ -1907,6 +1909,8 @@ def fetch_sysinfo(root_dir="/"):
                 sys_dict["vendor"] = "centos"
             elif arch_str.count("debian"):
                 sys_dict["vendor"] = "debian"
+            elif arch_str.count("ubuntu"):
+                sys_dict["vendor"] = "ubuntu"
             # check for sles
             if re.search("sles", arch_str):
                 arch_m = re.match("^.*suse sles (\d+).*$", arch_str)
@@ -1966,7 +1970,8 @@ def fetch_sysinfo(root_dir="/"):
                         if arch_m:
                             sys_dict["version"] = "{}{}".format(
                                 arch_m.group("type"),
-                                arch_m.group("version"))
+                                arch_m.group("version")
+                            )
                 elif sys_dict["vendor"] == "debian" and os.path.isdir("/etc/apt"):
                     # try to get info from /etc/apt
                     try:
@@ -1978,10 +1983,8 @@ def fetch_sysinfo(root_dir="/"):
                     except:
                         pass
                     else:
-                        # unify list
-                        s_list = dict([(x, 0) for x in s_list]).keys()
-                        # hack
-                        sys_dict["version"] = s_list[0]
+                        # hack, take first from list
+                        sys_dict["version"] = list(set(s_list))[0]
     return log_lines, sys_dict
 
 
