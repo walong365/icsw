@@ -9,7 +9,7 @@
 {% verbatim %}
 
 <div>
-    <div ng-controller="lic_liveview_ctrl">
+    <div ng-controller="icswRmsLicenseLiveviewCtrl">
         <accordion close-others="no" ng-show="lic_overview.length">
             <accordion-group is-open="overview_open">
                 <accordion-heading>
@@ -50,7 +50,7 @@
                             <td class="text-right">{{ ov.external_used }}</td>
                             <td>
                                 <div style="width:200px;height:10px;margin-bottom:0px;" ng-show="ov.total">
-                                    <ovlicgraph license="ov"></ovlicgraph>
+                                    <icswRmsLicenseGraph license="ov"></icswRmsLicenseGraph>
                                 </div>
                             </td>
                         </tr>
