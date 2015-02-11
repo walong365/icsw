@@ -36,7 +36,7 @@ from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
-    parse_commandline
+    parse_commandline, mon_check_command_special
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
@@ -282,8 +282,10 @@ class get_mon_vars(View):
         if _dev.device_type.identifier == "H":
             # add meta device
             _dev_pks.append(_dev.device_group.device_group.filter(Q(device_type__identifier="MD"))[0].pk)
-        mon_check_commands = mon_check_command.objects.filter(Q(config__device_config__device__in=_dev_pks)).select_related("config")
         res_list = []
+        mon_check_commands = mon_check_command.objects.filter(
+            Q(config__device_config__device__in=_dev_pks)
+        ).select_related("config")
         for _mc in mon_check_commands:
             _mon_info, _log_lines = parse_commandline(_mc.command_line)
             for _key, _value in _mon_info["default_values"].iteritems():
@@ -297,6 +299,24 @@ class get_mon_vars(View):
                             _mc.config.name,
                         )
                     )
+        mon_special_check_commands = mon_check_command_special.objects.filter(
+            Q(mon_check_command__config__device_config__device__in=_dev_pks)
+        ).select_related("mon_check_command__config")
+        for _mc in mon_special_check_commands:
+            _mon_info, _log_lines = parse_commandline(_mc.command_line)
+            for _key, _value in _mon_info["default_values"].iteritems():
+                if type(_value) == tuple:
+                    _checks = _mc.mon_check_command_set.all()
+                    if len(_checks) == 1:
+                        res_list.append(
+                            (
+                                _mc.name,
+                                _value[0],
+                                _value[1],
+                                "i" if _value[1].isdigit() else "s",
+                                _checks[0].config.name,
+                            )
+                        )
         return HttpResponse(json.dumps(
             # [
             #    {"idx": 0, "name": "please choose..."}

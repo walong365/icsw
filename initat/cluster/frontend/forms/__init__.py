@@ -198,7 +198,10 @@ class device_info_form(ModelForm):
                         ng_show="is_device()",
                     ),
                     Div(
-                        HTML("<icsw-tools-button type=\"modify\" button-type=\"submit\" ng-show=\"acl_modify(_edit_obj, 'backbone.device.change_basic')\"></icsw-tools-modify-button>"),
+                        HTML(
+                            "<icsw-tools-button type=\"modify\" button-type=\"submit\" "
+                            "ng-show=\"acl_modify(_edit_obj, 'backbone.device.change_basic')\"></icsw-tools-modify-button>"
+                        ),
                     ),
                     css_class="row",
                 ),
