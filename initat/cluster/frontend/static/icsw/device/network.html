@@ -31,22 +31,23 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
                 {{ get_nd_objects().length }} netdevices
             </accordion-heading>
+            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge mac devtype mtu speed penalty flags status"></icsw-tools-show-hide-columns>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>
                         <th>Device</th>
-                        <th>idx</th>
-                        <th>Port</th>
-                        <th>#IPs</th>
-                        <th>#peers</th>
-                        <th>Bridge</th>
-                        <th>MAC</th>
-                        <th>Devtype</th>
-                        <th>MTU</th>
-                        <th>speed</th>
-                        <th>penalty</th>
-                        <th>flags</th>
-                        <th>status</th>
+                        <th ng-show="show_column.idx">idx</th>
+                        <th ng-show="show_column.port">Port</th>
+                        <th ng-show="show_column.ips">#IPs</th>
+                        <th ng-show="show_column.peers">#peers</th>
+                        <th ng-show="show_column.bridge">Bridge</th>
+                        <th ng-show="show_column.mac">MAC</th>
+                        <th ng-show="show_column.devtype">Devtype</th>
+                        <th ng-show="show_column.mtu">MTU</th>
+                        <th ng-show="show_column.speed">speed</th>
+                        <th ng-show="show_column.penalty">penalty</th>
+                        <th ng-show="show_column.flags">flags</th>
+                        <th ng-show="show_column.status">status</th>
                         <th colspan="4">action</th>
                     </tr>
                 </thead>
@@ -173,9 +174,9 @@
     <td>
         {{ dev_lut[ndip_obj.device].full_name }}
     </td>
-    <td>
+    <td ng-show="show_column.idx">>
         <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
-    <td>
+    <td ng-show="show_column.port">
         <span ng-show="ndip_obj.enabled">
             {{ get_netdevice_name(ndip_obj) }}
         </span>
@@ -183,20 +184,20 @@
             <em><strike>{{ get_netdevice_name(ndip_obj) }}</strike></em>
         </span>
     </td>
-    <td>
+    <td ng-show="show_column.ips">
         {{ get_num_netips_nd(ndip_obj) }}
     </td>
-    <td>
+    <td ng-show="show_column.peers">
         {{ get_num_peers_nd(ndip_obj) }}
     </td>
-    <td>{{ get_bridge_info(ndip_obj) }}</td>
-    <td>{{ ndip_obj.macaddr }}</td>
-    <td>{{ get_network_type(ndip_obj) }}</td>
-    <td class="text-right">{{ ndip_obj.mtu }}</td>
-    <td>{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}</td>
-    <td class="text-right">{{ ndip_obj.penalty }}</td>
-    <td>{{ get_flags(ndip_obj) }}</td>
-    <td ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
+    <td ng-show="show_column.bridge">{{ get_bridge_info(ndip_obj) }}</td>
+    <td ng-show="show_column.mac">{{ ndip_obj.macaddr }}</td>
+    <td ng-show="show_column.devtype">{{ get_network_type(ndip_obj) }}</td>
+    <td ng-show="show_column.mtu" class="text-right">{{ ndip_obj.mtu }}</td>
+    <td ng-show="show_column.speed">{{ ndip_obj.netdevice_speed | array_lookup:netdevice_speeds:'info_string':'-' }}</td>
+    <td ng-show="show_column.penalty" class="text-right">{{ ndip_obj.penalty }}</td>
+    <td ng-show="show_column.flags">{{ get_flags(ndip_obj) }}</td>
+    <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
     <td>
         <button type="button" class="btn btn-xs btn-success"
          tooltip-placement="right"
