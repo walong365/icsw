@@ -34,7 +34,11 @@ import server_command
 import stat
 import time
 
+# global debug mode
+DEBUG = False
+
 SAS_OK_KEYS = {
+    "bbu": set(),
     "adp": set(),
     "virt": set(
         [
@@ -48,6 +52,7 @@ SAS_OK_KEYS = {
         ]
     )
 }
+
 # for which keys do we read the following line
 SAS_CONT_KEYS = set(["ongoing_progresses"])
 
@@ -834,18 +839,54 @@ class ctrl_type_ips(ctrl_type):
             return ret_state, "; ".join(ret_f)
 
 
+class SasCtrlInfo(object):
+    def __init__(self, ctrl_struct):
+        self.ctrl_id = None
+        self.ctrl_struct = ctrl_struct
+
+    def check_for_ctrl(self, new_id):
+        if new_id != self.ctrl_id:
+            if self.ctrl_id is None:
+                self.log("setting ctrl_id (-> {:d})".format(new_id))
+            else:
+                self.log("changing ctrl_id ({:d} -> {:d})".format(self.ctrl_id, new_id))
+            self.ctrl_id = new_id
+            self.get_ctrl_dict(self.ctrl_id)
+        return self.ctrl_stuff, self.ctrl_stuff["count_dict"]
+
+    def get_ctrl_dict(self, ctrl_id):
+        self.ctrl_stuff = self.ctrl_struct._dict.setdefault(
+            ctrl_id,
+            {
+                "count_dict": {
+                    "virt": 0,
+                    "pd": 0,
+                    "enc": 0,
+                }
+            }
+        )
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.ctrl_struct.log(what, log_level)
+
+
 class ctrl_type_megaraid_sas(ctrl_type):
     class Meta:
         name = "megaraid_sas"
         exec_name = "megarc"
         description = "MegaRAID SAS"
 
+    def init_ctrl_dicts(self, in_list=None):
+        for _id in in_list if in_list else self._dict.keys():
+            self._dict[_id] = {}
+
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
-               [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
-               [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list]
+        return [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), "ld") for ctrl_id in ctrl_list] + \
+               [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), "bbu") for ctrl_id in ctrl_list] + \
+               [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), "enc") for ctrl_id in ctrl_list] + \
+               [("/bin/true", "done")]
 
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll -noLog", post="strip")
@@ -867,136 +908,135 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     )
 
     def process(self, ccs):
+
         def line_to_kv(line):
             key, value = line.split(":", 1)
             return key.strip().lower().replace(" ", "_"), line.strip()
-        _com_line, ctrl_id, run_type = ccs.run_info["command"]
-        ctrl_stuff = self._dict[ctrl_id]
-        if run_type == "ld":
-            cur_mode, mode_sense, count_dict, cont_mode = (None, True, {}, False)
-            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
-                empty_line = not line.strip()
-                parts = line.lower().strip().split()
-                if empty_line:
-                    mode_sense = True
-                else:
-                    if mode_sense is True:
-                        # print cur_mode, parts
-                        if (parts[0], cur_mode) == ("adapter", None):
-                            cur_mode = "adp"
-                            count_dict = {
-                                "adp": count_dict.get("adp", -1) + 1,
-                                "virt": int("-1"),
-                                "pd": 0
-                            }
-                        elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
-                            cur_mode = "virt"
-                            count_dict[cur_mode] += 1
-                            count_dict["pd"] = -1
-                            cur_dict = {"lines": []}
-                            if parts[0] == "virtual":
-                                # store line, needed for vd detection
-                                cur_dict["lines"].append(line_to_kv(line))
-                            ctrl_stuff.setdefault("virt", {})[count_dict["virt"]] = cur_dict
-                        elif (parts[0], cur_mode) in [("is", "virt"), ("raw", "pd")]:
-                            # continuation, no change
-                            pass
-                        elif (parts[0], cur_mode) in [("pd:", "virt"), ("pd:", "pd")]:
-                            cur_mode = "pd"
-                            count_dict[cur_mode] += 1
-                            cur_dict = {"lines": []}
-                            ctrl_stuff["virt"][count_dict["virt"]].setdefault("pd", {})[count_dict[cur_mode]] = cur_dict
-                        elif parts[0] in ["exit"]:
-                            # last line, pass
-                            pass
-                        else:
-                            # unknown mode
-                            raise ValueError("cannot parse mode, ctrl_type_megaraid_sas: {}".format(str(line)))
-                        mode_sense = False
-                        # print cur_mode, mode_sense, count_dict, line
-                    else:
-                        if line.count(":"):
-                            key, value = line.split(":", 1)
-                            if line.startswith(" "):
-                                if cont_mode:
-                                    cur_val = cur_dict["lines"][-1]
-                                    cur_dict["lines"][-1] = (
-                                        cur_val[0],
-                                        "{}{}{}".format(
-                                            cur_val[1],
-                                            ", " if cur_val[1] else "",
-                                            " ".join(line.strip().split())
-                                        )
-                                    )
-                            else:
-                                key = key.lower().strip().replace(" ", "_")
-                                if key in SAS_OK_KEYS[cur_mode]:
-                                    value = value.strip()
-                                    cur_dict["lines"].append((key, value))
-                                cont_mode = key in SAS_CONT_KEYS
-            # pprint.pprint(ctrl_stuff)
-            # if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
-            #    log_drive_num = int(line.strip().split()[2])
-            #    ctrl_stuff["logical_lines"][log_drive_num] = []
-            # if log_drive_num is not None:
-            #    if line.count(":"):
-            #        ctrl_stuff["logical_lines"][log_drive_num].append([part.strip() for part in line.split(":", 1)])
-        elif run_type == "enc":
-            cur_mode, mode_sense, count_dict = (None, True, {})
-            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
-                empty_line = not line.strip()
-                parts = line.lower().strip().split()
-                if empty_line:
-                    mode_sense = True
-                else:
-                    if mode_sense is True:
-                        if (parts[0], cur_mode) in [("enclosure", None), ("enclosure", "run")]:
-                            cur_mode = "enc"
-                            count_dict = {"enc": count_dict.get("enc", -1) + 1}
-                            cur_dict = {}
-                            ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"]] = cur_dict
-                        elif (parts[0], cur_mode) in [("number", "enc"), ("number", "run")]:
-                            cur_dict = {"num": int(parts[-1])}
-                            count_dict["sub_key"] = "_".join(parts[2:-2])
-                            ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"]][count_dict["sub_key"]] = cur_dict
-                            cur_mode = "run"
-                        elif parts[0] == "exit":
-                            pass
-                        elif cur_mode == "run":
-                            cur_dict = {"lines": []}
-                            ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"]][count_dict["sub_key"]][int(parts[-1])] = cur_dict
-                        mode_sense = False
-                    else:
-                        if line.count(":"):
-                            key, value = line.split(":", 1)
-                            key = key.lower().strip().replace(" ", "_")
-                            cur_dict["lines"].append((key, value.strip()))
-        elif run_type == "bbu":
-            ctrl_stuff["bbu_keys"] = {}
-            main_key = "main"
-            for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n") if cur_line.strip()]:
-                if not line.startswith(" "):
-                    main_key = "main"
-                if line.count(":"):
-                    if line.endswith(":"):
-                        main_key = line.strip()[:-1].lower()
-                    else:
-                        if main_key in ["bbu firmware status"]:
-                            pass
-                        else:
-                            key, value = line.split(":", 1)
-                            act_key = key.strip().lower()
-                            value = value.strip()
-                            value = {
-                                "no": False,
-                                "yes": True
-                            }.get(value.lower(), value)
-                            ctrl_stuff["bbu_keys"].setdefault(main_key, {})[act_key] = value
-        if run_type == "enc":
-            # last run type, store in ccs
-            ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
 
-    #def set_result_from_cache(self, srv_com, cur_ns):
+        def parse_bbu_value(value):
+            return {
+                "no": False,
+                "yes": True
+            }.get(value.lower(), value)
+
+        _com_line, ctrl_id_for_enclosure, run_type = ccs.run_info["command"]
+        if run_type == "done":
+            # last run type, store in ccs
+            for ctrl_id, ctrl_stuff in self._dict.iteritems():
+                ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
+            # pprint.pprint(self._dict)
+            return
+
+        prev_mode, cur_mode, mode_sense, cont_mode = (None, None, True, False)
+        _ci = SasCtrlInfo(self)
+        for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
+            if not line.strip():
+                mode_sense = True
+                continue
+            parts = line.lower().strip().split()
+            if mode_sense is True:
+                if (parts[0], cur_mode) in [("adapter", None), ("adapter", "pd"), ("adapter", "run")]:
+                    cur_mode = "adp"
+                    ctrl_stuff, count_dict = _ci.check_for_ctrl(int(parts[-1].replace("#", "")))
+                elif line.lower().startswith("bbu status for "):
+                    cur_mode = "bbu"
+                    ctrl_stuff, count_dict = _ci.check_for_ctrl(int(parts[-1].replace("#", "")))
+                    cur_dict = {"main": {}}
+                    ctrl_stuff["bbu_keys"] = cur_dict
+                elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
+                    cur_mode = "virt"
+                    count_dict[cur_mode] += 1
+                    cur_dict = {"lines": []}
+                    if parts[0] == "virtual":
+                        # store line, needed for vd detection
+                        cur_dict["lines"].append(line_to_kv(line))
+                    ctrl_stuff.setdefault("virt", {})[count_dict["virt"] - 1] = cur_dict
+                elif (parts[0], cur_mode) in [("is", "virt"), ("raw", "pd")]:
+                    # continuation, no change
+                    pass
+                elif (parts[0], cur_mode) in [("pd:", "virt"), ("pd:", "pd")]:
+                    cur_mode = "pd"
+                    count_dict[cur_mode] += 1
+                    cur_dict = {"lines": []}
+                    ctrl_stuff["virt"][count_dict["virt"] - 1].setdefault("pd", {})[count_dict[cur_mode] - 1] = cur_dict
+                elif parts[0] in ["exit"]:
+                    # last line, pass
+                    pass
+                elif (parts[0], cur_mode) in [("enclosure", None), ("enclosure", "run"),  ("enclosure", "enc"), ("enclosure", "bbu")]:
+                    # get enclosure id
+                    enc_id = int(parts[-1])
+                    cur_mode = "enc"
+                    if ctrl_id_for_enclosure is not None:
+                        _new_ctrl_id = ctrl_id_for_enclosure
+                        # set unusable, only use ctrl_id_for_enclosure once per file
+                        ctrl_id_for_enclosure = None
+                    while True:
+                        ctrl_stuff, count_dict = _ci.check_for_ctrl(_new_ctrl_id)
+                        if enc_id not in ctrl_stuff.get("enclosures", {}).keys():
+                            # new enclosure id, ok
+                            break
+                        else:
+                            # enclosure id already set, increase controller id
+                            _new_ctrl_id += 1
+                    count_dict[cur_mode] += 1
+                    cur_dict = {"lines": []}
+                    ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"] - 1] = cur_dict
+                elif (parts[0], cur_mode) in [("number", "enc"), ("number", "run"), ("number", "bbu")]:
+                    cur_dict = {"num": int(parts[-1]), "lines": []}
+                    _sub_key = "_".join(parts[2:-2])
+                    ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"] - 1][_sub_key] = cur_dict
+                    # special mode for parsing enclosure info lines
+                    cur_mode = "run"
+                elif cur_mode == "run":
+                    cur_dict = {"lines": []}
+                    ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"] - 1][_sub_key][int(parts[-1])] = cur_dict
+                elif cur_mode in ["bbu", "enc"]:
+                    # ignore empty lines for bbu and enc
+                    pass
+                else:
+                    # unknown mode
+                    raise ValueError(
+                        "cannot determine mode, ctrl_type_megaraid_sas: {}, current mode is {}".format(
+                            str(line),
+                            cur_mode,
+                        )
+                    )
+                mode_sense = False
+            else:
+                #  print cur_mode, line
+                if line.count(":"):
+                    key, value = line.split(":", 1)
+                    key = key.lower().strip().replace(" ", "_")
+                    if cur_mode == "bbu":
+                        cur_dict["main"][key] = parse_bbu_value(value.strip())
+                    else:
+                        if line.startswith(" "):
+                            if cont_mode:
+                                cur_val = cur_dict["lines"][-1]
+                                cur_dict["lines"][-1] = (
+                                    cur_val[0],
+                                    "{}{}{}".format(
+                                        cur_val[1],
+                                        ", " if cur_val[1] else "",
+                                        " ".join(line.strip().split())
+                                    )
+                                )
+                        else:
+                            if cur_mode not in SAS_OK_KEYS or key in SAS_OK_KEYS[cur_mode]:
+                                value = value.strip()
+                                cur_dict["lines"].append((key, value.strip()))
+                            cont_mode = key in SAS_CONT_KEYS
+            if DEBUG:
+                print(
+                    "{:6s} {:6s} :: {}".format(
+                        prev_mode,
+                        cur_mode,
+                        line,
+                    )
+                )
+            prev_mode = cur_mode
+        del _ci
+    # def set_result_from_cache(self, srv_com, cur_ns):
     #    for _key, _value in self._dict.iteritems():
     #        srv_com["result:ctrl_{:d}".format(_key)] = _value
 
@@ -1007,11 +1047,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
             srv_com.set_result(
                 "no controller found",
                 server_command.SRV_REPLY_STATE_ERROR
-)
+            )
             return False
 
     @staticmethod
     def _interpret(ctrl_dict, cur_ns):
+        # pprint.pprint(ctrl_dict)
         def get_status_lines(lines):
             stat_keys = [_key for _key, _value in lines if _key.endswith("_status")]
             if stat_keys:
@@ -1042,8 +1083,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _checked = True
                 if check == "state":
                     _ld = get_log_dict(lines)
-                    #pprint.pprint(lines)
-                    #pprint.pprint(_ld)
+                    # pprint.pprint(lines)
+                    # pprint.pprint(_ld)
                     _info_str = "vd {virtual_drive}, RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(**_ld)
                     if _val.lower().startswith("optimal"):
                         _ret_state = limits.nag_STATE_OK
@@ -1063,7 +1104,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if _val.lower() == "ok":
                     _ret_state = limits.nag_STATE_OK
             elif _entity_type == "b":
-                if _val.lower() == "operational":
+                if _val.lower() in ("operational", "optimal"):
                     _ret_state = limits.nag_STATE_OK
             return _ret_state, _val, _info_str, _entity_type
 
@@ -1087,7 +1128,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
             return {_key: _prune(_value) if type(_value) is dict else _value for _key, _value in in_dict.iteritems() if _value}
 
         def reorder_dict(in_dict):
-            _result =  {"c{:02d}".format(_idx): _interpret_dict("ctrl", _value) for _idx, _value in in_dict.iteritems()}
+            _result = {
+                "c{:02d}".format(_idx): _interpret_dict("ctrl", _value) for _idx, _value in in_dict.iteritems()
+            }
             # prune twice to remove empty subdicts
             _result = _prune(_prune(_result))
             return _result
@@ -1174,7 +1217,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
         # rewrite bbu info
         for _c_id, _c_dict in ctrl_dict.iteritems():
             if "main" in _c_dict.get("bbu_keys", {}):
-                _c_dict["bbus"] = {0 : {"lines": [(_key, _value) for _key, _value in _c_dict["bbu_keys"]["main"].iteritems()]}}
+                _c_dict["bbus"] = {
+                    0: {
+                        "lines": [(_key, _value) for _key, _value in _c_dict["bbu_keys"]["main"].iteritems()]
+                    }
+                }
                 del _c_dict["bbu_keys"]
             if "virt" not in _c_dict:
                 # rewrite from old to new format
@@ -1188,9 +1235,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 del _c_dict["logical_lines"]
         # reorder dict
         _ro_dict = reorder_dict(ctrl_dict)
-        #pprint.pprint(ctrl_dict)
+        # pprint.pprint(_ro_dict)
+        # pprint.pprint(ctrl_dict)
         _key_list = emit_keys(_ro_dict)
-        #print cur_ns
+        # print cur_ns
         if cur_ns.get_hints:
             r_list = []
             _ctrl_found = set()
@@ -1256,9 +1304,14 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _ret_list.append(
                         "{}: {}".format(
                             logging_tools.get_plural("OK check", _num_ok),
-                            ", ".join([logging_tools.get_plural(_expand_key(_key), len(_val)) for _key, _val in _ok_dict.iteritems()])
+                            ", ".join(
+                                [
+                                    logging_tools.get_plural(_expand_key(_key), len(_val)) for _key, _val in _ok_dict.iteritems()
+                                ]
+                            )
                         )
                     )
+            # pprint.pprint(_ret_list)
             return ExtReturn(_g_ret_state, ", ".join(_ret_list), ascii_chunk=ascii_chunk)
 
         # old code, used for reference
@@ -2144,6 +2197,7 @@ class dummy_ccs(object):
         }
         self._content = _content
         self.srv_com = srv_com
+
     def read(self):
         return self._content
 
@@ -2152,16 +2206,31 @@ if __name__ == "__main__":
     import sys
     print("debugging")
     _sas = ctrl_type_megaraid_sas(dummy_mod())
-    _sas._dict = {0: {"info": "???", "logical_lines": {}}}
+    _sas.init_ctrl_dicts()
+    # _sas._dict = {
+    #    0: {
+    #        "info": "???", "logical_lines": {}
+    #    },
+    #    1: {
+    #        "info": "???", "logical_lines": {}
+    #    }
+    # }
     srv_com = server_command.srv_command(command="result")
-    _sas.process(dummy_ccs(srv_com, "ld", file(sys.argv[1], "r").read()))
-    _sas.process(dummy_ccs(srv_com, "enc", file(sys.argv[2], "r").read()))
+    _sas.process(dummy_ccs(srv_com, "ld", file(sys.argv[1], "r").read() + file(sys.argv[2], "r").read() + file(sys.argv[3], "r").read()))
+    # _sas.process(dummy_ccs(srv_com, "bbu", file(sys.argv[2], "r").read()))
+    # _sas.process(dummy_ccs(srv_com, "enc", file(sys.argv[3], "r").read()))
+    _sas.process(dummy_ccs(srv_com, "done", ""))
 
-    #print srv_com.pretty_print()
+    # print srv_com.pretty_print()
 
-    cur_ns = argparse.Namespace(get_hints=False, passive_check_postfix="xxx", key="all", check="all")
+    get_hints = False
+    cur_ns = argparse.Namespace(get_hints=get_hints, passive_check_postfix="xxx", key="all", check="all")
     ctrl_dict = {}
     for res in srv_com["result"]:
         ctrl_dict[int(res.tag.split("}")[1].split("_")[-1])] = srv_com._interpret_el(res)
+    # pprint.pprint(ctrl_dict)
     _res = ctrl_type_megaraid_sas._interpret(ctrl_dict, cur_ns)
-    print _res.ret_str
+    if get_hints:
+        pprint.pprint(_res)
+    else:
+        print _res.ret_str
