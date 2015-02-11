@@ -38,7 +38,6 @@ import time
 DEBUG = False
 
 SAS_OK_KEYS = {
-    "bbu": set(),
     "adp": set(),
     "virt": set(
         [
@@ -48,7 +47,7 @@ SAS_OK_KEYS = {
     ),
     "pd": set(
         [
-            "slot_number", "pd_type", "raw_size", "firmware_state"
+            "slot_number", "pd_type", "raw_size", "firmware_state", "media_type",
         ]
     )
 }
@@ -933,9 +932,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if not line.strip():
                 mode_sense = True
                 continue
+            # some overrides for newer megarcs
+            if line.lower().startswith("adapter #") or line.lower().startswith("bbu status for adapter"):
+                mode_sense = True
             parts = line.lower().strip().split()
             if mode_sense is True:
-                if (parts[0], cur_mode) in [("adapter", None), ("adapter", "pd"), ("adapter", "run")]:
+                if (parts[0], cur_mode) in [("adapter", None), ("adapter", "pd"), ("adapter", "run"), ("adapter", "virt")]:
                     cur_mode = "adp"
                     ctrl_stuff, count_dict = _ci.check_for_ctrl(int(parts[-1].replace("#", "")))
                 elif line.lower().startswith("bbu status for "):
