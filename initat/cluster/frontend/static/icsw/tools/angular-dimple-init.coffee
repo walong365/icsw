@@ -1,38 +1,33 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
 
 # customized by BM, based on:
 
 #! angular-dimple-init - 1.1.4 - 2014-11-10
 #*   https://github.com/esripdx/angular-dimple
 #*   Licensed ISC 
-angular.module("angular-dimple-init", [
-  "angular-dimple-init.graph"
-  "angular-dimple-init.legend"
-  "angular-dimple-init.x"
-  "angular-dimple-init.y"
-  "angular-dimple-init.r"
-  "angular-dimple-init.lineDimple"  # NOTE: directives now ending with Dimple have caused name conflicts (bar with bootstrap, line with d3). In the future, we could rename all such directives, depending on whether we actually use it.
-  "angular-dimple-init.barDimple"
-  "angular-dimple-init.stacked-bar"
-  "angular-dimple-init.area"
-  "angular-dimple-init.stacked-area"
-  "angular-dimple-init.scatter-plot"
-  "angular-dimple-init.ring"
+angular.module("icsw.tools.angular-dimple-init", [
+  "icsw.tools.angular-dimple-init.graphDimple"
+  "icsw.tools.angular-dimple-init.legendDimple"
+  "icsw.tools.angular-dimple-init.x"
+  "icsw.tools.angular-dimple-init.y"
+  "icsw.tools.angular-dimple-init.r"
+  "icsw.tools.angular-dimple-init.lineDimple"
+  "icsw.tools.angular-dimple-init.barDimple"
+  "icsw.tools.angular-dimple-init.stacked-bar"
+  "icsw.tools.angular-dimple-init.areaDimple"
+  "icsw.tools.angular-dimple-init.stacked-area"
+  "icsw.tools.angular-dimple-init.scatter-plot"
+  "icsw.tools.angular-dimple-init.ring"
 ])
 .constant("MODULE_VERSION", "0.0.1")
 .value "defaults",
   foo: "bar"
 
-angular.module("angular-dimple-init.area", [])
-.directive("area", [->
+angular.module("icsw.tools.angular-dimple-init.areaDimple", [])
+.directive("icswToolsDimpleArea", [->
   restrict: "E"
   replace: true
   require: [
-    "area"
+    "icswToolsDimpleArea"
     "^graph"
   ]
   controller: [
@@ -66,11 +61,11 @@ angular.module("angular-dimple-init.area", [])
 
     return
 ])
-angular.module("angular-dimple-init.barDimple", []).directive("barDimple", [->
+angular.module("icsw.tools.angular-dimple-init.barDimple", []).directive("icswToolsDimpleBar", [->
   restrict: "E"
   replace: true
   require: [
-    "barDimple"
+    "icswToolsDimpleBar"
     "^graph"
   ]
   controller: [
@@ -95,14 +90,14 @@ angular.module("angular-dimple-init.barDimple", []).directive("barDimple", [->
 
     return
 ])
-angular.module("angular-dimple-init.graph", []).directive("graph", [->
+angular.module("icsw.tools.angular-dimple-init.graphDimple", []).directive("icswToolsDimpleGraph", [->
   restrict: "E"
   replace: true
   scope:
     data: "="
     color: "="
 
-  require: ["graph"]
+  require: ["icswToolsDimpleGraph"]
   transclude: true
   link: (scope, element, attrs, controllers, transclude) ->
     graphController = controllers[0]
@@ -191,11 +186,11 @@ angular.module("angular-dimple-init.graph", []).directive("graph", [->
         return
   ]
 ])
-angular.module("angular-dimple-init.legend", []).directive("dimplelegend", [->
+angular.module("icsw.tools.angular-dimple-init.legendDimple", []).directive("icswToolsDimpleLegend", [->
   restrict: "E"
   replace: true
   require: [
-    "dimplelegend"
+    "icswToolsDimpleLegend"
     "^graph"
   ]
   controller: [
@@ -221,11 +216,11 @@ angular.module("angular-dimple-init.legend", []).directive("dimplelegend", [->
 
     return
 ])
-angular.module("angular-dimple-init.lineDimple", []).directive("lineDimple", [->
+angular.module("icsw.tools.angular-dimple-init.lineDimple", []).directive("icswToolsDimpleLine", [->
   restrict: "E"
   replace: true
   require: [
-    "lineDimple"
+    "icswToolsDimpleLine"
     "^graph"
   ]
   controller: [
@@ -251,11 +246,11 @@ angular.module("angular-dimple-init.lineDimple", []).directive("lineDimple", [->
 
     return
 ])
-angular.module("angular-dimple-init.r", []).directive("r", [->
+angular.module("icsw.tools.angular-dimple-init.r", []).directive("icswToolsDimpleR", [->
   restrict: "E"
   replace: true
   require: [
-    "r"
+    "icswToolsDimpleR"
     "^graph"
   ]
   controller: [
@@ -279,11 +274,11 @@ angular.module("angular-dimple-init.r", []).directive("r", [->
 
     return
 ])
-angular.module("angular-dimple-init.ring", []).directive("ring", [->
+angular.module("icsw.tools.angular-dimple-init.ring", []).directive("icswToolsDimpleRing", [->
   restrict: "E"
   replace: true
   require: [
-    "ring"
+    "icswToolsDimpleRing"
     "^graph"
   ]
   controller: [
@@ -320,11 +315,11 @@ angular.module("angular-dimple-init.ring", []).directive("ring", [->
 
     return
 ])
-angular.module("angular-dimple-init.scatter-plot", []).directive("scatterPlot", [->
+angular.module("icsw.tools.angular-dimple-init.scatter-plot", []).directive("icswToolsDimpleScatterPlot", [->
   restrict: "E"
   replace: true
   require: [
-    "scatterPlot"
+    "icswToolsDimpleScatterPlot"
     "^graph"
   ]
   controller: [->
@@ -348,11 +343,11 @@ angular.module("angular-dimple-init.scatter-plot", []).directive("scatterPlot", 
 
     return
 ])
-angular.module("angular-dimple-init.stacked-area", []).directive("stackedArea", [->
+angular.module("icsw.tools.angular-dimple-init.stacked-area", []).directive("icswToolsDimpleStackedArea", [->
   restrict: "E"
   replace: true
   require: [
-    "stackedArea"
+    "icswToolsDimpleStackedArea"
     "^graph"
   ]
   controller: [
@@ -387,11 +382,11 @@ angular.module("angular-dimple-init.stacked-area", []).directive("stackedArea", 
 
     return
 ])
-angular.module("angular-dimple-init.stacked-bar", []).directive("stackedBar", [->
+angular.module("icsw.tools.angular-dimple-init.stacked-bar", []).directive("icswToolsDimpleStackedBar", [->
   restrict: "E"
   replace: true
   require: [
-    "stackedBar"
+    "icswToolsDimpleStackedBar"
     "^graph"
   ]
   controller: [
@@ -418,11 +413,11 @@ angular.module("angular-dimple-init.stacked-bar", []).directive("stackedBar", [-
 
     return
 ])
-angular.module("angular-dimple-init.x", []).directive("x", [->
+angular.module("icsw.tools.angular-dimple-init.x", []).directive("icswToolsDimpleX", [->
   restrict: "E"
   replace: true
   require: [
-    "x"
+    "icswToolsDimpleX"
     "^graph"
   ]
   controller: [
@@ -473,11 +468,11 @@ angular.module("angular-dimple-init.x", []).directive("x", [->
 
     return
 ])
-angular.module("angular-dimple-init.y", []).directive("y", [->
+angular.module("icsw.tools.angular-dimple-init.y", []).directive("icswToolsDimpleY", [->
   restrict: "E"
   replace: true
   require: [
-    "y"
+    "icswToolsDimpleY"
     "^graph"
   ]
   controller: [
@@ -523,6 +518,3 @@ angular.module("angular-dimple-init.y", []).directive("y", [->
     return
 ])
 
-{% endinlinecoffeescript %}
-
-</script>

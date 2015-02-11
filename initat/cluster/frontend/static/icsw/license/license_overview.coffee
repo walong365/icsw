@@ -2,7 +2,7 @@
 # NOTE: ui.bootstrap and angular-dimple both define a bar directive and therefore can not be used in the same module
 lic_module = angular.module("icsw.license.overview",
         ["ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple",
-         "angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"])
+         "icsw.tools.angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"])
 
 lic_module.controller("icswLicenseOverviewCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",

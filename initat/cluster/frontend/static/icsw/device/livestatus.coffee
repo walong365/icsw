@@ -118,8 +118,8 @@ class hs_node
             parent = parent.parent
         _clicked.iter_childs((obj) -> obj.show = true)
     
-device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService) ->
+device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -279,7 +279,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             )
         $scope.load_data = (mode) ->
             $scope.cur_timeout = $timeout($scope.load_data, 20000)#20000)
-            $scope.cur_xhr = call_ajax
+            $scope.cur_xhr = icswCallAjaxService
                 url  : ICSW_URLS.MON_GET_NODE_STATUS
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
@@ -888,8 +888,8 @@ class mc_table
             _class = "glyphicon"
         return _class
         
-device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS) ->
+device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"
@@ -928,7 +928,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = (mode) ->
             $scope.reload_pending = true
-            $scope.cur_xhr = call_ajax
+            $scope.cur_xhr = icswCallAjaxService
                 url  : ICSW_URLS.MON_GET_NODE_CONFIG
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
@@ -975,7 +975,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                 return "glyphicon glyphicon-chevron-right"
         $scope.remove_hint = (hint) ->
             _.remove($scope.device_lut[hint.device].monitoring_hint_set, (entry) -> return entry.idx == hint.idx)
-            call_ajax
+            icswCallAjaxService
                 url     :ICSW_URLS.MON_DELETE_HINT
                 data    :
                     hint_pk : hint.idx

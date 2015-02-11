@@ -3,8 +3,8 @@ sidebar_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.info",
     ]
-).controller("icswSidebarCtrl", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService",
-    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService) ->
+).controller("icswSidebarCtrl", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService", "icswCallAjaxService",
+    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService, icswCallAjaxService) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.DeviceOverviewService = DeviceOverviewService
         $scope.msgbus = msgbus
@@ -162,7 +162,7 @@ sidebar_module = angular.module(
                 cur_sel = $scope.get_active_selection($scope.active_tab)
                 $scope.set_active_selection(t_type, cur_sel)
                 $scope.active_tab = t_type
-                call_ajax
+                icswCallAjaxService
                     url  : ICSW_URLS.USER_SET_USER_VAR
                     data : 
                         key   : "sidebar_mode"
@@ -173,7 +173,7 @@ sidebar_module = angular.module(
             # cast to string to compare the arrays
             if String(cur_sel) != String($scope.cur_sel)
                 $scope.cur_sel = cur_sel
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.DEVICE_SET_SELECTION
                     data    : {
                         "angular_sel" : angular.toJson(cur_sel)
@@ -346,8 +346,8 @@ sidebar_module = angular.module(
                 return @scope.dev_lut[t_entry.obj]
         selection_changed: () =>
             @scope.selection_changed()
-).controller("icswSidebarSeparatorCtrl", ["$scope", "$window", "ICSW_URLS",
-    ($scope, $window, ICSW_URLS) ->
+).controller("icswSidebarSeparatorCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $window, ICSW_URLS, icswCallAjaxService) ->
         # init display of sidebar
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         # 2 ... fully open
@@ -376,7 +376,7 @@ sidebar_module = angular.module(
             if $scope.sidebar_state < 0
                 $scope.sidebar_state = 2
             $scope.set_sidebar()
-            call_ajax
+            icswCallAjaxService
                 url: ICSW_URLS.USER_SET_USER_VAR
                 data:
                     key: "sidebar_state"

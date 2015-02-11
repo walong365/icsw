@@ -108,13 +108,17 @@ angular.module(
 angular.module(
     "icsw.device.network",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select", "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select",
+        "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
     ]
 ).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource",
      "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
+    "icswCallAjaxService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
-     $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS) ->
+     $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
+     icswCallAjaxService
+    ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
         $scope.enable_modal = true
@@ -348,7 +352,7 @@ angular.module(
             _dev.scan_address = _dev.manual_address
             # intermediate state to trigger reload
             _dev.active_scan = "waiting"
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.DEVICE_SCAN_DEVICE_NETWORK
                 data    :
                     "dev" : angular.toJson($scope.scan_device)
@@ -615,7 +619,7 @@ angular.module(
         $scope.copy_network = (src_obj, event) ->
             if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
                 blockUI.start()
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.NETWORK_COPY_NETWORK
                     data    : {
                         "source_dev" : src_obj.idx
@@ -712,8 +716,8 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.network.total")
     }
-]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS) ->
+]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswCallAjaxService) ->
         cluster_info_ctrl = ($scope, $modalInstance, Restangular, ICSW_URLS, cluster) ->
             $scope.cluster = cluster
             $scope.devices = []
@@ -733,7 +737,7 @@ angular.module(
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devices = _dev_sel
         $scope.reload = () ->
-            call_ajax
+            icswCallAjaxService
                 url      : ICSW_URLS.NETWORK_GET_CLUSTERS
                 dataType : "json"
                 success  : (json) =>
@@ -865,7 +869,7 @@ angular.module(
                 scope.$apply()
             )
     }
-]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache) ->
+]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswCallAjaxService", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswCallAjaxService) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
@@ -888,7 +892,7 @@ angular.module(
                 blockUI.start(
                     "loading, please wait..."
                 )
-                call_ajax
+                icswCallAjaxService
                     url      : ICSW_URLS.NETWORK_JSON_NETWORK
                     data     : 
                         "graph_sel" : scope.graph_sel

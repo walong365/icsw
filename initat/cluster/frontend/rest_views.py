@@ -27,6 +27,7 @@ from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from initat.cluster.backbone import serializers as model_serializers
+from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.models import get_related_models, get_change_reset_list, device, \
     domain_name_tree, category_tree, device_selection, device_config, home_export_list, \
     csw_permission, netdevice, cd_connection, ext_license_state_coarse, ext_license_check_coarse, \
@@ -299,18 +300,7 @@ class detail_view(mixins.RetrieveModelMixin,
     def delete(self, request, *args, **kwargs):
         # just be careful
         cur_obj = self.model.objects.get(Q(pk=kwargs["pk"]))
-        ignore_objs = {
-            "device_group": list(device.objects.filter(Q(device_group=kwargs["pk"]) & Q(device_type__identifier="MD")))
-        }.get(self.model._meta.object_name, [])
-        num_refs = get_related_models(cur_obj, ignore_objs=ignore_objs)
-        if num_refs:
-            logger.error("lock_list for {} contains {}:".format(unicode(cur_obj), logging_tools.get_plural("entry", len(cur_obj._lock_list))))
-            for _num, _entry in enumerate(cur_obj._lock_list, 1):
-                logger.error(" - {:2d}: {}".format(_num, _entry))
-            raise ValueError("cannot delete {}: referenced {}".format(
-                self.model._meta.object_name,
-                logging_tools.get_plural("time", num_refs)))
-        else:
+        if can_delete_obj(cur_obj, logger): # this also throws on negative answer
             return self.destroy(request, *args, **kwargs)
             # it makes no sense to return something meaningfull because the DestroyModelMixin returns
             # a 204 status on successfull deletion
