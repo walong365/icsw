@@ -931,7 +931,7 @@ def compress_num_list(ql, excl_list=[]):
                     nc_a.append(add_p(s_num, l_num))
                     s_num = e_num
                 l_num = e_num
-    if s_num:
+    if s_num is not None:
         nc_a.append(add_p(s_num, e_num))
     return ", ".join(nc_a)
 
