@@ -29,6 +29,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_type, device_group, device, \
     cd_connection, domain_tree_node
+from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
     device_tree_many_form, device_variable_form, device_variable_new_form
@@ -66,8 +67,20 @@ class change_devices(View):
         c_dict = json.loads(_post.get("change_dict", ""))
         pk_list = json.loads(_post.get("device_list"))
         if c_dict.get("delete", False):
-            device.objects.filter(Q(pk__in=pk_list)).delete()
-            request.xml_response.info("delete {}".format(logging_tools.get_plural("device", len(pk_list))))
+            num_deleted = 0
+            error_msgs = []
+            for pk in pk_list:
+                obj = device.objects.get(Q(pk=pk))
+                try:
+                    if can_delete_obj(obj, logger):
+                        obj.delete()
+                        num_deleted += 1
+                except ValueError as e:
+                    error_msgs.append((obj.name, unicode(e.message)))
+            if num_deleted > 0:
+                request.xml_response.info("delete {}".format(logging_tools.get_plural("device", num_deleted)))
+            for pk, msg in error_msgs:
+                request.xml_response.error("Failed to delete {}: {}".format(pk, msg))
         else:
             def_dict = {
                 "curl": "",
