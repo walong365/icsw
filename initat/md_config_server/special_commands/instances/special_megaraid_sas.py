@@ -34,14 +34,16 @@ class special_megaraid_sas(SpecialBase):
         retries = 2
         server_contact = True
         info = "MegaRaid SAS"
-        command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ --passive-check-postfix $ARG3$"
+        command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ " \
+            "--passive-check-postfix $ARG3$ --short-output ${ARG4:MEGARAID_SAS_SHORT_OUTPUT:0}"
         description = "detailed checks for MegaRaid SAS controllers"
 
     def RCClass(self):
         return raidcontroller_mod.ctrl_type.ctrl_class("megaraid_sas")
 
     def to_hint(self, srv_reply):
-        cur_ns = Namespace(get_hints=True)
+        _short_output = self.host.dev_variables.get("MEGARAID_SAS_SHORT_OUTPUT", 0)
+        cur_ns = Namespace(get_hints=True, short_output=_short_output)
         # transform from srv_reply to dict, see code in raidcontroller_mod (megaraid_sas_status_command.interpret)
         ctrl_dict = {}
         for res in srv_reply["result"]:
