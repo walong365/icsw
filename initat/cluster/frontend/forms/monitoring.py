@@ -1272,7 +1272,7 @@ class mon_check_command_form(ModelForm):
         Fieldset(
             "Categories",
             HTML("""
-<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
+<div icsw-config-category-choice edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
 </div>
             """),
         ),
