@@ -195,6 +195,7 @@ ics_app = angular.module(
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
     "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
+    "REST_DEVICE_TREE_DETAIL": "{% url 'rest:device_tree_detail' 1 %}"
     "REST_DEVICE_TYPE_LIST": "{% url 'rest:device_type_list' %}"
     "REST_DEVICE_VARIABLE_DETAIL": "{% url 'rest:device_variable_detail' 1 %}"
     "REST_DEVICE_VARIABLE_LIST": "{% url 'rest:device_variable_list' %}"
