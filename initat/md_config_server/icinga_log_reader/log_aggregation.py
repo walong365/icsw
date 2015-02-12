@@ -156,10 +156,10 @@ class icinga_log_aggregator(object):
             mon_icinga_log_full_system_dump.objects.filter(date__range=(start_time, end_time)).values_list('date', flat=True)
         )
 
-        timespan_hosts = mon_icinga_log_raw_host_alert_data.objects.filter(date__in=(dump_times))\
+        timespan_hosts = mon_icinga_log_raw_host_alert_data.objects.filter(date__in=(dump_times), device_independent=False)\
             .distinct("device_id")\
             .values_list("device_id", flat=True)
-        timespan_services = mon_icinga_log_raw_service_alert_data.objects.filter(date__in=(dump_times))\
+        timespan_services = mon_icinga_log_raw_service_alert_data.objects.filter(date__in=(dump_times), device_independent=False)\
             .distinct("device_id", "service_id", "service_info")\
             .values_list("device_id", "service_id", "service_info")
 
