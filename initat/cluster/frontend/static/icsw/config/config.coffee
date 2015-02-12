@@ -3,7 +3,7 @@ config_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror", "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
-).service("icswConfigCategoryTreeService", () ->
+).service("icswConfigMonCategoryTreeService", () ->
     class cat_tree extends tree_config
         constructor: (@scope, args) ->
             super(args)
@@ -495,7 +495,7 @@ config_module = angular.module(
         $scope.delete_mon = (config, _mon) ->
             $scope.mon_edit.delete_list = config.mon_check_command_set
             $scope.mon_edit.delete_obj(_mon).then((res) ->
-                $scope.check_commands = (entry for entry in $scope.check_commands when entry.idx != _mon.idx)
+                #$scope.check_commands = (entry for entry in $scope.check_commands when entry.idx != _mon.idx)
                 if res
                     $scope.unselect_object(_mon)
                     $scope.filter_conf(config, $scope)
@@ -685,14 +685,14 @@ config_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.config.mon.table")
     }
-]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigCategoryTreeService", ($templateCache, icswConfigCategoryTreeService) ->
+]).directive("icswConfigCategoryChoice", ["$templateCache", "icswConfigMonCategoryTreeService", ($templateCache, icswConfigMonCategoryTreeService) ->
     return {
         restrict : "EA"
-        template : "<tree treeconfig='cat_tree'></tree></div>"
+        template : "<tree treeconfig='cat_tree'></tree>"
         link : (scope, el, attrs) ->
             # start at -1 because we dont count the Top level category
             scope.num_cats = -1
-            scope.cat_tree = new icswConfigCategoryTreeService(scope)
+            scope.cat_tree = new icswConfigMonCategoryTreeService(scope)
             cat_tree_lut = {}
             if attrs["mode"] == "conf"
                 sel_cat = scope._edit_obj.categories
