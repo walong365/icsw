@@ -875,10 +875,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
         exec_name = "megarc"
         description = "MegaRAID SAS"
 
-    def init_ctrl_dicts(self, in_list=None):
-        for _id in in_list if in_list else self._dict.keys():
-            self._dict[_id] = {}
-
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
@@ -2167,15 +2163,6 @@ if __name__ == "__main__":
     import sys
     print("debugging")
     _sas = ctrl_type_megaraid_sas(dummy_mod())
-    _sas.init_ctrl_dicts()
-    # _sas._dict = {
-    #    0: {
-    #        "info": "???", "logical_lines": {}
-    #    },
-    #    1: {
-    #        "info": "???", "logical_lines": {}
-    #    }
-    # }
     srv_com = server_command.srv_command(command="result")
     _sas.process(dummy_ccs(srv_com, "ld", file(sys.argv[1], "r").read() + file(sys.argv[2], "r").read() + file(sys.argv[3], "r").read()))
     # _sas.process(dummy_ccs(srv_com, "bbu", file(sys.argv[2], "r").read()))
