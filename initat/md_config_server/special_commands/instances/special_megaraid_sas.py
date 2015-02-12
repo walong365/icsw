@@ -20,13 +20,17 @@
 """ special config for MegaRaid SAS modules """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import monitoring_hint
+from initat.cluster.backbone.models import monitoring_hint, device_variable
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.host_monitoring.modules import raidcontroller_mod
 from argparse import Namespace
 from lxml.builder import E  # @UnresolvedImport @UnusedImport
 import logging_tools
+
+# private var to store setting
+PV_NAME = "__megaraid_sas_output_flag"
+PUBLIC_NAME = "MEGARAID_SAS_SHORT_OUTPUT"
 
 
 class special_megaraid_sas(SpecialBase):
@@ -35,14 +39,28 @@ class special_megaraid_sas(SpecialBase):
         server_contact = True
         info = "MegaRaid SAS"
         command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ " \
-            "--passive-check-postfix $ARG3$ --short-output ${ARG4:MEGARAID_SAS_SHORT_OUTPUT:0}"
+            "--passive-check-postfix $ARG3$ --short-output ${{ARG4:{}:0}}".format(PUBLIC_NAME)
         description = "detailed checks for MegaRaid SAS controllers"
 
     def RCClass(self):
         return raidcontroller_mod.ctrl_type.ctrl_class("megaraid_sas")
 
     def to_hint(self, srv_reply):
-        _short_output = self.host.dev_variables.get("MEGARAID_SAS_SHORT_OUTPUT", 0)
+        _prev_output = self.host.dev_variables.get(PV_NAME, -1)
+        _short_output = self.host.dev_variables.get(PUBLIC_NAME, 0)
+        if _prev_output != _short_output:
+            self.remove_cache_entries()
+        if PV_NAME not in self.host.dev_variables:
+            new_var = device_variable(
+                is_public=False,
+                name=PV_NAME,
+                local_copy_ok=False,
+                var_type="i",
+                # init value
+                val_int=-1,
+            )
+            self.add_variable(new_var)
+        self.set_variable(PV_NAME, _short_output)
         cur_ns = Namespace(get_hints=True, short_output=_short_output)
         # transform from srv_reply to dict, see code in raidcontroller_mod (megaraid_sas_status_command.interpret)
         ctrl_dict = {}
