@@ -882,9 +882,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), "ld") for ctrl_id in ctrl_list] + \
-               [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), "bbu") for ctrl_id in ctrl_list] + \
-               [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), "enc") for ctrl_id in ctrl_list] + \
+        return [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
+               [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
+               [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
                [("/bin/true", "done")]
 
     def scan_ctrl(self):
