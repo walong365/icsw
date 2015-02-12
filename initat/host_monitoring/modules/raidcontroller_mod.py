@@ -856,14 +856,14 @@ class SasCtrlInfo(object):
     def get_ctrl_dict(self, ctrl_id):
         self.ctrl_stuff = self.ctrl_struct._dict.setdefault(
             ctrl_id,
-            {
-                "count_dict": {
-                    "virt": 0,
-                    "pd": 0,
-                    "enc": 0,
-                }
-            }
+            {},
         )
+        if "count_dict" not in self.ctrl_stuff:
+            self.ctrl_stuff["count_dict"] = {
+                "virt": 0,
+                "pd": 0,
+                "enc": 0,
+            }
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.ctrl_struct.log(what, log_level)
@@ -881,7 +881,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
         return [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
                [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
                [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
-               [("/bin/true", "done")]
+               [("/bin/true", 0, "done")]
 
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll -noLog", post="strip")
