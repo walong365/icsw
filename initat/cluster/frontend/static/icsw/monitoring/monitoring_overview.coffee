@@ -30,7 +30,7 @@ monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
         wait_list = restDataSource.add_sources([
             [ICSW_URLS.REST_DEVICE_LIST, {}],
         ])
-        $device_list = []
+        $scope.device_list = []
         $q.all(wait_list).then( (data) ->
             $scope.device_list = data[0]
             $scope.update_device_list()
@@ -73,7 +73,8 @@ monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
 
         $scope.load_monitoring_overview_data = (new_entries) ->
             if new_entries.length > 0
-                cont = (entry_property_name) ->
+                # historic
+                historic_cont = (entry_property_name) ->
                     (new_data) ->
                         for device_id, data of new_data
                             device_id = parseInt(device_id)  # fuck javascript
@@ -87,11 +88,11 @@ monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
 
 
                 indexes = (entry.idx for entry in new_entries)
-                status_utils_functions.get_device_data(indexes, $scope.yesterday, 'day', cont("device_data_yesterday"))
-                status_utils_functions.get_device_data(indexes, $scope.last_week, 'week', cont("device_data_last_week"))
+                status_utils_functions.get_device_data(indexes, $scope.yesterday, 'day', historic_cont("device_data_yesterday"))
+                status_utils_functions.get_device_data(indexes, $scope.last_week, 'week', historic_cont("device_data_last_week"))
 
-                status_utils_functions.get_service_data(indexes, $scope.yesterday, 'day', cont("service_data_yesterday"), merge_services=1)
-                status_utils_functions.get_service_data(indexes, $scope.last_week, 'week', cont("service_data_last_week"), merge_services=1)
+                status_utils_functions.get_service_data(indexes, $scope.yesterday, 'day', historic_cont("service_data_yesterday"), merge_services=1)
+                status_utils_functions.get_service_data(indexes, $scope.last_week, 'week', historic_cont("service_data_last_week"), merge_services=1)
 
 
         $scope.initial_sel = []

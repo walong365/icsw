@@ -118,8 +118,11 @@ class hs_node
             parent = parent.parent
         _clicked.iter_childs((obj) -> obj.show = true)
     
-device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService) ->
+device_livestatus_module.controller("livestatus_ctrl",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular","paginatorSettings", "restDataSource", "sharedDataSource",
+     "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswDeviceLivestatusDataService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
+     $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswDeviceLivestatusDataService) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -275,57 +278,30 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 $scope.cat_tree_lut = cat_tree_lut
                 $scope.cat_tree.show_selected(false)
                 $scope.dev_tree_lut = icswTools.build_lut(data[1])
-                $scope.load_data()
+
+                icswDeviceLivestatusDataService.retain($scope.$id, $scope.devsel_list, $scope.on_new_data)
             )
-        $scope.load_data = (mode) ->
-            $scope.cur_timeout = $timeout($scope.load_data, 20000)#20000)
-            $scope.cur_xhr = icswCallAjaxService
-                url  : ICSW_URLS.MON_GET_NODE_STATUS
-                data : {
-                    "pk_list" : angular.toJson($scope.devsel_list)
-                },
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        service_entries = []
-                        $(xml).find("value[name='service_result']").each (idx, node) =>
-                            service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                        host_entries = []
-                        $(xml).find("value[name='host_result']").each (idx, node) =>
-                            host_entries = host_entries.concat(angular.fromJson($(node).text()))
-                        $scope.$apply(
-                            used_cats = []
-                            $scope.entries = service_entries
-                            $scope.host_entries = host_entries
-                            $scope.host_lut = {}
-                            for entry in host_entries
-                                # sanitize entries
-                                $scope._sanitize_entries(entry)
-                                # list of checks for host
-                                entry.checks = []
-                                entry.ct = "host"
-                                entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
-                                $scope.host_lut[entry.host_name] = entry
-                                $scope.host_lut[entry.custom_variables.device_pk] = entry
-                            for entry in service_entries
-                                # sanitize entries
-                                $scope._sanitize_entries(entry)
-                                entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
-                                entry.description = entry.display_name  # this is also what icinga displays
-                                entry.ct = "service"
-                                # populate list of checks
-                                $scope.host_lut[entry.custom_variables.device_pk].checks.push(entry)
-                                if entry.custom_variables and entry.custom_variables.cat_pks?
-                                    used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
-                            for pk of $scope.cat_tree_lut
-                                entry = $scope.cat_tree_lut[pk]
-                                if parseInt(pk) in used_cats
-                                    entry._show_select = true 
-                                else
-                                    entry.selected = false
-                                    entry._show_select = false 
-                            $scope.build_sunburst()
-                            $scope.md_filter_changed()
-                        )
+        $scope.on_new_data = (host_entries, service_entries, host_lut) ->
+            $scope.$apply(
+                $scope.host_entries = host_entries
+                $scope.entries = service_entries
+                $scope.host_lut = host_lut
+                used_cats = []
+
+                for entry in service_entries
+                    if entry.custom_variables and entry.custom_variables.cat_pks?
+                        used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
+
+                for pk of $scope.cat_tree_lut
+                    entry = $scope.cat_tree_lut[pk]
+                    if parseInt(pk) in used_cats
+                        entry._show_select = true
+                    else
+                        entry.selected = false
+                        entry._show_select = false
+                $scope.build_sunburst()
+                $scope.md_filter_changed()
+            )
         $scope.build_sunburst = () ->
             # build burst data
             _bdat = new hs_node("System")
@@ -381,37 +357,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 _devg.children = (entry for entry in _devg.children when entry.children.length)
             _bdat.children = (entry for entry in _bdat.children when entry.children.length)
             $scope.burstData = _bdat
-        $scope._sanitize_entries = (entry) ->
-            entry.state = parseInt(entry.state)
-            if entry.state_type in ["0", "1"]
-                entry.state_type = parseInt(entry.state_type)
-            else
-                entry.state_type = null
-            if entry.check_type in ["0", "1"]
-                entry.check_type = parseInt(entry.check_type)
-            else
-                entry.check_type = null
-        $scope.parse_custom_variables = (cvs) ->
-            _cv = {}
-            if cvs
-                first = true
-                for _entry in cvs.split("|")
-                    if first
-                        key = _entry.toLowerCase()
-                        first = false
-                    else
-                        parts = _entry.split(",")
-                        _cv[key] = parts
-                        key = parts.pop().toLowerCase()
-                # append key of last '|'-split to latest parts
-                parts.push(key)
-                for single_key in ["check_command_pk", "device_pk"]
-                    if single_key of _cv
-                        _cv[single_key] = parseInt(_cv[single_key][0])
-                for int_mkey in ["cat_pks"]
-                    if int_mkey of _cv
-                        _cv[int_mkey] = (parseInt(_sv) for _sv in _cv[int_mkey])
-            return _cv
         $scope.md_filter_changed = () ->
             get_filter = (node) ->
                if node.check?
@@ -463,11 +408,165 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.filter_mdr = (entry, scope) ->
             return entry._show
         $scope.$on("$destroy", () ->
-            if $scope.cur_timeout?
-                $timeout.cancel($scope.cur_timeout)
-            if $scope.cur_xhr?
-                $scope.cur_xhr.abort()
+            icswDeviceLivestatusDataService.destroy($scope.$id)
         )
+]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", (ICSW_URLS, $interval, $timeout, icswCallAjaxService) ->
+    watch_list = {}
+    cont_list = {}
+    destroyed_list = []
+    cur_interval = undefined
+    cur_xhr = undefined
+    schedule_start_timeout = undefined
+
+    _sanitize_entries = (entry) ->
+        entry.state = parseInt(entry.state)
+        if entry.state_type in ["0", "1"]
+            entry.state_type = parseInt(entry.state_type)
+        else
+            entry.state_type = null
+        if entry.check_type in ["0", "1"]
+            entry.check_type = parseInt(entry.check_type)
+        else
+            entry.check_type = null
+
+    _parse_custom_variables = (cvs) ->
+        _cv = {}
+        if cvs
+            first = true
+            for _entry in cvs.split("|")
+                if first
+                    key = _entry.toLowerCase()
+                    first = false
+                else
+                    parts = _entry.split(",")
+                    _cv[key] = parts
+                    key = parts.pop().toLowerCase()
+            # append key of last '|'-split to latest parts
+            parts.push(key)
+            for single_key in ["check_command_pk", "device_pk"]
+                if single_key of _cv
+                    _cv[single_key] = parseInt(_cv[single_key][0])
+            for int_mkey in ["cat_pks"]
+                if int_mkey of _cv
+                    _cv[int_mkey] = (parseInt(_sv) for _sv in _cv[int_mkey])
+        return _cv
+
+    watchers_present = () ->
+        return Object.keys(cont_list).length > 0
+
+    schedule_load = () ->
+        # don't update immediately, wait until more controllers have registered
+        if not schedule_start_timeout?
+            schedule_start_timeout = $timeout(load_data, 200)
+
+    start_interval = () ->
+        console.log 'start interval', 'watchers', cont_list
+        if cur_interval?
+            $interval.cancel(cur_interval)
+        cur_interval = $interval(load_data, 5000)#20000)
+
+    stop_interval = () ->
+        console.log 'stop interval', cur_interval
+        if cur_interval?
+            $interval.cancel(cur_interval)
+        if cur_xhr?
+            cur_xhr.abort()
+
+
+    load_data = () ->
+        console.log 'load_data'
+        if schedule_start_timeout?
+            console.log 'schedule was'
+            $timeout.cancel(schedule_start_timeout)
+            schedule_start_timeout = undefined
+
+        # only continue if anyone is actually watching
+        if watchers_present()
+
+            watched_devs = []
+            for dev of watch_list
+                if watch_list[dev].length > 0
+                    watched_devs.push(dev)
+
+            cur_xhr = icswCallAjaxService
+                url  : ICSW_URLS.MON_GET_NODE_STATUS
+                data : {
+                    "pk_list" : angular.toJson(watched_devs)
+                },
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        service_entries = []
+                        $(xml).find("value[name='service_result']").each (idx, node) =>
+                            service_entries = service_entries.concat(angular.fromJson($(node).text()))
+                        host_entries = []
+                        $(xml).find("value[name='host_result']").each (idx, node) =>
+                            host_entries = host_entries.concat(angular.fromJson($(node).text()))
+                        host_lut = {}
+                        for entry in host_entries
+                            # sanitize entries
+                            _sanitize_entries(entry)
+                            # list of checks for host
+                            entry.checks = []
+                            entry.ct = "host"
+                            entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                            host_lut[entry.host_name] = entry
+                            host_lut[entry.custom_variables.device_pk] = entry
+                        for entry in service_entries
+                            # sanitize entries
+                            _sanitize_entries(entry)
+                            entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+                            entry.description = entry.display_name  # this is also what icinga displays
+                            entry.ct = "service"
+                            # populate list of checks
+                            host_lut[entry.custom_variables.device_pk].checks.push(entry)
+
+                        for client, client_cont of cont_list
+                            hosts_client = []
+                            services_client = []
+                            host_lut_client = {}
+                            for dev, watchers of watch_list
+                                if client in watchers and dev of host_lut  # sometimes we don't get data for a device
+                                    entry = host_lut[dev]
+                                    hosts_client.push(entry)
+                                    for check in entry.checks
+                                        services_client.push(check)
+                                    host_lut_client[dev] = entry
+                                    host_lut_client[entry.host_name] = entry
+
+                            client_cont(hosts_client, services_client, host_lut_client)
+
+    return {
+        retain: (client, dev_list, cont) ->
+            # get data for devices of devlist for client (same client instance must be passed to cancel())
+            # cont is called with new data as soon as anything is available
+            client = client.toString()
+            if client not in destroyed_list  # when client get the destroy event, they may still execute data, so we need to catch this here
+                if not watchers_present()
+                    start_interval()
+
+                for dev in dev_list
+                    if not watch_list[dev]?
+                        watch_list[dev] = []
+
+                    if not _.some(watch_list[dev], (elem) -> return elem == dev)
+                        watch_list[dev].push(client)
+
+                    cont_list[client] = cont
+
+                schedule_load()
+
+
+        destroy: (client) ->
+            client = client.toString()
+            destroyed_list.push(client)
+            # don't watch for client anymore
+            for dev, watchers of watch_list
+                _.remove(watchers, (elem) -> return elem == client)
+            delete cont_list[client]
+
+            if not watchers_present()
+                stop_interval()
+    }
 ]).service("icswDeviceLivestatusCategoryTreeService", () ->
     class category_tree extends tree_config
         constructor: (@scope, args) ->
