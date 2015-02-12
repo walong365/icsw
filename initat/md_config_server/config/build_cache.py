@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -162,6 +162,12 @@ class build_cache(object):
 
     def get_vars(self, host):
         return self.__var_cache.get_vars(host)
+
+    def add_variable(self, new_var):
+        self.__var_cache.add_variable(new_var)
+
+    def set_variable(self, dev, var_name, var_value):
+        self.__var_cache.set_variable(dev, var_name, var_value)
 
     def get_cluster(self, c_type, main_device_id):
         if main_device_id in self.__clusters.get(c_type, {}):

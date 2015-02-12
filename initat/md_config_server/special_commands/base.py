@@ -74,6 +74,16 @@ class SpecialBase(object):
         self.host = host
         self.build_cache = build_cache
 
+    def add_variable(self, new_var):
+        # helper function: add device variable
+        new_var.device = self.host
+        new_var.save()
+        # add to cache
+        self.build_cache.add_variable(new_var)
+
+    def set_variable(self, var_name, var_value):
+        self.build_cache.set_variable(self.host, var_name, var_value)
+
     def _store_cache(self):
         self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__hint_list))))
         monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
@@ -110,6 +120,12 @@ class SpecialBase(object):
             )
         else:
             self.log("no cache set")
+
+    def remove_cache_entries(self):
+        # remove all cached entries
+        self.log("removing all {:d} cached entries".format(len(self.__cache)))
+        [_entry.delete() for _entry in self.__cache]
+        self.__cache = []
 
     def add_persistent_entries(self, hint_list, call_idx):
         pers_dict = {

@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -736,12 +736,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         # set some vars
         host_nc = cur_gc["device.d"]
         # we always check for passive checks
-        #if cur_gc.master:
+        # if cur_gc.master:
         #    check_for_passive_checks = True
-        #else:
+        # else:
         #    check_for_passive_checks = False
-        #checks_are_active = True
-        #if check_for_passive_checks:
+        # checks_are_active = True
+        # if check_for_passive_checks:
         #    if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
         #        checks_are_active = False
         # check if host is actively checked via current server
@@ -914,7 +914,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         if not n_field:
                             n_field.append("o")
                         act_host["flap_detection_options"] = n_field
-                    #if checks_are_active and not cur_gc.master:
+                    # if checks_are_active and not cur_gc.master:
                     #    # trace changes
                     # always enable obsess_over_host
                     if True:
@@ -1368,7 +1368,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if sc_array:
                 serv_temp = _bc.serv_templates[s_check.get_template(act_def_serv.name)]
                 serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
-                sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, cur_gc, **_rewrite_lut)
+                sc_list = self.get_service(
+                    host, act_host, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, cur_gc, **_rewrite_lut
+                )
                 host_config_list.extend(sc_list)
                 _counter.ok(len(sc_list))
 
@@ -1765,7 +1767,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             info = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["display_name"] = info
             # create identifying string for log
-            #print "::", s_check.check_command_pk, s_check.special_command_pk, s_check.mccs_id
+            # print "::", s_check.check_command_pk, s_check.special_command_pk, s_check.mccs_id
             act_serv["service_description"] = host_service_id_util.create_host_service_description(host.pk, s_check, info)
             act_serv["host_name"] = host.full_name
             # volatile

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -52,16 +52,31 @@ class var_cache(dict):
                     if _key not in self:
                         self[_key] = {g_key: g_value for g_key, g_value in self.get_global_def_dict().iteritems()}
                 else:
-                    _key = "dg__{:d}".format(_var.device.device_group_id)
+                    _key = "g__{:d}".format(_var.device.device_group_id)
             else:
-                _key = "dev__{:d}".format(_var.device_id)
+                _key = "d__{:d}".format(_var.device_id)
             self.setdefault(_key, {})[_var.name] = _var.value
+
+    def add_variable(self, new_var):
+        v_key = "d__{:d}".format(new_var.device_id)
+        if v_key not in self:
+            self[v_key] = {}
+        self[v_key][_var.name] = _var.value
+
+    def set_variable(self, dev, var_name, var_value):
+        # update db
+        dev_variable = device_variable.objects.get(Q(name=var_name) & Q(device=dev))
+        dev_variable.value = var_value
+        dev_variable.save()
+        # update dict
+        self["d__{:d}".format(dev.pk)][var_name] = var_value
 
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
             "GLOBAL",
-            "dg__{:d}".format(cur_dev.device_group_id),
-            "dev__{:d}".format(cur_dev.pk))
+            "g__{:d}".format(cur_dev.device_group_id),
+            "d__{:d}".format(cur_dev.pk)
+        )
         if global_key not in self:
             def_dict = self.get_global_def_dict()
             # read global configs
