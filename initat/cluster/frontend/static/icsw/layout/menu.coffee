@@ -72,7 +72,7 @@ menu_module = angular.module(
             window.location = ICSW_URLS.INFO_PAGE
             return false
         $scope.redirect_to_handbook = () ->
-            window.location = ICSW_URLS.DOC_PAGE
+            window.location = "/cluster/doc/main.pdf"
             return false
         $scope.show_handbook_page = () ->
             window.open(
