@@ -110,7 +110,6 @@ angular.module(
         # we always return a list for easier REST handling
         base.getList(query_data).then((data_pseudo_list) ->
             # need plain() to get rid of restangular stuff
-            console.log 'serv', data_pseudo_list.plain()[0]
             cont(data_pseudo_list.plain()[0])
         )
     get_timespan = (start_date, timerange, cont) ->

@@ -51,7 +51,7 @@
     <div class="row" style="width: 650px">
         <div class="col-md-12">
             <div style="width: auto">
-                <icsw-tools-device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></icsw-tools-device-hist-status-overview>
+                <icsw-tools-device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
             </div>
         </div>
 
@@ -81,20 +81,6 @@
                     <td class="text-right"> {{ extract_service_value(entry[1], "Unknown") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Undetermined") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry[1], "Flapping") }} </td>
-                    <td>
-                        <!-- TODO: implement this directive from svg code below -->
-                        <icsw-tools-status-line-graph></icsw-tools-status-line-graph>
-                        <svg width="350" height="20">
-                            <g>
-                                <text x="0" y="-5">0:00</text>
-                                <text x="50" y="-5">3:00</text>
-                                <rect x="0" width="100" height="20" style="fill:rgb(0,0,255);stroke-width:1;stroke:rgb(0,0,0)"></rect>
-                                <rect x="100" width="50" height="20" style="fill:rgb(255,0,0);stroke-width:1;stroke:rgb(0,0,0)"></rect>
-                                <rect x="150" width="50" height="20" style="fill:rgb(0,255,255);stroke-width:1;stroke:rgb(0,0,0)"></rect>
-                            </g>
-                        </svg>
-
-                    </td>
                 </tr>
                 </tbody>
             </table>

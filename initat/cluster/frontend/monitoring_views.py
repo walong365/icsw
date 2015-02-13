@@ -539,27 +539,24 @@ class get_hist_service_data(ListAPIView):
 
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
-        def get_data_per_device(device_ids, timespans_db):
+        queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan=timespan_db)
+        # can't do regular prefetch_related for queryset, this seems to work
 
-            queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan=timespan_db)
-            # can't do regular prefetch_related for queryset, this seems to work
+        data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
+        for entry in queryset.prefetch_related(Prefetch("service")):
 
-            data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
-            for entry in queryset.prefetch_related(Prefetch("service")):
+            relevant_data_from_entry = {
+                'state': trans[entry.state],
+                'state_type': entry.state_type,
+                'value': entry.value
+            }
 
-                relevant_data_from_entry = {
-                    'state': trans[entry.state],
-                    'state_type': entry.state_type,
-                    'value': entry.value
-                }
+            service_name = entry.service.name if entry.service else ""
 
-                service_name = entry.service.name if entry.service else ""
+            data_per_device[entry.device_id]["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
 
-                data_per_device[entry.device_id]["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
-
-            return data_per_device
-
-        def merge_services(data_per_device):
+        # this mode is for an overview of the services of a device without saying anything about a particular service
+        if int(request.GET.get("merge_services", 0)):
             return_data = {}
             for device_id, device_data in data_per_device.iteritems():
                 # it's not obvious how to aggregate service states
@@ -573,47 +570,11 @@ class get_hist_service_data(ListAPIView):
                 for entry in device_data:
                     entry['value'] /= total
                 return_data[device_id] = device_data
-            return return_data
-
-        def merge_state_types_per_device(data_per_device):
+        else:
             return_data = {}
             # merge state types for each service in each device
             for device_id, device_service_data in data_per_device.iteritems():
                 return_data[device_id] = {service_key: _device_status_history_util.merge_state_types(service_data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]) for
                                           service_key, service_data in device_service_data.iteritems()}
-            return return_data
-
-        data_per_device = get_data_per_device(device_ids, [timespan_db])
-
-        # this mode is for an overview of the services of a device without saying anything about a particular service
-        if int(request.GET.get("merge_services", 0)):
-            prelim_return_data = merge_services(data_per_device)
-            return_data = {dev: {"main": data, "detailed": {}} for dev, data in prelim_return_data.iteritems()}
-
-        else:
-            prelim_return_data = merge_state_types_per_device(data_per_device)
-
-
-            # for full view, include more detailed data
-            shorter_duration_type = duration.get_shorter_duration(timespan_db.duration_type)
-            shorter_durations_db = mon_icinga_log_aggregated_timespan.objects.filter(start_date__gte=timespan_db.start_date,
-                                                                                     end_date__lte=timespan_db.end_date,
-                                                                                     duration_type=shorter_duration_type.ID)
-
-            detailed_data_per_device = get_data_per_device(device_ids, shorter_durations_db)
-            detailed_return_data = merge_state_types_per_device(detailed_data_per_device)
-
-            return_data = {}
-            for dev, main_data in prelim_return_data.iteritems():
-                return_data[dev] = {
-                    'main'     : main_data,
-                    'detailed' : detailed_return_data[dev]
-                }
-
-
-                # TODO: don't merge data from detailed view gr
-                # TODO: fix angular side for new data
-
-
 
         return Response([return_data])  # fake a list, see coffeescript
