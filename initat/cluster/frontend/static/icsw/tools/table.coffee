@@ -76,132 +76,127 @@ angular.module(
                     e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
     }
-]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", (Restangular, $parse, $injector, $compile, $templateCache, $modal) ->
-    return {
-        restrict: 'EA'
-        scope: true
-        link: (scope, element, attrs) ->
-            scope.config_service = $injector.get(attrs.configService)
+]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", "icswTools", "icswToolsSimpleModalService",
+    (Restangular, $parse, $injector, $compile, $templateCache, $modal, icswTools, icswToolsSimpleModalService) ->
+        return {
+            restrict: 'EA'
+            scope: true
+            link: (scope, element, attrs) ->
+                scope.config_service = $injector.get(attrs.configService)
 
-            scope.config_service.use_modal ?= true
+                scope.config_service.use_modal ?= true
 
-            if scope.config_service.init_fn?
-                scope.config_service.init_fn(scope)
-            scope.data_received = (data) ->
-                $parse(attrs.targetList).assign(scope, data)
-                if scope.config_service.after_reload
-                    scope.config_service.after_reload(scope)
+                if scope.config_service.init_fn?
+                    scope.config_service.init_fn(scope)
+                scope.data_received = (data) ->
+                    $parse(attrs.targetList).assign(scope, data)
+                    if scope.config_service.after_reload
+                        scope.config_service.after_reload(scope)
 
-            if scope.config_service.rest_url?
-                $parse(attrs.targetList).assign(scope, [])
-                scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
+                if scope.config_service.rest_url?
+                    $parse(attrs.targetList).assign(scope, [])
+                    scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
 
-                scope.reload = () ->
+                    scope.reload = () ->
 
-                    options = if scope.config_service.rest_options? then  scope.config_service.rest_options else {}
+                        options = if scope.config_service.rest_options? then  scope.config_service.rest_options else {}
 
-                    scope.rest.getList(options).then(scope.data_received)
+                        scope.rest.getList(options).then(scope.data_received)
 
-                scope.reload()
+                    scope.reload()
 
-            # interface functions to use in directive body
-            scope.edit = (event, obj) ->
-                scope.pre_edit_obj = angular.copy(obj)
-                scope.create_or_edit(event, false, obj)
-            scope.create = (event) ->
-                if typeof(scope.config_service.new_object) == "function"
-                    scope.new_obj = scope.config_service.new_object()
-                else
-                    scope.new_obj = scope.config_service.new_object
-                scope.create_or_edit(event, true, scope.new_obj)
-            scope.create_or_edit = (event, create_or_edit, obj) ->
-                scope.edit_obj = obj
-                scope.create_mode = create_or_edit
-                if scope.fn and scope.fn.create_or_edit
-                    scope.fn.create_or_edit(scope, scope.create_mode, obj)
-                if scope.config_service.use_modal
-                    scope.edit_div = $compile($templateCache.get(scope.config_service.edit_template))(scope)
-                    scope.edit_div.simplemodal
-                        #opacity      : 50
-                        position     : [event.clientY - 50, event.clientX - 50]
-                        #autoResize   : true
-                        #autoPosition : true
-                        onShow: (dialog) =>
-                            dialog.container.draggable()
-                            $("#simplemodal-container").css("height", "auto")
-                            scope.modal_active = true
-                        onClose: (dialog) =>
-                            scope.close_modal()
-                else
-                    scope.modal_active = true
-            scope.modify = () ->
-                if not scope.form.$invalid
-                    if scope.create_mode
-                        scope.rest.post(scope.new_obj).then((new_data) ->
-                            scope.entries.push(new_data)
-                            scope.close_modal()
-                            if scope.config_service.object_created
-                                scope.config_service.object_created(scope.new_obj, new_data, scope)
-                        )
+                # interface functions to use in directive body
+                scope.edit = (event, obj) ->
+                    scope.pre_edit_obj = angular.copy(obj)
+                    scope.create_or_edit(event, false, obj)
+                scope.create = (event) ->
+                    if typeof(scope.config_service.new_object) == "function"
+                        scope.new_obj = scope.config_service.new_object()
                     else
-                        scope.edit_obj.put().then(
-                            (data) ->
-                                handle_reset(data, scope.entries, scope.edit_obj.idx)
-                                if scope.config_service.object_modified
-                                    scope.config_service.object_modified(scope.edit_obj, data, scope)
+                        scope.new_obj = scope.config_service.new_object
+                    scope.create_or_edit(event, true, scope.new_obj)
+                scope.create_or_edit = (event, create_or_edit, obj) ->
+                    scope.edit_obj = obj
+                    scope.create_mode = create_or_edit
+                    if scope.fn and scope.fn.create_or_edit
+                        scope.fn.create_or_edit(scope, scope.create_mode, obj)
+                    if scope.config_service.use_modal
+                        scope.edit_div = $compile($templateCache.get(scope.config_service.edit_template))(scope)
+                        scope.edit_div.simplemodal
+                            #opacity      : 50
+                            position     : [event.clientY - 50, event.clientX - 50]
+                            #autoResize   : true
+                            #autoPosition : true
+                            onShow: (dialog) =>
+                                dialog.container.draggable()
+                                $("#simplemodal-container").css("height", "auto")
+                                scope.modal_active = true
+                            onClose: (dialog) =>
                                 scope.close_modal()
-                            (resp) -> handle_reset(resp.data, scope.entries, scope.edit_obj.idx)
-                        )
-                else
-                    noty
-                        text : "form validation problem"
-                        type : "warning"
-            scope.form_error = (field_name) ->
-                # temporary fix, FIXME
-                # scope.form should never be undefined
-                if scope.form?
-                    if scope.form[field_name].$valid
-                        return ""
                     else
-                        return "has-error"
-                else
-                    return ""
-            scope.hide_modal = () ->
-                # hides dummy modal
-                if not scope.fn.use_modal and scope.modal_active
+                        scope.modal_active = true
+                scope.modify = () ->
+                    if not scope.form.$invalid
+                        if scope.create_mode
+                            scope.rest.post(scope.new_obj).then((new_data) ->
+                                scope.entries.push(new_data)
+                                scope.close_modal()
+                                if scope.config_service.object_created
+                                    scope.config_service.object_created(scope.new_obj, new_data, scope)
+                            )
+                        else
+                            scope.edit_obj.put().then(
+                                (data) ->
+                                    icswTools.handle_reset(data, scope.entries, scope.edit_obj.idx)
+                                    if scope.config_service.object_modified
+                                        scope.config_service.object_modified(scope.edit_obj, data, scope)
+                                    scope.close_modal()
+                                (resp) -> icswTools.handle_reset(resp.data, scope.entries, scope.edit_obj.idx)
+                            )
+                    else
+                        noty
+                            text : "form validation problem"
+                            type : "warning"
+                scope.form_error = (field_name) ->
+                    # temporary fix, FIXME
+                    # scope.form should never be undefined
+                    if scope.form?
+                        if scope.form[field_name].$valid
+                            return ""
+                        else
+                            return "has-error"
+                    else
+                        return ""
+                scope.hide_modal = () ->
+                    # hides dummy modal
+                    if not scope.fn.use_modal and scope.modal_active
+                        scope.modal_active = false
+                scope.close_modal = () ->
+                    if scope.config_service.use_modal
+                        $.simplemodal.close()
                     scope.modal_active = false
-            scope.close_modal = () ->
-                if scope.config_service.use_modal
-                    $.simplemodal.close()
-                scope.modal_active = false
-                if scope.fn and scope.fn.modal_closed
-                    scope.fn.modal_closed(scope)
-                    if scope.config_settings.use_modal
-                        try
-                            # fixme, call digest cycle and ignore if cycle is already running
-                            scope.$digest()
-                        catch exc
-            scope.get_action_string = () ->
-                return if scope.create_mode then "Create" else "Modify"
-            scope.delete = (obj) ->
-                c_modal = $modal.open
-                    template : $templateCache.get("simple_confirm.html")
-                    controller : simple_modal_ctrl
-                    backdrop : "static"
-                    resolve :
-                        question : () ->
-                            return scope.config_service.delete_confirm_str(obj)
-                c_modal.result.then(
-                    () ->
-                        obj.remove().then((resp) ->
-                            noty
-                                text : "deleted instance"
-                            remove_by_idx($parse(attrs.targetList)(scope), obj.idx)
-                            if scope.config_service.post_delete
-                                scope.config_service.post_delete(scope, obj)
-                        )
-                )
-    }
+                    if scope.fn and scope.fn.modal_closed
+                        scope.fn.modal_closed(scope)
+                        if scope.config_settings.use_modal
+                            try
+                                # fixme, call digest cycle and ignore if cycle is already running
+                                scope.$digest()
+                            catch exc
+                scope.get_action_string = () ->
+                    return if scope.create_mode then "Create" else "Modify"
+                scope.delete = (obj) ->
+                    icswToolsSimpleModalService(scope.config_service.delete_confirm_str(obj)).then(
+                        () ->
+                            obj.remove().then(
+                                (resp) ->
+                                    noty
+                                        text : "deleted instance"
+                                    icswTools.remove_by_idx($parse(attrs.targetList)(scope), obj.idx)
+                                    if scope.config_service.post_delete
+                                        scope.config_service.post_delete(scope, obj)
+                            )
+                    )
+        }
 ]).directive('icswToolsShowHideColumns', () ->
      return {
          restrict: 'EA'

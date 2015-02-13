@@ -86,7 +86,7 @@ lic_module.controller("icswLicenseOverviewCtrl",
     restrict: "EA"
     templateUrl: "icsw.license.overview"
 
-]).directive("icseLicenseGraph", ["$templateCache", "$resource", "ICSW_URLS", ($templateCache, $resource, ICSW_URLS) ->
+]).directive("icseLicenseGraph", ["$templateCache", "$resource", "ICSW_URLS", "icswCallAjaxService", ($templateCache, $resource, ICSW_URLS, icswCallAjaxService) ->
     return {
     restrict : "EA"
     template : """
@@ -244,7 +244,7 @@ lic_module.controller("icswLicenseOverviewCtrl",
 
             lic_utils.get_lic_data($resource, viewmode, scope.lic_id, tr, start_date, ICSW_URLS, (new_data) ->
                 # also query all possible dates to check for missing ones (dimple needs all of them)
-                call_ajax
+                icswCallAjaxService
                     url: ICSW_URLS.LIC_GET_LICENSE_OVERVIEW_STEPS
                     data:
                         "date": moment(start_date).unix()  # ask server in utc

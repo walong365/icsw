@@ -1,22 +1,12 @@
 {% extends "main.html" %}
 
-{% load i18n crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}{% trans "Package Install" %}{% endblock %}
 
 {% block content %}
 
-<div ng-cloack>
-
-<script type="text/ng-template" id="icsw.package.install.package.search">
-    {% crispy package_search_form package_search_form.helper %}
-</script>
-
-<script type="text/ng-template" id="icsw.package.install.package.action">
-    {% crispy package_action_form package_action_form.helper %}
-</script>
-
-<div ng-controller="icswPackageInstallCtrl">
+<div ng-cloack ng-controller="icswPackageInstallCtrl">
     <icsw-package-install-overview/>
 </div>
 

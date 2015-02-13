@@ -3,8 +3,8 @@ partition_table_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
     ]
-).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS) ->
+).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswToolsSimpleModalService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, icswToolsSimpleModalService) ->
         $scope.entries = []
         $scope.edit_pts = []
         $scope.pagSettings = paginatorSettings.get_paginator("parts", $scope)
@@ -50,7 +50,7 @@ partition_table_module = angular.module(
         $scope.close_part = (obj) ->
             $scope.edit_pts = (entry for entry in $scope.edit_pts when entry.idx != obj.idx)
         $scope.delete = (obj) ->
-            simple_modal($modal, $q, "really delete partition table '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("really delete partition table '#{obj.name}' ?").then(
                 () ->
                     obj.remove().then(
                         $scope.close_part(obj)
@@ -62,7 +62,7 @@ partition_table_module = angular.module(
             edit_part.tab_active = true
             $scope.edit_pts.push(edit_part)
         $scope.reload()
-]).directive("icswConfigDiskLayout", ["$compile", "$modal", "$templateCache", "Restangular", "ICSW_URLS", ($compile, $modal, $templateCache, Restangular, ICSW_URLS) ->
+]).directive("icswConfigDiskLayout", ["$compile", "$modal", "$templateCache", "Restangular", "ICSW_URLS", "icswCallAjaxService", ($compile, $modal, $templateCache, Restangular, ICSW_URLS, icswCallAjaxService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.disk.layout")
@@ -98,7 +98,7 @@ partition_table_module = angular.module(
             scope.validate = () ->
                 if !scope.part.idx?
                     return
-                call_ajax
+                icswCallAjaxService
                     url : ICSW_URLS.SETUP_VALIDATE_PARTITION
                     data : {
                         "pt_pk" : scope.part.idx

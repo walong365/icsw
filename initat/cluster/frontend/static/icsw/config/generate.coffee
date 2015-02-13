@@ -48,8 +48,8 @@ config_gen_module = angular.module(
                         @dev_conf.active_content = content.split("\n")
                     else
                         @dev_conf.active_content = []
-).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService) ->
+).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswCallAjaxService) ->
         $scope.devsel_list = []
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->
@@ -67,7 +67,7 @@ config_gen_module = angular.module(
         $scope.generate_config = () ->
             $scope.result_trees = []
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.CONFIG_GENERATE_CONFIG
                 data    : {
                     "pk_list" : angular.toJson($scope.devsel_list)

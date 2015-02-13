@@ -28,7 +28,7 @@ package_module = angular.module(
     return {
         user_rest           : user_rest
         rest_url            : ICSW_URLS.REST_PACKAGE_SEARCH_LIST
-        edit_template       : "icsw.package.install.package.search"
+        edit_template       : "package.search.form"
         delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
         entries_filter      : {deleted : false}
         post_delete : (scope, del_obj) ->
@@ -422,7 +422,7 @@ package_module = angular.module(
                 "kernel_list" : []
                 "image_list" : []
             } 
-            $scope.action_div = $compile($templateCache.get("icsw.package.install.package.action"))($scope)
+            $scope.action_div = $compile($templateCache.get("package.action.form"))($scope)
             $scope.action_div.simplemodal
                 position     : [event.pageY, event.pageX]
                 #autoResize   : true

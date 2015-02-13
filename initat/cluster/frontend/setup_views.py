@@ -48,10 +48,6 @@ class partition_overview(View):
             request,
             "part_overview.html",
             {
-                "partition_table_form": partition_table_form(),
-                "partition_disc_form": partition_disc_form(),
-                "partition_sys_form": partition_sys_form(),
-                "partition_form": partition_form(),
             }
         )()
 
@@ -82,7 +78,6 @@ class image_overview(View):
             request,
             "image_overview.html",
             {
-                "image_form": image_form(),
             }
         )()
 

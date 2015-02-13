@@ -1,14 +1,10 @@
 {% extends "main.html" %}
 
-{% load i18n crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}Domain name tree{% endblock %}
 
 {% block content %}
-
-<script type="text/ng-template" id="icsw.config.domain.name.tree.node">
-    {% crispy domain_name_tree_form domain_name_tree_form.helper %}
-</script>
 
 <div ng-controller="icswConfigDomainNameTreeCtrl">
     <icsw-config-domain-name-tree></icsw-config-domain-name-tree>

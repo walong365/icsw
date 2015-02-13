@@ -1,20 +1,10 @@
 {% extends "main.html" %}
 
-{% load i18n crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}Category tree{% endblock %}
 
 {% block content %}
-
-<div>
-
-<script type="text/ng-template" id="icsw.config.category.tree.category">
-    {% crispy category_form category_form.helper %}
-</script>
-
-<script type="text/ng-template" id="icsw.config.category.tree.location_gfx">
-    {% crispy location_gfx_form location_gfx_form.helper %}
-</script>
 
 <div ng-controller="icswConfigCategoryTreeCtrl">
     <icsw-config-category-tree></icsw-config-category-tree>

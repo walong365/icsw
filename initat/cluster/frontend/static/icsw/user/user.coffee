@@ -80,8 +80,8 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS) ->
+).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -192,7 +192,7 @@ user_module = angular.module(
         )
         $scope.sync_users = () ->
             blockUI.start("Sending sync to server ...")
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.USER_SYNC_USERS
                 title   : "syncing users"
                 success : (xml) =>
@@ -320,7 +320,7 @@ user_module = angular.module(
             $scope.$broadcast("icsw.enter_password")
         $scope.create_object_permission = () ->
             perm = $scope.csw_permission_lut[$scope._edit_obj.permission]
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.USER_CHANGE_OBJECT_PERMISSION
                 data    :
                     # group or user
@@ -412,7 +412,7 @@ user_module = angular.module(
         $scope.get_home_dir_created_value = (obj) ->
             return if obj.home_dir_created then "homedir exists" else "no homedir"
         $scope.clear_home_dir_created = (obj) ->
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.USER_CLEAR_HOME_DIR_CREATED
                 data    :
                     "user_pk" : obj.idx
@@ -431,7 +431,7 @@ user_module = angular.module(
             url = ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST.slice(1)
             Restangular.all(url).post(new_obj).then( then_fun )
         $scope.get_viewer_command_line = (vdus) ->
-            call_ajax
+            icswCallAjaxService
                 url      : ICSW_URLS.USER_GET_DEVICE_IP
                 data     :
                     "device" : vdus.device
@@ -516,7 +516,7 @@ user_module = angular.module(
 ]).directive("icswUserGroupShow", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "A"
-        template : $templateCache.get("icsw.user.group.show")
+        template : $templateCache.get("group.detail.form")
         link : (scope, element, attrs) ->
             # not beautiful but working
             scope.$parent.form = scope.form
@@ -525,7 +525,7 @@ user_module = angular.module(
 ]).directive("icswUserUserShow", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "A"
-        template : $templateCache.get("icsw.user.user.show")
+        template : $templateCache.get("user.detail.form")
         link : (scope, element, attrs) ->
             # not beautiful but working
             scope.$parent.$parent.form = scope.form

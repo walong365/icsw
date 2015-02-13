@@ -1,15 +1,13 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}{% trans "Monitoring - livestatus" %}{% endblock %}
 
 {% block content %}
 
-<div>
-    <div ng-controller='livestatus_ctrl'>
-        <livestatus></livestatus>
-    </div>
+<div ng-controller='livestatus_ctrl'>
+    <livestatus></livestatus>
 </div>
 
 {% endblock %}

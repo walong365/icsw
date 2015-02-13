@@ -22,7 +22,7 @@ angular.module(
                 success : (xml) =>
                     blockUI.stop()
                     # show info
-                    parse_xml_response(xml, 30)
+                    icswTools.parse_xml_response(xml, 30)
                     # reload (even on error)
                     $scope.reload()
         # mixins

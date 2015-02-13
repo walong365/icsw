@@ -8,7 +8,7 @@ password_module = angular.module(
         $scope.$on("icsw.enter_password", () ->
             $modal.open
                 template : $templateCache.get("icsw.user.password.set")
-                controller : ($scope, $modalInstance, scope) ->
+                controller : ["$scope", "$modalInstance", "scope", ($scope, $modalInstance, scope) ->
                     $scope.pwd = {
                         "pwd1" : ""
                         "pwd2" : ""
@@ -37,6 +37,7 @@ password_module = angular.module(
                             return false
                     $scope.cancel = () ->
                         $modalInstance.dismiss("cancel")
+                ]
                 backdrop : "static"
                 resolve:
                     scope: () ->

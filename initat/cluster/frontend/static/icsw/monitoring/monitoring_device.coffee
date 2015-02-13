@@ -8,7 +8,7 @@ monitoring_device_module.directive('icswMonitoringDevice', ["ICSW_URLS", "Restan
         restrict     : "EA"
         templateUrl  : "icsw.monitoring.device"
     }
-]).service('icswMonitoringDeviceService', ["ICSW_URLS", "Restangular", "msgbus", (ICSW_URLS, Restangular, msgbus) ->
+]).service('icswMonitoringDeviceService', ["ICSW_URLS", "Restangular", "msgbus", "icswCallAjaxService", (ICSW_URLS, Restangular, msgbus, icswCallAjaxService) ->
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
     data = {
         mon_device_templ   : get_rest(ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST.slice(1))
@@ -32,7 +32,7 @@ monitoring_device_module.directive('icswMonitoringDevice', ["ICSW_URLS", "Restan
             )
         fetch : (edit_obj) ->
             # $.blockUI()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.MON_FETCH_PARTITION
                 data    : {
                     "pk" : edit_obj.idx

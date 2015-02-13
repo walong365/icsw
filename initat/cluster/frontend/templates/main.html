@@ -158,6 +158,7 @@
     window.SIDEBAR_MODE = "{{ request.session.sidebar_mode }}"
     window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}"
     window.CSRF_TOKEN = "{{ csrf_token }}"
+    window.DEBUG = {% if debug %}true{% else %}false{% endif %}
     {% if doc_page %}
     window.DOC_PAGE = "{{ doc_page }}"
     {% else %}
@@ -175,7 +176,6 @@
     {% include "angular/app.cs" %}
     {% endinlinecoffeescript %}
     </script>
-    {% include "javascript/init.js" %}
     {# common angular modules #}
     {% javascript 'icsw_cs1' %}
 </head>

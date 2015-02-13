@@ -54,8 +54,6 @@ class repo_overview(permission_required_mixin, View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "package_install.html", {
-            "package_search_form": package_search_form(request=request),
-            "package_action_form": package_action_form(),
             })()
 
     @method_decorator(xml_wrapper)

@@ -20,14 +20,14 @@ kernel_module = angular.module(
         get_flag_value : (kernel, flag_name) ->
             return if kernel[flag_name] then "yes" else "no"
     }
-]).controller("icswKernelOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS",
-    ($scope, $compile, $templateCache, restangular, blockUI, ICSW_URLS) ->
+]).controller("icswKernelOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $templateCache, restangular, blockUI, ICSW_URLS, icswCallAjaxService) ->
         $scope.delete_ok = (obj) ->
             num_refs = obj.act_kernel.length + obj.new_kernel.length
             return if num_refs == 0 then true else false
         $scope.scan_for_kernels = (reload_func) =>
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.SETUP_RESCAN_KERNELS
                 title   : "scanning for new kernels"
                 success : (xml) =>

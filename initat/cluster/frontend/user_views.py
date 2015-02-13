@@ -55,8 +55,6 @@ class overview(permission_required_mixin, View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return render_me(request, "user_overview_tree.html", {
-            "group_detail_form": group_detail_form(),
-            "user_detail_form": user_detail_form(),
             })()
 
 
@@ -249,7 +247,6 @@ class global_settings(View):
     @method_decorator(xml_wrapper)
     def get(self, request):
         return render_me(request, "global_settings.html", {
-            "form": global_settings_form()
             })()
 
 

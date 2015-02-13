@@ -52,9 +52,6 @@ class device_tree_smart(permission_required_mixin, View):
             request,
             "device_tree_smart.html",
             {
-                "device_tree_form": device_tree_form(),
-                "device_group_tree_form": device_group_tree_form(),
-                "device_tree_many_form": device_tree_many_form(),
             }
         )()
 
@@ -228,8 +225,6 @@ class variables(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "device_variables.html", {
-            "device_variable_form": device_variable_form(),
-            "device_variable_new_form": device_variable_new_form(),
             "device_object_level_permission": "backbone.device.change_variables",
         })()
 

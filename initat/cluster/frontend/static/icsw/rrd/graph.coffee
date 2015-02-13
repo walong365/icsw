@@ -77,8 +77,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService) ->
+).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
+        "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
@@ -192,7 +193,7 @@ angular.module(
             $scope.merge_cd = !$scope.merge_cd
             if $scope.merge_cd and not $scope.cds_already_merged
                 $scope.cds_already_merged = true
-                call_ajax
+                icswCallAjaxService
                     url  : ICSW_URLS.RRD_MERGE_CDS
                     data : {
                         "pks" : $scope.devsel_list
@@ -203,7 +204,7 @@ angular.module(
 
         $scope.reload = () ->
             $scope.vector_valid = false
-            call_ajax
+            icswCallAjaxService
                 url  : ICSW_URLS.RRD_DEVICE_RRDS
                 data : {
                     "pks" : $scope.devsel_list
@@ -421,7 +422,7 @@ angular.module(
         $scope.draw_graph = () =>
             if !$scope.is_drawing
                 $scope.is_drawing = true
-                call_ajax
+                icswCallAjaxService
                     url  : ICSW_URLS.RRD_GRAPH_RRDS
                     data : {
                         "keys"       : angular.toJson($scope.cur_selected)

@@ -65,16 +65,8 @@ class setup(permission_required_mixin, View):
     all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
 
     def get(self, request):
-        # print mon_contact_form()
         return render_me(
             request, "monitoring_setup.html", {
-                "mon_period_form": mon_period_form(),
-                "mon_notification_form": mon_notification_form(),
-                "mon_contact_form": mon_contact_form(),
-                "mon_service_templ_form": mon_service_templ_form(),
-                "host_check_command_form": host_check_command_form(),
-                "mon_contactgroup_form": mon_contactgroup_form(),
-                "mon_device_templ_form": mon_device_templ_form(),
                 }
         )()
 
@@ -85,12 +77,6 @@ class setup_cluster(permission_required_mixin, View):
     def get(self, request):
         return render_me(
             request, "monitoring_setup_cluster.html", {
-                "mon_host_cluster_form": mon_host_cluster_form(),
-                "mon_service_cluster_form": mon_service_cluster_form(),
-                "mon_host_dependency_templ_form": mon_host_dependency_templ_form(),
-                "mon_service_dependency_templ_form": mon_service_dependency_templ_form(),
-                "mon_host_dependency_form": mon_host_dependency_form(),
-                "mon_service_dependency_form": mon_service_dependency_form(),
                 }
         )()
 
@@ -111,8 +97,6 @@ class setup_escalation(permission_required_mixin, View):
     def get(self, request):
         return render_me(
             request, "monitoring_setup_escalation.html", {
-                "mon_service_esc_templ_form": mon_service_esc_templ_form(),
-                "mon_device_esc_templ_form": mon_device_esc_templ_form(),
                 }
         )()
 
@@ -123,7 +107,6 @@ class device_config(permission_required_mixin, View):
     def get(self, request):
         return render_me(
             request, "monitoring_device.html", {
-                "device_monitoring_form": device_monitoring_form(),
                 "device_object_level_permission": "backbone.device.change_monitoring",
             }
         )()

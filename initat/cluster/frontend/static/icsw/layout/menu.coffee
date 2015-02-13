@@ -39,7 +39,7 @@ menu_module = angular.module(
             $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
             $timeout($scope.show_time, 1000)
         $scope.update_progress_bar = () ->
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.BASE_GET_GAUGE_INFO
                 hidden  : true
                 success : (xml) =>
@@ -72,7 +72,7 @@ menu_module = angular.module(
             window.location = ICSW_URLS.INFO_PAGE
             return false
         $scope.redirect_to_handbook = () ->
-            window.location = ICSW_URLS.DOC_PAGE
+            window.location = "/cluster/doc/main.pdf"
             return false
         $scope.show_handbook_page = () ->
             window.open(

@@ -1,4 +1,5 @@
 {% load staticfiles %}
+
 # Naming conventions
 #
 #- where possible use CamelCase
@@ -27,8 +28,13 @@
 ics_app = angular.module(
     "icsw.app",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
+        "ngResource",
+        "ngCookies",
+        "ngSanitize",
+        "ui.bootstrap",
+        "restangular",
         "blockUI",
+        "init.csw.filters",
         "icsw.tools.tree",
         "icsw.layout.menu",
         "icsw.layout.sidebar",
@@ -86,6 +92,8 @@ ics_app = angular.module(
     {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
     "MENU_GFX_BIG_URL": "{% static gfx_name %}"
     {% endwith %}
+    "D3_MIN_JS": "{% static 'js/libs/d3js/d3.min.js' %}"
+    "DIMPLE_MIN_JS": "{% static 'js/libs/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"
@@ -195,6 +203,7 @@ ics_app = angular.module(
     "REST_DEVICE_MON_LOCATION_LIST": "{% url 'rest:device_mon_location_list' %}"
     "REST_DEVICE_SELECTION_LIST": "{% url 'rest:device_selection_list' %}"
     "REST_DEVICE_TREE_LIST": "{% url 'rest:device_tree_list' %}"
+    "REST_DEVICE_TREE_DETAIL": "{% url 'rest:device_tree_detail' 1 %}"
     "REST_DEVICE_TYPE_LIST": "{% url 'rest:device_type_list' %}"
     "REST_DEVICE_VARIABLE_DETAIL": "{% url 'rest:device_variable_detail' 1 %}"
     "REST_DEVICE_VARIABLE_LIST": "{% url 'rest:device_variable_list' %}"
@@ -305,4 +314,3 @@ ics_app = angular.module(
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
     "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
 })
-

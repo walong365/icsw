@@ -64,13 +64,6 @@ class show_configs(permission_required_mixin, View):
         return render_me(
             request,
             "config_overview.html", {
-                "config_form": config_form(),
-                "config_catalog_form": config_catalog_form(),
-                "config_str_form": config_str_form(),
-                "config_int_form": config_int_form(),
-                "config_bool_form": config_bool_form(),
-                "config_script_form": config_script_form(),
-                "mon_check_command_form": mon_check_command_form(),
             }
         )()
 
