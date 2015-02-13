@@ -385,35 +385,28 @@ PIPELINE_JS = {
     "js_jquery_new": {
         "source_filenames": {
             "js/libs/modernizr-2.8.1.min.js",
-            "js/libs/jquery-2.1.3.min.js",
+            "js/libs/jquery-2.1.3.js",
         },
         "output_filename": "pipeline/js/jquery_new.js"
     },
     "js_base": {
         "source_filenames": (
             "js/libs/jquery-ui-1.10.2.custom.js",
-            # "js/libs/jquery-migrate-1.2.1.min.js",
-            # now via bootstrap
-            # "js/jquery.sprintf.js_8.txt",
-            # "js/jquery.timers-1.2.js",
             "js/libs/angular-1.3.12.js",
             "js/jquery.noty.packaged.js",
             "js/libs/lodash.min.js",
             "js/bluebird.js",
-            # "js/jquery.dd.min.js",
             "js/jquery.simplemodal.js",
             "js/codemirror/codemirror.js",
             "js/bootstrap.js",
             "js/libs/jquery.color.js",
             "js/libs/jquery.blockUI.js",
-            "js/libs/moment-with-locales.min.js",
+            "js/libs/moment-with-locales.js",
             "js/libs/jquery.Jcrop.min.js",
             "js/spin.js",
             "js/ladda.js",
             "js/angular-ladda.js",
             "js/hamster.js",
-            # not needed right now
-            # "js/ng-jcrop.js",
         ),
         "output_filename": "pipeline/js/base.js"
     },
