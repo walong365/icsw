@@ -397,7 +397,7 @@ angular.module(
 ]).directive("icswConfigCategoryTreeEditTemplate", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.config.category.tree.category")
+        template : $templateCache.get("category.form")
         link : (scope, element, attrs) ->
             scope.form_error = (field_name) ->
                 if scope.form[field_name].$valid
