@@ -253,10 +253,14 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
 
     def _init_rrd_cached(self):
         self.log("init rrd cached process")
+        # FIXME, improve
+        _dir = os.path.realpath(global_config["RRD_DIR"])
+        if _dir != global_config["RRD_DIR"]:
+            self.log("RRD_DIR '{}' resolved to '{}'".format(global_config["RRD_DIR"], _dir))
         _comline = "/opt/cluster/bin/rrdcached -m0777 -l {} -s idg -w 60 -t {:d} -F -b {} -p {} > /tmp/.rrdcached_output 2>&1".format(
             global_config["RRD_CACHED_SOCKET"],
             global_config["RRD_CACHED_WRITETHREADS"],
-            global_config["RRD_DIR"],
+            _dir,
             RRD_CACHED_PID,
         )
         self.log("comline is {}".format(_comline))
