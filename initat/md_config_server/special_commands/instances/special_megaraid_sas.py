@@ -90,7 +90,7 @@ class special_megaraid_sas(SpecialBase):
             hints = [self._transform_to_hint(entry) for entry in self.RCClass()._dummy_hints()]
         sc_array = []
         for hint in hints:
-            _trigger_passive = hint.key == "all" and hint.value_string == "all"
+            _trigger_passive = hint.value_string == "all"
             sc_array.append(
                 self.get_arg_template(
                     hint.info,
