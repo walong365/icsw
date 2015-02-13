@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2010,2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -120,13 +120,14 @@ def main():
         print "%s does not exist" % (err_file_name)
         sys.exit(1)
     if options.clear:
-        new_file_name = "%s_%s.tar.bz2" % (
+        new_file_name = "{}_{}.tar.bz2".format(
             err_file_name,
-            time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime()))
+            time.strftime("%Y-%m-%d_%H:%M:%S", time.localtime())
+        )
         print("taring {} to {} ...".format(err_file_name, new_file_name))
-        stat, out = commands.getstatusoutput("tar cpjf %s %s" % (new_file_name, err_file_name))
-        if stat:
-            print("*** error (%d): %s" % (stat, out))
+        c_stat, out = commands.getstatusoutput("tar cpjf %s %s" % (new_file_name, err_file_name))
+        if c_stat:
+            print("*** error (%d): %s" % (c_stat, out))
         else:
             os.unlink(err_file_name)
         sys.exit(stat)
@@ -182,7 +183,7 @@ def main():
                 else:
                     dt_change = False
                 prev_dt = cur_dt
-                if not act_err or act_err.get_pid() != line_pid or dt_change:
+                if not act_err or act_err.get_pid() != line_pid or dt_change or line.count("<type"):
                     act_idx += 1
                     act_err = error_rec(
                         line_pid,
