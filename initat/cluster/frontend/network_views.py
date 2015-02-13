@@ -23,6 +23,9 @@
 
 """ network views """
 
+import json
+import logging
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.db.utils import IntegrityError
@@ -30,17 +33,13 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, peer_information
-from initat.cluster.frontend.forms import domain_tree_node_form, network_form, \
-    network_type_form, network_device_type_form, netdevice_form, net_ip_form, \
-    peer_information_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from networkx.readwrite import json_graph
 import config_tools
 import ipvx_tools
-import json
-import logging
 import logging_tools
+
 
 logger = logging.getLogger("cluster.network")
 
@@ -50,9 +49,6 @@ class device_network(View):
     def get(self, request):
         return render_me(
             request, "device_network.html", {
-                "netdevice_form": netdevice_form(),
-                "net_ip_form": net_ip_form(),
-                "peer_information_form": peer_information_form(),
                 "device_object_level_permission": "backbone.device.change_network",
             }
         )()
@@ -63,9 +59,6 @@ class show_cluster_networks(permission_required_mixin, View):
 
     def get(self, request):
         return render_me(request, "cluster_networks.html", {
-            "network_form": network_form(),
-            "network_device_type_form": network_device_type_form(),
-            "network_type_form": network_type_form(),
         })()
 
 
@@ -223,7 +216,6 @@ class get_domain_name_tree(permission_required_mixin, View):
 
     def get(self, request):
         return render_me(request, "domain_name_tree.html", {
-            "domain_name_tree_form": domain_tree_node_form(),
             "doc_page": "domain_name_tree",
             })()
 

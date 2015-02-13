@@ -11,7 +11,7 @@ network_module = angular.module("icsw.network",
         rest_url           : ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST
         delete_confirm_str : (obj) ->
             return "Really delete Network type '#{obj.description}' ?"
-        edit_template      : "network_device_type.html"
+        edit_template      : "network.device.type.form"
         new_object: {
                 "identifier"  : "eth"
                 "description" : "new network device type"
@@ -30,7 +30,7 @@ network_module = angular.module("icsw.network",
     ]
     return {
         rest_url            : ICSW_URLS.REST_NETWORK_TYPE_LIST
-        edit_template       : "network_type.html"
+        edit_template       : "network.type.form"
         delete_confirm_str  : (obj) -> return "Really delete Network type '#{obj.description}' ?"
         new_object          : {"identifier" : "p", description : ""}
         object_created      : (new_obj) -> new_obj.description = ""
@@ -57,7 +57,7 @@ network_module = angular.module("icsw.network",
 
     return {
         rest_url            : ICSW_URLS.REST_NETWORK_LIST
-        edit_template       : "network.html"
+        edit_template       : "network.form"
         networks            : networks_rest
         network_types       : network_types_rest
         network_device_types: network_device_types_rest

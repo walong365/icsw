@@ -7,10 +7,10 @@ device_module = angular.module(
 ).controller("icswDeviceTreeCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout",
      "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
-     "icswCallAjaxService",
+     "icswCallAjaxService", "icswToolsSimpleModalService",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout,
      $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
-     icswCallAjaxService) ->
+     icswCallAjaxService, icswToolsSimpleModalService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
@@ -98,13 +98,13 @@ device_module = angular.module(
                     $scope.edit_obj.put(rest_entry.options).then(
                         (data) -> 
                             $.simplemodal.close()
-                            handle_reset(data, cur_f, $scope.edit_obj.idx)
+                            icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                             if $scope.edit_obj.root_passwd
                                 # hm, fixme
                                 data.root_passwd_set = true
                                 $scope.edit_obj.root_passwd_set = true
                             $scope.object_modified(data)
-                        (resp) -> handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
+                        (resp) -> icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                     )
             else
                 noty
@@ -166,7 +166,7 @@ device_module = angular.module(
                             $scope.reload()
                             reload_sidebar_tree()
         $scope.delete_many = (event) ->
-            simple_modal($modal, $q, "Really delete " + $scope.num_selected() + " devices ?").then(
+            icswToolsSimpleModalService("Really delete " + $scope.num_selected() + " devices ?").then(
                 () ->
                     icswCallAjaxService
                         url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
@@ -182,17 +182,17 @@ device_module = angular.module(
         $scope.get_action_string = () ->
             return if $scope.create_mode then "Create" else "Modify"
         $scope.delete = (a_name, obj) ->
-            simple_modal($modal, $q, "Really delete #{a_name} '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("Really delete #{a_name} '#{obj.name}' ?").then(
                 () ->
                     obj.remove().then((resp) ->
                         noty
                             text : "deleted #{a_name}"
                         if a_name == "device"
                             $scope.device_group_lut[obj.device_group].num_devices--
-                            # remove_by_idx($scope.entries, obj.idx), n
+                            icswTools.remove_by_idx($scope.entries, obj.idx)
                             reload_sidebar_tree()
                         else
-                            remove_by_idx($scope.rest_data[a_name], obj.idx)
+                            icswTools.remove_by_idx($scope.rest_data[a_name], obj.idx)
                             if a_name == "device_group"
                                 # remove meta device, now handled via reload_sidebar
                                 # remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])

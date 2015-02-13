@@ -1,18 +1,10 @@
 {% extends "main.html" %}
 
-{% load i18n crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}{% trans "User Overview" %}{% endblock %}
 
 {% block content %}
-
-<script type="text/ng-template" id="icsw.user.group.show">
-    {% crispy group_detail_form group_detail_form.helper %}
-</script>
-
-<script type="text/ng-template" id="icsw.user.user.show">
-    {% crispy user_detail_form user_detail_form.helper %}
-</script>
 
 {% verbatim %}
 

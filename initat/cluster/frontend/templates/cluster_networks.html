@@ -2,23 +2,9 @@
 
 {% load i18n %}
 
-{% load coffeescript crispy_forms_tags %}
-
 {% block title %}{% trans "Cluster networks" %}{% endblock %}
 
 {% block content %}
-
-<script type="text/ng-template" id="network.html">
-    {% crispy network_form network_form.helper %}
-</script>
-
-<script type="text/ng-template" id="network_type.html">
-    {% crispy network_type_form network_type_form.helper %}
-</script>
-
-<script type="text/ng-template" id="network_device_type.html">
-    {% crispy network_device_type_form network_device_type_form.helper %}
-</script>
 
 <icsw-network></icsw-network>
 

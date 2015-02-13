@@ -1,23 +1,16 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n coffeescript %}
 
 {% block title %}{% trans "Virtual Desktop Viewer" %}{% endblock %}
 
 {% block content %}
 
 <div id="icsw.virtual_desktop_viewer">
-
-{% verbatim %}
-
-<div ng-controller="icswUserAccountCtrl">
-    <icsw-user-vdu-overview object="edit_obj"/>
+    <div ng-controller="icswUserAccountCtrl">
+        <icsw-user-vdu-overview object="edit_obj"/>
+    </div>
 </div>
-
-{% endverbatim %}
-
-</div>
-
 
 <script type="text/javascript">
 

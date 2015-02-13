@@ -49,15 +49,11 @@ button_module = angular.module(
     return {
         restrict: "EA",
         template: """
-<div class="visible-md visible-lg">
-    <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}">
+    <button ng-attr-type="{{button_type}}" name="button" class="visible-md visible-lg btn {{css_class}} {{additional_class}} {{icon_class}}">
         {{ button_value }}
     </button>
-</div>
-<div class="hidden-md hidden-lg">
-    <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}" title="{{ button_value }}">
+    <button ng-attr-type="{{button_type}}" name="button" class="hidden-md hidden-lg btn {{css_class}} {{additional_class}} {{icon_class}}" title="{{ button_value }}">
     </button>
-</div>
     """
         scope:
             isShow: '&'

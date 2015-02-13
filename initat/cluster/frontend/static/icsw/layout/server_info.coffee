@@ -3,15 +3,15 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService",
-    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService) ->
+).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswCallAjaxService",
+    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswCallAjaxService) ->
         access_level_service.install($scope)
         $scope.show_server = true
         $scope.show_roles = false
         $scope.server_info_list = []
         $scope.cur_to = null
         $scope.reload_server_info = () ->
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.MAIN_GET_SERVER_INFO
                 hidden  : true
                 success : (xml) =>
@@ -43,7 +43,7 @@ angular.module(
             if $scope.cur_to
                 $timeout.cancel($scope.cur_to)
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.MAIN_SERVER_CONTROL
                 data    : {
                     "cmd" : angular.toJson(
@@ -56,6 +56,7 @@ angular.module(
                     parse_xml_response(xml)
                     blockUI.stop()
                     $scope.cur_to = $timeout($scope.reload_server_info, 100)
+            return false
         $scope.local_device = $window.LOCAL_DEVICE
         $scope.routing_info = $window.ROUTING
         $scope.reload_server_info()

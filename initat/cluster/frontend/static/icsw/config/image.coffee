@@ -12,8 +12,8 @@ image_module = angular.module(
         edit_template: "image.form"
         delete_confirm_str: (obj) -> return "Really delete image '#{obj.name}' ?"
     }
-]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS",
-    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS) ->
+]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswCallAjaxService) ->
         $scope.arch_rest = Restangular.all(ICSW_URLS.REST_ARCHITECTURE_LIST.slice(1))
         $scope.arch_rest.getList().then((response) ->
             $scope.architectures = response
@@ -24,7 +24,7 @@ image_module = angular.module(
             return if num_refs == 0 then true else false
         $scope.scan_for_images = () =>
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.SETUP_RESCAN_IMAGES
                 title   : "scanning for new images"
                 success : (xml) =>
@@ -55,7 +55,7 @@ image_module = angular.module(
                     )
         $scope.take_image = (obj) =>
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.SETUP_USE_IMAGE
                 data    : 
                     "img_name" : obj.name

@@ -26,8 +26,8 @@ config_module = angular.module(
                     return []
             )
             @scope.new_selection(sel_list)
-).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService) ->
+).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
@@ -189,7 +189,7 @@ config_module = angular.module(
                 $scope.reload_upload()
             )
         $scope.reload_upload = () ->
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.CONFIG_GET_CACHED_UPLOADS
                 dataType : "json"
                 success : (json) ->
@@ -251,7 +251,7 @@ config_module = angular.module(
                     else
                         conf["config_#{obj.object_type}_set"] = ref_f
                     $scope._set_fields(conf)
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.CONFIG_DELETE_OBJECTS
                     data    :
                         "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
@@ -515,7 +515,7 @@ config_module = angular.module(
             else
                 return obj.command_line 
         $scope.copy_mon = (config, obj, event) ->
-            call_ajax
+            icswCallAjaxService
                 url     : ICSW_URLS.CONFIG_COPY_MON
                 data    :
                     "config" : config.idx
@@ -727,7 +727,7 @@ config_module = angular.module(
         }
         replace : true
     }
-]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
+]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", "icswCallAjaxService", ($templateCache, $compile, $modal, Restangular, ICSW_URLS, icswCallAjaxService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.cached.upload")
@@ -756,7 +756,7 @@ config_module = angular.module(
                     return 0
             scope.take_config = () ->
                 # $.blockUI
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
                     data    : {
                         "upload_key" : scope.upload.upload_key
@@ -770,7 +770,7 @@ config_module = angular.module(
                         scope.$emit("icsw.reload_all")
             scope.delete_config = () ->
                 # $.blockUI
-                call_ajax
+                icswCallAjaxService
                     url     : ICSW_URLS.CONFIG_HANDLE_CACHED_CONFIG
                     data    : {
                         "upload_key" : scope.upload.upload_key

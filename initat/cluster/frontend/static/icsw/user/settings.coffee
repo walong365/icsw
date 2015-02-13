@@ -47,6 +47,6 @@ angular.module(
 ]).directive("icswUserSettingsForm", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.user.settings.form")
+        template : $templateCache.get("global.settings.form")
     }
 ])

@@ -7,7 +7,9 @@ angular.module(
 ).controller("icswConfigCategoryTreeCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window",
     "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, sharedDataSource, $q, $modal, access_level_service, FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService) ->
+    "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, sharedDataSource, $q, $modal, access_level_service,
+     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
@@ -20,7 +22,7 @@ angular.module(
         $scope.edit_mixin.delete_confirm_str = (obj) -> return "Really delete category node '#{obj.name}' ?"
         $scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2)
         $scope.edit_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
-        $scope.edit_mixin.edit_template = "icsw.config.category.tree.category"
+        $scope.edit_mixin.edit_template = "category.form"
         # edit mixin for location gfxs
         $scope.gfx_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "gfx")
         $scope.gfx_mixin.use_modal = true
@@ -28,9 +30,9 @@ angular.module(
         $scope.gfx_mixin.new_object = (scope) -> return scope.new_location_gfx()
         $scope.gfx_mixin.delete_confirm_str = (obj) -> return "Really delete location graphic '#{obj.name}' ?"
         $scope.gfx_mixin.modify_rest_url = ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2)
-        $scope.gfx_mixin.create_rest_url = ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1)
-        $scope.gfx_mixin.create_template = "icsw.config.category.tree.location_gfx"
-        $scope.gfx_mixin.edit_template = "icsw.config.category.tree.location_gfx"
+        $scope.gfx_mixin.create_rest_url = Restangular.all(ICSW_URLS.REST_LOCATION_GFX_LIST.slice(1))
+        $scope.gfx_mixin.create_template = "location.gfx.form"
+        $scope.gfx_mixin.edit_template = "location.gfx.form"
         $scope.form = {}
         $scope.locations = []
         $scope.uploader = new FileUploader(
@@ -236,7 +238,7 @@ angular.module(
             $scope.cat.clear_active()
             $scope.close_modal()
             $modal.open(
-                template : $templateCache.get("simple_confirm.html")
+                template : $templateCache.get("icsw.tools.simple.modal")
                 controller : ($scope, $modalInstance, question) ->
                     $scope.question = question
                     $scope.ok = () ->
@@ -250,7 +252,7 @@ angular.module(
             ).result.then(
                 () =>
                     blockUI.start()
-                    call_ajax
+                    icswCallAjaxService
                         url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
                         success : (xml) ->
                             parse_xml_response(xml)
@@ -329,7 +331,7 @@ angular.module(
             if angular.isString(data)
                 data = {"id" : obj.idx, "mode": data}
             blockUI.start()
-            call_ajax
+            icswCallAjaxService
                 url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
                 data: data
                 success: (xml) ->
@@ -408,6 +410,4 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.config.category.tree")
     }
-]).run(["$templateCache", ($templateCache) ->
-    $templateCache.put("simple_confirm.html", simple_modal_template)
 ])

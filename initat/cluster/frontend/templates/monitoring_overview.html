@@ -1,20 +1,15 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n %}
 
 {% block title %}{% trans "Monitoring - Overview" %}{% endblock %}
 
 {% block content %}
 
-{% verbatim %}
-
 <h2>Monitoring Overview</h2>
-<div>
-    <div ng-controller='icswMonitoringOverviewCtrl'>
-        <icsw-monitoring-overview />
-    </div>
-</div>
 
-{% endverbatim %}
+<div ng-controller='icswMonitoringOverviewCtrl'>
+    <icsw-monitoring-overview />
+</div>
 
 {% endblock %}

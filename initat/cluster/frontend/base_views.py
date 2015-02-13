@@ -52,10 +52,7 @@ class get_category_tree(permission_required_mixin, View):
         return render_me(
             request,
             "category_tree.html",
-            {
-                "category_form": category_form(),
-                "location_gfx_form": location_gfx_form(),
-            }
+            {}
         )()
 
 

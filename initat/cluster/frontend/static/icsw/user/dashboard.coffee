@@ -7,8 +7,8 @@ dashboard_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user",
     ]
-).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS)->
+).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswCallAjaxService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, icswCallAjaxService)->
         $scope.jobs_waiting = []
         $scope.jobs_running = []
         $scope.jobs_finished = []
@@ -28,7 +28,7 @@ dashboard_module = angular.module(
                 ts.timedelta_description[0],
                 ts.timedelta_description[1]
             ).unix()
-            call_ajax
+            icswCallAjaxService
                   url      : ICSW_URLS.RMS_GET_RMS_JOBINFO
                   data     :
                       "jobinfo_jobsfrom" : jobsfrom
@@ -57,7 +57,7 @@ dashboard_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.user.job.info")
         link: (scope, element, attrs) ->
-]).directive("icswUserVduOverview", ["$compile", "$templateCache", "icswTools", "ICSW_URLS", ($compile, $templateCache, icswTools, ICSW_URLS) ->
+]).directive("icswUserVduOverview", ["$compile", "$templateCache", "icswTools", "ICSW_URLS", "icswCallAjaxService", ($compile, $templateCache, icswTools, ICSW_URLS, icswCallAjaxService) ->
         restrict : "EA"
         template : $templateCache.get("icsw.user.vdu.overview")
         link: (scope, element, attrs) ->
@@ -102,7 +102,7 @@ dashboard_module = angular.module(
                 # set some dummy value so that the vnc directive doesn't complain
                 dummy_ip = "0.0.0.0"
                 scope.ips_for_devices[index] = dummy_ip
-                call_ajax
+                icswCallAjaxService
                     url      : ICSW_URLS.USER_GET_DEVICE_IP
                     data     :
                         "device" : index

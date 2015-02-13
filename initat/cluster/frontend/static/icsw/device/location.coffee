@@ -240,7 +240,7 @@ angular.module(
                 else
                     return "btn btn-sm btn-default"
     }
-]).directive("icswDeviceMonitoringLocationList", ["$templateCache", "$modal", "$q", "Restangular", "ICSW_URLS", ($templateCache, $modal, $q, Restangular, ICSW_URLS) ->
+]).directive("icswDeviceMonitoringLocationList", ["$templateCache", "$modal", "$q", "Restangular", "ICSW_URLS", "icswToolsSimpleModalService", ($templateCache, $modal, $q, Restangular, ICSW_URLS, icswToolsSimpleModalService) ->
         restrict : "EA"
         template: $templateCache.get("icsw.device.monitoring.location.list")
         link : (scope, el, attrs) ->
@@ -292,7 +292,7 @@ angular.module(
             scope.remove = (pk) ->
                 obj = scope.set_lut[pk]
                 if obj.changed
-                    simple_modal($modal, $q, "really delete location?").then(
+                    icswToolsSimpleModalService("really delete location?").then(
                         () ->
                             scope.remove_dml(obj)
                     )

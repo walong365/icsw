@@ -23,6 +23,10 @@
 
 """ boot views """
 
+import json
+import logging
+import time
+
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q
@@ -33,18 +37,15 @@ from initat.cluster.backbone.models import device, cd_connection, cluster_timezo
     kernel, image, partition_table, status, network, devicelog
 from initat.cluster.backbone.serializers import device_serializer_boot
 from initat.cluster.backbone.render import render_me
-from initat.cluster.frontend.forms import boot_form, boot_single_form, boot_many_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
-import json
-import logging
 import logging_tools
 import server_command
-import time
+
 
 logger = logging.getLogger("cluster.boot")
 
@@ -54,9 +55,6 @@ class show_boot(View):
     def get(self, request):
         return render_me(
             request, "boot_overview.html", {
-                "boot_form": boot_form(),
-                "boot_single_form": boot_single_form(),
-                "boot_many_form": boot_many_form(),
             }
         )()
 
