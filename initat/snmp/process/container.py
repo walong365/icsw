@@ -173,7 +173,7 @@ class snmp_process_container(object):
                 _iter += 1
                 time.sleep(0.1)
                 if _iter > 20:
-                    self.log("stopped trying to send to {} after {;d}".format(target, _iter), logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log("stopped trying to send to {} after {:d}".format(target, _iter), logging_tools.LOG_LEVEL_CRITICAL)
                 elif _iter > 10:
                     self.log("unable to send to {}, iter={:d}".format(target, _iter), logging_tools.LOG_LEVEL_ERROR)
             else:
