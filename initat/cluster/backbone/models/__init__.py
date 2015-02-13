@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -267,14 +267,18 @@ class device_variable(models.Model):
     description = models.CharField(max_length=765, default="", blank=True)
     # can be copied to a group or device ? There is no sense in making the cluster_name a local instance
     local_copy_ok = models.BooleanField(default=True)
-    var_type = models.CharField(max_length=3, choices=[
-        ("i", "integer"),
-        ("s", "string"),
-        ("d", "datetime"),
-        ("t", "time"),
-        ("b", "blob"),
-        # only for posting a new dv
-        ("?", "guess")])
+    var_type = models.CharField(
+        max_length=3,
+        choices=[
+            ("i", "integer"),
+            ("s", "string"),
+            ("d", "datetime"),
+            ("t", "time"),
+            ("b", "blob"),
+            # only for posting a new dv
+            ("?", "guess")
+        ]
+    )
     val_str = models.TextField(blank=True, null=True, default="")
     val_int = models.IntegerField(null=True, blank=True, default=0)
     # base64 encoded

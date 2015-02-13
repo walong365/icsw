@@ -296,6 +296,23 @@ class duration(object):
             return u"{:04d}".format(timepoint.year)
 
 
+    @classmethod
+    def get_shorter_duration(cls, duration_type):
+        if type(duration_type) == int:
+            duration_type = cls.get_class(duration_type)
+
+        if duration_type == cls.Day:
+            shorter_duration = cls.Hour
+        elif duration_type == cls.Week:
+            shorter_duration = cls.Day
+        elif duration_type == cls.Month:
+            shorter_duration = cls.Day  # weeks are not nice
+        elif duration_type == cls.Year:
+            shorter_duration = cls.Month
+        else:
+            raise ValueError("Invalid duration type: {}".format(duration_type))
+        return shorter_duration
+
 
 
 
