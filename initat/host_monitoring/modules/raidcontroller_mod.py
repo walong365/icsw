@@ -843,12 +843,12 @@ class SasCtrlInfo(object):
         self.ctrl_id = None
         self.ctrl_struct = ctrl_struct
 
-    def check_for_ctrl(self, new_id):
+    def check_for_ctrl(self, line, new_id):
         if new_id != self.ctrl_id:
             if self.ctrl_id is None:
-                self.log("setting ctrl_id (-> {:d})".format(new_id))
+                self.log("setting ctrl_id (-> {:d}, line was: '{}')".format(new_id, line))
             else:
-                self.log("changing ctrl_id ({:d} -> {:d})".format(self.ctrl_id, new_id))
+                self.log("changing ctrl_id ({:d} -> {:d}, line was: '{}')".format(self.ctrl_id, new_id, line))
             self.ctrl_id = new_id
             self.get_ctrl_dict(self.ctrl_id)
         return self.ctrl_stuff, self.ctrl_stuff["count_dict"]
@@ -878,7 +878,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        return [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
+        return [("/bin/true", ctrl_id, "init") for ctrl_id in ctrl_list] + \
+               [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
                [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
                [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
                [("/bin/true", 0, "done")]
@@ -904,6 +905,16 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
     def process(self, ccs):
 
+        def _print_debug(prev_mode, cur_mode, line):
+            if DEBUG:
+                print(
+                    "{:6s} {:6s} :: {}".format(
+                        prev_mode,
+                        cur_mode,
+                        line,
+                    )
+                )
+
         def line_to_kv(line):
             key, value = line.split(":", 1)
             return key.strip().lower().replace(" ", "_"), line.strip()
@@ -917,14 +928,23 @@ class ctrl_type_megaraid_sas(ctrl_type):
         _com_line, ctrl_id_for_enclosure, run_type = ccs.run_info["command"]
         if run_type == "done":
             # last run type, store in ccs
+            # pprint.pprint(self._dict)
             for ctrl_id, ctrl_stuff in self._dict.iteritems():
                 ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
-            # pprint.pprint(self._dict)
+            return
+        elif run_type == "init":
+            self._dict[ctrl_id_for_enclosure] = {
+                "count_dict": {
+                    "virt": 0,
+                    "pd": 0,
+                    "enc": 0,
+                }
+            }
             return
 
         prev_mode, cur_mode, mode_sense, cont_mode = (None, None, True, False)
         _ci = SasCtrlInfo(self)
-        for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
+        for line_num, line in enumerate([cur_line.rstrip() for cur_line in ccs.read().split("\n")]):
             if not line.strip():
                 mode_sense = True
                 continue
@@ -935,10 +955,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if mode_sense is True:
                 if (parts[0], cur_mode) in [("adapter", None), ("adapter", "pd"), ("adapter", "run"), ("adapter", "virt")]:
                     cur_mode = "adp"
-                    ctrl_stuff, count_dict = _ci.check_for_ctrl(int(parts[-1].replace("#", "")))
+                    ctrl_stuff, count_dict = _ci.check_for_ctrl(line, int(parts[-1].replace("#", "")))
                 elif line.lower().startswith("bbu status for "):
                     cur_mode = "bbu"
-                    ctrl_stuff, count_dict = _ci.check_for_ctrl(int(parts[-1].replace("#", "")))
+                    ctrl_stuff, count_dict = _ci.check_for_ctrl(line, int(parts[-1].replace("#", "")))
                     cur_dict = {"main": {}}
                     ctrl_stuff["bbu_keys"] = cur_dict
                 elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
@@ -969,7 +989,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         # set unusable, only use ctrl_id_for_enclosure once per file
                         ctrl_id_for_enclosure = None
                     while True:
-                        ctrl_stuff, count_dict = _ci.check_for_ctrl(_new_ctrl_id)
+                        ctrl_stuff, count_dict = _ci.check_for_ctrl(line, _new_ctrl_id)
                         if enc_id not in ctrl_stuff.get("enclosures", {}).keys():
                             # new enclosure id, ok
                             break
@@ -992,6 +1012,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     # ignore empty lines for bbu and enc
                     pass
                 else:
+                    _print_debug(prev_mode, cur_mode, line)
                     # unknown mode
                     raise ValueError(
                         "cannot determine mode, ctrl_type_megaraid_sas: {}, current mode is {}".format(
@@ -1024,14 +1045,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                 value = value.strip()
                                 cur_dict["lines"].append((key, value.strip()))
                             cont_mode = key in SAS_CONT_KEYS
-            if DEBUG:
-                print(
-                    "{:6s} {:6s} :: {}".format(
-                        prev_mode,
-                        cur_mode,
-                        line,
-                    )
-                )
+            _print_debug(prev_mode, cur_mode, line)
             prev_mode = cur_mode
         del _ci
     # def set_result_from_cache(self, srv_com, cur_ns):
@@ -1081,9 +1095,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _checked = True
                 if check == "state":
                     _ld = get_log_dict(lines)
+                    _ld["ctrl"] = key.split(":")[0]
                     # pprint.pprint(lines)
                     # pprint.pprint(_ld)
-                    _info_str = "vd {virtual_drive}, RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(**_ld)
+                    _info_str = "vd {virtual_drive} (ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(**_ld)
                     if _val.lower().startswith("optimal"):
                         _ret_state = limits.nag_STATE_OK
 
@@ -1308,7 +1323,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _ctrl_key = _key.split(":")[0]
                 if _ctrl_key not in _ctrl_found:
                     _ctrl_found.add(_ctrl_key)
-                    r_list.extend([("all", "all", "SAS Controller {}".format(_ctrl_key), True), ])
+                    r_list.extend([(_ctrl_key, "all", "SAS Controller {}".format(_ctrl_key), True), ])
                 _lines, _checks = get_source(_ro_dict, _key)
                 r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
             if cur_ns.short_output:
@@ -1320,16 +1335,20 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 "postfix": cur_ns.passive_check_postfix,
                 "list": [],
             }
+            # generate passive results if cur_ns.passive_check_postfix is set (not "-")
             _store_passive = cur_ns.passive_check_postfix != "-"
-            if cur_ns.key != "all":
+            # print "*", _key_list
+            # if cur_ns.key != "all":
+            # else:
+            if cur_ns.check != "all":
                 single_key = True
                 _key_list = list(set(_key_list) & set([cur_ns.key]))
-            else:
-                single_key = False
-            if cur_ns.check != "all":
                 target_checks = set([cur_ns.check])
+                # print "*", _key_list, target_checks
             else:
                 target_checks = None
+                single_key = False
+                _key_list = [_entry for _entry in _key_list if _entry.startswith(cur_ns.key)]
             _ok_dict = {}
             _ret_list = []
             _g_ret_state = limits.nag_STATE_OK
@@ -1362,7 +1381,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     if _info_str:
                         _ret_list.append(_info_str)
                     _g_ret_state = max(_g_ret_state, _ret_state)
-            if cur_ns.short_output:
+            if cur_ns.short_output.lower() in ["1", "true", "yes"]:
                 # pprint.pprint(_passive_dict)
                 r_list, shorten_dict = _shorten_list(r_list)
                 # passive lut
@@ -2032,6 +2051,7 @@ class megaraid_sas_status_command(hm_classes.hm_command):
         self.parser.add_argument("--check", default="all", type=str)
         self.parser.add_argument("--passive-check-postfix", default="-", type=str)
         self.parser.add_argument("--short-output", default="0", type=str)
+        self.parser.add_argument("--controller", default="all", type=str)
 
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("megaraid_sas")
@@ -2172,11 +2192,11 @@ if __name__ == "__main__":
     # print srv_com.pretty_print()
 
     get_hints = True
-    short_output = 1
+    short_output = "0"
     cur_ns = argparse.Namespace(
         get_hints=get_hints,
         passive_check_postfix="xxx",
-        key="all",
+        key="c01",
         short_output=short_output,
         check="all"
     )

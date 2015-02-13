@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -123,6 +123,11 @@ class subprocess_struct(object):
             self.run_info["result"] = 0
             # empty list of commands
             fin = True
+        elif not hasattr(self, "popen"):
+            # calling finished () after popen has been delete, strange bug
+            self.run_info["result"] = 0
+            # empty list of commands
+            fin = True
         else:
             self.run_info["result"] = self.popen.poll()
             if self.Meta.verbose:
@@ -171,7 +176,7 @@ class subprocess_struct(object):
                 del self.zmq_sock
                 del self.srv_process
         if self.__finished:
-            if self.popen:
+            if hasattr(self, "popen") and self.popen:
                 del self.popen
 
 
