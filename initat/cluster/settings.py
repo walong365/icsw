@@ -376,6 +376,7 @@ PIPELINE_CSS = {
             "css/piechart.css",
             "css/smart-table.css",
             "css/font-awesome.min.css",
+            "css/icsw.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }
