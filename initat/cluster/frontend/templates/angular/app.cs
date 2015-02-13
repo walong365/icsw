@@ -1,4 +1,5 @@
 {% load staticfiles %}
+
 # Naming conventions
 #
 #- where possible use CamelCase
@@ -313,4 +314,3 @@ ics_app = angular.module(
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
     "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
 })
-
