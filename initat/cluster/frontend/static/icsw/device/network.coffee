@@ -718,16 +718,6 @@ angular.module(
     }
 ]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswCallAjaxService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswCallAjaxService) ->
-        cluster_info_ctrl = ($scope, $modalInstance, Restangular, ICSW_URLS, cluster) ->
-            $scope.cluster = cluster
-            $scope.devices = []
-            Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
-                (data) ->
-                    $scope.devices = data
-            )
-            $scope.ok = () ->
-                $modalInstance.close()
-
         access_level_service.install($scope)
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.devices = args[1] 
@@ -751,7 +741,16 @@ angular.module(
             _modal = $modal.open(
                 {
                     templateUrl : "icsw.device.network.cluster.info"
-                    controller  : cluster_info_ctrl
+                    controller  : ["$scope", "$modalInstance", "Restangular", "ICSW_URLS", "cluster", ($scope, $modalInstance, Restangular, ICSW_URLS, cluster) ->
+                        $scope.cluster = cluster
+                        $scope.devices = []
+                        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"pks" : angular.toJson(cluster.device_pks), "ignore_meta_devices" : true}).then(
+                            (data) ->
+                                $scope.devices = data
+                        )
+                        $scope.ok = () ->
+                            $modalInstance.close()
+                    ]
                     size : "lg"
                     resolve : {
                         "cluster" : () -> return cluster
