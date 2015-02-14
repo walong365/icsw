@@ -24,7 +24,7 @@ from argparse import Namespace
 from initat.cluster.backbone.models import monitoring_hint, device_variable
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.host_monitoring.modules.raidcontroller_mod.all import AllRAIDCtrl
+from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
 
 
 # private var to store setting

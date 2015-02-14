@@ -61,7 +61,7 @@ class var_cache(dict):
         v_key = "d__{:d}".format(new_var.device_id)
         if v_key not in self:
             self[v_key] = {}
-        self[v_key][_var.name] = _var.value
+        self[v_key][new_var.name] = new_var.value
 
     def set_variable(self, dev, var_name, var_value):
         # update db
@@ -92,7 +92,9 @@ class var_cache(dict):
             if dg_key not in self:
                 # read device_group configs
                 self[dg_key] = {
-                    cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))
+                    cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(
+                        Q(device=cur_dev.device_group.device)
+                    )
                 }
             if dev_key not in self:
                 # read device configs
