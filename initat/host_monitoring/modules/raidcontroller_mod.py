@@ -1420,7 +1420,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
     @staticmethod
     def _dummy_hints():
-        return [("all", "all", "SAS Controllers", True), ]
+        return [("", "all", "SAS Controllers", True), ]
 
 
 class ctrl_type_megaraid(ctrl_type):
