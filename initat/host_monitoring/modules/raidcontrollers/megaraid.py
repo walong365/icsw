@@ -40,7 +40,8 @@ SAS_OK_KEYS = {
     "virt": set(
         [
             "virtual_drive", "raid_level", "name", "size", "state", "strip_size",
-            "number_of_drives", "ongoing_progresses", "current_cache_policy",
+            "number_of_drives", "ongoing_progresses", "current_cache_policy", "is_vd_cached",
+            "disk_cache_policy", "parity_size",
         ]
     ),
     "pd": set(
