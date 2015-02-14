@@ -1,0 +1,90 @@
+th.rotate {
+  height: 140px;
+  white-space: nowrap;
+}
+
+th.rotate > div {
+  transform:
+    translate(8px, -8px)
+    rotate(315deg);
+  width: 30px;
+}
+
+th.rotate > div > span {
+  border-bottom: 1px solid #ccc;
+  padding: 5px 10px;
+}
+
+#icsw-wrapper {
+    padding-left: 0;
+    -webkit-transition: all 0.5s ease;
+    -moz-transition: all 0.5s ease;
+    -o-transition: all 0.5s ease;
+    transition: all 0.5s ease;
+}
+
+#icsw-sidebar-wrapper {
+    z-index: 1000;
+    position: fixed;
+    width: 0;
+    height: 100%;
+    padding-bottom: 54px;
+    padding-left:0px;
+    overflow-y: auto;
+    background-color: rgba(255, 255, 255, 1);
+    -webkit-transition: all 0.2s ease;
+    -moz-transition: all 0.2s ease;
+    -o-transition: all 0.2s ease;
+    transition: all 0.2s ease;
+}
+
+#icsw-sidebar-sep {
+    z-index: 1000;
+    position: fixed;
+    width: 12px;
+    height: 100%;
+    margin-left: 1px;
+    margin-right: 1px;
+    overflow-y: auto;
+    background-color: #dddddd;
+    border:1px solid #888888;
+    -webkit-transition: all 0.2s ease;
+    -moz-transition: all 0.2s ease;
+    -o-transition: all 0.2s ease;
+    transition: all 0.2s ease;
+}
+
+#page-content-wrapper {
+    width: 100%;
+    padding: 2px;
+}
+
+.CodeMirror {
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    height: auto;
+}
+
+.CodeMirror-scroll {
+    overflow-y: hidden;
+    overflow-x: auto;
+    max-height: 600px;
+}
+
+.CodeMirror-activeline-background {
+    background: #ffff00 !important;
+}
+
+circle.fixed {
+    fill : #ffaaaa ;
+    stroke : #5555ff ;
+}
+.connect_line {
+    stroke : #9999ff ;
+    stroke-width : 4;
+    pointer-events : none;
+}
+.connect_line_hidden {
+    stroke-width : 0
+}
+.angular-google-map-container { height: 480px; }

@@ -1,8 +1,3 @@
-{% load coffeescript %}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
 
 class angular_edit_mixin
     constructor : (@scope, @templateCache, @compile, @modal, @Restangular, @q, @name) ->
@@ -256,12 +251,8 @@ reload_sidebar_tree = (pk_list) ->
             scope.reload(pk_list)
         )
 
-
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin
 root.reload_sidebar_tree = reload_sidebar_tree
 
-{% endinlinecoffeescript %}
-
-</script>
