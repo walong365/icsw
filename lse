@@ -130,7 +130,7 @@ def main():
             print("*** error (%d): %s" % (c_stat, out))
         else:
             os.unlink(err_file_name)
-        sys.exit(stat)
+        sys.exit(c_stat)
     try:
         err_lines = [line.strip() for line in file(err_file_name, "r").read().split("\n") if line.count("from pid")]
     except IOError:
