@@ -1,12 +1,26 @@
-#!/usr/bin/python-init -Otu
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" load all defined commands """
 
-from initat.host_monitoring import hm_classes
-import imp
 import os
-import pkgutil
-import pprint
+
 import process_tools
-import sys
+
 
 __all__ = [
     cur_entry for cur_entry in [
@@ -35,8 +49,6 @@ _new_hm_list.sort(reverse=True)
 for _pri, new_hm_mod in sorted(_new_hm_list, reverse=True):
     new_mod = new_hm_mod.obj
     module_list.append(new_hm_mod)
-    #if hasattr(new_mod, "init_m_vect"):
-    #    getattr(new_mod, "init_m_vect")()
     loc_coms = [entry for entry in dir(new_mod) if entry.endswith("_command")]
     for loc_com in loc_coms:
         try:
@@ -45,5 +57,5 @@ for _pri, new_hm_mod in sorted(_new_hm_list, reverse=True):
             exc_info = process_tools.exception_info()
             for log_line in exc_info.log_lines:
                 IMPORT_ERRORS.append((new_mod.__name__, loc_com, log_line))
-        #print getattr(getattr(new_mod, loc_com), "info_string", "???")
+        # print getattr(getattr(new_mod, loc_com), "info_string", "???")
     command_dict.update(new_hm_mod.commands)
