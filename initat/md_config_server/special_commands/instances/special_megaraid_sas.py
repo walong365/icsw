@@ -19,14 +19,13 @@
 #
 """ special config for MegaRaid SAS modules """
 
-from django.db.models import Q
+from argparse import Namespace
+
 from initat.cluster.backbone.models import monitoring_hint, device_variable
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.host_monitoring.modules import raidcontroller_mod
-from argparse import Namespace
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
-import logging_tools
+from initat.host_monitoring.modules.raidcontroller_mod.all import AllRAIDCtrl
+
 
 # private var to store setting
 PV_NAME = "__megaraid_sas_output_flag"
@@ -43,7 +42,7 @@ class special_megaraid_sas(SpecialBase):
         description = "detailed checks for MegaRaid SAS controllers"
 
     def RCClass(self):
-        return raidcontroller_mod.ctrl_type.ctrl_class("megaraid_sas")
+        return AllRAIDCtrl.ctrl_class("megaraid_sas")
 
     def to_hint(self, srv_reply):
         _prev_output = self.host.dev_variables.get(PV_NAME, -1)
