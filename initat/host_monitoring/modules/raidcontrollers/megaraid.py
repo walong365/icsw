@@ -41,7 +41,7 @@ SAS_OK_KEYS = {
         [
             "virtual_drive", "raid_level", "name", "size", "state", "strip_size",
             "number_of_drives", "ongoing_progresses", "current_cache_policy", "is_vd_cached",
-            "disk_cache_policy", "parity_size",
+            "disk_cache_policy", "parity_size", "mirror_size",
         ]
     ),
     "pd": set(
@@ -158,10 +158,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     )
                 )
 
-        def line_to_kv(line):
-            key, value = line.split(":", 1)
-            return key.strip().lower().replace(" ", "_"), line.strip()
-
         def parse_bbu_value(value):
             return {
                 "no": False,
@@ -195,8 +191,17 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if line.lower().startswith("adapter #") or line.lower().startswith("bbu status for adapter"):
                 mode_sense = True
             parts = line.lower().strip().split()
+            # flag if the actal line should be parsed into a key/value pair
+            add_line = True
             if mode_sense is True:
-                if (parts[0], cur_mode) in [("adapter", None), ("adapter", "pd"), ("adapter", "run"), ("adapter", "virt")]:
+                add_line = False
+                if line.lower().count("bbu status failed"):
+                    # add failed state
+                    cur_mode = "bbu"
+                    ctrl_stuff, count_dict = _ci.check_for_ctrl(line, ctrl_type_megaraid_sas)
+                    cur_dict = {"main": {"battery_state": "cannot read state"}}
+                    ctrl_stuff["bbu_keys"] = cur_dict
+                elif (parts[0], cur_mode) in [("adapter", None), ("adapter", "pd"), ("adapter", "run"), ("adapter", "virt")]:
                     cur_mode = "adp"
                     ctrl_stuff, count_dict = _ci.check_for_ctrl(line, int(parts[-1].replace("#", "")))
                 elif line.lower().startswith("bbu status for "):
@@ -210,7 +215,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     cur_dict = {"lines": []}
                     if parts[0] == "virtual":
                         # store line, needed for vd detection
-                        cur_dict["lines"].append(line_to_kv(line))
+                        add_line = True
                     ctrl_stuff.setdefault("virt", {})[count_dict["virt"] - 1] = cur_dict
                 elif (parts[0], cur_mode) in [("is", "virt"), ("raw", "pd")]:
                     # continuation, no change
@@ -253,7 +258,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"] - 1][_sub_key][int(parts[-1])] = cur_dict
                 elif cur_mode in ["bbu", "enc"]:
                     # ignore empty lines for bbu and enc
-                    pass
+                    if cur_mode == "bbu":
+                        # add line
+                        add_line = True
                 else:
                     _print_debug(prev_mode, cur_mode, line)
                     # unknown mode
@@ -264,7 +271,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         )
                     )
                 mode_sense = False
-            else:
+            if add_line:
                 #  print cur_mode, line
                 if line.count(":"):
                     key, value = line.split(":", 1)
@@ -331,7 +338,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _val = _val[0]
                 else:
                     # correct key not found
-                    _val = "not present"
+                    _val = "not present / key not found"
             # _checked not needed right now ?
             _checked, _ret_state = (False, limits.nag_STATE_CRITICAL)
             if _entity_type == "v":
