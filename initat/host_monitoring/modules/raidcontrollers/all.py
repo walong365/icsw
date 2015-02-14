@@ -48,7 +48,7 @@ class AllRAIDCtrl(object):
 
     @staticmethod
     def ctrl(key):
-        if ctrl_type._all_types:
+        if AllRAIDCtrl._all_types:
             # server call
             return AllRAIDCtrl._all_types[key]
         else:

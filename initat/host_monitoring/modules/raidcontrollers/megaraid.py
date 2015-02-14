@@ -590,7 +590,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
             else:
                 target_checks = None
                 single_key = False
-                _key_list = [_entry for _entry in _key_list if _entry.startswith(cur_ns.key)]
+                if cur_ns.key:
+                    _key_list = [_entry for _entry in _key_list if _entry.startswith(cur_ns.key)]
             _ok_dict = {}
             _ret_list = []
             _g_ret_state = limits.nag_STATE_OK
@@ -642,6 +643,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 ascii_chunk = base64.b64encode(bz2.compress(json.dumps(_passive_dict)))
             else:
                 ascii_chunk = ""
+            # print _ret_list, _ok_dict
             if _ok_dict:
                 _num_ok = sum([len(_val) for _val in _ok_dict.itervalues()])
                 if _num_ok == 1 and single_key:
@@ -670,7 +672,7 @@ class megaraid_sas_status_command(hm_classes.hm_command):
         self.__cache = {}
         hm_classes.hm_command.__init__(self, name)
         self.parser.add_argument("--get-hints", dest="get_hints", default=False, action="store_true")
-        self.parser.add_argument("--key", default="all", type=str)
+        self.parser.add_argument("--key", default="", type=str)
         self.parser.add_argument("--check", default="all", type=str)
         self.parser.add_argument("--passive-check-postfix", default="-", type=str)
         self.parser.add_argument("--short-output", default="0", type=str)
@@ -695,4 +697,3 @@ class megaraid_sas_status_command(hm_classes.hm_command):
 
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl_class("megaraid_sas")._interpret(ctrl_dict, cur_ns)
-

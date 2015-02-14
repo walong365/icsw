@@ -28,11 +28,12 @@ import server_command
 
 class ctrl_type(object):
     _all_types = None
+    all_struct = None
 
     def __init__(self, module_struct, all_struct, **kwargs):
         self.name = self.Meta.name
         # allraidctrl struct
-        self.all_struct = all_struct
+        ctrl_type.all_struct = all_struct
         # last scan date
         self.scanned = None
         # last check date
@@ -46,15 +47,19 @@ class ctrl_type(object):
     # calls to all_raidctrl
     @staticmethod
     def update(name, ctrl_ids=[]):
-        return self.all_struct.update(name, ctrl_ids)
+        return ctrl_type.all_struct.update(name, ctrl_ids)
 
     @staticmethod
     def ctrl(key):
-        return self.all_struct.ctrl(key)
+        return ctrl_type.all_struct.ctrl(key)
 
     @staticmethod
     def ctrl_class(key):
-        return self.all_struct.ctrl_class(key)
+        if ctrl_type.all_struct is None:
+            from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
+            return AllRAIDCtrl.ctrl_class(key)
+        else:
+            return ctrl_type.all_struct.ctrl_class(key)
 
     def exec_command(self, com_line, **kwargs):
         if com_line.startswith(" "):
