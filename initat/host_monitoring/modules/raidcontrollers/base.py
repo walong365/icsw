@@ -51,7 +51,11 @@ class ctrl_type(object):
 
     @staticmethod
     def ctrl(key):
-        return ctrl_type.all_struct.ctrl(key)
+        if ctrl_type.all_struct is None:
+            from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
+            return AllRAIDCtrl.ctrl(key)
+        else:
+            return ctrl_type.all_struct.ctrl(key)
 
     @staticmethod
     def ctrl_class(key):
