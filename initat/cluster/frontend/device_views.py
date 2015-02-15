@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,6 +22,10 @@
 
 """ device views """
 
+import json
+import logging
+import re
+
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -31,15 +35,10 @@ from initat.cluster.backbone.models import device_type, device_group, device, \
     cd_connection, domain_tree_node
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
-    device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-import json
-import logging
 import logging_tools
-import pprint  # @UnusedImport
-import re
 import server_command
+
 
 logger = logging.getLogger("cluster.device")
 

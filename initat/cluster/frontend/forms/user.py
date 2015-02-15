@@ -20,7 +20,6 @@ __all__ = [
     "group_detail_form",
     "user_detail_form",
     "account_detail_form",
-    "dummy_password_form",
 ]
 
 
@@ -31,6 +30,13 @@ class empty_query_set(object):
 
 
 class authentication_form(Form):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
+    helper.ng_model = "login_data"
+    helper.ng_submit = "do_login()"
     username = CharField(
         label=_("Username"),
         max_length=30
@@ -39,39 +45,19 @@ class authentication_form(Form):
         label=_("Password"),
         widget=PasswordInput
     )
-    helper = FormHelper()
-    helper.form_id = "id_login_form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
-    next = CharField(required=False)
     helper.layout = Layout(
         Div(
             Fieldset(
-                "Please enter your login credentials {% if CLUSTER_NAME %} for {{ CLUSTER_NAME }}{% endif %}",
+                "Please enter your login credentials {% verbatim %}<span ng-show='CLUSTER_NAME'> for {{ CLUSTER_NAME }}</span>{% endverbatim %}",
                 Field("username", placeholder="user name", autofocus="1"),
                 Field("password", placeholder="password"),
-                Field("next", type="hidden"),
             ),
-#            HTML(
-#                """
-# <input type="hidden" name="csrfmiddlewaretoken" value="{% verbatim %}{{ CSRF_TOKEN }}{% endverbatim %}"></input>
-# """
-#            ),
             FormActions(
-                Submit("submit", "Submit", css_class="btn btn-primary"),
+                Submit("submit", "Login", css_class="btn btn-primary"),
             ),
             css_class="form-horizontal",
         )
     )
-
-    def __init__(self, request=None, *args, **kwargs):
-        self.helper.form_action = reverse("session:login")
-        _next = kwargs.pop("next", "")
-        self.request = request
-        self.user_cache = None
-        super(authentication_form, self).__init__(*args, **kwargs)
-        self.fields["next"].initial = _next
 
     def pam_conv(self, auth, query_list):
         print auth, query_list
@@ -88,6 +74,7 @@ class authentication_form(Form):
         return response
 
     def clean(self):
+        # better move this code to session_views, todo
         username = self.cleaned_data.get("username")
         password = self.cleaned_data.get("password")
         self.user_cache = None
@@ -136,7 +123,7 @@ class authentication_form(Form):
         else:
             raise ValidationError(_("Need username and password"))
         # TODO: determine whether this should be moved to its own method.
-        if self.request:
+        if hasattr(self, "request") and self.request:
             if not self.request.session.test_cookie_worked():
                 raise ValidationError(_("Your Web browser doesn't appear to have cookies enabled. Cookies are required for logging in."))
         return self.cleaned_data
@@ -595,29 +582,3 @@ class account_detail_form(ModelForm):
             "shell", "first_name", "last_name",
             "title", "email", "pager", "tel", "comment",
         ]
-
-
-class dummy_password_form(Form):
-    helper = FormHelper()
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
-    helper.layout = Layout(
-        Fieldset(
-            "please enter the new password",
-            Field("password1", placeholder="password"),
-            Field("password2", placeholder="again"),
-            FormActions(
-                Button("check", "Check"),
-                Button("leave", "Check and save"),
-            ),
-        )
-    )
-    password1 = CharField(
-        label=_("New Password"),
-        widget=PasswordInput
-    )
-    password2 = CharField(
-        label=_("Confirm Password"),
-        widget=PasswordInput
-    )

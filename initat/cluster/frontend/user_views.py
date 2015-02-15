@@ -22,6 +22,9 @@
 
 """ user views """
 
+import json
+import logging
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.apps import apps
@@ -32,16 +35,13 @@ from initat.cluster.backbone.models import group, user, user_variable, csw_permi
     csw_object_permission, group_object_permission, \
     user_object_permission, device
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
-from initat.cluster.backbone.render import permission_required_mixin, render_me, render_string
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
-from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
-    account_detail_form, global_settings_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from lxml.builder import E  # @UnresolvedImport
-import json
 import config_tools
-import logging
 import server_command
+
 
 logger = logging.getLogger("cluster.user")
 
@@ -54,8 +54,7 @@ class overview(permission_required_mixin, View):
 
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        return render_me(request, "user_overview_tree.html", {
-            })()
+        return render_me(request, "user_overview_tree.html")()
 
 
 class sync_users(View):
@@ -237,7 +236,6 @@ class account_info(View):
     def get(self, request):
         return render_me(
             request, "account_info.html", {
-                "form": account_detail_form()
             }
         )()
 
@@ -246,16 +244,14 @@ class global_settings(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def get(self, request):
-        return render_me(request, "global_settings.html", {
-            })()
+        return render_me(request, "global_settings.html")()
 
 
 class background_job_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def get(self, request):
-        return render_me(request, "background_job_info.html", {
-            })()
+        return render_me(request, "background_job_info.html")()
 
 
 class clear_home_dir_created(View):

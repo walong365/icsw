@@ -46,7 +46,7 @@ password_module = angular.module(
 ]).directive("accountDetail", ["$templateCache", ($templateCache) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("account_detail_form.html")
+        template: $templateCache.get("account.detail.form")
         link: (scope, element, attrs) ->
             scope._cur_user = null
             scope.$watch(attrs["user"], (new_val) ->

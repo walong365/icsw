@@ -450,7 +450,7 @@ device_boot_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.boot.table")
     }
-]).directive("icswDeviceBootRow", ["$templateCaceh", ($templateCache) ->
+]).directive("icswDeviceBootRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.boot.row")
