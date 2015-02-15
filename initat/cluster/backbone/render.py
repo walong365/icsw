@@ -20,6 +20,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import json
+import logging
+
+import django
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
@@ -28,14 +32,24 @@ from django.db.models import Q
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-from initat.cluster.backbone.models import cluster_license_cache, background_job
+from initat.cluster.backbone.models import cluster_license_cache, background_job, device_variable
 import django.template
-import json
-import logging
-import pprint  # @UnusedImport
+
 import routing
 
+
 logger = logging.getLogger("cluster.render")
+
+
+def _get_cluster_name():
+    try:
+        c_name = device_variable.objects.values_list("val_str", flat=True).get(
+            Q(name="CLUSTER_NAME") &
+            Q(device__device_group__cluster_device_group=True))
+    except device_variable.DoesNotExist:
+        return ""
+    else:
+        return c_name
 
 
 class render_me(object):
@@ -103,6 +117,7 @@ class render_me(object):
         cur_clc = cluster_license_cache()
         # pprint.pprint(gp_dict)
         # pprint.pprint(op_dict)
+        self.my_dict["CLUSTER_NAME"] = _get_cluster_name()
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
