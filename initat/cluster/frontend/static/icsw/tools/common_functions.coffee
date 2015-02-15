@@ -147,12 +147,13 @@ class angular_edit_mixin
             noty
                 text : "form validation problem"
                 type : "warning"
-    modal_ctrl : ($scope, $modalInstance, question) ->
+    modal_ctrl : ["$scope", "$modalInstance", "question", ($scope, $modalInstance, question) ->
         $scope.question = question
         $scope.ok = () ->
             $modalInstance.close(true)
         $scope.cancel = () ->
             $modalInstance.dismiss("cancel")
+    ]
     delete_obj : (obj) =>
         if @use_promise
            ret = @q.defer()
