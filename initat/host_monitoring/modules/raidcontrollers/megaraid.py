@@ -576,9 +576,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     r_list.extend([(_ctrl_key, "all", "SAS Controller {}".format(_ctrl_key), True), ])
                 _lines, _checks = get_source(_ro_dict, _key)
                 r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
+                # all checks in one line ? Todo ...
+                # r_list.append((_key, "::".join(_checks), ", ".join([get_info(_key, _lines, _check) for _check in _checks]), False))
             if cur_ns.short_output:
                 # shorten list
                 r_list, _ignore_dict = _shorten_list(r_list)
+            # pprint.pprint(r_list)
             return r_list
         else:
             _passive_dict = {
@@ -647,6 +650,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     # add summed result
                     _passive_dict["list"].append(_generate_short_result(_struct, _lss))
                 # pprint.pprint(_passive_dict)
+            # pprint.pprint(_passive_dict)
             if _store_passive:
                 ascii_chunk = base64.b64encode(bz2.compress(json.dumps(_passive_dict)))
             else:
