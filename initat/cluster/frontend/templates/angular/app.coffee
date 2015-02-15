@@ -79,7 +79,7 @@ ics_app = angular.module(
         "icsw.rms",
     ]
 ).config(() ->
-    console.log "config"
+    # console.log "config"
 ).config(["blockUIConfig", (blockUIConfig) ->
     blockUIConfig.delay = 0
     blockUIConfig.message = "Loading, please wait ..."
@@ -297,6 +297,7 @@ ics_app = angular.module(
     "RRD_GRAPH_RRDS": "{% url 'rrd:graph_rrds' %}"
     "RRD_MERGE_CDS": "{% url 'rrd:merge_cds' %}"
     "SESSION_LOGOUT": "{% url 'session:logout' %}"
+    "SESSION_LOGIN": "{% url 'session:login' %}"
     "SETUP_IMAGE_OVERVIEW": "{% url 'setup:image_overview' %}"
     "SETUP_KERNEL_OVERVIEW": "{% url 'setup:kernel_overview' %}"
     "SETUP_PARTITION_OVERVIEW": "{% url 'setup:partition_overview' %}"

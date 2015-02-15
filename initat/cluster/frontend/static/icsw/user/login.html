@@ -1,0 +1,31 @@
+<script type="text/ng-template" id="icsw.user.login.page">
+    <div class="row">
+        <div ng-class="gfx_class()" ng-style="gfx_style()">
+            <img width="100%;" ng-src="{{ ICSW_URLS.MENU_GFX_BIG_URL }}" alt="{{ INIT_PRODUCT_NAME }} logo"/>
+        </div>
+        <div ng-class="login_class()">
+            <div class="well"  style="margin-top:60px;">
+                <icsw-login-form></icsw-login-form>
+                <p class="text-right">species : {{ INIT_PRODUCT_FAMILY }} ({{ INIT_PRODUCT_VERSION }}) on Django {{ DJANGO_VERSION }}</p>
+            </div>
+        </div>
+    </div>
+    <div ng-show="login_hints.length" class="row">
+        <div class="col-md-offset-2 col-md-8">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3>Login hints</h3>
+                </div>
+                <div class="panel-body">
+                    <ul class="list-group">
+                        <li class="list-group-item" ng-repeat="entry in login_hints">
+                            <span ng-show="entry[2]">superuser </span>
+                            <span ng-show="!entry[2]">user </span>
+                            <code><b>{{ entry[0] }}</b></code> has password <code>'{{ entry[1] }}'</code>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

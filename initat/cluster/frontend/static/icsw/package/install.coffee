@@ -470,7 +470,7 @@ package_module = angular.module(
                 return moment.unix(dev.latest_contact).fromNow(true)
             else
                 return "never"
-]).directive("icswPackageInstallOverview", ($templateCache, msgbus) ->
+]).directive("icswPackageInstallOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.overview")
@@ -482,47 +482,47 @@ package_module = angular.module(
                     scope.reload_devices(args[1])
                 )
     }
-).directive("icswPackageInstallRepositoryRow", ($templateCache) ->
+]).directive("icswPackageInstallRepositoryRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.repo.row")
     }
-).directive("icswPackageInstallRepositoryHead", ($templateCache) ->
+]).directive("icswPackageInstallRepositoryHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.repo.head")
     }
-).directive("icswPackageInstallSearchRow", ($templateCache) ->
+]).directive("icswPackageInstallSearchRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.search.row")
     }
-).directive("icswPackageInstallSearchHead", ($templateCache) ->
+]).directive("icswPackageInstallSearchHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.search.head")
     }
-).directive("icswPackageInstallSearchResultHead", ($templateCache) ->
+]).directive("icswPackageInstallSearchResultHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.search.result.head")
     }
-).directive("icswPackageInstallSearchResultRow", ($templateCache) ->
+]).directive("icswPackageInstallSearchResultRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.search.result.row")
     }
-).directive("icswPackageInstallPackageHead", ($templateCache) ->
+]).directive("icswPackageInstallPackageHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.list.head")
     }
-).directive("icswPackageInstallPackageRow", ($templateCache) ->
+]).directive("icswPackageInstallPackageRow", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.list.row")
     }
-).directive("istate", ($templateCache, $compile) ->
+]).directive("istate", ["$templateCache", "$compile", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         scope:
@@ -639,4 +639,4 @@ package_module = angular.module(
                 )
                 scope.draw()
     }
-)
+])

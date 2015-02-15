@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,6 +22,10 @@
 
 """ basic session views """
 
+import base64
+import json
+import logging
+
 from django.contrib.auth import login, logout, authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q, Sum
@@ -32,11 +36,9 @@ from django.views.generic import View
 from initat.cluster.backbone.models import cluster_setting, user, device_variable, login_history
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
-from initat.cluster.frontend.helper_functions import update_session_object
-import base64
+from initat.cluster.frontend.helper_functions import update_session_object, xml_wrapper
 import django
-import json
-import logging
+
 
 logger = logging.getLogger("cluster.setup")
 
@@ -75,18 +77,8 @@ def _get_login_hints():
     return json.dumps(_hints)
 
 
-def _get_cluster_name():
-    try:
-        c_name = device_variable.objects.values_list("val_str", flat=True).get(
-            Q(name="CLUSTER_NAME") &
-            Q(device__device_group__cluster_device_group=True))
-    except device_variable.DoesNotExist:
-        return ""
-    else:
-        return c_name
-
-
 def login_page(request, **kwargs):
+    # django version
     _vers = []
     for _v in django.VERSION:
         if type(_v) == int:
@@ -97,16 +89,17 @@ def login_page(request, **kwargs):
         request,
         "login.html",
         {
-            "CLUSTER_NAME": _get_cluster_name(),
-            "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
-            "login_form": kwargs.get(
-                "login_form",
-                authentication_form(next=kwargs.get("next", ""))
-            ),
+            #"login_form": kwargs.get(
+            #    "login_form",
+            #    authentication_form(next=kwargs.get("next", ""))
+            #),
             "from_logout": kwargs.get("from_logout", False),
-            "login_hints": _get_login_hints(),
+            # "login_hints": _get_login_hints(),
+            # "app_path": reverse("session:login"),
+            "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
+            "LOGIN_HINTS": _get_login_hints(),
             "DJANGO_VERSION": ".".join(_vers),
-            "app_path": reverse("session:login"),
+            "NEXT_URL": kwargs.get("next", ""),
         }
     )()
 
@@ -158,17 +151,20 @@ class sess_login(View):
                         return HttpResponseRedirect(reverse("user:account_info"))
             return login_page(request, next=request.GET.get("next", ""))
 
+
+    @method_decorator(xml_wrapper)
     def post(self, request):
-        _post = request.POST
-        _next = _post.get("next", "")
+        _post = json.loads(request.POST["blob"])
         login_form = authentication_form(data=_post)
         if login_form.is_valid():
             db_user = login_form.get_user()
             _login(request, db_user, login_form)
-            if _next:
-                return HttpResponseRedirect(_next)
+            if _post.get("next_url", "").strip():
+                request.xml_response["redirect"] = _post["next_url"]
             else:
-                return HttpResponseRedirect(reverse("main:index"))
+                request.xml_response["redirect"] = reverse("main:index")
         else:
+            for _key, _value in login_form.errors.iteritems():
+                for _str in _value:
+                    request.xml_response.error(_str)
             _failed_login(request, login_form.real_user_name)
-        return login_page(request, login_form=login_form, next=_next)
