@@ -224,7 +224,7 @@ class icinga_log_reader(threading_tools.process_obj):
             if self._warnings:
                 self.log("warnings while parsing:")
                 for warning, multiplicity in self._warnings.iteritems():
-                    self.log("{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
+                    self.log(u"{} ({})".format(warning, multiplicity), logging_tools.LOG_LEVEL_WARN)
                 self.log("end of warnings while parsing:")
 
     def parse_log_file(self, logfile, logfilepath=None, start_at=None):
@@ -524,13 +524,13 @@ class icinga_log_reader(threading_tools.process_obj):
         # [timestamp] line_type: info
         data = line.split(" ", 1)
         if len(data) != 2:
-            raise cls.malformed_icinga_log_entry("Malformed line {}: {} (error #1)".format(line_no, line))
+            raise cls.malformed_icinga_log_entry(u"Malformed line {}: {} (error #1)".format(line_no, line))
         timestamp_raw, info_raw = data
 
         try:
             timestamp = int(timestamp_raw[1:-1])  # remove first and last char
         except:
-            raise cls.malformed_icinga_log_entry("Malformed line {}: {} (error #2)".format(line_no, line))
+            raise cls.malformed_icinga_log_entry(u"Malformed line {}: {} (error #2)".format(line_no, line))
 
         if only_parse_timestamp:
             return timestamp, info_raw
@@ -555,19 +555,19 @@ class icinga_log_reader(threading_tools.process_obj):
 
         data = info.split(";", 4)
         if len(data) != 5:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #1)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed host entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
         if not host:
-            raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(data[0]))
+            raise self.unknown_host_error(u"Failed to resolve host: {} (error #2)".format(data[0]))
 
         state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[1], None)  # format as in db table @UndefinedVariable
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state entry: {} (error #3) {} {} ".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed state entry: {} (error #3) {} {} ".format(info))
 
         state_type = {"SOFT": "S", "HARD": "H"}.get(data[2], None)  # format as in db table
         if not state_type:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #4)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed host entry: {} (error #4)".format(info))
 
         msg = data[4]
 
