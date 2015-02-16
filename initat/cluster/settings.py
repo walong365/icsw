@@ -371,7 +371,6 @@ PIPELINE_CSS = {
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
-            # not used right now
             "css/angular-block-ui.css",
             "js/libs/ui-select/select.css",
             "css/ladda.min.css",
@@ -379,6 +378,7 @@ PIPELINE_CSS = {
             "css/smart-table.css",
             "css/font-awesome.min.css",
             "css/icsw.css",
+            "css/toaster.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }
@@ -396,7 +396,6 @@ PIPELINE_JS = {
         "source_filenames": (
             "js/libs/jquery-ui-1.10.2.custom.js",
             "js/libs/angular-1.3.12.js",
-            "js/jquery.noty.packaged.js",
             "js/libs/lodash.min.js",
             "js/bluebird.js",
             "js/jquery.simplemodal.js",
@@ -410,6 +409,7 @@ PIPELINE_JS = {
             "js/ladda.js",
             "js/angular-ladda.js",
             "js/hamster.js",
+            "js/toaster.js",
         ),
         "output_filename": "pipeline/js/base.js"
     },
@@ -427,7 +427,6 @@ PIPELINE_JS = {
             "js/libs/angular-animate.min.js",
             "js/libs/angular-file-upload.js",
             "js/libs/restangular.min.js",
-            # not used right now
             "js/libs/angular-block-ui.js",
             "js/libs/ui-select/select.js",
             "js/libs/ui-bootstrap-tpls.min.js",
@@ -441,16 +440,9 @@ PIPELINE_JS = {
             "js/libs/FileSaver.js",
             "js/mousewheel.js",
             "js/smart-table.debug.js",
+            "js/angular-google-maps.min.js",
         ),
         "output_filename": "pipeline/js/extra1.js"
-    },
-    "js_gmaps": {
-        "source_filenames": (
-            # google maps
-            "js/angular-google-maps.min.js",
-            # "js/ng-map.min.js",
-        ),
-        "output_filename": "pipeline/js/gmaps.js"
     },
     "icsw_cs1": {
         "source_filenames": (
