@@ -23,7 +23,7 @@ package_module = angular.module(
                 _show = false
             return _show
     }
-]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswCallAjaxService", (Restangular, ICSW_URLS, icswCallAjaxService) ->
+]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
     return {
         user_rest           : user_rest
@@ -40,7 +40,7 @@ package_module = angular.module(
                     "pk" : edit_obj.idx
                 }
                 success : (xml) ->
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     $scope.reload()
         init_fn: (scope) ->
             scope.init_search(scope)
@@ -64,8 +64,8 @@ package_module = angular.module(
         edit_template       : "package_search.html"
         delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
     }
-]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService",
-    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService) ->
+]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService, icswParseXMLResponseService) ->
         # flags
         $scope.show_enabled_repos = true
         $scope.show_published_repos = true
@@ -111,7 +111,7 @@ package_module = angular.module(
                 }
                 success : (xml) ->
                     blockUI.stop()
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         reload_func()
         $scope.clear_active_search = (del_obj) ->
             if $scope.active_search and $scope.active_search.idx == del_obj.idx
@@ -125,7 +125,7 @@ package_module = angular.module(
                     "pk" : obj.idx
                 }
                 success : (xml) ->
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     reload_func()
         $scope.reload_searches = () ->
             # check all search states
@@ -153,7 +153,7 @@ package_module = angular.module(
                             "mode" : "reload_searches"
                         }
                         success : (xml) ->
-                            parse_xml_response(xml)
+                            icswParseXMLResponseService(xml)
                             $scope.search_scope.reload()
                     $scope.search_scope.search_string = ""
                 )
@@ -171,7 +171,7 @@ package_module = angular.module(
                     "target_repo" : if obj.target_repo then obj.target_repo else obj.package_repo
                 }
                 success : (xml) ->
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         # reload package list
                         $scope.package_list_scope.reload()
                     else
@@ -194,7 +194,7 @@ package_module = angular.module(
                 }
                 success : (xml) ->
                     blockUI.stop()
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         $scope.clear_caches = () ->
             blockUI.start()
             icswCallAjaxService
@@ -204,7 +204,7 @@ package_module = angular.module(
                 }
                 success : (xml) ->
                     blockUI.stop()
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         #$scope.load_devices = (url, options) ->
         #    return Restangular.all(url.slice(1)).getList(options)
         $scope.reload_devices = () ->
@@ -348,7 +348,7 @@ package_module = angular.module(
                     "add_list" : angular.toJson(attach_list)
                 }
                 success : (xml) ->
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     new_pdcs = angular.fromJson($(xml).find("value[name='result']").text())
                     for new_pdc in new_pdcs
                         new_pdc.selected = true
@@ -370,7 +370,7 @@ package_module = angular.module(
                     "remove_list" : angular.toJson(remove_list)
                 }
                 success : (xml) ->
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     # just to be sure
                     $scope.update_selected_pdcs()
         $scope.target_states = [
@@ -409,7 +409,7 @@ package_module = angular.module(
                     "change_dict" : angular.toJson(change_dict)
                 }
                 success : (xml) ->
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         $scope.action = (event) ->
             $scope.edit_obj = {
                 "target_state" : ""
@@ -454,7 +454,7 @@ package_module = angular.module(
                 }
                 success : (xml) ->
                     blockUI.stop()
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         $scope.send_clear_caches = (event) ->
             blockUI.start()
             icswCallAjaxService
@@ -464,7 +464,7 @@ package_module = angular.module(
                 }
                 success : (xml) ->
                     blockUI.stop()
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         $scope.latest_contact = (dev) ->
             if dev.latest_contact
                 return moment.unix(dev.latest_contact).fromNow(true)

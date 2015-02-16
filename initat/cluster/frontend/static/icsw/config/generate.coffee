@@ -48,8 +48,8 @@ config_gen_module = angular.module(
                         @dev_conf.active_content = content.split("\n")
                     else
                         @dev_conf.active_content = []
-).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswCallAjaxService) ->
+).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devsel_list = []
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->
@@ -75,7 +75,7 @@ config_gen_module = angular.module(
                 success : (xml) =>
                     blockUI.stop()
                     cur_list = []
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         _json = angular.fromJson($(xml).find("value[name='result']").text())
                         for cur_dev in _json["devices"]
                             new_tree = new icswConfigConfigTreeService($scope)

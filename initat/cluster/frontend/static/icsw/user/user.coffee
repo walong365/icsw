@@ -80,8 +80,8 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService) ->
+).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -197,7 +197,7 @@ user_module = angular.module(
                 title   : "syncing users"
                 success : (xml) =>
                     blockUI.stop()
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         $scope.rebuild_tree = () ->
             $scope.tree.clear_root_nodes()
             group_lut = {}
@@ -332,15 +332,14 @@ user_module = angular.module(
                     "set"     : 1
                     "level"   : $scope._edit_obj.permission_level
                 success : (xml) =>
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         if $(xml).find("value[name='new_obj']").length
                             new_obj = angular.fromJson($(xml).find("value[name='new_obj']").text())
                             if $scope._edit_mode == "u"
                                 $scope._edit_obj.user_object_permission_set.push(new_obj)
                             else
                                 $scope._edit_obj.group_object_permission_set.push(new_obj)
-                            noty
-                                text : "added local permission"
+                            toaster.pop("success", "", "added local permission")
                             # trigger redraw
                             $scope.$digest()
         $scope.delete_permission = (perm) ->
@@ -354,9 +353,7 @@ user_module = angular.module(
             Restangular.restangularizeElement(null, perm, detail_url)
             perm.remove().then((data) ->
                 $scope._edit_obj[ps_name] = (_e for _e in $scope._edit_obj[ps_name] when _e.csw_permission != perm.csw_permission)
-                noty
-                    text : "removed global #{ug_name} permission"
-                    type : "warning"
+                toaster.pop("warning", "", "removed global #{ug_name} permission")
             )
         $scope.delete_object_permission = (perm) ->
             if $scope._edit_mode == "u"
@@ -369,9 +366,7 @@ user_module = angular.module(
             Restangular.restangularizeElement(null, perm, detail_url)
             perm.remove().then((data) ->
                 $scope._edit_obj[ps_name] = (_e for _e in $scope._edit_obj[ps_name] when _e.idx != perm.idx)
-                noty
-                    text : "removed local #{ug_name} permission"
-                    type : "warning"
+                toaster.pop("warning", "", "removed local #{ug_name} permission")
             )
         $scope.create_permission = () ->
             if $scope._edit_obj.permission
@@ -417,7 +412,7 @@ user_module = angular.module(
                 data    :
                     "user_pk" : obj.idx
                 success : (xml) =>
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         $scope.$apply(() ->
                             obj.home_dir_created = false
                         )
@@ -761,7 +756,7 @@ user_module = angular.module(
                 else
                     return "no scan runs"
     }
-]).directive("icswUserVirtualDesktopSettings", ["$compile", "$templateCache", "icswTools", ($compile, $templateCache, icswTools) ->
+]).directive("icswUserVirtualDesktopSettings", ["$compile", "$templateCache", "icswTools", "toaster", ($compile, $templateCache, icswTools, toaster) ->
         restrict : "EA"
         template : $templateCache.get("icsw.user.vdu.settings")
         link: (scope, element, attrs) ->
@@ -839,8 +834,7 @@ user_module = angular.module(
                         scope._edit_obj.device = undefined
                         # also add locally
                         scope.virtual_desktop_user_setting.push(data)
-                        noty
-                            text : "added virtual desktop setting"
+                        toaster.pop("success", "", "added virtual desktop setting")
                     )
                 else 
                     # modify
@@ -875,9 +869,7 @@ user_module = angular.module(
                     # also remove locally
                     index = scope.virtual_desktop_user_setting.indexOf(vdus)
                     scope.virtual_desktop_user_setting.splice(index, 1)
-                    noty
-                        text : "removed virtual desktop setting"
-                        type : "warning"
+                    toaster.pop("warning", "", "removed virtual desktop setting")
                 )
             scope.modify_virtual_desktop_user_setting = (vdus) -> 
                 scope._edit_obj.device = vdus.device # this triggers the default settings, but we overwrite them hre

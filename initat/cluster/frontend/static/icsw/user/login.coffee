@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap"
     ]
-).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "blockUI",
-    ($scope, $window, ICSW_URLS, icswCallAjaxService, blockUI) ->
+).controller("icswLoginCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI",
+    ($scope, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI) ->
         $scope.login_hints = $window.LOGIN_HINTS
         $scope.ICSW_URLS = ICSW_URLS
         $scope.INIT_PRODUCT_NAME = $window.INIT_PRODUCT_NAME
@@ -38,7 +38,7 @@ angular.module(
                 data:
                     blob: angular.toJson($scope.login_data)
                 success: (xml) ->
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         if $(xml).find("value[name='redirect']").length
                             _val = $(xml).find("value[name='redirect']").text()
                             $window.location = _val

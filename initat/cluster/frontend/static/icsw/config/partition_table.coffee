@@ -62,7 +62,7 @@ partition_table_module = angular.module(
             edit_part.tab_active = true
             $scope.edit_pts.push(edit_part)
         $scope.reload()
-]).directive("icswConfigDiskLayout", ["$compile", "$modal", "$templateCache", "Restangular", "ICSW_URLS", "icswCallAjaxService", ($compile, $modal, $templateCache, Restangular, ICSW_URLS, icswCallAjaxService) ->
+]).directive("icswConfigDiskLayout", ["$compile", "$modal", "$templateCache", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $modal, $templateCache, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.disk.layout")
@@ -104,7 +104,7 @@ partition_table_module = angular.module(
                         "pt_pk" : scope.part.idx
                     }
                     success : (xml) ->
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         error_list = []
                         $(xml).find("problem").each (idx, cur_p) =>
                             cur_p = $(cur_p)

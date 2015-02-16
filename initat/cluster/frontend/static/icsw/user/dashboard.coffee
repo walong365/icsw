@@ -7,8 +7,8 @@ dashboard_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user",
     ]
-).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, icswCallAjaxService)->
+).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)->
         $scope.jobs_waiting = []
         $scope.jobs_running = []
         $scope.jobs_finished = []
@@ -57,7 +57,7 @@ dashboard_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.user.job.info")
         link: (scope, element, attrs) ->
-]).directive("icswUserVduOverview", ["$compile", "$templateCache", "icswTools", "ICSW_URLS", "icswCallAjaxService", ($compile, $templateCache, icswTools, ICSW_URLS, icswCallAjaxService) ->
+]).directive("icswUserVduOverview", ["$compile", "$templateCache", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($compile, $templateCache, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         restrict : "EA"
         template : $templateCache.get("icsw.user.vdu.overview")
         link: (scope, element, attrs) ->

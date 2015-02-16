@@ -3,8 +3,8 @@ sidebar_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.info",
     ]
-).controller("icswSidebarCtrl", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService", "icswCallAjaxService",
-    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService, icswCallAjaxService) ->
+).controller("icswSidebarCtrl", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.DeviceOverviewService = DeviceOverviewService
         $scope.msgbus = msgbus
@@ -179,7 +179,7 @@ sidebar_module = angular.module(
                         "angular_sel" : angular.toJson(cur_sel)
                     }
                     success : (xml) ->
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
         # treeconfig for devices
         $scope.tc_devices = new icswLayoutSidebarTreeService($scope, {show_tree_expand_buttons : false, show_descendants : true})
         # treeconfig for FQDN
@@ -346,8 +346,8 @@ sidebar_module = angular.module(
                 return @scope.dev_lut[t_entry.obj]
         selection_changed: () =>
             @scope.selection_changed()
-).controller("icswSidebarSeparatorCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $window, ICSW_URLS, icswCallAjaxService) ->
+).controller("icswSidebarSeparatorCtrl", ["$scope", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         # init display of sidebar
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         # 2 ... fully open

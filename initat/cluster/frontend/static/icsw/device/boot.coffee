@@ -5,8 +5,8 @@ device_boot_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService) ->
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
@@ -252,7 +252,7 @@ device_boot_module = angular.module(
                     data    : send_data
                     success : (xml) =>
                         $scope.update_info_timeout = $timeout($scope.update_info, 10000)
-                        if parse_xml_response(xml, 40, false)
+                        if icswParseXMLResponseService(xml, 40, false)
                             $scope.conn_problems = 0
                             $scope.info_ok = true
                             _resp = angular.fromJson($(xml).find("value[name='response']").text())
@@ -341,7 +341,7 @@ device_boot_module = angular.module(
                     "command"     : command
                 }
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         $scope.hard_control = (cd_con, command) ->
             if cd_con
                 cd_pk_list = [cd_con.idx]
@@ -358,7 +358,7 @@ device_boot_module = angular.module(
                     "command"    : command
                 }
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
         $scope.modify_device = (dev, event) ->
             $scope.device_info_str = dev.full_name
             $scope.device_edit.edit_template = "boot.single.form"

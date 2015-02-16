@@ -12,8 +12,8 @@ image_module = angular.module(
         edit_template: "image.form"
         delete_confirm_str: (obj) -> return "Really delete image '#{obj.name}' ?"
     }
-]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswCallAjaxService) ->
+]).controller("icswImageOverviewCtrl", ["$scope", "$compile", "$templateCache", "Restangular", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $templateCache, Restangular, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.arch_rest = Restangular.all(ICSW_URLS.REST_ARCHITECTURE_LIST.slice(1))
         $scope.arch_rest.getList().then((response) ->
             $scope.architectures = response
@@ -65,7 +65,7 @@ image_module = angular.module(
                     $scope.$apply(() ->
                         $scope.new_entries = []
                     )
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         $scope.reload()
 ]).directive("icswImageHead", ["$templateCache", ($templateCache) ->
     restrict: "EA"

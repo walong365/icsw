@@ -26,8 +26,8 @@ config_module = angular.module(
                     return []
             )
             @scope.new_selection(sel_list)
-).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService) ->
+).controller("icswConfigConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswToolsButtonConfigService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, FileUploader, $http, blockUI, icswTools, ICSW_URLS, $window, icswToolsButtonConfigService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
@@ -256,7 +256,7 @@ config_module = angular.module(
                     data    :
                         "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
                     success : (xml) =>
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         blockUI.stop()
                 $scope.selected_objects = []
         $scope.unselect_objects = () ->
@@ -521,7 +521,7 @@ config_module = angular.module(
                     "config" : config.idx
                     "mon"    : obj.idx
                 success : (xml) =>
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         new_moncc = angular.fromJson($(xml).find("value[name='mon_cc']").text())
                         config.mon_check_command_set.push(new_moncc)
                         $scope.$apply(() ->
@@ -727,7 +727,7 @@ config_module = angular.module(
         }
         replace : true
     }
-]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", "icswCallAjaxService", ($templateCache, $compile, $modal, Restangular, ICSW_URLS, icswCallAjaxService) ->
+]).directive("icswConfigCachedConfig", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", ($templateCache, $compile, $modal, Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.cached.upload")
@@ -766,7 +766,7 @@ config_module = angular.module(
                     }
                     success : (xml) ->
                         # $.unblockUI
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         scope.$emit("icsw.reload_all")
             scope.delete_config = () ->
                 # $.blockUI
@@ -779,7 +779,7 @@ config_module = angular.module(
                     }
                     success : (xml) ->
                         # $.unblockUI
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         scope.$emit("icsw.reload_upload")
     }
 ])

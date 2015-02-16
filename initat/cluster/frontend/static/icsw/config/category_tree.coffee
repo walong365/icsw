@@ -2,14 +2,14 @@
 angular.module(
     "icsw.config.category_tree",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "google-maps".ns(), "angularFileUpload"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
 ).controller("icswConfigCategoryTreeCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window",
     "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
-    "icswCallAjaxService",
+    "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, sharedDataSource, $q, $modal, access_level_service,
-     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService) ->
+     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
@@ -57,14 +57,11 @@ angular.module(
         $scope.uploader.onErrorItem = (item, response, status, headers) ->
             blockUI.stop()
             $scope.uploader.clearQueue()
-            noty
-                text: "error uploading file, please check logs"
-                type: "error"
-                timeout: false
+            toaster.pop("error", "", "error uploading file, please check logs", 0)
             return null
         $scope.uploader.onCompleteItem = (item, response, status, headers) ->
             xml = $.parseXML(response)
-            if parse_xml_response(xml)
+            if icswParseXMLResponseService(xml)
                 Restangular.one(ICSW_URLS.REST_LOCATION_GFX_DETAIL.slice(1).slice(0, -2), $scope.cur_location_gfx.idx).get().then((data) ->
                     for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
                         $scope.cur_location_gfx[_copy] = data[_copy]
@@ -255,7 +252,7 @@ angular.module(
                     icswCallAjaxService
                         url     : ICSW_URLS.BASE_PRUNE_CATEGORIES
                         success : (xml) ->
-                            parse_xml_response(xml)
+                            icswParseXMLResponseService(xml)
                             $scope.reload()
                             blockUI.stop()
             )
@@ -336,7 +333,7 @@ angular.module(
                 data: data
                 success: (xml) ->
                     blockUI.stop()
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         $scope.$apply(() ->
                             obj.image_url = $(xml).find("value[name='image_url']").text()
                             obj.icon_url = $(xml).find("value[name='icon_url']").text()

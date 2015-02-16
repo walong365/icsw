@@ -34,6 +34,7 @@ ics_app = angular.module(
         "ui.bootstrap",
         "restangular",
         "blockUI",
+        "toaster",
         "init.csw.filters",
         "icsw.tools.tree",
         "icsw.layout.menu",

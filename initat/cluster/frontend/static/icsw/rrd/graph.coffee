@@ -78,8 +78,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-        "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService) ->
+        "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
@@ -157,9 +157,7 @@ angular.module(
             if $scope.dt_valid
                 diff = to_date - from_date 
                 if diff < 0
-                    noty
-                        text : "exchanged from with to date"
-                        type : "warning"
+                    toaster.pop("warning", "", "exchanged from with to date")
                     $scope.to_date_mom = from_date
                     $scope.from_date_mom = to_date
                 else if diff < 60000
@@ -215,9 +213,7 @@ angular.module(
         
         $scope.feed_rrd_json = (json) ->
             if "error" of json
-                noty
-                    text : json["error"]
-                    type : "error"
+                toaster.pop("error", "", json["error"])
             else
                 if $scope.auto_select_keys.length
                     $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
@@ -416,9 +412,7 @@ angular.module(
                 $scope.draw_graph()
             else
                 _mins = parseInt(graph.crop_width / 60)
-                noty
-                    text : "selected timeframe is too narrow (#{_mins} < 10 min)"
-                    type : "warning"
+                toaster.pop("warning", "", "selected timeframe is too narrow (#{_mins} < 10 min)")
         $scope.draw_graph = () =>
             if !$scope.is_drawing
                 $scope.is_drawing = true
@@ -448,7 +442,7 @@ angular.module(
                         graph_list = []
                         # graph matrix
                         graph_mat = {}
-                        if parse_xml_response(xml)
+                        if icswParseXMLResponseService(xml)
                             num_graph = 0
                             for graph in $(xml).find("graph_list > graph")
                                 graph = $(graph)

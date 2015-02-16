@@ -33,8 +33,8 @@ angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
-).controller("config_vars_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService) ->
+).controller("config_vars_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
         $scope.loaded = false
@@ -48,7 +48,7 @@ angular.module(
                     data    :
                         "keys" : angular.toJson($scope.devsel_list)
                     success : (xml) =>
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         $scope.set_tree_content($(xml).find("devices"))
         $scope.set_tree_content = (in_xml) ->
             for dev_xml in in_xml.find("device")
@@ -273,7 +273,7 @@ angular.module(
                     scope.new_devsel(args[0])                    
                 )
     }
-]).directive("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswCallAjaxService", (Restangular, ICSW_URLS, icswCallAjaxService) ->
+]).directive("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     return {
         restrict : "EA"
         link: (scope, el, attrs) ->
@@ -322,7 +322,7 @@ angular.module(
                         },
                         success : (xml) =>
                             # interpret response
-                            parse_xml_response(xml)
+                            icswParseXMLResponseService(xml)
                             # at first remove all selections
                             for entry in scope.devices
                                 if entry.device_group == dev.device_group

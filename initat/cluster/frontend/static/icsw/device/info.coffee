@@ -152,8 +152,8 @@ device_info_module = angular.module(
                     else if name in ["config", "variables", "graphing"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
-]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, toaster) ->
         access_level_service.install($scope)
         $scope.show_uuid = false
         $scope.image_url = ""
@@ -178,9 +178,7 @@ device_info_module = angular.module(
                         reload_sidebar_tree([$scope._edit_obj.idx])
                     )
             else
-                noty
-                    text : "form validation problem"
-                    type : "warning"
+                toaster.pop("warning", "form validation problem", "", 0)
 ]).directive("deviceinfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
     return {
         restrict : "EA"
