@@ -29,7 +29,8 @@ from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
 
 # private var to store setting
 PV_NAME = "__megaraid_sas_output_flag"
-PUBLIC_NAME = "MEGARAID_SAS_SHORT_OUTPUT"
+SHORT_OUTPUT_NAME = "MEGARAID_SAS_SHORT_OUTPUT"
+IGNORE_BBU_NAME = "MEGARAID_SAS_IGNORE_MISSING_BBU"
 
 
 class special_megaraid_sas(SpecialBase):
@@ -38,7 +39,10 @@ class special_megaraid_sas(SpecialBase):
         server_contact = True
         info = "MegaRaid SAS"
         command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ " \
-            "--passive-check-postfix $ARG3$ --short-output ${{ARG4:{}:0}}".format(PUBLIC_NAME)
+            "--passive-check-postfix $ARG3$ --short-output ${{ARG4:{}:0}} --ignore-missing-bbu ${{ARG5:{}:0}".format(
+                SHORT_OUTPUT_NAME,
+                IGNORE_BBU_NAME,
+            )
         description = "detailed checks for MegaRaid SAS controllers"
 
     def RCClass(self):
@@ -46,7 +50,8 @@ class special_megaraid_sas(SpecialBase):
 
     def to_hint(self, srv_reply):
         _prev_output = self.host.dev_variables.get(PV_NAME, -1)
-        _short_output = self.host.dev_variables.get(PUBLIC_NAME, 0)
+        _short_output = self.host.dev_variables.get(SHORT_OUTPUT_NAME, 0)
+        _ignore_missing_bbu = self.host.dev_variables.get(IGNORE_BBU_NAME, 0)
         if _prev_output != _short_output:
             self.remove_cache_entries()
         if PV_NAME not in self.host.dev_variables:
@@ -60,7 +65,7 @@ class special_megaraid_sas(SpecialBase):
             )
             self.add_variable(new_var)
         self.set_variable(PV_NAME, _short_output)
-        cur_ns = Namespace(get_hints=True, short_output=_short_output)
+        cur_ns = Namespace(get_hints=True, short_output=_short_output, ignore_missing_bbu=_ignore_missing_bbu)
         # transform from srv_reply to dict, see code in raidcontroller_mod (megaraid_sas_status_command.interpret)
         ctrl_dict = {}
         for res in srv_reply["result"]:
