@@ -7,10 +7,10 @@ device_module = angular.module(
 ).controller("icswDeviceTreeCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout",
      "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
-     "icswCallAjaxService", "icswToolsSimpleModalService",
+     "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService", "toaster",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout,
      $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
-     icswCallAjaxService, icswToolsSimpleModalService) ->
+     icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, toaster) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         $scope.initial_load = true
         $scope.rest_data = {}
@@ -107,9 +107,7 @@ device_module = angular.module(
                         (resp) -> icswTools.handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                     )
             else
-                noty
-                    text : "form validation problem"
-                    type : "warning"
+                toaster.pop("warning", "form validation problem", "", 0)
         $scope.form_error = (field_name) ->
             if $scope.form[field_name].$valid
                 return ""
@@ -160,7 +158,7 @@ device_module = angular.module(
                     "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
                 }
                 success : (xml) ->
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         if parseInt($(xml).find("value[name='changed']").text())
                             $.simplemodal.close()
                             $scope.reload()
@@ -175,7 +173,7 @@ device_module = angular.module(
                             "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
                         }
                         success : (xml) ->
-                            if parse_xml_response(xml)
+                            if icswParseXMLResponseService(xml)
                                 $scope.reload()
                                 reload_sidebar_tree()
             )
@@ -185,8 +183,7 @@ device_module = angular.module(
             icswToolsSimpleModalService("Really delete #{a_name} '#{obj.name}' ?").then(
                 () ->
                     obj.remove().then((resp) ->
-                        noty
-                            text : "deleted #{a_name}"
+                        toaster.pop("success", "", "deleted #{a_name} #{obj.name}")
                         if a_name == "device"
                             $scope.device_group_lut[obj.device_group].num_devices--
                             icswTools.remove_by_idx($scope.entries, obj.idx)
@@ -299,7 +296,7 @@ device_module = angular.module(
                     "angular_sel" : angular.toJson((entry.idx for entry in $scope.entries when entry.selected))
                 }
                 success : (xml) ->
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                    
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->

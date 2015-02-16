@@ -114,7 +114,7 @@ angular.module(
 ).controller("icswDeviceNetworkCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource",
      "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
-    "icswCallAjaxService",
+    "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
      $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
      icswCallAjaxService
@@ -357,7 +357,7 @@ angular.module(
                 data    :
                     "dev" : angular.toJson($scope.scan_device)
                 success : (xml) ->
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     blockUI.stop()
                     $scope.scan_mixin.close_modal()
                     $scope.update_scans()
@@ -627,7 +627,7 @@ angular.module(
                     },
                     success : (xml) =>
                         blockUI.stop()
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         $scope.reload()
         $scope.get_bootdevice_info_class = (obj) ->
             num_bootips = $scope.get_num_bootips(obj)
@@ -716,8 +716,8 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.network.total")
     }
-]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswCallAjaxService) ->
+]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.devices = args[1] 
@@ -868,7 +868,7 @@ angular.module(
                 scope.$apply()
             )
     }
-]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswCallAjaxService", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswCallAjaxService) ->
+]).directive("icswDeviceNetworkGraph2", ["d3_service", "dragging", "svg_tools", "blockUI", "ICSW_URLS", "$templateCache", "icswCallAjaxService", "icswParseXMLResponseService", (d3_service, dragging, svg_tools, blockUI, ICSW_URLS, $templateCache, icswCallAjaxService, icswParseXMLResponseService) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"

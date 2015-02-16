@@ -190,14 +190,16 @@ class rest_data_source
     get: (rest_tuple) =>
         return @_data[@_build_key(rest_tuple[0], rest_tuple[1])]
 
-icsw_tools = angular.module(
+angular.module(
     "icsw.tools",
-    [],
-).config(() ->
-    # "install parse_xml_response"
-    root = exports ? this
-
-    parse_xml_response = (xml, min_level, show_error=true) ->
+    [
+        "toaster"
+    ],
+).config(["toasterConfig", (toasterConfig) ->
+    # close on click
+    toasterConfig["tap-to-dismiss"] = true
+]).service("icswParseXMLResponseService", ["toaster", (toaster) ->
+    return (xml, min_level, show_error=true) ->
         success = false
         if $(xml).find("response header").length
             ret_state = $(xml).find("response header").attr("code")
@@ -207,22 +209,19 @@ icsw_tools = angular.module(
                 cur_mes = $(cur_mes)
                 cur_level = parseInt(cur_mes.attr("log_level"))
                 if cur_level < 30
-                    noty({"text" : cur_mes.text()})
+                    toaster.pop("success", "", cur_mes.text())
                 else if cur_level == 30
-                    noty({"text" : cur_mes.text(), "type" : "warning"})
+                    toaster.pop("warning", "", cur_mes.text())
                 else
                     if show_error
-                        noty({"text" : cur_mes.text(), "type" : "error", "timeout" : false})
+                        toaster.pop("error", "An Error occured", cur_mes.text(), 0)
         else
             if xml != null
-                noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
+                toaster.pop("error", "A critical error occured", "error parsing response", 0)
         return success
-
-    root.parse_xml_response = parse_xml_response
-).factory("msgbus", ["$rootScope", ($rootScope) ->
+]).factory("msgbus", ["$rootScope", ($rootScope) ->
     bus = {}
     bus.emit = (msg, data) ->
-        #console.log "e", data
         $rootScope.$emit(msg, data)
     bus.receive = (msg, scope, func) ->
         unbind = $rootScope.$on(msg, func)
@@ -242,7 +241,7 @@ icsw_tools = angular.module(
                 fn.assign(scope, new_val)
             true
         )
-]).factory("icswTools", () ->
+]).factory("icswTools", ["icswParseXMLResponseService", (icwParseXMLResponseService) ->
     return {
         "get_size_str" : (size, factor, postfix) ->
             f_idx = 0
@@ -264,8 +263,6 @@ icsw_tools = angular.module(
                     in_array.length = if c_idx < 0 then in_array.length + c_idx else c_idx
                     in_array.push.apply(in_array, rest)
                     break
-        "parse_xml_response" : (xml, min_level, show_error=true) ->
-            return parse_xml_response(xml, min_level, show_error)
         "handle_reset" : (data, e_list, idx) ->
             # used to reset form fields when requested by server reply
             if data._reset_list
@@ -278,7 +275,7 @@ icsw_tools = angular.module(
                     scope_obj[entry[0]] = entry[1]
                 delete data._reset_list
     }
-).service("icswAjaxInfoService", ["$window", ($window) ->
+]).service("icswAjaxInfoService", ["$window", ($window) ->
     class ajax_struct
         constructor: (@top_div_name) ->
             @ajax_uuid = 0
@@ -336,6 +333,8 @@ icsw_tools = angular.module(
         for key of default_ajax_dict
             if key not of in_dict
                 in_dict[key] = default_ajax_dict[key]
+        #if "success" of in_dict and in_dict["dataType"] == "xml"
+        #    console.log "s", in_dict["success"]
         cur_xhr = $.ajax(in_dict)
         return cur_xhr
 ]).factory("access_level_service", () ->
@@ -416,29 +415,29 @@ icsw_tools = angular.module(
 ]).filter("paginator_filter", ["$filter", ($filter) ->
     return (arr, scope) ->
         return scope.pagSettings.apply_filter(arr)
-]).config(["RestangularProvider", 
-    (RestangularProvider) ->
-        RestangularProvider.setRestangularFields({
+]).run(["Restangular", "toaster",
+    (Restangular, toaster) ->
+        Restangular.setRestangularFields({
             "id" : "idx"
         })
-        RestangularProvider.setResponseInterceptor((data, operation, what, url, response, deferred) ->
+        Restangular.setResponseInterceptor((data, operation, what, url, response, deferred) ->
             if data.log_lines
                 for entry in data.log_lines
-                    noty
-                        type : {20 : "success", 30 : "warning", 40 : "error", 50 : "alert"}[entry[0]] 
-                        text : entry[1]
+                    toaster.pop(
+                        {20 : "success", 30 : "warning", 40 : "error", 50 : "error"}[entry[0]]
+                        entry[1]
+                        ""
+                    )
             if data._change_list
                 $(data._change_list).each (idx, entry) ->
-                    noty
-                        text : entry[0] + " : " + entry[1]
+                    toaster.pop("success", "", entry[0] + " : " + entry[1])
                 delete data._change_list
             if data._messages
                 $(data._messages).each (idx, entry) ->
-                    noty
-                        text : entry
+                    toaster.pop("success", "", entry)
             return data
         )
-        RestangularProvider.setErrorInterceptor((resp) ->
+        Restangular.setErrorInterceptor((resp) ->
             error_list = []
             if typeof(resp.data) == "string"
                 if resp.data
@@ -461,10 +460,7 @@ icsw_tools = angular.module(
             for _err in error_list
                 if _err not in new_error_list
                     new_error_list.push(_err)
-                    noty
-                        text : _err
-                        type : "error"
-                        timeout : false
+                    toaster.pop("error", _err, "", 0)
             return true
         )
 ]).service("paginatorSettings", ["$filter", ($filter) ->
@@ -557,7 +553,7 @@ d3js_module = angular.module(
         on_script_load = () ->
             $rootScope.$apply(() -> d.resolve(window.d3))
         script_tag = $document[0].createElement('script')
-        script_tag.type = "text/javascript" 
+        script_tag.type = "text/javascript"
         script_tag.async = true
         script_tag.src = ICSW_URLS.D3_MIN_JS
         script_tag.onreadystatechange = () ->
@@ -734,79 +730,6 @@ angular.module(
         return out
 )
 
-# codemirror ui, based on version 0.1.0, not 100% OK
-angular.module("ui.codemirrornew", []).constant("uiCodemirrorConfig", {}).directive("uiCodemirror", [
-    "uiCodemirrorConfig", "$timeout", (uiCodemirrorConfig, $timeout) ->
-        return {
-            restrict: "EA"
-            require: "?ngModel"
-            priority : 1
-            compile: (tElement) ->
-                return (scope, iElement, iAttrs, ngModel) ->
-                    value = scope.$eval(iAttrs.ngModel)
-                    scope.code_mirror = new window.CodeMirror(
-                        (cm_el) ->
-                            #angular.forEach(tElement.prop("attributes"), (a) ->
-                            #    if a.name == "ui-codemirror"
-                            #        cm_el.setAttribute("ui-codemirror-opts", a.textContent)
-                            #    else
-                            #        cm_el.setAttribute(a.name, a.textContent)
-                            #)
-                            #if tElement.parent().length <= 0
-                            #    tElement.wrap("<div>")
-                            #tElement.replaceWith(cm_el)
-                            iElement.replaceWith(cm_el)
-                        { value: value }
-                    )
-                    opts = angular.extend(
-                        {},
-                        uiCodemirrorConfig.codemirror || {},
-                        scope.$eval(iAttrs.uiCodemirror),
-                        scope.$eval(iAttrs.uiCodemirrorOpts)
-                    )
-                    update_options = (newValues) ->
-                        for key of newValues
-                            if newValues.hasOwnProperty(key)
-                                scope.code_mirror.setOption(key, newValues[key])
-                    update_options(opts)
-                    if angular.isDefined(scope.$eval(iAttrs.uiCodemirror))
-                        scope.$watch(iAttrs.uiCodemirror, update_options, true)
-                    #if ngModel
-                        #ngModel.$formatters.push((value) ->
-                        #    if angular.isUndefined(value) || value is null
-                        #        return ""
-                        #    else if angular.isObject(value) || angular.isArray(value)
-                        #        throw new Error("ui-codemirror cannot use an object or an array as a model")
-                        #    else
-                        #        return value
-                        #)
-                        #ngModel.$render = () ->
-                        #    #console.log "render"
-                        #    scope.code_mirror.doc.setValue(ngModel.$viewValue || "")
-                    if iAttrs.uiRefresh
-                        scope.$watch(iAttrs.uiRefresh, (new_val, old_val) ->
-                            # store cursor position / scroll info, not really working right now ?
-                            #console.log "sc", new_val, old_val
-                            cur_cursor = scope.code_mirror.doc.getCursor()
-                            cur_cinfo = scope.code_mirror.getScrollInfo()
-                            scope.code_mirror.doc.setValue(scope.$eval(iAttrs.ngModel))
-                            scope.code_mirror.refresh()
-                            scope.code_mirror.doc.setCursor(cur_cursor)
-                            #console.log cur_cinfo
-                            #code_mirror.scrollIntoView(cur_cinfo)
-                        )
-                    #if angular.isFunction(opts.onLoad)
-                    #    opts.onLoad(codeMirror)
-                    scope.code_mirror.on("change", (instance) ->
-                        newValue = instance.getValue()
-                        if ngModel && newValue != ngModel.$viewValue
-                            ngModel.$setViewValue(newValue)
-                        if !scope.$$phase
-                            scope.$apply()
-                    )
-        }
-])
-
 # codemirror ui, based on version 0.1.2, seems to work
 angular.module(
     'ui.codemirror',
@@ -885,4 +808,3 @@ angular.module(
                     opts.onLoad(codeMirror)
     }
 ])
-

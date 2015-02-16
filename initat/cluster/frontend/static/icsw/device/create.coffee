@@ -3,8 +3,8 @@ create_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "restangular"
     ]
-).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswCallAjaxService) ->
+).controller("icswDeviceCreateCtrl", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $timeout, $window, $templateCache, restDataSource, $q, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.base_open = true
         $scope.resolve_pending = false
         $scope.device_data = {
@@ -74,7 +74,7 @@ create_module = angular.module(
                     $scope.$apply(
                         $scope.resolve_pending = false
                     )
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         if $(xml).find("value[name='ip']").length and not $scope.device_data.ip
                             $scope.$apply(
                                 $scope.device_data.ip = $(xml).find("value[name='ip']").text()
@@ -99,7 +99,7 @@ create_module = angular.module(
                     "device_data" : angular.toJson(d_dict)
                 }
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     reload_sidebar_tree()
                     blockUI.stop()
                     $scope.reload()

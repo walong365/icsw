@@ -37,8 +37,8 @@ device_configuration_module = angular.module(
                 return cat.full_name
             else
                 return "TOP"
-).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService) ->
+).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})
         $scope.reload = (pk_list) ->
@@ -93,7 +93,7 @@ device_configuration_module = angular.module(
                     "set"      : if entry.selected then "1" else "0"
                     "cat_pk"   : cat.idx
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     $scope.$apply(
                         if entry.selected
                             $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
@@ -111,7 +111,7 @@ device_configuration_module = angular.module(
                     "subtree"  : "/device"
                     "cur_sel"  : angular.toJson(sel_list)
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     # selectively reload sidebar tree
                     reload_sidebar_tree([$scope.devices[0].idx])
 ]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->

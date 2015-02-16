@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.d3", "icsw.tools.button"
     ]
-).controller("icswDevicePartitionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswCallAjaxService) ->
+).controller("icswDevicePartitionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", 
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.entries = []
         $scope.active_dev = undefined
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -31,7 +31,7 @@ angular.module(
                     }
                     success : (xml) ->
                         blockUI.stop()
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         $scope.reload()
         $scope.fetch = (pk) ->
             if pk?
@@ -43,7 +43,7 @@ angular.module(
                     }
                     success : (xml) ->
                         blockUI.stop()
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         $scope.reload()
         $scope.use = (pk) ->
             if pk?
@@ -55,7 +55,7 @@ angular.module(
                     }
                     success : (xml) ->
                         blockUI.stop()
-                        parse_xml_response(xml)
+                        icswParseXMLResponseService(xml)
                         $scope.reload()
 ]).directive("icswDevicePartitionOverview", ["$templateCache", ($templateCache) ->
     return {

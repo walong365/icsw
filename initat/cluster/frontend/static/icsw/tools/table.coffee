@@ -76,8 +76,8 @@ angular.module(
                     e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
     }
-]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", "icswTools", "icswToolsSimpleModalService",
-    (Restangular, $parse, $injector, $compile, $templateCache, $modal, icswTools, icswToolsSimpleModalService) ->
+]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", "icswTools", "icswToolsSimpleModalService", "toaster",
+    (Restangular, $parse, $injector, $compile, $templateCache, $modal, icswTools, icswToolsSimpleModalService, toaster) ->
         return {
             restrict: 'EA'
             scope: true
@@ -154,9 +154,7 @@ angular.module(
                                 (resp) -> icswTools.handle_reset(resp.data, scope.entries, scope.edit_obj.idx)
                             )
                     else
-                        noty
-                            text : "form validation problem"
-                            type : "warning"
+                        toaster.pop("warning", "", "form validation problem")
                 scope.form_error = (field_name) ->
                     # temporary fix, FIXME
                     # scope.form should never be undefined
@@ -189,8 +187,7 @@ angular.module(
                         () ->
                             obj.remove().then(
                                 (resp) ->
-                                    noty
-                                        text : "deleted instance"
+                                    toaster.pop("success", "", "deleted instance")
                                     icswTools.remove_by_idx($parse(attrs.targetList)(scope), obj.idx)
                                     if scope.config_service.post_delete
                                         scope.config_service.post_delete(scope, obj)

@@ -38,8 +38,6 @@
     <!--[if gte IE 9]><!-->{% javascript 'js_jquery_new' %}<!--<![endif]-->
     {% javascript 'js_base' %}
     {% javascript 'js_extra1' %}
-    <script src='//maps.googleapis.com/maps/api/js?sensor=false{% if GOOGLE_MAPS_KEY %}&key={{GOOGLE_MAPS_KEY}}{% endif %}'></script>
-    {% javascript 'js_gmaps' %}
 <script type="text/javascript">
 {% inlinecoffeescript %}
 # attach global permissions and license info to window object (== global variable)
@@ -87,16 +85,13 @@ window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %}
         <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.
     </p>
 <![endif]-->
-    <header>
-        {% block header %}
-        {% endblock %}
-    </header>
-    <div id="icsw.app">
+    <div ng-app="icsw.app">
         {% for ssi_file in settings.SSI_FILES %}
             {% ssi ssi_file %}
         {% endfor %}
         <icsw-layout-menubar></icsw-layout-menubar>
         <div block-ui="main" class="block-ui-main"></div>
+        <toaster-container></toaster-container>
         <div id="icsw-wrapper">
             <icsw-layout-sidebar></icsw-layout-sidebar>
             <div id="page-content-wrapper">
@@ -107,48 +102,5 @@ window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %}
             </div>
         </div>
     </div>
-    <footer>
-        <script type="text/javascript">
-        
-        {% inlinecoffeescript %}
-        
-        init_noty = ->
-            $.noty.defaults = {
-                "layout" : "topRight"
-                "theme"  : "defaultTheme"
-                "type"   : 'success'
-                "text"   : ''
-                "dismissQueue" : true, # If you want to use queue feature set this true
-                "template"     : '<div class="noty_message"><span class="noty_text"></span><div class="noty_close"></div></div>'
-                "animation"    : {
-                    open   : {height: 'toggle'}
-                    close  : {height: 'toggle'}
-                    easing : 'swing'
-                    speed  : 200 # opening & closing animation speed
-                }
-                "timeout"   : 5000,  # delay for closing event. Set false for sticky notifications
-                "force"     : false, # adds notification to the beginning of queue when set to true
-                "modal"     : false,
-                "closeWith" : ['hover'], # ['click', 'button', 'hover']
-                "callback" : {
-                    onShow     : ->
-                    afterShow  : ->
-                    onClose    : ->
-                    afterClose : ->
-                }
-                buttons: false
-            }
-        add_handlers_main = ->
-            init_noty()
-            # bootstrap app
-            angular.bootstrap($("div[id='icsw.app']"), ["icsw.app"])
-        
-        angular.element(document).ready(add_handlers_main)
-        
-        {% endinlinecoffeescript %}
-        
-        </script>
-    </footer>
-
 </body>
 </html>

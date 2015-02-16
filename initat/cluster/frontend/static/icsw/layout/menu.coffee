@@ -4,8 +4,8 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap",
     ]
-).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService) ->
+).controller("menu_base", ["$scope", "$timeout", "$window", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $timeout, $window, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.is_authenticated = $window.IS_AUTHENTICATED
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
@@ -44,7 +44,7 @@ menu_module = angular.module(
                 hidden  : true
                 success : (xml) =>
                     cur_pb = []
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         $(xml).find("gauge_info gauge_element").each (idx, cur_g) ->
                             cur_g = $(cur_g)
                             idx = cur_g.attr("idx")
@@ -99,7 +99,7 @@ menu_module = angular.module(
                 }
                 title   : "create config"
                 success : (xml) =>
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         # make at least five iterations to catch slow startup of md-config-server
                         $scope.progress_iters = 5
                         $scope.update_progress_bar()

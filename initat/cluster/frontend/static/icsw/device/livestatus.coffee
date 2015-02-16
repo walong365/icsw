@@ -120,9 +120,9 @@ class hs_node
     
 device_livestatus_module.controller("livestatus_ctrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular","paginatorSettings", "restDataSource", "sharedDataSource",
-     "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswDeviceLivestatusDataService",
+     "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
-     $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswDeviceLivestatusDataService) ->
+     $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -410,7 +410,7 @@ device_livestatus_module.controller("livestatus_ctrl",
         $scope.$on("$destroy", () ->
             icswDeviceLivestatusDataService.destroy($scope.$id)
         )
-]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", (ICSW_URLS, $interval, $timeout, icswCallAjaxService) ->
+]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", "icswParseXMLResponseService", (ICSW_URLS, $interval, $timeout, icswCallAjaxService, icswParseXMLResponseService) ->
     watch_list = {}
     cont_list = {}
     destroyed_list = []
@@ -494,7 +494,7 @@ device_livestatus_module.controller("livestatus_ctrl",
                     "pk_list" : angular.toJson(watched_devs)
                 },
                 success : (xml) =>
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         service_entries = []
                         $(xml).find("value[name='service_result']").each (idx, node) =>
                             service_entries = service_entries.concat(angular.fromJson($(node).text()))
@@ -987,8 +987,8 @@ class mc_table
             _class = "glyphicon"
         return _class
         
-device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService) ->
+device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"
@@ -1034,7 +1034,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                     "mode"    : mode
                 },
                 success : (xml) =>
-                    if parse_xml_response(xml)
+                    if icswParseXMLResponseService(xml)
                         mc_tables = []
                         $(xml).find("config > *").each (idx, node) => 
                             new_table = new mc_table($(node), paginatorSettings)

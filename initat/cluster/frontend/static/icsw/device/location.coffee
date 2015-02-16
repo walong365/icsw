@@ -66,8 +66,8 @@ angular.module(
                 @scope.active_loc_gfx = undefined
                 @scope.gfx_cat = undefined
             @show_active()
-).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService",
-    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService) ->
+).controller("icswDeviceLocationCtrl", ["$scope", "restDataSource", "$q", "access_level_service", "icswDeviceLocationTreeService", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, restDataSource, $q, access_level_service, icswDeviceLocationTreeService, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.DEBUG = false
         $scope.loc_tree = new icswDeviceLocationTreeService($scope, {})
@@ -137,7 +137,7 @@ angular.module(
                     "set"      : if entry.selected then "1" else "0"
                     "cat_pk"   : cat.idx
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     $scope.$apply(
                         $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))
                         reload_sidebar_tree((_dev.idx for _dev in $scope.devices))
@@ -151,7 +151,7 @@ angular.module(
                     "subtree"  : "/location"
                     "cur_sel"  : angular.toJson(sel_list)
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     # selectively reload sidebar tree
                     $scope.$apply(
                         $scope.update_tree(angular.fromJson($(xml).find("value[name='changes']").text()))

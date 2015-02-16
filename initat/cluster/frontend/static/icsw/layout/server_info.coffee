@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswCallAjaxService",
-    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswCallAjaxService) ->
+).controller("icswServerInfoOverviewCtrl", ["$scope", "$timeout", "access_level_service", "blockUI", "$window", "ICSW_URLS", "icswLayoutServerInfoService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $timeout, access_level_service, blockUI, $window, ICSW_URLS, icswLayoutServerInfoService, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.show_server = true
         $scope.show_roles = false
@@ -53,7 +53,7 @@ angular.module(
                     )
                 }
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    icswParseXMLResponseService(xml)
                     blockUI.stop()
                     $scope.cur_to = $timeout($scope.reload_server_info, 100)
             return false

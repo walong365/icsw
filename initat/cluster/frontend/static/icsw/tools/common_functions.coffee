@@ -144,9 +144,8 @@ class angular_edit_mixin
                             handle_reset(resp.data, @scope._edit_obj, null)
                 )
         else
-            noty
-                text : "form validation problem"
-                type : "warning"
+            # move to toaster, FIXME, todo
+            console.log "form validation problem"
     modal_ctrl : ["$scope", "$modalInstance", "question", ($scope, $modalInstance, question) ->
         $scope.question = question
         $scope.ok = () ->
@@ -184,8 +183,8 @@ class angular_edit_mixin
                     @Restangular.restangularizeElement(null, obj, @modify_rest_url)
                 obj.remove().then(
                     (resp) =>
-                        noty
-                            text : "deleted instance"
+                        # todo, fixme, move to toaster
+                        console.log "deleted instance"
                         if @delete_list
                             remove_by_idx(@delete_list, obj.idx)
                         @close_modal()
@@ -239,9 +238,8 @@ class angular_modal_mixin
             @close_modal()
             return @_prom.resolve(@scope._edit_obj)
         else
-            noty
-                text : "form validation problem"
-                type : "warning"
+            # fixme, todo, move to toaster
+            console.log "form validation problem"
 
 reload_sidebar_tree = (pk_list) ->
     sidebar_div = $("div[id='icsw.sidebar'] > div[id='sidebar-wrapper']")
