@@ -25,6 +25,11 @@ dynamically creates config entries for devices (for devices queried via IPMI or 
 
 """
 
+import bz2
+import time
+import base64
+import json
+
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, monitoring_hint, mon_check_command_special, \
@@ -32,16 +37,10 @@ from initat.cluster.backbone.models import device, monitoring_hint, mon_check_co
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.host_monitoring import limits
 from initat.md_config_server.config import global_config
-from lxml import etree  # @UnresolvedImport @UnusedImport
 import logging_tools
-import pprint  # @UnusedImport
 import server_command
 import process_tools
 import threading_tools
-import bz2
-import time
-import base64
-import json
 
 
 class dynconfig_process(threading_tools.process_obj):
@@ -161,14 +160,24 @@ class dynconfig_process(threading_tools.process_obj):
                     Q(mon_check_command_special=_mcs)
                 )
             except mon_check_command.DoesNotExist:
-                # mon check command not found
-                self.log(
-                    "no mcc for mccs {} / device {} found".format(
-                        unicode(_mcs),
-                        unicode(cur_dev),
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
+                try:
+                    _mc = mon_check_command.objects.get(
+                        Q(config__device_config__device=cur_dev.device_group.device_id) &
+                        Q(mon_check_command_special=_mcs)
+                    )
+                except mon_check_command.DoesNotExist:
+                    # mon check command not found
+                    self.log(
+                        "no mcc for mccs {} / device [or device_group] {} found".format(
+                            unicode(_mcs),
+                            unicode(cur_dev),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    _mc.check_command_pk = _mc.pk
+                    _mc.mccs_id = _mcs.pk
+                    _postfix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
             except mon_check_command.MultipleObjectsReturned:
                 # more than one check command found
                 self.log(
@@ -191,10 +200,13 @@ class dynconfig_process(threading_tools.process_obj):
             self.log("cannot get postfix for IPMI service results for device {}".format(unicode(cur_dev)))
         ocsp_lines = []
         # pprint.pprint(cur_hints)
-        n_updated, n_created = (0, 0)
+        n_updated, n_created, n_deleted = (0, 0, 0)
         updated, created = (False, False)
+        _used_types, _present_keys = (set(), set())
         for _val in mon_info:
             _key = (_val.get("m_type"), _val.get("name"))
+            _present_keys.add(_key)
+            _used_types.add(_val.get("m_type"))
             updated, created = (False, False)
             if _key in cur_hints:
                 cur_hint = cur_hints[_key]
@@ -247,6 +259,20 @@ class dynconfig_process(threading_tools.process_obj):
                 ret_str,
             )
             ocsp_lines.append(ocsp_line)
+        # experimental: delete all hints with correct m_type
+        if len(mon_info) and _used_types:
+            _del_keys = [key for key, value in cur_hints.iteritems() if key not in _present_keys and key[0] in _used_types and not value.persistent]
+            if _del_keys:
+                self.log(
+                    "{} / {}: {} to delete".format(
+                        unicode(cur_dev),
+                        ", ".join(sorted(list(_used_types))),
+                        logging_tools.get_plural("key", len(_del_keys))
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+                for _key in _del_keys:
+                    cur_hints[_key].delete()
         # pprint.pprint(ocsp_lines)
         if _ocsp_postfix:
             self.send_pool_message("ocsp_results", ocsp_lines)
