@@ -53,13 +53,14 @@ if __name__ == "__main__":
 
     # print srv_com.pretty_print()
 
-    get_hints = True
+    get_hints = False
     short_output = "0"
     cur_ns = argparse.Namespace(
         get_hints=get_hints,
         passive_check_postfix="xxx",
         key="c01",
         short_output=short_output,
+        ignore_missing_bbu=False,
         check="all"
     )
     ctrl_dict = {}

@@ -566,6 +566,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
         # pprint.pprint(ctrl_dict)
         _key_list = emit_keys(_ro_dict)
         # print cur_ns
+        # interpret flags
+        _short_output = True if cur_ns.short_output in [True, "1", "y", "yes", "true", "True"] else False
+        _ignore_missing_bbu = True if cur_ns.ignore_missing_bbu in [True, "1", "y", "yes", "true", "True"] else False
         if cur_ns.get_hints:
             r_list = []
             _ctrl_found = set()
@@ -578,7 +581,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
                 # all checks in one line ? Todo ...
                 # r_list.append((_key, "::".join(_checks), ", ".join([get_info(_key, _lines, _check) for _check in _checks]), False))
-            if cur_ns.short_output:
+            if _short_output:
                 # shorten list
                 r_list, _ignore_dict = _shorten_list(r_list)
             # pprint.pprint(r_list)
@@ -614,9 +617,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _checks = list(set(_checks) & target_checks)
                 for _check in _checks:
                     _info = get_info(_key, _lines, _check)
-                    if cur_ns.short_output:
+                    if _short_output:
                         r_list.append((_key, _check, _info, None))
                     _ret_state, _result, _info_str, _entity_type = check_status(_key, _lines, _check)
+                    if _key.count(":b") and _ignore_missing_bbu:
+                        # reduce state if necessary
+                        _ret_state = min(_ret_state, limits.nag_STATE_WARNING)
                     if _store_passive:
                         _passive_dict["list"].append(
                             # format: info, ret_state, result (always show), info (only shown in case of non-OK)
@@ -635,7 +641,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     if _info_str:
                         _ret_list.append(_info_str)
                     _g_ret_state = max(_g_ret_state, _ret_state)
-            if cur_ns.short_output.lower() in ["1", "true", "yes"]:
+            if _short_output:
                 # pprint.pprint(_passive_dict)
                 r_list, shorten_dict = _shorten_list(r_list)
                 # passive lut
@@ -688,6 +694,7 @@ class megaraid_sas_status_command(hm_classes.hm_command):
         self.parser.add_argument("--check", default="all", type=str)
         self.parser.add_argument("--passive-check-postfix", default="-", type=str)
         self.parser.add_argument("--short-output", default="0", type=str)
+        self.parser.add_argument("--ignore-missing-bbu", default="0", type=str)
         self.parser.add_argument("--controller", default="all", type=str)
 
     def __call__(self, srv_com, cur_ns):
