@@ -147,7 +147,7 @@ class icinga_log_reader(threading_tools.process_obj):
                 # there was no earlier read and we weren't able to read anything from the archive, so assume there is none
                 last_read = mon_icinga_log_last_read()
                 # safe time in past, but not too far cause we check logs of each day
-                last_read.timestamp = calendar.timegm(datetime.datetime.now() - datetime.timedelta(days=1))
+                last_read.timestamp = int(((datetime.datetime.now() - datetime.timedelta(days=1)) - datetime.datetime(1970, 1, 1)).total_seconds())
                 last_read.position = 0
 
         try:
