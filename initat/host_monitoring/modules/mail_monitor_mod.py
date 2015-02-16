@@ -40,7 +40,6 @@ INVALIDATE_TIME = 60 * 10
 
 class event(object):
     def __init__(self, year, month, day, time, what):
-        print year, month, day
         self.__year = year
         self.__month = month
         self.__day = day
