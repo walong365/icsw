@@ -400,9 +400,7 @@ class _general(hm_classes.hm_module):
                         mv.reg_update(key, float(diff_value * 60. / diff_time))
 
     def _do_postfix_stuff(self, mv):
-        print "DPS"
         act_snapshot, act_time = (self.__maillog_object.parse_lines(), time.time())
-        print act_snapshot
         diff_time = max(1, abs(act_time - self.__check_time))
         for key, value in act_snapshot.iteritems():
             if key not in self.__act_snapshot:
