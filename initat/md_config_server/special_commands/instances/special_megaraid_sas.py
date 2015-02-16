@@ -39,7 +39,7 @@ class special_megaraid_sas(SpecialBase):
         server_contact = True
         info = "MegaRaid SAS"
         command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ " \
-            "--passive-check-postfix $ARG3$ --short-output ${{ARG4:{}:0}} --ignore-missing-bbu ${{ARG5:{}:0}".format(
+            "--passive-check-postfix $ARG3$ --short-output ${{ARG4:{}:0}} --ignore-missing-bbu ${{ARG5:{}:0}}".format(
                 SHORT_OUTPUT_NAME,
                 IGNORE_BBU_NAME,
             )
