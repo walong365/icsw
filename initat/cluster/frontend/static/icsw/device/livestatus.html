@@ -402,6 +402,7 @@
         <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_hint(hint, $event)"/></input>
     </td>
     <td>{{ hint.info }}</td>
+    <td>{{ from_now(hint.date) }}</td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.hint.table">
@@ -421,6 +422,7 @@
                 <th title="check">active check</th>
                 <th colspan="3">action</th>
                 <th>info</th>
+                <th>Created</th>
             </tr>
         </thead>
         <tbody>

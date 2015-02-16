@@ -1144,6 +1144,8 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                 return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
             scope.get_value = () ->
                 return scope.hint["value_" + scope.get_v_type()]
+            scope.from_now = (dt) ->
+                return moment(dt).fromNow(true)
             scope.get_td_title = (name) ->
                 v_type = scope.get_v_type()
                 key = "#{name}_#{v_type}"
