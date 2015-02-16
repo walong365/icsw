@@ -478,7 +478,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             )
 
         def _shorten_list(in_list):
-            shorten_re = re.compile("^(?P<pre>c\d+:(v|e)\d+:(d|s))(?P<rest>\d+)$")
+            shorten_re = re.compile("^(?P<pre>c\d+:(v|e)\d+:(d|s|f))(?P<rest>\d+)$")
             _shorten_dict = {}
             new_list, _shorten_keys = ([], [])
             for key, _check, _info, _flag in r_list:
