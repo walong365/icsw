@@ -19,15 +19,17 @@
 #
 """ monitors the mail subsystem """
 
-from initat.host_monitoring import hm_classes, limits
 import commands
-import logging_tools
 import os
-import process_tools
 import re
-import server_command
 import stat
 import time
+
+from initat.host_monitoring import hm_classes, limits
+import logging_tools
+import process_tools
+import server_command
+
 
 MIN_UPDATE_TIME = 30
 # load threshold for mailq call
@@ -38,6 +40,7 @@ INVALIDATE_TIME = 60 * 10
 
 class event(object):
     def __init__(self, year, month, day, time, what):
+        print year, month, day
         self.__year = year
         self.__month = month
         self.__day = day
@@ -45,7 +48,7 @@ class event(object):
         self.__what = what
 
     def __repr__(self):
-        return "%d. %d %d %s: %s" % (
+        return "{:d}. {:d} {:d} {}: {}".format(
             self.__day,
             self.__month,
             self.__year,
@@ -58,11 +61,11 @@ class event(object):
 
 
 class file_object(object):
-    def __init__(self, file_name, **args):
+    def __init__(self, file_name, **kwargs):
         self.__name = file_name
         self.__fd = None
         self.__first_call = True
-        self.__seek_to_end = args.get("seek_to_end", True)
+        self.__seek_to_end = kwargs.get("seek_to_end", True)
 
     def close(self):
         if self.__fd:
@@ -71,13 +74,12 @@ class file_object(object):
     def read_lines(self):
         if not self.__fd:
             self.open_it()
-        line_cache = []
         if self.__fd:
             while True:
                 try:
                     lines = self.__fd.readlines()
                 except IOError, _what:
-                    pass
+                    self.log("error reading maillines: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     if not lines:
                         fd_results = os.fstat(self.__fd.fileno())
@@ -91,8 +93,8 @@ class file_object(object):
                             self.__fd = None
                             self.open_it()
                     else:
-                        line_cache.extend(lines)
-        return line_cache
+                        for line in lines:
+                            yield line
 
     def open_it(self):
         if os.path.isfile(self.__name):
@@ -109,15 +111,19 @@ class file_object(object):
 
 
 class mail_log_object(file_object):
-    def __init__(self, name="/var/log/mail", **args):
+    def __init__(self, mod, name="/var/log/mail", **args):
+        self.__mod = mod
         file_object.__init__(self, name, **args)
         self.__act_year = time.localtime()[0]
         self.__client_re = re.compile("^[0-9A-F]+: client=(?P<client>[^\[]+)\[(?P<client_ip>[^\]]+)\].*$")
         self.__relay_re = re.compile("^.*, relay=(?P<relay>[^\[]+)\[(?P<relay_ip>[^\]]+)\]:(?P<relay_port>\d+),.*")
         self.__num_dict = {}
 
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__mod.log(u"[mlo] {}".format(what), log_level)
+
     def get_info_str(self, key):
-        return "number of mails %s per minute" % (key.replace(".", " "))
+        return "number of mails {} per minute".format(key.replace(".", " "))
 
     def parse_lines(self):
         act_time = time.time()
@@ -128,14 +134,17 @@ class mail_log_object(file_object):
                 act_event = self._parse_line(act_line.strip(), act_time)
             except:
                 act_event = None
-                logging_tools.my_syslog("error parsing line '%s': %s" % (act_line.strip(),
-                                                                         process_tools.get_except_info()))
+                self.log(
+                    "error parsing line '{}': {}".format(
+                        act_line.strip(),
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             if act_event:
                 self.__num_dict.setdefault(act_event.cause(), 0)
                 self.__num_dict[act_event.cause()] += 1
         return self.get_snapshot()
-        # pprint.pprint(self.__num_dict)
-        # print "#of lines: %d" % (num_lines)
 
     def get_snapshot(self):
         return self.__num_dict.copy()
@@ -145,10 +154,17 @@ class mail_log_object(file_object):
         if len(l_ps[0]) > 3:
             # format YYYY-MM-DDT....
             _dts = l_ps[0].split("-")
-            self.__act_year = int(l_ps[0][0:4])
-            act_month = int(l_ps[0][5:7])
-            act_day = int(l_ps[0][8:10])
+            _ymd, _hms = l_ps[0].split("T", 1)
+            _ymd = _ymd.split("-")
+            _hms = _hms.split(".")[0]
+            self.__act_year, act_month, act_day = (
+                int(_ymd[0]),
+                int(_ymd[1]),
+                int(_ymd[2])
+            )
+            act_hms_str = _hms
             act_prog = l_ps[1]
+            first_text = l_ps[2]
             act_text = " ".join(l_ps[2:])
         else:
             act_month = {
@@ -179,9 +195,14 @@ class mail_log_object(file_object):
             elif diff_days > 150:
                 self.__act_year -= 1
             act_text = " ".join(l_ps[5:])
+            first_text = l_ps[5]
             # parse act_prog
             act_prog = l_ps[4]
         act_event = None
+        if not act_prog.count("/") and not act_prog.endswith(":") and first_text.count("/") and first_text.endswith(":"):
+            # first_text is our program, act_prog may be the host name
+            act_prog = first_text
+            act_text = act_text[len(act_prog) + 1:]
         if act_prog.count("["):
             act_prog, prog_pid = act_prog.split("[")
             prog_pid = int(prog_pid.split("]")[0])
@@ -249,7 +270,7 @@ class _general(hm_classes.hm_module):
         priority = 10
 
     def init_module(self):
-        self.__maillog_object = mail_log_object()
+        self.__maillog_object = mail_log_object(self)
         self.__maillog_object.parse_lines()
         self.__mailq_command = process_tools.find_file("mailq")
 
@@ -379,15 +400,17 @@ class _general(hm_classes.hm_module):
                         mv.reg_update(key, float(diff_value * 60. / diff_time))
 
     def _do_postfix_stuff(self, mv):
+        print "DPS"
         act_snapshot, act_time = (self.__maillog_object.parse_lines(), time.time())
+        print act_snapshot
         diff_time = max(1, abs(act_time - self.__check_time))
         for key, value in act_snapshot.iteritems():
             if key not in self.__act_snapshot:
-                mv.register_entry("mail.%s" % (key), 0., self.__maillog_object.get_info_str(key), "1/min")
+                mv.register_entry("mail.{}".format(key), 0., self.__maillog_object.get_info_str(key), "1/min")
                 diff_value = value
             else:
                 diff_value = value - self.__act_snapshot[key]
-            mv["mail.%s" % (key)] = float(diff_value * 60. / diff_time)
+            mv["mail.{}".format(key)] = float(diff_value * 60. / diff_time)
         self.__act_snapshot, self.__check_time = (act_snapshot, act_time)
         if self.mailq_command_valid():
             mc_dict = self.get_mailcount()
