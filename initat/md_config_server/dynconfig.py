@@ -120,7 +120,10 @@ class dynconfig_process(threading_tools.process_obj):
                     cur_dev.full_name,
                     _srv_info,
                     _ret_state,
-                    _result
+                    "{} {}".format(
+                        _result,
+                        _info_str,
+                    ).strip(),
                 )
                 ocsp_lines.append(ocsp_line)
             self.send_pool_message("ocsp_results", ocsp_lines)
