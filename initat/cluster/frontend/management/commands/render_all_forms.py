@@ -59,8 +59,6 @@ class Command(BaseCommand):
         for _key, _value in globals().iteritems():
             if inspect.isclass(_value):
                 if (issubclass(_value, Form) or issubclass(_value, ModelForm)) and _value != Form and _value != ModelForm:
-                    if _key in ["package_search_form"]:
-                        continue
                     render_template.extend(
                         [
                             "<script type='text/ng-template' id='{}'>".format(_key.lower().replace("_", ".")),
