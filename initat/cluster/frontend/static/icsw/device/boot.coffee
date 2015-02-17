@@ -12,7 +12,6 @@ device_boot_module = angular.module(
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.new_devsel(args[1])
         )
-        $scope.enable_modal = true
         $scope.mbl_entries = []
         $scope.num_selected = 0
         $scope.bootserver_list = []

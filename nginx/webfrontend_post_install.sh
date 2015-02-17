@@ -18,8 +18,9 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     echo -ne "collecting static ..."
     ${MANAGE} collectstatic --noinput -c > /dev/null
     echo "done"
-    echo "compiling all forms ..."
-    ${MANAGE} render_all_forms
+    # no longer needed, all_forms are now statically render on the developer machine
+    # echo "compiling all forms ..."
+    # ${MANAGE} render_all_forms
 
     if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
         touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch

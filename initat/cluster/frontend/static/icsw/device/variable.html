@@ -21,7 +21,7 @@
     <td>{{ get_name(obj) }}</td>
     <td>{{ obj.device_group_name }}</td>
     <td>{{ obj.comment }}</td>
-    <td><icsw-tools-button ng-show="enable_modal" value="create" type="create" ng-click="create(obj, $event)" size="xs"/></td>
+    <td><icsw-tools-button value="create" type="create" ng-click="create(obj, $event)" size="xs"/></td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.table">
@@ -43,7 +43,7 @@
                 <td>{{ get_value(obj) }}</td>
                 <td>{{ obj.is_public|yesno1 }}</td>
                 <td>direct</td>
-                <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public && enable_modal" ng-click="edit_mixin.edit(obj, $event)" value="modify"/></td>
+                <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public" ng-click="edit_mixin.edit(obj, $event)" value="modify"/></td>
                 <td><input type="button" class="btn btn-danger btn-xs" ng-click="edit_mixin.delete_obj(obj)" value="delete"/></td>
             </tr>
             <tr ng-repeat="obj in get_parent_vars(device, 'g') | filter_name:filtervalue | orderBy:'name'">
@@ -73,7 +73,7 @@
 <script type="text/ng-template" id="icsw.device.variable.overview">
     <h2>
         Device variables ({{ entries.length }} devices),
-        <icsw-tools-button ng-show="enable_modal" type="create" value="create new" title="create a new variable for all shown devices" ng-click="create_for_all($event)" size="sm"/>
+        <icsw-tools-button type="create" value="create new" title="create a new variable for all shown devices" ng-click="create_for_all($event)" size="sm"/>
     </h2>
     <div class="row">
         <div class="col-sm-5 form-inline">

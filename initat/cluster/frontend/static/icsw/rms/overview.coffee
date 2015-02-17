@@ -470,21 +470,34 @@ rms_module = angular.module(
             $scope.refresh = false
             $scope.rrd_div = angular.element(rrd_txt)
             $compile($scope.rrd_div)($scope)
-            $scope.rrd_div.simplemodal
-                opacity      : 50
-                position     : [event.pageY, event.pageX]
-                autoResize   : true
-                autoPosition : true
-                minWidth     : "1280px"
-                minHeight   : "800px"
-                onShow: (dialog) -> 
-                    dialog.container.draggable()
-                    #$("#simplemodal-container").css("height", "auto")
-                    #$("#simplemodal-container").css("width", "auto")
-                onClose: =>
-                    # destroy scopes
+            $scope.my_modal = BootstrapDialog.show
+                message: $scope.rrd_div
+                draggable: true
+                size: BootstrapDialog.SIZE_WIDE
+                title: "device RRDs"
+                closable: true
+                closeByBackdrop: false
+                cssClass: "modal-tall"
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+                onhidden: () ->
                     $scope.refresh = true
-                    $.simplemodal.close()
+            #$scope.rrd_div.simplemodal
+            #    opacity      : 50
+            #    position     : [event.pageY, event.pageX]
+            #    autoResize   : true
+            #    autoPosition : true
+            #    minWidth     : "1280px"
+            #    minHeight   : "800px"
+            #    onShow: (dialog) ->
+            #        dialog.container.draggable()
+            #        #$("#simplemodal-container").css("height", "auto")
+            #        #$("#simplemodal-container").css("width", "auto")
+            #    onClose: =>
+            #        # destroy scopes
+            #        $scope.refresh = true
+            #        $.simplemodal.close()
         icswCallAjaxService
             url      : ICSW_URLS.RMS_GET_USER_SETTING
             dataType : "json"

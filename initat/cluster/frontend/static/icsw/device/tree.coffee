@@ -97,7 +97,7 @@ device_module = angular.module(
                         cur_f = $scope.rest_data[$scope._array_name]
                     $scope.edit_obj.put(rest_entry.options).then(
                         (data) -> 
-                            $.simplemodal.close()
+                            $scope.my_modal.close()
                             icswTools.handle_reset(data, cur_f, $scope.edit_obj.idx)
                             if $scope.edit_obj.root_passwd
                                 # hm, fixme
@@ -127,18 +127,31 @@ device_module = angular.module(
             $scope.create_mode = create_or_edit
             $scope.edit_div = $compile($templateCache.get($scope.edit_map[$scope._array_name]))($scope)
             obj.root_passwd = ""
-            $scope.edit_div.simplemodal
-                #opacity      : 50
-                position     : [event.pageY, event.pageX]
-                #autoResize   : true
-                #autoPosition : true
-                onShow: (dialog) => 
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                    $scope.modal_active = true
-                onClose: (dialog) =>
-                    $.simplemodal.close()
+            $scope.my_modal = BootstrapDialog.show
+                message: $scope.edit_div
+                draggable: true
+                size: BootstrapDialog.SIZE_WIDE
+                closable: true
+                closeByBackdrop: false
+                onhidden: () =>
                     $scope.modal_active = false
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+                onshown: () =>
+                    $scope.modal_active = true
+            #$scope.edit_div.simplemodal
+            #    #opacity      : 50
+            #    position     : [event.pageY, event.pageX]
+            #    #autoResize   : true
+            #    #autoPosition : true
+            #    onShow: (dialog) =>
+            #        dialog.container.draggable()
+            #        $("#simplemodal-container").css("height", "auto")
+            #        $scope.modal_active = true
+            #    onClose: (dialog) =>
+            #        $.simplemodal.close()
+            #        $scope.modal_active = false
         $scope.edit_many = (event) ->
             $scope._array_name = "device_many"
             edit_obj = {
@@ -160,7 +173,7 @@ device_module = angular.module(
                 success : (xml) ->
                     if icswParseXMLResponseService(xml)
                         if parseInt($(xml).find("value[name='changed']").text())
-                            $.simplemodal.close()
+                            $scope.my_modal.close()
                             $scope.reload()
                             reload_sidebar_tree()
         $scope.delete_many = (event) ->

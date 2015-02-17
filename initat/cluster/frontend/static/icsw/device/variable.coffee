@@ -5,7 +5,6 @@ device_variable_module = angular.module(
     ]
 ).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
-        $scope.enable_modal = true
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
@@ -127,18 +126,26 @@ device_variable_module = angular.module(
             $scope._edit_obj = new_obj
             $scope.action_string = "create for all"
             $scope.edit_div = $compile($templateCache.get("device.variable.new.form"))($scope)
-            $scope.edit_div.simplemodal
-                position     : [event.pageY, event.pageX]
-                #autoResize   : true
-                #autoPosition : true
-                onShow: (dialog) =>
-                    $scope.cur_edit = $scope
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                onClose: (dialog) =>
-                    $scope.close_modal()
+            $scope.my_modal = BootstrapDialog.show
+                message: $scope.edit_div
+                draggable: true
+                closable: true
+                closeByBackdrop: false
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+            #$scope.edit_div.simplemodal
+            #    position     : [event.pageY, event.pageX]
+            #    #autoResize   : true
+            #    #autoPosition : true
+            #    onShow: (dialog) =>
+            #        $scope.cur_edit = $scope
+            #        dialog.container.draggable()
+            #        $("#simplemodal-container").css("height", "auto")
+            #    onClose: (dialog) =>
+            #        $scope.close_modal()
         $scope.close_modal = () =>
-            $.simplemodal.close()
+            $scope.my_modal.close()
         $scope.modify = () ->
             if not $scope.form.$invalid
                 $scope.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
@@ -284,8 +291,6 @@ device_variable_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.variable.overview")
         link : (scope, el, attrs) ->
-            if attrs["disablemodal"]?
-                scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val and new_val.length
                     scope.new_devsel(new_val)
