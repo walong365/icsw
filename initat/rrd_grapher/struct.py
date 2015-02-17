@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -270,7 +270,7 @@ class compound_tree(object):
             _name = _pde_mvl_entry.attrib["name"]
             _info = _pde_mvl_entry.get("info")
             for _value in _pde_mvl_entry.findall("value"):
-                #print _value.attrib
+                # print _value.attrib
                 all_keys.add(
                     "{}:{}.{}".format(
                         _pde_mvl_entry.tag,
