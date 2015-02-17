@@ -70,8 +70,8 @@ class icinga_log_aggregator(object):
             self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
             self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
 
-            # aggregate in order of how often data is used, then you can quickly see results
-            for duration_type in (duration.Day, duration.Week, duration.Month, duration.Year):
+            # aggregate in order of duration for incremental aggregation (would break if not in order)
+            for duration_type in (duration.Hour, duration.Day, duration.Week, duration.Month, duration.Year):
                 #self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
                 try:
                     last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
@@ -132,7 +132,8 @@ class icinga_log_aggregator(object):
             duration_type=duration_type.ID,
         )
 
-        if duration_type == duration.Day:
+        # create from scratch for smallest unit and incrementally for all higher ones
+        if duration_type == duration.Hour:
             next_last_service_alert_cache = self._create_timespan_entry_from_raw_data(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
         else:
             self._create_timespan_entry_incrementally(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
@@ -410,15 +411,8 @@ class icinga_log_aggregator(object):
         return next_last_service_alert_cache
 
     def _create_timespan_entry_incrementally(self, timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache):
-        # no Hours currently
-        if duration_type == duration.Week:
-            shorter_duration = duration.Day
-        elif duration_type == duration.Month:
-            shorter_duration = duration.Day  # weeks are not nice
-        elif duration_type == duration.Year:
-            shorter_duration = duration.Month
-        else:
-            raise ValueError("Invalid duration for incremental timespan creation: {}".format(duration_type))
+
+        shorter_duration = duration.get_shorter_duration(duration_type)
 
         end_time_minus_epsilon = end_time - datetime.timedelta(seconds=1)
 
