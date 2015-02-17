@@ -152,7 +152,7 @@ class icinga_log_reader(threading_tools.process_obj):
 
         try:
             logfile = codecs.open(self.get_icinga_log_file(), "r", "utf-8", errors='replace')
-        except OSError as e:
+        except IOError as e:
             self.log(u"Failed to open log file {} : {}".format(self.get_icinga_log_file(), e), logging_tools.LOG_LEVEL_ERROR)
         else:
             # check for log rotation
