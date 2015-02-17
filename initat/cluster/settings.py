@@ -377,6 +377,7 @@ PIPELINE_CSS = {
             "css/font-awesome.min.css",
             "css/icsw.css",
             "css/toaster.css",
+            "css/bootstrap-dialog.css",
         },
         "output_filename": "pipeline/css/part1.css"
     }
@@ -396,7 +397,6 @@ PIPELINE_JS = {
             "js/libs/angular-1.3.12.js",
             "js/libs/lodash.min.js",
             "js/bluebird.js",
-            "js/jquery.simplemodal.js",
             "js/codemirror/codemirror.js",
             "js/bootstrap.js",
             "js/libs/jquery.color.js",
@@ -439,6 +439,7 @@ PIPELINE_JS = {
             "js/mousewheel.js",
             "js/smart-table.debug.js",
             "js/angular-google-maps.min.js",
+            "js/bootstrap-dialog.js",
         ),
         "output_filename": "pipeline/js/extra1.js"
     },
