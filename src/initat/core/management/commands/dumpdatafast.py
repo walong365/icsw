@@ -25,7 +25,6 @@ from django.utils import datetime_safe
 from django.utils.datastructures import SortedDict
 from django.utils.encoding import smart_unicode
 from functools import partial
-from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
 from optparse import make_option
 import array
 import base64
@@ -34,6 +33,7 @@ import cProfile
 import codecs
 import datetime
 import logging_tools
+import math
 import networkx as nx
 import os
 import process_tools
@@ -43,16 +43,57 @@ import subprocess
 import sys
 import time
 import zipfile
+import resource
+import logging
 
 # lazy init, for use in cluster-server.py::backup_process
 BASE_OBJECT = None
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
+logger = logging.getLogger(__name__)
+
+class MemoryProfile(object):
+    """
+    Collect information on maximum memory usage. Use repeated calls to measure()
+    and the max_usage attribute.
+    """
+    def __init__(self):
+        self.max_usage = 0
+
+    def _memory_usage(self):
+        """ Return memory usage in kB (according to 'man 2 getrusage'"""
+        return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+    def measure(self):
+        mem = self._memory_usage()
+        # print mem
+        if mem > self.max_usage:
+            self.max_usage = mem
+            # print "Found new max: %s" % mem
+
+
+def sql_iterator(queryset, step=2000):
+    """
+    Iterate over queryset in *step* sized chunks. Set *step* to a callable
+    to calculate the step size based on the queryset length.
+    """
+    length = queryset.count()
+    if callable(step):
+        step_size = step(length)
+    else:
+        step_size = step
+    steps = int(math.ceil(length / float(step_size)))
+
+    for i in xrange(steps):
+        for obj in queryset[i * step_size:(i + 1) * step_size]:
+            yield obj
+
 
 def _init_base_object():
+    # BASE_OBJECT is sometimes set externally, cf. cluster_server/backup_process.py
     global BASE_OBJECT  # pylint: disable-msg=W0603
     if BASE_OBJECT is None:
-        BASE_OBJECT = init_base_object("dumpdatafast_new")
+        BASE_OBJECT = logging.getLogger(__name__)
 
 
 def log(x):
