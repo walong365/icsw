@@ -514,17 +514,18 @@ class ctrl_type_megaraid_sas(ctrl_type):
             _all_keys = []
             for _state, _output, _info, _skey in _lss:
                 # we ignore _info here to make things easier
-                _state_dict.setdefault(_state, {}).setdefault(_output, []).append(_skey)
+                _state_dict.setdefault(_state, {}).setdefault((_output, _info), []).append(_skey)
                 _all_keys.append(_skey)
             _ret_state = max(_state_dict.keys())
             ret_list = []
             for _state in sorted(_state_dict.keys()):
-                for _output in sorted(_state_dict[_state].keys()):
+                for _output, _info in sorted(_state_dict[_state].keys()):
                     ret_list.append(
-                        "{:d} {}: {}".format(
-                            len(_state_dict[_state][_output]),
+                        "{:d} {}{}: {}".format(
+                            len(_state_dict[_state][(_output, _info)]),
                             _output,
-                            _compress_infos(_state_dict[_state][_output])
+                            " / {}".format(_info) if _info else "",
+                            _compress_infos(_state_dict[_state][(_output, _info)])
                         )
                     )
             return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list), ""
@@ -569,6 +570,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
         # interpret flags
         _short_output = True if cur_ns.short_output in [True, "1", "y", "yes", "true", "True"] else False
         _ignore_missing_bbu = True if cur_ns.ignore_missing_bbu in [True, "1", "y", "yes", "true", "True"] else False
+        # generate passive results if cur_ns.passive_check_postfix is set (not "-")
+        _store_passive = cur_ns.passive_check_postfix != "-"
+        if not _store_passive:
+            # only makes sense with _store_passive==True
+            _short_output = False
         if cur_ns.get_hints:
             r_list = []
             _ctrl_found = set()
@@ -591,8 +597,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 "postfix": cur_ns.passive_check_postfix,
                 "list": [],
             }
-            # generate passive results if cur_ns.passive_check_postfix is set (not "-")
-            _store_passive = cur_ns.passive_check_postfix != "-"
             # print "*", _key_list
             # if cur_ns.key != "all":
             # else:
