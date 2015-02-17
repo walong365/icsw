@@ -56,7 +56,7 @@ network_module = angular.module("icsw.network",
         network_display.iplist = []
 
     return {
-        rest_url            : ICSW_URLS.REST_NETWORK_LIST
+        rest_handle         : networks_rest
         edit_template       : "network.form"
         networks            : networks_rest
         network_types       : network_types_rest

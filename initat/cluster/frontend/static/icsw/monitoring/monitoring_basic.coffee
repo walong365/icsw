@@ -17,6 +17,8 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         host_check_command : get_rest(ICSW_URLS.REST_HOST_CHECK_COMMAND_LIST.slice(1))
         mon_contact        : get_rest(ICSW_URLS.REST_MON_CONTACT_LIST.slice(1))
         device_group       : get_rest(ICSW_URLS.REST_DEVICE_GROUP_LIST.slice(1))
+        mon_device_templ   : get_rest(ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST.slice(1))
+        mon_contactgroup   : get_rest(ICSW_URLS.REST_MON_CONTACTGROUP_LIST.slice(1))
     }
     _rest_data_present = (tables) ->
         ok = true
@@ -26,11 +28,11 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         return ok
     data['_rest_data_present'] = _rest_data_present
     return data
-]).service('icswMonitoringBasicService', ["ICSW_URLS", (ICSW_URLS) ->
+]).service('icswMonitoringBasicService', ["ICSW_URLS", "icswMonitoringBasicRestService", (ICSW_URLS, icswMonitoringBasicRestService) ->
     get_use_count =  (obj) ->
             return obj.service_check_period.length   # + obj.mon_device_templ_set.length
     return {
-        rest_url           : ICSW_URLS.REST_MON_PERIOD_LIST
+        rest_handle        : icswMonitoringBasicRestService.mon_period
         delete_confirm_str : (obj) ->
             return "Really delete monitoring period '#{obj.name}' ?"
         edit_template      : "mon.period.form"
@@ -43,9 +45,9 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
         delete_ok          : (obj) ->
             return get_use_count(obj) == 0
     }
-]).service('icswMonitoringNotificationService', ["ICSW_URLS", (ICSW_URLS) ->
+]).service('icswMonitoringNotificationService', ["ICSW_URLS", "icswMonitoringBasicRestService", (ICSW_URLS, icswMonitoringBasicRestService) ->
     return {
-        rest_url            : ICSW_URLS.REST_MON_NOTIFICATION_LIST
+        rest_handle         : icswMonitoringBasicRestService.mon_notification
         edit_template       : "mon.notification.form"
         delete_confirm_str  : (obj) ->
             return "Really delete monitoring notification '#{obj.name}' ?"
@@ -54,7 +56,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     }
 ]).service('icswMonitoringContactService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     ret = {
-           rest_url: ICSW_URLS.REST_MON_CONTACT_LIST
+           rest_handle: icswMonitoringRestService.mon_contact
            edit_template: "mon.contact.form"
            delete_confirm_str: (obj) ->
                return "Really delete monitoring contact '#{obj.user}' ?"
@@ -77,7 +79,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     return ret
 ]).service('icswMonitoringServiceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     return {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_TEMPL_LIST
+        rest_handle         : icswMonitoringRestService.mon_service_templ
         edit_template       : "mon.service.templ.form"
         delete_confirm_str  : (obj) ->
             return "Really delete service template '#{obj.name}' ?"
@@ -102,7 +104,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     }
 ]).service('icswMonitoringDeviceTemplateService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     ret = {
-        rest_url            : ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST
+        rest_handle         : icswMonitoringRestService.mon_device_templ
         edit_template       : "mon.device.templ.form"
         delete_confirm_str  : (obj) ->
             return "Really delete device template '#{obj.name}' ?"
@@ -132,7 +134,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     return ret
 ]).service('icswMonitoringHostCheckCommandService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     return {
-        rest_url: ICSW_URLS.REST_HOST_CHECK_COMMAND_LIST
+        rest_handle: icswMonitoringRestService.host_check_command
         edit_template: "host.check.command.form"
         delete_confirm_str: (obj) ->
             return "Really delete host check command '#{obj.name}' ?"
@@ -141,7 +143,7 @@ monitoring_basic_module.directive("icswMonitoringBasic", () ->
     }
 ]).service('icswMonitoringContactgroupService', ["ICSW_URLS", "Restangular", "icswMonitoringBasicRestService", (ICSW_URLS, Restangular, icswMonitoringRestService) ->
     ret = {
-        rest_url: ICSW_URLS.REST_MON_CONTACTGROUP_LIST
+        rest_handle: icswMonitoringRestService.mon_contactgroup
         edit_template: "mon.contactgroup.form"
         delete_confirm_str: (obj) ->
             "Really delete Contactgroup '#{obj.name}' ?"
