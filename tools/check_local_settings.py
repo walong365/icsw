@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone-sql
 #
@@ -48,6 +48,11 @@ def check_local_settings():
     except:
         changed = True
         GOOGLE_MAPS_KEY = ""
+    try:
+        from local_settings import PASSWORD_CHARACTER_COUNT
+    except:
+        changed = True
+        PASSWORD_CHARACTER_COUNT = 8
     if SECRET_KEY in [None, "None"]:
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
@@ -58,6 +63,7 @@ def check_local_settings():
                 "SECRET_KEY = \"{}\"".format(SECRET_KEY),
                 "PASSWORD_HASH_FUNCTION = \"{}\"".format(PASSWORD_HASH_FUNCTION),
                 "GOOGLE_MAPS_KEY = \"{}\"".format(GOOGLE_MAPS_KEY),
+                "PASSWORD_CHARACTER_COUNT = \"{}\"".format(PASSWORD_CHARACTER_COUNT),
                 "",
             ]
         ))
