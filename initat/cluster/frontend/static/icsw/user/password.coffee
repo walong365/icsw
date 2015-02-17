@@ -3,12 +3,13 @@ password_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswUserPasswordCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+).controller("icswUserPasswordCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $modal) ->
         $scope.$on("icsw.enter_password", () ->
             $modal.open
                 template : $templateCache.get("icsw.user.password.set")
-                controller : ["$scope", "$modalInstance", "scope", ($scope, $modalInstance, scope) ->
+                controller : ["$scope", "$modalInstance", "scope", "$window", ($scope, $modalInstance, scope, $window) ->
+                    $scope.PASSWORD_CHARACTER_COUNT = $window.PASSWORD_CHARACTER_COUNT
                     $scope.pwd = {
                         "pwd1" : ""
                         "pwd2" : ""
@@ -27,7 +28,7 @@ password_module = angular.module(
                             $scope.pwd_error = "empty passwords"
                             $scope.pwd_error_class = "alert alert-warning"
                             return false
-                        else if $scope.pwd.pwd1.length >= 8 and $scope.pwd.pwd1 == $scope.pwd.pwd2
+                        else if $scope.pwd.pwd1.length >= $scope.PASSWORD_CHARACTER_COUNT and $scope.pwd.pwd1 == $scope.pwd.pwd2
                             $scope.pwd_error = "passwords match"
                             $scope.pwd_error_class = "alert alert-success"
                             return true
