@@ -460,13 +460,11 @@ device_livestatus_module.controller("livestatus_ctrl",
             schedule_start_timeout = $timeout(load_data, 200)
 
     start_interval = () ->
-        console.log 'start interval', 'watchers', cont_list
         if cur_interval?
             $interval.cancel(cur_interval)
-        cur_interval = $interval(load_data, 5000)#20000)
+        cur_interval = $interval(load_data, 20000)#20000)
 
     stop_interval = () ->
-        console.log 'stop interval', cur_interval
         if cur_interval?
             $interval.cancel(cur_interval)
         if cur_xhr?
@@ -474,9 +472,7 @@ device_livestatus_module.controller("livestatus_ctrl",
 
 
     load_data = () ->
-        console.log 'load_data'
         if schedule_start_timeout?
-            console.log 'schedule was'
             $timeout.cancel(schedule_start_timeout)
             schedule_start_timeout = undefined
 
