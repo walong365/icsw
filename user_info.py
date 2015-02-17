@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2005-2008,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2008,2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone
 #
@@ -184,6 +184,7 @@ def main():
     my_parser.add_argument("--mode", dest="mode", choices=["info", "list", "change"], default="info", help="set mode [%(default)s]")
     my_parser.add_argument("-Q", "--system-wide-quota", default=False, action="store_true", help="show system-wide quota [%(default)s]")
     my_parser.add_argument("username", nargs="*", default=[pwd.getpwuid(os.getuid())[0]], help="set username [%(default)s]")
+    # my_parser.add_arguemnt("-p", dest="set_password", default=False, action="store_true", help="set password of given account(s) [%(default)s]")
     options = my_parser.parse_args()
     if options.mode in ["info", "change"] and not options.username:
         print("Need username for {} mode".format(options.mode))
