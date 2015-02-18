@@ -136,8 +136,7 @@
                         <td>{{ obj.hnunreach | yesno1 }}</td>
                         <td>{{ obj.hflapping | yesno1 }}</td>
                         <td>{{ obj.hplanned_downtime | yesno1 }}</td>
-                        <td>{{ obj.notifications | resolve_n2m:config_service.mon_notification:'name':'no
-                            notifications' }}
+                        <td>{{ obj.notifications | resolve_n2m:config_service.mon_notification:'name':'no notifications' }}
                         </td>
                         <td>{{ obj.alias || "---" }}</td>
                         <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>

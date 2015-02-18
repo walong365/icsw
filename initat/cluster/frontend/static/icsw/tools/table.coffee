@@ -76,8 +76,8 @@ angular.module(
                     e_val = ctrl.getNumberOfTotalEntries()
                 return "page #{num} (#{s_val} - #{e_val})"
     }
-]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", "icswTools", "icswToolsSimpleModalService", "toaster",
-    (Restangular, $parse, $injector, $compile, $templateCache, $modal, icswTools, icswToolsSimpleModalService, toaster) ->
+]).directive('icswToolsRestTable', ["Restangular", "$parse", "$injector", "$compile", "$templateCache", "$modal", "icswTools", "icswToolsSimpleModalService", "toaster", "$timeout",
+    (Restangular, $parse, $injector, $compile, $templateCache, $modal, icswTools, icswToolsSimpleModalService, toaster, $timeout) ->
         return {
             restrict: 'EA'
             scope: true
@@ -88,22 +88,52 @@ angular.module(
 
                 if scope.config_service.init_fn?
                     scope.config_service.init_fn(scope)
-                scope.data_received = (data) ->
-                    $parse(attrs.targetList).assign(scope, data)
-                    if scope.config_service.after_reload
-                        scope.config_service.after_reload(scope)
+
+                scope.data_received = (new_data) ->
+                    list = $parse(attrs.targetList)(scope)
+                    # behold, the recommended javascript implementation of list.clear():
+                    list.length = 0
+                    # also the code below does not work if we execute it immediately, but this works:
+                    fn = () ->
+                        for entry in new_data
+                            list.push(entry)
+
+                    $timeout(fn, 0)
+
+                    # NOTE: this also makes the watch below work, see below before changing this
+
 
                 if scope.config_service.rest_url?
-                    $parse(attrs.targetList).assign(scope, [])
                     scope.rest = Restangular.all(scope.config_service.rest_url.slice(1))
 
                     scope.reload = () ->
 
-                        options = if scope.config_service.rest_options? then  scope.config_service.rest_options else {}
-
+                        options = if scope.config_service.rest_options? then scope.config_service.rest_options else {}
                         scope.rest.getList(options).then(scope.data_received)
 
                     scope.reload()
+
+                if scope.config_service.rest_handle?
+                    scope.rest = scope.config_service.rest_handle
+
+                    scope.reload = () ->
+
+                        options = if scope.config_service.rest_options? then scope.config_service.rest_options else {}
+                        scope.rest.getList(options).then(scope.data_received)
+
+                if scope.rest?
+                    # NOTE: watching on restangular does not work. if $object gets filled up, there is NO call.
+                    # therefore we watch on the length, which works. this also gets called on reload because of the
+                    # way it is implemented above.
+                    scope.$watch(
+                        () -> return scope.rest.length
+                        (new_data) ->
+                            # this should be called when the data is here, but we can't control that
+                            if scope.config_service.after_reload
+                                scope.config_service.after_reload(scope)
+                    )
+
+                $parse(attrs.targetList).assign(scope, scope.rest)
 
                 # interface functions to use in directive body
                 scope.edit = (event, obj) ->
@@ -141,7 +171,7 @@ angular.module(
                     if not scope.form.$invalid
                         if scope.create_mode
                             scope.rest.post(scope.new_obj).then((new_data) ->
-                                scope.entries.push(new_data)
+                                scope.rest.push(new_data)
                                 scope.close_modal()
                                 if scope.config_service.object_created
                                     scope.config_service.object_created(scope.new_obj, new_data, scope)
@@ -149,11 +179,11 @@ angular.module(
                         else
                             scope.edit_obj.put().then(
                                 (data) ->
-                                    icswTools.handle_reset(data, scope.entries, scope.edit_obj.idx)
+                                    icswTools.handle_reset(data, scope.rest, scope.edit_obj.idx)
                                     if scope.config_service.object_modified
                                         scope.config_service.object_modified(scope.edit_obj, data, scope)
                                     scope.close_modal()
-                                (resp) -> icswTools.handle_reset(resp.data, scope.entries, scope.edit_obj.idx)
+                                (resp) -> icswTools.handle_reset(resp.data, scope.rest, scope.edit_obj.idx)
                             )
                     else
                         toaster.pop("warning", "", "form validation problem")

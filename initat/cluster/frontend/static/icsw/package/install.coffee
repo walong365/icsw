@@ -29,7 +29,7 @@ package_module = angular.module(
         user_rest           : user_rest
         rest_url            : ICSW_URLS.REST_PACKAGE_SEARCH_LIST
         edit_template       : "package.search.form"
-        delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
+        delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.search_string}' ?"
         entries_filter      : {deleted : false}
         post_delete : (scope, del_obj) ->
             scope.clear_active_search(del_obj)

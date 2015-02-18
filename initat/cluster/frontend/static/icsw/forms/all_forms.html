@@ -1717,6 +1717,20 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-value="submit"
  /> </div></div></fieldset></div></form>
 </script>
+<script type='text/ng-template' id='package.search.form'>
+<form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Package search</h2><fieldset 
+ ><legend>Base data</legend><div id="div_id_search_string"
+ class="form-group 
+ "
+ ><label for="id_search_string" class="control-label col-sm-3 requiredField">
+ Search string<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_search_string" maxlength="128" name="search_string" ng-model="edit_obj.search_string" required="True" type="text" /> </div></div></fieldset><div class="form-actions"><input type="submit"
+ name="submit"
+ value=""
+ class="btn btn-primary primaryAction"
+ id="submit-id-submit"
+ ng-value="get_action_string()"
+ /> </div></form>
+</script>
 <script type='text/ng-template' id='device.tree.form'>
 <form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Device settings for {{ edit_obj.name }}</h2><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"

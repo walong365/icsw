@@ -35,11 +35,6 @@ class package_search_form(ModelForm):
         ),
     )
 
-    def __init__(self, *args, **kwargs):
-        request = kwargs.pop("request")
-        super(package_search_form, self).__init__(*args, **kwargs)
-        self.fields["user"].initial = request.user
-
     class Meta:
         model = package_search
 
