@@ -311,8 +311,12 @@ class Command(BaseCommand):
             Convert to Postgres data representation.
             """
             converted_values = []
+            
             for key in pg_copy.fields:
-                value = getattr(obj, key)
+                if key in pg_copy.foreign_keys:
+                    value = getattr(obj, "{}_id".format(key))
+                else:
+                    value = getattr(obj, key)
 
                 if isinstance(value, bool):
                     value = u"t" if value else u"f"
