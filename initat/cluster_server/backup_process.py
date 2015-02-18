@@ -48,14 +48,17 @@ class backup_process(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
-    def get_ignore_list(self):
+    def get_ignore_list(self, table_name=False):
         from django.db.models import get_apps, get_models  # @UnresolvedImport
         ignore_list = []
         for _app in get_apps():
             for _model in get_models(_app):
                 if hasattr(_model, "CSW_Meta"):
                     if not getattr(_model.CSW_Meta, "backup", True):
-                        ignore_list.append("{}.{}".format(_model._meta.app_label, _model._meta.model_name))
+                        if table_name:
+                            ignore_list.append(_model._meta.db_table)
+                        else:
+                            ignore_list.append("{}.{}".format(_model._meta.app_label, _model._meta.model_name))
         return ignore_list
 
     def _start_backup(self, *args, **kwargs):
@@ -74,9 +77,9 @@ class backup_process(threading_tools.process_obj):
                     self.log("removing backup %s" % (f_name))
                     os.unlink(f_name)
         for bu_type, bu_call in [
+            ("database", self._database_backup),
             ("fast", self._fast_backup),
             ("normal", self._normal_backup),
-            ("database", self._database_backup),
         ]:
             self.log("--------- backup type {} -------------".format(bu_type))
             s_time = time.time()
@@ -99,6 +102,7 @@ class backup_process(threading_tools.process_obj):
                 "-d",
                 bu_dir,
                 "-b",
+                "--iterator",
             ] + sum(
                 [["-e", _ignore] for _ignore in self.get_ignore_list()], []
             ) + [
@@ -158,7 +162,7 @@ class backup_process(threading_tools.process_obj):
             bu_dict = {
                 "postgresql_psycopg2": {
                     "dump_bin": "pg_dump",
-                    "cmdline": "{DUMP} -c -f {FILENAME} -F c -Z 4 -h {HOST} -U {USER} {NAME} -w",
+                    "cmdline": "{DUMP} -c -f {FILENAME} -F c -Z 4 -h {HOST} -U {USER} {NAME} -w {EXCLUDE}",
                     "pgpass": True
                 }
             }
@@ -169,7 +173,12 @@ class backup_process(threading_tools.process_obj):
                     self.log("cannot find dump binary {}".format(_bu_info["dump_bin"]), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("found dump binary {} in {}".format(_bu_info["dump_bin"], _bin))
-                    cmdline = _bu_info["cmdline"].format(DUMP=_bin, FILENAME=full_path, **_def_db)
+                    cmdline = _bu_info["cmdline"].format(
+                        DUMP=_bin,
+                        FILENAME=full_path,
+                        EXCLUDE=" ".join(["-T {}".format(_ignore) for _ignore in self.get_ignore_list(True)]),
+                        **_def_db
+                    )
                     _pgpass = _bu_info.get("pgpass", False)
                     if _pgpass:
                         _pgpassfile = "/root/.pgpass"
