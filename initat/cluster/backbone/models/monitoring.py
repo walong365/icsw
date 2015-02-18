@@ -1430,6 +1430,9 @@ class mon_icinga_log_aggregated_host_data(models.Model):
     class Meta:
         app_label = "backbone"
 
+    class CSW_Meta:
+        backup = False
+
 
 class mon_icinga_log_aggregated_service_data(models.Model):
     STATE_FLAPPING = "FL"
@@ -1454,4 +1457,7 @@ class mon_icinga_log_aggregated_service_data(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+    class CSW_Meta:
+        backup = False
 
