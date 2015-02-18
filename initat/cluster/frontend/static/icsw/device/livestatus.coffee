@@ -830,16 +830,6 @@ device_livestatus_module.controller("livestatus_ctrl",
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.overview")
         link : (scope, el, attrs) ->
-            if attrs.devicepk?
-                scope.$watch(attrs["devicepk"], (new_val) ->
-                    if new_val and new_val.length
-                        scope.new_devsel(new_val)
-                )
-            else
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[0])                    
-                )
             scope.get_state_class = (entry) ->
                 state_class = {
                     0 : "success"
@@ -996,7 +986,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         $scope.reload_pending = false
         $scope.monconfig_open = true
         $scope.monhint_open = true
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.new_devsel = (_dev_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.load_data("ALWAYS")
         $scope.toggle_order = (name) ->
@@ -1121,10 +1111,6 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.monconfig")
         link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.new_devsel(new_val)
-            )
     }
 ]).directive("mhdevrow", ["$templateCache", ($templateCache) ->
     return {

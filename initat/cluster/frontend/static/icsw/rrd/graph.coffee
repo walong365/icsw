@@ -484,14 +484,6 @@ angular.module(
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
             scope.draw_on_init = attrs["draw"] ? false
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if angular.isArray(new_val)
-                    if new_val.length
-                        scope.new_devsel(new_val)
-                else
-                    if new_val
-                        scope.new_devsel([new_val])
-            )
     }
 ]).service("icswRRDGraphTreeService", () ->
     class rrd_tree extends tree_config

@@ -62,9 +62,5 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.partition.overview")
         link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.new_devsel(new_val)
-            )
     }
 ])

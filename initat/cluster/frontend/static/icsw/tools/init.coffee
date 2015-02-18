@@ -222,11 +222,61 @@ angular.module(
 ]).factory("msgbus", ["$rootScope", ($rootScope) ->
     bus = {}
     bus.emit = (msg, data) ->
+        # console.log "E", msg, "E", data
         $rootScope.$emit(msg, data)
     bus.receive = (msg, scope, func) ->
         unbind = $rootScope.$on(msg, func)
         scope.$on("$destroy", unbind)
     return bus
+]).directive("icswSelMan", ["msgbus", (msgbus) ->
+    # selection manager directive
+    # selman=1 ... single device mode (==popup)
+    # selman=0 ... single or multi device mode, depend on sidebar selection
+    return {
+        restrict: "A"
+        priority: -100
+        link: (scope, el, attrs) ->
+            if parseInt(attrs.icswSelMan)
+                # console.log "popup actsm", attrs
+                scope.$watch(attrs["devicepk"], (new_val) ->
+                    if new_val
+                        if angular.isArray(new_val)
+                            if new_val.length
+                                scope.new_devsel(new_val)
+                        else
+                            # single device mode, for instance for deviceinfo
+                            scope.new_devsel([new_val])
+                )
+            else
+                # console.log "actsm", attrs
+                # is there a devicepk in the attributes ?
+                if attrs["devicepk"]?
+                    # yes, watch for changes
+                    scope.$watch(attrs["devicepk"], (new_val) ->
+                        if new_val
+                            if angular.isArray(new_val)
+                                if new_val.length
+                                    scope.new_devsel(new_val)
+                            else
+                                scope.new_devsel([new_val])
+                    )
+                else
+                    # console.log "register on sidebar ?"
+                    msgbus.emit("devselreceiver", "selman")
+                    msgbus.receive("devicelist", scope, (name, args) ->
+                        # check selman selection mode, can be
+                        # d ... report all device pks
+                        # D ... report all device pks with meta devices
+                        # ....... more to come
+                        selman_mode = attrs["icswSelManSelMode"]||"d"
+                        if selman_mode == "d"
+                            scope.new_devsel(args[1])
+                        else if selman_mode == "D"
+                            scope.new_devsel(args[0])
+                        else
+                            console.log "unknown selman selection mode '#{selman_mode}'"
+                    )
+    }
 ]).directive("icswElementSize", ["$parse", ($parse) ->
     # save size of element in scope (specified via icswElementSize)
     return (scope, element, attrs) ->

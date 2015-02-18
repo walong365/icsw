@@ -40,8 +40,9 @@ device_configuration_module = angular.module(
 ).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
+        $scope.device_pks = []
         $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})
-        $scope.reload = (pk_list) ->
+        $scope.new_devsel = (pk_list) ->
             $scope.device_pks = pk_list
             $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
             wait_list = [
@@ -118,9 +119,5 @@ device_configuration_module = angular.module(
     return {
         restrict : "EA"
         link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.reload(new_val)
-            )
     }
 ])

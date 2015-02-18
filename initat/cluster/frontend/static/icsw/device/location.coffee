@@ -71,10 +71,11 @@ angular.module(
         access_level_service.install($scope)
         $scope.DEBUG = false
         $scope.loc_tree = new icswDeviceLocationTreeService($scope, {})
+        $scope.device_pks = []
         # category with gfx 
         $scope.gfx_cat = undefined
         $scope.active_loc_gfx = undefined
-        $scope.reload = (pk_list) ->
+        $scope.new_devsel = (pk_list) ->
             $scope.device_pks = pk_list
             $scope.multi_device_mode = if $scope.device_pks.length > 1 then true else false
             wait_list = [
@@ -197,10 +198,6 @@ angular.module(
         restrict : "EA"
         template: $templateCache.get("icsw.device.location.overview")
         link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.reload(new_val)
-            )
     }
 ]).directive("icswDeviceLocationList", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
     return {

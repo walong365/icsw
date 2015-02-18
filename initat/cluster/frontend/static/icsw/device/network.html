@@ -361,7 +361,7 @@
     <tabset>
         <tab heading="settings">
             <div ng-controller="icswDeviceNetworkCtrl">
-                <icsw-device-network-overview></icsw-device-network-overview>
+                <icsw-device-network-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-network-overview>
                 <div class="input-group-btn" ng-show="devices.length > 1" ng-if="acl_create(null, 'backbone.device.change_network')">
                     <div class="btn-group">
                         <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
