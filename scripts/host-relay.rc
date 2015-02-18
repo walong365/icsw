@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2002,2003,2004,2005,2006,2012 Andreas Lang-Nevyjel init.at
+# Copyright (c) 2002-2006,2012,2014-2015 Andreas Lang-Nevyjel init.at
 #
 # RedHat stuff
 # chkconfig: 2345 14 86
@@ -60,10 +60,22 @@ case "$1" in
             else
                 kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
 	        fi
+            if [ -f ${RELAY_PID} ] ; then
+                for i in $(seq 40) ; do
+                    echo -n "."
+                    if [ -x /bin/usleep ] ; then
+                        usleep 250000
+                    else
+                        sleep 1
+                    fi
+                    [ ! -f ${RELAY_PID} ] && break
+                done
+            fi
+            [ $i -gt 18 ] && rc_failed || rc_reset
         else
             rc_failed
         fi
-        rc_status -v		
+        rc_status -v
         ;;
     force-stop)
         echo -n "Force stopping collrelay.py"
@@ -76,7 +88,7 @@ case "$1" in
         else
             rc_failed
         fi
-        rm -f ${RELAY_PID}
+        rm -f ${RELAY_PID} ${META_FILE}
         rc_status -v
         ;;
     status)
