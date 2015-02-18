@@ -54,7 +54,6 @@ device_info_module = angular.module(
                     access_level_service.install(sub_scope)
                     dev_idx = dev.idx
                     sub_scope.devicepk = dev_idx
-                    sub_scope.disable_modal = true
                     if dev.device_type_identifier == "MD"
                         sub_scope.dev_pk_list = [dev_idx]
                         sub_scope.dev_pk_nmd_list = []
@@ -65,11 +64,10 @@ device_info_module = angular.module(
                         sub_scope,
                         $templateCache,
                         $compile
-                        $modal
-                        Restangular
                         $q
+                        "Device Info"
                     )
-                    my_mixin.min_width = "800px"
+                    my_mixin.cssClass = "modal-wide"
                     my_mixin.template = "DeviceOverviewTemplate"
                     my_mixin.edit(null, dev_idx)
                     # todo: destroy sub_scope

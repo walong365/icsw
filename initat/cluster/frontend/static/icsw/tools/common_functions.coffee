@@ -7,6 +7,7 @@ class angular_edit_mixin
         @put_parameters = {}
         @min_width = "600px"
         @change_signal = undefined
+        @title = "Modal"
     create : (event) =>
         if @new_object
             @scope.new_obj = @new_object(@scope)
@@ -42,21 +43,36 @@ class angular_edit_mixin
                 @child_scope.$destroy()
                 return null
             )
-            @edit_div.simplemodal
-                #opacity      : 50
-                position     : [event.clientY - 50, event.clientX - 50]
-                minWidth : @min_width
-                #autoResize   : true
-                #autoPosition : true
-                onShow: (dialog) => 
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                    @_modal_close_ok = false
+            @my_modal = BootstrapDialog.show
+                message: @edit_div
+                draggable: true
+                size: BootstrapDialog.SIZE_WIDE
+                title: @title
+                closable: true
+                closeByBackdrop: false
+                cssClass: @cssClass
+                onhidden: () =>
+                    @scope.modal_active = false
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
+                onshown: () =>
                     @scope.modal_active = true
-                    # set active angular edit mixin to @name to distinguish between different mixins
-                    @scope.active_aem = @name
-                onClose: (dialog) =>
-                    @close_modal()
+            #@edit_div.simplemodal
+            #    #opacity      : 50
+            #    position     : [event.clientY - 50, event.clientX - 50]
+            #    minWidth : @min_width
+            #    #autoResize   : true
+            #    #autoPosition : true
+            #    onShow: (dialog) =>
+            #        dialog.container.draggable()
+            #        $("#simplemodal-container").css("height", "auto")
+            #        @_modal_close_ok = false
+            #        @scope.modal_active = true
+            #        # set active angular edit mixin to @name to distinguish between different mixins
+            #        @scope.active_aem = @name
+            #    onClose: (dialog) =>
+            #        @close_modal()
         else
             @child_scope = @scope
             @scope.modal_active = true
@@ -65,7 +81,7 @@ class angular_edit_mixin
             return @_prom.promise
     close_modal : () =>
         if @use_modal
-            $.simplemodal.close()
+            @my_modal.close()
         #console.log scope.pre_edit_obj.pnum, scope._edit_obj.pnum
         if @scope.modal_active
             #console.log "*", @_modal_close_ok, @scope.pre_edit_obj
@@ -204,30 +220,37 @@ class angular_edit_mixin
             return ret.promise
 
 class angular_modal_mixin
-    constructor : (@scope, @templateCache, @compile, @modal, @Restangular, @q) ->
-        @min_width = "600px"
+    constructor : (@scope, @templateCache, @compile, @q, @title) ->
+        @cssClass = ""
     edit : (obj, event) =>
         @scope._edit_obj = obj
         @scope.cur_edit = @
         @_prom = @q.defer()
         @edit_div = @compile(@templateCache.get(@template))(@scope)
-        @edit_div.simplemodal
-            #opacity      : 50
-            position     : [event.clientY - 50, event.clientX - 50]
-            minWidth : @min_width
-            #autoResize   : true
-            #autoPosition : true
-            onShow: (dialog) => 
-                dialog.container.draggable()
-                $("#simplemodal-container").css("height", "auto")
-                @_modal_close_ok = false
+        @my_modal = BootstrapDialog.show
+            message: @edit_div
+            draggable: true
+            size: BootstrapDialog.SIZE_WIDE
+            title: @title
+            closable: true
+            cssClass: @cssClass
+            closeByBackdrop: false
+            onhidden: () =>
+                @scope.modal_active = false
+            onshow: (modal) =>
+                height = $(window).height() - 100
+                modal.getModal().find(".modal-body").css("max-height", height)
+            onshown: () =>
                 @scope.modal_active = true
-            onClose: (dialog) =>
-                @close_modal()
+            #buttons: [{
+            #    label: 'close',
+            #    cssClass: "btn-danger"
+            #    action: (dialog) ->
+            #        dialog.close()
+            #    }]
         return @_prom.promise
     close_modal : () =>
-        $.simplemodal.close()
-        @scope.modal_active = false
+        @my_modal.close()
     form_error : (field_name) =>
         if @scope.form[field_name].$valid
             return ""

@@ -122,17 +122,19 @@ angular.module(
                         scope.fn.create_or_edit(scope, scope.create_mode, obj)
                     if scope.config_service.use_modal
                         scope.edit_div = $compile($templateCache.get(scope.config_service.edit_template))(scope)
-                        scope.edit_div.simplemodal
-                            #opacity      : 50
-                            position     : [event.clientY - 50, event.clientX - 50]
-                            #autoResize   : true
-                            #autoPosition : true
-                            onShow: (dialog) =>
-                                dialog.container.draggable()
-                                $("#simplemodal-container").css("height", "auto")
+                        scope.my_modal = BootstrapDialog.show
+                            message: scope.edit_div
+                            draggable: true
+                            size: BootstrapDialog.SIZE_WIDE
+                            closable: true
+                            closeByBackdrop: false
+                            onhidden: () =>
+                                scope.modal_active = false
+                            onshow: (modal) =>
+                                height = $(window).height() - 100
+                                modal.getModal().find(".modal-body").css("max-height", height)
+                            onshown: () =>
                                 scope.modal_active = true
-                            onClose: (dialog) =>
-                                scope.close_modal()
                     else
                         scope.modal_active = true
                 scope.modify = () ->
@@ -171,7 +173,7 @@ angular.module(
                         scope.modal_active = false
                 scope.close_modal = () ->
                     if scope.config_service.use_modal
-                        $.simplemodal.close()
+                        scope.my_modal.close()
                     scope.modal_active = false
                     if scope.fn and scope.fn.modal_closed
                         scope.fn.modal_closed(scope)

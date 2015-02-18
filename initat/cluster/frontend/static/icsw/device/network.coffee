@@ -117,11 +117,10 @@ angular.module(
     "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
      $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
-     icswCallAjaxService
+     icswCallAjaxService, icswParseXMLResponseService
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
-        $scope.enable_modal = true
         # accordion flags
         $scope.device_open = true
         $scope.netdevice_open = true
@@ -160,7 +159,7 @@ angular.module(
         $scope.boot_edit.new_object_at_tail = false
         $scope.boot_edit.use_promise = true
 
-        $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "Scan network")
         $scope.scan_mixin.template = "device.network.scan.form"
         
         $scope.devsel_list = []
@@ -699,8 +698,6 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.network.overview")
         link : (scope, el, attrs) ->
-            if attrs["disablemodal"]?
-                scope.enable_modal = if attrs["disablemodal"] in ["true", "1"] then false else true
             scope.$watch(attrs["devicepk"], (new_val) ->
                 if new_val and new_val.length
                     scope.new_devsel(new_val)

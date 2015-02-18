@@ -88,3 +88,14 @@ circle.fixed {
     stroke-width : 0
 }
 .angular-google-map-container { height: 480px; }
+
+/* modal changes */
+.modal.modal-wide .modal-dialog {
+  width: 90%;
+}
+.modal-wide .modal-body {
+    overflow-y: auto;
+}
+.modal-tall .modal-body {
+    overflow-y: auto;
+}

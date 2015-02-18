@@ -388,7 +388,7 @@ package_module = angular.module(
             {"idx": "0", "info": "disable"}
         ]
         $scope.modify = () ->
-            $.simplemodal.close()
+            $scope.my_modal.close()
             # change selected pdcs
             change_dict = {"edit_obj" : $scope.edit_obj, "pdc_list" : []}
             for pdc_idx, pdc of $scope.selected_pdcs
@@ -423,15 +423,15 @@ package_module = angular.module(
                 "image_list" : []
             } 
             $scope.action_div = $compile($templateCache.get("package.action.form"))($scope)
-            $scope.action_div.simplemodal
-                position     : [event.pageY, event.pageX]
-                #autoResize   : true
-                #autoPosition : true
-                onShow: (dialog) => 
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                onClose: (dialog) =>
-                    $.simplemodal.close()
+            $scope.my_modal = BootstrapDialog.show
+                message: $scope.action_div
+                draggable: true
+                size: BootstrapDialog.SIZE_WIDE
+                closable: true
+                closeByBackdrop: false
+                onshow: (modal) =>
+                    height = $(window).height() - 100
+                    modal.getModal().find(".modal-body").css("max-height", height)
         $scope.get_td_class = (dev_idx, pack_idx) ->
             pdc = $scope.state_dict[dev_idx][pack_idx]
             if pdc and pdc.idx

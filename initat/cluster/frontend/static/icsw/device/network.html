@@ -151,7 +151,7 @@
         </button>
     </td>
     <td>
-        <div class="input-group-btn" ng-show="enable_modal && acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
+        <div class="input-group-btn" ng-show="acl_create(ndip_obj, 'backbone.device.change_network') && !ndip_obj.active_scan">
             <div class="btn-group btn-xs">
 
                 <button type="button" ng-attr-class="btn btn-xs dropdown-toggle fa fa-chevron-down {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
@@ -164,7 +164,7 @@
                 </ul>
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
-                ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')"
+                ng-show="acl_create(obj, 'backbone.device.change_network')"
                 ng-click="scan_device_network(ndip_obj, $event)"/>
         </div>
     </td>
@@ -223,16 +223,16 @@
     <td>
         <div ng-show="!dev_lut[ndip_obj.device].active_scan">
             <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event)" size="xs"
-                    ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
+                    ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
         </div>
     </td>
     <td>
         <div ng-show="!dev_lut[ndip_obj.device].active_scan">
-            <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
+            <icsw-tools-button type="delete" size="xs" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
-        <div class="btn-group btn-xs" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
+        <div class="btn-group btn-xs" ng-show="acl_create(obj, 'backbone.device.change_network') && !dev_lut[ndip_obj.device].active_scan">
             <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
                 Create new <span class="caret"></span>
             </button>
@@ -255,12 +255,12 @@
     </td>
     <td>
         <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"/>
+            <icsw-tools-button type="modify" size="xs" ng-click="edit_netip(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
     <td>
         <div ng-show="!dev_lut[nd_lut[ndip_obj.netdevice].device].active_scan">
-            <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
+            <icsw-tools-button type="delete" size="xs" ng-click="delete_netip(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
         </div>
     </td>
 </script>
@@ -288,10 +288,10 @@
         {{ ndip_obj.peer.info }}
     </td>
     <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'backbone.device.change_network')"/>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="acl_modify(obj, 'backbone.device.change_network')"/>
     </td>
     <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'backbone.device.change_network')"/>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="acl_delete(obj, 'backbone.device.change_network')"/>
     </td>
 </script>
 
