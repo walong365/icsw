@@ -758,7 +758,7 @@ angular.module(
 ]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
-        $scope.graph_sel = "none"
+        $scope.graph_sel = "sel"
         $scope.devices = []
         $scope.new_devsel = (_dev_sel) ->
             $scope.devices = _dev_sel
