@@ -67,8 +67,11 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
         link : (scope, el, attrs) ->
             scope.devicepks = []
             scope.startdate = moment().startOf("day").subtract(1, "days")
-            #scope.startdate = moment('Wed Jan 07 2015 00:00:00 GMT+0100 (CET)')
             scope.timerange = 'day'
+
+            if true  # debug
+                scope.startdate = moment('Wed Feb 11 2015 00:00:00 GMT+0100 (CET)')
+                scope.timerange = 'week'
 
             scope.set_timerange = (tr) ->
                 scope.timerange = tr
