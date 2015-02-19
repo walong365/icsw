@@ -115,7 +115,6 @@ angular.module(
         # to be set by directive
         $scope.auto_select_keys = []
         $scope.draw_on_init = false
-        $scope.graph_list = {}
         $scope.graph_list = []
         $scope.hide_empty = true
         # none, all or selected
@@ -184,6 +183,8 @@ angular.module(
         $scope.set_active_dim = (cur_dim) ->
             $scope.cur_dim = cur_dim
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            # clear graphs
+            $scope.graph_list = []
             $scope.devsel_list = _dev_sel
             $scope.reload()
 
