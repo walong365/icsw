@@ -66,7 +66,8 @@ dashboard_module = angular.module(
             scope.ips_for_devices = {}
             scope.ips_loaded = false
 
-            scope.single_vdus_index = '{{ vdus_index }}' # from django via get parameter FIXME
+            scope.single_vdus_index = ""
+            # TODO: get this from url via route or new django settings service. Needs to hide sidebar as well.
             scope.single_vdus = undefined
             scope.show_single_vdus = false
 
