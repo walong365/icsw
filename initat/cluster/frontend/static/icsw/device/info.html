@@ -63,6 +63,7 @@
                 Disk{{ addon_text_nmd }}
             </tab-heading>
             <div ng-controller="icswDevicePartitionCtrl">
+                <h4>Disk info for {{ devsel_list.length }} devices</h4>
                 <icsw-device-partition-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['partinfo']">
                 </icsw-device-partition-overview>
             </div>

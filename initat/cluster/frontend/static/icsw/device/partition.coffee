@@ -7,6 +7,7 @@ angular.module(
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.entries = []
         $scope.active_dev = undefined
+        $scope.devsel_list = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.reload()

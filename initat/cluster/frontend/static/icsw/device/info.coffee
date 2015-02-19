@@ -6,7 +6,6 @@ device_info_module = angular.module(
 ).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window", "msgbus", "access_level_service", "ICSW_URLS",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window, msgbus, access_level_service, ICSW_URLS) ->
         access_level_service.install($scope)
-        $scope.active_div = "general"
         $scope.show = false
         $scope.permissions = undefined
         $scope.devicepk = undefined
@@ -80,7 +79,8 @@ device_info_module = angular.module(
         "<deviceoverview devicepk='devicepk'></deviceoverview>"
     )
 ]).service("DeviceOverviewSettings", [() ->
-    def_mode = ""
+    # default value
+    def_mode = "general"
     return {
         "get_mode" : () ->
             return def_mode
@@ -97,6 +97,7 @@ device_info_module = angular.module(
                     scope.singledevicemode = parseInt(attrs["singledevicemode"])
                 scope.current_subscope = undefined
                 scope.pk_list = {
+                    "general": []
                     "category": []
                     "location": []
                     "network": []
@@ -108,12 +109,11 @@ device_info_module = angular.module(
                     "monconfig": []
                     "graphing": []
                 }
-                scope["general_active"] = true
                 for key of scope.pk_list
                     scope["#{key}_active"] = false
-                scope.active_div = DeviceOverviewSettings.get_mode()
-                if scope.active_div
-                    scope["#{scope.active_div}_active"] = true
+                if DeviceOverviewSettings.get_mode()
+                    _mode = DeviceOverviewSettings.get_mode()
+                    scope["#{_mode}_active"] = true
                 if scope.singledevicemode
                     scope.$watch(attrs["devicepk"], (new_val) ->
                         if new_val
@@ -138,12 +138,15 @@ device_info_module = angular.module(
                         scope.addon_text_nmd = ""
                     # destroy old subscope, important
                     if scope.current_subscope
-                        scope.current_subscope.$destroy()
-                    new_scope = scope.$new()
-                    new_el = $compile($templateCache.get("icsw.device.info"))(new_scope)
-                    iElement.children().remove()
-                    iElement.append(new_el)
-                    scope.current_subscope = new_scope
+                        # check for active div
+                        if DeviceOverviewSettings.get_mode()
+                            scope.activate(DeviceOverviewSettings.get_mode())
+                    else
+                        new_scope = scope.$new()
+                        new_el = $compile($templateCache.get("icsw.device.info"))(new_scope)
+                        iElement.children().remove()
+                        iElement.append(new_el)
+                        scope.current_subscope = new_scope
                 scope.activate = (name) ->
                     DeviceOverviewSettings.set_mode(name)
                     if name in ["category", "location", "network", "partinfo", "status_history", "livestatus", "monconfig"]
