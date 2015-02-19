@@ -36,7 +36,11 @@ from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_
 DEBUG = False
 
 SAS_OK_KEYS = {
-    "adp": set(),
+    "adp": set(
+        [
+            "product_name", "serial_no", "fw_version",
+        ]
+    ),
     "virt": set(
         [
             "virtual_drive", "raid_level", "name", "size", "state", "strip_size",
@@ -157,6 +161,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
         return [("/bin/true", ctrl_id, "init") for ctrl_id in ctrl_list] + \
+               [("%s -AdpAllInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "adp") for ctrl_id in ctrl_list] + \
                [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
                [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
                [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
@@ -239,12 +244,14 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 elif (parts[0], cur_mode) in [("adapter", None), ("adapter", "pd"), ("adapter", "run"), ("adapter", "virt")]:
                     cur_mode = "adp"
                     ctrl_stuff, count_dict = _ci.check_for_ctrl(line, int(parts[-1].replace("#", "")))
+                    ctrl_stuff.setdefault("lines", [])
+                    cur_dict = ctrl_stuff
                 elif line.lower().startswith("bbu status for "):
                     cur_mode = "bbu"
                     ctrl_stuff, count_dict = _ci.check_for_ctrl(line, int(parts[-1].replace("#", "")))
                     cur_dict = {"main": {}}
                     ctrl_stuff["bbu_keys"] = cur_dict
-                elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
+                elif (parts[0], cur_mode) in [("virtual", "pd")] or (cur_mode == "adp" and line.lower().startswith("number of virt")):
                     cur_mode = "virt"
                     count_dict[cur_mode] += 1
                     cur_dict = {"lines": []}
@@ -291,7 +298,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 elif cur_mode == "run":
                     cur_dict = {"lines": []}
                     ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"] - 1][_sub_key][int(parts[-1])] = cur_dict
-                elif cur_mode in ["bbu", "enc"]:
+                elif cur_mode in ["bbu", "enc", "adp"]:
                     # ignore empty lines for bbu and enc
                     if cur_mode == "bbu":
                         # add line
@@ -403,6 +410,19 @@ class ctrl_type_megaraid_sas(ctrl_type):
             elif _entity_type == "s":
                 if _val.lower() == "ok":
                     _ret_state = limits.nag_STATE_OK
+            elif _entity_type == "c":
+                _ret_state = limits.nag_STATE_OK
+                _ld = get_log_dict(lines)
+                _info_f = []
+                for key in ["product_name"]:
+                    if key in _ld:
+                        _info_f.append(
+                            "{}: {}".format(
+                                key,
+                                _ld[key],
+                            )
+                        )
+                _info_str = ", ".join(_info_f)
             elif _entity_type == "b":
                 _ld = get_log_dict(lines)
                 _info_f = []
@@ -428,6 +448,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 return ["firmware_state"]
             elif d_type == "bbu":
                 return ["battery_state"]
+            elif d_type == "ctrl":
+                return ["dummy"]
             else:
                 status = get_status_lines(lines).lower()
                 if status in set(["not installed", "unknown", "medium speed", "normal speed", "low speed", "high speed", "not available"]):
@@ -687,9 +709,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     if _key.count(":b") and _ignore_missing_bbu:
                         # reduce state if necessary
                         _ret_state = min(_ret_state, limits.nag_STATE_WARNING)
-                    if _store_passive:
+                    if _store_passive and _entity_type != "c":
+                        # never store controller checks in passive dict
                         if _short_output:
                             _so_cache.feed(_info, _ret_state, _result, _info_str)
+                            _info_str = ""
                         else:
                             _passive_dict["list"].append(
                                 # format: info, ret_state, result (always show), info (only shown in case of non-OK)
@@ -697,6 +721,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                     _info, _ret_state, _result, _info_str
                                 )
                             )
+                            _info_str = ""
 
                     # print _info, _ret_state, _result
                     if _ret_state != limits.nag_STATE_OK:
@@ -704,7 +729,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     else:
                         if single_key:
                             _ret_list.append(_result)
-                        _ok_dict.setdefault(_entity_type, []).append(0)
+                        if _entity_type != "c":
+                            # we ignore contoller checks because they are only dummy checks
+                            _ok_dict.setdefault(_entity_type, []).append(0)
                     if _info_str:
                         _ret_list.append(_info_str)
                     _g_ret_state = max(_g_ret_state, _ret_state)
