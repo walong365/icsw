@@ -304,22 +304,7 @@ class icinga_log_aggregator(object):
                 flapping_seconds += (flap_end - flap_start).total_seconds()
             return flapping_seconds / timespan_seconds
 
-        def calc_service_alerts():
-            service_alerts = defaultdict(lambda: [])
-            for entry in mon_icinga_log_raw_service_alert_data.objects\
-                    .filter(device_independent=False, date__range=(start_time, end_time)):
-                key = entry.device_id, entry.service_id, entry.service_info
-                service_alerts[key].append(entry)
-            # calc dev independent afterwards and add to all keys
-            for entry in mon_icinga_log_raw_service_alert_data.objects\
-                    .filter(device_independent=True, date__range=(start_time, end_time)):
-                for key in service_alerts:
-                    service_alerts[key].append(entry)
-            for l in service_alerts.itervalues():
-                # not in order due to dev independents
-                l.sort(key=operator.attrgetter('date'))
-            return service_alerts
-        service_alerts = calc_service_alerts()
+        service_alerts = mon_icinga_log_raw_service_alert_data.objects.calc_service_alerts(start_time, end_time)
 
         def calc_host_alerts():
             host_alerts = defaultdict(lambda: [])
