@@ -150,6 +150,7 @@ ics_app = angular.module(
     "MON_FETCH_PARTITION": "{% url 'mon:fetch_partition' %}"
     "MON_GET_HIST_DEVICE_DATA": "{% url 'mon:get_hist_device_data' %}"
     "MON_GET_HIST_SERVICE_DATA": "{% url 'mon:get_hist_service_data' %}"
+    "MON_GET_HIST_SERVICE_LINE_GRAPH_DATA": "{% url 'mon:get_hist_service_line_graph_data' %}"
     "MON_GET_HIST_TIMESPAN": "{% url 'mon:get_hist_timespan' %}"
     "MON_GET_MON_VARS": "{% url 'mon:get_mon_vars' %}"
     "MON_GET_NODE_CONFIG": "{% url 'mon:get_node_config' %}"

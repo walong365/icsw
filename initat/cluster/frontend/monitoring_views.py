@@ -19,14 +19,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from django.db.models.query import Prefetch
-import itertools
-from initat.cluster.frontend.rest_views import rest_logging
 
 """ monitoring views """
 from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
+from django.db.models.query import Prefetch
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
@@ -38,9 +36,10 @@ from initat.cluster.backbone.models import device, device_type, domain_name_tree
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
 from initat.cluster.frontend.common import duration_utils
+from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
@@ -52,6 +51,7 @@ from initat.cluster.frontend.forms import mon_period_form, mon_notification_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImports
 import base64
+import itertools
 import json
 import logging
 import process_tools
@@ -476,6 +476,7 @@ class _device_status_history_util(object):
         return data_merged_state_types
 
 
+
 class get_hist_timespan(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
@@ -524,7 +525,7 @@ class get_hist_service_data(ListAPIView):
 
         def get_data_per_device(device_ids, timespans_db):
 
-            queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan=timespan_db)
+            queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan__in=timespans_db)
             # can't do regular prefetch_related for queryset, this seems to work
 
             data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
@@ -536,9 +537,9 @@ class get_hist_service_data(ListAPIView):
                     'value': entry.value
                 }
 
-                service_name = entry.service.name if entry.service else ""
+                client_service_name = mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
 
-                data_per_device[entry.device_id]["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
+                data_per_device[entry.device_id][client_service_name].append(relevant_data_from_entry)
 
             return data_per_device
 
@@ -577,26 +578,54 @@ class get_hist_service_data(ListAPIView):
             prelim_return_data = merge_state_types_per_device(data_per_device)
 
 
-            # for full view, include more detailed data
-            shorter_duration_type = duration.get_shorter_duration(timespan_db.duration_type)
-            shorter_durations_db = mon_icinga_log_aggregated_timespan.objects.filter(start_date__gte=timespan_db.start_date,
-                                                                                     end_date__lte=timespan_db.end_date,
-                                                                                     duration_type=shorter_duration_type.ID)
+            detailed_return_data = defaultdict(lambda: [])
+            if False:
+                # TODO: timespan_db can be None
+                # for full view, include more detailed data
+                shorter_duration_type = duration.get_shorter_duration(timespan_db.duration_type)
+                shorter_durations_db = mon_icinga_log_aggregated_timespan.objects.filter(start_date__gte=timespan_db.start_date,
+                                                                                         end_date__lte=timespan_db.end_date,
+                                                                                         duration_type=shorter_duration_type.ID)
 
-            detailed_data_per_device = get_data_per_device(device_ids, shorter_durations_db)
-            detailed_return_data = merge_state_types_per_device(detailed_data_per_device)
+                detailed_data_per_device = get_data_per_device(device_ids, shorter_durations_db)
+                detailed_return_data = merge_state_types_per_device(detailed_data_per_device)
 
-            return_data = {}
+            return_data ={}
             for dev, main_data in prelim_return_data.iteritems():
-                return_data[dev] = {
-                    'main'     : main_data,
-                    'detailed' : detailed_return_data[dev]
+                return_data[dev]={
+                    'main'    : main_data,
+                    'detailed': detailed_return_data[dev]
                 }
-
 
                 # TODO: don't merge data from detailed view gr
                 # TODO: fix angular side for new data
 
-
+        # NOTE: disable main and detailed for now
+        for key, value in return_data.items():
+            print 'val', value
+            return_data[key] = value['main']
 
         return Response([return_data])  # fake a list, see coffeescript
+
+
+class get_hist_service_line_graph_data(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+
+        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
+
+        # TODO: need a starting state. It's calculated in aggregation, so perhaps just save it there
+
+        entries = mon_icinga_log_raw_service_alert_data.objects.calc_service_alerts(timespan_db.start_date,
+                                                                                    timespan_db.end_date,
+                                                                                    device_ids=device_ids,
+                                                                                    use_client_service_name=True)
+
+        return_data = defaultdict(lambda: defaultdict(lambda: []))
+        for (device_id, service_identifier), entry_list in entries.iteritems():
+            return_data[device_id][service_identifier] = [(entry.date, entry.state, entry.msg) for entry in entry_list]
+
+        return Response([return_data])
+

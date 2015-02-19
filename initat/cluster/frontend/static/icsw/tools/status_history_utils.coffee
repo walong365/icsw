@@ -113,6 +113,12 @@ angular.module(
             console.log 'serv', data_pseudo_list.plain()[0]
             cont(data_pseudo_list.plain()[0])
         )
+
+        line_base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_LINE_GRAPH_DATA.slice(1))
+        line_base.getList(query_data).then((data) ->
+            data = data.plain()
+            console.log 'dat', data
+        )
     get_timespan = (start_date, timerange, cont) ->
         query_data = {
             'date': moment(start_date).unix()  # ask server in utc
