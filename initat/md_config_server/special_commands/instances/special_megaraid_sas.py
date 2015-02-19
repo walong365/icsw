@@ -39,7 +39,7 @@ class special_megaraid_sas(SpecialBase):
         server_contact = True
         info = "MegaRaid SAS"
         command_line = "$USER2$ -m $HOSTADDRESS$ megaraid_sas_status --key $ARG1$ --check $ARG2$ " \
-            "--passive-check-postfix $ARG3$ --short-output ${{ARG4:{}:0}} --ignore-missing-bbu ${{ARG5:{}:0}}".format(
+            "--passive-check-prefix $ARG3$ --short-output ${{ARG4:{}:0}} --ignore-missing-bbu ${{ARG5:{}:0}}".format(
                 SHORT_OUTPUT_NAME,
                 IGNORE_BBU_NAME,
             )
@@ -65,7 +65,7 @@ class special_megaraid_sas(SpecialBase):
             )
             self.add_variable(new_var)
         self.set_variable(PV_NAME, _short_output)
-        cur_ns = Namespace(get_hints=True, short_output=_short_output, ignore_missing_bbu=_ignore_missing_bbu)
+        cur_ns = Namespace(get_hints=True, short_output=_short_output, ignore_missing_bbu=_ignore_missing_bbu, )
         # transform from srv_reply to dict, see code in raidcontroller_mod (megaraid_sas_status_command.interpret)
         ctrl_dict = {}
         for res in srv_reply["result"]:
@@ -86,7 +86,7 @@ class special_megaraid_sas(SpecialBase):
 
     def _call(self):
         # print self.host, self.s_check
-        _passive_check_postfix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
+        _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
         hints = self.collrelay(
             "megaraid_sas_status",
         )
@@ -100,7 +100,7 @@ class special_megaraid_sas(SpecialBase):
                     hint.info,
                     arg1=hint.key,
                     arg2=hint.value_string,
-                    arg3=_passive_check_postfix if _trigger_passive else "-",
+                    arg3=_passive_check_prefix if _trigger_passive else "-",
                     check_active=hint.is_active,
                 )
             )

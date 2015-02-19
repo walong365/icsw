@@ -80,11 +80,11 @@ class dynconfig_process(threading_tools.process_obj):
                     _check.check_command_pk = _check.pk
                     _check.mccs_id = None
                     # print _check, _dev
-                    _ocsp_postfix = host_service_id_util.create_host_service_description(_dev.pk, _check, "")
+                    _ocsp_prefix = host_service_id_util.create_host_service_description(_dev.pk, _check, "")
                     ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
                         int(time.time()),
                         _dev.full_name,
-                        "{}{}".format(_ocsp_postfix, _check.description),
+                        "{}{}".format(_ocsp_prefix, _check.description),
                         {
                             "OK": 0,
                             "WARN": 1,
@@ -100,13 +100,13 @@ class dynconfig_process(threading_tools.process_obj):
     def _pcrs_as_chunk(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])
         _chunk = json.loads(bz2.decompress(base64.b64decode(in_com["*ascii_chunk"])))
-        _postfix = _chunk["postfix"]
+        _prefix = _chunk["prefix"]
         try:
-            cur_dev = device.objects.get(Q(pk=_postfix.split(":")[1]))
+            cur_dev = device.objects.get(Q(pk=_prefix.split(":")[1]))
         except:
             self.log(
-                "error getting device from postfix '{}': {}".format(
-                    _postfix,
+                "error getting device from prefix '{}': {}".format(
+                    _prefix,
                     process_tools.get_except_info(),
                 ),
                 logging_tools.LOG_LEVEL_ERROR
@@ -114,7 +114,7 @@ class dynconfig_process(threading_tools.process_obj):
         else:
             ocsp_lines = []
             for _info, _ret_state, _result, _info_str in _chunk["list"]:
-                _srv_info = "{}{}".format(_postfix, _info)
+                _srv_info = "{}{}".format(_prefix, _info)
                 ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
                     int(time.time()),
                     cur_dev.full_name,
@@ -145,8 +145,8 @@ class dynconfig_process(threading_tools.process_obj):
     def _create_hints(self, cur_dev, mon_info):
         self._create_hints_ipmi(cur_dev, mon_info)
 
-    def _get_ipmi_service_postfix(self, cur_dev):
-        _postfix = None
+    def _get_ipmi_service_prefix(self, cur_dev):
+        _prefix = None
         # better cache this info ?
         # special check command
         try:
@@ -180,7 +180,7 @@ class dynconfig_process(threading_tools.process_obj):
                 else:
                     _mc.check_command_pk = _mc.pk
                     _mc.mccs_id = _mcs.pk
-                    _postfix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
+                    _prefix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
             except mon_check_command.MultipleObjectsReturned:
                 # more than one check command found
                 self.log(
@@ -193,14 +193,14 @@ class dynconfig_process(threading_tools.process_obj):
             else:
                 _mc.check_command_pk = _mc.pk
                 _mc.mccs_id = _mcs.pk
-                _postfix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
-        return _postfix
+                _prefix = host_service_id_util.create_host_service_description(cur_dev.pk, _mc, "")
+        return _prefix
 
     def _create_hints_ipmi(self, cur_dev, mon_info):
         cur_hints = {(cur_h.m_type, cur_h.key): cur_h for cur_h in monitoring_hint.objects.filter(Q(device=cur_dev))}
-        _ocsp_postfix = self._get_ipmi_service_postfix(cur_dev)
-        if not _ocsp_postfix:
-            self.log("cannot get postfix for IPMI service results for device {}".format(unicode(cur_dev)))
+        _ocsp_prefix = self._get_ipmi_service_prefix(cur_dev)
+        if not _ocsp_prefix:
+            self.log("cannot get prefix for IPMI service results for device {}".format(unicode(cur_dev)))
         ocsp_lines = []
         # pprint.pprint(cur_hints)
         n_updated, n_created, n_deleted = (0, 0, 0)
@@ -257,7 +257,7 @@ class dynconfig_process(threading_tools.process_obj):
             ocsp_line = "[{}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
                 mon_info.get("time"),
                 cur_dev.full_name,
-                "{}{}".format(_ocsp_postfix, _val.get("info")),
+                "{}{}".format(_ocsp_prefix, _val.get("info")),
                 ret_code,
                 ret_str,
             )
@@ -277,7 +277,7 @@ class dynconfig_process(threading_tools.process_obj):
                 for _key in _del_keys:
                     cur_hints[_key].delete()
         # pprint.pprint(ocsp_lines)
-        if _ocsp_postfix:
+        if _ocsp_prefix:
             self.send_pool_message("ocsp_results", ocsp_lines)
         if updated or created:
             self.log("for {}: created {:d}, updated {:d}".format(unicode(cur_dev), n_created, n_updated))
