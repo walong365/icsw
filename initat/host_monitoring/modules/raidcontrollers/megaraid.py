@@ -112,6 +112,41 @@ class SasCtrlInfo(object):
         self.ctrl_struct.log(what, log_level)
 
 
+class ShortOutputKeyCache(object):
+    def __init__(self):
+        self._state = limits.nag_STATE_OK
+        self._keys = []
+        self._results = []
+        self._info_strs = []
+        self.valid = False
+
+    @staticmethod
+    def shorten_keys(in_list):
+        first_parts = set([_key.split()[0] for _key in in_list])
+        if len(first_parts) == 1:
+            return "{} {}".format(
+                list(first_parts)[0],
+                " ".join([_key.split(None, 1)[1] for _key in in_list])
+            )
+        else:
+            return " ".join(in_list)
+
+    def feed(self, key, state, result, info_str):
+        self.valid = True
+        self._state = max(self._state, state)
+        self._keys.append(key)
+        self._results.append(result)
+        self._info_strs.append(info_str)
+
+    def get_passive_entry(self):
+        return (
+            ShortOutputKeyCache.shorten_keys(self._keys),
+            self._state,
+            ", ".join(self._results),
+            ", ".join(self._info_strs),
+        )
+
+
 class ctrl_type_megaraid_sas(ctrl_type):
     class Meta:
         name = "megaraid_sas"
@@ -348,7 +383,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _ld["ctrl"] = key.split(":")[0]
                     # pprint.pprint(lines)
                     # pprint.pprint(_ld)
-                    _info_str = "vd {virtual_drive} (ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(**_ld)
+                    _info_str = "vd {virtual_drive} (ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(
+                        **_ld
+                    )
                     if _val.lower().startswith("optimal"):
                         _ret_state = limits.nag_STATE_OK
 
@@ -367,6 +404,17 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if _val.lower() == "ok":
                     _ret_state = limits.nag_STATE_OK
             elif _entity_type == "b":
+                _ld = get_log_dict(lines)
+                _info_f = []
+                for key in ["temperature", "voltage", "relative_state_of_charge", "learn_cycle_status"]:
+                    if key in _ld:
+                        _info_f.append(
+                            "{}: {}".format(
+                                key,
+                                _ld[key],
+                            )
+                        )
+                _info_str = ", ".join(_info_f)
                 if _val.lower() in ("operational", "optimal"):
                     _ret_state = limits.nag_STATE_OK
             return _ret_state, _val, _info_str, _entity_type
@@ -570,11 +618,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
         # interpret flags
         _short_output = True if cur_ns.short_output in [True, "1", "y", "yes", "true", "True"] else False
         _ignore_missing_bbu = True if cur_ns.ignore_missing_bbu in [True, "1", "y", "yes", "true", "True"] else False
-        # generate passive results if cur_ns.passive_check_postfix is set (not "-")
-        _store_passive = cur_ns.passive_check_postfix != "-"
-        if not _store_passive:
-            # only makes sense with _store_passive==True
-            _short_output = False
         if cur_ns.get_hints:
             r_list = []
             _ctrl_found = set()
@@ -584,17 +627,31 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _ctrl_found.add(_ctrl_key)
                     r_list.extend([(_ctrl_key, "all", "SAS Controller {}".format(_ctrl_key), True), ])
                 _lines, _checks = get_source(_ro_dict, _key)
-                r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
+                if _short_output:
+                    r_list.append(
+                        (
+                            _key,
+                            "::".join(_checks),
+                            ShortOutputKeyCache.shorten_keys([get_info(_key, _lines, _check) for _check in _checks]),
+                            False
+                        )
+                    )
+                else:
+                    r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
                 # all checks in one line ? Todo ...
-                # r_list.append((_key, "::".join(_checks), ", ".join([get_info(_key, _lines, _check) for _check in _checks]), False))
             if _short_output:
                 # shorten list
                 r_list, _ignore_dict = _shorten_list(r_list)
             # pprint.pprint(r_list)
             return r_list
         else:
+            _store_passive = cur_ns.passive_check_prefix != "-"
+            # generate passive results if cur_ns.passive_check_prefix is set (not "-")
+            if not _store_passive:
+                # only makes sense with _store_passive==True
+                _short_output = False
             _passive_dict = {
-                "postfix": cur_ns.passive_check_postfix,
+                "prefix": cur_ns.passive_check_prefix,
                 "list": [],
             }
             # print "*", _key_list
@@ -603,7 +660,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if cur_ns.check != "all":
                 single_key = True
                 _key_list = list(set(_key_list) & set([cur_ns.key]))
-                target_checks = set([cur_ns.check])
+                target_checks = set(cur_ns.check.split("::"))
                 # print "*", _key_list, target_checks
             else:
                 target_checks = None
@@ -616,7 +673,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
             # list for shortened output
             r_list = []
             for _key in sorted(_key_list):
+                # cache for short output
+                _so_cache = ShortOutputKeyCache()
                 _lines, _checks = get_source(_ro_dict, _key)
+                # print "***", _checks, target_checks
                 if target_checks:
                     _checks = list(set(_checks) & target_checks)
                 for _check in _checks:
@@ -628,12 +688,15 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         # reduce state if necessary
                         _ret_state = min(_ret_state, limits.nag_STATE_WARNING)
                     if _store_passive:
-                        _passive_dict["list"].append(
-                            # format: info, ret_state, result (always show), info (only shown in case of non-OK)
-                            (
-                                _info, _ret_state, _result, _info_str
+                        if _short_output:
+                            _so_cache.feed(_info, _ret_state, _result, _info_str)
+                        else:
+                            _passive_dict["list"].append(
+                                # format: info, ret_state, result (always show), info (only shown in case of non-OK)
+                                (
+                                    _info, _ret_state, _result, _info_str
+                                )
                             )
-                        )
 
                     # print _info, _ret_state, _result
                     if _ret_state != limits.nag_STATE_OK:
@@ -645,6 +708,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     if _info_str:
                         _ret_list.append(_info_str)
                     _g_ret_state = max(_g_ret_state, _ret_state)
+                # check for addendum tio passive_dict
+                if _short_output and _store_passive and _so_cache.valid:
+                    _passive_dict["list"].append(_so_cache.get_passive_entry())
             if _short_output:
                 # pprint.pprint(_passive_dict)
                 r_list, shorten_dict = _shorten_list(r_list)
@@ -696,7 +762,7 @@ class megaraid_sas_status_command(hm_classes.hm_command):
         self.parser.add_argument("--get-hints", dest="get_hints", default=False, action="store_true")
         self.parser.add_argument("--key", default="", type=str)
         self.parser.add_argument("--check", default="all", type=str)
-        self.parser.add_argument("--passive-check-postfix", default="-", type=str)
+        self.parser.add_argument("--passive-check-prefix", default="-", type=str)
         self.parser.add_argument("--short-output", default="0", type=str)
         self.parser.add_argument("--ignore-missing-bbu", default="0", type=str)
         self.parser.add_argument("--controller", default="all", type=str)

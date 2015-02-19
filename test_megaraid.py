@@ -57,7 +57,7 @@ if __name__ == "__main__":
     short_output = "0"
     cur_ns = argparse.Namespace(
         get_hints=get_hints,
-        passive_check_postfix="xxx",
+        passive_check_prefix="xxx",
         key="c01",
         short_output=short_output,
         ignore_missing_bbu=False,
