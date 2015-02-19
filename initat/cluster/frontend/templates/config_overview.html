@@ -6,10 +6,12 @@
 
 {% block content %}
 
-<div ng-controller="icswConfigConfigCtrl">
-    <icsw-config-overview></icsw-config-overview>
-</div>
+<icsw-config-config-overview></icsw-config-config-overview>
 
-{% include "generate_config.html" %}
+{% if DJANGO_CLUSTER_LICENSE.boot.enabled %}
+
+<icsw-config-generate-config icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-config-generate-config>
+
+{% endif %}
 
 {% endblock %}

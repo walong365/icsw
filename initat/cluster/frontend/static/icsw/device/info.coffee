@@ -181,7 +181,7 @@ device_info_module = angular.module(
                     )
             else
                 toaster.pop("warning", "form validation problem", "", 0)
-]).directive("deviceinfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
+]).directive("icswSimpleDeviceInfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
     return {
         restrict : "EA"
         link : (scope, element, attrs) ->
@@ -206,6 +206,7 @@ device_info_module = angular.module(
                     scope._edit_obj = data[3][0]
                     if scope._edit_obj.device_type_identifier == "MD"
                         scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                    element.children().remove()
                     element.append($compile($templateCache.get("device.info.form"))(scope))
                 )
             scope.is_device = () ->

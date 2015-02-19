@@ -5,8 +5,8 @@
                 General
             </tab-heading>
             <div ng-controller="deviceinfo_ctrl">
-                <deviceinfo icsw-sel-man="{{ singledevicemode }}" devicepk="devicepk">
-                </deviceinfo>
+                <icsw-simple-device-info icsw-sel-man="{{ singledevicemode }}" devicepk="devicepk">
+                </icsw-simple-device-info>
                 <div ng-show="show_uuid">
                     <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
                     <pre>urn:uuid:{{ _edit_obj.uuid }}</pre>
@@ -18,64 +18,46 @@
             <tab-heading>
                 Category{{ addon_text_nmd }}
             </tab-heading>
-            <div ng-controller="icswDeviceCategoryCtrl">
-                <icsw-device-category-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['category']">
-                    <h4>Categories for {{ device_pks.length }} devices</h4>
-                    <tree treeconfig="cat_tree"></tree>
-                </icsw-device-category-overview>
-            </div>
+            <icsw-device-category-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['category']">
+            </icsw-device-category-overview>
         </tab>
         <tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')" active="location_active">
             <tab-heading>
                 Location{{ addon_text_nmd }}
             </tab-heading>
-            <div ng-controller="icswDeviceLocationCtrl">
-                <icsw-device-location-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['location']">
-                    <h4>Locations for {{ device_pks.length }} devices</h4>
-                </icsw-device-location-overview>
-            </div>
+            <icsw-device-location-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['location']">
+            </icsw-device-location-overview>
         </tab>
         <tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">
             <tab-heading>
                 Network{{ addon_text_nmd }}
             </tab-heading>
-            <div ng-controller="icswDeviceNetworkCtrl">
-                <icsw-device-network-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['network']">
-                </icsw-device-network-overview>
-            </div>
+            <icsw-device-network-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['network']">
+            </icsw-device-network-overview>
         </tab>
         <tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')" active="config_active">
             <tab-heading>
                 Config{{ addon_text }}
             </tab-heading>
-            <div ng-controller="icswDeviceConfigurationCtrl">
-                <icsw-device-configuration-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['config']">
-                </icsw-device-configuration-overview>
-            </div>
+            <icsw-device-configuration-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['config']">
+            </icsw-device-configuration-overview>
             <!-- only valid for corvus -->
-            <div ng-controller='config_vars_ctrl'>
-                <icsw-device-configuration-var-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['config']">
-                </icsw-device-configuration-var-overview>
-            </div>
+            <icsw-device-configuration-var-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['config']">
+            </icsw-device-configuration-var-overview>
         </tab>
         <tab ng-if="acl_read(null, 'backbone.device.change_disk') && dev_pk_nmd_list.length" select="activate('partinfo')" active="partinfo_active">
             <tab-heading>
                 Disk{{ addon_text_nmd }}
             </tab-heading>
-            <div ng-controller="icswDevicePartitionCtrl">
-                <h4>Disk info for {{ devsel_list.length }} devices</h4>
-                <icsw-device-partition-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['partinfo']">
-                </icsw-device-partition-overview>
-            </div>
+            <icsw-device-partition-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['partinfo']">
+            </icsw-device-partition-overview>
         </tab>
         <tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('variables')" active="variables_active">
             <tab-heading>
                 Vars{{ addon_text }}
             </tab-heading>
-            <div ng-controller="icswDeviceVariableCtrl">
-                <icsw-device-variable-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['variables']">
-                </icsw-device-variable-overview>
-            </div>
+            <icsw-device-variable-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['variables']">
+            </icsw-device-variable-overview>
         </tab>
         <tab select="activate('status_history')" active="status_history_active">
             <tab-heading>
@@ -100,20 +82,16 @@
             <tab-heading>
                 MonConfig/hint{{ addon_text_nmd }}
             </tab-heading>
-            <div ng-controller="monconfig_ctrl">
-                <monconfig icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['monconfig']">
-                </monconfig>
-            </div>
+            <icsw-device-mon-config icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['monconfig']">
+            </icsw-device-mon-config>
         </tab>
         <!-- also check for grapher in service list -->
         <tab ng-if="acl_read(null, 'backbone.device.show_graphs')" select="activate('graphing')" active="graphing_active">
             <tab-heading>
                 Graph{{ addon_text }}
             </tab-heading>
-            <div ng-controller="icswGraphOverviewCtrl">
-                <icsw-rrd-graph icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['graphing']">
-                </icsw-rrd-graph>
-            </div>
+            <icsw-rrd-graph icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['graphing']">
+            </icsw-rrd-graph>
         </tab>
     </tabset>
 </script>

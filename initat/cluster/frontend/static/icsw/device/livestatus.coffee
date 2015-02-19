@@ -973,7 +973,7 @@ class mc_table
             _class = "glyphicon"
         return _class
         
-device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+device_livestatus_module.controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
@@ -999,7 +999,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             return (if $scope.order_dir then "" else "-") + $scope.order_name
         $scope.get_order_glyph = (name) ->
             if $scope.order_name == name
-                if $scope.order_dir 
+                if $scope.order_dir
                     _class = "glyphicon glyphicon-chevron-down"
                 else
                     _class = "glyphicon glyphicon-chevron-up"
@@ -1022,7 +1022,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                 success : (xml) =>
                     if icswParseXMLResponseService(xml)
                         mc_tables = []
-                        $(xml).find("config > *").each (idx, node) => 
+                        $(xml).find("config > *").each (idx, node) =>
                             new_table = new mc_table($(node), paginatorSettings)
                             mc_tables.push(new_table)
                         $scope.$apply(
@@ -1106,11 +1106,11 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             if $scope.cur_xhr?
                 $scope.cur_xhr.abort()
         )
-]).directive("monconfig", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceMonConfig", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.monconfig")
-        link : (scope, el, attrs) ->
+        controller: "icswDeviceMonConfigCtrl"
     }
 ]).directive("mhdevrow", ["$templateCache", ($templateCache) ->
     return {

@@ -197,7 +197,7 @@ angular.module(
     return {
         restrict : "EA"
         template: $templateCache.get("icsw.device.location.overview")
-        link : (scope, el, attrs) ->
+        controller: "icswDeviceLocationCtrl"
     }
 ]).directive("icswDeviceLocationList", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
     return {

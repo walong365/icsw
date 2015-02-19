@@ -649,10 +649,11 @@ config_module = angular.module(
             else
                 return ["no args parsed"]
         $scope.reload()
-]).directive("icswConfigOverview", ["$templateCache", ($templateCache) ->
+]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.overview")
+        controller: "icswConfigConfigCtrl"
     }
 ]).directive("icswConfigCatalogTable", ["$templateCache", ($templateCache) ->
     return {

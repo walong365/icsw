@@ -3,12 +3,125 @@ device_variable_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+).directive("icswDeviceVariableHead", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.variable.head")
+    }
+]).directive("icswDeviceVariableRow", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.variable.row")
+        link : (scope) ->
+            scope.num_parent_vars = (obj) ->
+                my_names = (entry.name for entry in obj.device_variable_set)
+                num_meta = 0
+                if not obj.is_cluster_device_group
+                    if obj.device_type_identifier != "MD"
+                        meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
+                        meta_names = (entry.name for entry in meta_server.device_variable_set)
+                        num_meta += (entry for entry in meta_names when entry not in my_names).length
+                    else
+                        meta_names = []
+                    num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names and entry.name not in meta_names).length
+                return num_meta
+            scope.num_vars = (obj) ->
+                return scope.num_parent_vars + obj.device_variable_set.length
+            scope.parent_vars_defined = (obj) ->
+                return if scope.num_parent_vars(obj) then true else false
+            scope.num_shadowed_vars = (obj) ->
+                my_names = (entry.name for entry in obj.device_variable_set)
+                num_shadow = 0
+                if not obj.is_cluster_device_group
+                    if obj.device_type_identifier != "MD"
+                        meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
+                        meta_names = (entry.name for entry in meta_server.device_variable_set)
+                        num_shadow += (entry for entry in meta_names when entry in my_names).length
+                    else
+                        meta_names = []
+                    num_shadow += (entry for entry in scope.cdg.device_variable_set when entry.name in my_names and entry.name not in meta_names).length
+                return num_shadow
+            scope.any_shadowed_vars = (obj) ->
+                return if scope.num_shadowed_vars(obj) then true else false
+    }
+]).filter("filter_name", ["$filter", ($filter) ->
+    return (arr, f_string) ->
+        try
+            cur_re = new RegExp(f_string, "gi")
+        catch exc
+            cur_re = new RegExp("^$", "gi")
+        return (entry for entry in arr when entry.name.match(cur_re))
+]).directive("icswDeviceVariableTable", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.variable.table")
+        link : (scope, el, attrs) ->
+            scope.device = scope.$eval(attrs["device"])
+            scope.filtervalue = scope.$eval(attrs["filtervalue"])
+            scope.edit_mixin = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.edit_mixin.delete_confirm_str = (obj) -> "Really delete variable '#{obj.name}' ?"
+            scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
+            scope.edit_mixin.delete_list = scope.device.device_variable_set
+            scope.edit_mixin.edit_template = "device.variable.form"
+            scope.edit_mixin.change_signal = "icsw.dv.changed"
+            scope.get_value = (obj) ->
+                if obj.var_type == "s"
+                    return obj.val_str
+                else if obj.var_type == "i"
+                    return obj.val_int
+                else if obj.var_type == "b"
+                    return obj.val_blob.length + " bytes"
+                else if obj.var_type == "t"
+                    return obj.val_time
+                else if obj.var_type == "d"
+                    return moment(obj.val_date).format("dd, D. MMM YYYY HH:mm:ss")
+                else
+                    return "unknown type #{obj.var_type}"
+            scope.get_var_type = (obj) ->
+                if obj.var_type == "s"
+                    return "string"
+                else if obj.var_type == "i"
+                    return "integer"
+                else if obj.var_type == "b"
+                    return "blob"
+                else if obj.var_type == "t"
+                    return "time"
+                else if obj.var_type == "d"
+                    return "datetime"
+                else
+                    return obj.var_type
+            scope.get_parent_vars = (obj, src) ->
+                my_names = (entry.name for entry in obj.device_variable_set)
+                parents = []
+                if not obj.is_cluster_device_group
+                    if obj.device_type_identifier != "MD" and src == "g"
+                        # device, inherited from group
+                        meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
+                        parents = meta_group.device_variable_set
+                    else if src == "c"
+                        if obj.device_type_identifier == "MD"
+                            # group, inherited from cluster
+                            parents = scope.cdg.device_variable_set
+                        else
+                            # device, inherited from cluster
+                            meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
+                            meta_names = (_entry.name for _entry in meta_group.device_variable_set)
+                            parents = (entry for entry in scope.cdg.device_variable_set when entry.name not in meta_names)
+                    parents = (entry for entry in parents when entry.name not in my_names)
+                return parents
+            scope.local_copy = (d_var, src) ->
+                new_var = angular.copy(d_var)
+                new_var.device = scope.obj.idx
+                Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then((data) ->
+                    scope.obj.device_variable_set.push(data)
+                )
+    }
+]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
-        $scope.base_edit.new_object = (scope) -> 
+        $scope.base_edit.new_object = (scope) ->
             return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0}
         $scope.base_edit.change_signal = "icsw.dv.changed"
         $scope.create = (obj, event) ->
@@ -173,123 +286,10 @@ device_variable_module = angular.module(
             # trigger redisplay of vars
             $scope.new_filter_set($scope.var_filter, false)
         )
-]).directive("icswDeviceVariableHead", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.head")
-    }
-]).directive("icswDeviceVariableRow", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.row")
-        link : (scope) ->
-            scope.num_parent_vars = (obj) ->
-                my_names = (entry.name for entry in obj.device_variable_set)
-                num_meta = 0
-                if not obj.is_cluster_device_group
-                    if obj.device_type_identifier != "MD"
-                        meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        meta_names = (entry.name for entry in meta_server.device_variable_set)
-                        num_meta += (entry for entry in meta_names when entry not in my_names).length
-                    else
-                        meta_names = []
-                    num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names and entry.name not in meta_names).length
-                return num_meta
-            scope.num_vars = (obj) ->
-                return scope.num_parent_vars + obj.device_variable_set.length
-            scope.parent_vars_defined = (obj) ->
-                return if scope.num_parent_vars(obj) then true else false
-            scope.num_shadowed_vars = (obj) ->
-                my_names = (entry.name for entry in obj.device_variable_set)
-                num_shadow = 0
-                if not obj.is_cluster_device_group
-                    if obj.device_type_identifier != "MD"
-                        meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        meta_names = (entry.name for entry in meta_server.device_variable_set)
-                        num_shadow += (entry for entry in meta_names when entry in my_names).length
-                    else
-                        meta_names = []
-                    num_shadow += (entry for entry in scope.cdg.device_variable_set when entry.name in my_names and entry.name not in meta_names).length
-                return num_shadow
-            scope.any_shadowed_vars = (obj) ->
-                return if scope.num_shadowed_vars(obj) then true else false
-    }
-]).filter("filter_name", ["$filter", ($filter) ->
-    return (arr, f_string) ->
-        try
-            cur_re = new RegExp(f_string, "gi")
-        catch exc
-            cur_re = new RegExp("^$", "gi")
-        return (entry for entry in arr when entry.name.match(cur_re))
-]).directive("icswDeviceVariableTable", ["$templateCache", "$compile", "$modal", "Restangular", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, ICSW_URLS) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.table")
-        link : (scope, el, attrs) ->
-            scope.device = scope.$eval(attrs["device"])
-            scope.filtervalue = scope.$eval(attrs["filtervalue"])
-            scope.edit_mixin = new angular_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-            scope.edit_mixin.delete_confirm_str = (obj) -> "Really delete variable '#{obj.name}' ?"
-            scope.edit_mixin.modify_rest_url = ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
-            scope.edit_mixin.delete_list = scope.device.device_variable_set
-            scope.edit_mixin.edit_template = "device.variable.form"
-            scope.edit_mixin.change_signal = "icsw.dv.changed"
-            scope.get_value = (obj) ->
-                if obj.var_type == "s"
-                    return obj.val_str
-                else if obj.var_type == "i"
-                    return obj.val_int
-                else if obj.var_type == "b"
-                    return obj.val_blob.length + " bytes"
-                else if obj.var_type == "t"
-                    return obj.val_time
-                else if obj.var_type == "d"
-                    return moment(obj.val_date).format("dd, D. MMM YYYY HH:mm:ss")
-                else
-                    return "unknown type #{obj.var_type}"
-            scope.get_var_type = (obj) ->
-                if obj.var_type == "s"
-                    return "string"
-                else if obj.var_type == "i"
-                    return "integer"
-                else if obj.var_type == "b"
-                    return "blob"
-                else if obj.var_type == "t"
-                    return "time"
-                else if obj.var_type == "d"
-                    return "datetime"
-                else
-                    return obj.var_type
-            scope.get_parent_vars = (obj, src) ->
-                my_names = (entry.name for entry in obj.device_variable_set)
-                parents = []                    
-                if not obj.is_cluster_device_group
-                    if obj.device_type_identifier != "MD" and src == "g"
-                        # device, inherited from group
-                        meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        parents = meta_group.device_variable_set
-                    else if src == "c"
-                        if obj.device_type_identifier == "MD"
-                            # group, inherited from cluster
-                            parents = scope.cdg.device_variable_set
-                        else
-                            # device, inherited from cluster
-                            meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                            meta_names = (_entry.name for _entry in meta_group.device_variable_set)
-                            parents = (entry for entry in scope.cdg.device_variable_set when entry.name not in meta_names) 
-                    parents = (entry for entry in parents when entry.name not in my_names)
-                return parents
-            scope.local_copy = (d_var, src) ->
-                new_var = angular.copy(d_var)
-                new_var.device = scope.obj.idx
-                Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then((data) ->
-                    scope.obj.device_variable_set.push(data)
-                )
-    }
 ]).directive("icswDeviceVariableOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.variable.overview")
-        link : (scope, el, attrs) ->
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.variable.overview")
+        controller: "icswDeviceVariableCtrl"
     }
 ])

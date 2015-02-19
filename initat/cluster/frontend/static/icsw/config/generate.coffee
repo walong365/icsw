@@ -132,16 +132,11 @@ config_gen_module = angular.module(
                 return "text-success"
             else
                 return "text-warning"
-]).directive("icswConfigGenerateConfig", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+]).directive("icswConfigGenerateConfig", ["$templateCache", ($templateCache) ->
     return {
+        scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.config.generate.config")
-        link : (scope, el, attrs) ->
-            if not attrs["devicepk"]?
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[1])
-                )
+        controller: "icswConfigGenerateCtrl"
     }
 ])
-

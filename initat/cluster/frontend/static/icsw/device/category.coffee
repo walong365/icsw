@@ -118,6 +118,7 @@ device_configuration_module = angular.module(
 ]).directive("icswDeviceCategoryOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        link : (scope, el, attrs) ->
+        controller: "icswDeviceCategoryCtrl"
+        template: $templateCache.get("icsw.device.category.overview")
     }
 ])

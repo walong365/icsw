@@ -449,20 +449,19 @@ rms_module = angular.module(
 <div class="panel panel-default">
     <div class="panel-body">
         <h2>#{title}</h2>
-        <div ng-controller='icswGraphOverviewCtrl'>
-            <icsw-rrd-graph
-                devicepk='#{dev_pks}'
-                selectkeys="load.*,net.all.*,mem.used.phys$,^swap.*"
-                draw="1"
-                mergedevices="0"
-                graphsize="240x100"
-                fromdt="#{start_time}"
-                todt="#{end_time}"
-                jobmode="#{job_mode}"
-                selectedjob="#{selected_job}"
-            >
-            </icsw-rrd-graph>
-        </div>
+        <icsw-rrd-graph
+            icsw-sel-man="0"
+            devicepk='#{dev_pks}'
+            selectkeys="load.*,net.all.*,mem.used.phys$,^swap.*"
+            draw="1"
+            mergedevices="0"
+            graphsize="240x100"
+            fromdt="#{start_time}"
+            todt="#{end_time}"
+            jobmode="#{job_mode}"
+            selectedjob="#{selected_job}"
+        >
+        </icsw-rrd-graph>
     </div>
 </div>
 """

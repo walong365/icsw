@@ -33,7 +33,7 @@ angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
-).controller("config_vars_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
@@ -81,9 +81,10 @@ angular.module(
             $scope.devvar_tree.show_selected(false)
 ]).directive("icswDeviceConfigurationVarOverview", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
+        scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.var.overview")
-        link : (scope, el, attrs) ->
+        controller: "icswConfigVarsCtrl"
     }
 ]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools", "ICSW_URLS",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, icswTools, ICSW_URLS) ->
@@ -255,9 +256,10 @@ angular.module(
                 return ""
 ]).directive("icswDeviceConfigurationOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
+        scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.overview")
-        link : (scope, el, attrs) ->
+        controller: "icswDeviceConfigurationCtrl"
     }
 ]).directive("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     return {

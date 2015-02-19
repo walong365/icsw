@@ -465,6 +465,7 @@ angular.module(
         )                
 ]).directive("icswRrdGraph", ["$templateCache", ($templateCache) ->
     return {
+        scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.rrd.graph.overview")
         link : (scope, el, attrs) ->
@@ -484,6 +485,7 @@ angular.module(
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
             scope.draw_on_init = attrs["draw"] ? false
+        controller: "icswGraphOverviewCtrl"
     }
 ]).service("icswRRDGraphTreeService", () ->
     class rrd_tree extends tree_config
