@@ -22,13 +22,15 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import Q, signals, Prefetch
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 import datetime
+from collections import defaultdict
 import json
 import logging_tools
 import re
+import operator
 
 __all__ = [
     "mon_host_cluster",
@@ -1283,11 +1285,48 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
         backup = False
 
 
+class raw_service_alert_manager(models.Manager):
+    def calc_service_alerts(self, start_time, end_time, device_ids=None, use_client_service_name=False):
+        service_alerts = defaultdict(lambda: [])
+
+        additional_device_filter = {}
+        if device_ids is not None:
+            additional_device_filter = {'device__in': device_ids}
+        queryset = self.filter(device_independent=False, date__range=(start_time, end_time), **additional_device_filter)
+        if use_client_service_name:
+            queryset.prefetch_related(Prefetch('service'))
+        for entry in queryset:
+            if use_client_service_name:
+                key = entry.device_id, self.calculate_service_name_for_client(entry)
+            else:
+                key = entry.device_id, entry.service_id, entry.service_info
+            service_alerts[key].append(entry)
+        # calc dev independent afterwards and add to all keys
+        for entry in self.filter(device_independent=True, date__range=(start_time, end_time)):
+            for key in service_alerts:
+                service_alerts[key].append(entry)
+        for l in service_alerts.itervalues():
+            # not in order due to dev independents
+            l.sort(key=operator.attrgetter('date'))
+        return service_alerts
+
+    @staticmethod
+    def calculate_service_name_for_client(entry):
+        """
+        :param entry: aggregated or raw log model entry. service should be prefetched for reasonable performance.
+        :rtype: unicode
+        """
+        service_name = entry.service.name if entry.service else u""
+        return u"{},{}".format(service_name, entry.service_info if entry.service_info else u"")
+
+
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_UNDETERMINED = "UD"
     STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL"),
                      (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+
+    objects = raw_service_alert_manager()
 
     # NOTE: there are different setup, at this time only regular check_commands are supported
     # they are identified by the mon_check_command.pk and their name, hence the fields here
@@ -1299,15 +1338,18 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
 
-    log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
-    initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
+    # whether this is an entry at the beginning of a fresh archive file.
+    log_rotation_state = models.BooleanField(default=False)
+    # whether this is an entry after icinga restart
+    initial_state = models.BooleanField(default=False)
 
     class CSW_Meta:
         backup = False
 
 
 class mon_icinga_log_full_system_dump(models.Model):
-    # save dates of all full system dumps, i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
+    # save dates of all full system dumps,
+    # i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
     # this is needed for faster access, the alerts-tables are too huge
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True)
