@@ -45,6 +45,7 @@ from initat.cluster.backbone.middleware import show_database_calls
 
 __all__ = ["icinga_log_aggregator"]
 
+
 # itertools recipe
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -72,7 +73,7 @@ class icinga_log_aggregator(object):
 
             # aggregate in order of duration for incremental aggregation (would break if not in order)
             for duration_type in (duration.Hour, duration.Day, duration.Week, duration.Month, duration.Year):
-                #self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
+                # self.log("updating icinga log aggregates for {}".format(duration_type.__name__))
                 try:
                     last_entry = mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest("start_date")
                     next_start_time = last_entry.end_date
@@ -94,7 +95,7 @@ class icinga_log_aggregator(object):
                         self.log("creating entry for {} starting at {}".format(duration_type.__name__, next_start_time))
                         next_last_service_alert_cache = self._create_timespan_entry(next_start_time, next_end_time, duration_type, next_last_service_alert_cache)
                     else:
-                        #self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
+                        # self.log("not sufficient data for entry from {} to {}".format(next_start_time, next_end_time))
                         do_loop = False
 
                     # check if we are supposed to die
@@ -105,16 +106,16 @@ class icinga_log_aggregator(object):
 
                     i += 1
 
-                    #def printfun(s):
+                    # def printfun(s):
                     #    import time
                     #    prof_file_name = "/tmp/db_calls.out.{}".format(time.time())
 
                     #    with open(prof_file_name, "a") as f:
                     #        f.write(s)
                     #        f.write("\n")
-                    #show_database_calls(printfun=printfun, full=True)
+                    # show_database_calls(printfun=printfun, full=True)
 
-                    #if i == 2:
+                    # if i == 2:
                     #    break
 
                     next_start_time = next_end_time
@@ -136,11 +137,14 @@ class icinga_log_aggregator(object):
         if duration_type == duration.Hour:
             next_last_service_alert_cache = self._create_timespan_entry_from_raw_data(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
         else:
-            self._create_timespan_entry_incrementally(timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache)
+            self._create_timespan_entry_incrementally(timespan_db, start_time, end_time,
+                                                      duration_type, next_last_service_alert_cache)
             next_last_service_alert_cache = None  # we don't get this here, but also don't need it
         return next_last_service_alert_cache
 
-    def _create_timespan_entry_from_raw_data(self, timespan_db, start_time, end_time, duration_type, next_last_service_alert_cache=None):
+
+    def _create_timespan_entry_from_raw_data(self, timespan_db, start_time, end_time, duration_type,
+                                             next_last_service_alert_cache=None):
         timespan_seconds = timespan_db.duration
 
         # get latest full system dump plus all in the timespan. these entries define the relevant hosts and services
@@ -154,7 +158,8 @@ class icinga_log_aggregator(object):
             # no earlier date
             pass
         dump_times.extend(
-            mon_icinga_log_full_system_dump.objects.filter(date__range=(start_time, end_time)).values_list('date', flat=True)
+            mon_icinga_log_full_system_dump.objects.filter(date__range=(start_time, end_time)).values_list('date',
+                                                                                                           flat=True)
         )
 
         timespan_hosts = mon_icinga_log_raw_host_alert_data.objects.filter(date__in=(dump_times), device_independent=False)\
@@ -182,7 +187,9 @@ class icinga_log_aggregator(object):
             return dict(cache)  # make into regular dict
         # TODO: possibly extract keys in cache
         service_flapping_cache = preprocess_flapping_data(self._service_flapping_cache,
-                                                          lambda flap_data: (flap_data.device_id, flap_data.service_id, flap_data.service_info))
+                                                          lambda flap_data: (flap_data.device_id,
+                                                                             flap_data.service_id,
+                                                                             flap_data.service_info))
         host_flapping_cache = preprocess_flapping_data(self._host_flapping_cache,
                                                        lambda flap_data: flap_data.device_id)
 
@@ -207,7 +214,8 @@ class icinga_log_aggregator(object):
                 key = data['device_id'], data['service_id'], data['service_info']
 
                 # the query above is not perfect, it should group only by device and service
-                # this seems to be hard in django: http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
+                # this seems to be hard in django:
+                # http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
                 # so we do the last grouping by this key here manually
                 if key not in last_service_alert_cache or last_service_alert_cache[key][1] < data['max_date']:
                     last_service_alert_cache[key] = (state, state_type), data['max_date']
@@ -335,7 +343,6 @@ class icinga_log_aggregator(object):
             service_db_rows = []
             # don't consider alerts for any machine, they are added below
 
-            #for device_id, service_id, service_info in self._serv_alert_keys_cache:
             for device_id, service_id, service_info in timespan_services:
                 # need to find last state
                 state_description_before = last_service_alert_cache.get((device_id, service_id, service_info), None)
