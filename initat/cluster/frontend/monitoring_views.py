@@ -597,25 +597,46 @@ class get_hist_service_data(ListAPIView):
                 # TODO: don't merge data here
                 # for full view, include more detailed data
                 shorter_duration_type = duration.get_shorter_duration(timespan_db.duration_type)
-                shorter_durations_db = mon_icinga_log_aggregated_timespan.objects.filter(start_date__gte=timespan_db.start_date,
-                                                                                         end_date__lte=timespan_db.end_date,
-                                                                                         duration_type=shorter_duration_type.ID)
+                shorter_durations_db =\
+                    mon_icinga_log_aggregated_timespan.objects.filter(start_date__gte=timespan_db.start_date,
+                                                                      end_date__lte=timespan_db.end_date,
+                                                                      duration_type=shorter_duration_type.ID)
 
                 detailed_data_per_device = get_data_per_device(device_ids, shorter_durations_db)
                 detailed_return_data = merge_state_types_per_device(detailed_data_per_device)
 
-            # calculate based on all events
-            # TODO: need a starting state. It's calculated in aggregation, so perhaps just save it there
+            # calculate detailed view based on all events
 
             start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
-            entries = mon_icinga_log_raw_service_alert_data.objects.calc_service_alerts(start,
-                                                                                        end,
-                                                                                        device_ids=device_ids,
-                                                                                        use_client_service_name=True)
+            obj_man = mon_icinga_log_raw_service_alert_data.objects
+            entries = obj_man.calc_service_alerts(start, end, device_ids=device_ids, use_client_service_name=True)
 
-            for (device_id, service_identifier), entry_list in entries.iteritems():
+            last_before_entries = obj_man.calc_limit_service_alerts(start,
+                                                                    mode='last before',
+                                                                    device_ids=device_ids,
+                                                                    use_client_service_name=True)
+
+            first_after_entries = obj_man.calc_limit_service_alerts(start,
+                                                                    mode='first after',
+                                                                    device_ids=device_ids,
+                                                                    use_client_service_name=True)
+
+            dev_serv_keys = set(entries.iterkeys())
+            dev_serv_keys.update(last_before_entries.iterkeys())
+            # don't consider first after for keys (if the first event is after the time frame, it's not relevant to us)
+
+            for (device_id, service_identifier) in dev_serv_keys:
+                amended_list = entries.get((device_id, service_identifier), [])
+
+                entry_before = last_before_entries.get((device_id, service_identifier), None)
+                if entry_before is not None:
+                    amended_list = [entry_before] + amended_list
+                entry_after = first_after_entries.get((device_id, service_identifier), None)
+                if entry_after is not None:
+                    amended_list = amended_list + [entry_after]
+
                 return_data[device_id][service_identifier]['detailed'] = \
-                    [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in entry_list]
+                    [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in amended_list]
 
         return Response([return_data])  # fake a list, see coffeescript
 
