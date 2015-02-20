@@ -6,15 +6,15 @@
             Timerange:
             <div class="form-group">
                 <div class="input-group">
-                    <input type="text" class="form-control" ng-model="startdate"></input>
+                    <input type="text" class="form-control" ng-model="startdate"/>
                     <span class="dropdown-toggle input-group-addon">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                                 <i class="glyphicon glyphicon-calendar"></i>
                             </button>
                             <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="startdate"
-                                                data-datetimepicker-config="{ startView:'day', minView:'day' }" />
+                                <datetimepicker ng-model="startdate" data-datetimepicker-config="{ startView:'day', minView:'day' }" >
+                                </datetimepicker>
                             </ul>
                         </div>
                     </span>
@@ -37,11 +37,11 @@
         </div>
     </h4>
 
-    <h4 ng-if="!timespan_error ">Showing data from {{timespan_from}} to {{timespan_to}}:</h4>
+    <h4 ng-if="!timespan_error ">Showing data from {{timespanfrom_str}} to {{timespanto_str}}:</h4>
     <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
 
     <div ng-repeat="device in devicepks">
-        <icsw-device-status-history-device device="{{device}}" timerange="timerange" startdate="startdate" />
+        <icsw-device-status-history-device device="{{device}}" timerange="timerange" startdate="startdate" timespanfrom="timespanfrom" timespanto="timespanto" ></icsw-device-status-history-device>
     </div>
 </script>
 
@@ -71,26 +71,35 @@
                 </thead>
                 <tbody>
                 <tr ng-repeat="entry in service_data">
-                    <td> {{ extract_service_name(entry[0]) }} </td>
+                    <td> {{ entry.name }} </td>
                     <td class="text-right">
-                        <icsw-tools-piechart diameter="28" data="entry[2]"></icsw-tools-piechart>
+                        <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
                     </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Ok") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Warning") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Critical") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Unknown") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Undetermined") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Flapping") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Ok") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Warning") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Critical") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Unknown") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
+                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
                     <td>
-                        <!-- TODO: implement this directive from svg code below -->
-                        <icsw-tools-status-line-graph></icsw-tools-status-line-graph>
-                        <svg width="350" height="20">
+                        <icsw-tools-service-hist-line-graph timemarker="timemarker" data="entry.detailed_data" timespanfrom="timespanfrom" timespanto="timespanto"></icsw-tools-service-hist-line-graph>
+                    </td>
+                    <td>
+                        <svg width="225" height="30">
                             <g>
-                                <text x="0" y="-5">0:00</text>
-                                <text x="50" y="-5">3:00</text>
-                                <rect x="0" width="100" height="20" style="fill:rgb(0,0,255);stroke-width:1;stroke:rgb(0,0,0)"></rect>
-                                <rect x="100" width="50" height="20" style="fill:rgb(255,0,0);stroke-width:1;stroke:rgb(0,0,0)"></rect>
-                                <rect x="150" width="50" height="20" style="fill:rgb(0,255,255);stroke-width:1;stroke:rgb(0,0,0)"></rect>
+                                <rect x="10"   y="10" width="20" height="10" rx="1" ry="1" style="fill:#66dd66;stroke-width:0;stroke:rgb(0,0,0)"></rect>
+                                <rect x="30"   y="0"  width="5"  height="20" rx="1" ry="1" style="fill:#ff7777;stroke-width:0;stroke:rgb(0,0,0)"></rect>
+                                <rect x="35"   y="10" width="55" height="10" rx="1" ry="1" style="fill:#66dd66;stroke-width:0;stroke:rgb(0,0,0)"></rect>
+                                <rect x="90"   y="0"  width="20" height="20" rx="1" ry="1" style="fill:#ff7777;stroke-width:0;stroke:rgb(0,0,0)"></rect>
+                                <rect x="110"  y="5"  width="50" height="15" rx="1" ry="1" style="fill:#f0ad4e;stroke-width:0;stroke:rgb(0,0,0)"></rect>
+                                <rect x="160"  y="10" width="30" height="10" rx="1" ry="1" style="fill:#66dd66;stroke-width:0;stroke:rgb(0,0,0)"></rect>
+                                <rect x="190"  y="10" width="20" height="10" rx="1" ry="1" style="fill:#c7c7c7;stroke-width:0;stroke:rgb(0,0,0)"></rect>
+
+                                <text x="10"    y="30"  style="fill:black;" font-size="10px" text-anchor="middle" alignment-baseline="baseline">0:00</text>
+                                <text x="60"   y="30"  style="fill:black;" font-size="10px" text-anchor="middle">6:00</text>
+                                <text x="110"  y="30" style="fill:black;" font-size="10px" text-anchor="middle">12:00</text>
+                                <text x="160"  y="30" style="fill:black;" font-size="10px" text-anchor="middle">18:00</text>
+                                <text x="210"  y="30" style="fill:black;" font-size="10px" text-anchor="middle">24:00</text>
                             </g>
                         </svg>
 
