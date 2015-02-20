@@ -215,7 +215,7 @@ angular.module(
         State: {{tooltip_entry.state}}<br/>
         Start: {{tooltip_entry.start}}<br/>
         End: {{tooltip_entry.end}}<br/>
-        <span ng-show="tooltip_entry.msg">Message: {{tooltip_entry.msg}} <br /></span>
+        <span ng-show="tooltip_entry.msg">{{tooltip_entry.msg}} <br /></span>
     </div>
 </div>
 """
@@ -245,11 +245,20 @@ angular.module(
 
                     scope.timemarker_display = []
                     time_marker = status_history_ctrl.get_time_marker()
-                    for marker, index in time_marker
+                    for marker, index in time_marker.data
+                        if time_marker.time_points
+                            # time is exactly at certain points
+                            pos_x = scope.side_margin + index * scope.draw_width / (time_marker.data.length-1)
+                        else
+                            # pos should be in the middle of the durations, such as week days, month
+                            unit_size = scope.draw_width / time_marker.data.length
+                            start_of_unit = scope.side_margin + (index * unit_size)
+                            pos_x = start_of_unit + (unit_size / 2)
+
                         scope.timemarker_display.push(
                             {
                                 text: marker
-                                pos_x: scope.side_margin + index * scope.draw_width / (time_marker.length-1)
+                                pos_x: pos_x
                             }
 
                         )
