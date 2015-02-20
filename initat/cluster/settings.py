@@ -284,7 +284,7 @@ INSTALLED_APPS = (
     "django_extensions",
     "reversion",
     "pipeline",
-    "static_precompiler",
+    # "static_precompiler",
     "crispy_forms",
 )
 if SLAVE_MODE:
@@ -300,7 +300,7 @@ CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
-STATIC_PRECOMPILER_CACHE = not DEBUG
+# STATIC_PRECOMPILER_CACHE = not DEBUG
 
 try:
     import crispy_forms
@@ -331,7 +331,7 @@ else:
 STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-    "static_precompiler.finders.StaticPrecompilerFinder",
+    # "static_precompiler.finders.StaticPrecompilerFinder",
     "pipeline.finders.PipelineFinder",
 )
 
