@@ -616,7 +616,7 @@ class get_hist_service_data(ListAPIView):
                                                                     device_ids=device_ids,
                                                                     use_client_service_name=True)
 
-            first_after_entries = obj_man.calc_limit_service_alerts(start,
+            first_after_entries = obj_man.calc_limit_service_alerts(end,
                                                                     mode='first after',
                                                                     device_ids=device_ids,
                                                                     use_client_service_name=True)
