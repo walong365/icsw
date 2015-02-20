@@ -163,7 +163,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
         return [("/bin/true", ctrl_id, "init") for ctrl_id in ctrl_list] + \
                [("%s -AdpAllInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "adp") for ctrl_id in ctrl_list] + \
                [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
-               [("%s -AdpBbuCmd -GetBbuStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
+               [("%s -AdpBbuCmd -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
                [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
                [("/bin/true", 0, "done")]
 
@@ -426,12 +426,20 @@ class ctrl_type_megaraid_sas(ctrl_type):
             elif _entity_type == "b":
                 _ld = get_log_dict(lines)
                 _info_f = []
-                for key in ["temperature", "voltage", "relative_state_of_charge", "learn_cycle_status"]:
-                    if key in _ld:
+                for key in ["temperature", "voltage", "absolute_state_of_charge", "relative_state_of_charge", "*learn_cycle_requested", "learn_cycle_status", "cycle_count"]:
+                    if key[0] in ["*"]:
+                        _key = key[1:]
+                        _ignore_true = True
+                    else:
+                        _key = key
+                        _ignore_true = False
+                    if _key in _ld:
+                        if _ignore_true and _ld[_key] is True:
+                            continue
                         _info_f.append(
                             "{}: {}".format(
-                                key,
-                                _ld[key],
+                                _key,
+                                _ld[_key],
                             )
                         )
                 _info_str = ", ".join(_info_f)
@@ -548,7 +556,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
             )
 
         def _shorten_list(in_list):
-            shorten_re = re.compile("^(?P<pre>c\d+:(v|e)\d+:(d|s|f))(?P<rest>\d+)$")
+            # pprint.pprint(in_list)
+            # shorten_re = re.compile("^(?P<pre>c\d+:(v|e)\d+:(d|s|f))(?P<rest>\d+)$")
+            shorten_re = re.compile("^(?P<pre>c\d+:((v\d+:(d|s|f))|e))(?P<rest>.*\d+)$")
             _shorten_dict = {}
             new_list, _shorten_keys = ([], [])
             for key, _check, _info, _flag in r_list:
@@ -576,6 +586,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
             for _shorten_key in _shorten_keys:
                 _sde = _shorten_dict[_shorten_key]
                 new_list.append((_shorten_key, _sde["check"], _compress_infos(_sde["infos"]), _sde["flag"]))
+            # print "out"
+            # pprint.pprint(new_list)
+            # pprint.pprint(_shorten_dict)
+            # print "-" * 10
             return new_list, _shorten_dict
 
         def _generate_short_result(_struct, _lss):
@@ -600,11 +614,70 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     )
             return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list), ""
 
+        def _compress_list(in_list):
+            # reduce list
+            if len(in_list) == 1:
+                return in_list
+            # find longest common prefix
+            _len = 0
+            while True:
+                _pfs = set([_value[:_len + 1] for _value in in_list])
+                if len(_pfs) == 1:
+                    _len += 1
+                else:
+                    break
+            if _len:
+                _res = _compress_list(
+                    [_value[_len:] for _value in in_list]
+                )
+                return [(in_list[0][:_len], _res)]
+            else:
+                _pfs = sorted(list(_pfs))
+                # check for integer pfs
+                if all([_pf.isdigit() for _pf in _pfs]):
+                    _dict = {}
+                    _pfs = set()
+                    for _value in in_list:
+                        _pf = _value[0]
+                        if _value[2].isdigit():
+                            _pf = _value[:3]
+                        elif _value[1].isdigit():
+                            _pf = _value[:2]
+                        else:
+                            _pf = _value[0]
+                        _pfs.add(int(_pf))
+                        _dict.setdefault(_pf, []).append(_value[len(_pf):])
+                    _pfs = sorted(list(_pfs))
+                    if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
+                        # all values are the same, return compressed list
+                        return [(logging_tools.compress_num_list(_pfs), _compress_list(_dict.values()[0]))]
+                    else:
+                        _pfs = ["{:d}".format(_val) for _val in _pfs]
+                        return [(_pf, _compress_list(_dict[_pf])) for _pf in _pfs]
+                else:
+                    return [(_pf, _compress_list([_value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf])) for _pf in _pfs]
+
+        def _expand_list(in_struct):
+            # recursivly expand a given line_struct
+            _pf, _list = in_struct
+            _r = []
+            for _entry in _list:
+                if isinstance(_entry, basestring):
+                    _r.append(_entry)
+                else:
+                    _r.append(_expand_list(_entry))
+            return "{}{}".format(
+                _pf,
+                ", ".join(_r)
+            )
+
         def _compress_infos(in_list):
+            return _expand_list(_compress_list(in_list)[0])
             # only working for standard input
             _prefix, _what = in_list[0].split()
             while _prefix[-1].isdigit():
                 _prefix = _prefix[:-1]
+            print "p", _prefix
             _ints = [int(_part.strip().split()[0][len(_prefix):]) for _part in in_list]
             return "{}{} {}".format(
                 _prefix,
