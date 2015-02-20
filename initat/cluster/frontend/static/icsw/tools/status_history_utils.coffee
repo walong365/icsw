@@ -4,16 +4,17 @@ angular.module(
     "icsw.tools.status_history_utils", ["icsw.tools.piechart", "restangular"]
 ).directive('icswToolsDeviceHistStatusOverview', ["$parse", "status_utils_functions", ($parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
+    # used in status history page and monitoring overview
     return {
         restrict: 'E',
         scope: {
             data: "="  # if data is passed right through here, the other attributes are discarded
+                       # data must be defined if we are not below the status history ctrl
             deviceid: "="
-            startdate: "="
-            timerange: "="
         },
+        require: '?^icswDeviceStatusHistoryOverview'
         templateUrl: "icsw.tools.device_hist_status"
-        link: (scope, element, attrs) ->
+        link: (scope, element, attrs, status_history_ctrl) ->
             scope.show_table = scope.$eval(attrs.showTable)
 
             # TODO: make this into a filter, then remove also from serviceHist*
@@ -35,11 +36,19 @@ angular.module(
             }
 
             scope.update_from_server = () ->
-                cont = (new_data) ->
-                    new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
-                    [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, colors, scope.float_format)
+                if status_history_ctrl.time_frame?
+                    cont = (new_data) ->
+                        new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
+                        [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, colors, scope.float_format)
 
-                status_utils_functions.get_device_data([scope.deviceid], scope.startdate, scope.timerange, cont)
+                    status_utils_functions.get_device_data(
+                        [scope.deviceid],
+                        status_history_ctrl.time_frame.date_gui,
+                        status_history_ctrl.time_frame.duration_type,
+                        cont)
+                else
+                    scope.host_data = []
+                    scope.pie_data = []
 
             scope.update_from_local_data = () ->
                 if scope.data?
@@ -48,20 +57,23 @@ angular.module(
             if attrs.data?
                 scope.$watch('data', (unused) -> scope.update_from_local_data())
             else
-                scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
+                scope.$watchGroup(
+                    ['deviceid', () -> return status_history_ctrl.time_frame]
+                    (unused) -> scope.update_from_server())
     }
 ]).directive('icswToolsServiceHistStatusOverview', ["$parse", "status_utils_functions", ($parse, status_utils_functions) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
+    # currently only used in monitoring_overview
     return {
         restrict: 'E',
         scope: {
             data: "="  # if data is passed right through here, the other attributes are discarded
+                       # data must be defined if we are not below the status history ctrl
             deviceid: "="
-            startdate: "="
-            timerange: "="
         },
         templateUrl: "icsw.tools.service_hist_status"
-        link: (scope, element, attrs) ->
+        require: '?^icswDeviceStatusHistoryCtrl'
+        link: (scope, element, attrs, status_history_ctrl) ->
 
             # TODO: see above
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
@@ -69,12 +81,18 @@ angular.module(
             scope.pie_data = []
 
             scope.update_from_server = () ->
-                cont = (new_data) ->
-                    new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
-                    new_data = new_data['main']  # only main data here
-                    [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
+                if status_history_ctrl.time_frame?
+                    cont = (new_data) ->
+                        new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
+                        new_data = new_data['main']  # only main data here
+                        [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
-                status_utils_functions.get_service_data([scope.deviceid], scope.startdate, scope.timerange, cont, merge_services=1)
+                    status_utils_functions.get_service_data(
+                        [scope.deviceid],
+                        status_history_ctrl.time_frame.date_gui,
+                        status_history_ctrl.time_frame.time_range,
+                        cont,
+                        merge_services=1)
 
             scope.update_from_local_data = () ->
                 if scope.data?
@@ -83,7 +101,9 @@ angular.module(
             if attrs.data?
                 scope.$watch('data', (unused) -> scope.update_from_local_data())
             else
-                scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
+                scope.$watchGroup(
+                    ['deviceid', () -> return status_history_ctrl.time_frame]
+                    (unused) -> scope.update_from_server())
     }
 ]).service('status_utils_functions', ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     service_colors = {
@@ -173,10 +193,8 @@ angular.module(
         restrict: 'E'
         scope   : {
             'data' : '='
-            'timemarker' : '='
-            'timespanfrom' : '='
-            'timespanto' : '='
         }
+        require : "^icswDeviceStatusHistoryOverview"
         template: """
 <svg ng-attr-width="{{width}}" height="30">
     <g>
@@ -189,64 +207,70 @@ angular.module(
     </g>
 </svg>
 """
-        link: (scope, element, attrs) ->
+        link: (scope, element, attrs, status_history_ctrl) ->
             scope.width = 300
             scope.side_margin = 15
             scope.draw_width = scope.width - 2 * scope.side_margin
 
             scope.update = () ->
-                for i in  ['data', 'timemarker', 'timespanfrom', 'timespanto']
-                    console.log i, scope[i]
 
-                scope.timemarker_display = []
-                for marker, index in scope.timemarker
-                    scope.timemarker_display.push(
-                        {
-                            text: marker
-                            pos_x: scope.side_margin + index * scope.draw_width / (scope.timemarker.length-1)
-                        }
+                console.log 'upd line gr', scope.data
+                time_frame = status_history_ctrl.time_frame
 
-                    )
-                    # console.log ' posx mark', scope.side_margin + index * scope.draw_width / (scope.timemarker.length-1)
+                if time_frame?
 
-                total_duration = scope.timespanto.diff(scope.timespanfrom)
+                    scope.timemarker_display = []
+                    time_marker = status_history_ctrl.get_time_marker()
+                    for marker, index in time_marker
+                        scope.timemarker_display.push(
+                            {
+                                text: marker
+                                pos_x: scope.side_margin + index * scope.draw_width / (time_marker.length-1)
+                            }
 
-                scope.data_display = []
+                        )
+                        # console.log ' posx mark', scope.side_margin + index * scope.draw_width / (scope.timemarker.length-1)
 
-                pos_x = scope.side_margin
+                    total_duration = time_frame.end.diff(time_frame.start)
 
-                last_date = scope.timespanfrom
+                    scope.data_display = []
 
-                for entry, index in scope.data.concat('last')
-                        if entry == 'last'
-                            cur_date = scope.timespanto
-                        else
-                            cur_date = moment.utc(entry.date)
+                    pos_x = scope.side_margin
 
-                        duration = cur_date.diff(last_date)
+                    last_date = time_frame.start
 
-                        entry_width = scope.draw_width * duration / total_duration
+                    for entry, index in scope.data.concat('last')
+                            if entry == 'last'
+                                cur_date = time_frame.end
+                            else
+                                cur_date = moment.utc(entry.date)
 
-                        if index != 0
-                            last_state = scope.data[index-1].state
+                            duration = cur_date.diff(last_date)
 
-                            scope.data_display.push(
-                                {
-                                    pos_x : pos_x
-                                    width : entry_width
-                                    color : status_utils_functions.service_colors[last_state]
-                                    height: 15
-                                }
-                            )
+                            entry_width = scope.draw_width * duration / total_duration
 
-                            # console.log 'entry ', pos_x, pos_x + entry_width
+                            if index != 0
+                                last_state = scope.data[index-1].state
 
-                        pos_x += entry_width
+                                scope.data_display.push(
+                                    {
+                                        pos_x : pos_x
+                                        width : entry_width
+                                        color : status_utils_functions.service_colors[last_state]
+                                        height: 15
+                                    }
+                                )
 
-                        last_date = cur_date
+                                # console.log 'entry ', pos_x, pos_x + entry_width
 
-                console.log 'done'
+                            pos_x += entry_width
 
-            scope.$watchGroup(['data', 'timemarker', 'timespanfrom', 'timespanto'],  (unused) -> scope.update() )
+                            last_date = cur_date
+
+                    console.log 'done'
+                else
+                    scope.data = []
+
+            scope.$watchGroup(['data', () -> return status_history_ctrl.time_frame],  (unused) -> scope.update() )
     }
 ])
