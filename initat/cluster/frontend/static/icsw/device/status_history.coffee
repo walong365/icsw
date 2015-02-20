@@ -11,8 +11,10 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
         restrict : "EA"
         templateUrl : "icsw.device.status_history_device"
         scope : {
-            timerange: '='
-            startdate: '='
+            timerange: '=' # 'day', 'week', etc as in gui
+            startdate: '=' # startdate as in gui
+            timespanfrom: '=' # start of actual data
+            timespanto: '=' # end of actual data
         }
         link : (scope, el, attrs) ->
             scope.devicepks = []
@@ -22,8 +24,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
             Restangular.one(ICSW_URLS.REST_DEVICE_LIST.slice(1)).get({'idx': scope.device_id}).then((new_data)->
                 scope.device_rest = new_data[0]
             )
-            scope.$watch('timerange', (unused) -> scope.update())
-            scope.$watch('startdate', (unused) -> scope.update())
+
             scope.extract_service_value = (service, key) ->
                 entries = _.filter(service, (e) -> e.state == key)
                 ret = 0
@@ -50,12 +51,18 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
                 serv_cont = (new_data) ->
                     new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
                     # new_data is dict, but we want it as list to be able to sort it
-                    data = ([key, val, scope.calc_pie_data(key, val)] for key, val of new_data)
-                    scope.service_data = _.sortBy(data, (entry) -> return scope.extract_service_name(entry[0]))
+                    data = ({'name': scope.extract_service_name(key),
+                             'main_data': val.main,
+                             'pie_data': scope.calc_pie_data(key, val.main),
+                             'detailed_data': val.detailed} for key, val of new_data)
+
+                    scope.service_data = _.sortBy(data, (entry) -> return entry.name)
+
+                    scope.timemarker = status_utils_functions.get_timemarker() ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"]
 
                 status_utils_functions.get_service_data([scope.device_id], scope.startdate, scope.timerange, serv_cont)
 
-            scope.update()
+            scope.$watchGroup(['timerange', 'startdate'],  (unused) -> scope.update() )
     }
 ]).directive("icswDeviceStatusHistoryOverview", ["status_utils_functions", (status_utils_functions) ->
     return {
@@ -72,6 +79,8 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
             if true  # debug
                 scope.startdate = moment('Wed Feb 11 2015 00:00:00 GMT+0100 (CET)')
                 scope.timerange = 'week'
+                scope.startdate = moment('Feb 13 2015 00:00:00 GMT+0100 (CET)')
+                scope.timerange = 'day'
 
             scope.set_timerange = (tr) ->
                 scope.timerange = tr
@@ -83,18 +92,19 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
                     scope.timespan_to = ""
                     if new_data.length > 0
                         timespan = new_data[0]
-                        scope.timespan_from = moment.utc(timespan[0]).format("DD.MM.YYYY HH:mm")
-                        scope.timespan_to = moment.utc(timespan[1]).format("DD.MM.YYYY HH:mm")
+
+                        scope.timespanfrom = moment.utc(timespan[0])
+                        scope.timespanto = moment.utc(timespan[1])
+                        scope.timespanfrom_str = moment.utc(timespan[0]).format("DD.MM.YYYY HH:mm")
+                        scope.timespanto_str = moment.utc(timespan[1]).format("DD.MM.YYYY HH:mm")
                     else
                         scope.timespan_error = "No data available for this time span"
 
                 status_utils_functions.get_timespan(scope.startdate, scope.timerange, cont)
 
-            scope.$watch('timerange', (unused) -> scope.update())
-            scope.$watch('startdate', (unused) -> scope.update())
             scope.new_devsel = (new_val) ->
                 scope.devicepks = new_val
                 scope.update()
-            scope.update()
+            scope.$watchGroup(['timerange', 'startdate'],  (unused) -> scope.update() )
     }
 ])

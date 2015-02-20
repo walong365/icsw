@@ -71,6 +71,7 @@ angular.module(
             scope.update_from_server = () ->
                 cont = (new_data) ->
                     new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
+                    new_data = new_data['main']  # only main data here
                     [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
                 status_utils_functions.get_service_data([scope.deviceid], scope.startdate, scope.timerange, cont, merge_services=1)
@@ -85,6 +86,13 @@ angular.module(
                 scope.$watchGroup(['deviceid', 'startdate', 'timerange'], (unused) -> scope.update_from_server())
     }
 ]).service('status_utils_functions', ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+    service_colors = {
+            "Ok": "#66dd66"
+            "Warning": "#f0ad4e"
+            "Critical": "#ff7777"
+            "Unknown": "#c7c7c7"
+            "Undetermined": "#c7c7c7"
+        }
     get_device_data = (device_ids, start_date, timerange, cont) ->
         query_data = {
             'device_ids': device_ids.join(),
@@ -110,14 +118,8 @@ angular.module(
         # we always return a list for easier REST handling
         base.getList(query_data).then((data_pseudo_list) ->
             # need plain() to get rid of restangular stuff
-            console.log 'serv', data_pseudo_list.plain()[0]
+            console.log 'new get_service_data: ', data_pseudo_list.plain()[0]
             cont(data_pseudo_list.plain()[0])
-        )
-
-        line_base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_LINE_GRAPH_DATA.slice(1))
-        line_base.getList(query_data).then((data) ->
-            data = data.plain()
-            console.log 'dat', data
         )
     get_timespan = (start_date, timerange, cont) ->
         query_data = {
@@ -149,24 +151,14 @@ angular.module(
                 }
         return [final_data, pie_data]
     preprocess_service_state_data = (new_data, float_format) ->
-            weights = {
-                "Ok": -10
-                "Warning": -9
-                "Critical": -8
-                "Unknown": -5
-                "Undetermined": -4
-            }
-
-            colors = {
-                "Ok": "#66dd66"
-                "Warning": "#f0ad4e"
-                "Critical": "#ff7777"
-                "Unknown": "#c7c7c7"
-                "Undetermined": "#c7c7c7"
-            }
-
-            return preprocess_state_data(new_data, weights, colors, float_format)
-
+        weights = {
+            "Ok": -10
+            "Warning": -9
+            "Critical": -8
+            "Unknown": -5
+            "Undetermined": -4
+        }
+        return preprocess_state_data(new_data, weights, service_colors, float_format)
     return {
         float_format: float_format
         get_device_data: get_device_data
@@ -174,6 +166,87 @@ angular.module(
         get_timespan: get_timespan
         preprocess_state_data: preprocess_state_data
         preprocess_service_state_data: preprocess_service_state_data
+        service_colors: service_colors
+    }
+]).directive("icswToolsServiceHistLineGraph", ["status_utils_functions", (status_utils_functions) ->
+    return {
+        restrict: 'E'
+        scope   : {
+            'data' : '='
+            'timemarker' : '='
+            'timespanfrom' : '='
+            'timespanto' : '='
+        }
+        template: """
+<svg ng-attr-width="{{width}}" height="30">
+    <g>
+        <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}"  y="5"
+              ng-attr-width="{{entry.width}}" ng-attr-height="{{entry.height}}" rx="1" ry="1"
+              ng-attr-style="fill:{{entry.color}};stroke-width:0;stroke:rgb(0,0,0)"></rect>
+    </g>
+    <g>
+        <text ng-repeat="marker in timemarker_display" ng-attr-x="{{marker.pos_x}}" y="30"  style="fill:black;" font-size="10px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
+    </g>
+</svg>
+"""
+        link: (scope, element, attrs) ->
+            scope.width = 300
+            scope.side_margin = 15
+            scope.draw_width = scope.width - 2 * scope.side_margin
+
+            scope.update = () ->
+                for i in  ['data', 'timemarker', 'timespanfrom', 'timespanto']
+                    console.log i, scope[i]
+
+                scope.timemarker_display = []
+                for marker, index in scope.timemarker
+                    scope.timemarker_display.push(
+                        {
+                            text: marker
+                            pos_x: scope.side_margin + index * scope.draw_width / (scope.timemarker.length-1)
+                        }
+
+                    )
+                    # console.log ' posx mark', scope.side_margin + index * scope.draw_width / (scope.timemarker.length-1)
+
+                total_duration = scope.timespanto.diff(scope.timespanfrom)
+
+                scope.data_display = []
+
+                pos_x = scope.side_margin
+
+                last_date = scope.timespanfrom
+
+                for entry, index in scope.data.concat('last')
+                        if entry == 'last'
+                            cur_date = scope.timespanto
+                        else
+                            cur_date = moment.utc(entry.date)
+
+                        duration = cur_date.diff(last_date)
+
+                        entry_width = scope.draw_width * duration / total_duration
+
+                        if index != 0
+                            last_state = scope.data[index-1].state
+
+                            scope.data_display.push(
+                                {
+                                    pos_x : pos_x
+                                    width : entry_width
+                                    color : status_utils_functions.service_colors[last_state]
+                                    height: 15
+                                }
+                            )
+
+                            # console.log 'entry ', pos_x, pos_x + entry_width
+
+                        pos_x += entry_width
+
+                        last_date = cur_date
+
+                console.log 'done'
+
+            scope.$watchGroup(['data', 'timemarker', 'timespanfrom', 'timespanto'],  (unused) -> scope.update() )
     }
 ])
-

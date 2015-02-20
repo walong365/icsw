@@ -453,13 +453,23 @@ class create_device(permission_required_mixin, View):
 # device status history views
 class _device_status_history_util(object):
     @staticmethod
-    def get_timespan_db_from_request(request):
+    def get_timespan_tuple_from_request(request):
         date = duration_utils.parse_date(request.GET["date"])
-        duration_type = {'day': duration.Day, 'week': duration.Week, 'month': duration.Month, 'year': duration.Year}[request.GET['duration_type']]
+        duration_type = {'day': duration.Day,
+                         'week': duration.Week,
+                         'month': duration.Month,
+                         'year': duration.Year}[request.GET['duration_type']]
         start = duration_type.get_time_frame_start(date)
         end = duration_type.get_end_time_for_start(start)
+        return start, end, duration_type
+
+    @staticmethod
+    def get_timespan_db_from_request(request):
+        start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
+
         try:
-            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID, start_date__range=(start, end))
+            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID,
+                                                                  start_date__range=(start, end))
         except mon_icinga_log_aggregated_timespan.DoesNotExist:
             return None
 
@@ -569,18 +579,26 @@ class get_hist_service_data(ListAPIView):
 
         data_per_device = get_data_per_device(device_ids, [timespan_db])
 
+        def transform_to_main_and_detailed_format(prelim_return_data):
+            # there should be 'detailed' and 'main' for each service for each device
+            return_data = defaultdict(lambda: defaultdict(lambda: {}))  # detailed data later may add more devices
+            for dev, dev_data in prelim_return_data.iteritems():
+                for serv, serv_data in dev_data.iteritems():
+                    return_data[dev][serv] = {'detailed': [], 'main': serv_data}
+            return return_data
+
         # this mode is for an overview of the services of a device without saying anything about a particular service
         if int(request.GET.get("merge_services", 0)):
             prelim_return_data = merge_services(data_per_device)
-            return_data = {dev: {"main": data, "detailed": {}} for dev, data in prelim_return_data.iteritems()}
+            return_data = transform_to_main_and_detailed_format(prelim_return_data)
 
         else:
             prelim_return_data = merge_state_types_per_device(data_per_device)
+            return_data = transform_to_main_and_detailed_format(prelim_return_data)
 
-
-            detailed_return_data = defaultdict(lambda: [])
-            if False:
+            if False:  # NOTE: code for detailed view based on aggregated data, not full data
                 # TODO: timespan_db can be None
+                # TODO: don't merge data here
                 # for full view, include more detailed data
                 shorter_duration_type = duration.get_shorter_duration(timespan_db.duration_type)
                 shorter_durations_db = mon_icinga_log_aggregated_timespan.objects.filter(start_date__gte=timespan_db.start_date,
@@ -590,20 +608,18 @@ class get_hist_service_data(ListAPIView):
                 detailed_data_per_device = get_data_per_device(device_ids, shorter_durations_db)
                 detailed_return_data = merge_state_types_per_device(detailed_data_per_device)
 
-            return_data ={}
-            for dev, main_data in prelim_return_data.iteritems():
-                return_data[dev]={
-                    'main'    : main_data,
-                    'detailed': detailed_return_data[dev]
-                }
+            # calculate based on all events
+            # TODO: need a starting state. It's calculated in aggregation, so perhaps just save it there
 
-                # TODO: don't merge data from detailed view gr
-                # TODO: fix angular side for new data
+            start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
+            entries = mon_icinga_log_raw_service_alert_data.objects.calc_service_alerts(start,
+                                                                                        end,
+                                                                                        device_ids=device_ids,
+                                                                                        use_client_service_name=True)
 
-        # NOTE: disable main and detailed for now
-        for key, value in return_data.items():
-            print 'val', value
-            return_data[key] = value['main']
+            for (device_id, service_identifier), entry_list in entries.iteritems():
+                return_data[device_id][service_identifier]['detailed'] = \
+                    [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in entry_list]
 
         return Response([return_data])  # fake a list, see coffeescript
 
@@ -616,16 +632,4 @@ class get_hist_service_line_graph_data(ListAPIView):
 
         timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
 
-        # TODO: need a starting state. It's calculated in aggregation, so perhaps just save it there
-
-        entries = mon_icinga_log_raw_service_alert_data.objects.calc_service_alerts(timespan_db.start_date,
-                                                                                    timespan_db.end_date,
-                                                                                    device_ids=device_ids,
-                                                                                    use_client_service_name=True)
-
-        return_data = defaultdict(lambda: defaultdict(lambda: []))
-        for (device_id, service_identifier), entry_list in entries.iteritems():
-            return_data[device_id][service_identifier] = [(entry.date, entry.state, entry.msg) for entry in entry_list]
-
-        return Response([return_data])
-
+        raise "disabled"
