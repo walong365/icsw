@@ -193,38 +193,12 @@ class icinga_log_aggregator(object):
         host_flapping_cache = preprocess_flapping_data(self._host_flapping_cache,
                                                        lambda flap_data: flap_data.device_id)
 
-        def calc_last_service_alert_cache():
-            try:
-                latest_dev_independent_service_alert = mon_icinga_log_raw_service_alert_data.objects\
-                    .filter(date__lte=start_time, device_independent=True).latest('date')
-            except mon_icinga_log_raw_service_alert_data.DoesNotExist:
-                latest_dev_independent_service_alert = None
-
-            # get last service alert of each service before the start time
-            last_service_alert_cache = {}
-            for data in mon_icinga_log_raw_service_alert_data.objects\
-                    .filter(date__lte=start_time, device_independent=False)\
-                    .values("device_id", "service_id", "service_info", "state", "state_type")\
-                    .annotate(max_date=Max('date')):
-                # prefer latest info if there is dev independent one
-                if latest_dev_independent_service_alert and latest_dev_independent_service_alert.date > data['max_date']:
-                    state, state_type = latest_dev_independent_service_alert.state, latest_dev_independent_service_alert.state_type
-                else:
-                    state, state_type = data['state'], data['state_type']
-                key = data['device_id'], data['service_id'], data['service_info']
-
-                # the query above is not perfect, it should group only by device and service
-                # this seems to be hard in django:
-                # http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
-                # so we do the last grouping by this key here manually
-                if key not in last_service_alert_cache or last_service_alert_cache[key][1] < data['max_date']:
-                    last_service_alert_cache[key] = (state, state_type), data['max_date']
-            return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}  # drop max_date
-
         if next_last_service_alert_cache:
             last_service_alert_cache = next_last_service_alert_cache
         else:
-            last_service_alert_cache = calc_last_service_alert_cache()
+            last_service_alert_cache = mon_icinga_log_raw_service_alert_data.objects.calc_last_service_alert_cache(start_time)
+            # only need cache format here:
+            last_service_alert_cache = {k: (v.state, v.state_type) for k, v in last_service_alert_cache}
 
         def calc_last_host_alert_cache():
             try:
