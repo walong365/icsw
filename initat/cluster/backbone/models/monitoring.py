@@ -22,7 +22,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, Prefetch, Max
+from django.db.models import Q, signals, Prefetch, Max, Min
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 import datetime
@@ -1310,9 +1310,18 @@ class raw_service_alert_manager(models.Manager):
             l.sort(key=operator.attrgetter('date'))
         return service_alerts
 
-    def calc_last_service_alert_cache(self, start_time, device_ids=None, use_client_service_name=False):
+    def calc_limit_service_alerts(self, time, mode='last before', device_ids=None, use_client_service_name=False):
+        """
+        :param mode: 'last before' or 'first after'
+        """
+        assert mode in ('last before', 'first after')
+
+        # NOTE: code was written for 'last_before' mode and then generalised, hence some vars are called 'latest...'
         try:
-            latest_dev_independent_service_alert = self.filter(date__lte=start_time, device_independent=True).latest('date')
+            if mode == 'last before':
+                latest_dev_independent_service_alert = self.filter(date__lte=time, device_independent=True).latest('date')
+            else:
+                latest_dev_independent_service_alert = self.filter(date__gte=time, device_independent=True).earliest('date')
         except mon_icinga_log_raw_service_alert_data.DoesNotExist:
             latest_dev_independent_service_alert = None
 
@@ -1321,14 +1330,21 @@ class raw_service_alert_manager(models.Manager):
         if device_ids is not None:
             additional_device_filter = {'device__in': device_ids}
         last_service_alert_cache = {}
-        queryset = self.filter(date__lte=start_time, device_independent=False, **additional_device_filter)\
-            .annotate(max_date=Max('date'))
-        # .values("device_id", "service_id", "service_info", "state", "state_type")\
+        if mode == 'last before':
+            queryset = self.filter(date__lte=time, device_independent=False, **additional_device_filter).annotate(extreme_date=Max('date'))
+        else:
+            queryset = self.filter(date__gte=time, device_independent=False, **additional_device_filter).annotate(extreme_date=Min('date'))
+
         if use_client_service_name:
             queryset = queryset.prefetch_related(Prefetch('service'))
         for entry in queryset:
             # prefer latest info if there is dev independent one
-            if latest_dev_independent_service_alert and latest_dev_independent_service_alert.date > entry.max_date:
+
+            if mode == 'last before':
+                comp = lambda x, y: x > y
+            else:
+                comp = lambda x, y: x < y
+            if latest_dev_independent_service_alert and comp(latest_dev_independent_service_alert.date, entry.extreme_date):
                 relevant_entry = latest_dev_independent_service_alert
             else:
                 relevant_entry = entry
@@ -1342,8 +1358,8 @@ class raw_service_alert_manager(models.Manager):
             # this seems to be hard in django:
             # http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
             # so we do the last grouping by this key here manually
-            if key not in last_service_alert_cache or last_service_alert_cache[key][1] < entry.max_date:
-                last_service_alert_cache[key] = relevant_entry, entry.max_date
+            if key not in last_service_alert_cache or comp(entry.extreme_date, last_service_alert_cache[key][1]):
+                last_service_alert_cache[key] = relevant_entry, entry.extreme_date
         # drop max_date
         return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
 
