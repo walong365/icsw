@@ -369,8 +369,50 @@ class ctrl_type_megaraid_sas(ctrl_type):
         def get_log_dict(lines):
             return {key: value for key, value in lines}
 
+        def _get_info_str(key, lines):
+            _entity_type = key.split(":")[-1][0]
+            if _entity_type in ["v", "c", "b"]:
+                _ld = get_log_dict(lines)
+                if _entity_type == "v":
+                    _ld["ctrl"] = key.split(":")[0]
+                    _info_str = "vd {virtual_drive} (ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(
+                        **_ld
+                    )
+                elif _entity_type == "c":
+                    _info_f = []
+                    for key in ["product_name"]:
+                        if key in _ld:
+                            _info_f.append(
+                                "{}: {}".format(
+                                    key,
+                                    _ld[key],
+                                )
+                            )
+                    _info_str = ", ".join(_info_f)
+                elif _entity_type == "b":
+                    _info_f = []
+                    for key in ["temperature", "voltage", "absolute_state_of_charge", "relative_state_of_charge", "*learn_cycle_requested", "learn_cycle_status", "cycle_count"]:
+                        if key[0] in ["*"]:
+                            _key = key[1:]
+                            _ignore_true = True
+                        else:
+                            _key = key
+                            _ignore_true = False
+                        if _key in _ld:
+                            if _ignore_true and _ld[_key] is True:
+                                continue
+                            _info_f.append(
+                                "{}: {}".format(
+                                    _key,
+                                    _ld[_key],
+                                )
+                            )
+                    _info_str = ", ".join(_info_f)
+            else:
+                _info_str = ""
+            return _info_str
+
         def check_status(key, lines, check):
-            _info_str = ""
             _entity_type = key.split(":")[-1][0]
             if check == "status":
                 _val = [_val for _key, _val in lines if _key.endswith("_status")][0]
@@ -386,13 +428,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
             if _entity_type == "v":
                 _checked = True
                 if check == "state":
-                    _ld = get_log_dict(lines)
-                    _ld["ctrl"] = key.split(":")[0]
-                    # pprint.pprint(lines)
-                    # pprint.pprint(_ld)
-                    _info_str = "vd {virtual_drive} (ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(
-                        **_ld
-                    )
                     if _val.lower().startswith("optimal"):
                         _ret_state = limits.nag_STATE_OK
 
@@ -412,40 +447,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _ret_state = limits.nag_STATE_OK
             elif _entity_type == "c":
                 _ret_state = limits.nag_STATE_OK
-                _ld = get_log_dict(lines)
-                _info_f = []
-                for key in ["product_name"]:
-                    if key in _ld:
-                        _info_f.append(
-                            "{}: {}".format(
-                                key,
-                                _ld[key],
-                            )
-                        )
-                _info_str = ", ".join(_info_f)
             elif _entity_type == "b":
-                _ld = get_log_dict(lines)
-                _info_f = []
-                for key in ["temperature", "voltage", "absolute_state_of_charge", "relative_state_of_charge", "*learn_cycle_requested", "learn_cycle_status", "cycle_count"]:
-                    if key[0] in ["*"]:
-                        _key = key[1:]
-                        _ignore_true = True
-                    else:
-                        _key = key
-                        _ignore_true = False
-                    if _key in _ld:
-                        if _ignore_true and _ld[_key] is True:
-                            continue
-                        _info_f.append(
-                            "{}: {}".format(
-                                _key,
-                                _ld[_key],
-                            )
-                        )
-                _info_str = ", ".join(_info_f)
                 if _val.lower() in ("operational", "optimal"):
                     _ret_state = limits.nag_STATE_OK
-            return _ret_state, _val, _info_str, _entity_type
+            return _ret_state, _val, _entity_type
 
         def get_check_list(d_type, lines):
             if d_type == "virt":
@@ -457,7 +462,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             elif d_type == "bbu":
                 return ["battery_state"]
             elif d_type == "ctrl":
-                return ["dummy"]
+                return []
             else:
                 status = get_status_lines(lines).lower()
                 if status in set(["not installed", "unknown", "medium speed", "normal speed", "low speed", "high speed", "not available"]):
@@ -478,16 +483,17 @@ class ctrl_type_megaraid_sas(ctrl_type):
 
         def emit_keys(in_dict):
             if type(in_dict) == dict:
+                _dk_l = set(in_dict.iterkeys()) - set(["lines", "_checks"])
                 r_list = sum(
                     [
                         [
-                            "{}{}{}".format(_key, ":" if sub_key else "", sub_key) for sub_key in emit_keys(_value)
-                        ] for _key, _value in in_dict.iteritems() if _key not in ["lines", "_checks"]
+                            "{}{}{}".format(_key, ":" if sub_key else "", sub_key) for sub_key in emit_keys(in_dict[_key])
+                        ] for _key in _dk_l
                     ],
                     []
                 )
-                if "_checks" in in_dict:
-                    r_list.append("")
+                # force iteration over this key (to generate info_str)
+                r_list.append("")
                 return r_list
             else:
                 return [""]
@@ -520,7 +526,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             _res = _ro_dict
             for _skey in _key.split(":"):
                 _res = _res[_skey]
-            return (_res["lines"], _res["_checks"])
+            return (_res["lines"], _res.get("_checks", []))
 
         def _expand_key(entity_type):
             return {
@@ -549,7 +555,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 int(_part[1:])
             )
 
-        def get_info(_key, _lines, _check):
+        def get_service(_key, _lines, _check):
             return "{} {}".format(
                 "/".join([_full_key(_part) for _part in _key.split(":")]),
                 _check,
@@ -650,7 +656,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _pfs = sorted(list(_pfs))
                     if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
                         # all values are the same, return compressed list
-                        return [(logging_tools.compress_num_list(_pfs), _compress_list(_dict.values()[0]))]
+                        return [("[{}]".format(logging_tools.compress_num_list(_pfs)), _compress_list(_dict.values()[0]))]
                     else:
                         _pfs = ["{:d}".format(_val) for _val in _pfs]
                         return [(_pf, _compress_list(_dict[_pf])) for _pf in _pfs]
@@ -668,7 +674,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _r.append(_expand_list(_entry))
             return "{}{}".format(
                 _pf,
-                ", ".join(_r)
+                ";".join(_r)
             )
 
         def _compress_infos(in_list):
@@ -708,7 +714,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
         _ro_dict = reorder_dict(ctrl_dict)
         # pprint.pprint(_ro_dict)
         # pprint.pprint(ctrl_dict)
-        _key_list = emit_keys(_ro_dict)
+        _key_list = [_val for _val in emit_keys(_ro_dict) if _val.strip()]
+        # pprint.pprint(_key_list)
         # print cur_ns
         # interpret flags
         _short_output = True if cur_ns.short_output in [True, "1", "y", "yes", "true", "True"] else False
@@ -727,12 +734,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         (
                             _key,
                             "::".join(_checks),
-                            ShortOutputKeyCache.shorten_keys([get_info(_key, _lines, _check) for _check in _checks]),
+                            ShortOutputKeyCache.shorten_keys([get_service(_key, _lines, _check) for _check in _checks]),
                             False
                         )
                     )
                 else:
-                    r_list.extend([(_key, _check, get_info(_key, _lines, _check), False) for _check in _checks])
+                    r_list.extend([(_key, _check, get_service(_key, _lines, _check), False) for _check in _checks])
                 # all checks in one line ? Todo ...
             if _short_output:
                 # shorten list
@@ -771,14 +778,15 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 # cache for short output
                 _so_cache = ShortOutputKeyCache()
                 _lines, _checks = get_source(_ro_dict, _key)
-                # print "***", _checks, target_checks
                 if target_checks:
                     _checks = list(set(_checks) & target_checks)
+                _info_str = _get_info_str(_key, _lines)
+                _ret_list.append(_info_str)
                 for _check in _checks:
-                    _info = get_info(_key, _lines, _check)
+                    _info = get_service(_key, _lines, _check)
                     if _short_output:
                         r_list.append((_key, _check, _info, None))
-                    _ret_state, _result, _info_str, _entity_type = check_status(_key, _lines, _check)
+                    _ret_state, _result, _entity_type = check_status(_key, _lines, _check)
                     if _key.count(":b") and _ignore_missing_bbu:
                         # reduce state if necessary
                         _ret_state = min(_ret_state, limits.nag_STATE_WARNING)
@@ -786,7 +794,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         # never store controller checks in passive dict
                         if _short_output:
                             _so_cache.feed(_info, _ret_state, _result, _info_str)
-                            _info_str = ""
+                            # remove latest _info_str, todo
+                            # _info_str = ""
                         else:
                             _passive_dict["list"].append(
                                 # format: info, ret_state, result (always show), info (only shown in case of non-OK)
@@ -794,7 +803,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                     _info, _ret_state, _result, _info_str
                                 )
                             )
-                            _info_str = ""
+                            # remove latest _info_str, todo
+                            # _info_str = ""
 
                     # print _info, _ret_state, _result
                     if _ret_state != limits.nag_STATE_OK:
@@ -805,12 +815,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         if _entity_type != "c":
                             # we ignore contoller checks because they are only dummy checks
                             _ok_dict.setdefault(_entity_type, []).append(0)
-                    if _info_str:
-                        _ret_list.append(_info_str)
                     _g_ret_state = max(_g_ret_state, _ret_state)
                 # check for addendum tio passive_dict
                 if _short_output and _store_passive and _so_cache.valid:
                     _passive_dict["list"].append(_so_cache.get_passive_entry())
+            _ret_list = [_val for _val in _ret_list if _val.strip()]
             if _short_output:
                 # pprint.pprint(_passive_dict)
                 r_list, shorten_dict = _shorten_list(r_list)
