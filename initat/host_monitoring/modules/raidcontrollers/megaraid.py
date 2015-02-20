@@ -423,14 +423,16 @@ class ctrl_type_megaraid_sas(ctrl_type):
         def check_status(key, lines, check):
             _entity_type = key.split(":")[-1][0]
             if check == "status":
-                _val = [_val for _key, _val in lines if _key.endswith("_status")][0]
+                _val = [_val for _key, _val in lines if _key.endswith("_status")]
             else:
                 _val = [_val for _key, _val in lines if _key == check or _key.replace(" ", "_") == check]
-                if _val:
-                    _val = _val[0]
-                else:
-                    # correct key not found
-                    _val = "not present / key not found"
+            if _val:
+                _key_found = True
+                _val = _val[0]
+            else:
+                _key_found = False
+                # correct key not found
+                _val = "not present / key not found"
             # _checked not needed right now ?
             _checked, _ret_state = (False, limits.nag_STATE_CRITICAL)
             if _entity_type == "v":
@@ -458,6 +460,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
             elif _entity_type == "b":
                 if _val.lower() in ("operational", "optimal"):
                     _ret_state = limits.nag_STATE_OK
+                elif not _key_found:
+                    _ld = get_log_dict(lines)
+                    # state not definde, check for other flags
+                    if not _ld.get("battery_pack_missing", True) and not _ld.get("battery_replacement_required", True):
+                        _ret_state = limits.nag_STATE_OK
             return _ret_state, _val, _entity_type
 
         def get_check_list(d_type, lines):
