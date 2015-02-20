@@ -6,12 +6,12 @@
             <form class="form-inline">
                 <label class="control-label">Filter:</label>
                 <div class="form-group">
-                    <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"></input>
+                    <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"/>
                 </div>
                 ,
 
                 <input type="button" ng-class="filter_settings.only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
-                    ng-click="filter_settings.only_selected = ! filter_settings.only_selected" value="only selected"></input>
+                    ng-click="filter_settings.only_selected = ! filter_settings.only_selected" value="only selected"/>
 
             </form>
             <table st-table="entries_displayed" st-safe-src="entries_filtered" class="table table-hover table-condensed table-striped" style="width:auto;">
@@ -40,22 +40,23 @@
                         <td>{{entry.name}}</td>
                         <td>
                             <!-- unnice workaround to get device pk into directive over the controller. in a nice design, the controller wouldn't be necessary. -->
+                            <!-- TODO: check if we can use controllerAs syntax to make it available in the scope -->
                             <div style="display: none">{{ devicepk_livestatus_ctrl = entry.idx }}</div>
                             <div ng-controller='livestatus_ctrl'>
                                 <livestatus-brief devicepk="devicepk"></livestatus-brief>
                             </div>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-device-hist-status-overview data="entry.device_data_yesterday" show-table="false"></device-hist-status-overview>
+                            <icsw-tools-device-hist-status-overview data="entry.device_data_yesterday" show-table="false"></icsw-tools-device-hist-status-overview>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-service-hist-status-overview data="entry.service_data_yesterday" show-table="false"></service-hist-status-overview>
+                            <icsw-tools-service-hist-status-overview data="entry.service_data_yesterday" show-table="false"></icsw-tools-service-hist-status-overview>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-device-hist-status-overview data="entry.device_data_last_week" show-table="false"></device-hist-status-overview>
+                            <icsw-tools-device-hist-status-overview data="entry.device_data_last_week" show-table="false"></icsw-tools-device-hist-status-overview>
                         </td>
                         <td class="text-center">
-                            <icsw-tools-service-hist-status-overview data="entry.service_data_last_week" show-table="false"></service-hist-status-overview>
+                            <icsw-tools-service-hist-status-overview data="entry.service_data_last_week" show-table="false"></icsw-tools-service-hist-status-overview>
                         </td>
                     </tr>
                 </tbody>
