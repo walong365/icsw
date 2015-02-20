@@ -286,8 +286,6 @@ INSTALLED_APPS = (
     "pipeline",
     "static_precompiler",
     "crispy_forms",
-    # cluster
-    "initat.core",
 )
 if SLAVE_MODE:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
