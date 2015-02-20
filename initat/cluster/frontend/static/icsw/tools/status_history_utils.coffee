@@ -138,7 +138,6 @@ angular.module(
         # we always return a list for easier REST handling
         base.getList(query_data).then((data_pseudo_list) ->
             # need plain() to get rid of restangular stuff
-            console.log 'new get_service_data: ', data_pseudo_list.plain()[0]
             cont(data_pseudo_list.plain()[0])
         )
     get_timespan = (start_date, timerange, cont) ->
@@ -238,7 +237,6 @@ angular.module(
 
             scope.update = () ->
 
-                console.log 'upd line gr', scope.data
                 time_frame = status_history_ctrl.time_frame
 
                 if time_frame?
@@ -255,36 +253,39 @@ angular.module(
                             start_of_unit = scope.side_margin + (index * unit_size)
                             pos_x = start_of_unit + (unit_size / 2)
 
-                        scope.timemarker_display.push(
-                            {
+                        scope.timemarker_display.push({
                                 text: marker
                                 pos_x: pos_x
-                            }
-
-                        )
-                        # console.log ' posx mark', scope.side_margin + index * scope.draw_width / (scope.timemarker.length-1)
+                        })
 
                     total_duration = time_frame.end.diff(time_frame.start)
 
                     scope.data_display = []
-
                     pos_x = scope.side_margin
-
                     last_date = time_frame.start
 
-                    for entry, index in scope.data.concat('last')
+                    has_last_event_after_time_frame_end = moment.utc(scope.data[scope.data.length-1].date).isAfter(time_frame.end)
+                    data_for_iteration = scope.data
+                    if ! has_last_event_after_time_frame_end
+                        data_for_iteration = data_for_iteration.concat('last')
+
+                    for entry, index in data_for_iteration
                             if entry == 'last'
                                 cur_date = time_frame.end
+                                display_end = moment()
                             else
                                 cur_date = moment.utc(entry.date)
+                                display_end = cur_date
+                                if cur_date.isBefore(time_frame.start)
+                                    # first event is before current time, but we must not draw that
+                                    cur_date = time_frame.start
 
                             duration = cur_date.diff(last_date)
-
                             entry_width = scope.draw_width * duration / total_duration
 
                             if index != 0
 
-                                last_entry = scope.data[index-1]
+                                last_entry = data_for_iteration[index-1]
 
                                 scope.data_display.push(
                                     {
@@ -294,18 +295,15 @@ angular.module(
                                         height: 15
                                         msg   : last_entry.msg
                                         state : last_entry.state
-                                        start : last_date.format("DD.MM.YYYY HH:mm")
-                                        end   : cur_date.format("DD.MM.YYYY HH:mm")
+                                        # use actual start, not nice start with is always higher than time frame start
+                                        start : moment.utc(last_entry.date).format("DD.MM.YYYY HH:mm")
+                                        end   : display_end.format("DD.MM.YYYY HH:mm")
                                     }
                                 )
 
-                                # console.log 'entry ', pos_x, pos_x + entry_width
-
                             pos_x += entry_width
-
                             last_date = cur_date
 
-                    console.log 'done'
                 else
                     scope.data = []
 
