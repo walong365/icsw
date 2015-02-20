@@ -29,13 +29,7 @@
     <!-- All JavaScript at the bottom, except this Modernizr build.
          Modernizr enables HTML5 elements & feature detects for optimal performance.
          Create your own custom Modernizr build: www.modernizr.com/download/ -->
-    <!--[if lt IE 9]>
-        <script type="text/javascript" src='{% static "js/libs/modernizr-2.7.1.ie8.js" %}'></script>
-        <script type="text/javascript" src='{% static "js/libs/jquery-1.11.1.js" %}'></script>
-        <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
-        <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
-    <![endif]-->
-    <!--[if gte IE 9]><!-->{% javascript 'js_jquery_new' %}<!--<![endif]-->
+    {% javascript 'js_jquery_new' %}
     {% javascript 'js_base' %}
     {% javascript 'js_extra1' %}
 <script type="text/javascript">
