@@ -67,6 +67,7 @@
                     <th style="width: 50px;" class="text-center">Unknown</th>
                     <th style="width: 50px;" class="text-center">Undetermined</th>
                     <th style="width: 50px;" class="text-center">Flapping</th>
+                    <th class="text-center">Timeline</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -75,12 +76,12 @@
                     <td class="text-right">
                         <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
                     </td>
-                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Ok") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Warning") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Critical") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Unknown") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
+                    <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Ok") }} </td>
+                    <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Warning") }} </td>
+                    <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Critical") }} </td>
+                    <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Unknown") }} </td>
+                    <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
+                    <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
                     <td>
                         <icsw-tools-service-hist-line-graph timemarker="timemarker" data="entry.detailed_data"></icsw-tools-service-hist-line-graph>
                     </td>
