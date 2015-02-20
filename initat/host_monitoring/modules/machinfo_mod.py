@@ -737,7 +737,7 @@ class _general(hm_classes.hm_module):
                                 "model": " ".join(parts[1:-1]),
                                 "type": parts[-1][1:-1]
                             }
-                        elif lline.startswith("disk"):
+                        elif lline.startswith("disk /"):
                             d_name = lline.split()[1][:-1]
                             parted_dict[d_name] = cur_disc
                             if cur_disc["type"] in ["dm"]:
@@ -748,6 +748,9 @@ class _general(hm_classes.hm_module):
                             cur_disc["size"] = line.split()[-1]
                         elif lline.startswith("sector"):
                             pass
+                        elif lline.startswith("disk flags"):
+                            # ignore flags line
+                            pass
                         elif lline.startswith("partition table"):
                             cur_disc["table_type"] = line.split()[-1]
                         elif lline.startswith("number"):
@@ -756,38 +759,39 @@ class _general(hm_classes.hm_module):
                                 skip_until_next_blank_line = True
                         elif line:
                             parts = line.strip().split()
-                            part_num = parts.pop(0)
-                            start = parts.pop(0)
-                            end = parts.pop(0)
-                            size = parts.pop(0)
-                            if size.endswith("TB"):
-                                size = int(float(size[:-2]) * 1000 * 1000)
-                            elif size.endswith("GB"):
-                                size = int(float(size[:-2]) * 1000)
-                            elif size.endswith("MB"):
-                                size = int(float(size[:-2]))
-                            else:
-                                size = 0
-                            parts = (" ".join(parts)).replace(",", "").strip().split()
-                            if any([part.count("type") for part in parts]):
-                                # assume hextype is last in list
-                                hextype = "0x%02x" % (int(parts.pop(-1).split("=", 1)[1], 16))
-                            else:
-                                # no hextype
-                                if any([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs", "xfs"]]):
-                                    hextype = "0x83"
-                                elif any([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
-                                    hextype = "0x82"
-                                elif any([fs_name in (" ".join(parts)).lower() for fs_name in ["lvmpv"]]):
-                                    hextype = "0x8e"
+                            if len(parts) > 3:
+                                part_num = parts.pop(0)
+                                start = parts.pop(0)
+                                end = parts.pop(0)
+                                size = parts.pop(0)
+                                if size.endswith("TB"):
+                                    size = int(float(size[:-2]) * 1000 * 1000)
+                                elif size.endswith("GB"):
+                                    size = int(float(size[:-2]) * 1000)
+                                elif size.endswith("MB"):
+                                    size = int(float(size[:-2]))
                                 else:
-                                    hextype = None
-                            dev_dict[d_name][part_num] = {
-                                "size": size,
-                                "hextype": hextype,
-                                "info": " ".join(parts),
-                            }
-                            part_lut["{}{}".format(d_name, part_num)] = (d_name, part_num)
+                                    size = 0
+                                parts = (" ".join(parts)).replace(",", "").strip().split()
+                                if any([part.count("type") for part in parts]):
+                                    # assume hextype is last in list
+                                    hextype = "0x%02x" % (int(parts.pop(-1).split("=", 1)[1], 16))
+                                else:
+                                    # no hextype
+                                    if any([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs", "xfs"]]):
+                                        hextype = "0x83"
+                                    elif any([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
+                                        hextype = "0x82"
+                                    elif any([fs_name in (" ".join(parts)).lower() for fs_name in ["lvmpv"]]):
+                                        hextype = "0x8e"
+                                    else:
+                                        hextype = None
+                                dev_dict[d_name][part_num] = {
+                                    "size": size,
+                                    "hextype": hextype,
+                                    "info": " ".join(parts),
+                                }
+                                part_lut["{}{}".format(d_name, part_num)] = (d_name, part_num)
                 else:
                     self.log("getting partition info via sfdisk (deprecated)")
                     # fetch fdisk information
@@ -1987,6 +1991,7 @@ class partinfo_command(hm_classes.hm_command):
         srv_com["dev_dict"] = dev_dict
         srv_com["sys_dict"] = sys_dict
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
+        # print srv_com.pretty_print()
 
     def interpret(self, srv_com, cur_ns):
         dev_dict, sys_dict, lvm_dict = (
