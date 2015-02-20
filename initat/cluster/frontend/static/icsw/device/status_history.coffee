@@ -2,21 +2,32 @@
 status_history_module = angular.module("icsw.device.status_history",
         ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "icsw.tools.status_history_utils"])
 
-status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$compile", "$filter", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "msgbus",
-    ($scope, $compile, $filter, restDataSource, sharedDataSource, $q, $modal, $timeout, msgbus) ->
-
-
+status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
+    ($scope) ->
+        # controller takes care of setting the time frame.
+        # watch this to get updates
+        # setting of time frame is done by outer directive icswDeviceStatusHistoryOverview
+        this.set_time_frame = (date_gui, duration_type, start, end) ->
+            if date_gui?
+                this.time_frame = {
+                    'date_gui'   : date_gui
+                    'duration_type' : duration_type
+                    'start'      : start
+                    'end'        : end
+                    'start_str'  : start.format("DD.MM.YYYY HH:mm")
+                    'end_str'    : end.format("DD.MM.YYYY HH:mm")
+                }
+            else
+                this.time_frame = undefined
+        this.set_time_frame()
+        this.get_time_marker = () ->
+            return ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"]
 ]).directive("icswDeviceStatusHistoryDevice", ["status_utils_functions", "Restangular", "ICSW_URLS", "msgbus", (status_utils_functions, Restangular, ICSW_URLS, msgbus) ->
     return {
         restrict : "EA"
         templateUrl : "icsw.device.status_history_device"
-        scope : {
-            timerange: '=' # 'day', 'week', etc as in gui
-            startdate: '=' # startdate as in gui
-            timespanfrom: '=' # start of actual data
-            timespanto: '=' # end of actual data
-        }
-        link : (scope, el, attrs) ->
+        require: '^icswDeviceStatusHistoryOverview'
+        link : (scope, el, attrs, status_history_ctrl) ->
             scope.devicepks = []
             scope.device_id = attrs.device
             scope.device_chart_id = "device_chart_" + scope.device_id
@@ -48,63 +59,80 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
                 [unused, pie_data] = status_utils_functions.preprocess_service_state_data(service_data)
                 return pie_data
             scope.update = () ->
-                serv_cont = (new_data) ->
-                    new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
-                    # new_data is dict, but we want it as list to be able to sort it
-                    data = ({'name': scope.extract_service_name(key),
-                             'main_data': val.main,
-                             'pie_data': scope.calc_pie_data(key, val.main),
-                             'detailed_data': val.detailed} for key, val of new_data)
+                console.log 'child udpate ', status_history_ctrl
+                if status_history_ctrl.time_frame?
+                    serv_cont = (new_data) ->
+                        new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
+                        # new_data is dict, but we want it as list to be able to sort it
+                        data = ({
+                            'name': scope.extract_service_name(key)
+                            'main_data': val.main
+                            'pie_data': scope.calc_pie_data(key, val.main)
+                            'detailed_data': val.detailed} for key, val of new_data)
 
-                    scope.service_data = _.sortBy(data, (entry) -> return entry.name)
+                        scope.service_data = _.sortBy(data, (entry) -> return entry.name)
 
-                    scope.timemarker = status_utils_functions.get_timemarker() ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"]
+                        console.log 'got data', scope.service_data
 
-                status_utils_functions.get_service_data([scope.device_id], scope.startdate, scope.timerange, serv_cont)
+                    status_utils_functions.get_service_data(
+                        [scope.device_id],
+                        status_history_ctrl.time_frame.date_gui,
+                        status_history_ctrl.time_frame.duration_type,
+                        serv_cont)
+                else
+                    scope.service_data = []
 
-            scope.$watchGroup(['timerange', 'startdate'],  (unused) -> scope.update() )
+            scope.$watch(
+                () -> status_history_ctrl.time_frame
+                (unused) -> scope.update()
+            )
     }
 ]).directive("icswDeviceStatusHistoryOverview", ["status_utils_functions", (status_utils_functions) ->
     return {
         restrict : "EA"
         templateUrl : "icsw.device.status_history_overview"
-        #scope : {
-        #    devicepks: '='
-        #}
-        link : (scope, el, attrs) ->
+        controller: 'icswDeviceStatusHistoryCtrl'
+        link : (scope, el, attrs, status_history_ctrl) ->
+
+            # this directive takes care of setting the time frame
+            # and contains the other directives (this is not necessarily so)
+
             scope.devicepks = []
             scope.startdate = moment().startOf("day").subtract(1, "days")
-            scope.timerange = 'day'
+            scope.duration_type = 'day'
 
             if true  # debug
                 scope.startdate = moment('Wed Feb 11 2015 00:00:00 GMT+0100 (CET)')
-                scope.timerange = 'week'
+                scope.duration_type = 'week'
                 scope.startdate = moment('Feb 13 2015 00:00:00 GMT+0100 (CET)')
-                scope.timerange = 'day'
+                scope.duration_type = 'day'
 
-            scope.set_timerange = (tr) ->
-                scope.timerange = tr
+            scope.set_duration_type = (d) ->
+                scope.duration_type = d
 
-            scope.update = () ->
+            scope.get_time_frame = () ->
+                return status_history_ctrl.time_frame
+
+            scope.update_time_frame = () ->
                 cont = (new_data) ->
-                    scope.timespan_error = ""
-                    scope.timespan_from = ""
-                    scope.timespan_to = ""
                     if new_data.length > 0
-                        timespan = new_data[0]
+                        scope.timespan_error = ""
 
-                        scope.timespanfrom = moment.utc(timespan[0])
-                        scope.timespanto = moment.utc(timespan[1])
-                        scope.timespanfrom_str = moment.utc(timespan[0]).format("DD.MM.YYYY HH:mm")
-                        scope.timespanto_str = moment.utc(timespan[1]).format("DD.MM.YYYY HH:mm")
+                        timespan = new_data[0]
+                        start = moment.utc(timespan[0])
+                        end = moment.utc(timespan[1])
+
+                        status_history_ctrl.set_time_frame(scope.startdate, scope.duration_type, start, end)
                     else
                         scope.timespan_error = "No data available for this time span"
+                        status_history_ctrl.set_time_frame()
 
-                status_utils_functions.get_timespan(scope.startdate, scope.timerange, cont)
+                    console.log 'up time frame', status_history_ctrl
+
+                status_utils_functions.get_timespan(scope.startdate, scope.duration_type, cont)
 
             scope.new_devsel = (new_val) ->
                 scope.devicepks = new_val
-                scope.update()
-            scope.$watchGroup(['timerange', 'startdate'],  (unused) -> scope.update() )
+            scope.$watchGroup(['duration_type', 'startdate'],  (unused) -> scope.update_time_frame() )
     }
 ])

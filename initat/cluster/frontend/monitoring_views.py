@@ -579,22 +579,18 @@ class get_hist_service_data(ListAPIView):
 
         data_per_device = get_data_per_device(device_ids, [timespan_db])
 
-        def transform_to_main_and_detailed_format(prelim_return_data):
+        # this mode is for an overview of the services of a device without saying anything about a particular service
+        if int(request.GET.get("merge_services", 0)):
+            return_data = merge_services(data_per_device)
+
+        else:
+            prelim_return_data = merge_state_types_per_device(data_per_device)
+
             # there should be 'detailed' and 'main' for each service for each device
             return_data = defaultdict(lambda: defaultdict(lambda: {}))  # detailed data later may add more devices
             for dev, dev_data in prelim_return_data.iteritems():
                 for serv, serv_data in dev_data.iteritems():
                     return_data[dev][serv] = {'detailed': [], 'main': serv_data}
-            return return_data
-
-        # this mode is for an overview of the services of a device without saying anything about a particular service
-        if int(request.GET.get("merge_services", 0)):
-            prelim_return_data = merge_services(data_per_device)
-            return_data = transform_to_main_and_detailed_format(prelim_return_data)
-
-        else:
-            prelim_return_data = merge_state_types_per_device(data_per_device)
-            return_data = transform_to_main_and_detailed_format(prelim_return_data)
 
             if False:  # NOTE: code for detailed view based on aggregated data, not full data
                 # TODO: timespan_db can be None

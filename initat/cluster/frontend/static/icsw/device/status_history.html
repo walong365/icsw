@@ -23,12 +23,12 @@
                 <div class="btn-group">
                     <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
                         <span class="glyphicon glyphicon-time"></span>
-                        {{timerange}} <span class="caret"></span>
+                        {{duration_type}} <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li ng-click="set_timerange('day')"><a href="#">day</a></li>
-                        <li ng-click="set_timerange('week')"><a href="#">week</a></li>
-                        <li ng-click="set_timerange('month')"><a href="#">month</a></li>
+                        <li ng-click="set_duration_type('day')"><a href="#">day</a></li>
+                        <li ng-click="set_duration_type('week')"><a href="#">week</a></li>
+                        <li ng-click="set_duration_type('month')"><a href="#">month</a></li>
                         <li ng-click="set_timerange('year')"><a href="#">year</a></li>
                         <!-- values parsed by rest_views.py -->
                     </ul>
@@ -37,11 +37,11 @@
         </div>
     </h4>
 
-    <h4 ng-if="!timespan_error ">Showing data from {{timespanfrom_str}} to {{timespanto_str}}:</h4>
+    <h4 ng-if="!timespan_error ">Showing data from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }}:</h4>
     <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
 
     <div ng-repeat="device in devicepks">
-        <icsw-device-status-history-device device="{{device}}" timerange="timerange" startdate="startdate" timespanfrom="timespanfrom" timespanto="timespanto" ></icsw-device-status-history-device>
+        <icsw-device-status-history-device device="{{device}}"></icsw-device-status-history-device>
     </div>
 </script>
 
@@ -51,7 +51,7 @@
     <div class="row" style="width: 650px">
         <div class="col-md-12">
             <div style="width: auto">
-                <icsw-tools-device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></icsw-tools-device-hist-status-overview>
+                <icsw-tools-device-hist-status-overview deviceid="device_id" show-table="true"></icsw-tools-device-hist-status-overview>
             </div>
         </div>
 
@@ -82,7 +82,7 @@
                     <td class="text-right"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
                     <td class="text-right"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
                     <td>
-                        <icsw-tools-service-hist-line-graph timemarker="timemarker" data="entry.detailed_data" timespanfrom="timespanfrom" timespanto="timespanto"></icsw-tools-service-hist-line-graph>
+                        <icsw-tools-service-hist-line-graph timemarker="timemarker" data="entry.detailed_data"></icsw-tools-service-hist-line-graph>
                     </td>
                     <td>
                         <svg width="225" height="30">
