@@ -196,19 +196,43 @@ angular.module(
         }
         require : "^icswDeviceStatusHistoryOverview"
         template: """
-<svg ng-attr-width="{{width}}" height="30">
-    <g>
-        <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}"  y="5"
-              ng-attr-width="{{entry.width}}" ng-attr-height="{{entry.height}}" rx="1" ry="1"
-              ng-attr-style="fill:{{entry.color}};stroke-width:0;stroke:rgb(0,0,0)"></rect>
-    </g>
-    <g>
-        <text ng-repeat="marker in timemarker_display" ng-attr-x="{{marker.pos_x}}" y="30"  style="fill:black;" font-size="10px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
-    </g>
-</svg>
+
+<div class="icsw-chart" ng-attr-style="width: {{width}}px; height: {{height}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
+    <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}">
+        <g>
+            <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}"  y="5"
+                  ng-attr-width="{{entry.width}}" ng-attr-height="{{entry.height}}" rx="1" ry="1"
+                  ng-attr-style="fill:{{entry.color}};stroke-width:0;stroke:rgb(0,0,0)"
+                  ng-mouseenter="mouse_enter(entry)"
+                  ng-mouseleave="mouse_leave(entry)"
+                  ng-mousemove="mouse_move(entry, $event)"></rect>
+        </g>
+        <g>
+            <text ng-repeat="marker in timemarker_display" ng-attr-x="{{marker.pos_x}}" y="30"  style="fill:black;" font-size="10px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
+        </g>
+    </svg>
+    <div class="icsw-tooltip" ng-show="tooltip_entry" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">
+        State: {{tooltip_entry.state}}<br/>
+        Start: {{tooltip_entry.start}}<br/>
+        End: {{tooltip_entry.end}}<br/>
+        <span ng-show="tooltip_entry.msg">Message: {{tooltip_entry.msg}} <br /></span>
+    </div>
+</div>
 """
         link: (scope, element, attrs, status_history_ctrl) ->
+            scope.mouse_enter = (entry) ->
+                scope.tooltip_entry = entry
+            scope.mouse_leave = (entry) ->
+                scope.tooltip_entry = undefined
+            scope.mouse_move = (entry, event) ->
+                # not very elegant
+                tooltip = element[0].children[0].children[1]
+                scope.tooltipX = event.offsetX - (tooltip.clientWidth/2)
+                scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
+
             scope.width = 300
+            scope.height = 30
+
             scope.side_margin = 15
             scope.draw_width = scope.width - 2 * scope.side_margin
 
@@ -250,14 +274,19 @@ angular.module(
                             entry_width = scope.draw_width * duration / total_duration
 
                             if index != 0
-                                last_state = scope.data[index-1].state
+
+                                last_entry = scope.data[index-1]
 
                                 scope.data_display.push(
                                     {
                                         pos_x : pos_x
                                         width : entry_width
-                                        color : status_utils_functions.service_colors[last_state]
+                                        color : status_utils_functions.service_colors[last_entry.state]
                                         height: 15
+                                        msg   : last_entry.msg
+                                        state : last_entry.state
+                                        start : last_date.format("DD.MM.YYYY HH:mm")
+                                        end   : cur_date.format("DD.MM.YYYY HH:mm")
                                     }
                                 )
 
