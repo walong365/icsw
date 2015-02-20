@@ -26,7 +26,6 @@ if symlinks:
 setup(name="initat",
       version="2.0.0",
       package_dir={"initat": "src/initat"},
-      packages=["initat", "initat.core", 
-                "initat.core.management", "initat.core.management.commands"],
+      packages=["initat", "initat.core",]
       package_data={"initat.core": ["templates/initcore/*.html", "templates/initcore/*.xml"] + static_files}
       )
