@@ -372,7 +372,7 @@ PIPELINE_CSS = {
             "css/angular-block-ui.css",
             "js/libs/ui-select/select.css",
             "css/ladda.min.css",
-            "css/piechart.css",
+            "css/tooltip.css",
             "css/smart-table.css",
             "css/font-awesome.min.css",
             "css/icsw.css",
