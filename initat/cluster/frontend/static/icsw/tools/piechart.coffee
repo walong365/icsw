@@ -8,7 +8,7 @@ angular.module(
             data: "=data"
             diameter: "=diameter"
         template: """
-<div class="chart" ng-attr-style="width: {{diameter}}px; height: {{diameter}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
+<div class="icsw-chart" ng-attr-style="width: {{diameter}}px; height: {{diameter}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
     <svg ng-show="data_active.length > 0" ng-attr-width="{{diameter}}" ng-attr-height="{{diameter}}" ng-attr-viewBox="0 0 {{diameter}} {{diameter}}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
         <g opacity="1">
             <g ng-repeat="entry in data_active" data-active class="pieSegmentGroup" data-order={{entry.num}}>
@@ -17,7 +17,7 @@ angular.module(
             </g>
         </g>
     </svg>
-    <div class="piechart-tooltip" ng-show="tooltip_text" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">{{tooltip_text}}</div>
+    <div class="icsw-tooltip" ng-show="tooltip_text" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">{{tooltip_text}}</div>
 </div>
 """
         link : (scope, el, attrs) ->
@@ -28,9 +28,9 @@ angular.module(
             scope.mouse_move = (entry, event) ->
                 # not very elegant
                 tooltip = el[0].children[0].children[1]
-
                 scope.tooltipX = event.offsetX - (tooltip.clientWidth/2)
                 scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
+
             scope.calc_path = (entry) ->
 
                 if entry.part == 1.0  # full circle
