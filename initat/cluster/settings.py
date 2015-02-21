@@ -360,7 +360,7 @@ PIPELINE_CSS = {
         "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
-            "js/dynatree/skin/ui.dynatree.css",
+            "css/ui.dynatree.css",
             # "css/msdropdown/dd.css",
             "css/jqModal.css",
             "css/codemirror.css",
