@@ -1,7 +1,7 @@
 config_gen_module = angular.module(
     "icsw.config.generate",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.codemirror"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
     ]
 ).service("icswConfigConfigTreeService", () ->
     class config_tree extends tree_config
