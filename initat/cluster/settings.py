@@ -361,7 +361,6 @@ PIPELINE_CSS = {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
             "css/ui.dynatree.css",
-            # "css/msdropdown/dd.css",
             "css/jqModal.css",
             "css/codemirror.css",
             "css/bootstrap.css",
@@ -427,8 +426,8 @@ PIPELINE_JS = {
             "js/ui-select/select.js",
             "js/ui-bootstrap-tpls.min.js",
             "js/angular-ui-router.js",
-            # now in common_function as coffeescript
-            # "js/ui-codemirror.min.js",
+            # must use minified version, otherwise the minifier destroys injection info
+            "js/ui-codemirror.min.js",
             "js/angular-datetimepicker.js",
             # "js/angular-strap.min.js",
             # "js/angular-strap.tpl.min.js",
