@@ -778,7 +778,7 @@ rms_module = angular.module(
                 scope.$watch("job", (job) ->
                     scope.job = job
                 )
-                cp_scope = ($scope, $modalInstance, job, oper) ->
+                cp_scope = ["$scope", "$modalInstance", "job", "oper", ($scope, $modalInstance, job, oper) ->
                     $scope.job = job
                     $scope.cur_priority = parseInt($scope.job.priority.value)
                     $scope.get_max_priority = () ->
@@ -793,6 +793,7 @@ rms_module = angular.module(
                         $modalInstance.close([$scope.cur_priority, _job_id])
                     $scope.cancel = () ->
                         $modalInstance.dismiss("cancel")
+                ]
                 scope.change_priority = () ->
                     c_modal = $modal.open
                         template : $templateCache.get("icsw.rms.change.priority")
