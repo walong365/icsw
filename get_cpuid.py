@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007,2014 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2007,2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -19,6 +19,7 @@
 #
 
 import cpu_database
+
 
 def main():
     print cpu_database.get_cpuid()

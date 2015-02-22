@@ -1,4 +1,4 @@
-# Copyright (C) 2010,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2010,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -76,7 +76,11 @@ class disk_info(object):
             self.src_type)
 
     def _clear_stats(self):
-        self.stats = dict([(key, dict([(s_key, 0) for s_key in ["reqs", "bytes"]])) for key in ["read", "write"]])
+        self.stats = {
+            key: {
+                s_key: 0 for s_key in ["reqs", "bytes"]
+            } for key in ["read", "write"]
+        }
 
     def feed(self, *args):
         act_time = time.time()
@@ -116,7 +120,11 @@ class net_info(object):
             self.mac_address)
 
     def _clear_stats(self):
-        self.stats = dict([(key, dict([(s_key, 0) for s_key in ["bytes", "packets", "errs", "drops"]])) for key in ["read", "write"]])
+        self.stats = {
+            key: {
+                s_key: 0 for s_key in ["bytes", "packets", "errs", "drops"]
+            } for key in ["read", "write"]
+        }
 
     def feed(self, *args):
         act_time = time.time()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel
 #
 # this file is part of python-modules-base
 #
@@ -665,7 +665,7 @@ class form_list(object):
         if left == "-":
             left = "<"
         if isinstance(row_idx, basestring):
-            row_idx = dict([(v, k) for k, v in self.header_dict.iteritems()])[row_idx]
+            row_idx = {v: k for k, v in self.header_dict.iteritems()}[row_idx]
         if row_idx == -1:
             act_row_idx = self.act_row_idx + 1
         else:

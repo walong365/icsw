@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2008-2009,2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2008-2009,2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -29,7 +29,7 @@ else:
     MAX_CORES = psutil.cpu_count(logical=True)
     MAX_MASK = (1 << MAX_CORES) - 1
 
-CPU_MASKS = dict([(1 << cpu_num, cpu_num) for cpu_num in xrange(MAX_CORES)])
+CPU_MASKS = {1 << cpu_num: cpu_num for cpu_num in xrange(MAX_CORES)}
 
 
 def find_file(file_name, s_path=None):
