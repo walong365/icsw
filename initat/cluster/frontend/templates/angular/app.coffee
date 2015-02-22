@@ -61,6 +61,7 @@ ics_app = angular.module(
         "icsw.device.connection",
         "icsw.device.category",
         "icsw.device.livestatus",
+        "icsw.device.monconfig",
         "icsw.device.location",
         "icsw.device.status_history",
         "icsw.device.partition",
