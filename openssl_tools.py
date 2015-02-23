@@ -297,7 +297,8 @@ class ca(object):
                 _ssl_cnf.set(_ca_target, "policy", _policy_target)
             _ssl_cnf.write()
             # copy default_
-            _success, _out = self.call_openssl("ca", "-create_serial",
+            _success, _out = self.call_openssl(
+                "ca", "-create_serial",
                 "-name", "ca_ca",
                 "-subj", build_subj(obj_dict),
                 "-out", self.ca_cert, "-days", obj_dict["days"], "-batch",
