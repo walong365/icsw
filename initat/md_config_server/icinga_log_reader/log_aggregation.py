@@ -196,36 +196,13 @@ class icinga_log_aggregator(object):
         if next_last_service_alert_cache:
             last_service_alert_cache = next_last_service_alert_cache
         else:
-            last_service_alert_cache = mon_icinga_log_raw_service_alert_data.objects.calc_limit_service_alerts(start_time)
+            last_service_alert_cache = mon_icinga_log_raw_service_alert_data.objects.calc_limit_alerts(start_time)
             # only need cache format here:
             last_service_alert_cache = {k: (v.state, v.state_type) for k, v in last_service_alert_cache.iteritems()}
 
-        def calc_last_host_alert_cache():
-            try:
-                latest_dev_independent_host_alert = mon_icinga_log_raw_host_alert_data.objects\
-                    .filter(date__lte=start_time, device_independent=True).latest('date')
-            except mon_icinga_log_raw_host_alert_data.DoesNotExist:
-                latest_dev_independent_host_alert = None
-
-            # get last service alert of each service before the start time
-            last_host_alert_cache = {}
-            for data in mon_icinga_log_raw_host_alert_data.objects\
-                    .filter(date__lte=start_time, device_independent=False)\
-                    .values("device_id", "state", "state_type")\
-                    .annotate(max_date=Max('date')):
-                # prefer latest info if there is dev independent one
-                if latest_dev_independent_host_alert and latest_dev_independent_host_alert.date > data['max_date']:
-                    state, state_type = latest_dev_independent_host_alert.state, latest_dev_independent_host_alert.state_type
-                else:
-                    state, state_type = data['state'], data['state_type']
-                key = data['device_id']
-
-                # see comment in calc_last_service_alert_cache
-                if key not in last_host_alert_cache or last_host_alert_cache[key][1] < data['max_date']:
-                    last_host_alert_cache[key] = (state, state_type), data['max_date']
-
-            return {k: v[0] for (k, v) in last_host_alert_cache.iteritems()}  # drop max_date
-        last_host_alert_cache = calc_last_host_alert_cache()
+        last_host_alert_cache = mon_icinga_log_raw_host_alert_data.objects.calc_limit_alerts(start_time)
+        # only need cache format again
+        last_host_alert_cache = {k: (v.state, v.state_type) for k, v in last_service_alert_cache.iteritems()}
 
         # regular changes in time span
         def calc_weighted_states(relevant_entries, state_description_before, debug=False):
@@ -278,23 +255,8 @@ class icinga_log_aggregator(object):
                 flapping_seconds += (flap_end - flap_start).total_seconds()
             return flapping_seconds / timespan_seconds
 
-        service_alerts = mon_icinga_log_raw_service_alert_data.objects.calc_service_alerts(start_time, end_time)
-
-        def calc_host_alerts():
-            host_alerts = defaultdict(lambda: [])
-            for entry in mon_icinga_log_raw_host_alert_data.objects\
-                    .filter(device_independent=False, date__range=(start_time, end_time)):
-                host_alerts[entry.device_id].append(entry)
-            # calc dev independent afterwards and add to all keys
-            for entry in mon_icinga_log_raw_host_alert_data.objects\
-                    .filter(device_independent=True, date__range=(start_time, end_time)):
-                for key in host_alerts:
-                    host_alerts[key].append(entry)
-            for l in host_alerts.itervalues():
-                # not in order due to dev independents
-                l.sort(key=operator.attrgetter('date'))
-            return host_alerts
-        host_alerts = calc_host_alerts()
+        service_alerts = mon_icinga_log_raw_service_alert_data.objects.calc_alerts(start_time, end_time)
+        host_alerts = mon_icinga_log_raw_host_alert_data.objects.calc_alerts(start_time, end_time)
 
         def process_service_alerts():
             next_last_service_alert_cache = {}
