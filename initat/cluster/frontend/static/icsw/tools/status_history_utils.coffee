@@ -42,7 +42,6 @@ angular.module(
                         [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, status_utils_functions.host_colors, scope.float_format)
 
                     line_graph_cont = (new_data) ->
-                        console.log 'lgd', new_data
                         new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
                         if new_data?
                             scope.line_graph_data = new_data
@@ -290,7 +289,6 @@ angular.module(
                     last_date = time_frame.start
 
                     data_for_iteration = scope.data
-                    console.log 'dat', scope.data
 
                     if scope.data.length > 0
                         has_last_event_after_time_frame_end = moment.utc(scope.data[scope.data.length-1].date).isAfter(time_frame.end)
