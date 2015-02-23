@@ -198,7 +198,7 @@ class icinga_log_aggregator(object):
         else:
             last_service_alert_cache = mon_icinga_log_raw_service_alert_data.objects.calc_limit_service_alerts(start_time)
             # only need cache format here:
-            last_service_alert_cache = {k: (v.state, v.state_type) for k, v in last_service_alert_cache}
+            last_service_alert_cache = {k: (v.state, v.state_type) for k, v in last_service_alert_cache.iteritems()}
 
         def calc_last_host_alert_cache():
             try:
