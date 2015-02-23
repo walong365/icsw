@@ -199,7 +199,7 @@ angular.module(
 <div class="icsw-chart" ng-attr-style="width: {{width}}px; height: {{height}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
     <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}">
         <g>
-            <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}"  y="5"
+            <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}" ng-attr-y="{{entry.pos_y}}"
                   ng-attr-width="{{entry.width}}" ng-attr-height="{{entry.height}}" rx="1" ry="1"
                   ng-attr-style="fill:{{entry.color}};stroke-width:0;stroke:rgb(0,0,0)"
                   ng-mouseenter="mouse_enter(entry)"
@@ -264,10 +264,13 @@ angular.module(
                     pos_x = scope.side_margin
                     last_date = time_frame.start
 
-                    has_last_event_after_time_frame_end = moment.utc(scope.data[scope.data.length-1].date).isAfter(time_frame.end)
                     data_for_iteration = scope.data
-                    if ! has_last_event_after_time_frame_end
-                        data_for_iteration = data_for_iteration.concat('last')
+
+                    if scope.data.length > 0
+                        has_last_event_after_time_frame_end = moment.utc(scope.data[scope.data.length-1].date).isAfter(time_frame.end)
+                        if ! has_last_event_after_time_frame_end
+                            # add dummy element for nice iteration below
+                            data_for_iteration = data_for_iteration.concat('last')
 
                     for entry, index in data_for_iteration
                             if entry == 'last'
@@ -275,10 +278,10 @@ angular.module(
                                 display_end = moment()
                             else
                                 cur_date = moment.utc(entry.date)
-                                display_end = cur_date
                                 if cur_date.isBefore(time_frame.start)
                                     # first event is before current time, but we must not draw that
                                     cur_date = time_frame.start
+                                display_end = cur_date
 
                             duration = cur_date.diff(last_date)
                             entry_width = scope.draw_width * duration / total_duration
@@ -287,12 +290,20 @@ angular.module(
 
                                 last_entry = data_for_iteration[index-1]
 
+                                height = switch last_entry.state
+                                    when "Ok" then 10
+                                    when "Warning" then 15
+                                    when "Critical" then 20
+                                    when "Unknown" then 12
+                                    when "Undetermined" then 12
+
                                 scope.data_display.push(
                                     {
                                         pos_x : pos_x
+                                        pos_y : 20-height
+                                        height: height
                                         width : entry_width
                                         color : status_utils_functions.service_colors[last_entry.state]
-                                        height: 15
                                         msg   : last_entry.msg
                                         state : last_entry.state
                                         # use actual start, not nice start with is always higher than time frame start
