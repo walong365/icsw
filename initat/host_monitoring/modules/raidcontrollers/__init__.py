@@ -35,7 +35,7 @@ CTRL_DICT = {}
 
 for mod_name in _mods:
     # no circular import
-    if mod_name in ["base.py", "all.py"]:
+    if mod_name in ["base", "all"]:
         continue
     new_mod = __import__(mod_name, globals(), locals())
     for _name in dir(new_mod):
