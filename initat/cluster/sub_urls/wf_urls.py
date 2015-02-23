@@ -146,7 +146,10 @@ monitoring_patterns = patterns(
     url("^get_hist_timespan$", monitoring_views.get_hist_timespan.as_view(), name="get_hist_timespan"),
     url("^get_hist_device_data$", monitoring_views.get_hist_device_data.as_view(), name="get_hist_device_data"),
     url("^get_hist_service_data$", monitoring_views.get_hist_service_data.as_view(), name="get_hist_service_data"),
-    url("^get_hist_service_line_graph_data$", monitoring_views.get_hist_service_line_graph_data.as_view(), name="get_hist_service_line_graph_data"),
+    url("^get_hist_service_line_graph_data$", monitoring_views.get_hist_service_line_graph_data.as_view(),
+        name="get_hist_service_line_graph_data"),
+    url("^get_hist_device_line_graph_data$", monitoring_views.get_hist_device_line_graph_data.as_view(),
+        name="get_hist_device_line_graph_data"),
 
 )
 

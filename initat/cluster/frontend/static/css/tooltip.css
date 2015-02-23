@@ -1,7 +1,7 @@
 .icsw-tooltip {
   position: absolute;
   float: left;
-  min-width: 30px;
+  min-width: 80px;
   max-width: 600px;
   padding: 5px 15px;
   border-radius: 2px;

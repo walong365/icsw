@@ -51,7 +51,7 @@
     <div class="row" style="width: 650px">
         <div class="col-md-12">
             <div style="width: auto">
-                <icsw-tools-device-hist-status-overview deviceid="device_id" show-table="true"></icsw-tools-device-hist-status-overview>
+                <icsw-tools-device-hist-status-overview deviceid="device_id" detailed-view="true"></icsw-tools-device-hist-status-overview>
             </div>
         </div>
 
@@ -83,7 +83,7 @@
                     <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
                     <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
                     <td>
-                        <icsw-tools-service-hist-line-graph timemarker="timemarker" data="entry.line_graph_data"></icsw-tools-service-hist-line-graph>
+                        <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data"></icsw-tools-hist-line-graph>
                     </td>
                     <!--
                     <td>

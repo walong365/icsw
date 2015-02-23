@@ -21,7 +21,6 @@
 #
 
 """ monitoring views """
-from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
 from django.db.models.query import Prefetch
@@ -39,7 +38,7 @@ from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
@@ -57,6 +56,7 @@ import logging
 import process_tools
 import server_command
 import socket
+from collections import defaultdict
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -485,6 +485,57 @@ class _device_status_history_util(object):
             data_merged_state_types.append({'state': undetermined_state, 'value': 1})
         return data_merged_state_types
 
+    @staticmethod
+    def get_line_graph_data(request, for_host):
+        """
+        Get line graph data for hosts and services
+        :param request: Request with usual parameters
+        :param for_host: boolean, whether to get data for services or hosts
+        :return: dict of either {(dev_id, service_id): values} or {dev_id: values}
+        """
+        if for_host:
+            obj_man = mon_icinga_log_raw_host_alert_data.objects
+            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
+        else:
+            obj_man = mon_icinga_log_raw_service_alert_data.objects
+            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
+
+        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+
+        use_client_service_name = not for_host
+
+        # calculate detailed view based on all events
+        start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
+        entries = obj_man.calc_alerts(start, end, device_ids=device_ids,
+                                      use_client_service_name=use_client_service_name)
+
+        last_before_entries = obj_man.calc_limit_alerts(start,
+                                                        mode='last before',
+                                                        device_ids=device_ids,
+                                                        use_client_service_name=use_client_service_name)
+
+        first_after_entries = obj_man.calc_limit_alerts(end,
+                                                        mode='first after',
+                                                        device_ids=device_ids,
+                                                        use_client_service_name=use_client_service_name)
+
+        return_data = {}
+
+        for key, amended_list in entries.iteritems():
+            # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
+            # they might be active before and after, but not during the time frame, in which case
+            # they are not relevant to us
+
+            entry_before = last_before_entries.get(key, None)
+            if entry_before is not None:
+                amended_list = [entry_before] + amended_list
+            entry_after = first_after_entries.get(key, None)
+            if entry_after is not None:
+                amended_list = amended_list + [entry_after]
+
+            return_data[key] = \
+                [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in amended_list]
+        return return_data
 
 
 class get_hist_timespan(ListAPIView):
@@ -589,6 +640,17 @@ class get_hist_service_data(ListAPIView):
         return Response([return_data])  # fake a list, see coffeescript
 
 
+class get_hist_device_line_graph_data(ListAPIView):
+    """
+    Returns device data for line graph
+    """
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        return_data = _device_status_history_util.get_line_graph_data(request, for_host=True)
+        return Response([return_data])  # fake a list, see coffeescript
+
+
 class get_hist_service_line_graph_data(ListAPIView):
     """
     Returns service data for line graph
@@ -596,44 +658,11 @@ class get_hist_service_line_graph_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
-
-        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
-
-        # calculate detailed view based on all events
-
-        start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
-        obj_man = mon_icinga_log_raw_service_alert_data.objects
-        entries = obj_man.calc_service_alerts(start, end, device_ids=device_ids, use_client_service_name=True)
-
-        last_before_entries = obj_man.calc_limit_service_alerts(start,
-                                                                mode='last before',
-                                                                device_ids=device_ids,
-                                                                use_client_service_name=True)
-
-        first_after_entries = obj_man.calc_limit_service_alerts(end,
-                                                                mode='first after',
-                                                                device_ids=device_ids,
-                                                                use_client_service_name=True)
-
-        dev_serv_keys = set(entries.iterkeys())
-        # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
-        # they might be active before and after, but not during the time frame, in which case
-        # they are not relevant to us
+        prelim_return_data = _device_status_history_util.get_line_graph_data(request, for_host=False)
 
         return_data = defaultdict(lambda: {})
 
-        for (device_id, service_identifier) in dev_serv_keys:
-            amended_list = entries.get((device_id, service_identifier), [])
-
-            entry_before = last_before_entries.get((device_id, service_identifier), None)
-            if entry_before is not None:
-                amended_list = [entry_before] + amended_list
-            entry_after = first_after_entries.get((device_id, service_identifier), None)
-            if entry_after is not None:
-                amended_list = amended_list + [entry_after]
-
-            return_data[device_id][service_identifier] = \
-                [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in amended_list]
+        for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
+            return_data[dev_id][service_identifier] = values
 
         return Response([return_data])  # fake a list, see coffeescript

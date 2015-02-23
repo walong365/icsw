@@ -15,7 +15,7 @@ angular.module(
         require: '?^icswDeviceStatusHistoryOverview'
         templateUrl: "icsw.tools.device_hist_status"
         link: (scope, element, attrs, status_history_ctrl) ->
-            scope.show_table = scope.$eval(attrs.showTable)
+            scope.detailed_view = scope.$eval(attrs.detailedView)
 
             # TODO: make this into a filter, then remove also from serviceHist*
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
@@ -28,24 +28,26 @@ angular.module(
                 "Undetermined": -4
             }
 
-            colors = {
-                "Up": "#66dd66"
-                "Down": "#ff7777"
-                "Unreachable": "#f0ad4e"
-                "Undetermined": "#c7c7c7"
-            }
+            scope.host_data = []
+            scope.pie_data = []
+            scope.line_graph_data = []
 
             scope.update_from_server = () ->
+                # TODO: this loading should probably be refactored into status_history.coffee, such that these directives
+                #       here only get the direct data. then we can centralise the loading there.
+                #       NOTE: keep consistent with service below
                 if status_history_ctrl.time_frame?
                     cont = (new_data) ->
                         new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
-                        [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, colors, scope.float_format)
+                        [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, status_utils_functions.host_colors, scope.float_format)
 
-                    status_utils_functions.get_device_data(
-                        [scope.deviceid],
-                        status_history_ctrl.time_frame.date_gui,
-                        status_history_ctrl.time_frame.duration_type,
-                        cont)
+                    line_graph_cont = (new_data) ->
+                        new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
+                        scope.line_graph_data = new_data
+
+                    time_frame = status_history_ctrl.time_frame
+                    status_utils_functions.get_device_data([scope.deviceid], time_frame.date_gui, time_frame.duration_type, cont)
+                    status_utils_functions.get_device_data([scope.deviceid], time_frame.date_gui, time_frame.duration_type, line_graph_cont, true)
                 else
                     scope.host_data = []
                     scope.pie_data = []
@@ -113,13 +115,23 @@ angular.module(
             "Unknown": "#c7c7c7"
             "Undetermined": "#c7c7c7"
         }
-    get_device_data = (device_ids, start_date, timerange, cont) ->
+    host_colors = {
+        "Up": "#66dd66"
+        "Down": "#ff7777"
+        "Unreachable": "#f0ad4e"
+        "Undetermined": "#c7c7c7"
+    }
+
+    get_device_data = (device_ids, start_date, timerange, cont, line_graph_data=false) ->
         query_data = {
             'device_ids': device_ids.join(),
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
         }
-        base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_DATA.slice(1))
+        if line_graph_data
+            base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_LINE_GRAPH_DATA.slice(1))
+        else
+            base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_DATA.slice(1))
         base.getList(query_data).then((new_data) ->
             # customGET fucks up the query data, so just fake lists
             obj = new_data.plain()[0]
@@ -189,12 +201,16 @@ angular.module(
         preprocess_state_data: preprocess_state_data
         preprocess_service_state_data: preprocess_service_state_data
         service_colors: service_colors
+        host_colors: host_colors
     }
-]).directive("icswToolsServiceHistLineGraph", ["status_utils_functions", (status_utils_functions) ->
+]).directive("icswToolsHistLineGraph", ["status_utils_functions", (status_utils_functions) ->
     return {
         restrict: 'E'
         scope   : {
             'data' : '='
+            'forHost' : '&'
+            'widthAttr' : '&width'
+            'heightAttr' : '&height'
         }
         require : "^icswDeviceStatusHistoryOverview"
         template: """
@@ -210,7 +226,7 @@ angular.module(
                   ng-mousemove="mouse_move(entry, $event)"></rect>
         </g>
         <g>
-            <text ng-repeat="marker in timemarker_display" ng-attr-x="{{marker.pos_x}}" y="30"  style="fill:black;" font-size="10px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
+            <text ng-repeat="marker in timemarker_display" ng-attr-x="{{marker.pos_x}}" ng-attr-y="{{height}}"  ng-attr-style="fill:black;" font-size="{{fontSize}}px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
         </g>
     </svg>
     <div class="icsw-tooltip" ng-show="tooltip_entry" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">
@@ -232,8 +248,10 @@ angular.module(
                 scope.tooltipX = event.offsetX - (tooltip.clientWidth/2)
                 scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
 
-            scope.width = 300
-            scope.height = 30
+            scope.width = scope.widthAttr() or 300
+            scope.height = scope.heightAttr() or 30
+
+            scope.fontSize = 10
 
             scope.side_margin = 15
             scope.draw_width = scope.width - 2 * scope.side_margin
@@ -241,6 +259,8 @@ angular.module(
             scope.update = () ->
 
                 time_frame = status_history_ctrl.time_frame
+
+                scope.data_display = []
 
                 if time_frame?
 
@@ -263,7 +283,6 @@ angular.module(
 
                     total_duration = time_frame.end.diff(time_frame.start)
 
-                    scope.data_display = []
                     pos_x = scope.side_margin
                     last_date = time_frame.start
 
@@ -293,20 +312,36 @@ angular.module(
 
                                 last_entry = data_for_iteration[index-1]
 
-                                height = switch last_entry.state
-                                    when "Ok" then 10
-                                    when "Warning" then 15
-                                    when "Critical" then 20
-                                    when "Unknown" then 12
-                                    when "Undetermined" then 12
+                                # these heights are for a total height of 30
+                                if scope.forHost()
+                                    entry_height = switch last_entry.state
+                                        when "Up" then 10
+                                        when "Down" then 20
+                                        when "Unreachable" then 14
+                                        when "Undetermined" then 12
+                                    color = status_utils_functions.host_colors[last_entry.state]
+                                else
+                                    entry_height = switch last_entry.state
+                                        when "Ok" then 10
+                                        when "Warning" then 15
+                                        when "Critical" then 20
+                                        when "Unknown" then 12
+                                        when "Undetermined" then 12
+                                    color = status_utils_functions.service_colors[last_entry.state]
+
+                                entry_height /= 30
+                                #pos_y = ((2/3)-entry_height ) * scope.height  # such that bar ends
+                                entry_height *= scope.height
+                                pos_y = scope.height - 10 - entry_height
+
 
                                 scope.data_display.push(
                                     {
                                         pos_x : pos_x
-                                        pos_y : 20-height
-                                        height: height
+                                        pos_y : pos_y
+                                        height: entry_height
                                         width : entry_width
-                                        color : status_utils_functions.service_colors[last_entry.state]
+                                        color : color
                                         msg   : last_entry.msg
                                         state : last_entry.state
                                         # use actual start, not nice start with is always higher than time frame start
@@ -318,9 +353,7 @@ angular.module(
                             pos_x += entry_width
                             last_date = cur_date
 
-                else
-                    scope.data = []
 
-            scope.$watchGroup(['data', () -> return status_history_ctrl.time_frame],  (unused) -> scope.update() )
+            scope.$watchGroup(['data', () -> return status_history_ctrl.time_frame], (unused) -> scope.update() )
     }
 ])
