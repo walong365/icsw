@@ -21,11 +21,10 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device_variable, device
-from initat.collectd.collectd_types import value
+from initat.collectd.collectd_types.base import value, PerfdataObject
 from initat.collectd.config import global_config
 from lxml.builder import E  # @UnresolvedImports
 from lxml import etree
-import initat.collectd.collectd_types
 import json
 import logging_tools
 import memcache
@@ -86,7 +85,7 @@ class file_creator(object):
         return _targ_dir
 
     def get_pd_file_path(self, uuid, pd_tuple):
-        _t_obj = getattr(initat.collectd.collectd_types, pd_tuple[0])()
+        _t_obj = pd_tuple[0]
         # file path for pd entries
         _targ_dir = os.path.join(
             self.__main_dir,
@@ -101,7 +100,8 @@ class file_creator(object):
 
     def _create_target_file(self, _path, **kwargs):
         v_type = kwargs.get("v_type", "icval")
-        # print "v_type=", v_type
+        # if v_type != "icval":
+        #     print "v_type=", type(v_type), v_type
         if _path not in self.__created:
             if not os.path.exists(_path):
                 if "step" in kwargs:
@@ -136,7 +136,7 @@ class file_creator(object):
                         )
                         _path = None
                 else:
-                    self.log("no DS list for {}".format(v_type), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("no DS list for {}".format(str(v_type)), logging_tools.LOG_LEVEL_ERROR)
                     _path = None
             self.__created[_path] = True
         return _path if _path in self.__created else None
@@ -153,9 +153,8 @@ class file_creator(object):
             else:
                 # single-value icvals
                 _rv = ["v:GAUGE:U:U"]
-        elif v_type.startswith("ipd_"):
-            _tn = v_type[4:]
-            _t_obj = getattr(initat.collectd.collectd_types, _tn)()
+        elif isinstance(v_type, PerfdataObject):
+            _t_obj = v_type
             _rv = [
                 "{}:{}".format(
                     _e.get("name"),

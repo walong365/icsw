@@ -28,7 +28,6 @@ from initat.cluster.backbone.routing import get_server_uuid
 from initat.collectd.background import snmp_job, bg_job, ipmi_builder
 from initat.collectd.resize import resize_process
 from initat.collectd.aggregate import aggregate_process
-from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
 from initat.snmp.process import snmp_process_container
@@ -99,14 +98,15 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         # data_store.setup(self)
 
     def _init_perfdata(self):
-        re_list = []
-        for key in globals().keys():
-            obj = globals()[key]
-            if type(obj) == type and obj != PerfdataObject:
-                if issubclass(obj, PerfdataObject):
-                    obj = obj()
-                    re_list.append((obj.PD_RE, obj))
-        self.__pd_re_list = re_list
+        from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
+        if IMPORT_ERRORS:
+            self.log("errors while importing perfdata structures: {:d}".format(len(IMPORT_ERRORS)), logging_tools.LOG_LEVEL_ERROR)
+            for _num, _line in enumerate(IMPORT_ERRORS):
+                self.log("    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
+        self.log("valid perfdata structures: {:d}".format(len(ALL_PERFDATA.keys())))
+        for _key in sorted(ALL_PERFDATA.keys()):
+            self.log(" - {}: '{}'".format(_key, ALL_PERFDATA[_key][1].PD_RE.pattern))
+        self.__pd_re_list = ALL_PERFDATA.values()
 
     def _init_vars(self):
         self.__start_time = time.time()
@@ -779,14 +779,13 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
 
     def _handle_perfdata(self, data):
         pd_tuple, _host_info, _send_xml, time_recv, rsi, v_list = data
-        # s_time = self.get_time((_host_info.name, "ipd_{}_{}".format(pd_tuple[0], pd_tuple[1])), time_recv)
         s_time = int(time_recv)
         if self.__rrdcached_socket:
-            _tf = _host_info.target_file(pd_tuple, step=5 * 60, v_type="ipd_{}".format(pd_tuple[0]))
+            _tf = _host_info.target_file(pd_tuple, step=5 * 60, v_type=pd_tuple[0])
             if _tf:
                 cache_lines = [
                     "UPDATE {} {:d}:{}".format(
-                        _tf,  # self.fc.get_target_file(_target_dir, "perfdata", type_instance, "ipd_{}".format(_type), step=5 * 60),
+                        _tf,
                         s_time,
                         ":".join([str(_val) for _val in v_list[rsi:]]),
                     )

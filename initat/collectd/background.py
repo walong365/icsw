@@ -1,7 +1,7 @@
 #
 # this file is part of collectd-init
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,7 +21,6 @@
 
 """ background job definitions for collectd-init """
 
-from initat.collectd.collectd_types import *  # @UnusedWildImport
 from initat.collectd.struct import ext_com
 from initat.snmp.sink import SNMPSink
 from initat.snmp.struct import value_cache
@@ -131,16 +130,16 @@ class snmp_job(object):
             )
         )
         return
-        self.log(
-            "new SNMP {}, ip is {} (V{:d}, {}), invalid scheme {}".format(
-                self.id_str,
-                self.ip,
-                self.snmp_version,
-                self.snmp_read_community,
-                self.snmp_scheme
-            ),
-            logging_tools.LOG_LEVEL_CRITICAL
-        )
+        # self.log(
+        #    "new SNMP {}, ip is {} (V{:d}, {}), invalid scheme {}".format(
+        #        self.id_str,
+        #        self.ip,
+        #        self.snmp_version,
+        #        self.snmp_read_community,
+        #        self.snmp_scheme
+        #    ),
+        #    logging_tools.LOG_LEVEL_CRITICAL
+        # )
 
     def update_attribute(self, attr_name, attr_value):
         if attr_name == "snmp_schemes":
