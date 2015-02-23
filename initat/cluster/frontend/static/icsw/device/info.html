@@ -61,7 +61,7 @@
         </tab>
         <tab select="activate('status_history')" active="status_history_active">
             <tab-heading>
-                Status History
+                Status History{{ addon_text_nmd }}
             </tab-heading>
             <div ng-controller="icswDeviceStatusHistoryCtrl">
                 <icsw-device-status-history-overview icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['status_history']">
