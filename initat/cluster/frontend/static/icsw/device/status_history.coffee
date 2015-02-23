@@ -33,7 +33,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                     when 'year' then {'data': ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Sep", "Oct", "Nov", "Dec" ], 'time_points': false}
             else
                 return []
-]).directive("icswDeviceStatusHistoryDevice", ["status_utils_functions", "Restangular", "ICSW_URLS", "msgbus", (status_utils_functions, Restangular, ICSW_URLS, msgbus) ->
+]).directive("icswDeviceStatusHistoryDevice", ["status_utils_functions", "Restangular", "ICSW_URLS", "msgbus", "$q", (status_utils_functions, Restangular, ICSW_URLS, msgbus, $q) ->
     return {
         restrict : "EA"
         templateUrl : "icsw.device.status_history_device"
@@ -71,6 +71,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                 return pie_data
             scope.update = () ->
                 if status_history_ctrl.time_frame?
+                    serv_cont_done = $q.defer()
                     serv_cont = (new_data) ->
                         new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
                         # new_data is dict, but we want it as list to be able to sort it
@@ -79,20 +80,29 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                         # (usually pathological configuration)
                         if new_data?
                             processed_data = ({
+                                'key' : key
                                 'name': scope.extract_service_name(key)
-                                'main_data': val.main
-                                'pie_data': scope.calc_pie_data(key, val.main)
-                                'detailed_data': val.detailed} for key, val of new_data)
+                                'main_data': val
+                                'line_graph_data': [] # line graph data will be filled below
+                                'pie_data': scope.calc_pie_data(key, val)} for key, val of new_data)
                         else
                             processed_data = []
 
                         scope.service_data = _.sortBy(processed_data, (entry) -> return entry.name)
+                        serv_cont_done.resolve()
 
-                    status_utils_functions.get_service_data(
-                        [scope.device_id],
-                        status_history_ctrl.time_frame.date_gui,
-                        status_history_ctrl.time_frame.duration_type,
-                        serv_cont)
+                    serv_line_graph_cont = (new_data) ->
+                        # we need that the other query has finished
+                        serv_cont_done.promise.then(() ->
+                            new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
+
+                            for entry in scope.service_data
+                                entry.line_graph_data = new_data[entry.key]
+                        )
+
+                    time_frame = status_history_ctrl.time_frame
+                    status_utils_functions.get_service_data([scope.device_id], time_frame.date_gui, time_frame.duration_type, serv_cont)
+                    status_utils_functions.get_service_data([scope.device_id], time_frame.date_gui, time_frame.duration_type, serv_line_graph_cont, 0, true)
                 else
                     scope.service_data = []
 

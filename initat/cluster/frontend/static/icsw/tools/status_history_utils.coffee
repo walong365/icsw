@@ -125,16 +125,19 @@ angular.module(
             obj = new_data.plain()[0]
             cont(obj)
         )
-    get_service_data = (device_ids, start_date, timerange, cont, merge_services=0) ->
+    get_service_data = (device_ids, start_date, timerange, cont, merge_services=0, line_graph_data=false) ->
         # merge_services: boolean as int
-        expect_array = merge_services != 0
+        # line_graph_data: boolean as int, get only line graph data
         query_data = {
             'device_ids': device_ids.join(),
             'date': moment(start_date).unix()  # ask server in utc
             'duration_type': timerange,
             'merge_services': merge_services,
         }
-        base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_DATA.slice(1))
+        if line_graph_data
+            base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_LINE_GRAPH_DATA.slice(1))
+        else
+            base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_DATA.slice(1))
         # we always return a list for easier REST handling
         base.getList(query_data).then((data_pseudo_list) ->
             # need plain() to get rid of restangular stuff

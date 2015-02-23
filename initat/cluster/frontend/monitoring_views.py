@@ -584,70 +584,56 @@ class get_hist_service_data(ListAPIView):
             return_data = merge_services(data_per_device)
 
         else:
-            prelim_return_data = merge_state_types_per_device(data_per_device)
-
-            # there should be 'detailed' and 'main' for each service for each device
-            return_data = defaultdict(lambda: defaultdict(lambda: {}))  # detailed data later may add more devices
-            for dev, dev_data in prelim_return_data.iteritems():
-                for serv, serv_data in dev_data.iteritems():
-                    return_data[dev][serv] = {'detailed': [], 'main': serv_data}
-
-            if False:  # NOTE: code for detailed view based on aggregated data, not full data
-                # TODO: timespan_db can be None
-                # TODO: don't merge data here
-                # for full view, include more detailed data
-                shorter_duration_type = duration.get_shorter_duration(timespan_db.duration_type)
-                shorter_durations_db =\
-                    mon_icinga_log_aggregated_timespan.objects.filter(start_date__gte=timespan_db.start_date,
-                                                                      end_date__lte=timespan_db.end_date,
-                                                                      duration_type=shorter_duration_type.ID)
-
-                detailed_data_per_device = get_data_per_device(device_ids, shorter_durations_db)
-                detailed_return_data = merge_state_types_per_device(detailed_data_per_device)
-
-            # calculate detailed view based on all events
-
-            start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
-            obj_man = mon_icinga_log_raw_service_alert_data.objects
-            entries = obj_man.calc_service_alerts(start, end, device_ids=device_ids, use_client_service_name=True)
-
-            last_before_entries = obj_man.calc_limit_service_alerts(start,
-                                                                    mode='last before',
-                                                                    device_ids=device_ids,
-                                                                    use_client_service_name=True)
-
-            first_after_entries = obj_man.calc_limit_service_alerts(end,
-                                                                    mode='first after',
-                                                                    device_ids=device_ids,
-                                                                    use_client_service_name=True)
-
-            dev_serv_keys = set(entries.iterkeys())
-            # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
-            # they might be active before and after, but not during the time frame, in which case
-            # they are not relevant to us
-
-            for (device_id, service_identifier) in dev_serv_keys:
-                amended_list = entries.get((device_id, service_identifier), [])
-
-                entry_before = last_before_entries.get((device_id, service_identifier), None)
-                if entry_before is not None:
-                    amended_list = [entry_before] + amended_list
-                entry_after = first_after_entries.get((device_id, service_identifier), None)
-                if entry_after is not None:
-                    amended_list = amended_list + [entry_after]
-
-                return_data[device_id][service_identifier]['detailed'] = \
-                    [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in amended_list]
+            return_data = merge_state_types_per_device(data_per_device)
 
         return Response([return_data])  # fake a list, see coffeescript
 
 
 class get_hist_service_line_graph_data(ListAPIView):
+    """
+    Returns service data for line graph
+    """
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
         device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
 
-        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
+        trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
-        raise "disabled"
+        # calculate detailed view based on all events
+
+        start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
+        obj_man = mon_icinga_log_raw_service_alert_data.objects
+        entries = obj_man.calc_service_alerts(start, end, device_ids=device_ids, use_client_service_name=True)
+
+        last_before_entries = obj_man.calc_limit_service_alerts(start,
+                                                                mode='last before',
+                                                                device_ids=device_ids,
+                                                                use_client_service_name=True)
+
+        first_after_entries = obj_man.calc_limit_service_alerts(end,
+                                                                mode='first after',
+                                                                device_ids=device_ids,
+                                                                use_client_service_name=True)
+
+        dev_serv_keys = set(entries.iterkeys())
+        # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
+        # they might be active before and after, but not during the time frame, in which case
+        # they are not relevant to us
+
+        return_data = defaultdict(lambda: {})
+
+        for (device_id, service_identifier) in dev_serv_keys:
+            amended_list = entries.get((device_id, service_identifier), [])
+
+            entry_before = last_before_entries.get((device_id, service_identifier), None)
+            if entry_before is not None:
+                amended_list = [entry_before] + amended_list
+            entry_after = first_after_entries.get((device_id, service_identifier), None)
+            if entry_after is not None:
+                amended_list = amended_list + [entry_after]
+
+            return_data[device_id][service_identifier] = \
+                [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in amended_list]
+
+        return Response([return_data])  # fake a list, see coffeescript
