@@ -58,9 +58,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                 description =  service_key.split(",", 2)[1]
                 if check_command_name
                     if description
-                        # serv_name = check_command_name + ": " + description
-                        # changed 20150223: only description as it's usually similar to check command name
-                        serv_name = description
+                        serv_name = check_command_name + ": " + description
                     else
                         serv_name = check_command_name
                 else  # legacy data, only have some kind of id string to show
