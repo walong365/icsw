@@ -686,13 +686,16 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             base_names.add(base_name)
                             name_case_lut[base_name.lower()] = base_name
                         else:
-                            self.log("width or height (%d x %d) not in range ([%d - %d] x [%d - %d])" % (
-                                width,
-                                height,
-                                min_width,
-                                max_width,
-                                min_height,
-                                max_height))
+                            self.log(
+                                "width or height ({:d} x {:d}) not in range ([{:d} - {:d}] x [{:d} - {:d}])".format(
+                                    width,
+                                    height,
+                                    min_width,
+                                    max_width,
+                                    min_height,
+                                    max_height,
+                                )
+                            )
         name_lut = {eh.name.lower(): pk for pk, eh in all_image_stuff.iteritems()}
         all_images_present = set([eh.name for eh in all_image_stuff.values()])
         all_images_present_lower = set([name.lower() for name in all_images_present])
@@ -1207,7 +1210,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                                 s_dep.dependent_mon_check_command_id
                                             )
                                         if all_ok:
-                                            act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
+                                            act_service_dep["dependent_service_description"] = host_service_id_util.create_host_service_description(
+                                                dev_pk,
+                                                _bc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
+                                                _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
+                                            )
                                             sc_check = cur_gc["command"]["check_service_cluster"]
                                             # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
                                             act_service_dep["service_description"] = "{} / {}".format(
@@ -1254,8 +1261,23 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                                 s_dep.dependent_mon_check_command_id
                                             )
                                         if all_ok:
-                                            act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
-                                            act_service_dep["service_description"] = _bc.mcc_lut[s_dep.mon_check_command_id][1]
+                                            # FIXME, TODO, must unroll loops
+                                            # act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
+                                            act_service_dep["dependent_service_description"] = [
+                                                host_service_id_util.create_host_service_description(
+                                                    dev_pk,
+                                                    _bc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
+                                                    _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
+                                                ) for dev_pk in s_dep.master_list
+                                            ]
+                                            # act_service_dep["service_description"] = _bc.mcc_lut[s_dep.mon_check_command_id][1]
+                                            act_service_dep["service_description"] = [
+                                                host_service_id_util.create_host_service_description(
+                                                    dev_pk,
+                                                    _bc.mcc_lut_3[s_dep.mon_check_command_id],
+                                                    _bc.mcc_lut[s_dep.mon_check_command_id][1],
+                                                ) for dev_pk in s_dep.devices_list
+                                            ]
                                             act_service_dep["host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in s_dep.devices_list]
                                             act_service_dep["dependent_host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
@@ -1741,7 +1763,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 len(sc_array),
                 s_check.get_template(act_def_serv.name),
                 "cg: {}".format(", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs",
-                "no evh" if not ev_defined else "evh is {} ({})".format(s_check.event_handler.name, "enabled" if s_check.event_handler_enabled else "disabled"),
+                "no evh" if not ev_defined else "evh is {} ({})".format(
+                    s_check.event_handler.name,
+                    "enabled" if (s_check.event_handler_enabled and host_is_actively_checked) else "disabled",
+                ),
             )
         )
         ret_field = []
@@ -1755,7 +1780,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # event handlers
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name
-                act_serv["event_handler_enabled"] = "1" if s_check.event_handler_enabled else "0"
+                act_serv["event_handler_enabled"] = "1" if (s_check.event_handler_enabled and host_is_actively_checked) else "0"
             if arg_temp.check_active is not None:
                 # check flag overrides device specific setting
                 act_serv["{}_checks_enabled".format("active" if arg_temp.check_active else "passive")] = 1
