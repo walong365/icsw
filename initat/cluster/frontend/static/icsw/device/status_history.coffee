@@ -105,7 +105,8 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
 
                     time_frame = status_history_ctrl.time_frame
                     status_utils_functions.get_service_data([scope.device_id], time_frame.date_gui, time_frame.duration_type, serv_cont)
-                    status_utils_functions.get_service_data([scope.device_id], time_frame.date_gui, time_frame.duration_type, serv_line_graph_cont, 0, true)
+                    if time_frame.duration_type != 'year'
+                        status_utils_functions.get_service_data([scope.device_id], time_frame.date_gui, time_frame.duration_type, serv_line_graph_cont, 0, true)
                 else
                     scope.service_data = []
 
@@ -154,14 +155,24 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
             scope.get_time_frame = () ->
                 return status_history_ctrl.time_frame
 
-            scope.update_time_frame = () ->
-                cont = (new_data) ->
-                    if new_data.length > 0
-                        scope.timespan_error = ""
+            scope.update_time_frame = (new_values, old_values) ->
+                duration_type_change = new_values[0] != old_values[0] and new_values[1] == old_values[1]
 
-                        timespan = new_data[0]
-                        start = moment.utc(timespan[0])
-                        end = moment.utc(timespan[1])
+                cont = (new_data) ->
+                    scope.timespan_error = ""
+                    if new_data.status == 'found'
+
+                        start = moment.utc(new_data.start)
+                        end = moment.utc(new_data.end)
+
+                        status_history_ctrl.set_time_frame(scope.startdate, scope.duration_type, start, end)
+                    else if new_data.status == 'found earlier' and duration_type_change
+                        # does not exist for this time span. This usually happens when you select a timeframe which hasn't finished.
+
+                        start = moment.utc(new_data.start)
+                        end = moment.utc(new_data.end)
+
+                        scope.startdate = moment.utc(new_data.start)  # also set gui
 
                         status_history_ctrl.set_time_frame(scope.startdate, scope.duration_type, start, end)
                     else
@@ -172,6 +183,6 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
 
             scope.new_devsel = (new_val) ->
                 scope.devicepks = new_val
-            scope.$watchGroup(['duration_type', 'startdate'],  (unused) -> scope.update_time_frame() )
+            scope.$watchGroup(['duration_type', 'startdate'],  (new_values, old_values) -> scope.update_time_frame(new_values, old_values) )
     }
 ])

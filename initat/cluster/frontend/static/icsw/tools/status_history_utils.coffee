@@ -164,7 +164,7 @@ angular.module(
             'duration_type': timerange,
         }
         base = Restangular.all(ICSW_URLS.MON_GET_HIST_TIMESPAN.slice(1))
-        base.getList(query_data).then(cont)
+        base.customGET("", query_data).then(cont)
     float_format = (n) -> return (n*100).toFixed(2) + "%"
     preprocess_state_data = (new_data, weights, colors) ->
         formatted_data = _.cloneDeep(new_data)
@@ -219,7 +219,7 @@ angular.module(
         template: """
 <div class="icsw-chart" ng-attr-style="width: {{width}}px; height: {{height}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
     <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}">
-        <g>
+        <g ng-show="!error">
             <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}" ng-attr-y="{{entry.pos_y}}"
                   ng-attr-width="{{entry.width}}" ng-attr-height="{{entry.height}}" rx="1" ry="1"
                   ng-attr-style="fill:{{entry.color}};stroke-width:0;stroke:rgb(0,0,0)"
@@ -227,8 +227,11 @@ angular.module(
                   ng-mouseleave="mouse_leave(entry)"
                   ng-mousemove="mouse_move(entry, $event)"></rect>
         </g>
-        <g>
+        <g ng-show="!error">
             <text ng-repeat="marker in timemarker_display" ng-attr-x="{{marker.pos_x}}" ng-attr-y="{{height}}"  ng-attr-style="fill:black;" font-size="{{fontSize}}px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
+        </g>
+        <g ng-show="error">
+            <text x="1" y="25"  font-size="12px" fill="red">{{error}}</text>
         </g>
     </svg>
     <div class="icsw-tooltip" ng-show="tooltip_entry" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">
@@ -262,102 +265,113 @@ angular.module(
 
                 time_frame = status_history_ctrl.time_frame
 
+                # cleanup
                 scope.data_display = []
+                scope.timemarker_display = []
+                scope.error = ""
 
+                # calculate data to show
                 if time_frame?
 
-                    scope.timemarker_display = []
-                    time_marker = status_history_ctrl.get_time_marker()
-                    for marker, index in time_marker.data
-                        if time_marker.time_points
-                            # time is exactly at certain points
-                            pos_x = scope.side_margin + index * scope.draw_width / (time_marker.data.length-1)
-                        else
-                            # pos should be in the middle of the durations, such as week days, month
-                            unit_size = scope.draw_width / time_marker.data.length
-                            start_of_unit = scope.side_margin + (index * unit_size)
-                            pos_x = start_of_unit + (unit_size / 2)
-
-                        scope.timemarker_display.push({
-                                text: marker
-                                pos_x: pos_x
-                        })
-
-                    total_duration = time_frame.end.diff(time_frame.start)
-
-                    pos_x = scope.side_margin
-                    last_date = time_frame.start
-
-                    data_for_iteration = scope.data
-
-                    if scope.data.length > 0
-                        has_last_event_after_time_frame_end = moment.utc(scope.data[scope.data.length-1].date).isAfter(time_frame.end)
-                        if ! has_last_event_after_time_frame_end
-                            # add dummy element for nice iteration below
-                            data_for_iteration = data_for_iteration.concat('last')
-
-                    for entry, index in data_for_iteration
-                            if entry == 'last'
-                                cur_date = time_frame.end
-                                display_end = moment()
+                    if scope.data.length > 5000
+                        scope.error = "Too much data to display"
+                    else if time_frame.duration_type == "year" and !scope.forHost()
+                        # no error, but also display nothing
+                    else
+                        # set time marker
+                        time_marker = status_history_ctrl.get_time_marker()
+                        for marker, index in time_marker.data
+                            if time_marker.time_points
+                                # time is exactly at certain points
+                                pos_x = scope.side_margin + index * scope.draw_width / (time_marker.data.length-1)
                             else
-                                cur_date = moment.utc(entry.date)
-                                if cur_date.isBefore(time_frame.start)
-                                    # first event is before current time, but we must not draw that
-                                    cur_date = time_frame.start
-                                display_end = cur_date
+                                # pos should be in the middle of the durations, such as week days, month
+                                unit_size = scope.draw_width / time_marker.data.length
+                                start_of_unit = scope.side_margin + (index * unit_size)
+                                pos_x = start_of_unit + (unit_size / 2)
 
-                            duration = cur_date.diff(last_date)
-                            entry_width = scope.draw_width * duration / total_duration
+                            scope.timemarker_display.push({
+                                    text: marker
+                                    pos_x: pos_x
+                            })
 
-                            if index != 0
 
-                                last_entry = data_for_iteration[index-1]
+                        # calculate data to show (
+                        total_duration = time_frame.end.diff(time_frame.start)
 
-                                # these heights are for a total height of 30
-                                if scope.forHost()
-                                    entry_height = switch last_entry.state
-                                        when "Up" then 10
-                                        when "Down" then 20
-                                        when "Unreachable" then 14
-                                        when "Undetermined" then 12
-                                    color = status_utils_functions.host_colors[last_entry.state]
+                        pos_x = scope.side_margin
+                        last_date = time_frame.start
+
+                        data_for_iteration = scope.data
+
+                        if scope.data.length > 0
+                            has_last_event_after_time_frame_end = moment.utc(scope.data[scope.data.length-1].date).isAfter(time_frame.end)
+                            if ! has_last_event_after_time_frame_end
+                                # add dummy element for nice iteration below
+                                data_for_iteration = data_for_iteration.concat('last')
+
+                        for entry, index in data_for_iteration
+                                if entry == 'last'
+                                    cur_date = time_frame.end
+                                    display_end = moment()
                                 else
-                                    entry_height = switch last_entry.state
-                                        when "Ok" then 10
-                                        when "Warning" then 15
-                                        when "Critical" then 20
-                                        when "Unknown" then 12
-                                        when "Undetermined" then 12
-                                    color = status_utils_functions.service_colors[last_entry.state]
+                                    cur_date = moment.utc(entry.date)
+                                    if cur_date.isBefore(time_frame.start)
+                                        # first event is before current time, but we must not draw that
+                                        cur_date = time_frame.start
+                                    display_end = cur_date
 
-                                entry_height /= 30
-                                #pos_y = ((2/3)-entry_height ) * scope.height  # such that bar ends
-                                entry_height *= scope.height
-                                pos_y = scope.height - 10 - entry_height
+                                duration = cur_date.diff(last_date)
+                                entry_width = scope.draw_width * duration / total_duration
 
-                                if entry_width <= 2
-                                    if entry_width <= 1
-                                        pos_x -= 1
-                                    entry_width += 1
+                                if index != 0
 
-                                scope.data_display.push(
-                                    {
-                                        pos_x : pos_x
-                                        pos_y : pos_y
-                                        height: entry_height
-                                        width : entry_width
-                                        color : color
-                                        msg   : last_entry.msg
-                                        state : last_entry.state
-                                        # use actual start, not nice start with is always higher than time frame start
-                                        start : moment.utc(last_entry.date).format("DD.MM.YYYY HH:mm")
-                                        end   : display_end.format("DD.MM.YYYY HH:mm")
-                                    }
-                                )
+                                    last_entry = data_for_iteration[index-1]
 
-                            pos_x += entry_width
-                            last_date = cur_date
+                                    # these heights are for a total height of 30
+                                    if scope.forHost()
+                                        entry_height = switch last_entry.state
+                                            when "Up" then 10
+                                            when "Down" then 20
+                                            when "Unreachable" then 14
+                                            when "Undetermined" then 12
+                                        color = status_utils_functions.host_colors[last_entry.state]
+                                    else
+                                        entry_height = switch last_entry.state
+                                            when "Ok" then 10
+                                            when "Warning" then 15
+                                            when "Critical" then 20
+                                            when "Unknown" then 12
+                                            when "Undetermined" then 12
+                                        color = status_utils_functions.service_colors[last_entry.state]
+
+                                    entry_height /= 30
+                                    #pos_y = ((2/3)-entry_height ) * scope.height  # such that bar ends
+                                    entry_height *= scope.height
+                                    pos_y = scope.height - 10 - entry_height
+
+                                    if entry_width <= 2
+                                        if entry_width <= 1
+                                            pos_x -= 1
+                                        entry_width += 1
+
+                                    scope.data_display.push(
+                                        {
+                                            pos_x : pos_x
+                                            pos_y : pos_y
+                                            height: entry_height
+                                            width : entry_width
+                                            color : color
+                                            msg   : last_entry.msg
+                                            state : last_entry.state
+                                            # use actual start, not nice start with is always higher than time frame start
+                                            start : moment.utc(last_entry.date).format("DD.MM.YYYY HH:mm")
+                                            end   : display_end.format("DD.MM.YYYY HH:mm")
+                                        }
+                                    )
+
+                                pos_x += entry_width
+                                last_date = cur_date
 
 
             scope.$watchGroup(['data', () -> return status_history_ctrl.time_frame], (unused) -> scope.update() )

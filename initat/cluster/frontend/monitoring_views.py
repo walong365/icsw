@@ -28,7 +28,8 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework.generics import ListAPIView
+import pytz
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
@@ -543,14 +544,28 @@ class _device_status_history_util(object):
         return return_data
 
 
-class get_hist_timespan(ListAPIView):
+class get_hist_timespan(RetrieveAPIView):
     @method_decorator(login_required)
     @rest_logging
-    def list(self, request, *args, **kwargs):
+    def retrieve(self, request, *args, **kwargs):
         timespan = _device_status_history_util.get_timespan_db_from_request(request)
-        data = []
         if timespan:
-            data.append((timespan.start_date, timespan.end_date))
+            data = {'status': 'found', 'start': timespan.start_date, 'end': timespan.end_date}
+        else:
+            data = {'status': 'not found'}
+            start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
+            # return most recent data type if this type is not yet finished
+            try:
+                latest_timespan_db = \
+                    mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest('start_date')
+            except mon_icinga_log_aggregated_timespan.DoesNotExist:
+                pass  # no data at all, can't do anything useful
+            else:
+                date = duration_utils.parse_date(request.GET["date"])
+                date = date.replace(tzinfo=pytz.UTC)
+                if latest_timespan_db.end_date < date:
+                    data = {'status': 'found earlier', 'start': latest_timespan_db.start_date, 'end': latest_timespan_db.end_date}
+
         return Response(data)
 
 
