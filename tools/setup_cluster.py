@@ -40,7 +40,6 @@ DB_PRESENT = {}
 LIB_DIR = "/opt/python-init/lib/python/site-packages"
 CMIG_DIR = os.path.join(LIB_DIR, "initat", "cluster", "backbone", "migrations")
 MIGRATION_DIRS = [
-    "static_precompiler",
     "reversion",
     "django/contrib/auth",
     "initat/cluster/backbone",
@@ -474,7 +473,7 @@ def create_db(opts):
     #       it does however create migrations which are needed by the apps migrated explicitly below
     migrate_app("")
     # schemamigrations
-    for _app in ["django.contrib.contenttypes", "django.contrib.sites", "django.contrib.auth", "reversion", "static_precompiler", "backbone"]:
+    for _app in ["django.contrib.contenttypes", "django.contrib.sites", "django.contrib.auth", "reversion", "backbone"]:
         migrate_app(_app)
 
     if opts.no_initial_data:
@@ -511,7 +510,7 @@ def migrate_db(opts):
                 call_manage(["makemigrations", _sync_app, "--noinput"])
                 call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
-        for _app in ["backbone", "django.contrib.auth", "reversion", "static_precompiler"]:
+        for _app in ["backbone", "django.contrib.auth", "reversion"]:
             migrate_app(_app)
         call_update_funcs(opts)
     else:

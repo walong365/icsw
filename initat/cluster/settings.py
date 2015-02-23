@@ -286,8 +286,6 @@ INSTALLED_APPS = (
     "pipeline",
     "static_precompiler",
     "crispy_forms",
-    # cluster
-    "initat.core",
 )
 if SLAVE_MODE:
     INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
@@ -302,7 +300,7 @@ CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
-STATIC_PRECOMPILER_CACHE = not DEBUG
+# STATIC_PRECOMPILER_CACHE = not DEBUG
 
 try:
     import crispy_forms
@@ -362,15 +360,14 @@ PIPELINE_CSS = {
         "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
-            "js/libs/dynatree/skin/ui.dynatree.css",
-            # "css/msdropdown/dd.css",
+            "css/ui.dynatree.css",
             "css/jqModal.css",
             "css/codemirror.css",
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
             "css/angular-block-ui.css",
-            "js/libs/ui-select/select.css",
+            "js/ui-select/select.css",
             "css/ladda.min.css",
             "css/tooltip.css",
             "css/smart-table.css",
@@ -386,23 +383,23 @@ PIPELINE_CSS = {
 PIPELINE_JS = {
     "js_jquery_new": {
         "source_filenames": {
-            "js/libs/modernizr-2.8.1.min.js",
-            "js/libs/jquery-2.1.3.min.js",
+            "js/modernizr-2.8.1.min.js",
+            "js/jquery-2.1.3.min.js",
         },
         "output_filename": "pipeline/js/jquery_new.js"
     },
     "js_base": {
         "source_filenames": (
-            "js/libs/jquery-ui-1.10.2.custom.js",
-            "js/libs/angular-1.3.12.js",
-            "js/libs/lodash.min.js",
+            "js/jquery-ui-1.10.2.custom.js",
+            "js/angular-1.3.12.js",
+            "js/lodash.min.js",
             "js/bluebird.js",
             "js/codemirror/codemirror.js",
             "js/bootstrap.js",
-            "js/libs/jquery.color.js",
-            "js/libs/jquery.blockUI.js",
-            "js/libs/moment-with-locales.js",
-            "js/libs/jquery.Jcrop.min.js",
+            "js/jquery.color.js",
+            "js/jquery.blockUI.js",
+            "js/moment-with-locales.js",
+            "js/jquery.Jcrop.min.js",
             "js/spin.js",
             "js/ladda.js",
             "js/angular-ladda.js",
@@ -417,25 +414,25 @@ PIPELINE_JS = {
             "js/codemirror/mode/python/python.js",
             "js/codemirror/mode/xml/xml.js",
             "js/codemirror/mode/shell/shell.js",
-            # "js/libs/jquery-ui-timepicker-addon.js",
-            "js/libs/angular-route.min.js",
-            "js/libs/angular-resource.min.js",
-            "js/libs/angular-cookies.min.js",
-            "js/libs/angular-sanitize.min.js",
-            "js/libs/angular-animate.min.js",
-            "js/libs/angular-file-upload.js",
-            "js/libs/restangular.min.js",
-            "js/libs/angular-block-ui.js",
-            "js/libs/ui-select/select.js",
-            "js/libs/ui-bootstrap-tpls.min.js",
-            "js/libs/angular-ui-router.js",
-            # now in common_function as coffeescript
-            # "js/libs/ui-codemirror.min.js",
-            "js/libs/angular-datetimepicker.js",
-            # "js/libs/angular-strap.min.js",
-            # "js/libs/angular-strap.tpl.min.js",
+            # "js/jquery-ui-timepicker-addon.js",
+            "js/angular-route.min.js",
+            "js/angular-resource.min.js",
+            "js/angular-cookies.min.js",
+            "js/angular-sanitize.min.js",
+            "js/angular-animate.min.js",
+            "js/angular-file-upload.js",
+            "js/restangular.min.js",
+            "js/angular-block-ui.js",
+            "js/ui-select/select.js",
+            "js/ui-bootstrap-tpls.min.js",
+            "js/angular-ui-router.js",
+            # must use minified version, otherwise the minifier destroys injection info
+            "js/ui-codemirror.min.js",
+            "js/angular-datetimepicker.js",
+            # "js/angular-strap.min.js",
+            # "js/angular-strap.tpl.min.js",
             "js/angular-noVNC.js",
-            "js/libs/FileSaver.js",
+            "js/FileSaver.js",
             "js/mousewheel.js",
             "js/smart-table.debug.js",
             "js/angular-google-maps.min.js",
