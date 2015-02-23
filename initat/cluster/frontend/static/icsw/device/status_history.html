@@ -5,8 +5,8 @@
         <div class="form-inline">
             Timerange:
             <div class="form-group">
-                <div class="input-group">
-                    <input type="text" class="form-control" ng-model="startdate"></input>
+                <div class="input-group" ng-show="duration_type == 'day' || duration_type == 'week'">
+                    <input type="text" class="form-control" ng-model="startdate"/>
                     <span class="dropdown-toggle input-group-addon">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
@@ -15,6 +15,34 @@
                             <ul class="dropdown-menu" role="menu">
                                 <datetimepicker ng-model="startdate"
                                                 data-datetimepicker-config="{ startView:'day', minView:'day' }" />
+                            </ul>
+                        </div>
+                    </span>
+                </div>
+                 <div class="input-group" ng-show="duration_type == 'month'">
+                    <input type="text" class="form-control" ng-model="startdate"/>
+                    <span class="dropdown-toggle input-group-addon">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                            <ul class="dropdown-menu" role="menu">
+                                <datetimepicker ng-model="startdate" data-datetimepicker-config="{ startView:'month', minView:'month' }" >
+                                </datetimepicker>
+                            </ul>
+                        </div>
+                    </span>
+                </div>
+                <div class="input-group" ng-show="duration_type == 'year'">
+                    <input type="text" class="form-control" ng-model="startdate"/>
+                    <span class="dropdown-toggle input-group-addon">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                            <ul class="dropdown-menu" role="menu">
+                                <datetimepicker ng-model="startdate" data-datetimepicker-config="{ startView:'year', minView:'year' }" >
+                                </datetimepicker>
                             </ul>
                         </div>
                     </span>
