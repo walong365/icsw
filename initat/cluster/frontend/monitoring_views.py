@@ -533,13 +533,8 @@ class _device_status_history_util(object):
             if entry_after is not None:
                 amended_list = amended_list + [entry_after]
 
-            l = []
-            for entry in amended_list:
-                if isinstance(entry, dict):
-                    l.append({'date': entry['date'], 'state': trans[entry['state']], 'msg': entry['msg']})
-                else:
-                    l.append({'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg})
-            return_data[key] = l
+            return_data[key] = \
+                [{'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg} for entry in amended_list]
         return return_data
 
 
@@ -652,7 +647,6 @@ class get_hist_device_line_graph_data(ListAPIView):
     @method_decorator(login_required)
     @rest_logging
     def list(self, request, *args, **kwargs):
-
         return_data = _device_status_history_util.get_line_graph_data(request, for_host=True)
         return Response([return_data])  # fake a list, see coffeescript
 
@@ -672,24 +666,3 @@ class get_hist_service_line_graph_data(ListAPIView):
             return_data[dev_id][service_identifier] = values
 
         return Response([return_data])  # fake a list, see coffeescript
-        """
-        def f():
-            prelim_return_data = _device_status_history_util.get_line_graph_data(request, for_host=False)
-
-            return_data = defaultdict(lambda: {})
-
-            for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
-                return_data[dev_id][service_identifier] = values
-
-        import cProfile
-        import time
-        a = "/tmp/profl-{}".format(time.time())
-        print 'prof to ', a
-        cProfile.runctx("f()", globals(), locals(), a)
-
-        from django.db import connection
-        from pprint import pprint
-        pprint(sorted(connection.queries, key=lambda a: a['time']), open("/tmp/prof1", "w"))
-
-        return Response([return_data])  # fake a list, see coffeescript
-        """

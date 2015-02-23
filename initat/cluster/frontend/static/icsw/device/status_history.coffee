@@ -58,9 +58,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                 description =  service_key.split(",", 2)[1]
                 if check_command_name
                     if description
-                        # serv_name = check_command_name + ": " + description
-                        # changed 20150223: only description as it's usually similar to check command name
-                        serv_name = description
+                        serv_name = check_command_name + ": " + description
                     else
                         serv_name = check_command_name
                 else  # legacy data, only have some kind of id string to show
@@ -98,9 +96,8 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                         serv_cont_done.promise.then(() ->
                             new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
 
-                            if new_data?
-                                for entry in scope.service_data
-                                    entry.line_graph_data = new_data[entry.key]
+                            for entry in scope.service_data
+                                entry.line_graph_data = new_data[entry.key]
                         )
 
                     time_frame = status_history_ctrl.time_frame
@@ -129,6 +126,8 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
             scope.duration_type = 'day'
 
             if true  # debug
+                scope.startdate = moment('Feb 13 2015 00:00:00 GMT+0100 (CET)')
+                scope.duration_type = 'day'
                 scope.startdate = moment('Jan 13 2015 00:00:00 GMT+0100 (CET)')
                 scope.duration_type = 'month'
 
@@ -140,13 +139,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
 
                 scope.startdate = moment('Dec 16 2014 00:00:00 GMT+0100 (CET)')
                 scope.duration_type = 'month'
-
-                scope.startdate = moment('May 6  2014 00:00:00 GMT+0100 (CET)')
                 scope.duration_type = 'day'
-
-                scope.startdate = moment('Feb 14 2015 00:00:00 GMT+0100 (CET)')
-                scope.duration_type = 'day'
-
 
             scope.set_duration_type = (d) ->
                 scope.duration_type = d
