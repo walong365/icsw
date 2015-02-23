@@ -622,8 +622,9 @@ class get_hist_service_data(ListAPIView):
                                                                     use_client_service_name=True)
 
             dev_serv_keys = set(entries.iterkeys())
-            dev_serv_keys.update(last_before_entries.iterkeys())
-            # don't consider first after for keys (if the first event is after the time frame, it's not relevant to us)
+            # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
+            # they might be active before and after, but not during the time frame, in which case
+            # they are not relevant to us
 
             for (device_id, service_identifier) in dev_serv_keys:
                 amended_list = entries.get((device_id, service_identifier), [])

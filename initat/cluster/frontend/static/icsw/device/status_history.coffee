@@ -70,20 +70,23 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                 [unused, pie_data] = status_utils_functions.preprocess_service_state_data(service_data)
                 return pie_data
             scope.update = () ->
-                console.log 'child udpate ', status_history_ctrl
                 if status_history_ctrl.time_frame?
                     serv_cont = (new_data) ->
                         new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
                         # new_data is dict, but we want it as list to be able to sort it
-                        data = ({
-                            'name': scope.extract_service_name(key)
-                            'main_data': val.main
-                            'pie_data': scope.calc_pie_data(key, val.main)
-                            'detailed_data': val.detailed} for key, val of new_data)
 
-                        scope.service_data = _.sortBy(data, (entry) -> return entry.name)
+                        # new_data is undefined if there are no services in this time frame
+                        # (usually pathological configuration)
+                        if new_data?
+                            processed_data = ({
+                                'name': scope.extract_service_name(key)
+                                'main_data': val.main
+                                'pie_data': scope.calc_pie_data(key, val.main)
+                                'detailed_data': val.detailed} for key, val of new_data)
+                        else
+                            processed_data = []
 
-                        console.log 'got data', scope.service_data
+                        scope.service_data = _.sortBy(processed_data, (entry) -> return entry.name)
 
                     status_utils_functions.get_service_data(
                         [scope.device_id],
@@ -121,8 +124,11 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                 scope.startdate = moment('Wed Feb 11 2015 00:00:00 GMT+0100 (CET)')
                 scope.duration_type = 'week'
 
-                scope.startdate = moment('Feb 19 2015 00:00:00 GMT+0100 (CET)')
+                scope.startdate = moment('Feb 16 2015 00:00:00 GMT+0100 (CET)')
                 scope.duration_type = 'day'
+
+                scope.startdate = moment('Dec 16 2014 00:00:00 GMT+0100 (CET)')
+                scope.duration_type = 'month'
 
             scope.set_duration_type = (d) ->
                 scope.duration_type = d
@@ -143,8 +149,6 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                     else
                         scope.timespan_error = "No data available for this time span"
                         status_history_ctrl.set_time_frame()
-
-                    console.log 'up time frame', status_history_ctrl
 
                 status_utils_functions.get_timespan(scope.startdate, scope.duration_type, cont)
 
