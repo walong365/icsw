@@ -33,12 +33,12 @@ angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
-).controller("config_vars_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
         $scope.loaded = false
-        $scope.set_devsel = (_dev_sel, _devg_sel) ->
+        $scope.new_devsel = (_dev_sel) ->
             $scope.devsel_list = _dev_sel
         $scope.load_vars = () ->
             if not $scope.loaded
@@ -79,16 +79,12 @@ angular.module(
                 filter_re
             )
             $scope.devvar_tree.show_selected(false)
-]).directive("iscwDeviceConfigurationVarOverview", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("icswDeviceConfigurationVarOverview", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
+        scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.var.overview")
-        link : (scope, el, attrs) ->
-        link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.set_devsel(new_val)
-            )
+        controller: "icswConfigVarsCtrl"
     }
 ]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools", "ICSW_URLS",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, icswTools, ICSW_URLS) ->
@@ -260,18 +256,10 @@ angular.module(
                 return ""
 ]).directive("icswDeviceConfigurationOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
+        scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.device.configuration.overview")
-        link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.new_devsel(new_val)
-            )
-            if not attrs["devicepk"]?
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[0])                    
-                )
+        controller: "icswDeviceConfigurationCtrl"
     }
 ]).directive("icswDeviceConfigurationHelper", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
     return {

@@ -34,7 +34,7 @@ sidebar_module = angular.module(
                     else
                         dev_pk_nmd_list.push(idx)
                     dev_pk_list.push(idx)
-            #console.log "send"
+            # console.log "send devicelist"
             msgbus.emit("devicelist", [dev_pk_list, dev_pk_nmd_list, devg_pk_list, dev_pk_md_list])
             #for entry in $scope.devsel_func
             #    if called_after_load and not entry.fire_when_loaded
@@ -284,6 +284,8 @@ sidebar_module = angular.module(
             $scope.is_loading = false
             $scope.call_devsel_func()
         msgbus.receive("devselreceiver", $scope, (name, args) ->
+            # args is an optional sender name to find errors
+            # console.log "register", args
             $scope.devsel_receiver++
         )
 ]).service("icswLayoutSidebarTreeService", () ->

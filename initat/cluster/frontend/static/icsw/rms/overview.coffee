@@ -449,20 +449,19 @@ rms_module = angular.module(
 <div class="panel panel-default">
     <div class="panel-body">
         <h2>#{title}</h2>
-        <div ng-controller='icswGraphOverviewCtrl'>
-            <icsw-rrd-graph
-                devicepk='#{dev_pks}'
-                selectkeys="load.*,net.all.*,mem.used.phys$,^swap.*"
-                draw="1"
-                mergedevices="0"
-                graphsize="240x100"
-                fromdt="#{start_time}"
-                todt="#{end_time}"
-                jobmode="#{job_mode}"
-                selectedjob="#{selected_job}"
-            >
-            </icsw-rrd-graph>
-        </div>
+        <icsw-rrd-graph
+            icsw-sel-man="0"
+            devicepk='#{dev_pks}'
+            selectkeys="load.*,net.all.*,mem.used.phys$,^swap.*"
+            draw="1"
+            mergedevices="0"
+            graphsize="240x100"
+            fromdt="#{start_time}"
+            todt="#{end_time}"
+            jobmode="#{job_mode}"
+            selectedjob="#{selected_job}"
+        >
+        </icsw-rrd-graph>
     </div>
 </div>
 """
@@ -779,7 +778,7 @@ rms_module = angular.module(
                 scope.$watch("job", (job) ->
                     scope.job = job
                 )
-                cp_scope = ($scope, $modalInstance, job, oper) ->
+                cp_scope = ["$scope", "$modalInstance", "job", "oper", ($scope, $modalInstance, job, oper) ->
                     $scope.job = job
                     $scope.cur_priority = parseInt($scope.job.priority.value)
                     $scope.get_max_priority = () ->
@@ -794,6 +793,7 @@ rms_module = angular.module(
                         $modalInstance.close([$scope.cur_priority, _job_id])
                     $scope.cancel = () ->
                         $modalInstance.dismiss("cancel")
+                ]
                 scope.change_priority = () ->
                     c_modal = $modal.open
                         template : $templateCache.get("icsw.rms.change.priority")

@@ -70,10 +70,6 @@ config_module = angular.module(
                 name : "python"
                 version : 2
             matchBrackets: true
-            # codemirror 3.x, not working for 4.x
-            #minHeight : "200px"
-            #width: "800px"
-            #height: "600px"
             styleActiveLine: true
             indentUnit : 4
         }
@@ -649,10 +645,11 @@ config_module = angular.module(
             else
                 return ["no args parsed"]
         $scope.reload()
-]).directive("icswConfigOverview", ["$templateCache", ($templateCache) ->
+]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.overview")
+        controller: "icswConfigConfigCtrl"
     }
 ]).directive("icswConfigCatalogTable", ["$templateCache", ($templateCache) ->
     return {

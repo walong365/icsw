@@ -103,6 +103,16 @@
             </table>
         </accordion-group>
     </accordion>
+    <div class="input-group-btn" ng-show="devices.length > 1 && show_copy_button " ng-if="acl_create(null, 'backbone.device.change_network')">
+        <div class="btn-group">
+            <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
+                Copy network from<span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
+            </ul>
+        </div>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.device.row">
@@ -360,19 +370,7 @@
 <script type="text/ng-template" id="icsw.device.network.total">
     <tabset>
         <tab heading="settings">
-            <div ng-controller="icswDeviceNetworkCtrl">
-                <icsw-device-network-overview></icsw-device-network-overview>
-                <div class="input-group-btn" ng-show="devices.length > 1" ng-if="acl_create(null, 'backbone.device.change_network')">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
-                            Copy network from<span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+            <icsw-device-network-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d" show-copy-button="1"></icsw-device-network-overview>
         </tab>
         <tab heading="network topology">
             <div ng-controller="icswDeviceNetworkGraphCtrl">

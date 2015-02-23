@@ -6,11 +6,10 @@ device_info_module = angular.module(
 ).controller("icswDeviceInfoOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$window", "msgbus", "access_level_service", "ICSW_URLS",
     ($scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $window, msgbus, access_level_service, ICSW_URLS) ->
         access_level_service.install($scope)
-        $scope.active_div = "general"
         $scope.show = false
         $scope.permissions = undefined
         $scope.devicepk = undefined
-        msgbus.emit("devselreceiver")
+        msgbus.emit("devselreceiver", "icswDeviceInfoOverviewCtrl")
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.dev_pk_list = args[0]
             $scope.dev_pk_nmd_list = args[1]
@@ -60,6 +59,7 @@ device_info_module = angular.module(
                     else
                         sub_scope.dev_pk_list = [dev_idx]
                         sub_scope.dev_pk_nmd_list = [dev_idx]
+                    sub_scope.singledevicemode = 1
                     my_mixin = new angular_modal_mixin(
                         sub_scope,
                         $templateCache,
@@ -79,7 +79,8 @@ device_info_module = angular.module(
         "<deviceoverview devicepk='devicepk'></deviceoverview>"
     )
 ]).service("DeviceOverviewSettings", [() ->
-    def_mode = ""
+    # default value
+    def_mode = "general"
     return {
         "get_mode" : () ->
             return def_mode
@@ -92,8 +93,11 @@ device_info_module = angular.module(
         replace: true
         compile: (element, attrs) ->
             return (scope, iElement, iAttrs) ->
+                if attrs["singledevicemode"]?
+                    scope.singledevicemode = parseInt(attrs["singledevicemode"])
                 scope.current_subscope = undefined
                 scope.pk_list = {
+                    "general": []
                     "category": []
                     "location": []
                     "network": []
@@ -105,25 +109,22 @@ device_info_module = angular.module(
                     "monconfig": []
                     "graphing": []
                 }
-                scope["general_active"] = true
                 for key of scope.pk_list
                     scope["#{key}_active"] = false
-                scope.active_div = DeviceOverviewSettings.get_mode()
-                if scope.active_div
-                    scope["#{scope.active_div}_active"] = true
-                if attrs["multi"]?
-                    # possibly multi-device view
-                    scope.multi_device = true
-                    scope.$watch("dev_pk_list", (new_val) ->
-                        if new_val and new_val.length
-                            scope.devicepk = new_val[0]
-                            scope.new_device_sel()
-                    )
-                else
-                    scope.multi_device = false
+                if DeviceOverviewSettings.get_mode()
+                    _mode = DeviceOverviewSettings.get_mode()
+                    scope["#{_mode}_active"] = true
+                if scope.singledevicemode
                     scope.$watch(attrs["devicepk"], (new_val) ->
                         if new_val
                             scope.devicepk = new_val
+                            scope.new_device_sel()
+                    )
+                else
+                    # possibly multi-device view
+                    scope.$watch("dev_pk_list", (new_val) ->
+                        if new_val and new_val.length
+                            scope.devicepk = new_val[0]
                             scope.new_device_sel()
                     )
                 scope.new_device_sel = () ->
@@ -137,12 +138,15 @@ device_info_module = angular.module(
                         scope.addon_text_nmd = ""
                     # destroy old subscope, important
                     if scope.current_subscope
-                        scope.current_subscope.$destroy()
-                    new_scope = scope.$new()
-                    new_el = $compile($templateCache.get("icsw.device.info"))(new_scope)
-                    iElement.children().remove()
-                    iElement.append(new_el)
-                    scope.current_subscope = new_scope
+                        # check for active div
+                        if DeviceOverviewSettings.get_mode()
+                            scope.activate(DeviceOverviewSettings.get_mode())
+                    else
+                        new_scope = scope.$new()
+                        new_el = $compile($templateCache.get("icsw.device.info"))(new_scope)
+                        iElement.children().remove()
+                        iElement.append(new_el)
+                        scope.current_subscope = new_scope
                 scope.activate = (name) ->
                     DeviceOverviewSettings.set_mode(name)
                     if name in ["category", "location", "network", "partinfo", "status_history", "livestatus", "monconfig"]
@@ -177,36 +181,34 @@ device_info_module = angular.module(
                     )
             else
                 toaster.pop("warning", "form validation problem", "", 0)
-]).directive("deviceinfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
+]).directive("icswSimpleDeviceInfo", ["$templateCache", "$compile", "$modal", "Restangular", "restDataSource", "$q", "ICSW_URLS", ($templateCache, $compile, $modal, Restangular, restDataSource, $q, ICSW_URLS) ->
     return {
         restrict : "EA"
-        # bugfix for ui-select2, not working ...
-        #priority : 2
         link : (scope, element, attrs) ->
             scope._edit_obj = null
             scope.device_pk = null
             scope.$on("$destroy", () ->
             )
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val
-                    scope.device_pk = new_val
-                    wait_list = [
-                        restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
-                        restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
-                        restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
-                        restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
-                    ]
-                    $q.all(wait_list).then((data) ->
-                        #form = data[0][0].form
-                        scope.domain_tree_node = data[0]
-                        scope.mon_device_templ_list = data[1]
-                        scope.mon_ext_host_list = data[2]
-                        scope._edit_obj = data[3][0]
-                        if scope._edit_obj.device_type_identifier == "MD"
-                            scope._edit_obj.name = scope._edit_obj.name.substr(8)
-                        element.append($compile($templateCache.get("device.info.form"))(scope))
-                    )
-            )
+            scope.new_devsel = (in_list) ->
+                new_val = in_list[0]
+                scope.device_pk = new_val
+                wait_list = [
+                    restDataSource.reload([ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}])
+                    restDataSource.reload([ICSW_URLS.REST_MON_DEVICE_TEMPL_LIST, {}])
+                    restDataSource.reload([ICSW_URLS.REST_MON_EXT_HOST_LIST, {}])
+                    restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
+                ]
+                $q.all(wait_list).then((data) ->
+                    #form = data[0][0].form
+                    scope.domain_tree_node = data[0]
+                    scope.mon_device_templ_list = data[1]
+                    scope.mon_ext_host_list = data[2]
+                    scope._edit_obj = data[3][0]
+                    if scope._edit_obj.device_type_identifier == "MD"
+                        scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                    element.children().remove()
+                    element.append($compile($templateCache.get("device.info.form"))(scope))
+                )
             scope.is_device = () ->
                 return if scope._edit_obj.device_type_identifier in ["MD"] then false else true
             scope.get_monitoring_hint_info = () ->

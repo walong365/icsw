@@ -114,14 +114,5 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.connection.overview")
         link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.new_devsel(new_val)
-            )
-            if not attrs["devicepk"]?
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[0])                    
-                )
     }
 ])

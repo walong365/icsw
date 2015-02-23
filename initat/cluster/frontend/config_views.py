@@ -367,12 +367,22 @@ class generate_config(View):
                                 "text": _entry.text
                             }
                         )
-                if int(dev_node.attrib["state_level"]) < logging_tools.LOG_LEVEL_ERROR:
-                    # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
-                    cur_dev = dev_dict[int(dev_node.attrib["pk"])]
-                    # build tree
-                    cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("wc_files"))
-                    res_node["config_tree"] = cur_tree.get_dict()
+                if "state_level" in dev_node.attrib:
+                    if int(dev_node.attrib["state_level"]) < logging_tools.LOG_LEVEL_ERROR:
+                        # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
+                        cur_dev = dev_dict[int(dev_node.attrib["pk"])]
+                        # build tree
+                        cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("wc_files"))
+                        res_node["config_tree"] = cur_tree.get_dict()
+                else:
+                    # config server not running, return dummy entry
+                    dev_node.attrib["state_level"] = "{:d}".format(logging_tools.LOG_LEVEL_ERROR)
+                    dev_node.attrib["result"] = "no result found"
+                    res_node.update(
+                        {
+                            "state_level": logging_tools.LOG_LEVEL_ERROR
+                        }
+                    )
                 _json_result["devices"].append(res_node)
             request.xml_response["result"] = config_encoder().encode(_json_result)
             request.xml_response.info("build done", logger)

@@ -222,11 +222,61 @@ angular.module(
 ]).factory("msgbus", ["$rootScope", ($rootScope) ->
     bus = {}
     bus.emit = (msg, data) ->
+        # console.log "E", msg, "E", data
         $rootScope.$emit(msg, data)
     bus.receive = (msg, scope, func) ->
         unbind = $rootScope.$on(msg, func)
         scope.$on("$destroy", unbind)
     return bus
+]).directive("icswSelMan", ["msgbus", (msgbus) ->
+    # selection manager directive
+    # selman=1 ... single device mode (==popup)
+    # selman=0 ... single or multi device mode, depend on sidebar selection
+    return {
+        restrict: "A"
+        priority: -100
+        link: (scope, el, attrs) ->
+            if parseInt(attrs.icswSelMan)
+                # console.log "popup actsm", attrs
+                scope.$watch(attrs["devicepk"], (new_val) ->
+                    if new_val
+                        if angular.isArray(new_val)
+                            if new_val.length
+                                scope.new_devsel(new_val)
+                        else
+                            # single device mode, for instance for deviceinfo
+                            scope.new_devsel([new_val])
+                )
+            else
+                # console.log "actsm", attrs
+                # is there a devicepk in the attributes ?
+                if attrs["devicepk"]?
+                    # yes, watch for changes
+                    scope.$watch(attrs["devicepk"], (new_val) ->
+                        if new_val
+                            if angular.isArray(new_val)
+                                if new_val.length
+                                    scope.new_devsel(new_val)
+                            else
+                                scope.new_devsel([new_val])
+                    )
+                else
+                    # console.log "register on sidebar ?"
+                    msgbus.emit("devselreceiver", "selman")
+                    msgbus.receive("devicelist", scope, (name, args) ->
+                        # check selman selection mode, can be
+                        # d ... report all device pks
+                        # D ... report all device pks with meta devices
+                        # ....... more to come
+                        selman_mode = attrs["icswSelManSelMode"]||"d"
+                        if selman_mode == "d"
+                            scope.new_devsel(args[1])
+                        else if selman_mode == "D"
+                            scope.new_devsel(args[0])
+                        else
+                            console.log "unknown selman selection mode '#{selman_mode}'"
+                    )
+    }
 ]).directive("icswElementSize", ["$parse", ($parse) ->
     # save size of element in scope (specified via icswElementSize)
     return (scope, element, attrs) ->
@@ -729,82 +779,3 @@ angular.module(
             out = items
         return out
 )
-
-# codemirror ui, based on version 0.1.2, seems to work
-angular.module(
-    'ui.codemirror',
-    []
-).constant('uiCodemirrorConfig', {}
-).directive('uiCodemirror', ["uiCodemirrorConfig", (uiCodemirrorConfig) ->
-    return {
-        restrict : "EA"
-        require  : "?ngModel"
-        priority : 1
-        compile : () ->
-            return postLink = (scope, iElement, iAttrs, ngModel) ->
-                value = iElement.text()
-                if iElement[0].tagName == 'TEXTAREA'
-                    codeMirror = window.CodeMirror.fromTextArea(iElement[0], { value: value })
-                else
-                    iElement.html("")
-                    codeMirror = new window.CodeMirror(
-                        (cm_el) ->
-                            iElement.replaceWith(cm_el)
-                        { value : value }
-                    )
-                options = uiCodemirrorConfig.codemirror || {}
-                opts = angular.extend(
-                    {},
-                    uiCodemirrorConfig.codemirror || {},
-                    scope.$eval(iAttrs.uiCodemirror),
-                    scope.$eval(iAttrs.uiCodemirrorOpts)
-                )
-                updateOptions = (newValues) ->
-                    for key of newValues
-                        if newValues.hasOwnProperty(key)
-                            codeMirror.setOption(key, newValues[key])
-                updateOptions(opts)
-                if iAttrs.uiCodemirror
-                    scope.$watch(iAttrs.uiCodemirror, updateOptions, true)
-                if ngModel
-                    ngModel.$formatters.push((value) ->
-                        if angular.isUndefined(value) || value is null
-                            return ''
-                        else if angular.isObject(value) || angular.isArray(value)
-                            throw new Error('ui-codemirror cannot use an object or an array as a model')
-                        else
-                            return value
-                    )
-                    ngModel.$render = () ->
-                        safeViewValue = ngModel.$viewValue || ''
-                        cur_cursor = codeMirror.doc.getCursor()
-                        # not needed ?
-                        cur_cinfo = codeMirror.getScrollInfo()
-                        if opts.reset_cursor_on_change?
-                            cur_cursor = {line: 0, ch: 0}
-                        # console.log cur_cursor, cur_cinfo
-                        codeMirror.setValue(safeViewValue)
-                        codeMirror.refresh()
-                        codeMirror.doc.setCursor(cur_cursor)
-                    codeMirror.on('change', (instance) ->
-                        newValue = instance.getValue()
-                        if newValue != ngModel.$viewValue or true
-                            ngModel.$setViewValue(newValue)
-                        if !scope.$$phase
-                            scope.$apply()
-                    )
-                if iAttrs.uiRefresh
-                    scope.$watch(iAttrs.uiRefresh, (newVal, oldVal) ->
-                        if newVal != oldVal
-                            codeMirror.refresh()
-                    )
-                scope.$on('CodeMirror', (event, callback) ->
-                    if angular.isFunction(callback)
-                        callback(codeMirror)
-                    else
-                        throw new Error('the CodeMirror event requires a callback function')
-                )
-                if angular.isFunction(opts.onLoad)
-                    opts.onLoad(codeMirror)
-    }
-])

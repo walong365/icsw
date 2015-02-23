@@ -38,7 +38,6 @@ class angular_edit_mixin
             @child_scope = @scope.$new(false, @scope)
             @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@child_scope)
             @edit_div.on("$destroy", () =>
-                _scope= angular.element(@edit_div[0]).scope()
                 #console.log "DEST", @edit_div[0], @scope, @child_scope
                 @child_scope.$destroy()
                 return null

@@ -121,6 +121,8 @@ angular.module(
     ) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
         access_level_service.install($scope)
+        # copy flags
+        $scope.show_copy_button = false
         # accordion flags
         $scope.device_open = true
         $scope.netdevice_open = true
@@ -695,18 +697,13 @@ angular.module(
     }
 ]).directive("icswDeviceNetworkOverview", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
+        scope: true
         restrict : "EA"
+        link: (scope, el, attrs) ->
+            if attrs["showCopyButton"]?
+                scope.show_copy_button = true
         template : $templateCache.get("icsw.device.network.overview")
-        link : (scope, el, attrs) ->
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if new_val and new_val.length
-                    scope.new_devsel(new_val)
-            )
-            if not attrs["devicepk"]?
-                msgbus.emit("devselreceiver")
-                msgbus.receive("devicelist", scope, (name, args) ->
-                    scope.new_devsel(args[1])
-                )
+        controller: "icswDeviceNetworkCtrl"
     }
 ]).directive("icswDeviceNetworkTotal", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {

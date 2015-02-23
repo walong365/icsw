@@ -5,13 +5,8 @@ status_history_module = angular.module("icsw.device.status_history",
 status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$compile", "$filter", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "msgbus",
     ($scope, $compile, $filter, restDataSource, sharedDataSource, $q, $modal, $timeout, msgbus) ->
 
-        $scope.device_pks = []
 
-        msgbus.emit("devselreceiver")
-        msgbus.receive("devicelist", $scope, (name, args) ->
-            $scope.devicepks = args[1]
-        )
-]).directive("icswDeviceStatusHistoryDevice", ["status_utils_functions", "Restangular", "ICSW_URLS", (status_utils_functions, Restangular, ICSW_URLS) ->
+]).directive("icswDeviceStatusHistoryDevice", ["status_utils_functions", "Restangular", "ICSW_URLS", "msgbus", (status_utils_functions, Restangular, ICSW_URLS, msgbus) ->
     return {
         restrict : "EA"
         templateUrl : "icsw.device.status_history_device"
@@ -20,6 +15,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
             startdate: '='
         }
         link : (scope, el, attrs) ->
+            scope.devicepks = []
             scope.device_id = attrs.device
             scope.device_chart_id = "device_chart_" + scope.device_id
             scope.device_rest = undefined
@@ -65,9 +61,9 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
     return {
         restrict : "EA"
         templateUrl : "icsw.device.status_history_overview"
-        scope : {
-            devicepks: '='
-        }
+        #scope : {
+        #    devicepks: '='
+        #}
         link : (scope, el, attrs) ->
             scope.devicepks = []
             scope.startdate = moment().startOf("day").subtract(1, "days")
@@ -93,11 +89,9 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope", "$com
 
             scope.$watch('timerange', (unused) -> scope.update())
             scope.$watch('startdate', (unused) -> scope.update())
-            scope.$watch(attrs["devicepks"], (new_val) ->
-                if new_val and new_val.length
-                    scope.devicepks = new_val
-                    scope.update()
-            )
+            scope.new_devsel = (new_val) ->
+                scope.devicepks = new_val
+                scope.update()
             scope.update()
     }
 ])

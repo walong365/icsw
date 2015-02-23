@@ -115,7 +115,6 @@ angular.module(
         # to be set by directive
         $scope.auto_select_keys = []
         $scope.draw_on_init = false
-        $scope.graph_list = {}
         $scope.graph_list = []
         $scope.hide_empty = true
         # none, all or selected
@@ -184,6 +183,8 @@ angular.module(
         $scope.set_active_dim = (cur_dim) ->
             $scope.cur_dim = cur_dim
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            # clear graphs
+            $scope.graph_list = []
             $scope.devsel_list = _dev_sel
             $scope.reload()
 
@@ -465,6 +466,7 @@ angular.module(
         )                
 ]).directive("icswRrdGraph", ["$templateCache", ($templateCache) ->
     return {
+        scope: true
         restrict : "EA"
         template : $templateCache.get("icsw.rrd.graph.overview")
         link : (scope, el, attrs) ->
@@ -484,14 +486,7 @@ angular.module(
             if attrs["selectedjob"]?
                 scope.selected_job = attrs["selectedjob"]
             scope.draw_on_init = attrs["draw"] ? false
-            scope.$watch(attrs["devicepk"], (new_val) ->
-                if angular.isArray(new_val)
-                    if new_val.length
-                        scope.new_devsel(new_val)
-                else
-                    if new_val
-                        scope.new_devsel([new_val])
-            )
+        controller: "icswGraphOverviewCtrl"
     }
 ]).service("icswRRDGraphTreeService", () ->
     class rrd_tree extends tree_config

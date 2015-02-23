@@ -61,6 +61,7 @@ ics_app = angular.module(
         "icsw.device.connection",
         "icsw.device.category",
         "icsw.device.livestatus",
+        "icsw.device.monconfig",
         "icsw.device.location",
         "icsw.device.status_history",
         "icsw.device.partition",
@@ -93,8 +94,8 @@ ics_app = angular.module(
     {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
     "MENU_GFX_BIG_URL": "{% static gfx_name %}"
     {% endwith %}
-    "D3_MIN_JS": "{% static 'js/libs/d3js/d3.min.js' %}"
-    "DIMPLE_MIN_JS": "{% static 'js/libs/dimple.v2.1.0.min.js' %}"
+    "D3_MIN_JS": "{% static 'js/d3js/d3.min.js' %}"
+    "DIMPLE_MIN_JS": "{% static 'js/dimple.v2.1.0.min.js' %}"
     "ADMIN_INDEX": "{% url 'admin:index' %}"
     "BASE_CATEGORY_TREE": "{% url 'base:category_tree' %}"
     "BASE_CHANGE_CATEGORY": "{% url 'base:change_category' %}"

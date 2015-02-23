@@ -1,4 +1,5 @@
 <script type="text/ng-template" id="icsw.device.partition.overview">
+    <h4>Disk info for {{ devsel_list.length }} devices</h4>
     <tabset>
         <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
             <div ng-show="dev.act_partition_table">
