@@ -285,6 +285,7 @@ angular.module(
                     else
                         # set time marker
                         time_marker = status_history_ctrl.get_time_marker()
+                        i = 0
                         for marker, index in time_marker.data
                             if time_marker.time_points
                                 # time is exactly at certain points
@@ -295,10 +296,14 @@ angular.module(
                                 start_of_unit = scope.side_margin + (index * unit_size)
                                 pos_x = start_of_unit + (unit_size / 2)
 
-                            scope.timemarker_display.push({
-                                    text: marker
-                                    pos_x: pos_x
-                            })
+                            # if steps is set, only draw every steps'th entry
+                            if !time_marker.steps or i % time_marker.steps == 0
+                                scope.timemarker_display.push({
+                                        text: marker
+                                        pos_x: pos_x
+                                })
+
+                            i += 1
 
 
                         # calculate data to show (
