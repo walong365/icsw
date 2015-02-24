@@ -105,10 +105,10 @@
     <td class="text-right success">{{ get_value() }}</td>>
     <td class="text-center">{{ hint.is_active | yesno2 }}</td>
     <td class="text-center">
-        <icsw-tools-button type="delete" ng-click="delete(hint)" size="xs"></icsw-tools-button>
+        <icsw-tools-button type="delete" ng-click="delete(hint, $event)" size="xs"></icsw-tools-button>
     </td>
     <td class="text-center">
-        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint)"/></input>
+        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint, $event)"/></input>
     </td>
     <td class="text-center">
         <icsw-tools-button type="modify" ng-click="modify_hint(hint, $event)" size="xs"></icsw-tools-button>
@@ -119,7 +119,7 @@
 
 <script type="text/ng-template" id="icsw.device.livestatus.hint.table">
     <icsw-tools-rest-table target-list="entries" config-service="icswDeviceMonConfigTableService">
-        <table st-table="entries_display" st-safe-src="obj.monitoring_hint_set" class="table table-condensed table-hover table-bordered" style="width:auto;">
+        <table st-table="entries_display" st-safe-src="obj.monitoring_hint_set" class="table table-condensed table-striped table-hover table-bordered" style="width:auto;">
             <thead>
                 <tr>
                     <td colspan="99">
@@ -144,7 +144,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr mhrow ng-repeat="hint in entries_display"></tr>
+                <tr st-select-row="hint" st-select-mode="multiple" mhrow ng-class="hint.isSelected && 'info'" ng-repeat="hint in entries_display"></tr>
             </tbody>
         </table>
     </icsw-tools-rest-table>

@@ -2,7 +2,7 @@ angular.module(
     "icsw.tools.table", [
         "restangular"
     ]
-).directive('icswToolsPagination', ["$templateCache", ($templateCache) ->
+).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
     return {
         restrict: 'EA',
         require: '^stTable',
@@ -10,12 +10,11 @@ angular.module(
             stItemsByPage: '=?',
             stDisplayedPages: '=?'
         },
-        template: $templateCache.get("paginator.html")
+        template: $templateCache.get("icsw.tools.paginator")
         link: (scope, element, attrs, ctrl) ->
 
             scope.stItemsByPage = scope.stItemsByPage or 10
             scope.stDisplayedPages = scope.stDisplayedPages or 5
-
             scope.Math = Math;
             # this is not nice but only needed for a minor thing (see template above)
             # the problem is that we can't access the scope of the outer directive as the st-table directive overwrites the scope
@@ -24,7 +23,7 @@ angular.module(
             if attrs.possibleItemsByPage
                 scope.possibleItemsByPage = (parseInt(i) for i in attrs.possibleItemsByPage.split(","))
             else
-                scope.possibleItemsByPage = [10,20,50,100,200,500,1000]
+                scope.possibleItemsByPage = [10, 20, 50, 100, 200, 500, 1000]
 
             scope.currentPage = 1
             scope.pages = []
@@ -49,8 +48,8 @@ angular.module(
 
             #//table state --> view
             scope.$watch(
-                    () -> return ctrl.tableState().pagination,
-                    redraw, true)
+                () -> return ctrl.tableState().pagination,
+                redraw, true)
 
             #//scope --> table state  (--> view)
             scope.$watch('stItemsByPage', () ->
@@ -84,6 +83,8 @@ angular.module(
                 scope.config_service = $injector.get(attrs.configService)
 
                 scope.config_service.use_modal ?= true
+
+                scope.many_delete = scope.config_service.many_delete
 
                 if scope.config_service.init_fn?
                     scope.config_service.init_fn(scope)
@@ -213,7 +214,9 @@ angular.module(
                             catch exc
                 scope.get_action_string = () ->
                     return if scope.create_mode then "Create" else "Modify"
-                scope.delete = (obj) ->
+                scope.delete = (obj, $event) ->
+                    if $event
+                        $event.stopPropagation()
                     icswToolsSimpleModalService(scope.config_service.delete_confirm_str(obj)).then(
                         () ->
                             # check for a pre_delete function

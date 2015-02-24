@@ -169,6 +169,7 @@ angular.module(
                         hint["#{_var}"] = hint["#{_var}_saved"]
                         hint["#{_var}_source"] = hint["#{_var}_source_saved"]
         $scope.modify_hint = (hint, event) ->
+            event.stopPropagation()
             $scope.backup_values(hint)
             $scope.hint_edit.edit(hint, event).then(
                 (mod_hint) ->
@@ -233,7 +234,8 @@ angular.module(
                     return scope.hint[key]
                 else
                     return "---"
-            scope.toggle_enabled = (hint) ->
+            scope.toggle_enabled = (hint, $event) ->
+                $event.stopPropagation()
                 hint.enabled = !hint.enabled
                 scope.save_hint(hint)
     }
@@ -243,6 +245,7 @@ angular.module(
             return "Really delete hint '#{obj.m_type} / #{obj.key}' ?"
         delete: (scope, obj) ->
             scope.remove_hint(obj)
+        many_delete: true
         edit_template      : "network.device.type.form"
     }
 ]).directive("monitoringhinttable", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->

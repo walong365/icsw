@@ -1,5 +1,4 @@
-
-<script type="text/ng-template" id="paginator.html">
+<script type="text/ng-template" id="icsw.tools.paginator">
     <form class="form-inline">
         <span ng-show="pages.length > 0">
             <div class="form-group">
@@ -45,6 +44,12 @@
             <div class="form-group">
                 <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in possibleItemsByPage"></select>
             </div> per page,
+        </span>
+        <span ng-show="table_controller.getNumberOfSelectedEntries()">
+            {{ table_controller.getNumberOfSelectedEntries() }} selected entries
+        </span>
+        <span ng-show="selected_elements">
+            {{ selected_elements }} elements selected
         </span>
     </form>
 </script>
