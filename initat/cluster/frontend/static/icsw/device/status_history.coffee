@@ -179,7 +179,8 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
                         scope.timespan_error = "No data available for this time span"
                         status_history_ctrl.set_time_frame()
 
-                status_utils_functions.get_timespan(scope.startdate, scope.duration_type, cont)
+                if moment(scope.startdate).isValid()
+                    status_utils_functions.get_timespan(scope.startdate, scope.duration_type, cont)
 
             scope.new_devsel = (new_val) ->
                 scope.devicepks = new_val
