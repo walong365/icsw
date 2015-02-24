@@ -262,7 +262,7 @@ angular.module(
             scope.entry_clicked = (entry) ->
                 console.log 'clicked'
                 scope.clickAttr()
-                # TODO possibly pass entry outside along the lines of  scope.clickAttr()({entry: entry)) and setting click just to handle_click (not hande_click())
+                # TODO possibly pass entry outside along the lines of  scope.clickAttr()({entry: entry)) and setting click just to handle_click (not handle_click())
 
             scope.width = scope.widthAttr() or 300
             base_height = 30

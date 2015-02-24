@@ -118,7 +118,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr ng-repeat="entry in service_data">
+                <tr ng-repeat-start="entry in service_data" ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled">>
                     <td> {{ entry.name }} </td>
                     <td class="text-right">
                         <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
@@ -130,11 +130,12 @@
                     <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
                     <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
                     <td>
-                        <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="entry.log_viewer_enabled = !entry.log_viewer_enabled"></icsw-tools-hist-line-graph>
+                        <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="TODO"></icsw-tools-hist-line-graph>
                     </td>
-                    <td>
+                </tr>
+                <tr ng-repeat-end>
+                    <td colspan="99">
                         <icsw-tools-hist-log-viewer data="entry.line_graph_data" enabled="entry.log_viewer_enabled" ></icsw-tools-hist-log-viewer>
-                        <!-- TODO: this is too large for here, put it in extra table row -->
                         <!-- TODO: focus entry which was clicked upon? -->
                     </td>
                 </tr>
