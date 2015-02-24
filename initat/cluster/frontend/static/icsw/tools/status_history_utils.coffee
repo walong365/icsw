@@ -260,7 +260,9 @@ angular.module(
                 scope.tooltipX = event.offsetX - (tooltip.clientWidth/2)
                 scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
             scope.entry_clicked = (entry) ->
-                scope.clickAttr({entry: entry})
+                console.log 'clicked'
+                scope.clickAttr()
+                # TODO possibly pass entry outside along the lines of  scope.clickAttr()({entry: entry)) and setting click just to handle_click (not hande_click())
 
             scope.width = scope.widthAttr() or 300
             base_height = 30
@@ -417,7 +419,7 @@ angular.module(
         </tr>
     </thead>
     <tbody>
-        <tr ng-repeat="entry in actual_data">
+        <tr ng-repeat="entry in actual_data" class="text-left">
             <td ng-bind="entry.date | datetime_concise"></td>
             <td ng-bind="entry.state | limit_text_no_dots:3"></td>
             <td ng-bind="entry.msg"></td>

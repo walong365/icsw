@@ -18,7 +18,10 @@
                 </table>
             </div>
             <div class="col-md-8 text-center">
-                <icsw-tools-hist-line-graph width="800" height="60" for-host="true" data="line_graph_data"></icsw-tools-hist-line-graph>
+                <icsw-tools-hist-line-graph width="800" height="50" for-host="true" data="line_graph_data" click="log_viewer_enabled = !log_viewer_enabled"></icsw-tools-hist-line-graph>
+            </div>
+            <div class="col-md-12 text-center">
+                <icsw-tools-hist-log-viewer width="800" data="line_graph_data" enabled="log_viewer_enabled"></icsw-tools-hist-log-viewer>
             </div>
         </div>
     </div>
