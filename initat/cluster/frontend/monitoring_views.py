@@ -503,22 +503,17 @@ class _device_status_history_util(object):
 
         device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
 
-        use_client_service_name = not for_host
-
         # calculate detailed view based on all events
         start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
-        entries = obj_man.calc_alerts(start, end, device_ids=device_ids,
-                                      use_client_service_name=use_client_service_name)
+        entries = obj_man.calc_alerts(start, end, device_ids=device_ids)
 
         last_before_entries = obj_man.calc_limit_alerts(start,
                                                         mode='last before',
-                                                        device_ids=device_ids,
-                                                        use_client_service_name=use_client_service_name)
+                                                        device_ids=device_ids)
 
         first_after_entries = obj_man.calc_limit_alerts(end,
                                                         mode='first after',
-                                                        device_ids=device_ids,
-                                                        use_client_service_name=use_client_service_name)
+                                                        device_ids=device_ids)
 
         return_data = {}
 
@@ -540,6 +535,11 @@ class _device_status_history_util(object):
                     l.append({'date': entry['date'], 'state': trans[entry['state']], 'msg': entry['msg']})
                 else:
                     l.append({'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg})
+
+            if not for_host:
+                # use nice service id for services
+                key = key[0], mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client_tuple(key[1], key[2])
+
             return_data[key] = l
         return return_data
 
