@@ -1376,12 +1376,23 @@ class raw_service_alert_manager(models.Manager):
             additional_device_filter = {'device__in': device_ids}
         last_service_alert_cache = {}
         if mode == 'last before':
-            queryset = obj_man.filter(date__lte=time, device_independent=False, **additional_device_filter).annotate(extreme_date=Max('date'))
+            queryset = obj_man.filter(date__lte=time, device_independent=False, **additional_device_filter)
         else:
-            queryset = obj_man.filter(date__gte=time, device_independent=False, **additional_device_filter).annotate(extreme_date=Min('date'))
+            queryset = obj_man.filter(date__gte=time, device_independent=False, **additional_device_filter)
 
-        if use_client_service_name:
-            queryset = queryset.prefetch_related(Prefetch('service'))
+        fields = ['date', 'msg', 'device_id', 'state', 'state_type']
+        if not is_host:
+            fields.extend(['service_id', 'service_info'])
+
+        queryset = queryset.values(*fields)
+
+        # only get these values and annotate with extreme date, then we get the each field-tuple with their extreme date
+
+        if mode == 'last before':
+            queryset = queryset.annotate(extreme_date=Max('date'))
+        else:
+            queryset = queryset.annotate(extreme_date=Min('date'))
+
         for entry in queryset:
             # prefer latest info if there is dev independent one
 
@@ -1389,24 +1400,25 @@ class raw_service_alert_manager(models.Manager):
                 comp = lambda x, y: x > y
             else:
                 comp = lambda x, y: x < y
-            if latest_dev_independent_service_alert and comp(latest_dev_independent_service_alert.date, entry.extreme_date):
+            if latest_dev_independent_service_alert and \
+                    comp(latest_dev_independent_service_alert.date, entry['extreme_date']):
                 relevant_entry = latest_dev_independent_service_alert
             else:
                 relevant_entry = entry
 
             if is_host:
-                key = entry.device_id
-            elif use_client_service_name:
-                key = entry.device_id, raw_service_alert_manager.calculate_service_name_for_client(entry)
+                key = entry['device_id']
+            elif use_client_service_name and False:  # TODO
+                key = entry['device_id'], raw_service_alert_manager.calculate_service_name_for_client(entry)
             else:
-                key = entry.device_id, entry.service_id, entry.service_info
+                key = entry['device_id'], entry['service_id'], entry['service_info']
 
             # the query above is not perfect, it should group only by device and service
             # this seems to be hard in django:
             # http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
             # so we do the last grouping by this key here manually
-            if key not in last_service_alert_cache or comp(entry.extreme_date, last_service_alert_cache[key][1]):
-                last_service_alert_cache[key] = relevant_entry, entry.extreme_date
+            if key not in last_service_alert_cache or comp(entry['extreme_date'], last_service_alert_cache[key][1]):
+                last_service_alert_cache[key] = relevant_entry, entry['extreme_date']
         # drop extreme date
         return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
 
