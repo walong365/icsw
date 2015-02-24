@@ -37,9 +37,13 @@ DEBUG = False
 
 SAS_OK_KEYS = {
     "adp": set(
-        [
-            "product_name", "serial_no", "fw_version",
-        ]
+        set(
+            [
+                "product_name", "serial_no", "fw_version", "virtual_drives",
+                "degraded", "offline", "physical_devices", "disks", "critical_disks",
+                "failed_disks",
+            ]
+        )
     ),
     "virt": set(
         [
@@ -161,10 +165,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
         return [("/bin/true", ctrl_id, "init") for ctrl_id in ctrl_list] + \
-               [("%s -AdpAllInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "adp") for ctrl_id in ctrl_list] + \
-               [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
-               [("%s -AdpBbuCmd -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
-               [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
+               [("{} -AdpAllInfo -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "adp") for ctrl_id in ctrl_list] + \
+               [("{} -LdPdInfo   -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
+               [("{} -AdpBbuCmd  -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
+               [("{} -EncStatus  -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
                [("{} -LDGetProp -Name -Lall -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "vdname") for ctrl_id in ctrl_list] + \
                [("/bin/true", 0, "done")]
 
@@ -394,9 +398,10 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _ld["ctrl"] = key.split(":")[0]
                     if "name" not in _ld:
                         _ld["name"] = ""
-                    _info_str = "vd {virtual_drive} ('{name}', ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(
-                        **_ld
-                    )
+                    _info_str = "vd {virtual_drive} ('{name}', ctrl {ctrl}), RAID level {raid_level}, " \
+                        "size={size}, drives={number_of_drives}, state={state}".format(
+                            **_ld
+                        )
                 elif _entity_type == "c":
                     _info_f = []
                     for key in ["product_name"]:
