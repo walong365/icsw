@@ -165,6 +165,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                [("%s -LdPdInfo -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "ld") for ctrl_id in ctrl_list] + \
                [("%s -AdpBbuCmd -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "bbu") for ctrl_id in ctrl_list] + \
                [("%s -EncStatus -a%d -noLog" % (self._check_exec, ctrl_id), ctrl_id, "enc") for ctrl_id in ctrl_list] + \
+               [("{} -LDGetProp -Name -Lall -a{:d} -noLog".format(self._check_exec, ctrl_id), ctrl_id, "vdname") for ctrl_id in ctrl_list] + \
                [("/bin/true", 0, "done")]
 
     def scan_ctrl(self):
@@ -219,6 +220,22 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     "enc": 0,
                 }
             }
+            return
+        elif run_type == "vdname":
+            vd_re = re.compile("^Adapter\s+(?P<adp_num>\d)-VD\s+(?P<vd_num>\d+).*:\s+Name:\s+(?P<vd_name>\S+).*$")
+            for line_num, line in enumerate([cur_line.rstrip() for cur_line in ccs.read().split("\n")]):
+                vd_m = vd_re.match(line)
+                if vd_m:
+                    _gd = vd_m.groupdict()
+                    _adp_num, _vd_num = (
+                        int(_gd["adp_num"]),
+                        int(_gd["vd_num"]),
+                    )
+                    if _adp_num in self._dict:
+                        _adp = self._dict[_adp_num]
+                        _virt = _adp.get("virt", {}).get(_vd_num, None)
+                        if _virt and "lines" in _virt:
+                            _virt["lines"].append(("name", _gd["vd_name"]))
             return
 
         prev_mode, cur_mode, mode_sense, cont_mode = (None, None, True, False)
@@ -375,7 +392,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _ld = get_log_dict(lines)
                 if _entity_type == "v":
                     _ld["ctrl"] = key.split(":")[0]
-                    _info_str = "vd {virtual_drive} (ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(
+                    if "name" not in _ld:
+                        _ld["name"] = ""
+                    _info_str = "vd {virtual_drive} ('{name}', ctrl {ctrl}), RAID level {raid_level}, size={size}, drives={number_of_drives}, state={state}".format(
                         **_ld
                     )
                 elif _entity_type == "c":
@@ -560,7 +579,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             }[entity_type]
 
         def _full_key(_part):
-            return "{}{:d}".format(
+            return "{}{}".format(
                 {
                     "c": "ctrl",
                     "v": "virt",
@@ -571,13 +590,13 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     "f": "fan",
                     "d": "disc",
                 }[_part[0]],
-                int(_part[1:])
+                "{:d}".format(int(_part[1:])) if len(_part) > 1 else "",
             )
 
-        def get_service(_key, _lines, _check):
-            return "{} {}".format(
+        def get_service(_key, _check=None):
+            return "{}{}".format(
                 "/".join([_full_key(_part) for _part in _key.split(":")]),
-                _check,
+                " {}".format(_check) if _check else "",
             )
 
         def _shorten_list(in_list):
@@ -617,7 +636,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
             # print "-" * 10
             return new_list, _shorten_dict
 
-        def _generate_short_result(_struct, _lss):
+        def _generate_short_result(_common_key, _struct, _lss):
             _state_dict = {}
             # all keys are needef for the passive check result lookup key
             _all_keys = []
@@ -638,6 +657,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         )
                     )
             return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list), ""
+            # return get_service(_common_key), _ret_state, ", ".join(ret_list), ""
 
         def _compress_list(in_list):
             # reduce list
@@ -691,24 +711,20 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _r.append(_entry)
                 else:
                     _r.append(_expand_list(_entry))
-            return "{}{}".format(
-                _pf,
-                ";".join(_r)
-            )
+            if len(_r) == 1:
+                return "{}{}".format(
+                    _pf,
+                    _r[0],
+                )
+            else:
+                return "{}[{}]".format(
+                    _pf,
+                    "][".join(_r),
+                )
 
         def _compress_infos(in_list):
             return _expand_list(_compress_list(in_list)[0])
-            # only working for standard input
-            _prefix, _what = in_list[0].split()
-            while _prefix[-1].isdigit():
-                _prefix = _prefix[:-1]
-            print "p", _prefix
-            _ints = [int(_part.strip().split()[0][len(_prefix):]) for _part in in_list]
-            return "{}{} {}".format(
-                _prefix,
-                logging_tools.compress_num_list(_ints),
-                _what,
-            )
+
         # rewrite bbu info
         for _c_id, _c_dict in ctrl_dict.iteritems():
             if "main" in _c_dict.get("bbu_keys", {}):
@@ -739,6 +755,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
         # interpret flags
         _short_output = True if cur_ns.short_output in [True, "1", "y", "yes", "true", "True"] else False
         _ignore_missing_bbu = True if cur_ns.ignore_missing_bbu in [True, "1", "y", "yes", "true", "True"] else False
+        _ignore_keys = [_char for _char in cur_ns.ignore_keys]
+        if "N" in _ignore_keys:
+            _ignore_keys = []
+        if _ignore_keys:
+            # filter key_list
+            _key_list = [_entry for _entry in _key_list if not any([_entry.count(_ik) for _ik in _ignore_keys])]
         if cur_ns.get_hints:
             r_list = []
             _ctrl_found = set()
@@ -746,7 +768,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 _ctrl_key = _key.split(":")[0]
                 if _ctrl_key not in _ctrl_found:
                     _ctrl_found.add(_ctrl_key)
-                    r_list.extend([(_ctrl_key, "all", "SAS Controller {}".format(_ctrl_key), True), ])
+                    r_list.extend([(_ctrl_key, "all", "{} info".format(_full_key(_key)), True), ])
                 _lines, _checks = get_source(_ro_dict, _key)
                 if _checks:
                     if _short_output:
@@ -754,12 +776,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             (
                                 _key,
                                 "::".join(_checks),
-                                ShortOutputKeyCache.shorten_keys([get_service(_key, _lines, _check) for _check in _checks]),
+                                ShortOutputKeyCache.shorten_keys([get_service(_key, _check) for _check in _checks]),
                                 False
                             )
                         )
                     else:
-                        r_list.extend([(_key, _check, get_service(_key, _lines, _check), False) for _check in _checks])
+                        r_list.extend([(_key, _check, get_service(_key, _check), False) for _check in _checks])
                 # all checks in one line ? Todo ...
             if _short_output:
                 # shorten list
@@ -804,7 +826,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if not _checks:
                     _ret_list.append(_info_str)
                 for _check in _checks:
-                    _info = get_service(_key, _lines, _check)
+                    _info = get_service(_key, _check)
                     if _short_output:
                         r_list.append((_key, _check, _info, None))
                     _ret_state, _result, _entity_type = check_status(_key, _lines, _check)
@@ -852,7 +874,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     # remove from passive_dict.list
                     _passive_dict["list"] = [(_a, _b, _c, _d) for _a, _b, _c, _d in _passive_dict["list"] if _a not in _struct["infos"]]
                     # add summed result
-                    _passive_dict["list"].append(_generate_short_result(_struct, _lss))
+                    _passive_dict["list"].append(_generate_short_result(_key, _struct, _lss))
                 # pprint.pprint(_passive_dict)
             # pprint.pprint(_passive_dict)
             if _store_passive:
@@ -893,6 +915,8 @@ class megaraid_sas_status_command(hm_classes.hm_command):
         self.parser.add_argument("--passive-check-prefix", default="-", type=str)
         self.parser.add_argument("--short-output", default="0", type=str)
         self.parser.add_argument("--ignore-missing-bbu", default="0", type=str)
+        # which keys to ignore
+        self.parser.add_argument("--ignore-keys", default="N", type=str)
         self.parser.add_argument("--controller", default="all", type=str)
 
     def __call__(self, srv_com, cur_ns):
