@@ -1,4 +1,3 @@
-
 angular.module(
     "icsw.tools.table", [
         "restangular"
@@ -217,13 +216,19 @@ angular.module(
                 scope.delete = (obj) ->
                     icswToolsSimpleModalService(scope.config_service.delete_confirm_str(obj)).then(
                         () ->
-                            obj.remove().then(
-                                (resp) ->
-                                    toaster.pop("success", "", "deleted instance")
-                                    icswTools.remove_by_idx($parse(attrs.targetList)(scope), obj.idx)
-                                    if scope.config_service.post_delete
-                                        scope.config_service.post_delete(scope, obj)
-                            )
+                            # check for a pre_delete function
+                            if scope.config_service.pre_delete
+                                scope.config_service.pre_delete(obj)
+                            if scope.config_service.delete
+                                scope.config_service.delete(scope, obj)
+                            else
+                                obj.remove().then(
+                                    (resp) ->
+                                        toaster.pop("success", "", "deleted instance")
+                                        icswTools.remove_by_idx($parse(attrs.targetList)(scope), obj.idx)
+                                        if scope.config_service.post_delete
+                                            scope.config_service.post_delete(scope, obj)
+                                )
                     )
         }
 ]).directive('icswToolsShowHideColumns', () ->
@@ -242,4 +247,3 @@ Show/Hide columns: <div class="btn-group btn-group-xs">
                 scope.show_column[col] = true
      }
 )
-

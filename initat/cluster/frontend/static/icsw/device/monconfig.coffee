@@ -45,8 +45,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"
@@ -136,6 +136,9 @@ angular.module(
                 url     :ICSW_URLS.MON_DELETE_HINT
                 data    :
                     hint_pk : hint.idx
+                success : (xml) ->
+                    if icswParseXMLResponseService(xml)
+                        toaster.pop("success", "", "removed hint")
         $scope.save_hint = (hint) ->
             Restangular.restangularizeElement(null, hint, ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2))
             hint.put()
@@ -230,11 +233,17 @@ angular.module(
                     return scope.hint[key]
                 else
                     return "---"
-            scope.delete_hint = (hint) ->
-                scope.remove_hint(hint)
             scope.toggle_enabled = (hint) ->
                 hint.enabled = !hint.enabled
                 scope.save_hint(hint)
+    }
+]).service('icswDeviceMonConfigTableService', ["ICSW_URLS", (ICSW_URLS) ->
+    return {
+        delete_confirm_str : (obj) ->
+            return "Really delete hint '#{obj.m_type} / #{obj.key}' ?"
+        delete: (scope, obj) ->
+            scope.remove_hint(obj)
+        edit_template      : "network.device.type.form"
     }
 ]).directive("monitoringhinttable", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {

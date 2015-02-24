@@ -8,6 +8,7 @@ class angular_edit_mixin
         @min_width = "600px"
         @change_signal = undefined
         @title = "Modal"
+        @cssClass = "modal-tall"
     create : (event) =>
         if @new_object
             @scope.new_obj = @new_object(@scope)
