@@ -39,7 +39,8 @@ angular.module(
                 if status_history_ctrl.time_frame?
                     cont = (new_data) ->
                         new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
-                        [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(new_data, weights, status_utils_functions.host_colors, scope.float_format)
+                        [scope.host_data, scope.pie_data] =
+                            status_utils_functions.preprocess_state_data(new_data, weights, status_utils_functions.host_colors, scope.float_format)
 
                     line_graph_cont = (new_data) ->
                         new_data = new_data[Object.keys(new_data)[0]]  # there is only one device
@@ -57,7 +58,8 @@ angular.module(
 
             scope.update_from_local_data = () ->
                 if scope.data?
-                    [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(scope.data, weights, colors, scope.float_format)
+                    [scope.host_data, scope.pie_data] =
+                        status_utils_functions.preprocess_state_data(scope.data, weights, status_utils_functions.host_colors, scope.float_format)
 
             if attrs.data?
                 scope.$watch('data', (unused) -> scope.update_from_local_data())
