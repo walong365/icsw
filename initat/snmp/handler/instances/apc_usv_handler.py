@@ -112,4 +112,3 @@ class handler(SNMPHandler):
                 name="usv.ampere.out",
             ),
         ])
-
