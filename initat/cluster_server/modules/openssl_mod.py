@@ -93,7 +93,10 @@ class ca_new_cert(cs_base_class.server_com):
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         else:
-            if cur_ca.new_cert(_obj_dict, _ca_mode, _file_name, device=_dev):
+            additional_args = {}
+            if _dev is not None:
+                additional_args['device'] = _dev
+            if cur_ca.new_cert(_obj_dict, _ca_mode, _file_name, **additional_args):
                 cur_inst.srv_com.set_result(
                     "certificate successfully created in {}".format(_file_name)
                 )
