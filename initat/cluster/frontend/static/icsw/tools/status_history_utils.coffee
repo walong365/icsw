@@ -206,7 +206,7 @@ angular.module(
         service_colors: service_colors
         host_colors: host_colors
     }
-]).directive("icswToolsHistLineGraph", ["status_utils_functions", (status_utils_functions) ->
+]).directive("icswToolsHistLineGraph", ["status_utils_functions", "$timeout", (status_utils_functions, $timeout) ->
     return {
         restrict: 'E'
         scope   : {
@@ -234,7 +234,7 @@ angular.module(
             <text x="1" y="25"  font-size="12px" fill="red">{{error}}</text>
         </g>
     </svg>
-    <div class="icsw-tooltip" ng-show="tooltip_entry" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px;">
+    <div class="icsw-tooltip" ng-show="tooltip_entry" ng-attr-style="top: {{tooltipY}}px; left: {{tooltipX}}px; min-width: 350px; max-width: 350px;">
         State: {{tooltip_entry.state}}<br/>
         Start: {{tooltip_entry.start}}<br/>
         End: {{tooltip_entry.end}}<br/>
@@ -254,7 +254,8 @@ angular.module(
                 scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
 
             scope.width = scope.widthAttr() or 300
-            scope.height = scope.heightAttr() or 30
+            base_height = 30
+            scope.height = scope.heightAttr() or base_height
 
             scope.fontSize = 10
 
@@ -262,6 +263,8 @@ angular.module(
             scope.draw_width = scope.width - 2 * scope.side_margin
 
             scope.update = () ->
+                $timeout(scope.actual_update)
+            scope.actual_update = () ->
 
                 time_frame = status_history_ctrl.time_frame
 
@@ -331,36 +334,43 @@ angular.module(
                                     # these heights are for a total height of 30
                                     if scope.forHost()
                                         entry_height = switch last_entry.state
-                                            when "Up" then 10
-                                            when "Down" then 20
-                                            when "Unreachable" then 14
-                                            when "Undetermined" then 12
+                                            when "Up" then 15
+                                            when "Down" then 30
+                                            when "Unreachable" then 22
+                                            when "Undetermined" then 18
                                         color = status_utils_functions.host_colors[last_entry.state]
                                     else
                                         entry_height = switch last_entry.state
-                                            when "Ok" then 10
-                                            when "Warning" then 15
-                                            when "Critical" then 20
-                                            when "Unknown" then 12
-                                            when "Undetermined" then 12
+                                            when "Ok" then 15
+                                            when "Warning" then 22
+                                            when "Critical" then 30
+                                            when "Unknown" then 18
+                                            when "Undetermined" then 18
                                         color = status_utils_functions.service_colors[last_entry.state]
 
-                                    entry_height /= 30
-                                    #pos_y = ((2/3)-entry_height ) * scope.height  # such that bar ends
-                                    entry_height *= scope.height
-                                    pos_y = scope.height - 10 - entry_height
+                                    label_height = 13
 
+                                    entry_height /= (base_height)
+                                    #pos_y = ((2/3)-entry_height ) * scope.height  # such that bar ends
+                                    entry_height *= (scope.height - label_height)
+
+                                    pos_y = scope.height - entry_height - label_height
+
+                                    # entry_height and pos_x are correct values, but we sometimes want some 'emphasis'
+                                    # these values are only used for display below
+                                    display_entry_width = entry_width
+                                    display_pos_x = pos_x
                                     if entry_width <= 2
                                         if entry_width <= 1
-                                            pos_x -= 1
-                                        entry_width += 1
+                                            display_pos_x -= 1
+                                        display_entry_width += 1
 
                                     scope.data_display.push(
                                         {
-                                            pos_x : pos_x
+                                            pos_x : display_pos_x
                                             pos_y : pos_y
                                             height: entry_height
-                                            width : entry_width
+                                            width : display_entry_width
                                             color : color
                                             msg   : last_entry.msg
                                             state : last_entry.state

@@ -1,7 +1,14 @@
 <script type="text/ng-template" id="icsw.device.status_history_overview">
     <h2>Status History</h2>
 
-    <h4>
+    <div class="panel panel-default" style="width: 450px">
+        <div class="panel-heading">
+            <h4 ng-if="!timespan_error ">
+                Showing data from <b>{{ get_time_frame().start_str }}</b> to <b>{{ get_time_frame().end_str }}</b>:
+            </h4>
+        </div>
+
+    <div class="panel-body">
         <div class="form-inline">
             Timerange:
             <div class="form-group">
@@ -63,10 +70,12 @@
                 </div>
             </div>
         </div>
-    </h4>
 
-    <h4 ng-if="!timespan_error ">Showing data from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }}:</h4>
+    </div>
+
+
     <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
+        </div>
 
     <div ng-repeat="device in devicepks">
         <icsw-device-status-history-device device="{{device}}"></icsw-device-status-history-device>
@@ -74,16 +83,26 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_device">
-    <h3>{{device_rest.full_name}}</h3>
 
-    <div class="row" style="width: 650px">
+    <div class="panel panel-success">
+
+        <div class="panel-heading">
+    <h3>{{device_rest.full_name}}</h3>
+            </div>
+        <div class="panel-body">
+
+    <div style="width: 650px">
         <div class="col-md-12">
             <div style="width: auto">
                 <icsw-tools-device-hist-status-overview deviceid="device_id" detailed-view="true"></icsw-tools-device-hist-status-overview>
             </div>
         </div>
 
-        <div class="col-md-12">
+        <div class="col-md-12" style="margin-top: 10px" ng-show="service_data.length == 0">
+            No services for this device and time span.
+        </div>
+
+        <div class="col-md-12" style="margin-top: 10px" ng-show="service_data.length > 0">
             <table class="table table-condensed table-hover table-striped">
                 <thead>
                 <tr>
@@ -93,7 +112,7 @@
                     <th style="width: 50px;" class="text-center">Warning</th>
                     <th style="width: 50px;" class="text-center">Critical</th>
                     <th style="width: 50px;" class="text-center">Unknown</th>
-                    <th style="width: 50px;" class="text-center">Undetermined</th>
+                    <th style="width: 50px;" class="text-center">Undeterm.</th>
                     <th style="width: 50px;" class="text-center">Flapping</th>
                     <th class="text-center">Timeline</th>
                 </tr>
@@ -113,31 +132,12 @@
                     <td>
                         <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data"></icsw-tools-hist-line-graph>
                     </td>
-                    <!--
-                    <td>
-                        <svg width="225" height="30">
-                            <g>
-                                <rect x="10"   y="10" width="20" height="10" rx="1" ry="1" style="fill:#66dd66;stroke-width:0;stroke:rgb(0,0,0)"></rect>
-                                <rect x="30"   y="0"  width="5"  height="20" rx="1" ry="1" style="fill:#ff7777;stroke-width:0;stroke:rgb(0,0,0)"></rect>
-                                <rect x="35"   y="10" width="55" height="10" rx="1" ry="1" style="fill:#66dd66;stroke-width:0;stroke:rgb(0,0,0)"></rect>
-                                <rect x="90"   y="0"  width="20" height="20" rx="1" ry="1" style="fill:#ff7777;stroke-width:0;stroke:rgb(0,0,0)"></rect>
-                                <rect x="110"  y="5"  width="50" height="15" rx="1" ry="1" style="fill:#f0ad4e;stroke-width:0;stroke:rgb(0,0,0)"></rect>
-                                <rect x="160"  y="10" width="30" height="10" rx="1" ry="1" style="fill:#66dd66;stroke-width:0;stroke:rgb(0,0,0)"></rect>
-                                <rect x="190"  y="10" width="20" height="10" rx="1" ry="1" style="fill:#c7c7c7;stroke-width:0;stroke:rgb(0,0,0)"></rect>
-
-                                <text x="10"    y="30"  style="fill:black;" font-size="10px" text-anchor="middle" alignment-baseline="baseline">0:00</text>
-                                <text x="60"   y="30"  style="fill:black;" font-size="10px" text-anchor="middle">6:00</text>
-                                <text x="110"  y="30" style="fill:black;" font-size="10px" text-anchor="middle">12:00</text>
-                                <text x="160"  y="30" style="fill:black;" font-size="10px" text-anchor="middle">18:00</text>
-                                <text x="210"  y="30" style="fill:black;" font-size="10px" text-anchor="middle">24:00</text>
-                            </g>
-                        </svg>
-
-                    </td>
-                    -->
                 </tr>
                 </tbody>
             </table>
         </div>
     </div>
+
+        </div>
+        </div>
 </script>

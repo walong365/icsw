@@ -28,7 +28,7 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
             if this.time_frame?
                 return switch this.time_frame.duration_type
                     when 'day' then {'data': ["0:00", "6:00", "12:00", "18:00", "24:00"], 'time_points': true}
-                    when 'week' then {'data': ["Mon", "Tue", "Wed", "Thur", "Fri", "Sat", "Sun"], 'time_points': false}
+                    when 'week' then {'data': ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], 'time_points': false}
                     when 'month' then {'data': (x+"." for x in [1..days_of_month] by month_interval) , 'time_points': true}
                     when 'year' then {'data': ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Sep", "Oct", "Nov", "Dec" ], 'time_points': false}
             else
@@ -147,6 +147,9 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
 
                 scope.startdate = moment('Feb 14 2015 00:00:00 GMT+0100 (CET)')
                 scope.duration_type = 'day'
+
+                scope.startdate = moment('Oct 15 2014 00:00:00 GMT+0100 (CET)')
+                scope.duration_type = 'week'
 
 
             scope.set_duration_type = (d) ->
