@@ -149,10 +149,8 @@ status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
 
                 scope.startdate = moment('Oct 15 2014 00:00:00 GMT+0100 (CET)')
                 scope.startdate = moment('Oct 9 2014 00:00:00 GMT+0100 (CET)')
-                scope.duration_type = 'week'
+                scope.duration_type = 'day'
 
-                scope.startdate = moment('Oct 9 2014 00:00:00 GMT+0100 (CET)')
-                scope.duration_type = 'month'
 
 
             scope.set_duration_type = (d) ->

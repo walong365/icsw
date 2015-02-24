@@ -726,6 +726,12 @@ angular.module(
                 return text[0..max_len] + "..."
         else
             return text
+).filter("limit_text_no_dots", () ->
+    return (text, max_len) ->
+        if text.length > max_len
+            return text[0..max_len]
+        else
+            return text
 ).filter("show_user", () ->
     return (user) ->
         if user
@@ -751,6 +757,9 @@ angular.module(
 ).filter("datetime1", () ->
     return (cur_dt) ->
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()
+).filter("datetime_concise", () ->
+    return (cur_dt) ->
+        return moment(cur_dt).format("DD.MM.YYYY HH:mm:ss")
 ).filter("get_size", () ->
     return (size, base_factor, factor, postfix="B", float_digits=0) ->
         size = size * base_factor

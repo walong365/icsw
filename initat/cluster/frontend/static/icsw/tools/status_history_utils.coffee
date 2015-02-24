@@ -216,18 +216,23 @@ angular.module(
             'forHost' : '&'
             'widthAttr' : '&width'
             'heightAttr' : '&height'
+            'clickAttr' : '&click'
         }
         require : "^icswDeviceStatusHistoryOverview"
         template: """
 <div class="icsw-chart" ng-attr-style="width: {{width}}px; height: {{height}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
-    <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}">
+    <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}" >
         <g ng-show="!error">
+
+            <rect ng-attr-width="{{width}}" ng-attr-height="{{height}}" x="0" y="0" fill="rgba(0, 0, 0, 0.0)"
+            ng-click="entry_clicked(undefined)"></rect>
             <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}" ng-attr-y="{{entry.pos_y}}"
                   ng-attr-width="{{entry.width}}" ng-attr-height="{{entry.height}}" rx="1" ry="1"
                   ng-attr-style="fill:{{entry.color}};stroke-width:0;stroke:rgb(0,0,0)"
                   ng-mouseenter="mouse_enter(entry)"
                   ng-mouseleave="mouse_leave(entry)"
-                  ng-mousemove="mouse_move(entry, $event)"></rect>
+                  ng-mousemove="mouse_move(entry, $event)"
+                  ng-click="entry_clicked(entry)"></rect>
         </g>
         <g ng-show="!error">
             <text ng-repeat="marker in timemarker_display" ng-attr-x="{{marker.pos_x}}" ng-attr-y="{{height}}"  ng-attr-style="fill:black;" font-size="{{fontSize}}px" text-anchor="middle" alignment-baseline="baseline">{{marker.text}}</text>
@@ -254,6 +259,8 @@ angular.module(
                 tooltip = element[0].children[0].children[1]
                 scope.tooltipX = event.offsetX - (tooltip.clientWidth/2)
                 scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
+            scope.entry_clicked = (entry) ->
+                scope.clickAttr({entry: entry})
 
             scope.width = scope.widthAttr() or 300
             base_height = 30
@@ -306,7 +313,7 @@ angular.module(
                             i += 1
 
 
-                        # calculate data to show (
+                        # calculate data to show
                         total_duration = time_frame.end.diff(time_frame.start)
 
                         pos_x = scope.side_margin
@@ -392,5 +399,38 @@ angular.module(
 
 
             scope.$watchGroup(['data', () -> return status_history_ctrl.time_frame], (unused) -> scope.update() )
+    }
+]).directive("icswToolsHistLogViewer", ["status_utils_functions", (status_utils_functions) ->
+    return {
+        restrict: 'E'
+        scope   : {
+            'data' : '&'  # takes same data as line graph
+            'enabled' : '&'
+        }
+        template: """
+<table class="table table-condensed table-striped" ng-show="actual_data.length > 0">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>State</th>
+            <th>Message</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="entry in actual_data">
+            <td ng-bind="entry.date | datetime_concise"></td>
+            <td ng-bind="entry.state | limit_text_no_dots:3"></td>
+            <td ng-bind="entry.msg"></td>
+        </tr>
+    </tbody>
+</table>
+"""
+        link: (scope, element, attrs) ->
+            scope.$watch('enabled()', () ->
+                if scope.enabled()
+                    scope.actual_data = scope.data()
+                else
+                    scope.actual_data = []
+            )
     }
 ])

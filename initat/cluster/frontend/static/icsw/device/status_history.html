@@ -130,7 +130,12 @@
                     <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
                     <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
                     <td>
-                        <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data"></icsw-tools-hist-line-graph>
+                        <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="entry.log_viewer_enabled = !entry.log_viewer_enabled"></icsw-tools-hist-line-graph>
+                    </td>
+                    <td>
+                        <icsw-tools-hist-log-viewer data="entry.line_graph_data" enabled="entry.log_viewer_enabled" ></icsw-tools-hist-log-viewer>
+                        <!-- TODO: this is too large for here, put it in extra table row -->
+                        <!-- TODO: focus entry which was clicked upon? -->
                     </td>
                 </tr>
                 </tbody>
