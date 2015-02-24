@@ -325,8 +325,8 @@ class mon_check_command_special(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=64, unique=True)
     info = models.CharField(max_length=64, default="")
-    command_line = models.CharField(max_length=256, default="")
-    description = models.CharField(max_length=256, default="")
+    command_line = models.CharField(max_length=512, default="")
+    description = models.CharField(max_length=512, default="")
     is_active = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     # triggers other commands
