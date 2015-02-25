@@ -54,6 +54,11 @@ def check_local_settings():
         changed = True
         AUTO_CREATE_NEW_DOMAINS = True
     try:
+        from local_settings import LOGIN_SCREEN_TYPE  # @UnresolvedImports
+    except:
+        changed = True
+        LOGIN_SCREEN_TYPE = "big"
+    try:
         from local_settings import PASSWORD_CHARACTER_COUNT
     except:
         changed = True
@@ -70,6 +75,7 @@ def check_local_settings():
                 "GOOGLE_MAPS_KEY = \"{}\"".format(GOOGLE_MAPS_KEY),
                 "PASSWORD_CHARACTER_COUNT = \"{}\"".format(PASSWORD_CHARACTER_COUNT),
                 "AUTO_CREATE_NEW_DOMAINS = {}".format(AUTO_CREATE_NEW_DOMAINS),
+                "LOGIN_SCREEN_TYPE = \"{}\"".format(LOGIN_SCREEN_TYPE),
                 "",
             ]
         ))

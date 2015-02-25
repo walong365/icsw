@@ -51,7 +51,7 @@ import time
 import uuid
 
 from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
-    log_source, log_status, device_group, cluster_license, device_type, cluster_setting, mac_ignore, \
+    log_source, log_status, device_group, cluster_license, device_type, mac_ignore, \
     macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
     quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting, \
     DeviceSNMPInfo
@@ -124,13 +124,6 @@ class device_group_serializer(serializers.ModelSerializer):
 class cluster_license_serializer(serializers.ModelSerializer):
     class Meta:
         model = cluster_license
-
-
-class cluster_setting_serializer(serializers.ModelSerializer):
-    cluster_license_set = cluster_license_serializer(many=True)
-
-    class Meta:
-        model = cluster_setting
 
 
 class device_type_serializer(serializers.ModelSerializer):

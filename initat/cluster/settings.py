@@ -392,7 +392,7 @@ PIPELINE_JS = {
         "source_filenames": (
             "js/jquery-ui-1.10.2.custom.js",
             "js/angular-1.3.14.js",
-            "js/lodash.min.js",
+            "js/lodash.js",
             "js/bluebird.js",
             "js/codemirror/codemirror.js",
             "js/bootstrap.js",
@@ -497,8 +497,6 @@ if os.path.isdir(os.path.join(HANDBOOK_DIR, "chunks")):
 
 HANDBOOK_CHUNKS_PRESENT = True if len(HANDBOOK_CHUNKS) else False
 
-LOGIN_SCREEN_TYPE = "big"
-
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
 _config_ok = False
@@ -506,7 +504,7 @@ if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
     try:
-        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY, PASSWORD_CHARACTER_COUNT, AUTO_CREATE_NEW_DOMAINS  # @UnresolvedImport
+        from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION, GOOGLE_MAPS_KEY, PASSWORD_CHARACTER_COUNT, AUTO_CREATE_NEW_DOMAINS, LOGIN_SCREEN_TYPE  # @UnresolvedImport
     except:
         pass
     else:
@@ -520,6 +518,8 @@ if not _config_ok:
     PASSWORD_CHARACTER_COUNT = 8
     PASSWORD_HASH_FUNCTION = "SHA1"
     AUTO_CREATE_NEW_DOMAINS = True
+    LOGIN_SCREEN_TYPE = "big"
+
 
 # validate settings
 if PASSWORD_HASH_FUNCTION not in ["SHA1", "CRYPT"]:
