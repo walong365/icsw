@@ -20,9 +20,11 @@
 """ SNMP handler for APC USVs """
 
 from ..base import SNMPHandler
-from ...struct import simple_snmp_oid
+from ...struct import simple_snmp_oid, MonCheckDefinition, snmp_oid
 from ...functions import simplify_dict, flatten_dict
 from lxml.builder import E
+
+USV_BASE = "1.3.6.1.4.1.318.1.1.1"
 
 
 class handler(SNMPHandler):
@@ -30,15 +32,15 @@ class handler(SNMPHandler):
         description = "USV"
         vendor_name = "apc"
         name = "usv"
-        tl_oids = ["1.3.6.1.4.1.318.1.1.1"]
+        tl_oids = [USV_BASE]
 
     def collect_fetch(self):
         return [
             (
                 "T",
                 [
-                    simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3"),
-                    simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4"),
+                    simple_snmp_oid("{}.3".format(USV_BASE)),
+                    simple_snmp_oid("{}.4".format(USV_BASE)),
                 ]
             )
         ]
@@ -112,3 +114,82 @@ class handler(SNMPHandler):
                 name="usv.ampere.out",
             ),
         ])
+
+    def config_mon_check(self):
+        return [
+            usv_mon(self),
+        ]
+
+
+class USVMetric(object):
+    def __init__(self, key, short, info, unit):
+        self.key = key
+        self.short = short
+        self.info = info
+        self.unit = unit
+
+
+USV_METRICS = [
+    USVMetric((3, 2, 4, 0), "frequency.in", "Input frequency", "1/s"),
+    USVMetric((4, 2, 2, 0), "frequency.out", "Output frequency", "1/s"),
+    USVMetric((3, 2, 1, 0), "voltage.in.line", "Input line voltage", "V"),
+    USVMetric((3, 2, 2, 0), "voltage.in.line_max", "Input line voltage max", "V"),
+    USVMetric((3, 2, 3, 0), "voltage.in.line_min", "Input line voltage min", "V"),
+    USVMetric((4, 2, 1, 0), "voltage.out", "Output voltage", "V"),
+    USVMetric((4, 2, 3, 0), "load.out", "Output load", "%"),
+    USVMetric((4, 2, 4, 0), "ampere.out", "Output current", "A"),
+]
+
+
+class usv_mon(MonCheckDefinition):
+    class Meta:
+        short_name = "usv"
+        command_line = "* --type $ARG3$"
+        info = "Check USV via SNMP"
+        description = "Check USV via SNMP"
+
+    def parser_setup(self, parser):
+        parser.add_argument("--type", type=str, dest="type", default="freqin", help="value to query", choices=[_m.short for _m in USV_METRICS])
+
+    def config_call(self, s_com):
+        dev = s_com.host
+        _field = []
+        for _qf in ["freqin", "freqout"]:
+            _field.append(
+                s_com.get_arg_template(
+                    net_dev.devname,
+                    arg1=dev.dev_variables["SNMP_READ_COMMUNITY"],
+                    arg2=dev.dev_variables["SNMP_VERSION"],
+                    arg3=_qf,
+                )
+            )
+        return _field
+
+    def mon_start(self, scheme):
+        return [
+            snmp_oid(
+                "{}.3".format(
+                    USV_BASE,
+                ),
+            ),
+            snmp_oid(
+                "{}.4".format(
+                    USV_BASE,
+                ),
+            ),
+        ]
+
+    def mon_result(self, scheme):
+        _net_obj = scheme.net_obj
+        _val_dict = {}
+        for _key, _value in scheme.snmp.iteritems():
+            for _sk, _sv in _value.iteritems():
+                _val_dict[tuple(list(_key)[-1:] + list(_sk))] = _sv
+        _type = scheme.opts.type
+        _metric = [_m for _m in USV_METRICS if _m.short == _type][0]
+        _value = _val_dict[_metric.key]
+        return 0, "{} is {} {}".format(
+            _metric.info,
+            _value,
+            _metric.unit,
+        )
