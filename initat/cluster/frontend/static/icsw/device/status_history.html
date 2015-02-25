@@ -3,8 +3,11 @@
 
     <div class="panel panel-default" style="width: 450px">
         <div class="panel-heading">
-            <h4 ng-if="!timespan_error ">
-                Showing data from <b>{{ get_time_frame().start_str }}</b> to <b>{{ get_time_frame().end_str }}</b>:
+            <h4>
+                Showing data
+                <span ng-if="!timespan_error ">
+                    from <b>{{ get_time_frame().start_str }}</b> to <b>{{ get_time_frame().end_str }}</b>:
+                </span>
             </h4>
         </div>
 
@@ -74,10 +77,10 @@
                 </div>
             </div>
 
+            <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
+
         </div>
 
-
-        <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
     </div>
 
     <div ng-repeat="device in devicepks">
