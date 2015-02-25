@@ -640,12 +640,12 @@
  ng-class:form_error(&#39;network&#39;) 
  "
  ><label for="id_network" class="control-label col-sm-3 requiredField">
- Network<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text" /> </div></div><div id="div_id_netmask"
+ Network<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text" /> </div></div><div id="div_id_netmask"
  class="form-group 
  ng-class:form_error(&#39;netmask&#39;) 
  "
  ><label for="id_netmask" class="control-label col-sm-3 requiredField">
- Netmask<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text" /> </div></div><div id="div_id_broadcast"
+ Netmask<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text" /> </div></div><div id="div_id_broadcast"
  class="form-group 
  ng-class:form_error(&#39;broadcast&#39;) 
  "
