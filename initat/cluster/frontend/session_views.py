@@ -26,6 +26,7 @@ import base64
 import json
 import logging
 
+from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q, Sum
@@ -33,7 +34,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
-from initat.cluster.backbone.models import user, device_variable, login_history
+from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object, xml_wrapper
