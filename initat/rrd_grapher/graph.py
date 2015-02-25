@@ -779,11 +779,18 @@ class RRDGraph(object):
         _split = _key.split(".")
         if _type in ["pde", "mvl"]:
             # performance data from icinga or vector list data
-            _xpath_str = ".//{}[@name='{}']/value[@key='{}']".format(
-                _type,
-                ".".join(_split[:1]),
-                ".".join(_split[1:]),
-            )
+            if _type == "pde":
+                _xpath_str = ".//{}[@name='{}']/value[@key='{}']".format(
+                    _type,
+                    ".".join(_split[:1]),
+                    ".".join(_split[1:]),
+                )
+            else:
+                _xpath_str = ".//{}[@name='{}']/value[@key='{}']".format(
+                    _type,
+                    ".".join(_split[:-1]),
+                    ".".join(_split[-1:]),
+                )
             def_xmls = vector.xpath(
                 _xpath_str,
                 smart_strings=False
@@ -794,7 +801,10 @@ class RRDGraph(object):
                 def_xml = copy.deepcopy(def_xmls[0])
                 def_xml.attrib["file_name"] = _parent.get("file_name")
                 # copy name to part
-                def_xml.attrib["part"] = def_xml.attrib["name"] #def_xml.attrib["key"].split(".")[-1]
+                if _type == "pde":
+                    def_xml.attrib["part"] = def_xml.attrib["name"]
+                else:
+                    def_xml.attrib["part"] = def_xml.attrib["key"].split(".")[-1]
                 # overwrite name
                 def_xml.attrib["name"] = "{}.{}".format(_parent.get("name"), def_xml.get("key"))
                 yield (_parent.get("info"), def_xml)
