@@ -31,8 +31,9 @@
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
                 {{ get_nd_objects().length }} netdevices
             </accordion-heading>
-            <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge mac devtype mtu speed penalty flags status"></icsw-tools-show-hide-columns>
-            <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table st-table="entries_display" st-safe-src="nd_objects" ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+                <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge mac devtype mtu speed penalty flags status"></icsw-tools-show-hide-columns>
+
                 <thead>
                     <tr>
                         <th>Device</th>
@@ -52,7 +53,8 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in get_nd_objects()"></tr>
+                    <tr st-select-row="ndip_obj" st-select-mode="multiple" ng-class="ndip_obj.isSelected && 'info'"
+                        icsw-device-network-netdevice-row ng-repeat="ndip_obj in entries_display" ></tr>
                 </tbody>
             </table>
         </accordion-group>
@@ -392,7 +394,7 @@
                         </select>, mode:
                     </div>
                     <div class="form-group">
-                        <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="fetch_data()"/>
+                        <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="fetch_data()"></icsw-tools-button>
                     </div>              
                 </form>
                 <icsw-device-network-graph></icsw-device-network-graph>
