@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -430,10 +430,7 @@ class yum_install_process(install_process):
 
     def _handle_repo_list(self, in_com):
         # print etree.tostring(in_com.tree, pretty_print=True)
-        # new code
         in_repos = in_com.xpath(".//ns:repo_list/root")[0]
-        # old code
-        # in_repos = in_com.xpath(".//ns:repos")[0]
         self.log("handling repo_list ({})".format(logging_tools.get_plural("entry", len(in_repos))))
         # manual comparision, better modify them with zypper, FIXME ?
         repo_dir = "/etc/yum.repos.d"
@@ -585,8 +582,6 @@ class zypper_install_process(install_process):
             self.log("no repo_list found in srv_com, server too old ?", logging_tools.LOG_LEVEL_ERROR)
             return
         in_repos = in_repos[0]
-        # old code
-        # in_repos = in_com.xpath(".//ns:repos")[0]
         self.log("handling repo_list ({})".format(logging_tools.get_plural("entry", len(in_repos))))
         # manual comparision, better modify them with zypper, FIXME ?
         repo_dir = "/etc/zypp/repos.d"

@@ -541,13 +541,16 @@ class client(object):
 
     def _set_version(self, new_vers):
         if new_vers != self.__version:
-            try:
-                if new_vers.count("-"):
-                    major, minor = new_vers.split("-")[0].split(".")
-                    if int(major) >= 3 and int(minor) >= 1:
-                        self.__client_gen = 1
-            except:
-                self.log("cannot interpret version '{}'".format(new_vers))
+            if global_config["SUPPORT_OLD_CLIENTS"]:
+                try:
+                    if new_vers.count("-"):
+                        major, minor = new_vers.split("-")[0].split(".")
+                        if (int(major) >= 3 and int(minor) >= 1) or (int(major) == 2):
+                            self.__client_gen = 1
+                except:
+                    self.log("cannot interpret version '{}'".format(new_vers))
+            else:
+                self.__client_gen = 1
             self.log("changed version from '{}' to '{}' (generation {:d})".format(
                 self.__version,
                 new_vers,

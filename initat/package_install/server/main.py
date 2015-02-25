@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -61,6 +61,7 @@ def main():
         ("SERVER_PUB_PORT", configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
         ("NODE_PORT", configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
         ("DELETE_MISSING_REPOS", configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
+        ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]")),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
