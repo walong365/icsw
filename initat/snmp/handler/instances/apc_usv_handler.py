@@ -154,7 +154,7 @@ class usv_mon(MonCheckDefinition):
     def config_call(self, s_com):
         dev = s_com.host
         _field = []
-        for _qf in ["freqin", "freqout"]:
+        for _qf in [_m.short for _m in USV_METRICS]:
             _field.append(
                 s_com.get_arg_template(
                     net_dev.devname,
