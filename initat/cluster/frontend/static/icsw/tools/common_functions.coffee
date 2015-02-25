@@ -81,7 +81,9 @@ class angular_edit_mixin
             return @_prom.promise
     close_modal : () =>
         if @use_modal
-            @my_modal.close()
+            # is null in case of delete
+            if @my_modal
+                @my_modal.close()
         #console.log scope.pre_edit_obj.pnum, scope._edit_obj.pnum
         if @scope.modal_active
             #console.log "*", @_modal_close_ok, @scope.pre_edit_obj
@@ -172,6 +174,7 @@ class angular_edit_mixin
     delete_obj : (obj) =>
         if @use_promise
            ret = @q.defer()
+        @my_modal = null
         c_modal = @modal.open
             template : @templateCache.get("icsw.tools.simple.modal")
             controller : @modal_ctrl
@@ -200,7 +203,7 @@ class angular_edit_mixin
                 obj.remove().then(
                     (resp) =>
                         # todo, fixme, move to toaster
-                        console.log "deleted instance"
+                        # console.log "deleted instance"
                         if @delete_list
                             remove_by_idx(@delete_list, obj.idx)
                         @close_modal()
