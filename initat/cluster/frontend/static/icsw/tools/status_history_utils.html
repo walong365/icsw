@@ -1,6 +1,6 @@
 
 <script type="text/ng-template" id="icsw.tools.device_hist_status">
-    <div ng-if="show_table"> <!-- use full layout -->
+    <div ng-if="detailed_view"> <!-- use full layout -->
         <div class="row">
             <div class="col-md-4"> <!-- style="margin-top: -8px;"> -->
                 <div style="float: right">
@@ -9,14 +9,6 @@
             </div>
             <div class="col-md-4">
                 <table class="table table-condensed table-hover table-striped">
-                    <!--
-                    <thead>
-                        <tr>
-                            <th>State</th>
-                            <th>Ratio of state</th>
-                        </tr>
-                    </thead>
-                    -->
                     <tbody>
                         <tr ng-repeat="state in host_data">
                             <td> {{ state.state }} </td>
@@ -25,9 +17,15 @@
                     </tbody>
                 </table>
             </div>
+            <div class="col-md-8 text-center">
+                <icsw-tools-hist-line-graph width="800" height="50" for-host="true" data="line_graph_data" click="log_viewer_enabled = !log_viewer_enabled"></icsw-tools-hist-line-graph>
+            </div>
+            <div class="col-md-12 text-center">
+                <icsw-tools-hist-log-viewer width="800" data="line_graph_data" enabled="log_viewer_enabled"></icsw-tools-hist-log-viewer>
+            </div>
         </div>
     </div>
-    <div ng-if="!show_table"> <!-- only chart -->
+    <div ng-if="!detailed_view"> <!-- only chart -->
         <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
     </div>
 </script>
@@ -35,3 +33,4 @@
 <script type="text/ng-template" id="icsw.tools.service_hist_status">
     <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
 </script>
+

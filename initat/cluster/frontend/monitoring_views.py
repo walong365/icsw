@@ -19,28 +19,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from django.db.models.query import Prefetch
-import itertools
-from initat.cluster.frontend.rest_views import rest_logging
 
 """ monitoring views """
-from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required
+from django.db.models.query import Prefetch
 from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework.generics import ListAPIView
+import pytz
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
 from initat.cluster.frontend.common import duration_utils
+from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.models.monitoring import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
-    mon_icinga_log_raw_base
+    mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_host_alert_data
 from initat.cluster.backbone.models.functions import duration
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
@@ -52,11 +51,13 @@ from initat.cluster.frontend.forms import mon_period_form, mon_notification_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImports
 import base64
+import itertools
 import json
 import logging
 import process_tools
 import server_command
 import socket
+from collections import defaultdict
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -453,13 +454,23 @@ class create_device(permission_required_mixin, View):
 # device status history views
 class _device_status_history_util(object):
     @staticmethod
-    def get_timespan_db_from_request(request):
+    def get_timespan_tuple_from_request(request):
         date = duration_utils.parse_date(request.GET["date"])
-        duration_type = {'day': duration.Day, 'week': duration.Week, 'month': duration.Month, 'year': duration.Year}[request.GET['duration_type']]
+        duration_type = {'day': duration.Day,
+                         'week': duration.Week,
+                         'month': duration.Month,
+                         'year': duration.Year}[request.GET['duration_type']]
         start = duration_type.get_time_frame_start(date)
         end = duration_type.get_end_time_for_start(start)
+        return start, end, duration_type
+
+    @staticmethod
+    def get_timespan_db_from_request(request):
+        start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
+
         try:
-            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID, start_date__range=(start, end))
+            return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID,
+                                                                  start_date__range=(start, end))
         except mon_icinga_log_aggregated_timespan.DoesNotExist:
             return None
 
@@ -475,15 +486,86 @@ class _device_status_history_util(object):
             data_merged_state_types.append({'state': undetermined_state, 'value': 1})
         return data_merged_state_types
 
+    @staticmethod
+    def get_line_graph_data(request, for_host):
+        """
+        Get line graph data for hosts and services
+        :param request: Request with usual parameters
+        :param for_host: boolean, whether to get data for services or hosts
+        :return: dict of either {(dev_id, service_id): values} or {dev_id: values}
+        """
+        if for_host:
+            obj_man = mon_icinga_log_raw_host_alert_data.objects
+            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
+        else:
+            obj_man = mon_icinga_log_raw_service_alert_data.objects
+            trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
-class get_hist_timespan(ListAPIView):
+        device_ids = [int(i) for i in request.GET["device_ids"].split(",")]
+
+        # calculate detailed view based on all events
+        start, end, _ = _device_status_history_util.get_timespan_tuple_from_request(request)
+        entries = obj_man.calc_alerts(start, end, device_ids=device_ids)
+
+        last_before_entries = obj_man.calc_limit_alerts(start,
+                                                        mode='last before',
+                                                        device_ids=device_ids)
+
+        first_after_entries = obj_man.calc_limit_alerts(end,
+                                                        mode='first after',
+                                                        device_ids=device_ids)
+
+        return_data = {}
+
+        for key, amended_list in entries.iteritems():
+            # only use dev/serv keys which have entries in the time frame (i.e. those from entries)
+            # they might be active before and after, but not during the time frame, in which case
+            # they are not relevant to us
+
+            entry_before = last_before_entries.get(key, None)
+            if entry_before is not None:
+                amended_list = [entry_before] + amended_list
+            entry_after = first_after_entries.get(key, None)
+            if entry_after is not None:
+                amended_list = amended_list + [entry_after]
+
+            l = []
+            for entry in amended_list:
+                if isinstance(entry, dict):
+                    l.append({'date': entry['date'], 'state': trans[entry['state']], 'msg': entry['msg']})
+                else:
+                    l.append({'date': entry.date, 'state': trans[entry.state], 'msg': entry.msg})
+
+            if not for_host:
+                # use nice service id for services
+                key = key[0], mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client_tuple(key[1], key[2])
+
+            return_data[key] = l
+        return return_data
+
+
+class get_hist_timespan(RetrieveAPIView):
     @method_decorator(login_required)
     @rest_logging
-    def list(self, request, *args, **kwargs):
+    def retrieve(self, request, *args, **kwargs):
         timespan = _device_status_history_util.get_timespan_db_from_request(request)
-        data = []
         if timespan:
-            data.append((timespan.start_date, timespan.end_date))
+            data = {'status': 'found', 'start': timespan.start_date, 'end': timespan.end_date}
+        else:
+            data = {'status': 'not found'}
+            start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
+            # return most recent data type if this type is not yet finished
+            try:
+                latest_timespan_db = \
+                    mon_icinga_log_aggregated_timespan.objects.filter(duration_type=duration_type.ID).latest('start_date')
+            except mon_icinga_log_aggregated_timespan.DoesNotExist:
+                pass  # no data at all, can't do anything useful
+            else:
+                date = duration_utils.parse_date(request.GET["date"])
+                date = date.replace(tzinfo=pytz.UTC)
+                if latest_timespan_db.end_date < date:
+                    data = {'status': 'found earlier', 'start': latest_timespan_db.start_date, 'end': latest_timespan_db.end_date}
+
         return Response(data)
 
 
@@ -522,24 +604,27 @@ class get_hist_service_data(ListAPIView):
 
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_service_data.STATE_CHOICES)
 
-        queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan=timespan_db)
-        # can't do regular prefetch_related for queryset, this seems to work
+        def get_data_per_device(device_ids, timespans_db):
 
-        data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
-        for entry in queryset.prefetch_related(Prefetch("service")):
+            queryset = mon_icinga_log_aggregated_service_data.objects.filter(device_id__in=device_ids, timespan__in=timespans_db)
+            # can't do regular prefetch_related for queryset, this seems to work
 
-            relevant_data_from_entry = {
-                'state': trans[entry.state],
-                'state_type': entry.state_type,
-                'value': entry.value
-            }
+            data_per_device = {device_id: defaultdict(lambda: []) for device_id in device_ids}
+            for entry in queryset.prefetch_related(Prefetch("service")):
 
-            service_name = entry.service.name if entry.service else ""
+                relevant_data_from_entry = {
+                    'state': trans[entry.state],
+                    'state_type': entry.state_type,
+                    'value': entry.value
+                }
 
-            data_per_device[entry.device_id]["{},{}".format(service_name, entry.service_info if entry.service_info else "")].append(relevant_data_from_entry)
+                client_service_name = mon_icinga_log_raw_service_alert_data.objects.calculate_service_name_for_client(entry)
 
-        # this mode is for an overview of the services of a device without saying anything about a particular service
-        if int(request.GET.get("merge_services", 0)):
+                data_per_device[entry.device_id][client_service_name].append(relevant_data_from_entry)
+
+            return data_per_device
+
+        def merge_services(data_per_device):
             return_data = {}
             for device_id, device_data in data_per_device.iteritems():
                 # it's not obvious how to aggregate service states
@@ -553,11 +638,73 @@ class get_hist_service_data(ListAPIView):
                 for entry in device_data:
                     entry['value'] /= total
                 return_data[device_id] = device_data
-        else:
+            return return_data
+
+        def merge_state_types_per_device(data_per_device):
             return_data = {}
             # merge state types for each service in each device
             for device_id, device_service_data in data_per_device.iteritems():
                 return_data[device_id] = {service_key: _device_status_history_util.merge_state_types(service_data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]) for
                                           service_key, service_data in device_service_data.iteritems()}
+            return return_data
+
+        data_per_device = get_data_per_device(device_ids, [timespan_db])
+
+        # this mode is for an overview of the services of a device without saying anything about a particular service
+        if int(request.GET.get("merge_services", 0)):
+            return_data = merge_services(data_per_device)
+
+        else:
+            return_data = merge_state_types_per_device(data_per_device)
 
         return Response([return_data])  # fake a list, see coffeescript
+
+
+class get_hist_device_line_graph_data(ListAPIView):
+    """
+    Returns device data for line graph
+    """
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+
+        return_data = _device_status_history_util.get_line_graph_data(request, for_host=True)
+        return Response([return_data])  # fake a list, see coffeescript
+
+
+class get_hist_service_line_graph_data(ListAPIView):
+    """
+    Returns service data for line graph
+    """
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        prelim_return_data = _device_status_history_util.get_line_graph_data(request, for_host=False)
+
+        return_data = defaultdict(lambda: {})
+
+        for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
+            return_data[dev_id][service_identifier] = values
+
+        return Response([return_data])  # fake a list, see coffeescript
+        """
+        def f():
+            prelim_return_data = _device_status_history_util.get_line_graph_data(request, for_host=False)
+
+            return_data = defaultdict(lambda: {})
+
+            for ((dev_id, service_identifier), values) in prelim_return_data.iteritems():
+                return_data[dev_id][service_identifier] = values
+
+        import cProfile
+        import time
+        a = "/tmp/profl-{}".format(time.time())
+        print 'prof to ', a
+        cProfile.runctx("f()", globals(), locals(), a)
+
+        from django.db import connection
+        from pprint import pprint
+        pprint(sorted(connection.queries, key=lambda a: a['time']), open("/tmp/prof1", "w"))
+
+        return Response([return_data])  # fake a list, see coffeescript
+        """

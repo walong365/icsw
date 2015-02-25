@@ -1,8 +1,8 @@
-.piechart-tooltip {
+.icsw-tooltip {
   position: absolute;
   float: left;
-  min-width: 30px;
-  max-width: 300px;
+  min-width: 80px;
+  max-width: 600px;
   padding: 5px 15px;
   border-radius: 2px;
   background: rgba(255,255,255,1);
@@ -21,7 +21,7 @@
           transform: all .3s;
   pointer-events: none;
 }
-.piechart-tooltip:after {
+.icsw-tooltip:after {
     /* triangle pointer at bottom of piechart tooltip */
       position: absolute;
       left: 50%;
@@ -35,7 +35,7 @@
       line-height: 0;
 }
 
-.chart {
+.icsw-chart {
   cursor: pointer;
   position: relative;
 }

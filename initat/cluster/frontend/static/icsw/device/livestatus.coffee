@@ -450,19 +450,24 @@ device_livestatus_module = angular.module(
         return _cv
 
     watchers_present = () ->
+        # whether any watchers are present
         return Object.keys(cont_list).length > 0
 
     schedule_load = () ->
+        # called when new listeners register
         # don't update immediately, wait until more controllers have registered
         if not schedule_start_timeout?
-            schedule_start_timeout = $timeout(load_data, 200)
+            schedule_start_timeout = $timeout(load_data, 400)
 
     start_interval = () ->
+        # start regular update
+        # this is additional to schedule_load
         if cur_interval?
             $interval.cancel(cur_interval)
         cur_interval = $interval(load_data, 20000)#20000)
 
     stop_interval = () ->
+        # stop regular update
         if cur_interval?
             $interval.cancel(cur_interval)
         if cur_xhr?
@@ -529,13 +534,24 @@ device_livestatus_module = angular.module(
 
                             client_cont(hosts_client, services_client, host_lut_client)
 
+    remove_watchers_by_client = (client) ->
+        client = client.toString()
+        for dev, watchers of watch_list
+            _.remove(watchers, (elem) -> return elem == client)
+        delete cont_list[client]
+
     return {
         retain: (client, dev_list, cont) ->
-            # get data for devices of devlist for client (same client instance must be passed to cancel())
+            # get data for devices of dev_list for client (same client instance must be passed to cancel())
             # cont is called with new data as soon as anything is available
+
+            # remove watchers in case of updates
+            remove_watchers_by_client(client)
+
             client = client.toString()
             if client not in destroyed_list  # when client get the destroy event, they may still execute data, so we need to catch this here
                 if not watchers_present()
+                    # if no watchers have been present, there also was no regular update
                     start_interval()
 
                 for dev in dev_list
@@ -554,9 +570,7 @@ device_livestatus_module = angular.module(
             client = client.toString()
             destroyed_list.push(client)
             # don't watch for client anymore
-            for dev, watchers of watch_list
-                _.remove(watchers, (elem) -> return elem == client)
-            delete cont_list[client]
+            remove_watchers_by_client(client)
 
             if not watchers_present()
                 stop_interval()
