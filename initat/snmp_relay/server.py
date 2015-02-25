@@ -88,6 +88,7 @@ class server_process(threading_tools.process_pool):
         for _mh in _mon_handlers:
             for _mc in _mh.config_mon_check():
                 self.__gen_schemes["SS:{}".format(_mc.Meta.name)] = _mc
+                self.log("found gen scheme '{}' in handler {}".format(_mc.Meta.name, unicode(_mh)))
 
     def _init_host_objects(self):
         self.__host_objects = {}
