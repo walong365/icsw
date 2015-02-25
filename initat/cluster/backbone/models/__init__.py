@@ -742,7 +742,7 @@ class device(models.Model):
 
     class CSW_Meta:
         permissions = (
-            ("all_devices", "access all devices", False),
+            ("all_devices", "Access all devices", False),
             ("show_graphs", "Access to device graphs", True),
             ("change_basic", "Change basic settings", True),
             ("change_network", "Change network", True),
@@ -754,6 +754,7 @@ class device(models.Model):
             ("change_monitoring", "Change device monitoring config", True),
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
+            ("show_status_history", "Access to status history", True),
         )
         fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", 
                           "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
