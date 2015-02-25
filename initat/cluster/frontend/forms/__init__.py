@@ -19,7 +19,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
     mon_period, mon_notification, mon_contact, host_check_command, \
     device_variable, config, config_str, config_int, config_bool, \
     config_script, netdevice, net_ip, peer_information, config_catalog, cd_connection, \
-    cluster_setting, location_gfx
+    location_gfx
 import pprint
 
 from initat.cluster.frontend.forms.boot import *
@@ -347,30 +347,6 @@ class export_choice_field(ModelChoiceField):
 
     def label_from_instance(self, obj):
         return self.queryset.exp_dict[obj.pk]["info"]
-
-
-class global_settings_form(ModelForm):
-    helper = FormHelper()
-    helper.form_id = "form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
-    helper.ng_model = "edit_obj"
-    helper.ng_submit = "update_settings()"
-    helper.layout = Layout(
-        HTML("<h2>Global settings</h2>"),
-        Fieldset(
-            "Base data",
-            Field("login_screen_type"),
-        ),
-        FormActions(
-            Submit("submit", "Modify", css_class="primaryAction"),
-        ),
-    )
-
-    class Meta:
-        model = cluster_setting
-        fields = ["login_screen_type", ]
 
 
 class kernel_form(ModelForm):

@@ -2601,19 +2601,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-value="action_string"
  /> </div></form>
 </script>
-<script type='text/ng-template' id='global.settings.form'>
-<form id="form" class="form-horizontal" ng-submit="update_settings()" ><h2>Global settings</h2><fieldset 
- ><legend>Base data</legend><div id="div_id_login_screen_type"
- class="form-group 
- "
- ><label for="id_login_screen_type" class="control-label col-sm-2 requiredField">
- Login screen type<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_login_screen_type" name="login_screen_type" ng-model="edit_obj.login_screen_type" required="True"><option value="big" selected="selected">big (full screen)</option><option value="medium">medium (side by side)</option></select></div></div></fieldset><div class="form-actions"><input type="submit"
- name="submit"
- value="Modify"
- class="btn btn-primary primaryAction"
- id="submit-id-submit"
- /> </div></form>
-</script>
 <script type='text/ng-template' id='mon.service.dependency.templ.form'>
 <form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Service dependence template</h2><fieldset 
  ><legend>Base data</legend><div id="div_id_name"
