@@ -81,7 +81,6 @@ device_info_module = angular.module(
 ]).service("DeviceOverviewSettings", [() ->
     # default value
     def_mode = "general"
-    def_mode = "status_history"
     return {
         "get_mode" : () ->
             return def_mode

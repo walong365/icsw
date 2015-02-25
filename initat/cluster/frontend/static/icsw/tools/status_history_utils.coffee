@@ -260,7 +260,6 @@ angular.module(
                 scope.tooltipX = event.offsetX - (tooltip.clientWidth/2)
                 scope.tooltipY = event.offsetY - (tooltip.clientHeight) - 10
             scope.entry_clicked = (entry) ->
-                console.log 'clicked'
                 scope.clickAttr()
                 # TODO possibly pass entry outside along the lines of  scope.clickAttr()({entry: entry)) and setting click just to handle_click (not handle_click())
 
