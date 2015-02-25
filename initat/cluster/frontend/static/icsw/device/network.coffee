@@ -169,6 +169,14 @@ angular.module(
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.reload()
+
+        $scope.$watch('devices', () ->
+            r_list = []
+            for dev in $scope.devices
+                for ndev in dev.netdevice_set
+                    r_list.push(ndev)
+            $scope.nd_objects = r_list
+        )
         $scope.reload= () ->
             wait_list = [
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_network"}]),
@@ -304,12 +312,6 @@ angular.module(
                 for dev in $scope.devices
                     for ndev in dev.netdevice_set
                         r_list = r_list.concat(ndev.net_ip_set)
-            return r_list
-        $scope.get_nd_objects = () ->
-            r_list = []
-            for dev in $scope.devices
-                for ndev in dev.netdevice_set
-                    r_list.push(ndev)
             return r_list
         $scope.get_peer_objects = () ->
             r_list = []
