@@ -761,7 +761,6 @@ class device(models.Model):
                           "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
                           "mon_icinga_log_raw_service_notification_data", "mon_icinga_log_raw_host_notification_data"]
 
-
     class Meta:
         db_table = u'device'
         ordering = ("name",)
