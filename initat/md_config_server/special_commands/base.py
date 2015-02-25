@@ -122,7 +122,7 @@ class SpecialBase(object):
             self.log("no cache set")
 
     def remove_cache_entries(self):
-        # remove all cached entries
+        # remove all cached entries, cached entries are always local (with m_type set as ds_name)
         self.log("removing all {:d} cached entries".format(len(self.__cache)))
         [_entry.delete() for _entry in self.__cache]
         self.__cache = []

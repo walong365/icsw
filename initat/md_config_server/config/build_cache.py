@@ -48,6 +48,11 @@ class build_cache(object):
         # lookup table for host_check_commands
         self.unreachable_pks = set(unreachable_pks or [])
         s_time = time.time()
+        self.mcc_lut_3 = {_check.pk: _check for _check in mon_check_command.objects.all()}
+        # add dummy entries
+        for _value in self.mcc_lut_3.itervalues():
+            _value.mccs_id = None
+            _value.check_command_pk = _value.pk
         self.mcc_lut = {key: (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
         # lookup table for config -> mon_check_commands
         self.mcc_lut_2 = {}

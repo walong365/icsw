@@ -159,7 +159,7 @@ class icinga_log_reader(threading_tools.process_obj):
             logfile.seek(last_read.position)
 
             last_read_line = logfile.readline().rstrip("\n")
-            self.log("last read line: {}".format(last_read_line))
+            self.log(u"last read line: {}".format(last_read_line))
 
             same_logfile_as_last_read = False
             if last_read_line:  # empty string (=False) means end, else we at least have '\n'
@@ -169,9 +169,10 @@ class icinga_log_reader(threading_tools.process_obj):
                     pass
                 else:
                     same_logfile_as_last_read = cur_line.timestamp == last_read.timestamp
-                    self.log("cur line timestamp {}, last read timestamp {}".format(cur_line.timestamp, last_read.timestamp))
-                    self.log("cur line timestamp {}, last read timestamp {}".format(self._parse_timestamp(cur_line.timestamp),
-                                                                                    self._parse_timestamp(last_read.timestamp)))
+                    # self.log("cur line timestamp {}, last read timestamp {}".format(
+                    # cur_line.timestamp, last_read.timestamp))
+                    # self.log("cur line timestamp {}, last read timestamp {}".format(
+                    # self._parse_timestamp(cur_line.timestamp), self._parse_timestamp(last_read.timestamp)))
 
             if same_logfile_as_last_read:
                 self.log("continuing to read in current icinga log file")
@@ -328,7 +329,7 @@ class icinga_log_reader(threading_tools.process_obj):
             except self.malformed_icinga_log_entry as e:
                 self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
 
-        self.log("created from {}: {} ".format(logfilepath if logfilepath else "cur icinga log file", stats.items()))
+        self.log(u"created from {}: {} ".format(logfilepath if logfilepath else "cur icinga log file", stats.items()))
         mon_icinga_log_raw_host_alert_data.objects.bulk_create(host_states)
         mon_icinga_log_raw_service_alert_data.objects.bulk_create(service_states)
         mon_icinga_log_raw_service_flapping_data.objects.bulk_create(service_flapping_states)
@@ -337,7 +338,7 @@ class icinga_log_reader(threading_tools.process_obj):
         mon_icinga_log_raw_host_notification_data.objects.bulk_create(host_notifications)
         for timestamp in full_system_dump_times:
             mon_icinga_log_full_system_dump.objects.get_or_create(date=self._parse_timestamp(timestamp))
-        self.log("read {} lines, ignored {} old ones".format(line_num, old_ignored))
+        self.log(u"read {} lines, ignored {} old ones".format(line_num, old_ignored))
 
         if cur_line:  # if at least something has been read
             position = 0 if is_archive_logfile else logfile.tell() - len(line_raw)  # start of last line read
@@ -353,7 +354,7 @@ class icinga_log_reader(threading_tools.process_obj):
                 return last_read  # tried to update with older timestamp
         else:
             last_read = mon_icinga_log_last_read()
-        self.log("updating last read icinga log to pos: {} time: {}".format(position, timestamp))
+        self.log(u"updating last read icinga log to pos: {} time: {}".format(position, timestamp))
         last_read.timestamp = timestamp
         last_read.position = position
         last_read.save()
@@ -398,7 +399,7 @@ class icinga_log_reader(threading_tools.process_obj):
             self._warnings[unicode(exception)] += 1
         else:
             # log right away
-            self.log("in file {} line {}: {}".format(logfilepath, cur_line_no, exception), logging_tools.LOG_LEVEL_WARN)
+            self.log(u"in file {} line {}: {}".format(logfilepath, cur_line_no, exception), logging_tools.LOG_LEVEL_WARN)
 
     def create_host_alert_entry(self, cur_line, log_rotation_state, initial_state, logfilepath, logfile_db=None):
         retval = None
@@ -588,7 +589,7 @@ class icinga_log_reader(threading_tools.process_obj):
             host = self._resolve_host(host_spec)
         if not host:
             # can't use data without host
-            raise self.unknown_host_error("Failed to resolve host: {} (error #2)".format(host_spec))
+            raise self.unknown_host_error(u"Failed to resolve host: {} (error #2)".format(host_spec))
 
         if not service:
             service, service_info = self._resolve_service(service_spec)
@@ -608,13 +609,13 @@ class icinga_log_reader(threading_tools.process_obj):
         info = cur_line.info
         data = info.split(";", 3)
         if len(data) != 4:
-            raise self.malformed_icinga_log_entry("Malformed service flapping entry: {} (error #1)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed service flapping entry: {} (error #1)".format(info))
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
         flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[2], None)  # format as in db table
         if not flapping_state:
-            raise self.malformed_icinga_log_entry("Malformed flapping state entry: {} (error #7)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed flapping state entry: {} (error #7)".format(info))
 
         msg = data[3]
 
@@ -626,12 +627,12 @@ class icinga_log_reader(threading_tools.process_obj):
         info = cur_line.info
         data = info.split(";", 2)
         if len(data) != 3:
-            raise self.malformed_icinga_log_entry("Malformed host flapping entry: {} (error #1)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed host flapping entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
         flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[1], None)  # format as in db table
         if not flapping_state:
-            raise self.malformed_icinga_log_entry("Malformed flapping state entry: {} (error #7)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed flapping state entry: {} (error #7)".format(info))
         msg = data[2]
         return host, flapping_state, msg
 
@@ -641,13 +642,13 @@ class icinga_log_reader(threading_tools.process_obj):
         info = cur_line.info
         data = info.split(";", 5)
         if len(data) != 6:
-            raise self.malformed_icinga_log_entry("Malformed service notification entry: {} (error #1)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed service notification entry: {} (error #1)".format(info))
 
         user = data[0]
         host, service, service_info = self._parse_host_service(data[1], data[2])
         state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)  # format as in db table @UndefinedVariable
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state in entry: {} (error #6)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[4]
         msg = data[5]
         return user, host, (service, service_info), state, notification_type, msg
@@ -658,13 +659,13 @@ class icinga_log_reader(threading_tools.process_obj):
         info = cur_line.info
         data = info.split(";", 4)
         if len(data) != 5:
-            raise self.malformed_icinga_log_entry("Malformed service notification entry: {} (error #1)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed service notification entry: {} (error #1)".format(info))
 
         user = data[0]
         host = self._resolve_host(data[1])
         state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state in entry: {} (error #6)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[3]
         msg = data[4]
         return user, host, state, notification_type, msg
@@ -678,17 +679,17 @@ class icinga_log_reader(threading_tools.process_obj):
         info = cur_line.info
         data = info.split(";", 5)
         if len(data) != 6:
-            raise self.malformed_icinga_log_entry("Malformed service entry: {} (error #1)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed service entry: {} (error #1)".format(info))
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
         state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
         if not state:
-            raise self.malformed_icinga_log_entry("Malformed state entry: {} (error #6)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed state entry: {} (error #6)".format(info))
 
         state_type = {"SOFT": "S", "HARD": "H"}.get(data[3], None)  # format as in db table
         if not state_type:
-            raise self.malformed_icinga_log_entry("Malformed host entry: {} (error #5)".format(info))
+            raise self.malformed_icinga_log_entry(u"Malformed host entry: {} (error #5)".format(info))
 
         msg = data[5]
 
@@ -847,5 +848,5 @@ class host_service_id_util(object):
                 pass
             else:
                 if log:
-                    log("invalid service description: {}".format(service_spec))
+                    log(u"invalid service description: {}".format(service_spec))
         return retval
