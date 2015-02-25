@@ -68,6 +68,7 @@ network_module = angular.module("icsw.network",
                 "network_type" : (entry["idx"] for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
                 "enforce_unique_ips" : true
                 "num_ip"       : 0
+                "gw_pri"       : 1
             }
         network_display     : network_display
         show_network        : (obj) ->
