@@ -95,8 +95,6 @@ class icinga_log_reader(threading_tools.process_obj):
         )
         connection.close()
 
-        self._icinga_log_aggregator = icinga_log_aggregator(self)
-
         self.register_timer(self.update, 30 if global_config["DEBUG"] else 300, instant=True)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -123,7 +121,7 @@ class icinga_log_reader(threading_tools.process_obj):
         # prof_file_name = "/tmp/prof.out.{}".format(time.time())
         # self.log("profiling to {}".format(prof_file_name))
         # import cProfile; cProfile.runctx("self._icinga_log_aggregator.update()", globals(), locals(), prof_file_name)
-        self._icinga_log_aggregator.update()
+        icinga_log_aggregator(self).update()
         self.log("aggregation took {} seconds".format(time.time() - aggr_start_time))
 
     def _update_raw_data(self):
