@@ -37,7 +37,8 @@ class angular_edit_mixin
             @_prom = @q.defer()
         if @use_modal
             @child_scope = @scope.$new(false, @scope)
-            @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@child_scope)
+            #@edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@child_scope)
+            @edit_div = @compile(@templateCache.get("form_example.html"))(@child_scope)
             @edit_div.on("$destroy", () =>
                 #console.log "DEST", @edit_div[0], @scope, @child_scope
                 @child_scope.$destroy()

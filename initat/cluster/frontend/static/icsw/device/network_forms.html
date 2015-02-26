@@ -1,0 +1,46 @@
+<script type="text/ng-template" id="form_example.html">
+<h2>Netdevice {{ _edit_obj.devname}}</h2>
+<form fs-form-for="" model="_edit_obj">
+    <tabset>
+        <tab heading='basic settings'>
+            <fieldset class="form-horizontal">
+                <legend>Basic settings</legend>
+                <fs-input as="text"      name="devname"         label="Devname*" required="" placeholder="devicename"></fs-input>
+                <fs-input as="text"      name="description"     label="Description"></fs-input>
+                <fs-input as="number"    name="mtu"             label="Mtu*" required="" ></fs-input>
+                <fs-input as="fs-select" name="netdevice_speed" label="Netdevice speed" required=""
+                          items="['foo', 'bar', 'baz']"  placeholder="select a target netdevice speed">{{ item }}</fs-input>
+
+
+                <!--
+                <div fs-checkbox name="check2"  items="[{id: 'enabled', label: 'Enabled'}, {id: 'is_bridge', label: 'Is bridge'}]">
+                    {{ item.label }}
+                </div>
+                <fs-input as="fs-checkbox" name="enabled" label=""  items="[{id: 'enabled', label: 'Enabled'}, {id: 'is_bridge', label: 'Is bridge'}]">
+                -->
+                <fs-input as="fs-checkbox" name="sth" label=" "  items="[{id: 'enabled', label: 'Enabled'}]">
+                    {{ item.label }}
+                </fs-input>
+                <!--
+                -->
+                <!--
+                <fs-input as="fs-checkbox" name="enabled" label="Enabled"  items="['foo']">
+                    {{ item }}
+                </fs-input>
+                -->
+
+                <legend>Routing settings</legend>
+                <fs-input as="number"    name="cost"            label="Cost"></fs-input>
+
+            </fieldset>
+        </tab>
+    </tabset>
+    a
+    {{ _edit_obj }}
+    b
+
+    <input type="submit"/>
+
+</form>
+</script>
+
