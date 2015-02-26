@@ -22,7 +22,7 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, Prefetch, Max, Min
+from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 import datetime
@@ -1412,6 +1412,18 @@ class raw_service_alert_manager(models.Manager):
             # so we do the last grouping by this key here manually
             if key not in last_service_alert_cache or comp(entry['extreme_date'], last_service_alert_cache[key][1]):
                 last_service_alert_cache[key] = relevant_entry, entry['extreme_date']
+
+        # NOTE: apparently, in django, if you use group_by, you can only select the elements you group_by and
+        #       the annotated elements therefore we retrieve the extra parameters manually
+        for k, v in last_service_alert_cache.iteritems():
+            if any(key not in v[0] for key in additional_fields):
+                if is_host:
+                    additional_fields_query = obj_man.filter(device_id=k, date=v[1])
+                else:
+                    additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2], date=v[1])
+
+                v[0].update(additional_fields_query.values(*additional_fields)[0])
+
         # drop extreme date
         return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
 
@@ -1434,7 +1446,6 @@ class raw_service_alert_manager(models.Manager):
     def _do_calculate_service_name_for_client(service, service_info):
         service_name = service.name if service else u""
         return u"{},{}".format(service_name, service_info if service_info else u"")
-
 
 
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
