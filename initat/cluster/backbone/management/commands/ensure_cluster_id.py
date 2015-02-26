@@ -23,6 +23,7 @@
 
 from django.core.management.base import BaseCommand
 from initat.cluster.backbone.models import device
+from django.db.models import Q
 
 
 class Command(BaseCommand):

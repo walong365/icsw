@@ -268,6 +268,8 @@ class device_variable(models.Model):
     local_copy_ok = models.BooleanField(default=True)
     # will the variable be inerited by lower levels (CDG -> DG -> D) ?
     inherit = models.BooleanField(default=True)
+    # protected, not deletable by frontend
+    protected = models.BooleanField(default=False)
     var_type = models.CharField(
         max_length=3,
         choices=[
@@ -795,7 +797,7 @@ def device_post_save(sender, **kwargs):
                 #        device=_cur_inst,
                 #        name="CLUSTER_NAME",
                 #        val_str="new Cluster",
-                #        val_type="s",
+                #        var_type="s",
                 #        inherit=False,
                 #    )
                 if "CLUSTER_ID" not in _var_dict:
@@ -807,8 +809,9 @@ def device_post_save(sender, **kwargs):
                             get_random_string(6, "ABCDEFGHKLPRSTUWXYZ123456789"),
                             get_random_string(4, "ABCDEFGHKLPRSTUWXYZ123456789"),
                         ),
-                        val_type="s",
+                        var_type="s",
                         inherit=False,
+                        protected=True,
                     )
 
 
