@@ -295,18 +295,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     # get enclosure id
                     enc_id = int(parts[-1])
                     cur_mode = "enc"
-                    if ctrl_id_for_enclosure is not None:
-                        _new_ctrl_id = ctrl_id_for_enclosure
-                        # set unusable, only use ctrl_id_for_enclosure once per file
-                        ctrl_id_for_enclosure = None
-                    while True:
-                        ctrl_stuff, count_dict = _ci.check_for_ctrl(line, _new_ctrl_id)
-                        if enc_id not in ctrl_stuff.get("enclosures", {}).keys():
-                            # new enclosure id, ok
-                            break
-                        else:
-                            # enclosure id already set, increase controller id
-                            _new_ctrl_id += 1
+                    _new_ctrl_id = ctrl_id_for_enclosure
+                    ctrl_stuff, count_dict = _ci.check_for_ctrl(line, _new_ctrl_id)
                     count_dict[cur_mode] += 1
                     cur_dict = {"lines": []}
                     ctrl_stuff.setdefault("enclosures", {})[count_dict["enc"] - 1] = cur_dict
