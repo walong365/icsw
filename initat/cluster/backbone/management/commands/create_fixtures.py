@@ -355,17 +355,6 @@ class Command(BaseCommand):
         print("creating fixtures...")
         # global settings
 
-        # default values
-        LOGIN_SCREEN_TYPE = "big"
-        chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
-        SECRET_KEY = get_random_string(50, chars)
-        if os.path.isfile(LOCAL_CONFIG):
-            # try to read from LOCAL_CONFIG
-            local_dir = os.path.dirname(LOCAL_CONFIG)
-            sys.path.append(local_dir)
-            from local_settings import SECRET_KEY  # @UnresolvedImport
-            sys.path.remove(local_dir)
-        cur_gs = factories.ClusterSetting(name="GLOBAL", secret_key=SECRET_KEY, login_screen_type=LOGIN_SCREEN_TYPE)
         LICENSE_FILE = "/etc/sysconfig/cluster/cluster_license"
         # default: disable all
         _lic_dict = {name: False for name in ALL_LICENSES}
@@ -381,7 +370,7 @@ class Command(BaseCommand):
                     _lic_dict[lic_name] = True if _lic.get("enabled", "no").lower() in ["yes"] else False
         # create fixtures
         for lic_name in ALL_LICENSES:
-            factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
+            factories.ClusterLicense(name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
         # remove duplicate entries due to bug in factories (sigh)
         cur_cusl = log_source.objects.filter(Q(identifier="user"))
         for _cc in cur_cusl:
