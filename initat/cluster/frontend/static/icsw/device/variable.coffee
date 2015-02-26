@@ -122,7 +122,7 @@ device_variable_module = angular.module(
         $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
         $scope.base_edit.new_object = (scope) ->
-            return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0}
+            return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0, "inherit": true}
         $scope.base_edit.change_signal = "icsw.dv.changed"
         $scope.create = (obj, event) ->
             # copy for new_object callback
