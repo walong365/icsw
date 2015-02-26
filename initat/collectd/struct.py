@@ -338,8 +338,8 @@ class var_cache(dict):
             info_dict[key_n] = 0
             for s_key, (s_value, inherit) in self.get(key, {}).iteritems():
                 if (inherit or ignore_inh) and (s_key not in ret_dict):
-                        ret_dict[s_key] = s_value
-                        info_dict[key_n] += 1
+                    ret_dict[s_key] = s_value
+                    info_dict[key_n] += 1
         return ret_dict, info_dict
 
 
