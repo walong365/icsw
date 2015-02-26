@@ -1,7 +1,7 @@
 #
 # this file is part of collectd-init
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -304,32 +304,42 @@ class var_cache(dict):
         self.__cdg = cdg
         self.__def_dict = def_dict or {}
 
+    def _fetch_vars(self, key, ref_dev):
+        self[key] = {
+            cur_var.name: (cur_var.get_value(), cur_var.inherit) for cur_var in device_variable.objects.filter(Q(device=ref_dev))
+        }
+
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
             "GLOBAL",
             "dg__{:d}".format(cur_dev.device_group_id),
-            "dev__{:d}".format(cur_dev.pk))
+            "dev__{:d}".format(cur_dev.pk)
+        )
         if global_key not in self:
             # read global configs
-            self[global_key] = {cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=self.__cdg))}
+            self._fetch_vars(global_key, self.__cdg)
             # update with def_dict
             for key, value in self.__def_dict.iteritems():
                 if key not in self[global_key]:
-                    self[global_key][key] = value
+                    self[global_key][key] = (value, True)
         if dg_key not in self:
             # read device_group configs
-            self[dg_key] = {cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))}
+            self._fetch_vars(dg_key, cur_dev.device_group.device)
         if dev_key not in self:
             # read device configs
-            self[dev_key] = {cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev))}
+            self._fetch_vars(dev_key, cur_dev)
         ret_dict, info_dict = ({}, {})
         # for s_key in ret_dict.iterkeys():
-        for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
+        for key, key_n, ignore_inh in [
+            (dev_key, "d", True),
+            (dg_key, "g", False),
+            (global_key, "c", False),
+        ]:
             info_dict[key_n] = 0
-            for s_key, s_value in self.get(key, {}).iteritems():
-                if s_key not in ret_dict:
-                    ret_dict[s_key] = s_value
-                    info_dict[key_n] += 1
+            for s_key, (s_value, inherit) in self.get(key, {}).iteritems():
+                if (inherit or ignore_inh) and (s_key not in ret_dict):
+                        ret_dict[s_key] = s_value
+                        info_dict[key_n] += 1
         return ret_dict, info_dict
 
 
