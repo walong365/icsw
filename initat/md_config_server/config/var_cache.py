@@ -50,18 +50,16 @@ class var_cache(dict):
                 if _var.device.device_group_id == self.__cdg.pk:
                     _key = "GLOBAL"
                     if _key not in self:
-                        self[_key] = {g_key: g_value for g_key, g_value in self.get_global_def_dict().iteritems()}
+                        self[_key] = {g_key: (g_value, True) for g_key, g_value in self.get_global_def_dict().iteritems()}
                 else:
                     _key = "g__{:d}".format(_var.device.device_group_id)
             else:
                 _key = "d__{:d}".format(_var.device_id)
-            self.setdefault(_key, {})[_var.name] = _var.value
+            self.setdefault(_key, {})[_var.name] = (_var.value, _var.inherit)
 
     def add_variable(self, new_var):
         v_key = "d__{:d}".format(new_var.device_id)
-        if v_key not in self:
-            self[v_key] = {}
-        self[v_key][new_var.name] = new_var.value
+        self.setdefault(v_key, {})[new_var.name] = (new_var.value, new_val.inherit)
 
     def set_variable(self, dev, var_name, var_value):
         # update db
@@ -69,7 +67,7 @@ class var_cache(dict):
         dev_variable.value = var_value
         dev_variable.save()
         # update dict
-        self["d__{:d}".format(dev.pk)][var_name] = var_value
+        self["d__{:d}".format(dev.pk)][var_name] = (var_value, dev_variable.inherit)
 
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
@@ -81,32 +79,38 @@ class var_cache(dict):
             def_dict = self.get_global_def_dict()
             # read global configs
             self[global_key] = {
-                cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=self.__cdg))
+                cur_var.name: (cur_var.get_value(), cur_var.inherit) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))
             }
             # update with def_dict
             for key, value in def_dict.iteritems():
                 if key not in self[global_key]:
-                    self[global_key][key] = value
+                    self[global_key][key] = (value, True)
         if not self.__prefill:
             # do not query the devices
             if dg_key not in self:
                 # read device_group configs
                 self[dg_key] = {
-                    cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(
+                    cur_var.name: (cur_var.get_value(), cur_var.inherit) for cur_var in device_variable.objects.filter(
                         Q(device=cur_dev.device_group.device)
                     )
                 }
             if dev_key not in self:
                 # read device configs
                 self[dev_key] = {
-                    cur_var.name: cur_var.get_value() for cur_var in device_variable.objects.filter(Q(device=cur_dev))
+                    cur_var.name: (cur_var.get_value(), cur_var.inherit) for cur_var in device_variable.objects.filter(
+                        Q(device=cur_dev)
+                    )
                 }
         ret_dict, info_dict = ({}, {})
         # for s_key in ret_dict.iterkeys():
-        for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
+        for key, key_n, ignore_inh in [
+            (dev_key, "d", True),
+            (dg_key, "g", False),
+            (global_key, "c", False),
+        ]:
             info_dict[key_n] = 0
-            for s_key, s_value in self.get(key, {}).iteritems():
-                if s_key not in ret_dict:
+            for s_key, (s_value, inherit) in self.get(key, {}).iteritems():
+                if (inherit or ignore_inh) and (s_key not in ret_dict):
                     ret_dict[s_key] = s_value
                     info_dict[key_n] += 1
         # print cur_dev, ret_dict, info_dict
