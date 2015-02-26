@@ -1349,12 +1349,20 @@ class raw_service_alert_manager(models.Manager):
     def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', device_ids=None):
         assert mode in ('last before', 'first after')
 
+        fields = ['date', 'msg', 'device_id', 'state', 'state_type']
+        if not is_host:
+            fields.extend(['service_id', 'service_info'])
+
         # NOTE: code was written for 'last_before' mode and then generalised, hence some vars are called 'latest...'
         try:
             if mode == 'last before':
                 latest_dev_independent_service_alert = obj_man.filter(date__lte=time, device_independent=True).latest('date')
             else:
                 latest_dev_independent_service_alert = obj_man.filter(date__gte=time, device_independent=True).earliest('date')
+
+            # can't use values() on single entry
+            latest_dev_independent_service_alert = {key: getattr(latest_dev_independent_service_alert, key)
+                                                    for key in fields}
         except obj_man.model.DoesNotExist:
             latest_dev_independent_service_alert = None
 
@@ -1367,10 +1375,6 @@ class raw_service_alert_manager(models.Manager):
             queryset = obj_man.filter(date__lte=time, device_independent=False, **additional_device_filter)
         else:
             queryset = obj_man.filter(date__gte=time, device_independent=False, **additional_device_filter)
-
-        fields = ['date', 'msg', 'device_id', 'state', 'state_type']
-        if not is_host:
-            fields.extend(['service_id', 'service_info'])
 
         queryset = queryset.values(*fields)
 
@@ -1388,8 +1392,8 @@ class raw_service_alert_manager(models.Manager):
                 comp = lambda x, y: x > y
             else:
                 comp = lambda x, y: x < y
-            if latest_dev_independent_service_alert and \
-                    comp(latest_dev_independent_service_alert.date, entry['extreme_date']):
+            if latest_dev_independent_service_alert is not None and \
+                    comp(latest_dev_independent_service_alert['date'], entry['extreme_date']):
                 relevant_entry = latest_dev_independent_service_alert
             else:
                 relevant_entry = entry
