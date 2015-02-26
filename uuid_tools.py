@@ -48,10 +48,10 @@ def get_uuid():
         try:
             file(UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
         except IOError:
-            print "Cannot write uuid to {}".format(UUID_NAME)
+            print("Cannot write uuid to {}".format(UUID_NAME))
         else:
             pass
     return the_uuid
 
 if __name__ == "__main__":
-    print get_uuid()
+    print(get_uuid())
