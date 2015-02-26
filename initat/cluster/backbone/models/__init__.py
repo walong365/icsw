@@ -30,6 +30,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
+from django.utils.crypto import get_random_string
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -67,8 +68,6 @@ from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
 
-
-# do not use, problems with import
 
 # attention: this list is used in create_fixtures.py
 LICENSE_CAPS = [
@@ -267,6 +266,8 @@ class device_variable(models.Model):
     description = models.CharField(max_length=765, default="", blank=True)
     # can be copied to a group or device ? There is no sense in making the cluster_name a local instance
     local_copy_ok = models.BooleanField(default=True)
+    # will the variable be inerited by lower levels (CDG -> DG -> D) ?
+    inherit = models.BooleanField(default=True)
     var_type = models.CharField(
         max_length=3,
         choices=[
@@ -786,6 +787,29 @@ def device_post_save(sender, **kwargs):
             if _stripped != _cur_inst.device_group.name:
                 _cur_inst.device_group.name = _stripped
                 _cur_inst.device_group.save()
+            if _cur_inst.device_group.cluster_device_group:
+                # check for device ID
+                _var_dict = {_v.name: _v for _v in _cur_inst.device_variable_set.all()}
+                # if "CLUSTER_NAME" not in _var_dict:
+                #    device_variable.objects.create(
+                #        device=_cur_inst,
+                #        name="CLUSTER_NAME",
+                #        val_str="new Cluster",
+                #        val_type="s",
+                #        inherit=False,
+                #    )
+                if "CLUSTER_ID" not in _var_dict:
+                    device_variable.objects.create(
+                        device=_cur_inst,
+                        name="CLUSTER_ID",
+                        is_public=False,
+                        val_str="{}-{}".format(
+                            get_random_string(6, "ABCDEFGHKLPRSTUWXYZ123456789"),
+                            get_random_string(4, "ABCDEFGHKLPRSTUWXYZ123456789"),
+                        ),
+                        val_type="s",
+                        inherit=False,
+                    )
 
 
 def _get_top_level_dtn():
