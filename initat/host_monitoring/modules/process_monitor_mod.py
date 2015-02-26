@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,21 +18,23 @@
 
 """ process monitor """
 
-from initat.host_monitoring import hm_classes, limits
-from initat.host_monitoring.config import global_config
-import affinity_tools
 import commands
-import logging_tools
 import os
 import json
 import marshal
 import base64
 import bz2
-import process_tools
 import re
 import signal
-import psutil
 import time
+
+from initat.host_monitoring import hm_classes, limits
+from initat.host_monitoring.config import global_config
+import affinity_tools
+import logging_tools
+import process_tools
+import psutil
+
 
 MIN_UPDATE_TIME = 10
 
@@ -52,7 +54,7 @@ class affinity_struct(object):
         self.__counter = 0
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.log_com("[as] %s" % (what), log_level)
+        self.log_com("[as] {}".format(what), log_level)
 
     def feed(self, p_dict):
         self.__counter += 1
