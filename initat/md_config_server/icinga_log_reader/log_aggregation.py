@@ -198,11 +198,11 @@ class icinga_log_aggregator(object):
         else:
             last_service_alert_cache = mon_icinga_log_raw_service_alert_data.objects.calc_limit_alerts(start_time)
             # only need cache format here:
-            last_service_alert_cache = {k: (v.state, v.state_type) for k, v in last_service_alert_cache.iteritems()}
+            last_service_alert_cache = {k: (v['state'], v['state_type']) for k, v in last_service_alert_cache.iteritems()}
 
         last_host_alert_cache = mon_icinga_log_raw_host_alert_data.objects.calc_limit_alerts(start_time)
         # only need cache format again
-        last_host_alert_cache = {k: (v.state, v.state_type) for k, v in last_service_alert_cache.iteritems()}
+        last_host_alert_cache = {k: (v['state'], v['state_type']) for k, v in last_host_alert_cache.iteritems()}
 
         # regular changes in time span
         def calc_weighted_states(relevant_entries, state_description_before, debug=False):
