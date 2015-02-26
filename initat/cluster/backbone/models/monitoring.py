@@ -1349,20 +1349,23 @@ class raw_service_alert_manager(models.Manager):
     def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', device_ids=None):
         assert mode in ('last before', 'first after')
 
-        fields = ['date', 'msg', 'device_id', 'state', 'state_type']
+        group_by_fields = ['device_id', 'state', 'state_type']
+        additional_fields = ['date', 'msg']
         if not is_host:
-            fields.extend(['service_id', 'service_info'])
+            group_by_fields.extend(['service_id', 'service_info'])
 
         # NOTE: code was written for 'last_before' mode and then generalised, hence some vars are called 'latest...'
         try:
             if mode == 'last before':
-                latest_dev_independent_service_alert = obj_man.filter(date__lte=time, device_independent=True).latest('date')
+                latest_dev_independent_service_alert =\
+                    obj_man.filter(date__lte=time, device_independent=True).latest('date')
             else:
-                latest_dev_independent_service_alert = obj_man.filter(date__gte=time, device_independent=True).earliest('date')
+                latest_dev_independent_service_alert =\
+                    obj_man.filter(date__gte=time, device_independent=True).earliest('date')
 
             # can't use values() on single entry
             latest_dev_independent_service_alert = {key: getattr(latest_dev_independent_service_alert, key)
-                                                    for key in fields}
+                                                    for key in (group_by_fields + additional_fields)}
         except obj_man.model.DoesNotExist:
             latest_dev_independent_service_alert = None
 
@@ -1376,7 +1379,7 @@ class raw_service_alert_manager(models.Manager):
         else:
             queryset = obj_man.filter(date__gte=time, device_independent=False, **additional_device_filter)
 
-        queryset = queryset.values(*fields)
+        queryset = queryset.values(*group_by_fields)
 
         # only get these values and annotate with extreme date, then we get the each field-tuple with their extreme date
 
