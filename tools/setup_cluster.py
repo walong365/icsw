@@ -523,6 +523,7 @@ def call_update_funcs(opts):
     call_manage(["create_cdg --name {}".format(opts.system_group_name)])
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
+    call_manage(["ensure_cluster_id"])
 
 
 def create_fixtures():
