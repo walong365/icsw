@@ -168,6 +168,11 @@ device_info_module = angular.module(
             return img_url
         $scope.toggle_uuid = () ->
             $scope.show_uuid = !$scope.show_uuid
+        $scope.get_full_name = () ->
+            if $scope._edit_obj.device_type_identifier == "MD"
+                return $scope._edit_obj.full_name.substr(8)
+            else
+                return $scope._edit_obj.full_name
         $scope.modify = () ->
             if not $scope.form.$invalid
                 if $scope.acl_modify($scope._edit_obj, "backbone.device.change_basic")

@@ -267,7 +267,7 @@
 </script>
 <script type='text/ng-template' id='device.info.form'>
 <form id="id_dtn_detail_form" class="form-horizontal" ng-submit="modify()" name="form" ><div 
- ><h2>Details for '{{ _edit_obj.full_name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2><fieldset 
+ ><h2>Details for '{{ get_full_name() }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  "
@@ -1420,7 +1420,13 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="_edit_obj.var_type == &#39;b&#39;"
  ><label for="id_val_blob" class="control-label col-sm-3">
  Val blob
- </label><div class="controls col-sm-8"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-8"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><fieldset 
+ ><legend>Flags</legend><div class="form-group"><div id="div_id_inherit"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_inherit" class=""><input checked="checked" class="checkboxinput checkbox" id="id_inherit" name="inherit" ng-model="_edit_obj.inherit" type="checkbox" />
+ Inherit
+ </label></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -3099,7 +3105,13 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="_edit_obj.var_type == &#39;b&#39;"
  ><label for="id_val_blob" class="control-label col-sm-3">
  Val blob
- </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><fieldset 
+ ><legend>Flags</legend><div class="form-group"><div id="div_id_inherit"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_inherit" class=""><input checked="checked" class="checkboxinput checkbox" id="id_inherit" name="inherit" ng-model="_edit_obj.inherit" type="checkbox" />
+ Inherit
+ </label></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
