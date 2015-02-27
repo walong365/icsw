@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -56,7 +56,7 @@ class net_object(object):
         )
 
     def log(self, log_com, what, log_level=logging_tools.LOG_LEVEL_OK):
-        log_com("[%s] %s" % (self.name, what), log_level)
+        log_com("[{}] {}" % (self.name, what), log_level)
 
     def get_pending_requests(self, in_set, log_com):
         pend_reqs = self.__pending_requests & in_set

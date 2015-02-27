@@ -69,7 +69,7 @@ class smcipmi_struct(hm_classes.subprocess_struct):
     class Meta:
         max_usage = 128
         id_str = "supermicro"
-        verbose = True
+        verbose = False
 
     def __init__(self, log_com, srv_com, check_bin, target_host, login, passwd, command):
         self.__log_com = log_com
