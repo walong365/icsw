@@ -186,12 +186,33 @@ class file_creator(object):
         return _rv
 
 
+class HostActiveRRD(object):
+    def __init__(self, pk):
+        self.set_time = time.time() - 3600
+        self.pk = pk
+        self._active = False
+
+    def set_active_rrds(self):
+        cur_time = time.time()
+        _activate = False
+        if not self._active:
+            _activate = True
+        elif abs(self.set_time - cur_time) > 60 * 15:
+            _activate = True
+        if _activate:
+            self._active = True
+            device.objects.filter(Q(pk=self.pk)).update(has_active_rrds=True)
+            self.set_time = cur_time
+
+
 class host_matcher(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.log("init host_matcher")
         # dict, from {uuid, fqdn} to _dev
         self.__match = {}
+        # dict: pk -> HostActiveRRD struct
+        self.__active_dict = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com(u"[hm] {}".format(what), log_level)
@@ -239,8 +260,9 @@ class host_matcher(object):
             else:
                 match_dev = None
         if match_dev:
-            # set active_rrd to True
-            device.objects.filter(Q(pk=match_dev.pk)).update(has_active_rrds=True)
+            if match_dev.pk not in self.__active_dict:
+                self.__active_dict[match_dev.pk] = HostActiveRRD(match_dev.pk)
+            self.__active_dict[match_dev.pk].set_active_rrds()
         return match_dev
 
     def check_dir_structure(self, match_dev):
