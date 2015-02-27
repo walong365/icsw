@@ -76,6 +76,7 @@ ics_app = angular.module(
         "icsw.device.boot",
         "icsw.device.create",
         "icsw.config.kernel",
+        "icsw.config.kpi",
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
@@ -117,6 +118,7 @@ ics_app = angular.module(
     "CONFIG_GET_CACHED_UPLOADS": "{% url 'config:get_cached_uploads' %}"
     "CONFIG_GET_DEVICE_CVARS": "{% url 'config:get_device_cvars' %}"
     "CONFIG_HANDLE_CACHED_CONFIG": "{% url 'config:handle_cached_config' %}"
+    "CONFIG_KPI": "{% url 'config:kpi' %}"
     "CONFIG_SHOW_CONFIGS": "{% url 'config:show_configs' %}"
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"

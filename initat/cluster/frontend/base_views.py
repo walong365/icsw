@@ -210,3 +210,14 @@ class change_category(View):
                 )
             )
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
+
+
+class kpi(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request,
+            "kpi.html",
+            {}
+        )()
+
