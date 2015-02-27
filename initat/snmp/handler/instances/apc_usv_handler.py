@@ -19,10 +19,13 @@
 #
 """ SNMP handler for APC USVs """
 
+from lxml.builder import E
+from initat.host_monitoring import limits
+
 from ..base import SNMPHandler
 from ...struct import simple_snmp_oid, MonCheckDefinition, snmp_oid
 from ...functions import simplify_dict, flatten_dict
-from lxml.builder import E
+
 
 USV_BASE = "1.3.6.1.4.1.318.1.1.1"
 
@@ -117,7 +120,8 @@ class handler(SNMPHandler):
 
     def config_mon_check(self):
         return [
-            usv_mon(self),
+            usv_mon_all(self),
+            usv_mon_detail(self),
         ]
 
 
@@ -141,9 +145,68 @@ USV_METRICS = [
 ]
 
 
-class usv_mon(MonCheckDefinition):
+class usv_mon_base(MonCheckDefinition):
+    def mon_start(self, scheme):
+        return [
+            snmp_oid(
+                "{}.3".format(
+                    USV_BASE,
+                ),
+                cache=True,
+            ),
+            snmp_oid(
+                "{}.4".format(
+                    USV_BASE,
+                ),
+                cache=True,
+            ),
+        ]
+
+    def _rewrite_result(self, scheme):
+        _val_dict = {}
+        for _key, _value in scheme.snmp.iteritems():
+            for _sk, _sv in _value.iteritems():
+                _val_dict[tuple(list(_key)[-1:] + list(_sk))] = _sv
+        return _val_dict
+
+
+class usv_mon_all(usv_mon_base):
     class Meta:
-        short_name = "usv"
+        short_name = "usvoverview"
+        command_line = "*"
+        info = "Check USV via SNMP in one line"
+        description = "Check USV via SNMP (one-line version)"
+
+    def config_call(self, s_com):
+        dev = s_com.host
+        _field = [
+            s_com.get_arg_template(
+                "USV info",
+                arg1=dev.dev_variables["SNMP_READ_COMMUNITY"],
+                arg2=dev.dev_variables["SNMP_VERSION"],
+            )
+        ]
+        return _field
+
+    def mon_result(self, scheme):
+        _net_obj = scheme.net_obj
+        _val_dict = self._rewrite_result(scheme)
+        ret_f = []
+        for _metric in USV_METRICS:
+            _value = _val_dict[_metric.key]
+            ret_f.append(
+                "{} is {} {}".format(
+                    _metric.info,
+                    _value,
+                    _metric.unit,
+                )
+            )
+        return limits.nag_STATE_OK, ", ".join(ret_f)
+
+
+class usv_mon_detail(usv_mon_base):
+    class Meta:
+        short_name = "usvdetail"
         command_line = "* --type $ARG3$"
         info = "Check USV via SNMP"
         description = "Check USV via SNMP"
@@ -165,30 +228,13 @@ class usv_mon(MonCheckDefinition):
             )
         return _field
 
-    def mon_start(self, scheme):
-        return [
-            snmp_oid(
-                "{}.3".format(
-                    USV_BASE,
-                ),
-            ),
-            snmp_oid(
-                "{}.4".format(
-                    USV_BASE,
-                ),
-            ),
-        ]
-
     def mon_result(self, scheme):
         _net_obj = scheme.net_obj
-        _val_dict = {}
-        for _key, _value in scheme.snmp.iteritems():
-            for _sk, _sv in _value.iteritems():
-                _val_dict[tuple(list(_key)[-1:] + list(_sk))] = _sv
+        _val_dict = self._rewrite_result(scheme)
         _type = scheme.opts.type
         _metric = [_m for _m in USV_METRICS if _m.short == _type][0]
         _value = _val_dict[_metric.key]
-        return 0, "{} is {} {}".format(
+        return limits.nag_STATE_OK, "{} is {} {}".format(
             _metric.info,
             _value,
             _metric.unit,
