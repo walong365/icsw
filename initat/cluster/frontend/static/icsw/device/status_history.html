@@ -141,7 +141,7 @@
                                     <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="TODO"></icsw-tools-hist-line-graph>
                                 </td>
                             </tr>
-                            <tr ng-repeat-end>
+                            <tr ng-repeat-end ng-show="entry.log_viewer_enabled">
                                 <td colspan="99">
                                     <icsw-tools-hist-log-viewer data="entry.line_graph_data"
                                                                 enabled="entry.log_viewer_enabled"></icsw-tools-hist-log-viewer>
