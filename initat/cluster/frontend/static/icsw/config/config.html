@@ -101,7 +101,10 @@
                 <th>Catalog</th>
                 <th>enabled</th>
                 <th>Description</th>
+                <!--
+                see comment below
                 <th>parent</th>
+                -->
                 <th>var</th>
                 <th>script</th>
                 <th>mon</th>
@@ -129,7 +132,10 @@
                 <td>{{ config.config_catalog | array_lookup:config_catalogs:'name':'-' }}</td>
                 <td class="text-center">{{ config.enabled | yesno1 }}</td>
                 <td>{{ config.description }}</td>
+                <!--
+                parent config isn't really used and is a bad feature (quote AL) -- BM Feb 2015
                 <td>{{ show_parent_config(config) }}</td>
+                -->
                 <td class="text-center">
                     <span ng-class="get_label_class(config, 'var')" ng-click="toggle_expand(config, 'var')">
                         <span ng_class="get_expand_class(config, 'var')">

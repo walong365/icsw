@@ -42,15 +42,16 @@ class config_form(ModelForm):
                 typeahead_min_length=1,
             ),
             Field("description"),
-            Field(
-                "parent_config",
-                repeat="value.idx as value in this.get_valid_parents()",
-                placeholder="select parent config",
-                display="name",
-                null=True,
-                filter="{name:$select.search}",
-                wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config",
-            ),
+            # also commented out in config table
+            # Field(
+            #    "parent_config",
+            #    repeat="value.idx as value in this.get_valid_parents()",
+            #    placeholder="select parent config",
+            #    display="name",
+            #    null=True,
+            #    filter="{name:$select.search}",
+            #    wrapper_ng_show="!_edit_obj.system_config && !_edit_obj.server_config",
+            # ),
         ),
         HTML(
             "<div ng-bind-html='show_config_help()'></div>",
@@ -79,7 +80,8 @@ class config_form(ModelForm):
 
     class Meta:
         model = config
-        fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog", "server_config",)
+        fields = ("name", "description", "enabled", "priority",  # "parent_config",
+                  "config_catalog", "server_config",)
         widgets = {
             "parent_config": ui_select_widget(),
             "config_catalog": ui_select_widget(),

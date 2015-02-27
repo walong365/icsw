@@ -11,13 +11,7 @@
  "
  ><label for="id_description" class="control-label col-sm-3">
  Description
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div><div id="div_id_parent_config"
- class="form-group 
- "
- ng_show="!_edit_obj.system_config &amp;&amp; !_edit_obj.server_config"
- ><label for="id_parent_config" class="control-label col-sm-3">
- Parent config
- </label><div class="controls col-sm-7"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='_edit_obj.parent_config' ng-disabled='false'><ui-select-match placeholder='select parent config'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in this.get_valid_parents()| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="_edit_obj.parent_config = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div></fieldset><div ng-bind-html='show_config_help()'></div><fieldset 
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div></fieldset><div ng-bind-html='show_config_help()'></div><fieldset 
  ><legend>other settings</legend><div class="form-group"><div id="div_id_enabled"
  class="checkbox
  "
