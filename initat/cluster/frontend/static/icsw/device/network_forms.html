@@ -1,46 +1,167 @@
+<script type="text/ng-template" id="form_example.html-GOAL">
+    <icsw-form class="form-horizontal" ng-submit="TODOcur_edit.modify(this)">
+        <h2>Netdevice '{{ _edit_obj.devname }}'</h2>
+        <tabset>
+            <tab heading='basic settings'>
+                <fieldset>
+                    <legend>Basic settings</legend>
+
+                    <!--
+
+                    default label: name with 's/_/ /g' and capitalised
+
+                    apply: ng-model, placeholder, maxlength, ng-blur, ng-show, required
+
+                    use form submit to use html5 required. probably works with ng-submit
+
+                    need id for label
+
+                    for ui-select: group by (cf. create new -> network topology central node)
+                    need also nullable for ui-select
+                    filter as in create network
+                    -->
+
+                    <!--
+
+                    optional: nice red border for invalid entries in both label and entry, possibly error str (has-error)
+
+                    validation?
+
+                    -->
+
+                    <icsw-form-field name="devname" label="Devname" required placeholder="Device name"></icsw-form-field>
+
+                    <icsw-form-checkbox name="enabled" label="Enabled"></icsw-form-checkbox>
+
+                    <icsw-form-select name="netdevice_speed" repeat="value.idx as value in netdevice_speeds"
+                                      display="info_string"
+                                      placeholder="select a target netdevice speed"></icsw-form-select>
+
+                </fieldset>
+            </tab>
+        </tabset>
+    </icsw-form>
+</script>
+
 <script type="text/ng-template" id="form_example.html">
-<h2>Netdevice {{ _edit_obj.devname}}</h2>
-<form fs-form-for="" model="_edit_obj">
-    <tabset>
-        <tab heading='basic settings'>
-            <fieldset class="form-horizontal">
-                <legend>Basic settings</legend>
-                <fs-input as="text"      name="devname"         label="Devname*" required="" placeholder="devicename"></fs-input>
-                <fs-input as="text"      name="description"     label="Description"></fs-input>
-                <fs-input as="number"    name="mtu"             label="Mtu*" required="" ></fs-input>
-                <fs-input as="fs-select" name="netdevice_speed" label="Netdevice speed" required=""
-                          items="['foo', 'bar', 'baz']"  placeholder="select a target netdevice speed">{{ item }}</fs-input>
+    <form  class="form-horizontal" ng-submit="TODOcur_edit.modify(this)">
+        <h2>Netdevice '{{ _edit_obj.devname }}'</h2>
+        <tabset>
+            <tab heading='basic settings'>
+                <fieldset>
+                    <legend>Basic settings</legend>
+                    <div class="form-group  ng-class:form_error('devname')" >
+                        <label for="id_devname" class="control-label col-sm-3">
+                            Devname*
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" name="devname" ng-model="_edit_obj.devname" placeholder="devicename" required="True" type="text" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="id_description" class="control-label col-sm-3">
+                            Description
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" />
+                        </div>
+                    </div>
+                    <div id="div_id_mtu" class="form-group">
+                        <label class="control-label col-sm-3 requiredField">
+                            Mtu*
+                        </label>
+                        <div class="controls col-sm-8">
+                            <input class="numberinput form-control" name="mtu" ng-model="_edit_obj.mtu" required="True" type="number" value="1500" />
+                        </div>
+                    </div>
+                    <div id="div_id_netdevice_speed" class="form-group " >
+                        <label class="control-label col-sm-3 requiredField">
+                            Netdevice speed*
+                        </label>
+                        <div class="controls col-sm-8">
+                            <ui-select ng-model='_edit_obj.netdevice_speed' style='max-width:400px; min-width:240px;' ng-disabled='false'>
+                                <ui-select-match placeholder='select a target netdevice speed'>{{$select.selected.info_string}}</ui-select-match>
+                                <ui-select-choices repeat='value.idx as value in netdevice_speeds'>
+                                    value is: {{value}}end
+                                    <div ng-bind-html='value.info_string | highlight: $select.search'>
+                                    </div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div id="div_id_enabled" class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-8">
+                                <label>
+                                    <input class="checkboxinput checkbox" name="enabled" ng-model="_edit_obj.enabled" type="checkbox" />
+                                    Enabled
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div id="div_id_is_bridge" class="checkbox" ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device">
+                            <div class="controls col-lg-offset-0 col-sm-8">
+                                <label for="id_is_bridge" class="">
+                                    <input class="checkboxinput checkbox" id="id_is_bridge" name="is_bridge" ng-disabled="has_bridge_slaves(_edit_obj)" ng-model="_edit_obj.is_bridge" type="checkbox" />
+                                    Is bridge
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="div_id_bridge_device" class="form-group" ng_show="!_edit_obj.is_bridge &amp;&amp; get_bridge_masters(_edit_obj).length" >
+                        <label for="id_bridge_device" class="control-label col-sm-3">
+                            Bridge device
+                        </label>
+                        <div class="controls col-sm-8">
+                            <ui-select id="id_bridge_device" ng-model='_edit_obj.bridge_device' style='max-width:400px; min-width:240px;' ng-disabled='false'>
+                                <ui-select-match placeholder='bridge master device'>{{$select.selected.devname}}</ui-select-match>
+                                <ui-select-choices repeat='value.idx as value in get_bridge_masters(_edit_obj)'>
+                                    <div ng-bind-html='value.devname | highlight: $select.search'>
+                                    </div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                </fieldset>
+            </tab>
+        </tabset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="form_example.html-FORMSTAMP">
+    <h2>Netdevice {{ _edit_obj.devname}}</h2>
+    <form fs-form-for="" model="_edit_obj">
+        <tabset>
+            <tab heading='basic settings'>
+                <fieldset class="form-horizontal">
+                    <legend>Basic settings</legend>
+                    <fs-input as="text"      name="devname"         label="Devname*" required="" placeholder="devicename"></fs-input>
+                    <fs-input as="text"      name="description"     label="Description"></fs-input>
+                    <fs-input as="number"    name="mtu"             label="Mtu*" required="" ></fs-input>
+                    <fs-input as="fs-select" name="netdevice_speed" label="Netdevice speed" required=""
+                              items="['foo', 'bar', 'baz']"  placeholder="select a target netdevice speed">{{ item }}</fs-input>
 
 
-                <!--
-                <div fs-checkbox name="check2"  items="[{id: 'enabled', label: 'Enabled'}, {id: 'is_bridge', label: 'Is bridge'}]">
-                    {{ item.label }}
-                </div>
-                <fs-input as="fs-checkbox" name="enabled" label=""  items="[{id: 'enabled', label: 'Enabled'}, {id: 'is_bridge', label: 'Is bridge'}]">
-                -->
-                <fs-input as="fs-checkbox" name="sth" label=" "  items="[{id: 'enabled', label: 'Enabled'}]">
-                    {{ item.label }}
-                </fs-input>
-                <!--
-                -->
-                <!--
-                <fs-input as="fs-checkbox" name="enabled" label="Enabled"  items="['foo']">
-                    {{ item }}
-                </fs-input>
-                -->
+                    <fs-input as="fs-checkbox" name="sth" label=" "  items="['enabled']">
+                        {{ item }}
+                    </fs-input>
 
-                <legend>Routing settings</legend>
-                <fs-input as="number"    name="cost"            label="Cost"></fs-input>
+                    <fs-input as="fs-checkbox" name="is_bridge" label=" "  items="['Is bridge'}]">
+                        {{ item }}
+                    </fs-input>
 
-            </fieldset>
-        </tab>
-    </tabset>
-    a
-    {{ _edit_obj }}
-    b
+                    <legend>Routing settings</legend>
+                    <fs-input as="number"    name="cost"            label="Cost"></fs-input>
 
-    <input type="submit"/>
+                </fieldset>
+            </tab>
+        </tabset>
 
-</form>
+        {{ _edit_obj }}
+
+        <input type="submit" name="submit" value="Modify" class="btn btn-primary"/>
+
+    </form>
 </script>
 
