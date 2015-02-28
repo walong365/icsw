@@ -1233,7 +1233,7 @@ class monitoring_hint(models.Model):
         return u"{} ({}) for {}, ds {}, persistent {}".format(
             self.m_type,
             self.key,
-            unicode(self.device),
+            unicode(self.device) if self.device_id else "<unbound>",
             self.datasource,
             "true" if self.persistent else "false",
         )
