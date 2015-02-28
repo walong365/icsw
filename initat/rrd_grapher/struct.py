@@ -466,8 +466,6 @@ class data_store(object):
         entry.attrib["active"] = "1"
         # if "file_name" in src_entry.attrib:
         entry.attrib["file_name"] = src_entry.attrib["file_name"]
-        # else:
-        #    entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-{}.rrd".format(entry.attrib["sane_name"]))
         for key, def_value in [
             ("info", None),
             ("v_type", None),
