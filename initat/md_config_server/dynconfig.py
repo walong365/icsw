@@ -113,20 +113,18 @@ class dynconfig_process(threading_tools.process_obj):
             )
         else:
             ocsp_lines = []
-            for _info, _ret_state, _result, _info_str in _chunk["list"]:
+            for _info, _ret_state, _result in _chunk["list"]:
                 _srv_info = "{}{}".format(_prefix, _info)
                 ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
                     int(time.time()),
                     cur_dev.full_name,
                     _srv_info,
                     _ret_state,
-                    "{} {}".format(
-                        _result,
-                        _info_str,
-                    ).strip(),
+                    _result,
                 )
                 ocsp_lines.append(ocsp_line)
             self.send_pool_message("ocsp_results", ocsp_lines)
+            self.log("generated {}".format(logging_tools.get_plural("passive check result", len(ocsp_lines))))
 
     def _monitoring_info(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])

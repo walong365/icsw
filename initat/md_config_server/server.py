@@ -155,23 +155,23 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         cluster_location.write_config("monitor_server", global_config)
 
     def _check_special_commands(self):
-        from initat.md_config_server import special_commands
+        from initat.md_config_server.special_commands import SPECIAL_DICT
         pks_found = set()
         mccs_dict = {}
-        for key in dir(special_commands):
-            _entry = getattr(special_commands, key)
-            if key.startswith("special_"):
-                if inspect.isclass(_entry) and _entry != special_commands.SpecialBase:
-                    if issubclass(_entry, special_commands.SpecialBase):
-                        _inst = _entry(self.log)
-                        cur_mccs = self._check_mccs(_inst.Meta)
-                        mccs_dict[cur_mccs.name] = cur_mccs
-                        pks_found.add(cur_mccs.pk)
-                        if cur_mccs.meta:
-                            for _sub_com in _inst.get_commands():
-                                sub_mccs = self._check_mccs(_sub_com.Meta, parent=cur_mccs)
-                                mccs_dict[sub_mccs.name] = sub_mccs
-                                pks_found.add(sub_mccs.pk)
+        for _name, _entry in SPECIAL_DICT.iteritems():
+            _inst = _entry(self.log)
+            if "special_{}".format(_inst.Meta.name) != _name:
+                self.log("special {} has illegal name {}".format(_name, _inst.Meta.name), logging_tools.LOG_LEVEL_CRITICAL)
+            else:
+                self.log("found special {}".format(_name))
+                cur_mccs = self._check_mccs(_inst.Meta)
+                mccs_dict[cur_mccs.name] = cur_mccs
+                pks_found.add(cur_mccs.pk)
+                if cur_mccs.meta:
+                    for _sub_com in _inst.get_commands():
+                        sub_mccs = self._check_mccs(_sub_com.Meta, parent=cur_mccs)
+                        mccs_dict[sub_mccs.name] = sub_mccs
+                        pks_found.add(sub_mccs.pk)
         # delete stale
         del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
         if del_mccs:

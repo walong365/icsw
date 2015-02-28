@@ -53,7 +53,12 @@ class special_megaraid_sas(SpecialBase):
         _short_output = self.host.dev_variables.get(SHORT_OUTPUT_NAME, 0)
         _ignore_missing_bbu = self.host.dev_variables.get(IGNORE_BBU_NAME, 0)
         _ignore_keys = self.host.dev_variables.get(IGNORE_KEYS_NAME, "N")
-        cur_ns = Namespace(get_hints=True, short_output=_short_output, ignore_missing_bbu=_ignore_missing_bbu, ignore_keys=_ignore_keys)
+        cur_ns = Namespace(
+            get_hints=True,
+            short_output=_short_output,
+            ignore_missing_bbu=_ignore_missing_bbu,
+            ignore_keys=_ignore_keys
+        )
         # transform from srv_reply to dict, see code in raidcontroller_mod (megaraid_sas_status_command.interpret)
         ctrl_dict = {}
         for res in srv_reply["result"]:

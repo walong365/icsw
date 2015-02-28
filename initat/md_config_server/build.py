@@ -345,7 +345,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             )
         _present_coms = set(_container.mon_check_command_set.all().values_list("name", flat=True))
         _specials = {"snmp {}".format(_special.name): _special for _special in mon_check_command_special.objects.all()}
-        _new = set(["snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general(self.log).get_commands()])
+        _new = set(["snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general.special_snmp_general(self.log).get_commands()])
         _to_create = set(_specials.keys()) & (_new - _present_coms)
         for _name in _to_create:
             _new_mcc = mon_check_command.objects.create(
@@ -1336,7 +1336,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 _rewrite_lut = {"check_command": mccs.md_name}
                 sc_array = []
                 try:
-                    cur_special = getattr(special_commands, "special_{}".format(mccs.name))(
+                    cur_special = special_commands.SPECIAL_DICT["special_{}".format(mccs.name)](
                         self.mach_log,
                         self,
                         # get mon_check_command (we need arg_ll)

@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,8 +20,10 @@
 
 import os
 import process_tools
+import inspect
+from initat.md_config_server.special_commands.base import SpecialBase
 
-__all__ = [
+_inst_list = [
     cur_entry for cur_entry in [
         entry.split(".")[0] for entry in os.listdir(
             os.path.join(
@@ -31,13 +33,23 @@ __all__ = [
     ] if cur_entry and not cur_entry.startswith("_")
 ]
 
-IMPORT_ERRORS = []
+__all__ = [
+    "IMPORT_ERRORS",
+    "SPECIAL_DICT",
+]
 
-for mod_name in __all__:
+IMPORT_ERRORS = []
+SPECIAL_DICT = {}
+
+for mod_name in _inst_list:
+    __all__.append(mod_name)
     try:
         full_name = "initat.md_config_server.special_commands.instances.{}".format(mod_name)
         new_mod = __import__(full_name, globals(), locals(), [mod_name], -1)
-        globals()[mod_name] = getattr(new_mod, mod_name)
+        for _key in dir(new_mod):
+            _obj = getattr(new_mod, _key)
+            if inspect.isclass(_obj) and not _obj == SpecialBase and issubclass(_obj, SpecialBase):
+                SPECIAL_DICT[_key] = _obj
     except:
         exc_info = process_tools.exception_info()
         for log_line in exc_info.log_lines:
