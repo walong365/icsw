@@ -150,8 +150,10 @@ class ShortOutputKeyCache(object):
         return (
             ShortOutputKeyCache.shorten_keys(self._keys),
             self._state,
-            ", ".join(self._results),
-            ", ".join(self._info_strs),
+            "{} {}".format(
+                ", ".join(self._results),
+                ", ".join(self._info_strs),
+            )
         )
 
 
@@ -651,8 +653,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             _compress_infos(_state_dict[_state][(_output, _info)])
                         )
                     )
-            return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list), ""
-            # return get_service(_common_key), _ret_state, ", ".join(ret_list), ""
+            return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list)
 
         def _compress_list(in_list):
             # reduce list
@@ -836,7 +837,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             _passive_dict["list"].append(
                                 # format: info, ret_state, result (always show), info (only shown in case of non-OK)
                                 (
-                                    _info, _ret_state, _result, _info_str
+                                    _info, _ret_state, "{} {}".format(_result, _info_str),
                                 )
                             )
                     else:
@@ -867,7 +868,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     # local state list
                     _lss = [list(_pl[_info]) + [_info] for _info in _struct["infos"]]
                     # remove from passive_dict.list
-                    _passive_dict["list"] = [(_a, _b, _c, _d) for _a, _b, _c, _d in _passive_dict["list"] if _a not in _struct["infos"]]
+                    _passive_dict["list"] = [(_a, _b, "{} {}".format(_c, _d)) for _a, _b, _c, _d in _passive_dict["list"] if _a not in _struct["infos"]]
                     # add summed result
                     _passive_dict["list"].append(_generate_short_result(_key, _struct, _lss))
                 # pprint.pprint(_passive_dict)
