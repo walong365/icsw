@@ -637,20 +637,19 @@ class ctrl_type_megaraid_sas(ctrl_type):
             _state_dict = {}
             # all keys are needef for the passive check result lookup key
             _all_keys = []
-            for _state, _output, _info, _skey in _lss:
+            for _state, _output, _skey in _lss:
                 # we ignore _info here to make things easier
-                _state_dict.setdefault(_state, {}).setdefault((_output, _info), []).append(_skey)
+                _state_dict.setdefault(_state, {}).setdefault(_output, []).append(_skey)
                 _all_keys.append(_skey)
             _ret_state = max(_state_dict.keys())
             ret_list = []
             for _state in sorted(_state_dict.keys()):
-                for _output, _info in sorted(_state_dict[_state].keys()):
+                for _output in sorted(_state_dict[_state].keys()):
                     ret_list.append(
-                        "{:d} {}{}: {}".format(
-                            len(_state_dict[_state][(_output, _info)]),
+                        "{:d} {}: {}".format(
+                            len(_state_dict[_state][_output]),
                             _output,
-                            " / {}".format(_info) if _info else "",
-                            _compress_infos(_state_dict[_state][(_output, _info)])
+                            _compress_infos(_state_dict[_state][_output]),
                         )
                     )
             return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list)
@@ -791,6 +790,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 # only makes sense with _store_passive==True
                 _short_output = False
             _passive_dict = {
+                "source": "megaraid",
                 "prefix": cur_ns.passive_check_prefix,
                 "list": [],
             }
@@ -861,14 +861,14 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 # pprint.pprint(_passive_dict)
                 r_list, shorten_dict = _shorten_list(r_list)
                 # passive lut
-                _pl = {_info: (_ret_state, _result, _info_str) for _info, _ret_state, _result, _info_str in _passive_dict["list"]}
+                _pl = {_info: (_ret_state, _result) for _info, _ret_state, _result in _passive_dict["list"]}
                 # rewrite the passive dict
                 for _key, _struct in shorten_dict.iteritems():
                     # pprint.pprint(_struct)
                     # local state list
                     _lss = [list(_pl[_info]) + [_info] for _info in _struct["infos"]]
                     # remove from passive_dict.list
-                    _passive_dict["list"] = [(_a, _b, "{} {}".format(_c, _d)) for _a, _b, _c, _d in _passive_dict["list"] if _a not in _struct["infos"]]
+                    _passive_dict["list"] = [(_a, _b, _c) for _a, _b, _c in _passive_dict["list"] if _a not in _struct["infos"]]
                     # add summed result
                     _passive_dict["list"].append(_generate_short_result(_key, _struct, _lss))
                 # pprint.pprint(_passive_dict)
