@@ -27,6 +27,7 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
     mon_check_command_special, mon_check_command
+from initat.cluster.backbone.models.functions import get_related_models
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
@@ -175,13 +176,18 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         # delete stale
         del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
         if del_mccs:
-            self.log(
-                "removing {}: {}".format(
-                    logging_tools.get_plural("stale mccs", len(del_mccs)),
-                    ", ".join([unicode(_del) for _del in del_mccs])
+            for _del_mcc in del_mccs:
+                self.log(
+                    "trying to removing stale {}...".format(
+                        unicode(_del_mcc),
+                    )
                 )
-            )
-            del_mccs.delete()
+                _refs = get_related_models(_del_mcc)
+                if _refs:
+                    self.log("  unable to remove because referenced {}".format(logging_tools.get_plural("time", _refs)), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    _del_mcc.delete()
+                    self.log("  ...done")
         # rewrite
         for to_rewrite in mon_check_command.objects.filter(Q(name__startswith="@")):
             self.log("rewriting {} to new format... ".format(unicode(to_rewrite)))
