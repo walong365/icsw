@@ -26,6 +26,7 @@ import base64
 import json
 import logging
 
+from django.conf import settings
 from django.contrib.auth import login, logout, authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q, Sum
@@ -33,7 +34,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
-from initat.cluster.backbone.models import cluster_setting, user, device_variable, login_history
+from initat.cluster.backbone.models import user, login_history
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object, xml_wrapper
@@ -47,16 +48,6 @@ class redirect_to_main(View):
     @method_decorator(never_cache)
     def get(self, request):
         return HttpResponseRedirect(reverse("session:login"))
-
-
-def _get_login_screen_type():
-    try:
-        cur_cs = cluster_setting.objects.get(Q(name='GLOBAL'))
-    except cluster_setting.DoesNotExist:
-        _lst = "big"
-    else:
-        _lst = cur_cs.login_screen_type
-    return _lst
 
 
 def _get_login_hints():
@@ -96,7 +87,7 @@ def login_page(request, **kwargs):
             "from_logout": kwargs.get("from_logout", False),
             # "login_hints": _get_login_hints(),
             # "app_path": reverse("session:login"),
-            "LOGIN_SCREEN_TYPE": _get_login_screen_type(),
+            "LOGIN_SCREEN_TYPE": {"big": "big", "medium": "medium"}.get(settings.LOGIN_SCREEN_TYPE, "big"),
             "LOGIN_HINTS": _get_login_hints(),
             "DJANGO_VERSION": ".".join(_vers),
             "NEXT_URL": kwargs.get("next", ""),

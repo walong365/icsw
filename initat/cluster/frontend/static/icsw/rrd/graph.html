@@ -199,7 +199,7 @@
                             <h4 ng-show="!graph.error">
                                 <span class="label label-default" ng-click="graph.toggle_expand()">
                                     <span ng-class="graph.get_expand_class()"></span>
-                                    graph \#{{ graph.num }}
+                                    graph #{{ graph.num }}
                                 </span>&nbsp;
                                 <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
                             </h4>

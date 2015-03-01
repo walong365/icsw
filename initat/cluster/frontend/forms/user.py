@@ -48,7 +48,9 @@ class authentication_form(Form):
     helper.layout = Layout(
         Div(
             Fieldset(
-                "Please enter your login credentials {% verbatim %}<span ng-show='CLUSTER_NAME'> for {{ CLUSTER_NAME }}</span>{% endverbatim %}",
+                "Please enter your login credentials {% verbatim %}"
+                "<span ng-show='CLUSTER_NAME'> for {{ CLUSTER_NAME }}</span>"
+                "{% endverbatim %}",
                 Field("username", placeholder="user name", autofocus="1"),
                 Field("password", placeholder="password"),
             ),

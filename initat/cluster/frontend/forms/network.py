@@ -45,8 +45,10 @@ class network_form(ModelForm):
         Fieldset(
             "Base data",
             Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
-            Field("network", wrapper_class="ng-class:form_error('network')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
-            Field("netmask", wrapper_class="ng-class:form_error('netmask')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
+            Field("network", wrapper_class="ng-class:form_error('network')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/",
+                  placeholder="Network", ng_blur="config_service.network_or_netmask_blur(edit_obj)"),
+            Field("netmask", wrapper_class="ng-class:form_error('netmask')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/",
+                  placeholder="Netmask", ng_blur="config_service.network_or_netmask_blur(edit_obj)"),
             Field("broadcast", wrapper_class="ng-class:form_error('broadcast')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
             Field("gateway", wrapper_class="ng-class:form_error('gateway')", ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
         ),

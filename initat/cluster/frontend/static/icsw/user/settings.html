@@ -1,6 +1,5 @@
 <script type="text/ng-template" id="icsw.user.settings.overview">
-    <icsw-user-settings-form></icsw-user-settings-form>
-    <h3>License settings</h3>
+    <h3>License settings ({{ licenses.length }})</h3>
     <table class="table table-condensed table-hover" style="width:auto;">
         <thead>
             <tr>
@@ -11,7 +10,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="lic in edit_obj.cluster_license_set">
+            <tr ng-repeat="lic in licenses">
                 <td>{{ lic.name }}</td>
                 <td>{{ lic.description }}</td>
                 <td>

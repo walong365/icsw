@@ -68,6 +68,7 @@ network_module = angular.module("icsw.network",
                 "network_type" : (entry["idx"] for key, entry of network_types_rest when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
                 "enforce_unique_ips" : true
                 "num_ip"       : 0
+                "gw_pri"       : 1
             }
         network_display     : network_display
         show_network        : (obj) ->
@@ -103,5 +104,38 @@ network_module = angular.module("icsw.network",
                 return false
         has_master_network : (edit_obj) ->
             return if edit_obj.master_network then true else false
+        network_or_netmask_blur : (edit_obj) ->
+            # calculate broadcast and gateway automatically
+
+            long2ip = (long) ->
+                a = (long & (0xff << 24)) >>> 24
+                b = (long & (0xff << 16)) >>> 16
+                c = (long & (0xff << 8)) >>> 8
+                d = long & 0xff
+                return [a, b, c, d].join('.')
+
+            ip2long = (ip) ->
+                b = (ip + '').split('.')
+                if b.length is 0 or b.length > 4 then throw new Error('Invalid IP')
+                for byte, i in b
+                    if isNaN parseInt(byte, 10) then throw new Error("Invalid byte: #{byte}")
+                    if byte < 0 or byte > 255 then throw new Error("Invalid byte: #{byte}")
+                return ((b[0] or 0) << 24 | (b[1] or 0) << 16 | (b[2] or 0) << 8 | (b[3] or 0)) >>> 0
+
+            # validation ensures that if it is not undefined, then it is a valid entry
+            if edit_obj.network? and edit_obj.netmask?
+
+                ip_long = ip2long(edit_obj.network)
+                mask_long = ip2long(edit_obj.netmask)
+
+                base_long = ip_long & mask_long
+
+                base_ip = long2ip(base_long)
+
+                # only set if there is no previous value
+                if ! edit_obj.broadcast?
+                    edit_obj.broadcast = base_ip
+                if ! edit_obj.gateway?
+                    edit_obj.gateway = base_ip
     }
 ])

@@ -1,12 +1,22 @@
 <script type="text/ng-template" id="icsw.device.status_history_overview">
     <h2>Status History</h2>
 
-    <h4>
-        <div class="form-inline">
-            Timerange:
-            <div class="form-group">
-                <div class="input-group" ng-show="duration_type == 'day' || duration_type == 'week'">
-                    <input type="text" class="form-control" ng-model="startdate"/>
+    <div class="panel panel-default" style="width: 450px">
+        <div class="panel-heading">
+            <h4>
+                Showing data
+                <span ng-if="!timespan_error ">
+                    from <b>{{ get_time_frame().start_str }}</b> to <b>{{ get_time_frame().end_str }}</b>:
+                </span>
+            </h4>
+        </div>
+
+        <div class="panel-body">
+            <div class="form-inline">
+                Timerange:
+                <div class="form-group">
+                    <div class="input-group" ng-show="duration_type == 'day' || duration_type == 'week'">
+                        <input type="text" class="form-control" ng-model="startdate"/>
                     <span class="dropdown-toggle input-group-addon">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
@@ -14,104 +24,134 @@
                             </button>
                             <ul class="dropdown-menu" role="menu">
                                 <datetimepicker ng-model="startdate"
-                                                data-datetimepicker-config="{ startView:'day', minView:'day' }" />
+                                                data-datetimepicker-config="{ startView:'day', minView:'day' }">
+                                </datetimepicker>
                             </ul>
                         </div>
                     </span>
-                </div>
-                 <div class="input-group" ng-show="duration_type == 'month'">
-                    <input type="text" class="form-control" ng-model="startdate"/>
+                    </div>
+                    <div class="input-group" ng-show="duration_type == 'month'">
+                        <input type="text" class="form-control" ng-model="startdate"/>
                     <span class="dropdown-toggle input-group-addon">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                                 <i class="glyphicon glyphicon-calendar"></i>
                             </button>
                             <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="startdate" data-datetimepicker-config="{ startView:'month', minView:'month' }" >
+                                <datetimepicker ng-model="startdate"
+                                                data-datetimepicker-config="{ startView:'month', minView:'month' }">
                                 </datetimepicker>
                             </ul>
                         </div>
                     </span>
-                </div>
-                <div class="input-group" ng-show="duration_type == 'year'">
-                    <input type="text" class="form-control" ng-model="startdate"/>
+                    </div>
+                    <div class="input-group" ng-show="duration_type == 'year'">
+                        <input type="text" class="form-control" ng-model="startdate"/>
                     <span class="dropdown-toggle input-group-addon">
                         <div class="dropdown">
                             <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
                                 <i class="glyphicon glyphicon-calendar"></i>
                             </button>
                             <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="startdate" data-datetimepicker-config="{ startView:'year', minView:'year' }" >
+                                <datetimepicker ng-model="startdate"
+                                                data-datetimepicker-config="{ startView:'year', minView:'year' }">
                                 </datetimepicker>
                             </ul>
                         </div>
                     </span>
-                </div>
-                &nbsp;
-                <div class="btn-group">
-                    <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                        <span class="glyphicon glyphicon-time"></span>
-                        {{timerange}} <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-click="set_timerange('day')"><a href="#">day</a></li>
-                        <li ng-click="set_timerange('week')"><a href="#">week</a></li>
-                        <li ng-click="set_timerange('month')"><a href="#">month</a></li>
-                        <li ng-click="set_timerange('year')"><a href="#">year</a></li>
-                        <!-- values parsed by rest_views.py -->
-                    </ul>
+                    </div>
+                    &nbsp;
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-time"></span>
+                            {{duration_type}} <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-click="set_duration_type('day')"><a href="#">day</a></li>
+                            <li ng-click="set_duration_type('week')"><a href="#">week</a></li>
+                            <li ng-click="set_duration_type('month')"><a href="#">month</a></li>
+                            <li ng-click="set_duration_type('year')"><a href="#">year</a></li>
+                            <!-- values parsed by rest_views.py -->
+                        </ul>
+                    </div>
                 </div>
             </div>
-        </div>
-    </h4>
 
-    <h4 ng-if="!timespan_error ">Showing data from {{timespan_from}} to {{timespan_to}}:</h4>
-    <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
+            <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
+
+        </div>
+
+    </div>
 
     <div ng-repeat="device in devicepks">
-        <icsw-device-status-history-device device="{{device}}" timerange="timerange" startdate="startdate" />
+        <icsw-device-status-history-device device="{{device}}"></icsw-device-status-history-device>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_device">
-    <h3>{{device_rest.full_name}}</h3>
 
-    <div class="row" style="width: 650px">
-        <div class="col-md-12">
-            <div style="width: auto">
-                <icsw-tools-device-hist-status-overview deviceid="device_id" startdate="startdate" timerange="timerange" show-table="true"></device-hist-status-overview>
-            </div>
+    <div class="panel panel-default">
+
+        <div class="panel-heading">
+            <h3>{{device_rest.full_name}}</h3>
         </div>
+        <div class="panel-body">
 
-        <div class="col-md-12">
-            <table class="table table-condensed table-hover table-striped">
-                <thead>
-                <tr>
-                    <th >Service</th>
-                    <th style="width: 10%;" class="text-center"><!-- chart --></th>
-                    <th style="width: 50px;" class="text-center">Ok</th>
-                    <th style="width: 50px;" class="text-center">Warning</th>
-                    <th style="width: 50px;" class="text-center">Critical</th>
-                    <th style="width: 50px;" class="text-center">Unknown</th>
-                    <th style="width: 50px;" class="text-center">Undetermined</th>
-                    <th style="width: 50px;" class="text-center">Flapping</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr ng-repeat="entry in service_data">
-                    <td> {{ extract_service_name(entry[0]) }} </td>
-                    <td class="text-right">
-                        <icsw-tools-piechart diameter="28" data="entry[2]"></icsw-tools-piechart>
-                    </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Ok") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Warning") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Critical") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Unknown") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Undetermined") }} </td>
-                    <td class="text-right"> {{ extract_service_value(entry[1], "Flapping") }} </td>
-                </tr>
-                </tbody>
-            </table>
+            <div style="width: 650px">
+                <div class="col-md-12">
+                    <div style="width: auto">
+                        <icsw-tools-device-hist-status-overview deviceid="device_id"
+                                                                detailed-view="true"></icsw-tools-device-hist-status-overview>
+                    </div>
+                </div>
+
+                <div class="col-md-12" style="margin-top: 10px" ng-show="service_data.length == 0">
+                    No services for this device and time span.
+                </div>
+
+                <div class="col-md-12" style="margin-top: 10px" ng-show="service_data.length > 0">
+                    <table class="table table-condensed table-hover table-striped">
+                        <thead>
+                            <tr>
+                                <th>Service</th>
+                                <th style="width: 10%;" class="text-center"><!-- chart --></th>
+                                <th style="width: 50px;" class="text-center">Ok</th>
+                                <th style="width: 50px;" class="text-center">Warning</th>
+                                <th style="width: 50px;" class="text-center">Critical</th>
+                                <th style="width: 50px;" class="text-center">Unknown</th>
+                                <th style="width: 50px;" class="text-center">Undeterm.</th>
+                                <th style="width: 50px;" class="text-center">Flapping</th>
+                                <th class="text-center">Timeline</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat-start="entry in service_data"
+                                ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled">
+                                <td> {{ entry.name }}</td>
+                                <td class="text-right">
+                                    <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
+                                </td>
+                                <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Ok") }} </td>
+                                <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Warning") }} </td>
+                                <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Critical") }} </td>
+                                <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Unknown") }} </td>
+                                <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Undetermined") }} </td>
+                                <td class="text-right" style="vertical-align: middle"> {{ extract_service_value(entry.main_data, "Flapping") }} </td>
+                                <td>
+                                    <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="TODO"></icsw-tools-hist-line-graph>
+                                </td>
+                            </tr>
+                            <tr ng-repeat-end ng-show="entry.log_viewer_enabled">
+                                <td colspan="99">
+                                    <icsw-tools-hist-log-viewer data="entry.line_graph_data"
+                                                                enabled="entry.log_viewer_enabled"></icsw-tools-hist-log-viewer>
+                                    <!-- TODO: focus entry which was clicked upon? -->
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </script>

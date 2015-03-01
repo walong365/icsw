@@ -12,6 +12,7 @@ angular.module(
         $scope.INIT_PRODUCT_FAMILY = $window.INIT_PRODUCT_FAMILY
         $scope.DJANGO_VERSION = $window.DJANGO_VERSION
         $scope.CLUSTER_NAME = $window.CLUSTER_NAME
+        $scope.CLUSTER_ID = $window.CLUSTER_ID
         #$scope.CSRF_TOKEN = $window.CSRF_TOKEN
         style_dict = {
             "medium" : {

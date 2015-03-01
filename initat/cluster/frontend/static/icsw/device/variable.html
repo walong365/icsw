@@ -32,6 +32,7 @@
                 <th>Type</th>
                 <th>Value</th>
                 <th>Public</th>
+                <th>Inherit</th>
                 <th>source</th>
                 <th colspan="2">Action</th>
             </tr>
@@ -42,15 +43,17 @@
                 <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
                 <td>{{ get_value(obj) }}</td>
                 <td>{{ obj.is_public|yesno1 }}</td>
+                <td>{{ obj.inherit | yesno2 }}</td>
                 <td>direct</td>
                 <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public" ng-click="edit_mixin.edit(obj, $event)" value="modify"/></td>
-                <td><input type="button" class="btn btn-danger btn-xs" ng-click="edit_mixin.delete_obj(obj)" value="delete"/></td>
+                <td><input type="button" class="btn btn-danger btn-xs" ng-show="!obj.protected" ng-click="edit_mixin.delete_obj(obj)" value="delete"/></td>
             </tr>
             <tr ng-repeat="obj in get_parent_vars(device, 'g') | filter_name:filtervalue | orderBy:'name'">
                 <td>{{ obj.name }}</td>
                 <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
                 <td>{{ get_value(obj) }}</td>
                 <td>{{ obj.is_public|yesno1 }}</td>
+                <td>{{ obj.inherit | yesno2 }}</td>
                 <td>group</td>
                 <td colspan="2">
                     <input ng-show="obj.local_copy_ok" type="button" class="btn btn-xs btn-warning" value="local copy" ng-click="local_copy(obj, 'g')"/>
@@ -61,6 +64,7 @@
                 <td class="text-center"><span class="badge">{{ get_var_type(obj) }}</span></td>
                 <td>{{ get_value(obj) }}</td>
                 <td>{{ obj.is_public|yesno1 }}</td>
+                <td>{{ obj.inherit | yesno2 }}</td>
                 <td>cluster</td>
                 <td colspan="2">
                     <input ng-show="obj.local_copy_ok" type="button" class="btn btn-xs btn-warning" value="local copy" ng-click="local_copy(obj, 'c')"/>
@@ -97,7 +101,9 @@
             <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
             <tr icsw-device-variable-row ng-repeat-start="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
             <tr ng-repeat-end ng-if="obj.expanded">
-                <td colspan="9"><icsw-device-variable-table device="obj" filtervalue="var_filter"></vartable></td>
+                <td colspan="9">
+                    <icsw-device-variable-table device="obj" filtervalue="var_filter"></icsw-device-variable-table>
+                </td>
             </tr>
         </tbody>
     </table>

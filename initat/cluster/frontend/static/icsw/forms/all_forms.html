@@ -11,13 +11,7 @@
  "
  ><label for="id_description" class="control-label col-sm-3">
  Description
- </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div><div id="div_id_parent_config"
- class="form-group 
- "
- ng_show="!_edit_obj.system_config &amp;&amp; !_edit_obj.server_config"
- ><label for="id_parent_config" class="control-label col-sm-3">
- Parent config
- </label><div class="controls col-sm-7"><div class='input-group' style='max-width:400px; min-width:240px;'><ui-select ng-model='_edit_obj.parent_config' ng-disabled='false'><ui-select-match placeholder='select parent config'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value.idx as value in this.get_valid_parents()| props_filter:{name:$select.search}'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select><span class='input-group-btn'><button type="button" ng-click="_edit_obj.parent_config = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div></div></div></fieldset><div ng-bind-html='show_config_help()'></div><fieldset 
+ </label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_description" maxlength="765" name="description" ng-model="_edit_obj.description" type="text" /> </div></div></fieldset><div ng-bind-html='show_config_help()'></div><fieldset 
  ><legend>other settings</legend><div class="form-group"><div id="div_id_enabled"
  class="checkbox
  "
@@ -267,7 +261,7 @@
 </script>
 <script type='text/ng-template' id='device.info.form'>
 <form id="id_dtn_detail_form" class="form-horizontal" ng-submit="modify()" name="form" ><div 
- ><h2>Details for '{{ _edit_obj.full_name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2><fieldset 
+ ><h2>Details for '{{ get_full_name() }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2><fieldset 
  ><legend>Basic settings</legend><div id="div_id_name"
  class="form-group 
  "
@@ -640,12 +634,12 @@
  ng-class:form_error(&#39;network&#39;) 
  "
  ><label for="id_network" class="control-label col-sm-3 requiredField">
- Network<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text" /> </div></div><div id="div_id_netmask"
+ Network<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_network" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text" /> </div></div><div id="div_id_netmask"
  class="form-group 
  ng-class:form_error(&#39;netmask&#39;) 
  "
  ><label for="id_netmask" class="control-label col-sm-3 requiredField">
- Netmask<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text" /> </div></div><div id="div_id_broadcast"
+ Netmask<span class="asteriskField">*</span></label><div class="controls col-sm-7"><input class="textinput textInput form-control" id="id_netmask" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text" /> </div></div><div id="div_id_broadcast"
  class="form-group 
  ng-class:form_error(&#39;broadcast&#39;) 
  "
@@ -1420,7 +1414,13 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="_edit_obj.var_type == &#39;b&#39;"
  ><label for="id_val_blob" class="control-label col-sm-3">
  Val blob
- </label><div class="controls col-sm-8"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-8"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><fieldset 
+ ><legend>Flags</legend><div class="form-group"><div id="div_id_inherit"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-8"><label for="id_inherit" class=""><input checked="checked" class="checkboxinput checkbox" id="id_inherit" name="inherit" ng-model="_edit_obj.inherit" type="checkbox" />
+ Inherit
+ </label></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"
@@ -2601,19 +2601,6 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng-value="action_string"
  /> </div></form>
 </script>
-<script type='text/ng-template' id='global.settings.form'>
-<form id="form" class="form-horizontal" ng-submit="update_settings()" ><h2>Global settings</h2><fieldset 
- ><legend>Base data</legend><div id="div_id_login_screen_type"
- class="form-group 
- "
- ><label for="id_login_screen_type" class="control-label col-sm-2 requiredField">
- Login screen type<span class="asteriskField">*</span></label><div class="controls col-sm-8"><select class="select form-control" id="id_login_screen_type" name="login_screen_type" ng-model="edit_obj.login_screen_type" required="True"><option value="big" selected="selected">big (full screen)</option><option value="medium">medium (side by side)</option></select></div></div></fieldset><div class="form-actions"><input type="submit"
- name="submit"
- value="Modify"
- class="btn btn-primary primaryAction"
- id="submit-id-submit"
- /> </div></form>
-</script>
 <script type='text/ng-template' id='mon.service.dependency.templ.form'>
 <form id="form" class="form-horizontal" ng-submit="modify()" name="form" ><h2>Service dependence template</h2><fieldset 
  ><legend>Base data</legend><div id="div_id_name"
@@ -3112,7 +3099,13 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  ng_show="_edit_obj.var_type == &#39;b&#39;"
  ><label for="id_val_blob" class="control-label col-sm-3">
  Val blob
- </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><div class="form-actions"><input type="submit"
+ </label><div class="controls col-sm-7"><textarea class="textarea form-control" cols="40" id="id_val_blob" name="val_blob" ng-model="_edit_obj.val_blob" rows="10"></textarea></div></div></fieldset><fieldset 
+ ><legend>Flags</legend><div class="form-group"><div id="div_id_inherit"
+ class="checkbox
+ "
+ ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_inherit" class=""><input checked="checked" class="checkboxinput checkbox" id="id_inherit" name="inherit" ng-model="_edit_obj.inherit" type="checkbox" />
+ Inherit
+ </label></div></div></div></fieldset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"

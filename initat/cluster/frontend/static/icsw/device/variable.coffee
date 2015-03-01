@@ -19,11 +19,11 @@ device_variable_module = angular.module(
                 if not obj.is_cluster_device_group
                     if obj.device_type_identifier != "MD"
                         meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        meta_names = (entry.name for entry in meta_server.device_variable_set)
+                        meta_names = (entry.name for entry in meta_server.device_variable_set when entry.inherit)
                         num_meta += (entry for entry in meta_names when entry not in my_names).length
                     else
                         meta_names = []
-                    num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names and entry.name not in meta_names).length
+                    num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names and entry.name not in meta_names and entry.inherit).length
                 return num_meta
             scope.num_vars = (obj) ->
                 return scope.num_parent_vars + obj.device_variable_set.length
@@ -97,16 +97,16 @@ device_variable_module = angular.module(
                     if obj.device_type_identifier != "MD" and src == "g"
                         # device, inherited from group
                         meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        parents = meta_group.device_variable_set
+                        parents = (entry for entry in meta_group.device_variable_set when entry.inherit)
                     else if src == "c"
                         if obj.device_type_identifier == "MD"
                             # group, inherited from cluster
-                            parents = scope.cdg.device_variable_set
+                            parents = (entry for entry in scope.cdg.device_variable_set when entry.inherit)
                         else
                             # device, inherited from cluster
                             meta_group = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
                             meta_names = (_entry.name for _entry in meta_group.device_variable_set)
-                            parents = (entry for entry in scope.cdg.device_variable_set when entry.name not in meta_names)
+                            parents = (entry for entry in scope.cdg.device_variable_set when entry.name not in meta_names and entry.inherit)
                     parents = (entry for entry in parents when entry.name not in my_names)
                 return parents
             scope.local_copy = (d_var, src) ->
@@ -122,7 +122,7 @@ device_variable_module = angular.module(
         $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
         $scope.base_edit.new_object = (scope) ->
-            return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0}
+            return {"device" : scope._obj.idx, "var_type" : "s", "_mon_copy" : 0, "inherit": true}
         $scope.base_edit.change_signal = "icsw.dv.changed"
         $scope.create = (obj, event) ->
             # copy for new_object callback

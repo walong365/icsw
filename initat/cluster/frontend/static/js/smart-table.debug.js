@@ -1,5 +1,5 @@
-/** 
-* @version 1.4.10
+/**
+* @version 1.4.11
 * @license MIT
 */
 (function (ng, undefined){
@@ -32,16 +32,28 @@ ng.module('smart-table')
     var pipeAfterSafeCopy = true;
     var ctrl = this;
     var lastSelected;
-
+    var numSelected;
+    function getSelected(src) {
+          var _sel=0;
+          for (var i = 0; i < src.length; i++) {
+              if (src[i].isSelected) {
+                  _sel++;
+              }
+          };
+        numSelected=_sel;
+        return _sel;
+    };
     function copyRefs(src) {
       return src ? [].concat(src) : [];
     }
 
+    getSelected(safeCopy);
     function updateSafeCopy() {
       safeCopy = copyRefs(safeGetter($scope));
       if (pipeAfterSafeCopy === true) {
         ctrl.pipe();
-      }
+      };
+      getSelected(safeCopy);
     }
 
     if ($attrs.stSafeSrc) {
@@ -138,6 +150,7 @@ ng.module('smart-table')
         } else {
           rows[index].isSelected = !rows[index].isSelected;
         }
+      getSelected(safeCopy);
       }
     };
 
@@ -184,12 +197,13 @@ ng.module('smart-table')
     this.preventPipeOnWatch = function preventPipe() {
       pipeAfterSafeCopy = false;
     };
-
     // PATCH: BM Jan 2014
     this.getNumberOfTotalEntries = function() {
         return safeCopy.length;
+    };
+    this.getNumberOfSelectedEntries = function() {
+        return numSelected;
     }
-
   }])
   .directive('stTable', function () {
     return {
@@ -351,7 +365,8 @@ ng.module('smart-table')
       require: '^stTable',
       scope: {
         stItemsByPage: '=?',
-        stDisplayedPages: '=?'
+        stDisplayedPages: '=?',
+        stPageChange: '&'
       },
       templateUrl: function (element, attrs) {
         if (attrs.stTemplate) {
@@ -372,6 +387,7 @@ ng.module('smart-table')
           var start = 1;
           var end;
           var i;
+          var prevPage = scope.currentPage;
           scope.currentPage = Math.floor(paginationState.start / paginationState.number) + 1;
 
           start = Math.max(start, scope.currentPage - Math.abs(Math.floor(scope.stDisplayedPages / 2)));
@@ -387,6 +403,10 @@ ng.module('smart-table')
 
           for (i = start; i < end; i++) {
             scope.pages.push(i);
+          }
+
+          if (prevPage!==scope.currentPage) {
+            scope.stPageChange({newPage: scope.currentPage});
           }
         }
 
@@ -428,9 +448,11 @@ ng.module('smart-table')
       link: {
 
         pre: function (scope, element, attrs, ctrl) {
-          ctrl.preventPipeOnWatch();
-          ctrl.pipe = function () {
-            return scope.stPipe(ctrl.tableState(), ctrl);
+          if (ng.isFunction(scope.stPipe)) {
+            ctrl.preventPipeOnWatch();
+            ctrl.pipe = function () {
+              return scope.stPipe(ctrl.tableState(), ctrl);
+            }
           }
         },
 

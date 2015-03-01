@@ -68,11 +68,85 @@
                 <tbody>
                     <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
                     <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
-                        <td colspan="9"><monitoringhinttable></monitoringhinttable></td>
+                        <td colspan="9">
+                            <monitoringhinttable></monitoringhinttable>
+                        </td>
                     </tr>
                 </tbody>
             </table>
         </accordion-group>
     </accordion>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.hint.row">
+    <td title="from run {{ hint.call_idx }}">
+        <span ng-show="hint.enabled">
+            {{ hint.m_type }}
+        </span>
+        <span ng-show="!hint.enabled">
+            <em><strike>{{ hint.m_type }}</strike></em>
+        </span>
+    </td>
+    <td>
+        <span ng-show="hint.enabled">
+            {{ hint.key }}
+        </span>
+        <span ng-show="!hint.enabled">
+            <em><strike>{{ hint.key }}</strike></em>
+        </span>
+    </td>
+    <td>{{ hint.datasource }}</td>
+    <td class="text-center">{{ hint.persistent | yesno2 }}</td>
+    <td>{{ get_v_type() }}</td>
+    <td class="text-right" ng-class="get_td_class('lower_crit')" ng-attr-title="{{ get_td_title('lower_crit') }}">{{ get_limit('lower_crit') }}</td>
+    <td class="text-right" ng-class="get_td_class('lower_warn')" ng-attr-title="{{ get_td_title('lower_warn') }}">{{ get_limit('lower_warn') }}</td>
+    <td class="text-right" ng-class="get_td_class('upper_warn')" ng-attr-title="{{ get_td_title('upper_warn') }}">{{ get_limit('upper_warn') }}</td>
+    <td class="text-right" ng-class="get_td_class('upper_crit')" ng-attr-title="{{ get_td_title('upper_crit') }}">{{ get_limit('upper_crit') }}</td>
+    <td class="text-right success">{{ get_value() }}</td>>
+    <td class="text-center">{{ hint.is_active | yesno2 }}</td>
+    <td class="text-center">
+        <icsw-tools-button type="delete" ng-click="delete(hint, $event)" size="xs"></icsw-tools-button>
+    </td>
+    <td class="text-center">
+        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled(hint, $event)"/></input>
+    </td>
+    <td class="text-center">
+        <icsw-tools-button type="modify" ng-click="modify_hint(hint, $event)" size="xs"></icsw-tools-button>
+    </td>
+    <td>{{ hint.info }}</td>
+    <td>{{ from_now(hint.date) }}</td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.hint.table">
+    <icsw-tools-rest-table target-list="entries" config-service="icswDeviceMonConfigTableService">
+        <table st-table="entries_display" st-safe-src="obj.monitoring_hint_set" class="table table-condensed table-striped table-hover table-bordered" style="width:auto;">
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="m_type">Source</th>
+                    <th st-sort="key">key</th>
+                    <th title="datasource">ds</th>
+                    <th title="entry is persistent">persistent</th>
+                    <th>Type</th>
+                    <th>lower crit</th>
+                    <th>lower warn</th>
+                    <th>upper warn</th>
+                    <th>upper crit</th>
+                    <th st-sort="value">value</th>
+                    <th title="check">active check</th>
+                    <th colspan="3">action</th>
+                    <th st-sort="info">info</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr st-select-row="hint" st-select-mode="multiple" mhrow ng-class="hint.isSelected && 'info'" ng-repeat="hint in entries_display"></tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
 </script>
 

@@ -112,7 +112,7 @@
                         <th st-sort="hnperiod">Host:</th>
                         <th st-sort="hnrecovery">rec</th>
                         <th st-sort="hndown">down</th>
-                        <th st-sort="hnunreach">unrch</th>
+                        <th st-sort="hnunreachable">unrch</th>
                         <th st-sort="hflapping">flap</th>
                         <th st-sort="hplanned_downtime">planned</th>
                         <th st-sort="notifications">Notifications</th>
@@ -133,7 +133,7 @@
                         <td>{{ obj.hnperiod | array_lookup:config_service.mon_period:'name' }}</td>
                         <td>{{ obj.hnrecovery | yesno1 }}</td>
                         <td>{{ obj.hndown | yesno1 }}</td>
-                        <td>{{ obj.hnunreach | yesno1 }}</td>
+                        <td>{{ obj.hnunreachable | yesno1 }}</td>
                         <td>{{ obj.hflapping | yesno1 }}</td>
                         <td>{{ obj.hplanned_downtime | yesno1 }}</td>
                         <td>{{ obj.notifications | resolve_n2m:config_service.mon_notification:'name':'no notifications' }}
