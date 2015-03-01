@@ -30,6 +30,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
+from django.utils.crypto import get_random_string
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -64,11 +65,10 @@ from initat.cluster.backbone.models.hints import *  # @UnusedWildImport
 from initat.cluster.backbone.models.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.models.partition import *  # @UnusedWildImport
 from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
+from initat.cluster.backbone.models.graph import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
 
-
-# do not use, problems with import
 
 # attention: this list is used in create_fixtures.py
 LICENSE_CAPS = [
@@ -267,6 +267,10 @@ class device_variable(models.Model):
     description = models.CharField(max_length=765, default="", blank=True)
     # can be copied to a group or device ? There is no sense in making the cluster_name a local instance
     local_copy_ok = models.BooleanField(default=True)
+    # will the variable be inerited by lower levels (CDG -> DG -> D) ?
+    inherit = models.BooleanField(default=True)
+    # protected, not deletable by frontend
+    protected = models.BooleanField(default=False)
     var_type = models.CharField(
         max_length=3,
         choices=[
@@ -742,7 +746,7 @@ class device(models.Model):
 
     class CSW_Meta:
         permissions = (
-            ("all_devices", "access all devices", False),
+            ("all_devices", "Access all devices", False),
             ("show_graphs", "Access to device graphs", True),
             ("change_basic", "Change basic settings", True),
             ("change_network", "Change network", True),
@@ -754,13 +758,13 @@ class device(models.Model):
             ("change_monitoring", "Change device monitoring config", True),
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
+            ("show_status_history", "Access to status history", True),
         )
         fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", 
                           "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
                           "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
                           "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
                           "mon_icinga_log_raw_service_notification_data", "mon_icinga_log_raw_host_notification_data"]
-
 
     class Meta:
         db_table = u'device'
@@ -786,6 +790,30 @@ def device_post_save(sender, **kwargs):
             if _stripped != _cur_inst.device_group.name:
                 _cur_inst.device_group.name = _stripped
                 _cur_inst.device_group.save()
+            if _cur_inst.device_group.cluster_device_group:
+                # check for device ID
+                _var_dict = {_v.name: _v for _v in _cur_inst.device_variable_set.all()}
+                # if "CLUSTER_NAME" not in _var_dict:
+                #    device_variable.objects.create(
+                #        device=_cur_inst,
+                #        name="CLUSTER_NAME",
+                #        val_str="new Cluster",
+                #        var_type="s",
+                #        inherit=False,
+                #    )
+                if "CLUSTER_ID" not in _var_dict:
+                    device_variable.objects.create(
+                        device=_cur_inst,
+                        name="CLUSTER_ID",
+                        is_public=False,
+                        val_str="{}-{}".format(
+                            get_random_string(6, "ABCDEFGHKLPRSTUWXYZ123456789"),
+                            get_random_string(4, "ABCDEFGHKLPRSTUWXYZ123456789"),
+                        ),
+                        var_type="s",
+                        inherit=False,
+                        protected=True,
+                    )
 
 
 def _get_top_level_dtn():
@@ -997,29 +1025,9 @@ def device_group_post_save(sender, **kwargs):
             cur_inst.save()
 
 
-class cluster_setting(models.Model):
-    idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
-    name = models.CharField(max_length=64, default="GLOBAL", unique=True)
-    login_screen_type = models.CharField(max_length=64, default="big", choices=[
-        ("big", "big (full screen)"),
-        ("medium", "medium (side by side)"),
-        ])
-    # also present in /etc/sysconfig/cluster/local_settings.py
-    secret_key = models.CharField(max_length=64, default="")
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "cs {}, login_screen_type is {}, secret_key is '{}'".format(
-            self.name,
-            self.login_screen_type,
-            self.secret_key,
-        )
-
-
 # license related
 class cluster_license(models.Model):
     idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
-    cluster_setting = models.ForeignKey("cluster_setting")
     name = models.CharField(max_length=64, default="", unique=True)
     enabled = models.BooleanField(default=False)
     description = models.CharField(max_length=256, default="")
@@ -1052,7 +1060,7 @@ class cluster_license_cache(object):
             } for _name, _descr, _srvs in LICENSE_CAPS
         }
         if not _cur_c or force:
-            for cur_lic in cluster_license.objects.filter(Q(cluster_setting__name="GLOBAL")):
+            for cur_lic in cluster_license.objects.all():
                 _lic_dict[cur_lic.name]["enabled"] = cur_lic.enabled
             cache.set(self.__CLC_NAME, marshal.dumps(_lic_dict), 300)
         else:

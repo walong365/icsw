@@ -22,13 +22,15 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 import datetime
+from collections import defaultdict
 import json
 import logging_tools
 import re
+import operator
 
 __all__ = [
     "mon_host_cluster",
@@ -1231,7 +1233,7 @@ class monitoring_hint(models.Model):
         return u"{} ({}) for {}, ds {}, persistent {}".format(
             self.m_type,
             self.key,
-            unicode(self.device),
+            unicode(self.device) if self.device_id else "<unbound>",
             self.datasource,
             "true" if self.persistent else "false",
         )
@@ -1267,6 +1269,35 @@ class mon_icinga_log_raw_base(models.Model):
         abstract = True
 
 
+class raw_host_alert_manager(models.Manager):
+    def calc_alerts(self, start_time, end_time, device_ids=None):
+        host_alerts = defaultdict(lambda: [])
+
+        additional_device_filter = {}
+        if device_ids is not None:
+            additional_device_filter = {'device__in': device_ids}
+        for entry in self.filter(device_independent=False, date__range=(start_time, end_time),
+                                 **additional_device_filter):
+            host_alerts[entry.device_id].append(entry)
+        # calc dev independent afterwards and add to all keys
+        for entry in mon_icinga_log_raw_host_alert_data.objects\
+                .filter(device_independent=True, date__range=(start_time, end_time)):
+            for key in host_alerts:
+                host_alerts[key].append(entry)
+        for l in host_alerts.itervalues():
+            # not in order due to dev independents
+            l.sort(key=operator.attrgetter('date'))
+        return host_alerts
+
+    def calc_limit_alerts(self, time, mode='last before', device_ids=None):
+        """
+        Find last alert before or first alert after some point in time for some devices
+        :param mode: 'last before' or 'first after'
+        """
+        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=True, time=time, mode=mode,
+                                                              device_ids=device_ids)
+
+
 class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_UP = "UP"
     STATE_DOWN = "D"
@@ -1274,6 +1305,9 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
     STATE_CHOICES = [(STATE_UP, "UP"), (STATE_DOWN, "DOWN"), (STATE_UNREACHABLE, "UNREACHABLE"),
                      (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+
+    objects = raw_host_alert_manager()
+
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
     log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
@@ -1283,11 +1317,144 @@ class mon_icinga_log_raw_host_alert_data(mon_icinga_log_raw_base):
         backup = False
 
 
+class raw_service_alert_manager(models.Manager):
+    def calc_alerts(self, start_time, end_time, device_ids=None):
+        service_alerts = defaultdict(lambda: [])
+
+        additional_device_filter = {}
+        if device_ids is not None:
+            additional_device_filter = {'device__in': device_ids}
+        queryset = self.filter(device_independent=False, date__range=(start_time, end_time), **additional_device_filter)
+        for entry in queryset:
+            key = entry.device_id, entry.service_id, entry.service_info
+            service_alerts[key].append(entry)
+        # calc dev independent afterwards and add to all keys
+        for entry in self.filter(device_independent=True, date__range=(start_time, end_time)):
+            for key in service_alerts:
+                service_alerts[key].append(entry)
+        for l in service_alerts.itervalues():
+            # not in order due to dev independents
+            l.sort(key=operator.attrgetter('date'))
+        return service_alerts
+
+    def calc_limit_alerts(self, time, mode='last before', device_ids=None):
+        """
+        Find last alert before or first alert after some point in time for some devices
+        :param mode: 'last before' or 'first after'
+        """
+        return raw_service_alert_manager.do_calc_limit_alerts(self, is_host=False, time=time, mode=mode,
+                                                              device_ids=device_ids)
+
+    @staticmethod
+    def do_calc_limit_alerts(obj_man, is_host, time, mode='last before', device_ids=None):
+        assert mode in ('last before', 'first after')
+
+        group_by_fields = ['device_id', 'state', 'state_type']
+        additional_fields = ['date', 'msg']
+        if not is_host:
+            group_by_fields.extend(['service_id', 'service_info'])
+
+        # NOTE: code was written for 'last_before' mode and then generalised, hence some vars are called 'latest...'
+        try:
+            if mode == 'last before':
+                latest_dev_independent_service_alert =\
+                    obj_man.filter(date__lte=time, device_independent=True).latest('date')
+            else:
+                latest_dev_independent_service_alert =\
+                    obj_man.filter(date__gte=time, device_independent=True).earliest('date')
+
+            # can't use values() on single entry
+            latest_dev_independent_service_alert = {key: getattr(latest_dev_independent_service_alert, key)
+                                                    for key in (group_by_fields + additional_fields)}
+        except obj_man.model.DoesNotExist:
+            latest_dev_independent_service_alert = None
+
+        # get last service alert of each service before the start time
+        additional_device_filter = {}
+        if device_ids is not None:
+            additional_device_filter = {'device__in': device_ids}
+        last_service_alert_cache = {}
+        if mode == 'last before':
+            queryset = obj_man.filter(date__lte=time, device_independent=False, **additional_device_filter)
+        else:
+            queryset = obj_man.filter(date__gte=time, device_independent=False, **additional_device_filter)
+
+        queryset = queryset.values(*group_by_fields)
+
+        # only get these values and annotate with extreme date, then we get the each field-tuple with their extreme date
+
+        if mode == 'last before':
+            queryset = queryset.annotate(extreme_date=Max('date'))
+        else:
+            queryset = queryset.annotate(extreme_date=Min('date'))
+
+        for entry in queryset:
+            # prefer latest info if there is dev independent one
+
+            if mode == 'last before':
+                comp = lambda x, y: x > y
+            else:
+                comp = lambda x, y: x < y
+            if latest_dev_independent_service_alert is not None and \
+                    comp(latest_dev_independent_service_alert['date'], entry['extreme_date']):
+                relevant_entry = latest_dev_independent_service_alert
+            else:
+                relevant_entry = entry
+
+            if is_host:
+                key = entry['device_id']
+            else:
+                key = entry['device_id'], entry['service_id'], entry['service_info']
+
+            # the query above is not perfect, it should group only by device and service
+            # this seems to be hard in django:
+            # http://stackoverflow.com/questions/19923877/django-orm-get-latest-for-each-group
+            # so we do the last grouping by this key here manually
+            if key not in last_service_alert_cache or comp(entry['extreme_date'], last_service_alert_cache[key][1]):
+                last_service_alert_cache[key] = relevant_entry, entry['extreme_date']
+
+        # NOTE: apparently, in django, if you use group_by, you can only select the elements you group_by and
+        #       the annotated elements therefore we retrieve the extra parameters manually
+        for k, v in last_service_alert_cache.iteritems():
+            if any(key not in v[0] for key in additional_fields):
+                if is_host:
+                    additional_fields_query = obj_man.filter(device_id=k, date=v[1])
+                else:
+                    additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2], date=v[1])
+
+                v[0].update(additional_fields_query.values(*additional_fields)[0])
+
+        # drop extreme date
+        return {k: v[0] for (k, v) in last_service_alert_cache.iteritems()}
+
+    @staticmethod
+    def calculate_service_name_for_client(entry):
+        """
+        :param entry: aggregated or raw log model entry. service should be prefetched for reasonable performance.
+        """
+        return raw_service_alert_manager._do_calculate_service_name_for_client(entry.service, entry.service_info)
+
+    @staticmethod
+    def calculate_service_name_for_client_tuple(service_id, service_info):
+        try:
+            service = mon_check_command.objects.get(pk=service_id)
+        except mon_check_command.DoesNotExist:
+            service = None
+        return raw_service_alert_manager._do_calculate_service_name_for_client(service, service_info)
+
+    @staticmethod
+    def _do_calculate_service_name_for_client(service, service_info):
+        service_name = service.name if service else u""
+        return u"{},{}".format(service_name, service_info if service_info else u"")
+
+
 class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     STATE_UNDETERMINED = "UD"
     STATE_CHOICES = [("O", "OK"), ("W", "WARNING"), ("U", "UNKNOWN"), ("C", "CRITICAL"),
                      (mon_icinga_log_raw_base.STATE_UNDETERMINED, mon_icinga_log_raw_base.STATE_UNDETERMINED_LONG)]
     STATE_CHOICES_REVERSE_MAP = {val: key for (key, val) in STATE_CHOICES}
+
+    objects = raw_service_alert_manager()
 
     # NOTE: there are different setup, at this time only regular check_commands are supported
     # they are identified by the mon_check_command.pk and their name, hence the fields here
@@ -1299,15 +1466,18 @@ class mon_icinga_log_raw_service_alert_data(mon_icinga_log_raw_base):
     state_type = models.CharField(max_length=2, choices=mon_icinga_log_raw_base.STATE_TYPES)
     state = models.CharField(max_length=2, choices=STATE_CHOICES)
 
-    log_rotation_state = models.BooleanField(default=False)  # whether this is an entry at the beginning of a fresh archive file.
-    initial_state = models.BooleanField(default=False)  # whether this is an entry after icinga restart
+    # whether this is an entry at the beginning of a fresh archive file.
+    log_rotation_state = models.BooleanField(default=False)
+    # whether this is an entry after icinga restart
+    initial_state = models.BooleanField(default=False)
 
     class CSW_Meta:
         backup = False
 
 
 class mon_icinga_log_full_system_dump(models.Model):
-    # save dates of all full system dumps, i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
+    # save dates of all full system dumps,
+    # i.e. with log_rotation_state = True or inital_state = True in (host|service)-alerts table
     # this is needed for faster access, the alerts-tables are too huge
     idx = models.AutoField(primary_key=True)
     date = models.DateTimeField(db_index=True)
