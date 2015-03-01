@@ -100,31 +100,59 @@ class dynconfig_process(threading_tools.process_obj):
     def _pcrs_as_chunk(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])
         _chunk = json.loads(bz2.decompress(base64.b64decode(in_com["*ascii_chunk"])))
+        _source = _chunk.get("source", "unknown")
         _prefix = _chunk["prefix"]
         try:
             cur_dev = device.objects.get(Q(pk=_prefix.split(":")[1]))
         except:
             self.log(
-                "error getting device from prefix '{}': {}".format(
+                "error getting device from prefix '{}' (source {}): {}".format(
                     _prefix,
+                    _source,
                     process_tools.get_except_info(),
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
             ocsp_lines = []
-            for _info, _ret_state, _result in _chunk["list"]:
-                _srv_info = "{}{}".format(_prefix, _info)
-                ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
-                    int(time.time()),
-                    cur_dev.full_name,
-                    _srv_info,
-                    _ret_state,
-                    _result,
+            for _line in _chunk["list"]:
+                if len(_line) != 3:
+                    self.log(
+                        "pcr line has wrong format (len {:d} != 3): '{}'".format(
+                            len(_line),
+                            unicode(_line),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    _info, _ret_state, _result = _line
+                    try:
+                        _srv_info = "{}{}".format(_prefix, _info)
+                        ocsp_line = "[{:d}] PROCESS_SERVICE_CHECK_RESULT;{};{};{:d};{}".format(
+                            int(time.time()),
+                            cur_dev.full_name,
+                            _srv_info,
+                            _ret_state,
+                            _result,
+                        )
+                    except:
+                        self.log(
+                            "error generating ocsp_result from '{}': {}".format(
+                                unicode(_line),
+                                process_tools.get_except_info(),
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                    else:
+                        ocsp_lines.append(ocsp_line)
+            if ocsp_lines:
+                self.send_pool_message("ocsp_results", ocsp_lines)
+            self.log(
+                "generated {} (source: {})".format(
+                    logging_tools.get_plural("passive check result", len(ocsp_lines)),
+                    _source,
                 )
-                ocsp_lines.append(ocsp_line)
-            self.send_pool_message("ocsp_results", ocsp_lines)
-            self.log("generated {}".format(logging_tools.get_plural("passive check result", len(ocsp_lines))))
+            )
 
     def _monitoring_info(self, *args, **kwargs):
         in_com = server_command.srv_command(source=args[0])
