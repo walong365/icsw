@@ -79,6 +79,9 @@ ics_app = angular.module(
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
+        {% for app in ADDITIONAL_ANGULAR_APPS %}
+        "{{ app }}",
+        {% endfor %}
     ]
 ).config(() ->
     # console.log "config"
@@ -318,4 +321,7 @@ ics_app = angular.module(
     "USER_OVERVIEW": "{% url 'user:overview' %}"
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
     "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
+    {% for name, url in ADDITIONAL_URLS %}
+    "{{ name }}": "{{ url }}"
+    {% endfor %}
 })
