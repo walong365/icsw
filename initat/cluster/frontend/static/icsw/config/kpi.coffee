@@ -2,7 +2,7 @@
 angular.module(
     "icsw.config.kpi",
     [
-        "icsw.config.category_tree"
+        "icsw.config.category_tree", "icsw.tools.utils",
     ]
 ).controller("icswConfigKpiCtrl", [
     "$scope", "ICSW_URLS", "icswConfigKpiDataService"
@@ -13,6 +13,11 @@ angular.module(
             # TODO: links between dev an monitoring
         }
         this.cur_edit_kpi = edit_kpi
+        $scope.is_checked = (dev_cat_id, mon_cat_id) ->
+            return dev_cat_id == 12 || mon_cat_id == 6
+        $scope.check_dev_mon_cat = (dev_cat_id, mon_cat_id) ->
+            console.log 'toggle', dev_cat_id, mon_cat_id
+
 ]).directive("icswConfigKpi", [() ->
     return {
         restrict : "E"
@@ -33,8 +38,14 @@ angular.module(
         restrict : "E"
         require  : "^icswConfigKpi"
         template : """
-<tree treeconfig="device_category_tree"></tree>
-<tree treeconfig="monitoring_category_tree"></tree>
+<accordion close-others="false">
+    <accordion-group heading="Select device categories" is-open="true">
+        <tree treeconfig="device_category_tree"></tree>
+    </accordion-group>
+    <accordion-group heading="Select monitoring categories" is-open="true">
+        <tree treeconfig="monitoring_category_tree"></tree>
+    </accordion-group>
+</accordion>
 """
         link: (scope, el, attrs, kpi_ctrl) ->
 
@@ -127,7 +138,6 @@ angular.module(
     get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
 
     category_list = get_rest(ICSW_URLS.REST_CATEGORY_LIST.slice(1))
-
 
     return {
         category_list: category_list
