@@ -6,6 +6,7 @@ from django.utils.crypto import get_random_string
 import logging_tools
 import os
 import sys
+from lxml import etree
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
@@ -193,16 +194,6 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
 
-SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", "frontend", "static", "icsw"))
-SSI_FILES = []
-for _dir, _dirlist, _filelist in os.walk(SSI_ROOT):
-    if _dir == SSI_ROOT:
-        continue
-    for _file in _filelist:
-        if _file.endswith(".html"):
-            SSI_FILES.append(os.path.join(_dir, _file))
-ALLOWED_INCLUDE_ROOTS = [SSI_ROOT]
-
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 # URL prefix for static files.
@@ -301,18 +292,6 @@ CRISPY_FAIL_SILENTLY = not DEBUG
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 # STATIC_PRECOMPILER_CACHE = not DEBUG
-
-try:
-    import crispy_forms
-except ImportError:
-    pass
-else:
-    _required = "1.4.0"
-    if crispy_forms.__version__ != _required:
-        raise ImproperlyConfigured("Crispy forms has version '{}' (required: '{}')".format(
-            crispy_forms.__version__,
-            _required,
-        ))
 
 # pipeline settings
 PIPELINE_YUGLIFY_BINARY = "/opt/cluster/lib/node_modules/yuglify/bin/yuglify"
@@ -454,7 +433,10 @@ PIPELINE_JS = {
 AUTOCOMMIT = True
 
 INSTALLED_APPS = list(INSTALLED_APPS)
+# deprecated ?
 ADDITIONAL_MENU_FILES = []
+ADDITIONAL_ANGULAR_APPS = []
+ADDITIONAL_URLS = []
 
 AUTHENTICATION_BACKENDS = (
     "initat.cluster.backbone.cluster_auth.db_backend",
@@ -463,6 +445,8 @@ AUTH_USER_MODEL = "backbone.user"
 
 # my authentication backend
 
+
+ICSW_ADDON_APPS = []
 # add everything below cluster
 dir_name = os.path.dirname(__file__)
 for sub_dir in os.listdir(dir_name):
@@ -471,12 +455,35 @@ for sub_dir in os.listdir(dir_name):
         if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
             add_app = "initat.cluster.{}".format(sub_dir)
             if add_app not in INSTALLED_APPS:
-                # search for menu file
-                templ_dir = os.path.join(full_path, "templates")
-                if os.path.isdir(templ_dir):
-                    for templ_name in os.listdir(templ_dir):
-                        if templ_name.endswith("_menu.html"):
-                            ADDITIONAL_MENU_FILES.append(templ_name)
+                # serach for icsw meta
+                icsw_meta = os.path.join(full_path, "ICSW.meta.xml")
+                if os.path.exists(icsw_meta):
+                    try:
+                        _tree = etree.fromstring(file(icsw_meta, "r").read())
+                    except:
+                        pass
+                    else:
+                        ICSW_ADDON_APPS.append(sub_dir)
+                        ADDITIONAL_ANGULAR_APPS.extend(
+                            [_el.attrib["name"] for _el in _tree.findall(".//app")]
+                        )
+                        ADDITIONAL_URLS.extend(
+                            [
+                                (
+                                    _el.attrib["name"],
+                                    _el.attrib["url"],
+                                    [
+                                        _part for _part in _el.get("arguments", "").strip().split() if _part
+                                    ]
+                                ) for _el in _tree.findall(".//url")
+                            ]
+                        )
+                ## search for menu file
+                # templ_dir = os.path.join(full_path, "templates")
+                # if os.path.isdir(templ_dir):
+                #    for templ_name in os.listdir(templ_dir):
+                #        if templ_name.endswith("_menu.html"):
+                #            ADDITIONAL_MENU_FILES.append(templ_name)
                 INSTALLED_APPS.append(add_app)
 for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
     add_app = os.environ[add_app_key]
@@ -484,6 +491,20 @@ for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP
         INSTALLED_APPS.append(add_app)
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
+
+SSI_ROOTS = []
+SSI_FILES = []
+for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
+    _SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", _local_ssi_root, "static", "icsw"))
+    if os.path.exists(_SSI_ROOT):
+        for _dir, _dirlist, _filelist in os.walk(_SSI_ROOT):
+            if _dir == _SSI_ROOT:
+                continue
+            for _file in _filelist:
+                if _file.endswith(".html"):
+                    SSI_FILES.append(os.path.join(_dir, _file))
+        SSI_ROOTS.append(_SSI_ROOT)
+ALLOWED_INCLUDE_ROOTS = SSI_ROOTS
 
 HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
 

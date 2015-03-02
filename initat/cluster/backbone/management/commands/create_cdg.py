@@ -19,11 +19,12 @@
 #
 """ create the cluster device supergroup """
 
+from optparse import make_option
+
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_group
-from optparse import make_option
 
 
 class Command(BaseCommand):
