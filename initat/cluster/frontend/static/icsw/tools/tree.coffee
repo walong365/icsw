@@ -91,6 +91,9 @@ class tree_node
         while cur_p
             cur_p._num_descendants += 1 + child._num_descendants
             cur_p._num_nd_descendants += child._num_nd_descendants
+            cur_p._sel_descendants += child._sel_descendants
+            if child.selected
+                cur_p._sel_descendants += 1
             if not child.folder
                cur_p._num_nd_descendants += 1
             cur_p = cur_p.parent
