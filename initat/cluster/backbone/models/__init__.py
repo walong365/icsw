@@ -66,6 +66,7 @@ from initat.cluster.backbone.models.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.models.partition import *  # @UnusedWildImport
 from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.models.graph import *  # @UnusedWildImport
+from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
 
