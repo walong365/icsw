@@ -339,7 +339,7 @@ PIPELINE_CSS = {
         "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
-            "css/ui.dynatree.css",
+            "css/ui.fancytree.css",
             "css/jqModal.css",
             "css/codemirror.css",
             "css/bootstrap.css",
