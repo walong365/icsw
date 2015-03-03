@@ -46,7 +46,7 @@ MIGRATION_DIRS = [
     "initat/cluster/liebherr",
 ]
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
-SYNC_APPS = ["liebherr"]
+SYNC_APPS = ["liebherr", "licadmin"]
 
 NEEDED_DIRS = ["/var/log/cluster"]
 
