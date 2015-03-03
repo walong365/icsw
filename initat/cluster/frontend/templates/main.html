@@ -65,6 +65,7 @@ window.SIDEBAR_MODE = "{{ request.session.sidebar_mode }}"
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}"
 window.CSRF_TOKEN = "{{ csrf_token }}"
 window.DEBUG = {% if debug %}true{% else %}false{% endif %}
+window.ADDITIONAL_MENU_FILES = {{ ADDITIONAL_MENU_FILES | safe }}
 window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %}
 {% include "angular/app.coffee" %}
 {% endinlinecoffeescript %}
