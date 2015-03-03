@@ -1308,7 +1308,7 @@ class monitoring_hint_form(ModelForm):
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
         HTML("<h2>Monitoring hint '{% verbatim %}{{ _edit_obj.m_type }} / {{ _edit_obj.key }}{% endverbatim %}'</h2>"),
-        #HTML("{% verbatim %}{{ _edit_obj }}{% endverbatim %}"),
+        # HTML("{% verbatim %}{{ _edit_obj }}{% endverbatim %}"),
         Fieldset(
             "lower bounds",
             HTML("""

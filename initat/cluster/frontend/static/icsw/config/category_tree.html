@@ -40,11 +40,17 @@
             <div class="row">
                 <div class="col-md-6">
                     <div id="map_canvas">
-                    <ui-gmap-google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
-                        <ui-gmap-marker ng-repeat="loc in locations" idKey="loc.key" coords="loc" options="loc.options" events="map.marker.events">
-                            <!-- <marker-label content="loc.comment" anchor="2 0"></marker-label>-->
-                        </ui-gmap-marker>
-                    </ui-gmap-google-map>
+                        <ui-gmap-google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
+                            <ui-gmap-marker
+                                ng-repeat="loc in locations"
+                                idKey="loc.key"
+                                coords="loc"
+                                options="loc.options"
+                                events="map.marker.events"
+                                icon="loc.icon"
+                            >
+                            </ui-gmap-marker>
+                        </ui-gmap-google-map>
                     </div>
                 </div>
                 <div class="col-md-6">

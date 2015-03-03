@@ -308,7 +308,7 @@
             stroke="black"
             fill="none"
             stroke-width="0.5"
-            ng-show="node.legend_show"
+            ng-if="node.legend_show"
         >
         </polyline>
         <g ng-repeat="node in nodes track by $index">
@@ -317,7 +317,7 @@
                 ng-attr-x="{{ node.legend_x }}"
                 ng-attr-y="{{ node.legend_y }}"
                 text-anchor="{{ node.legend_anchor }}"
-                ng-show="node.legend_show"
+                ng-if="node.legend_show"
                 alignment-baseline="middle"
                 stroke="white"
                 stroke-width="4"
@@ -326,11 +326,11 @@
                 ng-attr-x="{{ node.legend_x }}"
                 ng-attr-y="{{ node.legend_y }}"
                 text-anchor="{{ node.legend_anchor }}"
-                ng-show="node.legend_show"
+                ng-if="node.legend_show"
                 alignment-baseline="middle"
             >{{ node.name }}</text>
         </g>
-        <g ng-show="show_name">
+        <g ng-if="show_name">
             <text
                 ng-if="font_stroke"
                 text-anchor="middle"

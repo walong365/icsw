@@ -5,11 +5,11 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
 ).controller("icswConfigCategoryTreeCtrl", [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
     "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
     "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, sharedDataSource, $q, $modal, access_level_service,
-     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, sharedDataSource, $q, $modal, access_level_service,
+    FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
@@ -121,6 +121,26 @@ angular.module(
                 $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_cat()
         )
+        $scope.redrawn = {"test" : 0}
+        _el = $compile("<livestatus-brief devicepk='3' redraw-sunburst='redrawn.test'></livestatus-brief>")($scope)
+        $scope.$watch('redrawn.test', (new_val) ->
+            if new_val
+                $timeout(
+                    () ->
+                        icswCallAjaxService
+                            url : ICSW_URLS.MON_SVG_TO_PNG
+                            data :
+                                svg : _el[0].innerHTML
+                            success : (xml) ->
+                                if icswParseXMLResponseService(xml)
+                                    _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
+                                    $scope.$apply(
+                                        for loc in $scope.locations
+                                            # do not set _icon
+                                            loc._icon = _url
+                                    )
+                )
+        )
         $scope.edit_obj = (cat, event) ->
             $scope.create_mode = false
             $scope.cat.clear_active()
@@ -182,6 +202,7 @@ angular.module(
                             "draggable": not _entry.locked
                             "title":_entry.full_name
                         }
+                        "icon": null
                     }
                 )
                 marker_lut[_entry.idx] = _entry

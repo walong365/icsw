@@ -497,6 +497,21 @@ ul.fancytree-container a
 {
     color: black;
 }
+
+ul.fancytree-container a:hover
+{
+	text-decoration: none;
+	background-color: #aeecfd; /* light blue */
+	border-color: #a0c6fb; /* darker light blue */
+}
+ul.fancytree-container a:focus,
+span.fancytree-focused a:link  /* @IE */
+{
+	text-decoration: none;
+	background-color: #3169C6 !important;
+	color: white !important; /* @ IE6 */
+}
+
 span.fancytree-title {
   border: 1px solid transparent;
 }

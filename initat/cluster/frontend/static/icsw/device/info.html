@@ -73,10 +73,8 @@
             <tab-heading>
                 Livestatus{{ addon_text_nmd }}
             </tab-heading>
-            <div ng-controller="livestatus_ctrl">
-                <livestatus icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['livestatus']">
-                </livestatus>
-            </div>
+            <livestatus icsw-sel-man="{{ singledevicemode }}" devicepk="pk_list['livestatus']">
+            </livestatus>
         </tab>
         <tab ng-if="acl_read(null, 'backbone.device.change_monitoring') && dev_pk_nmd_list.length" select="activate('monconfig')" active="monconfig_active">
             <tab-heading>
