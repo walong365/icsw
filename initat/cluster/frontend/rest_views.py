@@ -61,15 +61,8 @@ SERIALIZER_BLACKLIST = ["device_selection_serializer"]
 
 # build REST_LIST from models content
 REST_LIST = []
-_ser_keys = dir(model_serializers)
-for key in _ser_keys:
 
-    val = getattr(model_serializers, key)
-    if inspect.isclass(val) and issubclass(val, rest_framework.serializers.Serializer):
-        if key.endswith("_serializer") and key not in SERIALIZER_BLACKLIST:
-            REST_LIST.append((model_serializers, "_".join(key.split("_")[:-1])))
-        elif key.endswith("Serializer"):
-            REST_LIST.append((model_serializers, key[:10]))
+model_serializer_modules = [model_serializers]
 
 init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
 
@@ -79,11 +72,18 @@ for addon_app in settings.ICSW_ADDON_APPS:
     except ImportError as e:
         pass
     else:
-        for key in dir(module):
-            val = getattr(module, key)
-            if inspect.isclass(val) and issubclass(val, rest_framework.serializers.Serializer) and \
-                    key.endswith("_serializer") and key not in SERIALIZER_BLACKLIST:
+        model_serializer_modules.append(module)
+
+for module in model_serializer_modules:
+    _ser_keys = dir(module)
+    for key in _ser_keys:
+
+        val = getattr(module, key)
+        if inspect.isclass(val) and issubclass(val, rest_framework.serializers.Serializer):
+            if key.endswith("_serializer") and key not in SERIALIZER_BLACKLIST:
                 REST_LIST.append((module, "_".join(key.split("_")[:-1])))
+            elif key.endswith("Serializer"):
+                REST_LIST.append((module, key[:-10]))
 
 
 # @api_view(('GET',))
@@ -771,16 +771,25 @@ class device_selection_list(APIView):
         return Response(ser.data)
 
 for src_mod, obj_name in REST_LIST:
-    if obj_name[0].lower() != obj_name[0]:
+    is_camelcase = obj_name[0].lower() != obj_name[0]
+    if is_camelcase:
         ser_name = "{}Serializer".format(obj_name)
+        modes = [
+            ("List", list_view),
+            ("Detail", detail_view),
+        ]
     else:
         ser_name = "{}_serializer".format(obj_name)
+        modes = [
+            ("_list", list_view),
+            ("_detail", detail_view),
+        ]
     ser_class = getattr(src_mod, ser_name)
-    for mode in ["list", "detail"]:
-        class_name = "{}_{}".format(obj_name, mode)
+    for mode_name, mode_impl in modes:
+        class_name = "{}{}".format(obj_name, mode_name)
         globals()[class_name] = type(
             class_name,
-            (detail_view,) if mode == "detail" else (list_view,),
+            (mode_impl, ),
             {
                 "authentication_classes": (SessionAuthentication,),
                 "permission_classes": (IsAuthenticated,),

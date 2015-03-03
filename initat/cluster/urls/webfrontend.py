@@ -203,9 +203,17 @@ rrd_patterns = patterns(
 
 rpl = []
 for src_mod, obj_name in rest_views.REST_LIST:
+    is_camelcase = obj_name[0].lower() != obj_name[0]
+
+    list_postfix = "List" if is_camelcase else "_list"
+    detail_postfix = "Detail" if is_camelcase else "_detail"
+
+    list_obj_name = "{}{}".format(obj_name, list_postfix)
+    detail_obj_name = "{}{}".format(obj_name, detail_postfix)
+
     rpl.extend([
-        url("^%s$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
-        url("^%s/(?P<pk>[0-9]+)$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
+        url("^%s$" % (obj_name), getattr(rest_views, list_obj_name).as_view(), name=list_obj_name),
+        url("^%s/(?P<pk>[0-9]+)$" % (obj_name), getattr(rest_views, detail_obj_name).as_view(), name=detail_obj_name),
     ])
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
