@@ -56,22 +56,25 @@
                 <div class="col-md-6">
                     <div class="row">
                         <div class="col-md-12">
-                            <ul class="list-group">
-                                <li class="list-group-item" ng-repeat="loc in get_valid_locations()">
-                                    <input type="button" class="btn btn-sm btn-success" value="add location gfx" ng-click="add_location_gfx($event, loc)"/>
-                                    <input type="button" class="btn btn-sm btn-primary" value="locate" ng-click="locate(loc)" title="({{ loc.latitude }}, {{ loc.longitude }})"/>&nbsp;
-                                    <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
-                                    <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
-                                    <span class="glyphicon glyphicon-lock" title="location is locked" ng-show="loc.locked"></span>&nbsp;
-                                    {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
-                                    <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
-                                    <span class="pull-right">
-                                    </span>
+                            <accordion close-others="no">
+                                <accordion-group ng-repeat="loc in get_valid_locations()" is-open="loc.open">
+                                    <accordion-heading>
+                                        <icsw-tools-button type="create" value="add location gfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
+                                        <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>&nbsp;
+                                        <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+                                        <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                                        <span class="glyphicon glyphicon-lock" title="location is locked" ng-show="loc.locked"></span>&nbsp;
+                                        {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
+                                        <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
+                                        <span class="pull-right">
+                                            <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': loc.open, 'glyphicon-chevron-right': !loc.open}"></i>
+                                        </span>
+                                    </accordion-heading>
                                     <ul ng-show="loc.location_gfxs.length" class="list-group">
                                         <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
                                             <div class="btn-group">
-                                                <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"/>
-                                                <input type="button" ng-class="preview_gfx.idx != loc_gfx.idx && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-show="loc_gfx.image_stored" value="preview and enhance" ng-click="show_preview(loc_gfx)"/>
+                                                <icsw-tools-button type="modify" size="xs" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></icsw-tools-button>
+                                                <icsw-tools-button type="display" size="xs" ng-class="preview_gfx.idx != loc_gfx.idx && 'btn-primary' || ''" ng-show="loc_gfx.image_stored" value="preview and enhance" ng-click="show_preview(loc_gfx)"></icsw-tools-button>
                                             </div>
                                             {{ loc_gfx.name }}
                                             <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
@@ -86,8 +89,8 @@
                                             </span>
                                         </li>
                                     </ul>
-                                </li>
-                            </ul>
+                                </accordion-group>
+                            </accordion>
                         </div>
                     </div>
                 </div>

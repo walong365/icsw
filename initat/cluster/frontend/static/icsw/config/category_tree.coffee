@@ -115,6 +115,8 @@ angular.module(
             ]
             $q.all(wait_list).then((data) ->
                 $scope.entries = data[0]
+                for entry in $scope.entries
+                    entry.open = false
                 $scope.location_gfxs = data[1]
                 $scope.dml_list = data[2]
                 $scope.edit_mixin.create_list = $scope.entries
@@ -208,9 +210,11 @@ angular.module(
                 marker_lut[_entry.idx] = _entry
             $scope.locations = new_list
             $scope.marker_lut = marker_lut
-        $scope.locate = (loc) ->
+        $scope.locate = (loc, $event) ->
             $scope.map.control.refresh({"latitude":loc.latitude, "longitude":loc.longitude})
             $scope.map.control.getGMap().setZoom(11)
+            $event.stopPropagation()
+            $event.preventDefault()
         $scope.new_object = () ->
             if $scope.new_top_level
                 _parent = (value for value in $scope.entries when value.depth == 1 and value.name == $scope.new_top_level)[0]
@@ -290,6 +294,8 @@ angular.module(
                 data.num_dml = 0
                 loc.location_gfxs.push(data)
             )
+            $event.stopPropagation()
+            $event.preventDefault()
         $scope.modify_location_gfx = ($event, loc) ->
             $scope.preview_gfx = undefined
             $scope.cur_location_gfx = loc
