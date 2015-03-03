@@ -179,7 +179,7 @@ class mon_dist_master_serializer(serializers.ModelSerializer):
         model = mon_dist_master
 
 
-class DeviceSNMPSerializer(serializers.ModelSerializer):
+class DeviceSNMPInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceSNMPInfo
 
@@ -205,7 +205,7 @@ class device_serializer(serializers.ModelSerializer):
     client_version = serializers.Field(source="client_version")
     monitor_type = serializers.Field(source="get_monitor_type")
     snmp_schemes = snmp_scheme_serializer(many=True, read_only=True)
-    DeviceSNMPInfo = DeviceSNMPSerializer(read_only=True)
+    DeviceSNMPInfo = DeviceSNMPInfoSerializer(read_only=True)
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
