@@ -226,6 +226,8 @@ ics_app = angular.module(
     "REST_QUOTA_CAPABLE_BLOCKDEVICE_LIST": "{% url 'rest:quota_capable_blockdevice_list' %}"
     "REST_IMAGE_LIST": "{% url 'rest:image_list' %}"
     "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
+    "REST_KPI_LIST": "{% url 'rest:kpi_list' %}"
+    "REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE": "{% url 'rest:kpi_selected_device_monitoring_category_tuple_list' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
     "REST_LOG_SOURCE_LIST": "{% url 'rest:log_source_list' %}"

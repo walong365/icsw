@@ -24,7 +24,9 @@ angular.module(
                         el.removeClass('success')
             )
             el.bind('click', () ->
-                scope.onClick()
+                scope.$apply(
+                    scope.onClick()
+                )
             )
     }
 ])
