@@ -346,7 +346,7 @@ PIPELINE_CSS = {
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
             "css/angular-block-ui.css",
-            "js/ui-select/select.css",
+            "css/select.css",
             "css/ladda.min.css",
             "css/tooltip.css",
             "css/smart-table.css",
@@ -402,7 +402,7 @@ PIPELINE_JS = {
             "js/angular-file-upload.js",
             "js/restangular.min.js",
             "js/angular-block-ui.js",
-            "js/ui-select/select.js",
+            "js/select.js",
             "js/ui-bootstrap-tpls.min.js",
             "js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
@@ -478,12 +478,6 @@ for sub_dir in os.listdir(dir_name):
                                 ) for _el in _tree.findall(".//url")
                             ]
                         )
-                ## search for menu file
-                # templ_dir = os.path.join(full_path, "templates")
-                # if os.path.isdir(templ_dir):
-                #    for templ_name in os.listdir(templ_dir):
-                #        if templ_name.endswith("_menu.html"):
-                #            ADDITIONAL_MENU_FILES.append(templ_name)
                 INSTALLED_APPS.append(add_app)
 for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
     add_app = os.environ[add_app_key]
@@ -521,6 +515,7 @@ HANDBOOK_CHUNKS_PRESENT = True if len(HANDBOOK_CHUNKS) else False
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
 _config_ok = False
+
 if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
@@ -550,7 +545,11 @@ INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
-rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []) + [
+rest_renderers = (
+    [
+        "rest_framework.renderers.BrowsableAPIRenderer"
+    ] if DEBUG else []
+) + [
     "rest_framework.renderers.JSONRenderer",
     # "rest_framework_csv.renderers.CSVRenderer",
     "rest_framework.renderers.XMLRenderer",
