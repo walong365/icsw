@@ -39,6 +39,7 @@ from initat.cluster.backbone.serializers import device_serializer, \
 from initat.cluster.frontend import forms
 from initat.cluster.backbone.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
+import rest_framework
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -51,26 +52,39 @@ import pprint  # @UnusedImport
 import process_tools
 import time
 import types
+import importlib
+import inspect
 
 logger = logging.getLogger("cluster.rest")
+
+SERIALIZER_BLACKLIST = ["device_selection_serializer"]
 
 # build REST_LIST from models content
 REST_LIST = []
 _ser_keys = dir(model_serializers)
 for key in _ser_keys:
-    if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
-        REST_LIST.append((model_serializers, "_".join(key.split("_")[:-1])))
-    elif key.endswith("Serializer"):
-        REST_LIST.append((model_serializers, key[:10]))
+
+    val = getattr(model_serializers, key)
+    if inspect.isclass(val) and issubclass(val, rest_framework.serializers.Serializer):
+        if key.endswith("_serializer") and key not in SERIALIZER_BLACKLIST:
+            REST_LIST.append((model_serializers, "_".join(key.split("_")[:-1])))
+        elif key.endswith("Serializer"):
+            REST_LIST.append((model_serializers, key[:10]))
 
 init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
 
-if "initat.cluster.liebherr" in init_apps:
-    # from initat.cluster.liebherr import models as liebherr_models
-    from initat.cluster.liebherr import serializers as liebherr_serializers
-    for key in dir(liebherr_serializers):
-        if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
-            REST_LIST.append((liebherr_serializers, "_".join(key.split("_")[:-1])))
+for addon_app in settings.ICSW_ADDON_APPS:
+    try:
+        module = importlib.import_module("initat.cluster.{}.serializers".format(addon_app))
+    except ImportError as e:
+        pass
+    else:
+        for key in dir(module):
+            val = getattr(module, key)
+            if inspect.isclass(val) and issubclass(val, rest_framework.serializers.Serializer) and \
+                    key.endswith("_serializer") and key not in SERIALIZER_BLACKLIST:
+                REST_LIST.append((module, "_".join(key.split("_")[:-1])))
+
 
 # @api_view(('GET',))
 # def api_root(request, format=None):
