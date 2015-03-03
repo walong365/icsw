@@ -3,6 +3,9 @@
 export PREFIX_INIT=/opt/python-init/lib/python/site-packages
 export CLUSTER_PATH=/opt/cluster
 
+# remove cached urls.py files
+rm -f ${PREFIX_INIT}/initat/cluster/urls.py*
+
 if [ -x ${CLUSTER_PATH}/sbin/check_local_settings.py ] ; then
     ${CLUSTER_PATH}/sbin/check_local_settings.py
 fi

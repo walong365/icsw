@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -210,12 +210,10 @@ class device_serializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
         super(device_serializer, self).__init__(*args, **kwargs)
-        _optional_fields = set(
-            [
-                "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
-                "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set", "device_mon_location_set",
-            ]
-        )
+        _optional_fields = {
+            "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
+            "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set", "device_mon_location_set",
+        }
         for _to_remove in _optional_fields - set(fields):
             # in case we have been subclassed
             if _to_remove in self.fields:
