@@ -36,7 +36,7 @@ angular.module(
             ret_obj.button_value = "download"
             ret_obj.icon_class = "fa fa-download"
         else
-            console.error "Invalid button type: ", attrs.type
+            console.error "Invalid button type: ", type
         return ret_obj
     return {
         get_config_for_button_type:
