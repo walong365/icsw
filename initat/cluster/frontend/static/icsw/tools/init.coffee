@@ -594,12 +594,8 @@ angular.module(
         return d.promise
 ]).service("icswToolsUUID", [() ->
     return () ->
-        d = new Date().getTime()
-        uuid = 'xxxxxxxx-xxxx-xxxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) ->
-            r = (d + Math.random()*16)%16 | 0
-            d = Math.floor(d/16)
-            return (c=='x' ? r : (r&0x3|0x8)).toString(16)
-        )
+        s4 = () -> Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1)
+        uuid = "#{s4()}#{s4()}-#{s4()}-#{s4()}-#{s4()}-#{s4()}#{s4()}#{s4()}"
         return uuid
 ])
 
