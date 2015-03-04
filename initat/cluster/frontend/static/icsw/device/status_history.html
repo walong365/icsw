@@ -32,33 +32,33 @@
                     </div>
                     <div class="input-group" ng-show="duration_type == 'month'">
                         <input type="text" class="form-control" ng-model="startdate"/>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="startdate"
-                                                data-datetimepicker-config="{ startView:'month', minView:'month' }">
-                                </datetimepicker>
-                            </ul>
-                        </div>
-                    </span>
+                        <span class="dropdown-toggle input-group-addon">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                    <i class="glyphicon glyphicon-calendar"></i>
+                                </button>
+                                <ul class="dropdown-menu" role="menu">
+                                    <datetimepicker ng-model="startdate"
+                                                    data-datetimepicker-config="{ startView:'month', minView:'month' }">
+                                    </datetimepicker>
+                                </ul>
+                            </div>
+                        </span>
                     </div>
                     <div class="input-group" ng-show="duration_type == 'year'">
                         <input type="text" class="form-control" ng-model="startdate"/>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
-                                <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="startdate"
-                                                data-datetimepicker-config="{ startView:'year', minView:'year' }">
-                                </datetimepicker>
-                            </ul>
-                        </div>
-                    </span>
+                        <span class="dropdown-toggle input-group-addon">
+                            <div class="dropdown">
+                                <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                                    <i class="glyphicon glyphicon-calendar"></i>
+                                </button>
+                                <ul class="dropdown-menu" role="menu">
+                                    <datetimepicker ng-model="startdate"
+                                                    data-datetimepicker-config="{ startView:'year', minView:'year' }">
+                                    </datetimepicker>
+                                </ul>
+                            </div>
+                        </span>
                     </div>
                     &nbsp;
                     <div class="btn-group">
@@ -100,8 +100,10 @@
             <div style="width: 650px">
                 <div class="col-md-12">
                     <div style="width: auto">
-                        <icsw-tools-device-hist-status-overview deviceid="device_id"
-                                                                detailed-view="true"></icsw-tools-device-hist-status-overview>
+                        <icsw-tools-device-hist-status-overview
+                            deviceid="device_id"
+                            detailed-view="true"
+                        ></icsw-tools-device-hist-status-overview>
                     </div>
                 </div>
 
@@ -143,8 +145,10 @@
                             </tr>
                             <tr ng-repeat-end ng-show="entry.log_viewer_enabled">
                                 <td colspan="99">
-                                    <icsw-tools-hist-log-viewer data="entry.line_graph_data"
-                                                                enabled="entry.log_viewer_enabled"></icsw-tools-hist-log-viewer>
+                                    <icsw-tools-hist-log-viewer
+                                        data="entry.line_graph_data"
+                                        enabled="entry.log_viewer_enabled"
+                                    ></icsw-tools-hist-log-viewer>
                                     <!-- TODO: focus entry which was clicked upon? -->
                                 </td>
                             </tr>

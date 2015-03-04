@@ -1,6 +1,4 @@
-
-
-button_module = angular.module(
+angular.module(
     "icsw.tools.button",
     [
     ]
@@ -30,6 +28,9 @@ button_module = angular.module(
         else if type == "show"
             ret_obj.css_class = "btn-success"
             ret_obj.icon_class = ""
+        else if type == "display"
+            ret_obj.css_class = "btn-info"
+            ret_obj.icon_class = "fa fa-search"
         else if type == "download"
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = "download"
@@ -38,9 +39,12 @@ button_module = angular.module(
             console.error "Invalid button type: ", attrs.type
         return ret_obj
     return {
-        get_config_for_button_type: get_config_for_button_type
-        get_css_class: (type) -> return get_config_for_button_type(type).css_class
-        get_icon_class: (type) -> return get_config_for_button_type(type).icon_class
+        get_config_for_button_type:
+            get_config_for_button_type
+        get_css_class: (type) ->
+            return get_config_for_button_type(type).css_class
+        get_icon_class: (type) ->
+            return get_config_for_button_type(type).icon_class
         get_css_and_icon_class: (type) ->
             conf = get_config_for_button_type(type)
             return conf.css_class + " " + conf.icon_class
@@ -69,7 +73,9 @@ visible-md visible-lg
             # - value: Custom text to display in button
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
-            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(attrs.type))
+
+            b_type = attrs.type
+            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
 
             if attrs.value?
                 scope.button_value = attrs.value

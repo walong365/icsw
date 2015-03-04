@@ -1,7 +1,8 @@
-
-
 angular.module(
-    "icsw.tools.status_history_utils", ["icsw.tools.piechart", "restangular"]
+    "icsw.tools.status_history_utils",
+    [
+        "icsw.tools.piechart", "restangular"
+    ]
 ).directive('icswToolsDeviceHistStatusOverview', ["$parse", "status_utils_functions", ($parse, status_utils_functions) ->
     # shows piechart and possibly table of historic device status
     # used in status history page and monitoring overview

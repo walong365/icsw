@@ -111,12 +111,12 @@ class hs_node
             parent = parent.parent
         _clicked.iter_childs((obj) -> obj.show = true)
     
-device_livestatus_module = angular.module(
+angular.module(
     "icsw.device.livestatus",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("livestatus_ctrl",
+).controller("icswDeviceLiveStatusCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular","paginatorSettings", "restDataSource", "sharedDataSource",
      "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
@@ -132,7 +132,7 @@ device_livestatus_module = angular.module(
         $scope.focusService = null
         # flag to trigger redraw of sunburst
         $scope.redrawSunburst = 0
-        # flat to trigger recalc of sunburst visibility
+        # flag to trigger recalc of sunburst visibility
         $scope.recalcSunburst = 0
         $scope.cat_tree_show = false
         $scope.burst_show = true
@@ -146,11 +146,6 @@ device_livestatus_module = angular.module(
         )
         $scope.$watch("recalcSunburst", (red) ->
             $scope.md_filter_changed()
-        )
-        # workaround: pull outer devicepk into inner scope
-        $scope.$watch(
-                () -> $scope.$parent.devicepk_livestatus_ctrl
-                () -> $scope.devicepk = $scope.$parent.devicepk_livestatus_ctrl
         )
         # paginator settings
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
@@ -841,6 +836,7 @@ device_livestatus_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.overview")
+        controller: "icswDeviceLiveStatusCtrl"
         link : (scope, el, attrs) ->
             scope.get_state_class = (entry) ->
                 state_class = {
@@ -910,10 +906,14 @@ device_livestatus_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.brief")
+        controller: "icswDeviceLiveStatusCtrl"
+        scope:
+             devicepk: "=devicepk"
+             redrawSunburst: "=redrawSunburst"
         link : (scope, element, attrs) ->
-            scope.$watch(("devicepk"), (data) ->
+            scope.$watch("devicepk", (data) ->
                 if data
-                    scope.new_devsel([scope.devicepk], [])
+                    scope.new_devsel([data], [])
             )
     }
 ]).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->

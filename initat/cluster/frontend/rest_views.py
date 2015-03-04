@@ -39,6 +39,7 @@ from initat.cluster.backbone.serializers import device_serializer, \
 from initat.cluster.frontend import forms
 from initat.cluster.backbone.render import render_string
 from rest_framework import mixins, generics, status, viewsets, serializers
+import rest_framework
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -51,26 +52,39 @@ import pprint  # @UnusedImport
 import process_tools
 import time
 import types
+import importlib
+import inspect
 
 logger = logging.getLogger("cluster.rest")
 
+SERIALIZER_BLACKLIST = ["device_selection_serializer"]
+
 # build REST_LIST from models content
 REST_LIST = []
-_ser_keys = dir(model_serializers)
-for key in _ser_keys:
-    if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
-        REST_LIST.append((model_serializers, "_".join(key.split("_")[:-1])))
-    elif key.endswith("Serializer"):
-        REST_LIST.append((model_serializers, key[:10]))
+
+model_serializer_modules = [model_serializers]
 
 init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
 
-if "initat.cluster.liebherr" in init_apps:
-    # from initat.cluster.liebherr import models as liebherr_models
-    from initat.cluster.liebherr import serializers as liebherr_serializers
-    for key in dir(liebherr_serializers):
-        if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
-            REST_LIST.append((liebherr_serializers, "_".join(key.split("_")[:-1])))
+for addon_app in settings.ICSW_ADDON_APPS:
+    try:
+        module = importlib.import_module("initat.cluster.{}.serializers".format(addon_app))
+    except ImportError as e:
+        pass
+    else:
+        model_serializer_modules.append(module)
+
+for module in model_serializer_modules:
+    _ser_keys = dir(module)
+    for key in _ser_keys:
+
+        val = getattr(module, key)
+        if inspect.isclass(val) and issubclass(val, rest_framework.serializers.Serializer):
+            if key.endswith("_serializer") and key not in SERIALIZER_BLACKLIST:
+                REST_LIST.append((module, "_".join(key.split("_")[:-1])))
+            elif key.endswith("Serializer"):
+                REST_LIST.append((module, key[:-10]))
+
 
 # @api_view(('GET',))
 # def api_root(request, format=None):
@@ -757,16 +771,25 @@ class device_selection_list(APIView):
         return Response(ser.data)
 
 for src_mod, obj_name in REST_LIST:
-    if obj_name[0].lower() != obj_name[0]:
+    is_camelcase = obj_name[0].lower() != obj_name[0]
+    if is_camelcase:
         ser_name = "{}Serializer".format(obj_name)
+        modes = [
+            ("List", list_view),
+            ("Detail", detail_view),
+        ]
     else:
         ser_name = "{}_serializer".format(obj_name)
+        modes = [
+            ("_list", list_view),
+            ("_detail", detail_view),
+        ]
     ser_class = getattr(src_mod, ser_name)
-    for mode in ["list", "detail"]:
-        class_name = "{}_{}".format(obj_name, mode)
+    for mode_name, mode_impl in modes:
+        class_name = "{}{}".format(obj_name, mode_name)
         globals()[class_name] = type(
             class_name,
-            (detail_view,) if mode == "detail" else (list_view,),
+            (mode_impl, ),
             {
                 "authentication_classes": (SessionAuthentication,),
                 "permission_classes": (IsAuthenticated,),

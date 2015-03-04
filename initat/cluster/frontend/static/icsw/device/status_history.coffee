@@ -1,8 +1,9 @@
-
-status_history_module = angular.module("icsw.device.status_history",
-        ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "icsw.tools.status_history_utils"])
-
-status_history_module.controller("icswDeviceStatusHistoryCtrl", ["$scope",
+angular.module(
+    "icsw.device.status_history",
+    [
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "icsw.tools.status_history_utils"
+    ]
+).controller("icswDeviceStatusHistoryCtrl", ["$scope",
     ($scope) ->
         # controller takes care of setting the time frame.
         # watch this to get updates

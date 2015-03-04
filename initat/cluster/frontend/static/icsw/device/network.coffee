@@ -764,10 +764,11 @@ angular.module(
         restrict : "EA"
         templateNamespace: "svg"
         replace: true
-        scope: 
+        scope:
             node: "=node"
             redraw: "=redraw"
         template: $templateCache.get("icsw.device.network.host.node")
+        # template:  '<livestatus-brief devicepk="node.id" redraw-sunburst="ignore_shit"></livestatus-brief>'
         link : (scope, element, attrs) ->
             scope.stroke_width = 1
             scope.focus = true
