@@ -123,26 +123,27 @@ angular.module(
                 $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_cat()
         )
-        $scope.redrawn = {"test" : 0}
-        _el = $compile("<livestatus-brief devicepk='3' redraw-sunburst='redrawn.test'></livestatus-brief>")($scope)
-        $scope.$watch('redrawn.test', (new_val) ->
-            if new_val
-                $timeout(
-                    () ->
-                        icswCallAjaxService
-                            url : ICSW_URLS.MON_SVG_TO_PNG
-                            data :
-                                svg : _el[0].innerHTML
-                            success : (xml) ->
-                                if icswParseXMLResponseService(xml)
-                                    _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
-                                    $scope.$apply(
-                                        for loc in $scope.locations
-                                            # do not set _icon
-                                            loc._icon = _url
-                                    )
-                )
-        )
+        if false
+            $scope.redrawn = {"test" : 0}
+            _el = $compile("<livestatus-brief devicepk='3' redraw-sunburst='redrawn.test'></livestatus-brief>")($scope)
+            $scope.$watch('redrawn.test', (new_val) ->
+                if new_val
+                    $timeout(
+                        () ->
+                            icswCallAjaxService
+                                url : ICSW_URLS.MON_SVG_TO_PNG
+                                data :
+                                    svg : _el[0].innerHTML
+                                success : (xml) ->
+                                    if icswParseXMLResponseService(xml)
+                                        _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
+                                        $scope.$apply(
+                                            for loc in $scope.locations
+                                                # do not set _icon
+                                                loc._icon = _url
+                                        )
+                    )
+            )
         $scope.edit_obj = (cat, event) ->
             $scope.create_mode = false
             $scope.cat.clear_active()
@@ -202,7 +203,7 @@ angular.module(
                         "comment": if _entry.comment then "#{_entry.name} (#{_entry.comment})" else _entry.name
                         "options": {
                             "draggable": not _entry.locked
-                            "title":_entry.full_name
+                            "title": _entry.full_name
                         }
                         "icon": null
                     }
@@ -213,6 +214,13 @@ angular.module(
         $scope.locate = (loc, $event) ->
             $scope.map.control.refresh({"latitude":loc.latitude, "longitude":loc.longitude})
             $scope.map.control.getGMap().setZoom(11)
+            $event.stopPropagation()
+            $event.preventDefault()
+        $scope.toggle_lock = ($event, loc) ->
+            loc.locked = !loc.locked
+            loc.put()
+            _entry = (entry for entry in $scope.locations when entry.key == loc.idx)[0]
+            _entry.options.draggable = not loc.locked
             $event.stopPropagation()
             $event.preventDefault()
         $scope.new_object = () ->

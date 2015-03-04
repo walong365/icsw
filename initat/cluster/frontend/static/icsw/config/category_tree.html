@@ -60,10 +60,17 @@
                                 <accordion-group ng-repeat="loc in get_valid_locations()" is-open="loc.open">
                                     <accordion-heading>
                                         <icsw-tools-button type="create" value="add location gfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
-                                        <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>&nbsp;
+                                        <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+                                        <button
+                                            class="btn btn-sm"
+                                            ng-class="loc.locked && 'fa fa-lock btn-success' || 'fa fa-unlock btn-warning'"
+                                            ng-ng-value="loc.locked && 'unlock' || 'lock'"
+                                            title="{{ loc.locked && 'location is locked' || 'location is unlocked' }}"
+                                            ng-click="toggle_lock($event, loc)"
+                                        />
+                                        &nbsp;
                                         <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
                                         <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
-                                        <span class="glyphicon glyphicon-lock" title="location is locked" ng-show="loc.locked"></span>&nbsp;
                                         {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
                                         <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>
                                         <span class="pull-right">
@@ -78,9 +85,10 @@
                                             </div>
                                             {{ loc_gfx.name }}
                                             <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
-                                            <span ng-show="loc_gfx.image_stored">, {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
-                                            <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
-                                            <ng-pluralize count="loc_gfx.num_dml" when="{'0': ', no devices', '1': 'one device', 'other':'{} devices'}"/>
+                                            <span ng-show="loc_gfx.image_stored">
+                                                , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+                                                <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                                                <ng-pluralize count="loc_gfx.num_dml" when="{'0': ', no devices', '1': 'one device', 'other':'{} devices'}"/>
                                             </span>
                                             <span class="pull-right">
                                                 <div class="btn-group" ng-show="loc_gfx.num_dml == 0">
