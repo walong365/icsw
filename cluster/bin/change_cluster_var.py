@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
