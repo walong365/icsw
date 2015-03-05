@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -29,7 +29,7 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.cluster.backbone.models import log_source
+from initat.cluster.backbone.models import LogSource
 from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
@@ -108,7 +108,7 @@ def main():
 
     global_config.add_config_entries(
         [
-            ("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.device).pk))
+            ("LOG_SOURCE_IDX", configfile.int_c_var(LogSource.new("mon-server", device=sql_info.device).pk))
         ]
     )
 
