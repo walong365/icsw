@@ -1317,7 +1317,7 @@ def log_level_lookup(key):
     if isinstance(key, basestring):
         return LogLevel.objects.get(Q(identifier=key))
     else:
-        return LogLevel.objects.get(Q(log_level=key))
+        return LogLevel.objects.get(Q(level=key))
 
 
 class LogLevel(models.Model):
