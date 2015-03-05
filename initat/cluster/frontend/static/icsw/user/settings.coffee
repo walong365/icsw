@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswUserSettingsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "$window", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, $window, ICSW_URLS) ->
+).controller("icswUserSettingsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "$window", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, $window, ICSW_URLS) ->
         $scope.licenses = []
         wait_list = restDataSource.add_sources([
             [ICSW_URLS.REST_CLUSTER_LICENSE_LIST, {}]

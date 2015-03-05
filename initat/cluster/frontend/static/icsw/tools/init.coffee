@@ -130,66 +130,6 @@ class paginator_class
         return el_list
 
 
-class shared_data_source
-    constructor: () ->
-        @data = {}
-
-class rest_data_source
-    constructor: (@$q, @Restangular) ->
-        @reset()
-    reset: () =>
-        @_data = {}
-    _build_key: (url, options) =>
-        url_key = url
-        for key, value of options
-            url_key = "#{url_key},#{key}=#{value}"
-        return url_key
-    _do_query: (q_type, options) =>
-        d = @$q.defer()
-        result = q_type.getList(options).then(
-           (response) ->
-               d.resolve(response)
-        )
-        return d.promise
-    load: (rest_tuple) =>
-        if typeof(rest_tuple) == "string"
-            rest_tuple = [rest_tuple, {}]
-        url = rest_tuple[0]
-        options = rest_tuple[1]
-        if @_build_key(url, options) of @_data
-            # queries with options are not shared
-            return @get([url, options])
-        else
-            return @reload([url, options])
-    reload: (rest_tuple) =>
-        if typeof(rest_tuple) == "string"
-            rest_tuple = [rest_tuple, {}]
-        url = rest_tuple[0]
-        options = rest_tuple[1]
-        if not @_build_key(url, options) of @_data
-            # not there, call load
-            return @load([url, options])
-        else
-            @_data[@_build_key(url, options)] = @_do_query(@Restangular.all(url.slice(1)), options)
-            return @get(rest_tuple)
-    add_sources: (in_list) =>
-        # in list is a list of (url, option) lists
-        q_list = []
-        r_list = []
-        for rest_tuple in in_list
-            rest_key = @_build_key(rest_tuple[0], rest_tuple[1])
-            if rest_key not of @_data
-                sliced = rest_tuple[0].slice(1)
-                rest_tuple[1] ?= {}
-                @_data[rest_key] = @_do_query(@Restangular.all(sliced), rest_tuple[1])
-                q_list.push(@_data[rest_key])
-            r_list.push(@_data[rest_key])
-        if q_list
-            @$q.all(q_list)
-        return r_list
-    get: (rest_tuple) =>
-        return @_data[@_build_key(rest_tuple[0], rest_tuple[1])]
-
 angular.module(
     "icsw.tools",
     [
@@ -518,9 +458,71 @@ angular.module(
 # cur_mod.service("paginatorSettings", (paginator_class))
     return new paginator_root($filter)
 ]).service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
-    return new rest_data_source($q, Restangular)
-]).service("sharedDataSource", [() ->
-    return new shared_data_source()
+    _data = {}
+    _build_key = (url, options) =>
+        url_key = url
+        for key, value of options
+            url_key = "#{url_key},#{key}=#{value}"
+        return url_key
+    _do_query = (q_type, options) =>
+        d = $q.defer()
+        result = q_type.getList(options).then(
+           (response) ->
+               d.resolve(response)
+        )
+        return d.promise
+    _reset = () ->
+        _data = {}
+    _load = (rest_tuple) ->
+        if typeof(rest_tuple) == "string"
+            rest_tuple = [rest_tuple, {}]
+        url = rest_tuple[0]
+        options = rest_tuple[1]
+        if _build_key(url, options) of _data
+            # queries with options are not shared
+            return _get([url, options])
+        else
+            return _reload([url, options])
+    _reload = (rest_tuple) =>
+        if typeof(rest_tuple) == "string"
+            rest_tuple = [rest_tuple, {}]
+        url = rest_tuple[0]
+        options = rest_tuple[1]
+        if not _build_key(url, options) of _data
+            # not there, call load
+            return _load([url, options])
+        else
+            _data[_build_key(url, options)] = _do_query(Restangular.all(url.slice(1)), options)
+            return _get(rest_tuple)
+    _add_sources = (in_list) =>
+        # in list is a list of (url, option) lists
+        q_list = []
+        r_list = []
+        for rest_tuple in in_list
+            rest_key = _build_key(rest_tuple[0], rest_tuple[1])
+            if rest_key not of _data
+                sliced = rest_tuple[0].slice(1)
+                rest_tuple[1] ?= {}
+                _data[rest_key] = _do_query(Restangular.all(sliced), rest_tuple[1])
+                q_list.push(_data[rest_key])
+            r_list.push(_data[rest_key])
+        if q_list
+            $q.all(q_list)
+        return r_list
+    _get = (rest_tuple) =>
+        return _data[_build_key(rest_tuple[0], rest_tuple[1])]
+    return {
+        "reset":
+            _reset
+        "load": (rest_tuple) =>
+            return _load(rest_tuple)
+        "reload": (rest_tuple) =>
+            return _reload(rest_tuple)
+        "add_sources": (in_list) =>
+            return _add_sources(in_list)
+        "get": (rest_tuple) =>
+            return _get(rest_tuple)
+    }
 ]).directive("paginator", ["$templateCache", ($templateCache) ->
     link = (scope, element, attrs) ->
         #console.log attrs.pagSettings, scope.$eval(attrs.pagSettings), scope

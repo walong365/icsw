@@ -80,8 +80,8 @@ user_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password",
     ]
-).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+).controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},
             {"level" : 1, "info" : "Modify"},
@@ -438,8 +438,8 @@ user_module = angular.module(
                     # console.log "blob", blob
                     vdus.testurl = (window.URL || window.webkitURL).createObjectURL( blob );
                     console.log "set testurl", vdus.testurl
-]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "$window",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, $window) ->
+]).controller("icswUserAccountCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "$window",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, $window) ->
         $scope.virtual_desktop_user_setting = []
         $scope.ac_levels = [
             {"level" : 0, "info" : "Read-only"},

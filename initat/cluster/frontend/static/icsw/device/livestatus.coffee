@@ -117,10 +117,12 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).controller("icswDeviceLiveStatusCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular","paginatorSettings", "restDataSource", "sharedDataSource",
-     "$q", "$modal", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
-     $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService) ->
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular","paginatorSettings", "restDataSource", "$q", "$modal", "$timeout",
+     "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
+     "icswCachingCall",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
+     $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService,
+     icswCachingCall) ->
         $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
@@ -233,12 +235,12 @@ angular.module(
             return _class
         $scope.load_static_data = () ->
             wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_meta_devices" : false, "ignore_cdg" : true}])
-                restDataSource.reload([ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": angular.toJson($scope.devsel_list), "_distinct": true}])
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": angular.toJson($scope.devsel_list)}])
+                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_CATEGORY_LIST, {}, [])
+                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_meta_devices" : false, "ignore_cdg" : true, "pks": "<PKS>"}, $scope.devsel_list)
+                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": "<PKS>", "_distinct": true}, $scope.devsel_list)
+                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": "<PKS>"}, $scope.devsel_list)
+                icswDeviceLivestatusDataService.retain($scope.$id, $scope.devsel_list)
             ]
-            icswDeviceLivestatusDataService.retain($scope.$id, $scope.devsel_list, $scope.on_new_data)
             $q.all(wait_list).then((data) ->
                 $scope.location_gfx_list = data[2]
                 gfx_lut = {}
@@ -272,28 +274,27 @@ angular.module(
                 $scope.cat_tree_lut = cat_tree_lut
                 $scope.cat_tree.show_selected(false)
                 $scope.dev_tree_lut = icswTools.build_lut(data[1])
+                $scope.on_new_data(data[4][0], data[4][1], data[4][2])
             )
         $scope.on_new_data = (host_entries, service_entries, host_lut) ->
-            $scope.$apply(
-                $scope.host_entries = host_entries
-                $scope.entries = service_entries
-                $scope.host_lut = host_lut
-                used_cats = []
+            $scope.host_entries = host_entries
+            $scope.entries = service_entries
+            $scope.host_lut = host_lut
+            used_cats = []
 
-                for entry in service_entries
-                    if entry.custom_variables and entry.custom_variables.cat_pks?
-                        used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
+            for entry in service_entries
+                if entry.custom_variables and entry.custom_variables.cat_pks?
+                    used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
 
-                for pk of $scope.cat_tree_lut
-                    entry = $scope.cat_tree_lut[pk]
-                    if parseInt(pk) in used_cats
-                        entry._show_select = true
-                    else
-                        entry.selected = false
-                        entry._show_select = false
-                $scope.build_sunburst()
-                $scope.md_filter_changed()
-            )
+            for pk of $scope.cat_tree_lut
+                entry = $scope.cat_tree_lut[pk]
+                if parseInt(pk) in used_cats
+                    entry._show_select = true
+                else
+                    entry.selected = false
+                    entry._show_select = false
+            $scope.build_sunburst()
+            $scope.md_filter_changed()
         $scope.build_sunburst = () ->
             # build burst data
             _bdat = new hs_node("System")
@@ -402,9 +403,67 @@ angular.module(
         $scope.$on("$destroy", () ->
             icswDeviceLivestatusDataService.destroy($scope.$id)
         )
-]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", "icswParseXMLResponseService", (ICSW_URLS, $interval, $timeout, icswCallAjaxService, icswParseXMLResponseService) ->
+]).service("icswCachingCall", ["$interval", "$timeout", "$q", "Restangular", ($inteval, $timeout, $q, Restangular) ->
+    class LoadInfo
+        constructor: (@key, @url, @options) ->
+            @client_dict = {}
+            @pk_list = []
+        add_pk_list: (client, pk_list) =>
+            @pk_list = @pk_list.concat(pk_list)
+            _defer = $q.defer()
+            @client_dict[client] = _defer
+            return _defer
+        load: () =>
+            opts = {}
+            for key, value of @options
+                if value == "<PKS>"
+                    opts[key] = angular.toJson(@pk_list)
+                else
+                    opts[key] = value
+            Restangular.all(@url.slice(1)).getList(opts).then(
+                (result) =>
+                    for c_id, _defer of @client_dict
+                        # console.log "resolve client ", c_id, "for ", @key
+                        _defer.resolve(result)
+                    @client_dict = {}
+                    @pk_list = []
+            )
+    start_timeout = {}
+    load_info = {}
+    schedule_load = (key) ->
+        # called when new listeners register
+        # don't update immediately, wait until more controllers have registered
+        # console.log key, start_timeout[key]?
+        if start_timeout[key]?
+            $timeout.cancel(start_timeout[key])
+            delete start_timeout[key]
+        if not start_timeout[key]?
+            start_timeout[key] = $timeout(
+                () ->
+                    # console.log "load", key
+                    load_info[key].load()
+                1
+            )
+    add_client = (client, url, options, pk_list) ->
+        url_key = _key(url, options)
+        if url_key not of load_info
+            load_info[url_key] = new LoadInfo(url_key, url, options)
+        # console.log "add client", client, "to", url_key
+        return load_info[url_key].add_pk_list(client, pk_list)
+    _key = (url, options) ->
+        url_key = url
+        for key, value of options
+            url_key = "#{url_key},#{key}=#{value}"
+        return url_key
+    return {
+        "fetch" : (client, url, options, pk_list) ->
+            _defer = add_client(client, url, options, pk_list)
+            schedule_load(_key(url, options))
+            return _defer.promise
+    }
+]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", "icswParseXMLResponseService", "$q", (ICSW_URLS, $interval, $timeout, icswCallAjaxService, icswParseXMLResponseService, $q) ->
     watch_list = {}
-    cont_list = {}
+    defer_list = {}
     destroyed_list = []
     cur_interval = undefined
     cur_xhr = undefined
@@ -445,13 +504,13 @@ angular.module(
 
     watchers_present = () ->
         # whether any watchers are present
-        return _.keys(cont_list).length > 0
+        return _.keys(defer_list).length > 0
 
     schedule_load = () ->
         # called when new listeners register
         # don't update immediately, wait until more controllers have registered
         if not schedule_start_timeout?
-            schedule_start_timeout = $timeout(load_data, 400)
+            schedule_start_timeout = $timeout(load_data, 1)
 
     start_interval = () ->
         # start regular update
@@ -513,7 +572,7 @@ angular.module(
                             # populate list of checks
                             host_lut[entry.custom_variables.device_pk].checks.push(entry)
 
-                        for client, client_cont of cont_list
+                        for client, _defer of defer_list
                             hosts_client = []
                             services_client = []
                             host_lut_client = {}
@@ -526,18 +585,18 @@ angular.module(
                                     host_lut_client[dev] = entry
                                     host_lut_client[entry.host_name] = entry
 
-                            client_cont(hosts_client, services_client, host_lut_client)
+                            _defer.resolve([hosts_client, services_client, host_lut_client])
 
     remove_watchers_by_client = (client) ->
         client = client.toString()
         for dev, watchers of watch_list
             _.remove(watchers, (elem) -> return elem == client)
-        delete cont_list[client]
+        delete defer_list[client]
 
     return {
-        retain: (client, dev_list, cont) ->
+        retain: (client, dev_list) ->
+            _defer = $q.defer()
             # get data for devices of dev_list for client (same client instance must be passed to cancel())
-            # cont is called with new data as soon as anything is available
 
             # remove watchers in case of updates
             remove_watchers_by_client(client)
@@ -555,9 +614,10 @@ angular.module(
                     if not _.some(watch_list[dev], (elem) -> return elem == dev)
                         watch_list[dev].push(client)
 
-                    cont_list[client] = cont
+                    defer_list[client] = _defer
 
                 schedule_load()
+            return _defer.promise
 
 
         destroy: (client) ->

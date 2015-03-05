@@ -4,9 +4,9 @@ monitoring_overview_module = angular.module("icsw.monitoring.overview",
              "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"])
 
 monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
-    ["$scope", "$compile", "$filter", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ["$scope", "$compile", "$filter", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal",
      "access_level_service", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
-    ($scope, $compile, $filter, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service,
+    ($scope, $compile, $filter, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service,
      $timeout, msgbus, status_utils_functions, ICSW_URLS) ->
         $scope.filter_settings = {"str_filter": "", "only_selected": true}
 

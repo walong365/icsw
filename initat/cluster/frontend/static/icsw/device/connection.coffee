@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceConnectionCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devsel_list = []
         # ac settings
         $scope.ac_type = "master"

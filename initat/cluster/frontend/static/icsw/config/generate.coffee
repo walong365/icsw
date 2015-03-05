@@ -48,8 +48,8 @@ config_gen_module = angular.module(
                         @dev_conf.active_content = content.split("\n")
                     else
                         @dev_conf.active_content = []
-).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswConfigGenerateCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswConfigConfigTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, ICSW_URLS, icswConfigConfigTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devsel_list = []
         $scope.result_trees = []
         $scope.new_devsel = (_dev_sel) ->

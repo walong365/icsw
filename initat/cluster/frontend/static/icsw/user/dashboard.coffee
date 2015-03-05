@@ -7,8 +7,8 @@ dashboard_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular",
         "noVNC", "ui.select", "icsw.tools", "icsw.user.password", "icsw.user",
     ]
-).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)->
+).controller("icswUserJobInfoCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService)->
         $scope.jobs_waiting = []
         $scope.jobs_running = []
         $scope.jobs_finished = []

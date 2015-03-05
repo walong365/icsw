@@ -116,8 +116,8 @@ device_variable_module = angular.module(
                     scope.obj.device_variable_set.push(data)
                 )
     }
-]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))

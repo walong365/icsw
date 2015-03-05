@@ -5,10 +5,10 @@ device_module = angular.module(
         "icsw.tools.table", "icsw.tools", "icsw.tools.button"
     ]
 ).controller("icswDeviceTreeCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout",
      "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout,
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout,
      $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
      icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, toaster) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService

@@ -8,8 +8,8 @@ angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.device.partition.overview")
         link : (scope, el, attrs) ->
-        controller: ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+        controller: ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
             $scope.entries = []
             $scope.active_dev = undefined
             $scope.devsel_list = []

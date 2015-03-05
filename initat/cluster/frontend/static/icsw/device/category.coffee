@@ -37,8 +37,8 @@ device_configuration_module = angular.module(
                 return cat.full_name
             else
                 return "TOP"
-).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceCategoryCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswDeviceCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswDeviceCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.device_pks = []
         $scope.cat_tree = new icswDeviceCategoryTreeService($scope, {})

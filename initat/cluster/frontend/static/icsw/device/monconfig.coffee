@@ -45,8 +45,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+).controller("icswDeviceMonConfigCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "$timeout", "access_level_service", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, access_level_service, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         access_level_service.install($scope)
         $scope.hint_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q, "nd")
         $scope.hint_edit.edit_template = "monitoring.hint.form"

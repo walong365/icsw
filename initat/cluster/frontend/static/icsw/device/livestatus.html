@@ -313,14 +313,13 @@
         </polyline>
         <g ng-repeat="node in nodes track by $index">
             <text
-                ng-if="font_stroke"
                 ng-attr-x="{{ node.legend_x }}"
                 ng-attr-y="{{ node.legend_y }}"
                 text-anchor="{{ node.legend_anchor }}"
-                ng-if="node.legend_show"
+                ng-if="node.legend_show && font_stroke"
                 alignment-baseline="middle"
                 stroke="white"
-                stroke-width="4"
+                stroke-width="3"
             >{{ node.name }}</text>
             <text
                 ng-attr-x="{{ node.legend_x }}"

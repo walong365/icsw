@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
     ]
-).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswConfigDomainNameTreeService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, ICSW_URLS, icswConfigDomainNameTreeService) ->
+).controller("icswConfigDomainNameTreeCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "ICSW_URLS", "icswConfigDomainNameTreeService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, ICSW_URLS, icswConfigDomainNameTreeService) ->
         $scope.dnt = new icswConfigDomainNameTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("dtn_base", $scope)
         $scope.entries = []

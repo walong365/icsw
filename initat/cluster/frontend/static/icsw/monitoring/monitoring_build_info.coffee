@@ -5,9 +5,9 @@ monitoring_build_info_module = angular.module("icsw.monitoring.build_info",
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
 monitoring_build_info_module.controller("icswMonitoringBuildInfoCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
      "$q", "$modal", "access_level_service", "$timeout", "icswTools", "ICSW_URLS"
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
      $q, $modal, access_level_service, $timeout, icswTools, ICSW_URLS) ->
         access_level_service.install($scope)
         $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)

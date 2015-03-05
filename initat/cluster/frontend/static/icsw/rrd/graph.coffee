@@ -78,8 +78,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).controller("icswGraphOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
-        "sharedDataSource", "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+        "$q", "$modal", "$timeout", "ICSW_URLS", "icswRRDGraphTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, $timeout, ICSW_URLS, icswRRDGraphTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [

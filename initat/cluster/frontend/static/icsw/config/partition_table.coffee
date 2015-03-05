@@ -3,8 +3,8 @@ partition_table_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular"
     ]
-).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswToolsSimpleModalService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal, ICSW_URLS, icswToolsSimpleModalService) ->
+).controller("icswConfigPartitionTableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "ICSW_URLS", "icswToolsSimpleModalService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, ICSW_URLS, icswToolsSimpleModalService) ->
         $scope.entries = []
         $scope.edit_pts = []
         $scope.pagSettings = paginatorSettings.get_paginator("parts", $scope)

@@ -33,8 +33,8 @@ angular.module(
                     return "#{obj.key} = #{obj.value}"
                 else
                     return obj.key
-).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswConfigVarsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "ICSW_URLS", "icswDeviceConfigurationConfigVarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, ICSW_URLS, icswDeviceConfigurationConfigVarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.devvar_tree = new icswDeviceConfigurationConfigVarTreeService($scope)
         $scope.var_filter = ""
         $scope.loaded = false
@@ -86,8 +86,8 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.var.overview")
         controller: "icswConfigVarsCtrl"
     }
-]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, icswTools, ICSW_URLS) ->
+]).controller("icswDeviceConfigurationCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "icswTools", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, icswTools, ICSW_URLS) ->
         access_level_service.install($scope)
         $scope.devices = []
         $scope.configs = []

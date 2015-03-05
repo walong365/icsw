@@ -64,8 +64,8 @@ package_module = angular.module(
         edit_template       : "package_search.html"
         delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
     }
-]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService, icswParseXMLResponseService) ->
         # flags
         $scope.show_enabled_repos = true
         $scope.show_published_repos = true
@@ -89,7 +89,6 @@ package_module = angular.module(
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
-        $scope.shared_data = sharedDataSource.data
         $scope.device_tree_url = ICSW_URLS.REST_DEVICE_TREE_LIST
         wait_list = restDataSource.add_sources([
             [$scope.device_tree_url, {"ignore_meta_devices" : true}]

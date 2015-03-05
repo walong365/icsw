@@ -191,8 +191,8 @@ rms_module = angular.module(
         lineNumbers: true
         matchBrackets: true
     }
-}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
@@ -879,8 +879,8 @@ rms_module = angular.module(
             else
                 scope.jfiles = []
     }
-]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.servers = []
         $scope.licenses = []
         $scope.lic_overview = []

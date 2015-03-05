@@ -155,8 +155,8 @@ angular.module(
                     else if name in ["config", "variables", "graphing"]
                         scope.pk_list[name] = scope.dev_pk_list
     }
-]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, toaster) ->
+]).controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "toaster",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, toaster) ->
         access_level_service.install($scope)
         $scope.show_uuid = false
         $scope.image_url = ""

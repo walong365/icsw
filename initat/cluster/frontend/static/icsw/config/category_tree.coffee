@@ -6,9 +6,9 @@ angular.module(
     ]
 ).controller("icswConfigCategoryTreeCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
-    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
+    "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
     "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, sharedDataSource, $q, $modal, access_level_service,
+   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, $q, $modal, access_level_service,
     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)

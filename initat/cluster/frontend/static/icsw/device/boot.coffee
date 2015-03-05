@@ -5,8 +5,8 @@ device_boot_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
