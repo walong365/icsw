@@ -25,7 +25,7 @@ from django.db.models import Q
 from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.management.commands.fixtures import add_fixtures
-from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, log_source, \
+from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr, \
     get_related_models
 from lxml import etree  # @UnresolvedImport
 import logging_tools
@@ -372,12 +372,12 @@ class Command(BaseCommand):
         for lic_name in ALL_LICENSES:
             factories.ClusterLicense(name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
         # remove duplicate entries due to bug in factories (sigh)
-        cur_cusl = log_source.objects.filter(Q(identifier="user"))
-        for _cc in cur_cusl:
-            if not get_related_models(_cc):
-                _cc.delete()
+        # cur_cusl = log_source.objects.filter(Q(identifier="user"))
+        # for _cc in cur_cusl:
+        #    if not get_related_models(_cc):
+        #        _cc.delete()
         # log source
-        factories.LogSource(identifier="user", name="Cluster user", description="ClusterUser")
+        factories.LogSourceFactory(identifier="cluster", name="Cluster source", description="Cluster")
         # device type
         factories.DeviceType(identifier="H", description="Host", priority=0)
         factories.DeviceType(identifier="AM", description="APC Masterswitch", priority=10)
@@ -401,11 +401,16 @@ class Command(BaseCommand):
         factories.PartitionFS(name="btrfs", identifier="f", descr="BTRFS Filesystem", hexid="83", kernel_module="btrfs")
         factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kernel_module="ocfs2")
         # log status
-        factories.LogStatus(identifier="c", log_level=200, name="critical")
-        factories.LogStatus(identifier="e", log_level=100, name="error")
-        factories.LogStatus(identifier="w", log_level=50, name="warning")
-        factories.LogStatus(identifier="i", log_level=0, name="info")
-        factories.LogStatus(identifier="n", log_level=-50, name="notice")
+        # factories.LogStatus(identifier="c", log_level=200, name="critical")
+        # factories.LogStatus(identifier="e", log_level=100, name="error")
+        # factories.LogStatus(identifier="w", log_level=50, name="warning")
+        # factories.LogStatus(identifier="i", log_level=0, name="info")
+        # factories.LogStatus(identifier="n", log_level=-50, name="notice")
+        # LogLevel
+        factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
+        factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")
+        factories.LogLevelFactory(identifier="w", level=logging_tools.LOG_LEVEL_WARN, name="warning")
+        factories.LogLevelFactory(identifier="i", level=logging_tools.LOG_LEVEL_OK, name="ok")
         # status
         factories.Status(status="memtest", memory_test=True)
         factories.Status(status="boot_local", boot_local=True)

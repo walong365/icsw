@@ -1,11 +1,11 @@
 #!/usr/bin/python-init -Otu
 
 import factory
-from initat.cluster.backbone.models import netdevice_speed, log_source, \
+from initat.cluster.backbone.models import netdevice_speed, log_source, LogLevel, \
     device_type, partition_fs, log_status, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
-    network, netdevice, net_ip, device_config, cluster_license, \
+    network, netdevice, net_ip, device_config, cluster_license, LogSource, \
     config_hint, config_var_hint, config_script_hint, device_variable, virtual_desktop_protocol, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid
 
@@ -28,9 +28,15 @@ class NetDeviceSpeed(factory.django.DjangoModelFactory):
         django_get_or_create = ("speed_bps", "check_via_ethtool", "full_duplex",)
 
 
-class LogSource(factory.django.DjangoModelFactory):
+class LogSourceFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = log_source
+        model = LogSource
+        django_get_or_create = ("identifier", "device", "user")
+
+
+class LogLevelFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = LogLevel
         django_get_or_create = ("identifier",)
 
 
