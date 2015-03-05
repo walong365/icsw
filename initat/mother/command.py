@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,7 +24,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import cd_connection, device_variable, \
-    netdevice, devicelog, user
+    netdevice, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
 from initat.snmp.struct import simple_snmp_oid
 from initat.mother.config import global_config
@@ -281,12 +281,11 @@ class hc_command(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dev=None):
         hc_command.process.log("[hc] %s" % (what), log_level)
         if dev is not None:
-            devicelog.new_log(
-                dev,
-                global_config["LOG_SOURCE_IDX"],
-                log_level,
-                "[hc] {}".format(what),
-                user=self.user,
+            DeviceLogEntry.new(
+                device=dev,
+                source=global_config["LOG_SOURCE_IDX"],
+                level=log_level,
+                text="[hc] {}".format(what),
             )
 
 

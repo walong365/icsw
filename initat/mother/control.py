@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,7 +24,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
-    cluster_timezone, log_source_lookup, log_status_lookup, log_source, devicelog, user
+    cluster_timezone, log_source_lookup, log_level_lookup, LogSource, DeviceLogEntry, user
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 import config_tools
@@ -54,7 +54,7 @@ class machine(object):
         self.name = dev.name
         self.full_name = dev.full_name
         self.pk = dev.pk
-        self.__log_source_idx = global_config["LOG_SOURCE_IDX"]
+        self.__source_idx = global_config["LOG_SOURCE_IDX"]
         self.__log_template = logging_tools.get_logger(
             "{}.{}".format(
                 global_config["LOG_NAME"],
@@ -1076,7 +1076,11 @@ class host(machine):
             else:
                 # unknown
                 new_dhcp_written = None
-            self.device.add_log(global_config["LOG_SOURCE_IDX"], logging_tools.LOG_LEVEL_ERROR, "DHCP: %s" % (error_str)).save()
+            self.device.add_log_entry(
+                source=global_config["LOG_SOURCE_IDX"],
+                level=logging_tools.LOG_LEVEL_ERROR,
+                text="DHCP: {}".format(error_str)
+            )
         else:
             if om_sc.info == "write":
                 new_dhcp_written = True
@@ -1085,7 +1089,10 @@ class host(machine):
             elif om_sc.info == "delete":
                 self.dhcp_mac_writte, self.dhcp_ip_written = (None, None)
                 new_dhcp_written = False
-            self.device.add_log(global_config["LOG_SOURCE_IDX"], logging_tools.LOG_LEVEL_OK, "DHCP %s ok" % (om_sc.info)).save()
+            self.device.add_log_entry(
+                source=global_config["LOG_SOURCE_IDX"],
+                text="DHCP {} is ok".format(om_sc.info)
+            )
         if new_dhcp_written is None:
             new_dhcp_written = self.device.dhcp_written
         # selective update
@@ -1103,11 +1110,11 @@ class host(machine):
             self.bootnetdevice.save(update_fields=["macaddr"])
             self.device.dhcp_mac = False
             self.device.save(update_fields=["dhcp_mac"])
-            devicelog.new_log(
-                self.device,
-                machine.process.node_src,
-                log_status_lookup("i"),
-                "set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]))
+            DeviceLogEntry.new(
+                device=self.device,
+                source=machine.process.node_src,
+                text="set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]),
+            )
             macbootlog(
                 device=self.device,
                 macaddr=in_dict["macaddr"],
@@ -1122,11 +1129,11 @@ class host(machine):
                 self.log("clearing dhcp_mac")
                 self.device.dhcp_mac = False
                 change_fields.add("dhcp_mac")
-            devicelog.new_log(
-                self.device,
-                machine.process.node_src,
-                log_status_lookup("i"),
-                "DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]))
+            DeviceLogEntry.new(
+                device=self.device,
+                source=machine.process.node_src,
+                text="DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"],),
+            )
             self.set_recv_state("got IP-Address via DHCP")
             change_fields.add("recvstate")
             change_fields.add("recvstate_timestamp")
@@ -1139,11 +1146,11 @@ class host(machine):
         self.log("got info '%s' from %s" % (in_text, instance))
         self.set_recv_state(in_text)
         self.device.save(update_fields=["recvstate", "recvstate_timestamp"])
-        devicelog.new_log(
-            self.device,
-            machine.process.node_src,
-            log_status_lookup("i"),
-            in_text)
+        DeviceLogEntry.new(
+            device=self.device,
+            source=machine.process.node_src,
+            text=in_text,
+        )
         return "ok got it"
 
     def nodestatus(self, in_text, instance):
@@ -1403,7 +1410,11 @@ class controlling_device(machine):
             else:
                 # unknown
                 new_dhcp_written = None
-            self.device.add_log(global_config["LOG_SOURCE_IDX"], logging_tools.LOG_LEVEL_ERROR, "DHCP: %s" % (error_str)).save()
+            self.device.add_log_entry(
+                source=global_config["LOG_SOURCE_IDX"],
+                level=logging_tools.LOG_LEVEL_ERROR,
+                text="DHCP: {}".format(error_str)
+            )
         else:
             if om_sc.info == "write":
                 new_dhcp_written = True
@@ -1412,7 +1423,10 @@ class controlling_device(machine):
             elif om_sc.info == "delete":
                 self.dhcp_mac_writte, self.dhcp_ip_written = (None, None)
                 new_dhcp_written = False
-            self.device.add_log(global_config["LOG_SOURCE_IDX"], logging_tools.LOG_LEVEL_OK, "DHCP %s ok" % (om_sc.info)).save()
+            self.device.add_log_entry(
+                source=global_config["LOG_SOURCE_IDX"],
+                text="DHCP {} is ok".format(om_sc.info),
+            )
         if new_dhcp_written is None:
             new_dhcp_written = self.device.dhcp_written
         # selective update
@@ -1430,11 +1444,11 @@ class controlling_device(machine):
             self.bootnetdevice.save(update_fields=["macaddr"])
             self.device.dhcp_mac = False
             self.device.save(update_fields=["dhcp_mac"])
-            devicelog.new_log(
-                self.device,
-                machine.process.node_src,
-                log_status_lookup("i"),
-                "set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]))
+            DeviceLogEntry.new(
+                device=self.device,
+                source=machine.process.node_src,
+                text="set macaddr of %s to %s" % (self.bootnetdevice.devname, in_dict["macaddr"]),
+            )
             macbootlog(
                 device=self.device,
                 macaddr=in_dict["macaddr"],
@@ -1449,11 +1463,11 @@ class controlling_device(machine):
                 self.log("clearing dhcp_mac")
                 self.device.dhcp_mac = False
                 change_fields.add("dhcp_mac")
-            devicelog.new_log(
-                self.device,
-                machine.process.node_src,
-                log_status_lookup("i"),
-                "DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]))
+            DeviceLogEntry.new(
+                device=self.device,
+                source=machine.process.node_src,
+                text="DHCP / %s (%s)" % (in_dict["key"], in_dict["ip"]),
+            )
             self.set_recv_state("got IP-Address via DHCP")
             change_fields.add("recvstate")
             change_fields.add("recvstate_timestamp")
@@ -1606,7 +1620,7 @@ class node_control_process(threading_tools.process_obj):
             init_logger=True)
         connection.close()
         self.node_src = log_source_lookup("node", None)
-        self.mother_src = log_source.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
+        self.mother_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         # close database connection
         simple_command.setup(self)
         self.sc = config_tools.server_check(server_type="mother_server")
@@ -1737,11 +1751,24 @@ class node_control_process(threading_tools.process_obj):
             u_key = int(xml_dev.attrib["pk"])
             dev = machine.get_device(u_key)
             if dev is None:
-                devicelog.new_log(device.objects.get(Q(pk=u_key)), self.mother_src, logging_tools.LOG_LEVEL_ERROR, "not a device", user=log_user)
+                DeviceLogEntry.new(
+                    device=device.objects.get(Q(pk=u_key)),
+                    source=self.mother_src,
+                    level=logging_tools.LOG_LEVEL_ERROR,
+                    text="not a device",
+                )
+                # devicelog.new_log(, self.mother_src, logging_tools.LOG_LEVEL_ERROR, "not a device", user=log_user)
             else:
-                devicelog.new_log(dev.device, self.mother_src, logging_tools.LOG_LEVEL_OK, "soft control '{}'".format(
-                    xml_dev.attrib["soft_command"]
-                ), user=log_user)
+                DeviceLogEntry.new(
+                    device=dev.device,
+                    source=self.mother_src,
+                    text="soft control '{}'".format(
+                        xml_dev.attrib["soft_command"]
+                    )
+                )
+                # devicelog.new_log(dev.device, self.mother_src, logging_tools.LOG_LEVEL_OK, "soft control '{}'".format(
+                #    xml_dev.attrib["soft_command"]
+                # ), user=log_user)
         if not machine.ping(in_com):
             # no pings send
             self._add_ping_info(in_com)

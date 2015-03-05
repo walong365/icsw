@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,7 +28,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.cluster.backbone.models import log_source
+from initat.cluster.backbone.models import LogSource
 from initat.mother.version import VERSION_STRING
 from io_stream_helper import io_stream
 import cluster_location
@@ -98,8 +98,8 @@ def main():
         ("SHARE_DIR", configfile.str_c_var(os.path.join(global_config["CLUSTER_DIR"], "share", "mother"))),
         ])
     global_config.add_config_entries([
-        ("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.device).pk)),
-        ("NODE_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("node", "Clusternode").pk)),
+        ("LOG_SOURCE_IDX", configfile.int_c_var(LogSource.new("mother", device=sql_info.device).pk)),
+        ("NODE_SOURCE_IDX", configfile.int_c_var(LogSource.new("node").pk)),
     ])
     process_tools.renice()
     if not global_config["DEBUG"]:
