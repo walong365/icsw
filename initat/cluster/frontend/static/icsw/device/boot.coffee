@@ -161,7 +161,7 @@ device_boot_module = angular.module(
                 restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
                 # 6
                 restDataSource.reload([ICSW_URLS.REST_LOG_SOURCE_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_LOG_STATUS_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_LOG_LEVEL_LIST, {}])
                 # 8
                 restDataSource.reload([ICSW_URLS.REST_USER_LIST, {}])
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"all_mother_servers" : true}])
@@ -180,7 +180,7 @@ device_boot_module = angular.module(
                     dev.num_logs = 0
                     dev.log_lines = []
                 $scope.log_source_lut = icswTools.build_lut(data[6])
-                $scope.log_status_lut = icswTools.build_lut(data[7])
+                $scope.log_level_lut = icswTools.build_lut(data[7])
                 $scope.user_lut = icswTools.build_lut(data[8])
                 $scope.device_lut = icswTools.build_lut($scope.devices)
                 $scope.kernels = data[1]
@@ -321,7 +321,7 @@ device_boot_module = angular.module(
                         success  : (json) =>
                             if json.devlog_lines
                                 for entry in json.devlog_lines
-                                    # format: pk, device_id, log_source_id, user_id, log_status_id, text, seconds
+                                    # format: pk, device_id, log_source_id, user_id, log_level_id, text, seconds
                                     cur_dev = $scope.device_lut[entry[1]]
                                     cur_dev.num_logs++
                                     cur_dev.latest_log = Math.max(entry[0], cur_dev.latest_log)
