@@ -20,7 +20,7 @@
 """ package server """
 
 from django.db import connection
-from initat.cluster.backbone.models import log_source
+from initat.cluster.backbone.models import LogSource
 from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
 from io_stream_helper import io_stream
 import config_tools
@@ -86,7 +86,7 @@ def main():
         [
             (
                 "LOG_SOURCE_IDX",
-                configfile.int_c_var(log_source.create_log_source_entry("package-server", "Cluster PackageServer", device=sql_info.effective_device).pk)
+                configfile.int_c_var(LogSource.new("package-server", device=sql_info.effective_device).pk)
             )
         ]
     )
