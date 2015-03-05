@@ -25,7 +25,7 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.cluster.backbone.models import log_source
+from initat.cluster.backbone.models import LogSource
 from io_stream_helper import io_stream
 import cluster_location
 import config_tools
@@ -140,13 +140,13 @@ def main():
         [
             (
                 "LOG_SOURCE_IDX", configfile.int_c_var(
-                    log_source.create_log_source_entry("cluster-server", "Cluster Server", device=sql_info.effective_device).pk
+                    LogSource.new("cluster-server", device=sql_info.effective_device).pk
                 )
             )
         ]
     )
     if not global_config["LOG_SOURCE_IDX"]:
-        print "Too many log_source with my id present, exiting..."
+        print "Too many LogSources with my id present, exiting..."
         sys.exit(5)
     if global_config["KILL_RUNNING"] and not global_config["COMMAND"]:
         _log_lines = process_tools.kill_running_processes(prog_name + ".py")
