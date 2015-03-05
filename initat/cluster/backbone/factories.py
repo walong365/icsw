@@ -1,8 +1,8 @@
 #!/usr/bin/python-init -Otu
 
 import factory
-from initat.cluster.backbone.models import netdevice_speed, log_source, LogLevel, \
-    device_type, partition_fs, log_status, status, network_device_type, \
+from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
+    device_type, partition_fs, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, LogSource, \
@@ -71,18 +71,6 @@ class PartitionFS(factory.django.DjangoModelFactory):
     def hexid(self, create, extracted, **kwargs):
         if self.hexid != extracted:
             self.hexid = extracted
-            self.save()
-
-
-class LogStatus(factory.django.DjangoModelFactory):
-    class Meta:
-        model = log_status
-        django_get_or_create = ("identifier", "log_level",)
-
-    @factory.post_generation
-    def name(self, create, extracted, **kwargs):
-        if self.name != extracted:
-            self.name = extracted
             self.save()
 
 

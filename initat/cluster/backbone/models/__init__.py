@@ -595,8 +595,8 @@ class device(models.Model):
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
 
-    def add_log(self, log_src, log_stat, text, **kwargs):
-        return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
+    def add_log_entry(self, **kwargs):
+        return DeviceLogEntry.new(device=self, **kwargs)  # source=log_src, levlog_stat, text, **kwargs)
 
     def get_simple_xml(self):
         return E.device(
@@ -759,7 +759,7 @@ class device(models.Model):
             ("show_status_history", "Access to status history", True),
         )
         fk_ignore_list = [
-            "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog",
+            "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", "DeviceLogEntry",
             "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
             "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
             "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
@@ -1126,17 +1126,17 @@ class DeviceLogEntry(models.Model):
             level = log_level_lookup(level)
 
         cur_log = DeviceLogEntry.objects.create(
-            device=cur_dev,
+            device=_dev,
             source=source,
             level=level,
-            text=text,
+            text=kwargs.get("text", "no text given"),
         )
         return cur_log
 
     def __unicode__(self):
         return u"{} ({}, {}:{:d})".format(
             self.text,
-            self.source.name,
+            self.source.identifier,
             self.level.identifier,
             self.level.level,
         )
@@ -1152,23 +1152,22 @@ class devicelog(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
-    def new_log(cur_dev, log_src, log_stat, text, **kwargs):
-        raise SystemError("callin deprecated new_log in devicelog")
-        # if log_src and type(log_src) in [int, long]:
-        #    log_src = log_source_lookup(log_src)
-        # if log_stat and type(log_stat) in [int, long]:
-        #    log_stat = log_status_lookup(log_stat)
-        # cur_log = devicelog.objects.create(
-        #    device=cur_dev,
-        #    log_source=log_src or cluster_log_source,
-        #    user=kwargs.get("user", None),
-        #    log_status=log_stat,
-        #    text=text,
-        # )
-        # return cur_log
+    # def new_log(cur_dev, log_src, log_stat, text, **kwargs):
+    # if log_src and type(log_src) in [int, long]:
+    #    log_src = log_source_lookup(log_src)
+    # if log_stat and type(log_stat) in [int, long]:
+    #    log_stat = log_status_lookup(log_stat)
+    # cur_log = devicelog.objects.create(
+    #    device=cur_dev,
+    #    log_source=log_src or cluster_log_source,
+    #    user=kwargs.get("user", None),
+    #    log_status=log_stat,
+    #    text=text,
+    # )
+    # return cur_log
 
     def __unicode__(self):
-        return u"{} ({}, {}:{:d})".format(
+        return u"DEPRECATED, {} ({}, {}:{:d})".format(
             self.text,
             self.log_source.name,
             self.log_status.identifier,
@@ -1177,7 +1176,6 @@ class devicelog(models.Model):
 
     class Meta:
         db_table = u'devicelog'
-        ordering = ("date",)
 
 
 class LogSource(models.Model):
@@ -1230,8 +1228,7 @@ class LogSource(models.Model):
         return cur_source
 
     def __unicode__(self):
-        return "ls {} ({}), {}".format(
-            self.name,
+        return "{} ({})".format(
             self.identifier,
             self.description)
 
@@ -1331,7 +1328,7 @@ class LogLevel(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} ({:d})".format(self.identifier, self.level)
+        return "{} ({:d})".format(self.name, self.level)
 
 
 class log_status(models.Model):

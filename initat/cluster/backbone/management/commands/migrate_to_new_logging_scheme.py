@@ -24,7 +24,7 @@
 from django.core.management.base import BaseCommand
 from initat.cluster.backbone.models import config, config_catalog
 from initat.cluster.backbone.models import log_status, devicelog, log_source, \
-    LogLevel, LogSource, DeviceLogEntry, user
+    LogLevel, LogSource, DeviceLogEntry, user, background, background_job_run
 import logging_tools
 from django.db.models import Q
 
@@ -34,6 +34,7 @@ class Command(BaseCommand):
     args = ''
 
     def handle(self, **options):
+        DeviceLogEntry.objects.all().delete()
         cur_c = DeviceLogEntry.objects.all().count()
         if not cur_c:
             LogSource.objects.all().exclude(Q(identifier="cluster")).delete()
@@ -66,12 +67,23 @@ class Command(BaseCommand):
                     _user = _le.user
                     _source = _user_ls[_le.user_id]
                 else:
-                    _source = _ls_dict[_le.log_source]
-                DeviceLogEntry.objects.create(
+                    _source = _ls_dict[_le.log_source_id]
+                _new_le = DeviceLogEntry.objects.create(
                     device=_le.device,
                     source=_source,
                     level=_ll_dict[_le.log_status_id],
                     text=_le.text,
                 )
+                # to preserve date
+                _new_le.date = _le.date
+                _new_le.save()
+            # rewrite job runs
+            _runs = background_job_run.objects.exclude(Q(log_source=None))
+            print("background_runs to migrate: {:d}".format(_runs.count()))
+            for _run in _runs:
+                if _run.log_source_id in _ls_dict:
+                    _run.source = _ls_dict[_run.log_source_id]
+                _run.log_source = None
+                _run.save()
         else:
             print("new logging_scheme already in use")

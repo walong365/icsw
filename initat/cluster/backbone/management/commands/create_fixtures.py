@@ -371,12 +371,7 @@ class Command(BaseCommand):
         # create fixtures
         for lic_name in ALL_LICENSES:
             factories.ClusterLicense(name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
-        # remove duplicate entries due to bug in factories (sigh)
-        # cur_cusl = log_source.objects.filter(Q(identifier="user"))
-        # for _cc in cur_cusl:
-        #    if not get_related_models(_cc):
-        #        _cc.delete()
-        # log source
+        # LogSource
         factories.LogSourceFactory(identifier="cluster", description="Cluster (unspecified)", user=None, device=None)
         # device type
         factories.DeviceType(identifier="H", description="Host", priority=0)
@@ -400,12 +395,6 @@ class Command(BaseCommand):
         factories.PartitionFS(name="xfs", identifier="f", descr="XFS Filesystem", hexid="83", kernel_module="xfs")
         factories.PartitionFS(name="btrfs", identifier="f", descr="BTRFS Filesystem", hexid="83", kernel_module="btrfs")
         factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kernel_module="ocfs2")
-        # log status
-        # factories.LogStatus(identifier="c", log_level=200, name="critical")
-        # factories.LogStatus(identifier="e", log_level=100, name="error")
-        # factories.LogStatus(identifier="w", log_level=50, name="warning")
-        # factories.LogStatus(identifier="i", log_level=0, name="info")
-        # factories.LogStatus(identifier="n", log_level=-50, name="notice")
         # LogLevel
         factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
         factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")
