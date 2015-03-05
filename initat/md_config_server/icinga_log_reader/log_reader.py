@@ -105,11 +105,14 @@ class icinga_log_reader(threading_tools.process_obj):
 
     def update(self):
         '''Called periodically. Only method to be called from outside of this class'''
-        self._historic_service_map = {description.replace(" ", "_").lower(): pk
-                                      for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
-        self._historic_host_map = {entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')}
+        self._historic_service_map =\
+            {description.replace(" ", "_").lower(): pk
+             for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')}
+        self._historic_host_map =\
+            {entry.full_name: entry.pk for entry in device.objects.all().prefetch_related('domain_tree_node')}
 
-        # logs might contain ids which are not present any more. we discard such data (i.e. ids not present in these sets:)
+        # logs might contain ids which are not present any more.
+        # we discard such data (i.e. ids not present in these sets:)
         self._valid_service_ids = frozenset(mon_check_command.objects.all().values_list('pk', flat=True))
         self._valid_host_ids = frozenset(device.objects.all().values_list('pk', flat=True))
 
@@ -139,19 +142,23 @@ class icinga_log_reader(threading_tools.process_obj):
             files = os.listdir(icinga_log_reader.get_icinga_log_archive_dir())
             last_read_timestamp = self.parse_archive_files(files)
             if last_read_timestamp:
-                last_read = self._update_last_read(0, last_read_timestamp)  # this is a duplicate update, but ensures that we have a valid value here
+                last_read = self._update_last_read(0, last_read_timestamp)
+                # this is a duplicate update, but ensures that we have a valid value here
             else:
                 self.log("no earlier icinga log read and no archive data")
-                # there was no earlier read and we weren't able to read anything from the archive, so assume there is none
+                # there was no earlier read and we weren't able to read anything from the archive,
+                # so assume there is none
                 last_read = mon_icinga_log_last_read()
                 # safe time in past, but not too far cause we check logs of each day
-                last_read.timestamp = int(((datetime.datetime.now() - datetime.timedelta(days=1)) - datetime.datetime(1970, 1, 1)).total_seconds())
+                last_read.timestamp = int(((datetime.datetime.now() - datetime.timedelta(days=1)) -
+                                           datetime.datetime(1970, 1, 1)).total_seconds())
                 last_read.position = 0
 
         try:
             logfile = codecs.open(self.get_icinga_log_file(), "r", "utf-8", errors='replace')
         except IOError as e:
-            self.log(u"Failed to open log file {} : {}".format(self.get_icinga_log_file(), e), logging_tools.LOG_LEVEL_ERROR)
+            self.log(u"Failed to open log file {} : {}".format(self.get_icinga_log_file(), e),
+                     logging_tools.LOG_LEVEL_ERROR)
         else:
             # check for log rotation
             logfile.seek(last_read.position)
@@ -188,11 +195,13 @@ class icinga_log_reader(threading_tools.process_obj):
                 files_to_check = []
 
                 # get days by filename
-                for day_missed in xrange(missed_timedelta.days+1):  # include last
+                for day_missed in xrange(missed_timedelta.days + 1):  # include last
                     missed_log_day = last_read_date + datetime.timedelta(days=day_missed)
 
                     day_files = glob.glob(os.path.join(icinga_log_reader.get_icinga_log_archive_dir(),
-                                                       "*-{}-{}-{}-*.log".format(missed_log_day.month, missed_log_day.day, missed_log_day.year)))
+                                                       "*-{}-{}-{}-*.log".format(missed_log_day.month,
+                                                                                 missed_log_day.day,
+                                                                                 missed_log_day.year)))
                     files_to_check.extend(day_files)
 
                 # read archive
@@ -276,26 +285,39 @@ class icinga_log_reader(threading_tools.process_obj):
 
             # check for regular log entry
             try:
-                cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)  # only know line no for archive files
-                # we want to discard older (reread) entries if start_at is given, except for current states (these are at the beginning of each log file)
+                cur_line = self._parse_line(line_raw.rstrip("\n"), line_num if is_archive_logfile else None)
+                # only know line no for archive files
+                # we want to discard older (reread) entries if start_at is given,
+                # except for current states (these are at the beginning of each log file)
                 # (we don't need the initial states here because they don't occur at turnovers)
                 if start_at is None or (cur_line.timestamp > start_at or
-                                        cur_line.kind in (self.constants.icinga_current_host_state, self.constants.icinga_current_service_state)):
+                                        cur_line.kind in (self.constants.icinga_current_host_state,
+                                                          self.constants.icinga_current_service_state)):
 
-                    if cur_line.kind in (self.constants.icinga_current_host_state, self.constants.icinga_current_service_state,
-                                         self.constants.icinga_initial_host_state, self.constants.icinga_initial_service_state):
+                    if cur_line.kind in\
+                            (self.constants.icinga_current_host_state, self.constants.icinga_current_service_state,
+                             self.constants.icinga_initial_host_state, self.constants.icinga_initial_service_state):
                         full_system_dump_times.add(cur_line.timestamp)
-                    if cur_line.kind in (self.constants.icinga_service_alert, self.constants.icinga_current_service_state,
-                                         self.constants.icinga_initial_service_state):
-                        entry = self.create_service_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_service_state,
-                                                                cur_line.kind == self.constants.icinga_initial_service_state, logfilepath, logfile_db)
+                    if cur_line.kind in\
+                            (self.constants.icinga_service_alert, self.constants.icinga_current_service_state,
+                             self.constants.icinga_initial_service_state):
+                        entry = self.create_service_alert_entry(
+                            cur_line,
+                            cur_line.kind == self.constants.icinga_current_service_state,
+                            cur_line.kind == self.constants.icinga_initial_service_state,
+                            logfilepath,
+                            logfile_db)
                         if entry:
                             stats['service alerts'] += 1
                             service_states.append(entry)
                     elif cur_line.kind in (self.constants.icinga_host_alert, self.constants.icinga_current_host_state,
                                            self.constants.icinga_initial_host_state):
-                        entry = self.create_host_alert_entry(cur_line, cur_line.kind == self.constants.icinga_current_host_state,
-                                                             cur_line.kind == self.constants.icinga_initial_host_state, logfilepath, logfile_db)
+                        entry = self.create_host_alert_entry(
+                            cur_line,
+                            cur_line.kind == self.constants.icinga_current_host_state,
+                            cur_line.kind == self.constants.icinga_initial_host_state,
+                            logfilepath,
+                            logfile_db)
                         if entry:
                             stats['host alerts'] += 1
                             host_states.append(entry)
@@ -397,7 +419,8 @@ class icinga_log_reader(threading_tools.process_obj):
             self._warnings[unicode(exception)] += 1
         else:
             # log right away
-            self.log(u"in file {} line {}: {}".format(logfilepath, cur_line_no, exception), logging_tools.LOG_LEVEL_WARN)
+            self.log(u"in file {} line {}: {}".format(logfilepath, cur_line_no, exception),
+                     logging_tools.LOG_LEVEL_WARN)
 
     def create_host_alert_entry(self, cur_line, log_rotation_state, initial_state, logfilepath, logfile_db=None):
         retval = None
@@ -477,7 +500,8 @@ class icinga_log_reader(threading_tools.process_obj):
     def create_service_notification_entry(self, cur_line, logfilepath, logfile_db):
         retval = None
         try:
-            user, host, (service, service_info), state, notification_type, msg = self._parse_service_notification(cur_line)
+            user, host, (service, service_info), state, notification_type, msg =\
+                self._parse_service_notification(cur_line)
         except (self.unknown_host_error, self.unknown_service_error) as e:
             self._handle_warning(e, logfilepath, cur_line.line_no)
         else:
@@ -560,7 +584,7 @@ class icinga_log_reader(threading_tools.process_obj):
         if not host:
             raise self.unknown_host_error(u"Failed to resolve host: {} (error #2)".format(data[0]))
 
-        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[1], None)  # format as in db table @UndefinedVariable
+        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[1], None)  # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry(u"Malformed state entry: {} (error #3) {} {} ".format(info))
 
@@ -611,7 +635,8 @@ class icinga_log_reader(threading_tools.process_obj):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[2], None)  # format as in db table
+        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START,
+                          "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[2], None)  # format as in db table
         if not flapping_state:
             raise self.malformed_icinga_log_entry(u"Malformed flapping state entry: {} (error #7)".format(info))
 
@@ -628,7 +653,8 @@ class icinga_log_reader(threading_tools.process_obj):
             raise self.malformed_icinga_log_entry(u"Malformed host flapping entry: {} (error #1)".format(info))
 
         host = self._resolve_host(data[0])
-        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START, "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[1], None)  # format as in db table
+        flapping_state = {"STARTED": mon_icinga_log_raw_base.FLAPPING_START,
+                          "STOPPED": mon_icinga_log_raw_base.FLAPPING_STOP}.get(data[1], None)  # format as in db table
         if not flapping_state:
             raise self.malformed_icinga_log_entry(u"Malformed flapping state entry: {} (error #7)".format(info))
         msg = data[2]
@@ -644,7 +670,8 @@ class icinga_log_reader(threading_tools.process_obj):
 
         user = data[0]
         host, service, service_info = self._parse_host_service(data[1], data[2])
-        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)  # format as in db table @UndefinedVariable
+        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[3], None)
+        # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry(u"Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[4]
@@ -661,7 +688,8 @@ class icinga_log_reader(threading_tools.process_obj):
 
         user = data[0]
         host = self._resolve_host(data[1])
-        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
+        state = mon_icinga_log_raw_host_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)
+        # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry(u"Malformed state in entry: {} (error #6)".format(info))
         notification_type = data[3]
@@ -681,7 +709,8 @@ class icinga_log_reader(threading_tools.process_obj):
 
         host, service, service_info = self._parse_host_service(data[0], data[1])
 
-        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)  # format as in db table @UndefinedVariable
+        state = mon_icinga_log_raw_service_alert_data.STATE_CHOICES_REVERSE_MAP.get(data[2], None)
+        # format as in db table
         if not state:
             raise self.malformed_icinga_log_entry(u"Malformed state entry: {} (error #6)".format(info))
 
@@ -701,7 +730,8 @@ class icinga_log_reader(threading_tools.process_obj):
         #     # use map for data created with this map, guess for earlier ones (see below)
         #     retval = self._current_host_service_data.hosts.get(host_spec, None)
         #     if not retval:
-        #         self.log("host lookup for current host {} failed, this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
+        #         self.log("host lookup for current host {} failed," +
+        #                  "this should not happen".format(host_spec), logging_tools.LOG_LEVEL_WARN)
         # else:
 
         retval = self._resolve_host_historic(host_spec)
@@ -720,7 +750,8 @@ class icinga_log_reader(threading_tools.process_obj):
         #     # use map for data created with this map, guess for earlier ones (see below)
         #     retval = (self._current_host_service_data.services.get(service_spec, None), None)
         #     if not retval[0]:
-        #         self.log("service lookup for current service {} failed, this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
+        #         self.log("service lookup for current service {} failed," +
+        #                  "this should not happen".format(service_spec), logging_tools.LOG_LEVEL_WARN)
         # else:
         retval = (self._resolve_service_historic(service_spec), service_spec)
         return retval
@@ -817,8 +848,8 @@ class host_service_id_util(object):
         elif s_check.check_command_pk is not None:
             # regular service check
             # format is: service_check:${mon_check_command_pk}:$info
-            # since a mon_check_command_pk can have multiple actual service checks, we add the info string to identify it
-            # as the services are created dynamically, we don't have a nice db pk
+            # since a mon_check_command_pk can have multiple actual service checks,
+            # we add the info string to identify it as the services are created dynamically, we don't have a nice db pk
             retval = "host_check:{}:{}:{}".format(host_pk, s_check.check_command_pk, info)
         else:
             retval = "unstructured:" + info
