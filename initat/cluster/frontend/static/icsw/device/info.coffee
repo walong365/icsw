@@ -1,4 +1,4 @@
-device_info_module = angular.module(
+angular.module(
     "icsw.device.info",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
@@ -47,6 +47,7 @@ device_info_module = angular.module(
                     else
                         msgbus.emit("devicelist", [[dev.idx], [dev.idx], [], []])
                 "NewOverview" : (event, dev) ->
+                    # dev can also be a structure from a devicemap (where only name and id/idx are defined)
                     # create new modal for device
                     # device object with access_levels
                     sub_scope = $rootScope.$new()

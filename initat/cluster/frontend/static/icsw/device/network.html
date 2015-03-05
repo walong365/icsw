@@ -327,9 +327,21 @@
         ng-mouseenter="mouse_enter()"
         ng-mouseleave="mouse_leave()"
         ng-click="mouse_click()"
-        ng-dblclick="double_click($event)"
     >
         <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
+        <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
+    </g>
+</script>
+
+<script type="text/ng-template" id="icsw.device.network.host.livestatus">
+    <g class="node draggable" node_id="{{ node.id }}">
+        <newburst
+            data="burstData"
+            innerradius="20"
+            outerradius="30"
+            noninteractive="true"
+            hidegroup="true"
+        ></newburst>
         <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
     </g>
 </script>
@@ -361,7 +373,24 @@
         <rect style="stroke:black;stroke-width:2px;fill-opacity:0" x="0" y="0" ng-attr-width="{{ size.width }}" ng-attr-height="{{ size.height }}"></rect>
         <g ng-attr-transform="translate({{ offset.x }}, {{ offset.y }}) scale({{ zoom.factor }})">
             <icsw-device-network-host-link ng-repeat="link in links" link="link" redraw="redraw_nodes"></icsw-device-network-host-link>
-            <icsw-device-network-host-node ng-repeat="node in nodes" node="node" redraw="redraw_nodes"></icsw-device-network-host-node>
+            <icsw-device-network-host-livestatus
+                ng-if="show_livestatus"
+                devicepk="node.id"
+                redraw-sunburst="ignore"
+                icsw-device-network-node-transform="node"
+                icsw-device-network-node-dbl-click="node"
+                ng-repeat="node in nodes"
+                redraw="redraw_nodes"
+                ng-dblclick="double_click($event)"
+            ></icsw-device-network-host-livestatus>
+            <icsw-device-network-host-node
+                icsw-device-network-node-transform="node"
+                icsw-device-network-node-dbl-click="node"
+                ng-repeat="node in nodes"
+                node="node"
+                redraw="redraw_nodes"
+                ng-dblclick="double_click($event)"
+            ></icsw-device-network-host-node>
         </g>
     </svg>
 </script>
@@ -393,7 +422,12 @@
                     </div>
                     <div class="form-group">
                         <icsw-tools-button type="reload" value="Redraw" size="sm" ng-click="fetch_data()"/>
-                    </div>              
+                    </div>
+                    <div class="form-group">
+                        ,
+                        <icsw-tools-button type="show" value="Show Livestatus" size="sm" is-show="!show_livestatus" ng-click="show_livestatus = !show_livestatus"></icsw-tools-button>
+                        livestatus
+                    </div>
                 </form>
                 <icsw-device-network-graph></icsw-device-network-graph>
             </div>
@@ -421,7 +455,9 @@
                             <td class="text-right">{{ cluster.devices }}</td>
                             <td class="text-right">{{ cluster.net_devices }}</td>
                             <td class="text-center">{{ is_selected(cluster) }}</td>
-                            <td><input type="button" class="btn btn-xs btn-primary" value="show" ng-click="show_cluster(cluster)"/></td>
+                            <td>
+                                <input type="button" class="btn btn-xs btn-primary" value="show" ng-click="show_cluster(cluster)"/>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

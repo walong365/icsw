@@ -1,4 +1,4 @@
-sidebar_module = angular.module(
+angular.module(
     "icsw.layout.sidebar",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.info",

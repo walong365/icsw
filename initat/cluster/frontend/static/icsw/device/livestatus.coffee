@@ -238,6 +238,7 @@ angular.module(
                 restDataSource.reload([ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": angular.toJson($scope.devsel_list), "_distinct": true}])
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": angular.toJson($scope.devsel_list)}])
             ]
+            icswDeviceLivestatusDataService.retain($scope.$id, $scope.devsel_list, $scope.on_new_data)
             $q.all(wait_list).then((data) ->
                 $scope.location_gfx_list = data[2]
                 gfx_lut = {}
@@ -271,8 +272,6 @@ angular.module(
                 $scope.cat_tree_lut = cat_tree_lut
                 $scope.cat_tree.show_selected(false)
                 $scope.dev_tree_lut = icswTools.build_lut(data[1])
-
-                icswDeviceLivestatusDataService.retain($scope.$id, $scope.devsel_list, $scope.on_new_data)
             )
         $scope.on_new_data = (host_entries, service_entries, host_lut) ->
             $scope.$apply(
@@ -446,7 +445,7 @@ angular.module(
 
     watchers_present = () ->
         # whether any watchers are present
-        return Object.keys(cont_list).length > 0
+        return _.keys(cont_list).length > 0
 
     schedule_load = () ->
         # called when new listeners register
@@ -910,6 +909,7 @@ angular.module(
         scope:
              devicepk: "=devicepk"
              redrawSunburst: "=redrawSunburst"
+        replace: true
         link : (scope, element, attrs) ->
             scope.$watch("devicepk", (data) ->
                 if data

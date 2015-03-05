@@ -756,9 +756,51 @@ angular.module(
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
         $scope.graph_sel = "sel"
+        $scope.show_livestatus = false
         $scope.devices = []
         $scope.new_devsel = (_dev_sel) ->
             $scope.devices = _dev_sel
+]).directive("icswDeviceNetworkNodeTransform", [() ->
+    return {
+        restrict: "A"
+        link: (scope, element, attrs) ->
+            scope.$watch(attrs["icswDeviceNetworkNodeTransform"], (transform_node) ->
+                scope.$watch(attrs["redraw"], (new_val) ->
+                    if transform_node.x?
+                        element.attr("transform", "translate(#{transform_node.x},#{transform_node.y})")
+                )
+            )
+    }
+]).directive("icswDeviceNetworkNodeDblClick", ["DeviceOverviewService", (DeviceOverviewService) ->
+    return {
+        restrict: "A"
+        link: (scope, element, attrs) ->
+            scope.click_node = null
+            scope.double_click = (event) ->
+                # beef up node structure
+                if scope.click_node?
+                    scope.click_node.idx = scope.click_node.id
+                    scope.click_node.device_type_identifier = "D"
+                    DeviceOverviewService.NewOverview(event, scope.click_node)
+            scope.$watch(attrs["icswDeviceNetworkNodeDblClick"], (click_node) ->
+                scope.click_node = click_node
+            )
+    }
+]).directive("icswDeviceNetworkHostLivestatus", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.network.host.livestatus")
+        controller: "icswDeviceLiveStatusCtrl"
+        scope:
+             devicepk: "=devicepk"
+             redrawSunburst: "=redrawSunburst"
+        replace: true
+        link : (scope, element, attrs) ->
+            scope.$watch("devicepk", (data) ->
+                if data
+                    scope.new_devsel([data], [])
+            )
+    }
 ]).directive("icswDeviceNetworkHostNode", ["dragging", "$templateCache", (dragging, $templateCache) ->
     return {
         restrict : "EA"
@@ -779,13 +821,6 @@ angular.module(
                 scope.stroke_width = Math.max(Math.min(new_val.num_nds, 3), 1)
                 scope.stroke_color = if new_val.num_nds then "grey" else "red"
             )
-            scope.$watch("redraw", () ->
-                scope.transform()
-            )
-            scope.transform= () ->
-                if scope.node.x?
-                    element.attr("transform", "translate(#{scope.node.x},#{scope.node.y})")
-                scope.fill_color = if scope.node.fixed then "red" else "white"
             scope.mouse_click = () ->
                 if scope.node.ignore_click
                     scope.node.ignore_click = false
@@ -799,9 +834,6 @@ angular.module(
                 scope.focus = false
                 scope.mousedown = false
                 scope.stroke_width--
-            scope.double_click = (event) ->
-                cur_di = new device_info(event, scope.node.id)
-                cur_di.show()
     }
 ]).directive("icswDeviceNetworkHostLink", ["$templateCache", ($templateCache) ->
     return {
