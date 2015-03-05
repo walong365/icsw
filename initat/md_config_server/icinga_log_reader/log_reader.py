@@ -25,6 +25,8 @@ import datetime
 import glob
 import os
 import pprint  # @UnusedImport
+import bz2
+import tempfile
 import pytz
 import time
 import logging_tools
@@ -139,7 +141,8 @@ class icinga_log_reader(threading_tools.process_obj):
             self.log("last icinga read until: {}".format(self._parse_timestamp(last_read.timestamp)))
         else:
             self.log("no earlier icinga log read, reading archive")
-            files = os.listdir(icinga_log_reader.get_icinga_log_archive_dir())
+            files = glob.glob(os.path.join(icinga_log_reader.get_icinga_log_archive_dir(),
+                                           "{}*".format(global_config['MD_TYPE'])))
             last_read_timestamp = self.parse_archive_files(files)
             if last_read_timestamp:
                 last_read = self._update_last_read(0, last_read_timestamp)
@@ -198,10 +201,12 @@ class icinga_log_reader(threading_tools.process_obj):
                 for day_missed in xrange(missed_timedelta.days + 1):  # include last
                     missed_log_day = last_read_date + datetime.timedelta(days=day_missed)
 
-                    day_files = glob.glob(os.path.join(icinga_log_reader.get_icinga_log_archive_dir(),
-                                                       "*-{}-{}-{}-*.log".format(missed_log_day.month,
-                                                                                 missed_log_day.day,
-                                                                                 missed_log_day.year)))
+                    day_files = glob.glob(
+                        os.path.join(icinga_log_reader.get_icinga_log_archive_dir(),
+                                     "{}-{}-{}-{}-*".format(global_config['MD_TYPE'],
+                                                            missed_log_day.month,
+                                                            missed_log_day.day,
+                                                            missed_log_day.year)))
                     files_to_check.extend(day_files)
 
                 # read archive
@@ -398,8 +403,25 @@ class icinga_log_reader(threading_tools.process_obj):
                 logfiles_date_data.append((year, month, day, hour, logfilepath))
 
         retval = None
+
+        (unused, tempfilepath) = tempfile.mkstemp("icinga_log_decompress")
         for unused1, unused2, unused3, unused4, logfilepath in sorted(logfiles_date_data):
-            with codecs.open(logfilepath, 'r', 'utf-8', errors='replace') as logfile:
+
+            if logfilepath.lower().endswith('bz2'):
+                # it seems to be hard to get bz2 to return unicode
+                # hence we decompress to a temporary file which then should be
+                # binary-equivalent to original file and then open it in a
+                # unicode-aware manner
+
+                f = open(tempfilepath, "w")
+                f.write(bz2.BZ2File(logfilepath).read())
+                f.close()
+                actual_logfilepath = tempfilepath
+
+            else:
+                actual_logfilepath = logfilepath
+
+            with codecs.open(actual_logfilepath, 'r', 'utf-8', errors='replace') as logfile:
                 last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
                 if retval is None:
                     retval = last_read_timestamp
@@ -410,6 +432,7 @@ class icinga_log_reader(threading_tools.process_obj):
                 if self["exit_requested"]:
                     self.log("exit requested")
                     break
+        os.remove(tempfilepath)
 
         return retval
 
