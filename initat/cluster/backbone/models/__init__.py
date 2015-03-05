@@ -1282,7 +1282,7 @@ class log_source(models.Model):
         return cur_source
 
     def __unicode__(self):
-        return "ls {} ({}), {}".format(
+        return "{} ({}), {}".format(
             self.name,
             self.identifier,
             self.description)

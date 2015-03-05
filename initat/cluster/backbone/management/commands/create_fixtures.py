@@ -410,7 +410,7 @@ class Command(BaseCommand):
         factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
         factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")
         factories.LogLevelFactory(identifier="w", level=logging_tools.LOG_LEVEL_WARN, name="warning")
-        factories.LogLevelFactory(identifier="i", level=logging_tools.LOG_LEVEL_OK, name="ok")
+        factories.LogLevelFactory(identifier="o", level=logging_tools.LOG_LEVEL_OK, name="ok")
         # status
         factories.Status(status="memtest", memory_test=True)
         factories.Status(status="boot_local", boot_local=True)

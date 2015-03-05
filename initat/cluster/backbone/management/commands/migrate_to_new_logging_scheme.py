@@ -23,9 +23,10 @@
 
 from django.core.management.base import BaseCommand
 from initat.cluster.backbone.models import config, config_catalog
-from initat.cluster.backbone.models import log_level, log_status, devicelog, log_source, \
-    LogLevel, LogSource, DeviceLogEntry
+from initat.cluster.backbone.models import log_status, devicelog, log_source, \
+    LogLevel, LogSource, DeviceLogEntry, user
 import logging_tools
+from django.db.models import Q
 
 
 class Command(BaseCommand):
@@ -35,6 +36,27 @@ class Command(BaseCommand):
     def handle(self, **options):
         cur_c = DeviceLogEntry.objects.all().count()
         if not cur_c:
-            print("migrating to new logging scheme")
+            LogSource.objects.all().exclude(Q(identifier="cluster")).delete()
+            # LogLevel.objects.all().delete()
+            print("migrating to new logging scheme, logs to handle: {:d}".format(devicelog.objects.all().count()))
+            # old to new log_source dict
+            _ls_dict = {}
+            for _ls in log_source.objects.all():
+                if _ls.identifier == "user":
+                    _ls_dict[_ls.pk] = None
+                else:
+                    _ls_dict[_ls.pk] = LogSource.new(
+                        identifier=_ls.identifier,
+                        name=_ls.name,
+                        description=_ls.description,
+                        device=_ls.device,
+                    )
+            # old to new log_status (Level) dict
+            _ll_dict = {}
+            for _ls in log_status.objects.all():
+                _ll_dict[_ls.pk] = LogLevel.objects.get(Q(identifier={"c": "c", "w": "w", "e": "e"}.get(_ls.identifier, "o")))
+            print _ls_dict
+            print _ll_dict
+
         else:
             print("new logging_scheme already in use")
