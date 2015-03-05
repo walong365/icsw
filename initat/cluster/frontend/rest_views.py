@@ -314,7 +314,7 @@ class detail_view(mixins.RetrieveModelMixin,
     def delete(self, request, *args, **kwargs):
         # just be careful
         cur_obj = self.model.objects.get(Q(pk=kwargs["pk"]))
-        if can_delete_obj(cur_obj, logger): # this also throws on negative answer
+        if can_delete_obj(cur_obj, logger):  # this also throws on negative answer
             return self.destroy(request, *args, **kwargs)
             # it makes no sense to return something meaningful because the DestroyModelMixin returns
             # a 204 status on successful deletion
