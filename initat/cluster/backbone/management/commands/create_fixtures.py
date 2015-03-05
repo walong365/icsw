@@ -377,7 +377,7 @@ class Command(BaseCommand):
         #    if not get_related_models(_cc):
         #        _cc.delete()
         # log source
-        factories.LogSourceFactory(identifier="cluster", name="Cluster source", description="Cluster")
+        factories.LogSourceFactory(identifier="cluster", description="Cluster (unspecified)", user=None, device=None)
         # device type
         factories.DeviceType(identifier="H", description="Host", priority=0)
         factories.DeviceType(identifier="AM", description="APC Masterswitch", priority=10)

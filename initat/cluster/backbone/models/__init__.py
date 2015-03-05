@@ -1184,8 +1184,6 @@ class LogSource(models.Model):
     idx = models.AutoField(primary_key=True)
     # server_type or user
     identifier = models.CharField(max_length=192)
-    # name (Cluster Server, webfrontend, ...)
-    name = models.CharField(max_length=192)
     # link to user or None
     user = models.ForeignKey("user", null=True)
     # link to device or None
@@ -1195,7 +1193,7 @@ class LogSource(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
-    def new(identifier, name, **kwargs):
+    def new(identifier, **kwargs):
         ls_dev = kwargs.get("device", None)
         ls_user = kwargs.get("user", None)
         if identifier == "user":
@@ -1203,30 +1201,27 @@ class LogSource(models.Model):
         else:
             sources = LogSource.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
         if len(sources) > 1:
-            print("Too many LogSource present ({}), exiting".format(", ".join([identifier, name])))
+            print("Too many LogSource present ({}), exiting".format(", ".join([identifier])))
             cur_source = None
         elif not len(sources):
             if ls_dev is not None:
                 new_source = LogSource(
                     identifier=identifier,
-                    name=name,
-                    description=u"{} on {}".format(name, unicode(ls_dev)),
+                    description=u"{} on {}".format(identifier, unicode(ls_dev)),
                     device=ls_dev,
                 )
                 new_source.save()
             elif ls_user is not None:
                 new_source = LogSource(
                     identifier=identifier,
-                    name=name,
-                    description=u"user {}".format(unicode(ls_user)),
+                    description=u"cluster user {}".format(unicode(ls_user)),
                     user=ls_user,
                 )
                 new_source.save()
             else:
                 new_source = LogSource(
                     identifier=identifier,
-                    name=name,
-                    description=kwargs.get("description", "{} (identifier {})".format(name, identifier))
+                    description=kwargs.get("description", "no description for {}".format(identifier))
                 )
                 new_source.save()
             cur_source = new_source
@@ -1334,6 +1329,9 @@ class LogLevel(models.Model):
     level = models.IntegerField(default=logging_tools.LOG_LEVEL_OK)
     name = models.CharField(max_length=32, unique=True)
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} ({:d})".format(self.identifier, self.level)
 
 
 class log_status(models.Model):

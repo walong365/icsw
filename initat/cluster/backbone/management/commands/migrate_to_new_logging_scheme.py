@@ -55,8 +55,23 @@ class Command(BaseCommand):
             _ll_dict = {}
             for _ls in log_status.objects.all():
                 _ll_dict[_ls.pk] = LogLevel.objects.get(Q(identifier={"c": "c", "w": "w", "e": "e"}.get(_ls.identifier, "o")))
-            print _ls_dict
-            print _ll_dict
-
+            _user_ls = {}
+            for _le in devicelog.objects.all().select_related("user", "device", "source"):
+                if _le.user_id:
+                    if _le.user_id not in _user_ls:
+                        _user_ls[_le.user_id] = LogSource.new(
+                            identifier="user",
+                            user=_le.user,
+                        )
+                    _user = _le.user
+                    _source = _user_ls[_le.user_id]
+                else:
+                    _source = _ls_dict[_le.log_source]
+                DeviceLogEntry.objects.create(
+                    device=_le.device,
+                    source=_source,
+                    level=_ll_dict[_le.log_status_id],
+                    text=_le.text,
+                )
         else:
             print("new logging_scheme already in use")
