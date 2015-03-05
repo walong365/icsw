@@ -31,7 +31,7 @@ django.setup()
 
 from initat.cluster_config_server.cluster_config_server_version import VERSION_STRING
 from initat.cluster_config_server.config_static import SERVER_PORT, NCS_PORT
-from initat.cluster.backbone.models import log_source
+from initat.cluster.backbone.models import LogSource
 import daemon
 from io_stream_helper import io_stream
 import cluster_location
@@ -98,7 +98,7 @@ def main():
         [
             (
                 "LOG_SOURCE_IDX",
-                configfile.int_c_var(log_source.create_log_source_entry("config-server", "Cluster ConfigServer", device=sql_info.effective_device).pk)
+                configfile.int_c_var(LogSource.new("config-server", device=sql_info.effective_device).pk)
             )
         ]
     )

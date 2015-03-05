@@ -21,7 +21,7 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, network, config, log_status_lookup, log_source, \
+from initat.cluster.backbone.models import device, network, config, log_level_lookup, LogSource, \
     net_ip
 from initat.cluster.backbone.routing import get_server_uuid, get_type_from_config
 from initat.cluster_config_server.build_client import build_client
@@ -94,7 +94,7 @@ class build_process(threading_tools.process_obj):
         # close database connection
         connection.close()
         self.router_obj = config_tools.router_object(self.log)
-        self.config_src = log_source.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
+        self.config_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         self.register_func("generate_config", self._generate_config)
         # for requests from config_control
         self.register_func("complex_request", self._complex_request)
@@ -205,10 +205,10 @@ class build_process(threading_tools.process_obj):
         # send result
         e_time = time.time()
         if dev_sc:
-            dev_sc.device.add_log(
-                self.config_src,
-                log_status_lookup(int(cur_c.state_level)),
-                "built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time))
+            dev_sc.device.add_log_entry(
+                source=self.config_src,
+                level=log_level_lookup(int(cur_c.state_level)),
+                text="built config in %s" % (logging_tools.get_diff_time_str(e_time - s_time))
             )
         cur_c.log("built took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
