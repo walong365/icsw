@@ -1151,7 +1151,7 @@ class devicelog(models.Model):
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    @staticmethod
+    # @staticmethod
     # def new_log(cur_dev, log_src, log_stat, text, **kwargs):
     # if log_src and type(log_src) in [int, long]:
     #    log_src = log_source_lookup(log_src)
