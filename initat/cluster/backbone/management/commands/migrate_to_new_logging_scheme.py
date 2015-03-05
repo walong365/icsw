@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,21 +23,18 @@
 
 from django.core.management.base import BaseCommand
 from initat.cluster.backbone.models import config, config_catalog
+from initat.cluster.backbone.models import log_level, log_status, devicelog, log_source, \
+    LogLevel, LogSource, DeviceLogEntry
 import logging_tools
 
 
 class Command(BaseCommand):
-    help = ("Migrate to config catalogs.")
+    help = ("Migrate to new logging_scheme")
     args = ''
 
     def handle(self, **options):
-        num_cc = config_catalog.objects.all().count()
-        if not num_cc:
-            def_cc = config_catalog.create_local_catalog()
-            print("created config_catalog '{}'".format(unicode(def_cc)))
-            for conf in config.objects.all():
-                conf.config_catalog = def_cc
-                conf.save()
-            print("migrated {:d} configs".format(config.objects.all().count()))
+        cur_c = DeviceLogEntry.objects.all().count()
+        if not cur_c:
+            print("migrating to new logging scheme")
         else:
-            print("{} already present".format(logging_tools.get_plural("config catalog", num_cc)))
+            print("new logging_scheme already in use")
