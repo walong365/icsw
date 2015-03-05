@@ -1240,9 +1240,6 @@ class LogSource(models.Model):
             self.identifier,
             self.description)
 
-    class Meta:
-        db_table = u'log_source'
-
 
 class log_source(models.Model):
     idx = models.AutoField(db_column="log_source_idx", primary_key=True)
