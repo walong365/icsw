@@ -1118,6 +1118,8 @@ class DeviceLogEntry(models.Model):
         source = kwargs.get("source")
         if source is None:
             source = log_source_lookup("cluster")
+        elif isinstance(source, basestring) or type(source) in [int, long]:
+            source = log_source_lookup(source)
 
         level = kwargs.get("level")
         if level is None:
