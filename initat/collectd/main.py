@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,7 +26,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.cluster.backbone.models import log_source
+from initat.cluster.backbone.models import LogSource
 from initat.collectd.config_static import COMMAND_PORT
 from initat.collectd.version import VERSION_STRING
 from io_stream_helper import io_stream
@@ -127,8 +127,8 @@ def main():
             (
                 "LOG_SOURCE_IDX",
                 configfile.int_c_var(
-                    log_source.create_log_source_entry(
-                        "rrd-collector", "Cluster collectd", device=sql_info.effective_device
+                    LogSource.new(
+                        "rrd-collector", device=sql_info.effective_device
                     ).pk
                 )
             ),
