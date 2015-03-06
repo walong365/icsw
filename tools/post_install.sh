@@ -5,7 +5,7 @@ export CLUSTER_PATH=/opt/cluster
 
 # remove cached urls.py files
 rm -f ${PREFIX_INIT}/initat/cluster/urls.py*
-rm -f ${PREFIX_INIT}/initat/core
+rm -rf ${PREFIX_INIT}/initat/core
 
 if [ -x ${CLUSTER_PATH}/sbin/check_local_settings.py ] ; then
     ${CLUSTER_PATH}/sbin/check_local_settings.py
