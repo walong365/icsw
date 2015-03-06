@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2001-2007,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2007,2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
