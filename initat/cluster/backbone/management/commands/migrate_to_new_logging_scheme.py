@@ -34,7 +34,8 @@ class Command(BaseCommand):
     args = ''
 
     def handle(self, **options):
-        DeviceLogEntry.objects.all().delete()
+        # uncomment for testing
+        # DeviceLogEntry.objects.all().delete()
         cur_c = DeviceLogEntry.objects.all().count()
         if not cur_c:
             LogSource.objects.all().exclude(Q(identifier="cluster")).delete()
