@@ -809,7 +809,7 @@ angular.module(
                             start_cos = Math.cos(start_arc)
                             end_num += part.width
                             end_arc = 2 * Math.PI * end_num / _len
-                            if end_arc - start_arc < 0.05
+                            if (end_arc - start_arc) * outer < 3
                                 # arc is too small, do not draw
                                 omitted_segments++
                             else
