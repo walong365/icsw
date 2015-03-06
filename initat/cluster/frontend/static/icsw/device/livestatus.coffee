@@ -132,6 +132,8 @@ angular.module(
         #$scope.cur_timeout = undefined
         # focused
         $scope.focusService = null
+        # draw response
+        $scope.burstResponse = null
         # flag to trigger redraw of sunburst
         $scope.redrawSunburst = 0
         # flag to trigger recalc of sunburst visibility
@@ -143,8 +145,16 @@ angular.module(
         $scope.table_show = true
         # location gfx list
         $scope.location_gfx_list = []
+        # omitted segments
+        $scope.omitted_segments = 0
         $scope.$watch("focusService", (as) ->
-            $scope.focus_service = as
+            # link nested newburst
+            $scope.focusService = as
+        )
+        $scope.$watch("burstResponse", (as) ->
+            # link nested newburst
+            $scope.burstResponse = as
+            $scope.omitted_segments = as
         )
         $scope.$watch("recalcSunburst", (red) ->
             $scope.md_filter_changed()
@@ -691,7 +701,8 @@ angular.module(
             data: "=data"
             redraw_burst: "=redraw"
             recalc_burst: "=recalc"
-            service_focus: "=servicefocus"
+            serviceFocus: "=serviceFocus"
+            burstResponse: "=burstResponse"
         link: (scope, element, attrs) ->
             scope.nodes = []
             scope.inner = parseInt(attrs["innerradius"] or 20)
@@ -743,8 +754,8 @@ angular.module(
                     scope.draw_data()
             )
             scope.set_focus_service = (srvc) ->
-                if "servicefocus" of attrs
-                    scope.service_focus = srvc
+                if "serviceFocus" of attrs
+                    scope.serviceFocus = srvc
             scope.force_recalc = () ->
                 if "recalc" of attrs
                     scope.recalc_burst++
@@ -754,9 +765,12 @@ angular.module(
                 _size = scope.get_children(scope.sunburst_data, 0, struct)
                 scope.max_depth = (idx for idx of struct).length
                 scope.nodes = []
+                omitted_segments = 0
                 for idx of struct
                     if struct[idx].length
-                        scope.add_circle(parseInt(idx), struct[idx])
+                        omitted_segments += scope.add_circle(parseInt(idx), struct[idx])
+                if attrs["burstResponse"]
+                    scope.burstResponse = omitted_segments
             scope.add_circle = (idx, nodes) ->
                 _len = _.reduce(
                     nodes,
@@ -764,6 +778,7 @@ angular.module(
                         return sum + obj.width
                     0
                 )
+                omitted_segments = 0
                 outer = scope.get_inner(idx)
                 inner = scope.get_outer(idx)
                 if not _len
@@ -781,6 +796,7 @@ angular.module(
                         "Z"
                     scope.nodes.push(dummy_part)
                 else
+                    # console.log idx, _len, nodes.length
                     end_arc = 0
                     end_num = 0
                     # legend radii
@@ -793,43 +809,49 @@ angular.module(
                             start_cos = Math.cos(start_arc)
                             end_num += part.width
                             end_arc = 2 * Math.PI * end_num / _len
-                            mean_arc = (start_arc + end_arc) / 2
-                            mean_sin = Math.sin(mean_arc)
-                            mean_cos = Math.cos(mean_arc)
-                            end_sin = Math.sin(end_arc)
-                            end_cos = Math.cos(end_arc)
-                            if end_arc > start_arc + Math.PI
-                                _large_arc_flag = 1
+                            if end_arc - start_arc < 0.05
+                                # arc is too small, do not draw
+                                omitted_segments++
                             else
-                                _large_arc_flag = 0
-                            if mean_cos < 0
-                                legend_x = -outer_legend * 1.2
-                                part.legend_anchor = "end"
-                            else
-                                legend_x = outer_legend * 1.2
-                                part.legend_anchor = "start"
-                            part.legend_x = legend_x
-                            part.legend_y = mean_sin * outer_legend
-                            part.legendpath = "#{mean_cos * inner_legend},#{mean_sin * inner_legend} #{mean_cos * outer_legend},#{mean_sin * outer_legend} " + \
-                                "#{legend_x},#{mean_sin * outer_legend}"
-                            if part.width == _len
-                                # trick: draw 2 semicircles
-                                part.path = "M#{outer},0 " + \
-                                    "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
-                                    "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
-                                    "L#{outer},0 " + \
-                                    "M#{inner},0 " + \
-                                    "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
-                                    "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
-                                    "L#{inner},0 " + \
-                                    "Z"
-                            else
-                                part.path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
-                                    "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
-                                    "L#{end_cos * inner},#{end_sin * inner} " + \
-                                    "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
-                                    "Z"
-                            scope.nodes.push(part)
+                                # console.log end_arc - start_arc
+                                mean_arc = (start_arc + end_arc) / 2
+                                mean_sin = Math.sin(mean_arc)
+                                mean_cos = Math.cos(mean_arc)
+                                end_sin = Math.sin(end_arc)
+                                end_cos = Math.cos(end_arc)
+                                if end_arc > start_arc + Math.PI
+                                    _large_arc_flag = 1
+                                else
+                                    _large_arc_flag = 0
+                                if mean_cos < 0
+                                    legend_x = -outer_legend * 1.2
+                                    part.legend_anchor = "end"
+                                else
+                                    legend_x = outer_legend * 1.2
+                                    part.legend_anchor = "start"
+                                part.legend_x = legend_x
+                                part.legend_y = mean_sin * outer_legend
+                                part.legendpath = "#{mean_cos * inner_legend},#{mean_sin * inner_legend} #{mean_cos * outer_legend},#{mean_sin * outer_legend} " + \
+                                    "#{legend_x},#{mean_sin * outer_legend}"
+                                if part.width == _len
+                                    # trick: draw 2 semicircles
+                                    part.path = "M#{outer},0 " + \
+                                        "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
+                                        "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
+                                        "L#{outer},0 " + \
+                                        "M#{inner},0 " + \
+                                        "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
+                                        "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
+                                        "L#{inner},0 " + \
+                                        "Z"
+                                else
+                                    part.path = "M#{start_cos * inner},#{start_sin * inner} L#{start_cos * outer},#{start_sin * outer} " + \
+                                        "A#{outer},#{outer} 0 #{_large_arc_flag} 1 #{end_cos * outer},#{end_sin * outer} " + \
+                                        "L#{end_cos * inner},#{end_sin * inner} " + \
+                                        "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
+                                        "Z"
+                                scope.nodes.push(part)
+                return omitted_segments
             scope.get_inner = (idx) ->
                 _inner = scope.inner + (scope.outer - scope.inner) * idx / scope.max_depth
                 return _inner

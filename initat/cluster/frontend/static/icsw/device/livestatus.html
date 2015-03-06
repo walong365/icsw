@@ -96,6 +96,9 @@
         <span ng-show="location_gfx_list.length"> on
             <ng-pluralize count="location_gfx_list.length" when="{'1' : '1 map', 'other' : '{} maps'}"/>
         </span>
+        <span ng-show="omitted_segments">
+            , {{ omitted_segments }} omitted segments
+        </span>
     </h3>
     <div class="row">
         <div class="col-md-6">
@@ -140,14 +143,15 @@
                         redraw="redrawSunburst"
                         recalc="recalcSunburst"
                         innerradius="60"
-                        servicefocus="focusService"
+                        service-focus="focusService"
+                        burst-response="burstResponse"
                         zoom="1"
                     ></newburst>
                 </g>
             </svg>
         </div>
         <div class="col-md-6">
-            <icsw-device-livestatus-service-info service="focus_service"></icsw-device-livestatus-service-info>
+            <icsw-device-livestatus-service-info service="focusService"></icsw-device-livestatus-service-info>
         </div>
     </div>
     <tabset ng-show="map_show">
