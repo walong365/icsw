@@ -31,7 +31,7 @@ class NetDeviceSpeed(factory.django.DjangoModelFactory):
 class LogSourceFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = LogSource
-        django_get_or_create = ("identifier", "device", "user")
+        django_get_or_create = ("identifier", "device")
 
 
 class LogLevelFactory(factory.django.DjangoModelFactory):

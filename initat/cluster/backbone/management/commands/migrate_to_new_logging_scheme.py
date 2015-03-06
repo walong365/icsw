@@ -43,34 +43,22 @@ class Command(BaseCommand):
             # old to new log_source dict
             _ls_dict = {}
             for _ls in log_source.objects.all():
-                if _ls.identifier == "user":
-                    _ls_dict[_ls.pk] = None
-                else:
-                    _ls_dict[_ls.pk] = LogSource.new(
-                        identifier=_ls.identifier,
-                        name=_ls.name,
-                        description=_ls.description,
-                        device=_ls.device,
-                    )
+                _ls_dict[_ls.pk] = LogSource.new(
+                    identifier=_ls.identifier,
+                    description=_ls.description,
+                    device=_ls.device,
+                )
             # old to new log_status (Level) dict
             _ll_dict = {}
             for _ls in log_status.objects.all():
                 _ll_dict[_ls.pk] = LogLevel.objects.get(Q(identifier={"c": "c", "w": "w", "e": "e"}.get(_ls.identifier, "o")))
             _user_ls = {}
             for _le in devicelog.objects.all().select_related("user", "device", "source"):
-                if _le.user_id:
-                    if _le.user_id not in _user_ls:
-                        _user_ls[_le.user_id] = LogSource.new(
-                            identifier="user",
-                            user=_le.user,
-                        )
-                    _user = _le.user
-                    _source = _user_ls[_le.user_id]
-                else:
-                    _source = _ls_dict[_le.log_source_id]
+                _source = _ls_dict[_le.log_source_id]
                 _new_le = DeviceLogEntry.objects.create(
                     device=_le.device,
                     source=_source,
+                    user=_le.user,
                     level=_ll_dict[_le.log_status_id],
                     text=_le.text,
                 )

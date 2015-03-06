@@ -372,7 +372,8 @@ class Command(BaseCommand):
         for lic_name in ALL_LICENSES:
             factories.ClusterLicense(name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
         # LogSource
-        factories.LogSourceFactory(identifier="cluster", description="Cluster (unspecified)", user=None, device=None)
+        factories.LogSourceFactory(identifier="webfrontend", description="via Webfrontend", device=None)
+        factories.LogSourceFactory(identifier="commandline", description="via Webfrontend", device=None)
         # device type
         factories.DeviceType(identifier="H", description="Host", priority=0)
         factories.DeviceType(identifier="AM", description="APC Masterswitch", priority=10)

@@ -1104,7 +1104,10 @@ class device_type(models.Model):
 class DeviceLogEntry(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device")
+    # link to source, required
     source = models.ForeignKey("LogSource")
+    # link to user or None
+    user = models.ForeignKey("user", null=True)
     level = models.ForeignKey("LogLevel")
     text = models.CharField(max_length=765, default="")
     date = models.DateTimeField(auto_now_add=True)
@@ -1115,9 +1118,11 @@ class DeviceLogEntry(models.Model):
         if not _dev:
             _dev = device.objects.get(Q(device_group__cluster_device_group=True))
 
+        # must be a valid user object
+        _user = kwargs.get("user")
         source = kwargs.get("source")
         if source is None:
-            source = log_source_lookup("cluster")
+            source = log_source_lookup("webfrontend")
         elif isinstance(source, basestring) or type(source) in [int, long]:
             source = log_source_lookup(source)
 
@@ -1131,6 +1136,7 @@ class DeviceLogEntry(models.Model):
             device=_dev,
             source=source,
             level=level,
+            user=_user,
             text=kwargs.get("text", "no text given"),
         )
         return cur_log
@@ -1142,6 +1148,77 @@ class DeviceLogEntry(models.Model):
             self.level.identifier,
             self.level.level,
         )
+
+
+@lru_cache()
+def log_source_lookup(identifier, device=None):
+    if type(identifier) in [int, long]:
+        return LogSource.objects.get(Q(pk=identifier))
+    elif device is not None:
+        return LogSource.objects.get(Q(identifier=identifier) & Q(device=device))
+    else:
+        return LogSource.objects.get(Q(identifier=identifier))
+
+
+class LogSource(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # server_type or user
+    identifier = models.CharField(max_length=192)
+    # link to device or None
+    device = models.ForeignKey("device", null=True)
+    # long description
+    description = models.CharField(max_length=765, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def new(identifier, **kwargs):
+        ls_dev = kwargs.get("device", None)
+        sources = LogSource.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
+        if len(sources) > 1:
+            print("Too many LogSources present ({}), exiting".format(", ".join([identifier])))
+            cur_source = None
+        elif not len(sources):
+            if ls_dev is not None:
+                new_source = LogSource(
+                    identifier=identifier,
+                    description=u"{} on {}".format(identifier, unicode(ls_dev)),
+                    device=ls_dev,
+                )
+                new_source.save()
+            else:
+                new_source = LogSource(
+                    identifier=identifier,
+                    description=kwargs.get("description", "no description for {}".format(identifier))
+                )
+                new_source.save()
+            cur_source = new_source
+        else:
+            cur_source = sources[0]
+        return cur_source
+
+    def __unicode__(self):
+        return "{} ({})".format(
+            self.identifier,
+            self.description)
+
+
+@lru_cache()
+def log_level_lookup(key):
+    if isinstance(key, basestring):
+        return LogLevel.objects.get(Q(identifier=key))
+    else:
+        return LogLevel.objects.get(Q(level=key))
+
+
+class LogLevel(models.Model):
+    idx = models.AutoField(primary_key=True)
+    identifier = models.CharField(max_length=2, unique=True)
+    level = models.IntegerField(default=logging_tools.LOG_LEVEL_OK)
+    name = models.CharField(max_length=32, unique=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} ({:d})".format(self.name, self.level)
 
 
 class devicelog(models.Model):
@@ -1178,61 +1255,6 @@ class devicelog(models.Model):
 
     class Meta:
         db_table = u'devicelog'
-
-
-class LogSource(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # server_type or user
-    identifier = models.CharField(max_length=192)
-    # link to user or None
-    user = models.ForeignKey("user", null=True)
-    # link to device or None
-    device = models.ForeignKey("device", null=True)
-    # long description
-    description = models.CharField(max_length=765, default="")
-    date = models.DateTimeField(auto_now_add=True)
-
-    @staticmethod
-    def new(identifier, **kwargs):
-        ls_dev = kwargs.get("device", None)
-        ls_user = kwargs.get("user", None)
-        if identifier == "user":
-            sources = LogSource.objects.filter(Q(identifier=identifier) & Q(user=ls_user))
-        else:
-            sources = LogSource.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
-        if len(sources) > 1:
-            print("Too many LogSource present ({}), exiting".format(", ".join([identifier])))
-            cur_source = None
-        elif not len(sources):
-            if ls_dev is not None:
-                new_source = LogSource(
-                    identifier=identifier,
-                    description=u"{} on {}".format(identifier, unicode(ls_dev)),
-                    device=ls_dev,
-                )
-                new_source.save()
-            elif ls_user is not None:
-                new_source = LogSource(
-                    identifier=identifier,
-                    description=u"cluster user {}".format(unicode(ls_user)),
-                    user=ls_user,
-                )
-                new_source.save()
-            else:
-                new_source = LogSource(
-                    identifier=identifier,
-                    description=kwargs.get("description", "no description for {}".format(identifier))
-                )
-                new_source.save()
-            cur_source = new_source
-        else:
-            cur_source = sources[0]
-        return cur_source
-
-    def __unicode__(self):
-        return "{} ({})".format(
-            self.identifier,
-            self.description)
 
 
 class log_source(models.Model):
@@ -1283,54 +1305,6 @@ class log_source(models.Model):
 
     class Meta:
         db_table = u'log_source'
-
-
-@lru_cache()
-def log_source_lookup(identifier, device=None, user=None):
-    if type(identifier) in [int, long]:
-        return LogSource.objects.get(Q(pk=identifier))
-    elif device is not None:
-        return LogSource.objects.get(Q(identifier=identifier) & Q(device=device))
-    elif user is not None:
-        return LogSource.objects.get(Q(identifier=identifier) & Q(user=user))
-    else:
-        return LogSource.objects.get(Q(identifier=identifier))
-
-
-# @lru_cache()
-# def log_status_lookup(key):
-#    if isinstance(key, basestring):
-#        return log_status.objects.get(Q(identifier=key))
-#    else:
-#        return log_status.objects.get(
-#            Q(
-#                log_level={
-#                    logging_tools.LOG_LEVEL_OK: 0,
-#                    logging_tools.LOG_LEVEL_WARN: 50,
-#                    logging_tools.LOG_LEVEL_ERROR: 100,
-#                    logging_tools.LOG_LEVEL_CRITICAL: 200
-#                }[key]
-#            )
-#        )
-
-
-@lru_cache()
-def log_level_lookup(key):
-    if isinstance(key, basestring):
-        return LogLevel.objects.get(Q(identifier=key))
-    else:
-        return LogLevel.objects.get(Q(level=key))
-
-
-class LogLevel(models.Model):
-    idx = models.AutoField(primary_key=True)
-    identifier = models.CharField(max_length=2, unique=True)
-    level = models.IntegerField(default=logging_tools.LOG_LEVEL_OK)
-    name = models.CharField(max_length=32, unique=True)
-    date = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "{} ({:d})".format(self.name, self.level)
 
 
 class log_status(models.Model):
