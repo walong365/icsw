@@ -1756,19 +1756,17 @@ class node_control_process(threading_tools.process_obj):
                     source=self.mother_src,
                     level=logging_tools.LOG_LEVEL_ERROR,
                     text="not a device",
+                    user=log_user,
                 )
-                # devicelog.new_log(, self.mother_src, logging_tools.LOG_LEVEL_ERROR, "not a device", user=log_user)
             else:
                 DeviceLogEntry.new(
                     device=dev.device,
                     source=self.mother_src,
                     text="soft control '{}'".format(
                         xml_dev.attrib["soft_command"]
-                    )
+                    ),
+                    user=log_user,
                 )
-                # devicelog.new_log(dev.device, self.mother_src, logging_tools.LOG_LEVEL_OK, "soft control '{}'".format(
-                #    xml_dev.attrib["soft_command"]
-                # ), user=log_user)
         if not machine.ping(in_com):
             # no pings send
             self._add_ping_info(in_com)
