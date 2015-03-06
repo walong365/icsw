@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -197,7 +197,7 @@ class srv_type_routing(object):
                             _dev.effective_device.device_type.identifier,
                             ))
                     else:
-                        if _dev.effective_device.pk == _myself.device.pk:
+                        if _myself.device and _dev.effective_device.pk == _myself.device.pk:
                             _first_ip = "127.0.0.1"
                             _penalty = 1
                         else:
