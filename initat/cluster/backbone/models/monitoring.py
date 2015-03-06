@@ -1422,6 +1422,9 @@ class raw_service_alert_manager(models.Manager):
                 else:
                     additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2], date=v[1])
 
+                if len(additional_fields_query) == 0:  # must be dev independent
+                    additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
+
                 v[0].update(additional_fields_query.values(*additional_fields)[0])
 
         # drop extreme date
