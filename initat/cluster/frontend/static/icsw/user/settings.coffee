@@ -3,8 +3,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswUserSettingsCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$timeout", "$modal", "$window", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $timeout, $modal, $window, ICSW_URLS) ->
+).controller("icswUserLicenseCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal", "$window", "ICSW_URLS",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal, $window, ICSW_URLS) ->
         $scope.licenses = []
         wait_list = restDataSource.add_sources([
             [ICSW_URLS.REST_CLUSTER_LICENSE_LIST, {}]
@@ -41,9 +41,10 @@ angular.module(
             # Restangular.restangularizeElement(null, lic, ICSW_URLS.REST_CLUSTER_LICENSE_DETAIL.slice(1).slice(0, -2))
             lic.enabled = !lic.enabled
             lic.put()
-]).directive("icswUserSettingsOverview", ["$templateCache", ($templateCache) ->
+]).directive("icswUserLicenseOverview", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.user.settings.overview")
+        controller: 'icswUserLicenseCtrl'
+        template : $templateCache.get("icsw.user.license.overview")
     }
 ])

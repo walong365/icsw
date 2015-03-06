@@ -240,11 +240,11 @@ class account_info(View):
         )()
 
 
-class global_settings(View):
+class global_license(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def get(self, request):
-        return render_me(request, "global_settings.html")()
+        return render_me(request, "global_license.html")()
 
 
 class background_job_info(View):
