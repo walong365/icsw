@@ -164,6 +164,7 @@ user_patterns = patterns(
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^account_info$", user_views.account_info.as_view(), name="account_info"),
     url("^global_license$", user_views.global_license.as_view(), name="global_license"),
+    url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
     url("^background_info$", user_views.background_job_info.as_view(), name="background_job_info"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),

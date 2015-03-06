@@ -247,6 +247,14 @@ class global_license(View):
         return render_me(request, "global_license.html")()
 
 
+class upload_license_file(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        lic_file = request.FILES['license_file']
+        lic_file.read()
+
+
+
 class background_job_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
