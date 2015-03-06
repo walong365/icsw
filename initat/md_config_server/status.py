@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -150,6 +150,8 @@ class status_process(threading_tools.process_obj):
                         "display_name",
                         "current_attempt",
                         "custom_variables",
+                        "acknowledged",
+                        "acknowledgement_type",
                     ).filter("host_name", "=", dev_names)
                     service_result = service_query.call()
                     host_query = cur_sock.hosts.columns(
@@ -164,6 +166,8 @@ class status_process(threading_tools.process_obj):
                         "max_check_attempts",
                         "current_attempt",
                         "custom_variables",
+                        "acknowledged",
+                        "acknowledgement_type",
                     ).filter("host_name", "=", dev_names)
                     host_result = host_query.call()
                 else:
