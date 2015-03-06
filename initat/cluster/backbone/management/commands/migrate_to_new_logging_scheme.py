@@ -38,8 +38,6 @@ class Command(BaseCommand):
         # DeviceLogEntry.objects.all().delete()
         cur_c = DeviceLogEntry.objects.all().count()
         if not cur_c:
-            LogSource.objects.all().exclude(Q(identifier="cluster")).delete()
-            # LogLevel.objects.all().delete()
             print("migrating to new logging scheme, logs to handle: {:d}".format(devicelog.objects.all().count()))
             # old to new log_source dict
             _ls_dict = {}
