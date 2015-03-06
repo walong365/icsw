@@ -806,7 +806,7 @@ def device_post_save(sender, **kwargs):
                         device=_cur_inst,
                         name="CLUSTER_ID",
                         is_public=False,
-                        val_str="{}-{}".format(
+                        val_str="{}-{}".format(  # NOTE: license admin gui checks for this pattern
                             get_random_string(6, "ABCDEFGHKLPRSTUWXYZ123456789"),
                             get_random_string(4, "ABCDEFGHKLPRSTUWXYZ123456789"),
                         ),
