@@ -136,7 +136,7 @@
                 <ul class="dropdown-menu">
                     <li><a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;Account Info</a></li>
                     <li ng-show="check_perm('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;Admin</a></li>
-                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_SETTINGS }}"><span class="glyphicon glyphicon-pencil"></span>&nbsp;Settings</a></li>
+                    <li ng-show="CURRENT_USER.is_superuser"><a href="{{ ICSW_URLS.USER_GLOBAL_LICENSE }}"><span class="glyphicon glyphicon-pencil"></span>&nbsp;License</a></li>
                     <li ng-show="check_perm('background_job.show_background')">
                         <a href="{{ ICSW_URLS.USER_BACKGROUND_JOB_INFO }}"><span class="glyphicon glyphicon-list"></span>&nbsp;Background Job Info</a>
                     </li>
