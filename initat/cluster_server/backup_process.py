@@ -20,7 +20,7 @@
 from django.conf import settings
 from django.db import connection
 from initat.cluster_server.config import global_config
-from initat.core.management.commands import dumpdatafast, dumpdataslow
+from initat.cluster.backbone.management.commands import dumpdatafast, dumpdataslow
 from optparse import OptionParser
 import bz2
 import datetime
