@@ -27,7 +27,9 @@ from django.dispatch import receiver
 import logging_tools
 
 __all__ = [
-    "machine_vector",
+    "MachineVector",
+    "MVStructEntry",
+    "MVValue",
 ]
 
 
@@ -51,7 +53,7 @@ top levels: ['machine_vector']
 """
 
 
-class machine_vector(models.Model):
+class MachineVector(models.Model):
     idx = models.AutoField(primary_key=True)
     # link to device
     device = models.ForeignKey("device")
@@ -65,10 +67,10 @@ class machine_vector(models.Model):
         return "machine_vector"
 
 
-class mv_struct_entry(models.Model):
+class MVStructEntry(models.Model):
     # structural entry for machine_vector, references an RRD-file on disk
     idx = models.AutoField(primary_key=True)
-    machine_vector = models.ForeignKey("machine_vector")
+    machine_vector = models.ForeignKey("MachineVector")
     file_name = models.CharField(max_length=256, default="")
     se_type = models.CharField(
         max_length=6,
@@ -93,10 +95,10 @@ class mv_struct_entry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
-class mv_value(models.Model):
+class MVValue(models.Model):
     # value entry for machine_vector
     idx = models.AutoField(primary_key=True)
-    mv_struct_entry = models.ForeignKey("mv_struct_entry")
+    mv_struct_entry = models.ForeignKey("MVStructEntry")
     # base for generating {k,M,G,T} values, in most cases 1000 or 1024
     base = models.IntegerField(default=1024)
     # factor, a simple multiplicator to get to a sane value (in most cases 1)
