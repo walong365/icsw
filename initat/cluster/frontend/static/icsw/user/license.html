@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw.user.license.overview">
-    <h3>License settings ({{ licenses.length }})</h3>
+    <h3>License settings (OLD) ({{ licenses.length }})</h3>
     <table class="table table-condensed table-hover" style="width:auto;">
         <thead>
             <tr>
@@ -21,4 +21,21 @@
             </tr>
         </tbody>
     </table>
+
+    <h3>License (NEW)</h3>
+
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h4 class="panel-title">Upload license file</h4>
+        </div>
+        <div class="panel-body">
+            <div style="width: 250px; float: left; margin-right: 10px;">
+                <input type="file" nv-file-select="" class="form-control btn btn-default btn-file" uploader="uploader">
+            </div>
+            <input type="button" ng-show="uploader.queue.length " class="btn btn-warning btn-sm" value="upload"
+                   ng-click="uploader.uploadAll()">
+        </div>
+    </div>
+
+
 </script>

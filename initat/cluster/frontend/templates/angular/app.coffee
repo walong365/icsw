@@ -323,6 +323,7 @@ ics_app = angular.module(
     "USER_OVERVIEW": "{% url 'user:overview' %}"
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
     "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
+    "USER_UPLOAD_LICENSE_FILE": "{% url 'user:upload_license_file' %}"
     {% for name, url in ADDITIONAL_URLS %}
     "{{ name }}": "{{ url }}"
     {% endfor %}
