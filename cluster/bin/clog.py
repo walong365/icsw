@@ -78,7 +78,13 @@ def main():
         # print def_query
         all_logs = DeviceLogEntry.objects.filter(
             def_query
-        ).select_related("source", "level", "user", "device").order_by("-date")
+        ).select_related(
+            "source",
+            "source__device",
+            "level",
+            "user",
+            "device"
+        ).order_by("-date")
         print("{} found:".format(logging_tools.get_plural("Log entry", all_logs.count())))
         new_entry = logging_tools.new_form_list()
         for cur_dl in all_logs:
@@ -86,6 +92,7 @@ def main():
                 logging_tools.form_entry(unicode(cur_dl.date), header="date"),
                 logging_tools.form_entry(unicode(cur_dl.device), header="device"),
                 logging_tools.form_entry(unicode(cur_dl.source), header="source"),
+                logging_tools.form_entry(unicode(cur_dl.source.device or "---"), header="sdevice"),
                 logging_tools.form_entry(unicode(cur_dl.level), header="level"),
                 logging_tools.form_entry(unicode(cur_dl.user or "---"), header="user"),
                 logging_tools.form_entry(unicode(cur_dl.text), header="text"),
