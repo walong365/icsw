@@ -43,13 +43,10 @@ get_attempt_info = (entry, force=false) ->
     try
         max = parseInt(entry.max_check_attempts)
         cur = parseInt(entry.current_attempt)
-        if cur == 1 and not force
-            return ""
+        if cur == 1
+            return "#{cur}"
         else
-            if cur == max
-                return "#{cur}"
-            else
-                return "#{cur} / #{max}"
+            return "#{cur} / #{max}"
     catch error
         return "e"
 
@@ -117,17 +114,17 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
 ).controller("icswDeviceLiveStatusCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular","paginatorSettings", "restDataSource", "$q", "$modal", "$timeout",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "$timeout",
      "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
      "icswCachingCall",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
      $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService,
      icswCachingCall) ->
         $scope.host_entries = []
         $scope.entries = []
+        $scope.filtered_entries = []
         $scope.order_name = "host_name"
         $scope.order_dir = true
-        $scope.md_filter_str = ""
         # not needed
         #$scope.cur_timeout = undefined
         # focused
@@ -159,28 +156,12 @@ angular.module(
         $scope.$watch("recalcSunburst", (red) ->
             $scope.md_filter_changed()
         )
-        # paginator settings
-        $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         # category tree
         $scope.cat_tree = new icswDeviceLivestatusCategoryTreeService($scope, {})
         # selected categories
         $scope.selected_mcs = []
         $scope.master_cat_pk = 0
         $scope.show_unspec_cat = true
-        $scope.show_options = [
-            # 1 ... option local name
-            # 2 ... option display name
-            # 3 ... default value
-            # 4 ... enable sort
-            ["host_name"    , "node name", true, true],
-            ["state"        , "state", true, true],
-            ["description"  , "description", true, true],
-            ["cats"         , "categories", false, false],
-            ["state_type"   , "state type", false, false],
-            ["last_check"   , "last check", true, false],
-            ["last_change"  , "last change", false, false],
-            ["plugin_output", "result", true, true],
-        ]
         # int_state, str_state, default
         $scope.md_states = [
             [0, "O", true, "show OK states"]
@@ -192,19 +173,12 @@ angular.module(
             [0, "S", true, "show soft states"]
             [1, "H", true, "show hard states"]
         ]
-        $scope.so_enabled = {}
-        for entry in $scope.show_options
-            $scope.so_enabled[entry[0]] = entry[2]
         $scope.mds_enabled = {}
         for entry in $scope.md_states
             $scope.mds_enabled[entry[0]] = entry[2]
         $scope.shs_enabled = {}
         for entry in $scope.sh_states
             $scope.shs_enabled[entry[0]] = entry[2]
-        $scope.get_so_class = (short) ->
-            return if $scope.so_enabled[short] then "btn btn-xs btn-success" else "btn btn-xs"
-        $scope.toggle_so = (short) ->
-            $scope.so_enabled[short] = !$scope.so_enabled[short]
         $scope.get_mds_class = (int_state) ->
             return if $scope.mds_enabled[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
         $scope.get_shs_class = (int_state) ->
@@ -386,6 +360,7 @@ angular.module(
                             ($scope._check_filter(entry) for entry in dml.sunburst.get_childs(get_filter))
                             dml.redraw++
                 $scope.redrawSunburst++
+            $scope.filtered_entries = (_v for _v in $scope.entries when _v._show)
         $scope._check_filter = (entry) ->
             show = entry.show
             _check = entry.check
@@ -393,9 +368,6 @@ angular.module(
                 show = false
             if not $scope.shs_enabled[_check.state_type]
                 show = false
-            if $scope.md_filter_str
-                if not $filter("filter")([_check], $scope.md_filter_str).length
-                    show = false
             if show
                 if not $scope.selected_mcs.length
                    show = false
@@ -408,6 +380,7 @@ angular.module(
                         show = $scope.show_unspec_cat
             _check._show = show
             entry.value = if show then 1 else 0
+            return show
         $scope.filter_mdr = (entry, scope) ->
             return entry._show
         $scope.$on("$destroy", () ->
@@ -470,6 +443,10 @@ angular.module(
             _defer = add_client(client, url, options, pk_list)
             schedule_load(_key(url, options))
             return _defer.promise
+    }
+]).service('icswDeviceLivestatusTableService', ["ICSW_URLS", (ICSW_URLS) ->
+    return {
+        edit_template       : "network.type.form"
     }
 ]).service("icswDeviceLivestatusDataService", ["ICSW_URLS", "$interval", "$timeout", "icswCallAjaxService", "icswParseXMLResponseService", "$q", (ICSW_URLS, $interval, $timeout, icswCallAjaxService, icswParseXMLResponseService, $q) ->
     watch_list = {}

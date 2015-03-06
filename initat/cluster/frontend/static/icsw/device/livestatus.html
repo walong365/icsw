@@ -164,65 +164,60 @@
         </tab>
     </tabset>
     <hr ng-show="table_show"/>
-    <div class="row" ng-show="table_show">
-        <div class="btn-group col-md-12">
-            <div class="form-group">
-                <label>Show table columns:</label>
-                <input ng-repeat="entry in show_options" type="button"
-                    ng-class="get_so_class(entry[0])"
-                    ng-value="entry[1]"
-                    ng-click="toggle_so(entry[0])"
-                />
-            </div>
-        </div>
-    </div>
-    <table class="table table-condensed table-hover table-striped" style="font-size:100%;" ng-show="table_show">
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <span paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></span>
-                        </div>
-                        <div class="col-md-6">
-                            <input placeholder="filter..." ng-model="md_filter_str" class="form-control input-sm" ng-change="md_filter_changed()">
+    <icsw-tools-rest-table target-list="entries" config-service="icswDeviceLivestatusTableService">
+        <table st-table="entries_displayed" st-search="md_filter_str" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;" ng-show="table_show">
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div class="form-inline">
+                            <div icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></div>
+                            <input placeholder="filter..." st-search="" class="form-control input-sm">
                             </input>
                         </div>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <th ng-repeat="entry in show_options"
-                    ng-show="so_enabled[entry[0]]"
-                    ng-click="entry[3] && toggle_order(entry[0])"
-                    ng-class="get_header_class(entry)"
-                >
-                <span ng-if="entry[3]" ng-class="get_order_glyph(entry[0])"></span>
-                {{ entry[1] }}
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:pagSettings">
-                <td ng-show="so_enabled['host_name']" ng-class="get_host_class(entry)">
-                    {{ entry.host_name }}
-                    <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
-                    <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-                </td>
-                <td ng-show="so_enabled['state']" ng-class="get_service_state_class(entry)">
-                    {{ get_service_state_string(entry) }}
-                    <span ng-show="show_attempt_info(entry)" class="badge pull-right">{{ get_attempt_info(entry) }}</span>
-                    <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-                </td>
-                <td class="nowrap" ng-show="so_enabled['description']">{{ entry.description }}</td>
-                <td class="nowrap" ng-show="so_enabled['cats']">{{ get_categories(entry) }}</td>
-                <td class="nowrap" ng-show="so_enabled['state_type']">{{ get_state_type(entry) }}</td>
-                <td class="nowrap" ng-show="so_enabled['last_check']">{{ get_last_check(entry) }}</td>
-                <td class="nowrap" ng-show="so_enabled['last_change']">{{ get_last_change(entry) }}</td>
-                <td ng-show="so_enabled['plugin_output']">{{ entry.plugin_output }}</td>
-            </tr>
-        </tbody>
-    </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="99">
+                        <icsw-tools-show-hide-columns ng-show="table_show" columns="state flags description cats state_type output"></icsw-tools-show-hide-columns>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="host_name" st-sort-default="true">node name</th>
+                    <th ng-show="show_column.state" st-sort="state">state</th>
+                    <th ng-show="show_column.flags">flags</th>
+                    <th ng-show="show_column.description" st-sort="description">description</th>
+                    <th ng-show="show_column.cats">cateogries</th>
+                    <th ng-show="show_column.state_type">state type</th>
+                    <th st-sort="last_check">last check</th>
+                    <th>last change</th>
+                    <th ng-show="show_column.output" st-sort="plugin_output">result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="entry in entries_displayed">
+                    <td ng-class="get_host_class(entry)">
+                        {{ entry.host_name }}
+                        <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
+                        <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+                    </td>
+                    <td ng-show="show_column.state" ng-class="get_service_state_class(entry)">
+                        {{ get_service_state_string(entry) }}
+                    </td>
+                    <td ng-show="show_column.flags">
+                        <span class="badge pull-right" title="attempt info">{{ get_attempt_info(entry) }}</span>
+                        <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="entry.acknowledged == '1'"></span>
+                        <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+                    </td>
+                    <td class="nowrap" ng-show="show_column.description">{{ entry.description }}</td>
+                    <td class="nowrap" ng-show="show_column.cats">{{ get_categories(entry) }}</td>
+                    <td class="nowrap" ng-show="show_column.state_type">{{ get_state_type(entry) }}</td>
+                    <td class="nowrap">{{ get_last_check(entry) }}</td>
+                    <td class="nowrap">{{ get_last_change(entry) }}</td>
+                    <td ng-show="show_column.output">{{ entry.plugin_output }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.brief">
