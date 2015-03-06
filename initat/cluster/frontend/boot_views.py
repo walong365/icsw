@@ -268,7 +268,7 @@ class get_devlog_info(View):
         ).select_related(
             "source",
             "level",
-            "source__user",
+            "user",
         ).order_by("pk")
         logs_transfered = dict([(key, 0) for key in lp_dict.iterkeys()])
         for dev_log in dev_logs:
@@ -278,7 +278,7 @@ class get_devlog_info(View):
                     dev_log.pk,
                     dev_log.device_id,
                     dev_log.source_id,
-                    dev_log.source.user_id,
+                    dev_log.user_id,
                     dev_log.level_id,
                     dev_log.text,
                     time.mktime(cluster_timezone.normalize(dev_log.date).timetuple()),
