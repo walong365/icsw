@@ -35,7 +35,7 @@ from django.db.models import Q
 
 def main():
     my_parser = argparse.ArgumentParser()
-    def_source = LogSource.objects.get(Q(identifier='cluster'))
+    def_source = LogSource.objects.get(Q(identifier="commandline"))
     my_parser.add_argument(
         "--mode",
         type=str,
@@ -78,7 +78,7 @@ def main():
         # print def_query
         all_logs = DeviceLogEntry.objects.filter(
             def_query
-        ).select_related("source", "level", "source__user", "device").order_by("-date")
+        ).select_related("source", "level", "user", "device").order_by("-date")
         print("{} found:".format(logging_tools.get_plural("Log entry", all_logs.count())))
         new_entry = logging_tools.new_form_list()
         for cur_dl in all_logs:
@@ -87,7 +87,7 @@ def main():
                 logging_tools.form_entry(unicode(cur_dl.device), header="device"),
                 logging_tools.form_entry(unicode(cur_dl.source), header="source"),
                 logging_tools.form_entry(unicode(cur_dl.level), header="level"),
-                logging_tools.form_entry(unicode(cur_dl.source.user or "---"), header="user"),
+                logging_tools.form_entry(unicode(cur_dl.user or "---"), header="user"),
                 logging_tools.form_entry(unicode(cur_dl.text), header="text"),
             ])
         print(unicode(new_entry))
