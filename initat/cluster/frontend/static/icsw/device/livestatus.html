@@ -165,7 +165,7 @@
     </tabset>
     <hr ng-show="table_show"/>
     <icsw-tools-rest-table target-list="entries" config-service="icswDeviceLivestatusTableService">
-        <table st-table="entries_displayed" st-search="md_filter_str" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;" ng-show="table_show">
+        <table st-table="entries_displayed" st-search="md_filter_str" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
             <thead>
                 <tr>
                     <td colspan="99">
@@ -178,16 +178,15 @@
                 </tr>
                 <tr>
                     <td colspan="99">
-                        <icsw-tools-show-hide-columns ng-show="table_show" columns="state flags description cats state_type output"></icsw-tools-show-hide-columns>
+                        <icsw-tools-show-hide-columns ng-show="table_show" columns="state state_type flags description cats output"></icsw-tools-show-hide-columns>
                     </td>
                 </tr>
                 <tr>
-                    <th st-sort="host_name" st-sort-default="true">node name</th>
+                    <th st-sort="host_name" st-sort-default="true">device</th>
                     <th ng-show="show_column.state" st-sort="state">state</th>
                     <th ng-show="show_column.flags">flags</th>
                     <th ng-show="show_column.description" st-sort="description">description</th>
                     <th ng-show="show_column.cats">cateogries</th>
-                    <th ng-show="show_column.state_type">state type</th>
                     <th st-sort="last_check">last check</th>
                     <th>last change</th>
                     <th ng-show="show_column.output" st-sort="plugin_output">result</th>
@@ -200,8 +199,9 @@
                         <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
                         <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
                     </td>
-                    <td ng-show="show_column.state" ng-class="get_service_state_class(entry)">
+                    <td class="nowrap" ng-show="show_column.state" ng-class="get_service_state_class(entry)">
                         {{ get_service_state_string(entry) }}
+                        <span ng-show="show_column.state_type" class="pull-right badge">{{ get_state_type(entry) }}</span>
                     </td>
                     <td ng-show="show_column.flags">
                         <span class="badge pull-right" title="attempt info">{{ get_attempt_info(entry) }}</span>
@@ -210,7 +210,6 @@
                     </td>
                     <td class="nowrap" ng-show="show_column.description">{{ entry.description }}</td>
                     <td class="nowrap" ng-show="show_column.cats">{{ get_categories(entry) }}</td>
-                    <td class="nowrap" ng-show="show_column.state_type">{{ get_state_type(entry) }}</td>
                     <td class="nowrap">{{ get_last_check(entry) }}</td>
                     <td class="nowrap">{{ get_last_change(entry) }}</td>
                     <td ng-show="show_column.output">{{ entry.plugin_output }}</td>
