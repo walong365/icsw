@@ -10,7 +10,7 @@
                 preserveAspectRatio="none"
             >
             </image>
-            <devnode ng-repeat="dml in loc_gfx.dml_list"></devnode>
+            <icsw-device-livestatus-devnode dml="dml" ng-repeat="dml in loc_gfx.dml_list"></icsw-device-livestatus-devnode>
             <!--<g>
                 <defs>
                     <linearGradient id="MyGradient">
@@ -91,35 +91,37 @@
     </g>
 </script>
 
+<script type="text/ng-template" id="icsw.device.livestatus.fullburst">
+    <div class="row">
+        <div class="col-md-6">
+            <h4 ng-show="omittedSegments">
+                {{ omittedSegments }} omitted segments
+            </h4>
+            <svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+                <g transform="translate(300,160)">
+                    <newburst
+                        data="data"
+                        redraw="redrawBurst"
+                        recalc="recalcBurst"
+                        innerradius="60"
+                        service-focus="focusService"
+                        omitted-segments="omittedSegments"
+                        zoom="1"
+                    ></newburst>
+                </g>
+            </svg>
+        </div>
+        <div class="col-md-6">
+            <icsw-device-livestatus-service-info service="focusService"></icsw-device-livestatus-service-info>
+        </div>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.device.livestatus.overview">
-    <h3>Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
-        <span ng-show="location_gfx_list.length"> on
-            <ng-pluralize count="location_gfx_list.length" when="{'1' : '1 map', 'other' : '{} maps'}"/>
-        </span>
-        <span ng-show="omitted_segments">
-            , {{ omitted_segments }} omitted segments
-        </span>
-    </h3>
+    <icsw-device-livestatus-filter filter="lsfilter" info="lsinfo"></icsw-device-livestatus-filter>
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
-                <label>Filter options:</label>
-                <div class="btn-group">
-                    <input ng-repeat="entry in md_states" type="button"
-                        ng-class="get_mds_class(entry[0])"
-                        ng-value="entry[1]"
-                        ng-click="toggle_mds(entry[0])"
-                        title="{{ entry[3] }}"
-                    />
-                </div>
-                <div class="btn-group">
-                    <input ng-repeat="entry in sh_states" type="button"
-                        ng-class="get_shs_class(entry[0])"
-                        ng-value="entry[1]"
-                        ng-click="toggle_shs(entry[0])"
-                        title="{{ entry[3] }}"
-                    />
-                </div>
                 <label>show:</label>
                 <div class="btn-group">
                     <input type="button" class="btn btn-xs" ng-class="cat_tree_show && 'btn-success' || 'btn-default'" ng-click="cat_tree_show=!cat_tree_show" value="categories"/>
@@ -134,26 +136,7 @@
             <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
         </div>
     </div>
-    <div class="row" ng-show="burst_show">
-        <div class="col-md-6">
-            <svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
-                <g transform="translate(300,160)">
-                    <newburst
-                        data="burstData"
-                        redraw="redrawSunburst"
-                        recalc="recalcSunburst"
-                        innerradius="60"
-                        service-focus="focusService"
-                        burst-response="burstResponse"
-                        zoom="1"
-                    ></newburst>
-                </g>
-            </svg>
-        </div>
-        <div class="col-md-6">
-            <icsw-device-livestatus-service-info service="focusService"></icsw-device-livestatus-service-info>
-        </div>
-    </div>
+    <div icsw-device-livestatus-fullburst ng_show="burst_show" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
     <tabset ng-show="map_show">
         <tab ng-repeat="loc_gfx in location_gfx_list">
             <tab-heading>
@@ -165,7 +148,7 @@
     </tabset>
     <hr ng-show="table_show"/>
     <icsw-tools-rest-table target-list="entries" config-service="icswDeviceLivestatusTableService">
-        <table st-table="entries_displayed" st-search="md_filter_str" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
+        <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
             <thead>
                 <tr>
                     <td colspan="99">
@@ -186,37 +169,47 @@
                     <th ng-show="show_column.state" st-sort="state">state</th>
                     <th ng-show="show_column.flags">flags</th>
                     <th ng-show="show_column.description" st-sort="description">description</th>
-                    <th ng-show="show_column.cats">cateogries</th>
+                    <th ng-show="show_column.cats">categories</th>
                     <th st-sort="last_check">last check</th>
-                    <th>last change</th>
+                    <th st-sort="last_state_change">last change</th>
                     <th ng-show="show_column.output" st-sort="plugin_output">result</th>
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat="entry in entries_displayed">
-                    <td ng-class="get_host_class(entry)" class="text-nowrap">
-                        {{ entry.host_name }}
-                        <span ng-show="show_host_attempt_info(entry)" ng-class="get_host_attempt_class(entry)" class="label pull-right">{{ get_host_attempt_info(entry) }}</span>
-                        <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-                    </td>
-                    <td class="text-nowrap" ng-show="show_column.state" ng-class="get_service_state_class(entry)">
-                        {{ get_service_state_string(entry) }}
-                        <span ng-show="show_column.state_type" class="pull-right badge">{{ get_state_type(entry) }}</span>
-                    </td>
-                    <td class="text-nowrap" ng-show="show_column.flags">
-                        <span class="label pull-right" ng-class="get_attempt_class(entry)" title="attempt info">{{ get_attempt_info(entry) }}</span>
-                        <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="entry.acknowledged == '1'"></span>
-                        <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
-                    </td>
-                    <td class="text-nowrap" ng-show="show_column.description">{{ entry.description }}</td>
-                    <td class="text-nowrap" ng-show="show_column.cats">{{ get_categories(entry) }}</td>
-                    <td class="text-nowrap">{{ get_last_check(entry) }}</td>
-                    <td class="text-nowrap">{{ get_last_change(entry) }}</td>
-                    <td ng-show="show_column.output">{{ entry.plugin_output }}</td>
+                <tr icsw-device-livestatus-check-service icsw-interpret-monitoring-check-result ng-repeat="entry in entries_displayed">
                 </tr>
             </tbody>
         </table>
     </icsw-tools-rest-table>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.filter">
+    <h3>
+        Number of hosts / checks : {{ info.host_length }} / {{ info.service_length }}
+        <span ng-show="info.service_length != info.filtered_service_length">
+            ({{ info.filtered_service_length }} shown)
+        </span>
+        <span ng-show="info.gfx_num"> on
+            <ng-pluralize count="info.gfx_num" when="{'1' : '1 map', 'other' : '{} maps'}"/>
+        </span>
+        , Filter options:
+        <div class="btn-group">
+            <input ng-repeat="entry in md_states" type="button"
+                ng-class="get_mds_class(entry[0])"
+                ng-value="entry[1]"
+                ng-click="toggle_mds(entry[0])"
+                title="{{ entry[3] }}"
+            />
+        </div>
+        <div class="btn-group">
+            <input ng-repeat="entry in sh_states" type="button"
+                ng-class="get_shs_class(entry[0])"
+                ng-value="entry[1]"
+                ng-click="toggle_shs(entry[0])"
+                title="{{ entry[3] }}"
+            />
+        </div>
+    </h3>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.brief">
@@ -233,9 +226,31 @@
     </svg>
 </script>
 
+<script type="text/ng-template" id="icsw.device.livestatus.check.service">
+    <td ng-class="get_host_class(entry)" class="text-nowrap">
+        {{ entry.host_name }}
+        <span ng-show="show_host_attempt_info(entry)" ng-class="get_host_attempt_class(entry, 'label-')" class="label pull-right">{{ get_host_attempt_info(entry) }}</span>
+        <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+    </td>
+    <td class="text-nowrap" ng-show="show_column.state" class="label" ng-class="get_service_state_class(entry)">
+        {{ get_service_state_string(entry) }}
+        <span ng-show="show_column.state_type" class="pull-right badge">{{ get_state_type(entry) }}</span>
+    </td>
+    <td class="text-nowrap" ng-show="show_column.flags">
+        <span class="label pull-right" ng-class="get_attempt_class(entry, 'label-')" title="attempt info">{{ get_attempt_info(entry) }}</span>
+        <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="entry.acknowledged == '1'"></span>
+        <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+    </td>
+    <td class="text-nowrap" ng-show="show_column.description">{{ entry.description }}</td>
+    <td class="text-nowrap" ng-show="show_column.cats">{{ get_categories(entry) }}</td>
+    <td class="text-nowrap">{{ get_last_check(entry) }}</td>
+    <td class="text-nowrap">{{ get_last_change(entry) }}</td>
+    <td ng-show="show_column.output">{{ entry.plugin_output }}</td>
+</script>
+
 <script type="text/ng-template" id="icsw.device.livestatus.serviceinfo">
     <h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
-    <div ng-switch="service.ct">
+    <div icsw-interpret-monitoring-check-result ng-switch="service.ct">
         <div ng-switch-when="system">
            <ul class="list-group">
                <li class="list-group-item">System</li>
@@ -244,29 +259,29 @@
         <div ng-switch-when="group">
            <ul class="list-group">
                <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-               <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
+               <li class="list-group-item">State<span class="pull-right label" ng-class="get_service_state_class(service, 'label-')">{{ get_service_state_string(service) }}</span></li>
            </ul>
         </div>
         <div ng-switch-when="host">
             <ul class="list-group">
                 <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
                 <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
-                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-                <li class="list-group-item">State<span ng-class="get_host_state_class(service)">{{ get_host_state_string(service) }}</span></li>
+                <li class="list-group-item">State<span class="pull-right label" ng-class="get_host_state_class(service, 'label-')">{{ get_host_state_string(service) }}</span></li>
                 <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
                 <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
                 <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
             </ul>
         </div>
         <div ng-switch-when="service">
             <ul class="list-group">
                 <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
                 <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
-                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
-                <li class="list-group-item">State<span ng-class="get_service_state_class(service)">{{ get_service_state_string(service) }}</span></li>
+                <li class="list-group-item">State<span class="pull-right label" ng-class="get_service_state_class(service, 'label-')">{{ get_service_state_string(service) }}</span></li>
                 <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
                 <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
                 <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
             </ul>
         </div>
     </div>

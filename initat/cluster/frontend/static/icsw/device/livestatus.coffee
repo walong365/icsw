@@ -1,82 +1,3 @@
-get_service_state_string = (entry) ->
-    return {
-        0: "OK"
-        1: "Warning"
-        2: "Critical"
-        3: "Unknown"
-    }[entry.state]
-
-get_host_state_string = (entry) ->
-    return {
-        0: "OK"
-        1: "Critical"
-        2: "Unreachable"
-    }[entry.state]
-
-get_service_state_class = (entry) ->
-    return {
-        0: "success"
-        1: "warning"
-        2: "danger"
-        3: "danger"
-    }[entry.state]
-
-get_host_state_class = (entry) ->
-    return {
-        0: "success"
-        1: "danger"
-        2: "danger"
-    }[entry.state]
-
-show_attempt_info = (entry) ->
-    try
-        if parseInt(entry.current_attempt) == 1
-            return true
-        else
-            return true
-    catch error
-       return true
-
-get_attempt_info = (entry, force=false) ->
-    if entry.max_check_attempts == null
-        return "N/A"
-    try
-        max = parseInt(entry.max_check_attempts)
-        cur = parseInt(entry.current_attempt)
-        if max == cur
-            return "#{cur}"
-        else
-            return "#{cur} / #{max}"
-    catch error
-        return "e"
-
-get_attempt_class = (entry, force=false) ->
-    if entry.max_check_attempts == null
-        return "label-default"
-    try
-        max = parseInt(entry.max_check_attempts)
-        cur = parseInt(entry.current_attempt)
-        if max == cur
-            return "label-info"
-        else
-            return "label-success"
-    catch error
-        return "label-danger"
-
-get_state_type = (entry) ->
-    return {
-        null : "???"
-        0 : "soft"
-        1 : "hard"
-    }[entry.state_type]
-
-get_check_type = (entry) ->
-    return {
-        null : "???"
-        0 : "active"
-        1 : "passive"
-    }[entry.check_type]
-
 class hs_node
     # hierarchical structure node
     constructor: (@name, @depth=0) ->
@@ -126,7 +47,112 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).controller("icswDeviceLiveStatusCtrl",
+).directive("icswInterpretMonitoringCheckResult", [() ->
+    return {
+    restrict: "A"
+    priority: 64
+    link: (scope) ->
+        get_diff_time = (ts) ->
+            if parseInt(ts)
+                return moment.unix(ts).fromNow(true)
+            else
+                return "never"
+        scope.get_last_check = (entry) ->
+            return get_diff_time(entry.last_check)
+        scope.get_last_change = (entry) ->
+            return get_diff_time(entry.last_state_change)
+        scope.get_check_type = (entry) ->
+            return {
+            null: "???"
+            0: "active"
+            1: "passive"
+            }[entry.check_type]
+        scope.get_host_state_class = (entry) ->
+            state_class = {
+                0 : "success"
+                1 : "danger"
+                2 : "danger"
+            }[entry.state]
+            return "#{state_class}"
+        scope.is_passive_check = (entry) ->
+            return if entry.check_type then true else false
+        scope.get_state_type = (entry) ->
+            return {
+            null: "???"
+            0: "soft"
+            1: "hard"
+            }[entry.state_type]
+        scope.get_host_state_string = (entry) ->
+            return {
+                0: "OK"
+                1: "Critical"
+                2: "Unreachable"
+            }[entry.state]
+
+        scope.get_service_state_string = (entry) ->
+            return {
+                0: "OK"
+                1: "Warning"
+                2: "Critical"
+                3: "Unknown"
+            }[entry.state]
+        scope.get_service_state_class = (entry, prefix) ->
+            _r_str = {
+                0: "success"
+                1: "warning"
+                2: "danger"
+                3: "danger"
+            }[entry.state]
+            if prefix?
+                _r_str = "#{prefix}#{_r_str}"
+            return _r_str
+        scope.get_host_state_class = (entry, prefix) ->
+            _r_str = {
+                0: "success"
+                1: "danger"
+                2: "danger"
+            }[entry.state]
+            if prefix?
+                _r_str = "#{prefix}#{_r_str}"
+            return _r_str
+        scope.get_attempt_info = (entry, force=false) ->
+            if entry.max_check_attempts == null
+                return "N/A"
+            try
+                max = parseInt(entry.max_check_attempts)
+                cur = parseInt(entry.current_attempt)
+                if max == cur
+                    return "#{cur}"
+                else
+                    return "#{cur} / #{max}"
+            catch error
+                return "e"
+        scope.get_attempt_class = (entry, prefix="", force=false) ->
+            if entry.max_check_attempts == null
+                _r_str ="default"
+            else
+                try
+                    max = parseInt(entry.max_check_attempts)
+                    cur = parseInt(entry.current_attempt)
+                    if max == cur
+                        _r_str = "info"
+                    else
+                        _r_str = "success"
+                catch error
+                    _r_str = "danger"
+            if prefix?
+                _r_str = "#{prefix}#{_r_str}"
+            return _r_str
+        scope.show_attempt_info = (entry) ->
+            try
+                if parseInt(entry.current_attempt) == 1
+                    return true
+                else
+                    return true
+            catch error
+               return true
+    }
+]).controller("icswDeviceLiveStatusCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "$timeout",
      "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
      "icswCachingCall",
@@ -140,10 +166,6 @@ angular.module(
         $scope.order_dir = true
         # not needed
         #$scope.cur_timeout = undefined
-        # focused
-        $scope.focusService = null
-        # draw response
-        $scope.burstResponse = null
         # flag to trigger redraw of sunburst
         $scope.redrawSunburst = 0
         # flag to trigger recalc of sunburst visibility
@@ -155,16 +177,19 @@ angular.module(
         $scope.table_show = true
         # location gfx list
         $scope.location_gfx_list = []
-        # omitted segments
-        $scope.omitted_segments = 0
-        $scope.$watch("focusService", (as) ->
-            # link nested newburst
-            $scope.focusService = as
-        )
-        $scope.$watch("burstResponse", (as) ->
-            # link nested newburst
-            $scope.burstResponse = as
-            $scope.omitted_segments = as
+        # filter dict
+        $scope.lsfilter = {}
+        $scope.lsinfo = {
+            host_length: 0
+            service_length:0
+            filtered_service_length:0
+            gfx_num: 0
+        }
+        $scope.$watch(
+            "lsfilter"
+            (new_filter) ->
+                $scope.md_filter_changed()
+            true
         )
         $scope.$watch("recalcSunburst", (red) ->
             $scope.md_filter_changed()
@@ -175,61 +200,17 @@ angular.module(
         $scope.selected_mcs = []
         $scope.master_cat_pk = 0
         $scope.show_unspec_cat = true
-        # int_state, str_state, default
-        $scope.md_states = [
-            [0, "O", true, "show OK states"]
-            [1, "W", true, "show warning states"]
-            [2, "C", true, "show critcal states"]
-            [3, "U", true, "show unknown states"]
-        ]
-        $scope.sh_states = [
-            [0, "S", true, "show soft states"]
-            [1, "H", true, "show hard states"]
-        ]
-        $scope.mds_enabled = {}
-        for entry in $scope.md_states
-            $scope.mds_enabled[entry[0]] = entry[2]
-        $scope.shs_enabled = {}
-        for entry in $scope.sh_states
-            $scope.shs_enabled[entry[0]] = entry[2]
-        $scope.get_mds_class = (int_state) ->
-            return if $scope.mds_enabled[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
-        $scope.get_shs_class = (int_state) ->
-            return if $scope.shs_enabled[int_state] then "btn btn-xs btn-primary" else "btn btn-xs"
-        $scope.toggle_mds = (int_state) ->
-            $scope.mds_enabled[int_state] = !$scope.mds_enabled[int_state]
-            $scope.md_filter_changed()
-        $scope.toggle_shs = (int_state) ->
-            $scope.shs_enabled[int_state] = !$scope.shs_enabled[int_state]
-            $scope.md_filter_changed()
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
             $scope.devsel_list = _dev_sel
             $scope.load_static_data()
-        $scope.toggle_order = (name) ->
-            if $scope.order_name == name
-                $scope.order_dir = not $scope.order_dir
-            else
-                $scope.order_name = name
-                $scope.order_dir = true
         $scope.new_mc_selection = (new_sel) ->
             $scope.selected_mcs = new_sel
             $scope.show_unspec_cat = $scope.master_cat_pk in $scope.selected_mcs
             $scope.md_filter_changed()
         $scope.get_header_class = (entry) ->
             return "nowrap"
-        $scope.get_order = () ->
-            return (if $scope.order_dir then "" else "-") + $scope.order_name
-        $scope.get_order_glyph = (name) ->
-            if $scope.order_name == name
-                if $scope.order_dir 
-                    _class = "glyphicon glyphicon-chevron-down"
-                else
-                    _class = "glyphicon glyphicon-chevron-up"
-            else
-                _class = "glyphicon glyphicon-chevron-right"
-            return _class
         $scope.load_static_data = () ->
             wait_list = [
                 icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_CATEGORY_LIST, {}, [])
@@ -240,6 +221,7 @@ angular.module(
             ]
             $q.all(wait_list).then((data) ->
                 $scope.location_gfx_list = data[2]
+                $scope.lsinfo.gfx_num = $scope.location_gfx_list.length
                 gfx_lut = {}
                 for entry in $scope.location_gfx_list
                     gfx_lut[entry.idx] = entry
@@ -276,10 +258,22 @@ angular.module(
         $scope.on_new_data = (host_entries, service_entries, host_lut) ->
             $scope.host_entries = host_entries
             $scope.entries = service_entries
+            $scope.lsinfo.host_length = host_entries.length
+            $scope.lsinfo.service_length = service_entries.length
             $scope.host_lut = host_lut
             used_cats = []
 
+            # set srv_ids
+            host_id = 0
+            for entry in host_entries
+                host_id++
+                entry._srv_id = "host#{host_id}"
+
+            # set srv_ids
+            srv_id = 0
             for entry in service_entries
+                srv_id++
+                entry._srv_id = "srvc#{srv_id}"
                 if entry.custom_variables and entry.custom_variables.cat_pks?
                     used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
 
@@ -354,7 +348,11 @@ angular.module(
                    return node.check.ct == "service"
                else
                    return false
+            # filter entries for table
+            $scope.filtered_entries = _.filter($scope.entries, (_v) -> return _apply_filter(_v, true))
             if $scope.burstData?
+                # filter burstData
+                # handle clicks, filter data
                 if $scope.burstData.any_clicked()
                     $scope.burstData.handle_clicked()
                 srv_entries = $scope.burstData.get_childs(
@@ -365,37 +363,42 @@ angular.module(
                            return false
                 )
                 # called when new entries are set or a filter rule has changed
-                ($scope._check_filter(entry) for entry in srv_entries)
+                # create a list of all unique ids which are actually displayed
+                _filter_list = (entry.check._srv_id for entry in srv_entries when _check_filter(entry))
+                # apply this filter to the table list
+                $scope.filtered_entries = _.filter($scope.filtered_entries, (_v) -> return _v._srv_id in _filter_list)
                 # filter dml
                 for dev_idx of $scope.dev_gfx_lut
                     for dml in $scope.dev_gfx_lut[dev_idx]
+                        # filter all sunbursts on maps
                         if dml.sunburst?
-                            ($scope._check_filter(entry) for entry in dml.sunburst.get_childs(get_filter))
+                            (_check_filter(entry) for entry in dml.sunburst.get_childs(get_filter))
                             dml.redraw++
                 $scope.redrawSunburst++
-            $scope.filtered_entries = (_v for _v in $scope.entries when _v._show)
-        $scope._check_filter = (entry) ->
-            show = entry.show
-            _check = entry.check
-            if not $scope.mds_enabled[_check.state]
+            $scope.lsinfo.filtered_service_length = $scope.filtered_entries.length
+        _apply_filter = (check, show) ->
+            if $scope.lsfilter? and not $scope.lsfilter.mds[check.state]
                 show = false
-            if not $scope.shs_enabled[_check.state_type]
+            if $scope.lsfilter? and not $scope.lsfilter.shs[check.state_type]
                 show = false
             if show
                 if not $scope.selected_mcs.length
                    show = false
                 else
-                    if _check.custom_variables and _check.custom_variables.cat_pks?
+                    if check.custom_variables and check.custom_variables.cat_pks?
                         # only show if there is an intersection
-                        show = if _.intersection($scope.selected_mcs, _check.custom_variables.cat_pks).length then true else false
+                        show = if _.intersection($scope.selected_mcs, check.custom_variables.cat_pks).length then true else false
                     else
                         # show entries with unset / empty category
                         show = $scope.show_unspec_cat
-            _check._show = show
+            check._show = show
+            return show
+
+        _check_filter = (entry) ->
+            show = _apply_filter(entry.check, entry.show)
             entry.value = if show then 1 else 0
             return show
-        $scope.filter_mdr = (entry, scope) ->
-            return entry._show
+
         $scope.$on("$destroy", () ->
             icswDeviceLivestatusDataService.destroy($scope.$id)
         )
@@ -419,7 +422,6 @@ angular.module(
             Restangular.all(@url.slice(1)).getList(opts).then(
                 (result) =>
                     for c_id, _defer of @client_dict
-                        # console.log "resolve client ", c_id, "for ", @key
                         _defer.resolve(result)
                     @client_dict = {}
                     @pk_list = []
@@ -456,6 +458,56 @@ angular.module(
             _defer = add_client(client, url, options, pk_list)
             schedule_load(_key(url, options))
             return _defer.promise
+    }
+]).directive('icswDeviceLivestatusFullburst', ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.fullburst")
+        scope: {
+            data: "=data"
+            redrawBurst: "=redraw"
+            recalcBurst: "=recalc"
+            serviceFocus: "=serviceFocus"
+        }
+        link: (scope, element, attrs) ->
+            # omitted segments
+            scope.omittedSegments = 0
+    }
+]).directive('icswDeviceLivestatusFilter', ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.filter")
+        scope: {
+            "filter": "=filter"
+            "info": "=info"
+        }
+        link: (scope, elem, attrs) ->
+            scope.filter = {
+                "mds" : {}
+                "shs" : {}
+            }
+            scope.md_states = [
+                [0, "O", true, "show OK states"]
+                [1, "W", true, "show warning states"]
+                [2, "C", true, "show critcal states"]
+                [3, "U", true, "show unknown states"]
+            ]
+            scope.sh_states = [
+                [0, "S", true, "show soft states"]
+                [1, "H", true, "show hard states"]
+            ]
+            for entry in scope.md_states
+                scope.filter.mds[entry[0]] = entry[2]
+            for entry in scope.sh_states
+                scope.filter.shs[entry[0]] = entry[2]
+            scope.get_mds_class = (int_state) ->
+                return if scope.filter.mds[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
+            scope.get_shs_class = (int_state) ->
+                return if scope.filter.shs[int_state] then "btn btn-xs btn-primary" else "btn btn-xs"
+            scope.toggle_mds = (int_state) ->
+                scope.filter.mds[int_state] = !scope.filter.mds[int_state]
+            scope.toggle_shs = (int_state) ->
+                scope.filter.shs[int_state] = !scope.filter.shs[int_state]
     }
 ]).service('icswDeviceLivestatusTableService', ["ICSW_URLS", (ICSW_URLS) ->
     return {
@@ -666,20 +718,29 @@ angular.module(
             service : "=service"
         }
         link : (scope, element) ->
-            scope.get_service_state_string = (entry) ->
-                return get_service_state_string(entry)
-            scope.get_host_state_string = (entry) ->
-                return get_host_state_string(entry)
-            scope.get_host_state_class = (entry) ->
-                return "label label-#{get_host_state_class(entry)} pull-right"
-            scope.get_service_state_class = (entry) ->
-                return "label label-#{get_service_state_class(entry)} pull-right"
-            scope.get_attempt_info = (entry) ->
-                return get_attempt_info(entry, true)
-            scope.get_state_type = (entry) ->
-                return get_state_type(entry)
-            scope.get_check_type = (entry) ->
-                return get_check_type(entry)
+    }
+]).directive("icswDeviceLivestatusCheckService", ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.check.service")
+        link: (scope, element) ->
+            # mapping functions to access host service check result
+            scope.get_host_attempt_info = (srv_entry) ->
+                return scope.get_attempt_info(scope.host_lut[srv_entry.host_name])
+            scope.get_host_attempt_class = (srv_entry, prefix="") ->
+                return scope.get_attempt_class(scope.host_lut[srv_entry.host_name], prefix)
+            scope.show_host_attempt_info = (srv_entry) ->
+                return scope.show_attempt_info(scope.host_lut[srv_entry.host_name])
+            scope.get_host_class = (entry) ->
+                if entry.host_name of scope.host_lut
+                    return scope.get_host_state_class(scope.host_lut[entry.host_name])
+                else
+                    return "warning"
+            scope.host_is_passive_checked = (entry) ->
+                if entry.host_name of scope.host_lut
+                    return scope.is_passive_check(scope.host_lut[entry.host_name])
+                else
+                    return false
     }
 ]).directive("newburst", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
@@ -692,7 +753,7 @@ angular.module(
             redraw_burst: "=redraw"
             recalc_burst: "=recalc"
             serviceFocus: "=serviceFocus"
-            burstResponse: "=burstResponse"
+            omittedSegments: "=omittedSegments"
         link: (scope, element, attrs) ->
             scope.nodes = []
             scope.inner = parseInt(attrs["innerradius"] or 20)
@@ -759,8 +820,8 @@ angular.module(
                 for idx of struct
                     if struct[idx].length
                         omitted_segments += scope.add_circle(parseInt(idx), struct[idx])
-                if attrs["burstResponse"]
-                    scope.burstResponse = omitted_segments
+                if attrs["omittedSegments"]?
+                    scope.omittedSegments = omitted_segments
             scope.add_circle = (idx, nodes) ->
                 _len = _.reduce(
                     nodes,
@@ -903,29 +964,12 @@ angular.module(
                     else
                         break
     }
-]).directive("livestatus", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
+]).directive("icswDeviceLivestatus", ["$templateCache", "msgbus", ($templateCache, msgbus) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.overview")
         controller: "icswDeviceLiveStatusCtrl"
         link : (scope, el, attrs) ->
-            scope.get_state_class = (entry) ->
-                state_class = {
-                    0 : "success"
-                    1 : "warning"
-                    2 : "danger"
-                    3 : "danger"
-                }[entry.state]
-                return "#{state_class} nowrap"
-            scope.get_last_check = (entry) ->
-                return scope.get_diff_time(entry.last_check)
-            scope.get_last_change = (entry) ->
-                return scope.get_diff_time(entry.last_state_change)
-            scope.get_diff_time = (ts) ->
-                if parseInt(ts)
-                    return moment.unix(ts).fromNow(true)
-                else
-                    return "never"
             scope.get_categories = (entry) ->
                 if entry.custom_variables
                     if entry.custom_variables.cat_pks?
@@ -934,50 +978,8 @@ angular.module(
                         return "---"
                 else
                     return "N/A"
-            scope.get_state_type = (entry) ->
-                return get_state_type(entry)
-            scope.get_check_type = (entry) ->
-                return get_check_type(entry)
-            scope.host_is_passive_checked = (entry) ->
-                if entry.host_name of scope.host_lut
-                    return if scope.host_lut[entry.host_name].check_type then true else false 
-                else
-                    return false                  
-            scope.is_passive_check = (entry) ->
-                return if entry.check_type then true else false 
-            scope.get_host_class = (entry) ->
-                if entry.host_name of scope.host_lut
-                    h_state = scope.host_lut[entry.host_name].state
-                    h_state_str = {
-                        0 : "success"
-                        1 : "danger"
-                        2 : "danger"
-                    }[h_state]
-                else
-                    h_state_str = "warning"
-                return "#{h_state_str} nowrap"
-            scope.get_host_state_string = (entry) -> 
-                return get_host_state_string(entry)
-            scope.get_host_state_class = (entry) -> 
-                return get_host_state_class(entry) + " nowrap"
-            scope.get_service_state_string = (entry) -> 
-                return get_service_state_string(entry)
-            scope.get_service_state_class = (entry) -> 
-                return get_service_state_class(entry) + " nowrap"
-            scope.show_host_attempt_info = (srv_entry) ->
-                return scope.show_attempt_info(scope.host_lut[srv_entry.host_name])
-            scope.show_attempt_info = (entry) ->
-                return show_attempt_info(entry)
-            scope.get_host_attempt_info = (srv_entry) ->
-                return scope.get_attempt_info(scope.host_lut[srv_entry.host_name])
-            scope.get_host_attempt_class = (srv_entry) ->
-                return scope.get_attempt_class(scope.host_lut[srv_entry.host_name])
-            scope.get_attempt_info = (entry) ->
-                return get_attempt_info(entry)
-            scope.get_attempt_class = (entry) ->
-                return get_attempt_class(entry)
     }
-]).directive("livestatusBrief", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceLivestatusBrief", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.livestatus.brief")
@@ -1004,11 +1006,14 @@ angular.module(
                 scope.loc_gfx = new_val
             )
     }
-]).directive("devnode", ["$compile", "$templateCache", ($compile, $templateCache) ->
+]).directive("icswDeviceLivestatusDevnode", ["$compile", "$templateCache", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         replace: true
         template: $templateCache.get("icsw.device.livestatus.device.node")
+        scope: {
+            "dml": "=dml"
+        }
         link: (scope, element, attrs) ->
             dml = scope.dml
             scope.data_source = ""

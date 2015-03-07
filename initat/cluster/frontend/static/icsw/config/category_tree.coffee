@@ -125,7 +125,7 @@ angular.module(
         )
         if false
             $scope.redrawn = {"test" : 0}
-            _el = $compile("<livestatus-brief devicepk='3' redraw-sunburst='redrawn.test'></livestatus-brief>")($scope)
+            _el = $compile("<icsw-device-livestatus-brief devicepk='3' redraw-sunburst='redrawn.test'></icsw-device-livestatus-brief>")($scope)
             $scope.$watch('redrawn.test', (new_val) ->
                 if new_val
                     $timeout(

@@ -810,7 +810,7 @@ angular.module(
             node: "=node"
             redraw: "=redraw"
         template: $templateCache.get("icsw.device.network.host.node")
-        # template:  '<livestatus-brief devicepk="node.id" redraw-sunburst="ignore_shit"></livestatus-brief>'
+        # template:  '<icsw-device-livestatus-brief devicepk="node.id" redraw-sunburst="ignore_shit"></icsw-device-livestatus>
         link : (scope, element, attrs) ->
             scope.stroke_width = 1
             scope.focus = true
