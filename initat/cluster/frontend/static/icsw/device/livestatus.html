@@ -194,24 +194,24 @@
             </thead>
             <tbody>
                 <tr ng-repeat="entry in entries_displayed">
-                    <td ng-class="get_host_class(entry)">
+                    <td ng-class="get_host_class(entry)" class="text-nowrap">
                         {{ entry.host_name }}
-                        <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
+                        <span ng-show="show_host_attempt_info(entry)" ng-class="get_host_attempt_class(entry)" class="label pull-right">{{ get_host_attempt_info(entry) }}</span>
                         <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
                     </td>
-                    <td class="nowrap" ng-show="show_column.state" ng-class="get_service_state_class(entry)">
+                    <td class="text-nowrap" ng-show="show_column.state" ng-class="get_service_state_class(entry)">
                         {{ get_service_state_string(entry) }}
                         <span ng-show="show_column.state_type" class="pull-right badge">{{ get_state_type(entry) }}</span>
                     </td>
-                    <td ng-show="show_column.flags">
-                        <span class="badge pull-right" title="attempt info">{{ get_attempt_info(entry) }}</span>
+                    <td class="text-nowrap" ng-show="show_column.flags">
+                        <span class="label pull-right" ng-class="get_attempt_class(entry)" title="attempt info">{{ get_attempt_info(entry) }}</span>
                         <span class="pull-right fa fa-pencil" title="acknowledgment status" ng-show="entry.acknowledged == '1'"></span>
                         <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
                     </td>
-                    <td class="nowrap" ng-show="show_column.description">{{ entry.description }}</td>
-                    <td class="nowrap" ng-show="show_column.cats">{{ get_categories(entry) }}</td>
-                    <td class="nowrap">{{ get_last_check(entry) }}</td>
-                    <td class="nowrap">{{ get_last_change(entry) }}</td>
+                    <td class="text-nowrap" ng-show="show_column.description">{{ entry.description }}</td>
+                    <td class="text-nowrap" ng-show="show_column.cats">{{ get_categories(entry) }}</td>
+                    <td class="text-nowrap">{{ get_last_check(entry) }}</td>
+                    <td class="text-nowrap">{{ get_last_change(entry) }}</td>
                     <td ng-show="show_column.output">{{ entry.plugin_output }}</td>
                 </tr>
             </tbody>

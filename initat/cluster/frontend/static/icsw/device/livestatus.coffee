@@ -31,7 +31,7 @@ get_host_state_class = (entry) ->
 show_attempt_info = (entry) ->
     try
         if parseInt(entry.current_attempt) == 1
-            return false
+            return true
         else
             return true
     catch error
@@ -43,12 +43,25 @@ get_attempt_info = (entry, force=false) ->
     try
         max = parseInt(entry.max_check_attempts)
         cur = parseInt(entry.current_attempt)
-        if cur == 1
+        if max == cur
             return "#{cur}"
         else
             return "#{cur} / #{max}"
     catch error
         return "e"
+
+get_attempt_class = (entry, force=false) ->
+    if entry.max_check_attempts == null
+        return "label-default"
+    try
+        max = parseInt(entry.max_check_attempts)
+        cur = parseInt(entry.current_attempt)
+        if max == cur
+            return "label-info"
+        else
+            return "label-success"
+    catch error
+        return "label-danger"
 
 get_state_type = (entry) ->
     return {
@@ -957,8 +970,12 @@ angular.module(
                 return show_attempt_info(entry)
             scope.get_host_attempt_info = (srv_entry) ->
                 return scope.get_attempt_info(scope.host_lut[srv_entry.host_name])
+            scope.get_host_attempt_class = (srv_entry) ->
+                return scope.get_attempt_class(scope.host_lut[srv_entry.host_name])
             scope.get_attempt_info = (entry) ->
                 return get_attempt_info(entry)
+            scope.get_attempt_class = (entry) ->
+                return get_attempt_class(entry)
     }
 ]).directive("livestatusBrief", ["$templateCache", ($templateCache) ->
     return {
