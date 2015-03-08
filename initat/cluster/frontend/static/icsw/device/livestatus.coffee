@@ -194,7 +194,6 @@ angular.module(
         # selected categories
         $scope.selected_mcs = []
         $scope.master_cat_pk = 0
-        $scope.show_unspec_cat = true
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
@@ -202,7 +201,6 @@ angular.module(
             $scope.load_static_data()
         $scope.new_mc_selection = (new_sel) ->
             $scope.selected_mcs = new_sel
-            $scope.show_unspec_cat = $scope.master_cat_pk in $scope.selected_mcs
             $scope.md_filter_changed()
         $scope.get_header_class = (entry) ->
             return "nowrap"
@@ -233,6 +231,7 @@ angular.module(
                 cat_tree_lut = {}
                 $scope.cat_tree.clear_root_nodes()
                 $scope.selected_mcs = []
+                # add dummy entry
                 for entry in data[0]
                     if entry.full_name.match(/^\/mon/)
                         entry.short_name = entry.full_name.substring(5)
@@ -245,6 +244,11 @@ angular.module(
                             $scope.master_cat_pk = entry.idx
                             $scope.cat_tree.add_root_node(t_entry)
                         $scope.selected_mcs.push(entry.idx)
+                # dummy entry for unspecified
+                entry = {idx:0, short_name:"unspecified", full_name:"/unspec", depth:1}
+                d_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:false,selected:true})
+                cat_tree_lut[$scope.master_cat_pk].add_child(d_entry)
+                $scope.selected_mcs.push(entry.idx)
                 $scope.cat_tree_lut = cat_tree_lut
                 $scope.cat_tree.show_selected(false)
                 $scope.dev_tree_lut = icswTools.build_lut(data[1])
@@ -392,7 +396,7 @@ angular.module(
                         show = if _.intersection($scope.selected_mcs, check.custom_variables.cat_pks).length then true else false
                     else
                         # show entries with unset / empty category
-                        show = $scope.show_unspec_cat
+                        show = 0 in $scope.selected_mcs
             check._show = show
             return show
 
@@ -1025,6 +1029,11 @@ angular.module(
                 if data
                     scope.new_devsel([data], [])
             )
+    }
+]).directive("icswDeviceLivestatusCatTree", ["$templateCache", ($templateCache) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.cat.tree")
     }
 ]).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {

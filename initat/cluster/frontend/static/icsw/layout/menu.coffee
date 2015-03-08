@@ -91,7 +91,7 @@ menu_module = angular.module(
             else
                 return "btn btn-xs btn-danger"
         $scope.rebuild_config = (cache_mode) ->
-            console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
+            # console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
             icswCallAjaxService
                 url     : ICSW_URLS.MON_CREATE_CONFIG
                 data    : {

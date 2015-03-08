@@ -133,8 +133,7 @@
             </div>
         </div>
         <div class="col-md-6">
-            <h4 ng-show="cat_tree_show">Monitoring categories</h4>
-            <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
+            <icsw-device-livestatus-cat-tree></icsw-device-livestatus-cat-tree>
         </div>
     </div>
     <div icsw-device-livestatus-fullburst ng_show="burst_show" host-lut="host_lut" filter="lsfilter" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
@@ -248,6 +247,11 @@
     <td class="text-nowrap">{{ get_last_check(entry) }}</td>
     <td class="text-nowrap">{{ get_last_change(entry) }}</td>
     <td ng-show="show_column.output">{{ entry.plugin_output }}</td>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.cat.tree">
+    <h4 ng-show="cat_tree_show">Monitoring categories</h4>
+    <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.serviceinfo">
