@@ -113,7 +113,7 @@
             </svg>
         </div>
         <div class="col-md-6">
-            <icsw-device-livestatus-service-info service="focusService"></icsw-device-livestatus-service-info>
+            <icsw-device-livestatus-service-info host-lut="hostLut" service="focusService"></icsw-device-livestatus-service-info>
         </div>
     </div>
 </script>
@@ -137,8 +137,7 @@
             <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
         </div>
     </div>
-    {{ lsfilter }}
-    <div icsw-device-livestatus-fullburst ng_show="burst_show" filter="lsfilter" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
+    <div icsw-device-livestatus-fullburst ng_show="burst_show" host-lut="host_lut" filter="lsfilter" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
     <tabset ng-show="map_show">
         <tab ng-repeat="loc_gfx in location_gfx_list">
             <tab-heading>
@@ -267,24 +266,62 @@
         </div>
         <div ng-switch-when="host">
             <ul class="list-group">
-                <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
-                <li class="list-group-item">State<span class="pull-right label" ng-class="get_host_state_class(service, 'label-')">{{ get_host_state_string(service) }}</span></li>
-                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
-                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
-                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+                <li class="list-group-item">
+                    Path
+                    <span class="pull-right">
+                        {{ service.group_name }}
+                        <span class="glyphicon glyphicon-arrow-right"></span>
+                        {{ service.host_name }}
+                    </span>
+                </li>
+                <li class="list-group-item">
+                    State
+                    <span class="pull-right">
+                        {{ get_state_type(service) }},
+                        {{ get_check_type(service) }},
+                        <span class="label" ng-class="get_host_state_class(service, 'label-')">{{ get_host_state_string(service) }}</span>
+                        <span class="label" ng-class="get_host_attempt_class(service, 'label-')">{{ get_host_attempt_info(service) }}</span>
+                    </span>
+                </li>
+                <li class="list-group-item">
+                    last check / last change
+                    <span class="pull-right">
+                        {{ get_host_last_check(service) }} /
+                        {{ get_host_last_change(service) }}
+                    </span>
+                </li>
                 <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
             </ul>
         </div>
         <div ng-switch-when="service">
             <ul class="list-group">
-                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
-                <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
-                <li class="list-group-item">State<span class="pull-right label" ng-class="get_service_state_class(service, 'label-')">{{ get_service_state_string(service) }}</span></li>
-                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
-                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
-                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
-                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
+                <li class="list-group-item">
+                    Path
+                    <span class="pull-right">
+                        {{ service.group_name }}
+                        <span class="glyphicon glyphicon-arrow-right"></span>
+                        {{ service.host_name }}
+                        <span class="glyphicon glyphicon-arrow-right"></span>
+                        {{ service.description }}
+                    </span>
+                </li>
+                <li class="list-group-item">
+                    State
+                    <span class="pull-right">
+                        {{ get_state_type(service) }},
+                        {{ get_check_type(service) }},
+                        <span class="label" ng-class="get_service_state_class(service, 'label-')">{{ get_service_state_string(service) }}</span>
+                        <span class="label" ng-class="get_attempt_class(service, 'label-')">{{ get_host_attempt_info(service) }}</span>
+                    </span>
+                </li>
+                <li class="list-group-item">
+                    last check / last change
+                    <span class="pull-right">
+                        {{ get_last_check(service) }} /
+                        {{ get_last_change(service) }}
+                    </span>
+                </li>
+                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output || 'N/A' }}</span></li>
             </ul>
         </div>
     </div>

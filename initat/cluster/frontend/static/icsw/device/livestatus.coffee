@@ -69,13 +69,6 @@ angular.module(
             0: "active"
             1: "passive"
             }[entry.check_type]
-        scope.get_host_state_class = (entry) ->
-            state_class = {
-                0 : "success"
-                1 : "danger"
-                2 : "danger"
-            }[entry.state]
-            return "#{state_class}"
         scope.is_passive_check = (entry) ->
             return if entry.check_type then true else false
         scope.get_state_type = (entry) ->
@@ -270,12 +263,17 @@ angular.module(
             for entry in host_entries
                 host_id++
                 entry._srv_id = "host#{host_id}"
+                # create additional entries
+                if entry.custom_variables.device_pk of $scope.dev_tree_lut
+                    _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
+                    entry.group_name = _dev.device_group_name
 
             # set srv_ids
             srv_id = 0
             for entry in service_entries
                 srv_id++
                 entry._srv_id = "srvc#{srv_id}"
+                entry.group_name = host_lut[entry.host_name].group_name
                 if entry.custom_variables and entry.custom_variables.cat_pks?
                     used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
 
@@ -473,6 +471,7 @@ angular.module(
             recalcBurst: "=recalc"
             serviceFocus: "=serviceFocus"
             filter: "=filter"
+            hostLut: "=hostLut"
         }
         link: (scope, element, attrs) ->
             # omitted segments
@@ -480,7 +479,8 @@ angular.module(
             scope.$watch(
                 "filter"
                 (new_f) ->
-                    console.log new_f
+                    # console.log new_f
+                    true
                 true
             )
     }
@@ -725,10 +725,19 @@ angular.module(
         restrict : "E"
         template : $templateCache.get("icsw.device.livestatus.serviceinfo")
         scope : {
-            type : "=type"
-            service : "=service"
+            type: "=type"
+            service: "=service"
+            host_lut: "=hostLut"
         }
-        link : (scope, element) ->
+        link : (scope, element, attrs) ->
+            scope.get_host_attempt_info = (srv_entry) ->
+                return scope.get_attempt_info(scope.host_lut[srv_entry.host_name])
+            scope.get_host_attempt_class = (srv_entry, prefix="") ->
+                return scope.get_attempt_class(scope.host_lut[srv_entry.host_name], prefix)
+            scope.get_host_last_check = (srv_entry) ->
+                return scope.get_last_check(scope.host_lut[srv_entry.host_name])
+            scope.get_host_last_change = (srv_entry) ->
+                return scope.get_last_change(scope.host_lut[srv_entry.host_name])
     }
 ]).directive("icswDeviceLivestatusCheckService", ["$templateCache", ($templateCache) ->
     return {
@@ -823,7 +832,8 @@ angular.module(
             scope.$watch(
                 "filter"
                 (new_f) ->
-                    console.log "sb", new_f
+                    # console.log "sb", new_f
+                    true
                 true
             )
             scope.set_focus_service = (srvc) ->
