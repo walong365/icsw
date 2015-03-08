@@ -81,6 +81,7 @@
                 outerradius="50"
                 showname="1"
                 fontstroke="1"
+                draw-all="1"
             ></newburst>
         </g>
         <g ng-switch-default>
@@ -136,7 +137,8 @@
             <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
         </div>
     </div>
-    <div icsw-device-livestatus-fullburst ng_show="burst_show" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
+    {{ lsfilter }}
+    <div icsw-device-livestatus-fullburst ng_show="burst_show" filter="lsfilter" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
     <tabset ng-show="map_show">
         <tab ng-repeat="loc_gfx in location_gfx_list">
             <tab-heading>
@@ -147,7 +149,7 @@
         </tab>
     </tabset>
     <hr ng-show="table_show"/>
-    <icsw-tools-rest-table target-list="entries" config-service="icswDeviceLivestatusTableService">
+    <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService">
         <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
             <thead>
                 <tr>
@@ -221,6 +223,7 @@
                 outerradius="19"
                 noninteractive="true"
                 hidegroup="true"
+                draw-all="true"
             ></newburst>
         </g>
     </svg>

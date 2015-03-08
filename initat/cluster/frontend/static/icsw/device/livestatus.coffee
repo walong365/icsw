@@ -1,6 +1,8 @@
 class hs_node
     # hierarchical structure node
-    constructor: (@name, @depth=0) ->
+    constructor: (@name, @check, @depth=0) ->
+        # name
+        # check (may also be a dummy dict)
         @value = 1
         @root = @
         @children = []
@@ -160,7 +162,7 @@ angular.module(
      $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService,
      icswCachingCall) ->
         $scope.host_entries = []
-        $scope.entries = []
+        $scope.service_entries = []
         $scope.filtered_entries = []
         $scope.order_name = "host_name"
         $scope.order_dir = true
@@ -257,7 +259,7 @@ angular.module(
             )
         $scope.on_new_data = (host_entries, service_entries, host_lut) ->
             $scope.host_entries = host_entries
-            $scope.entries = service_entries
+            $scope.service_entries = service_entries
             $scope.lsinfo.host_length = host_entries.length
             $scope.lsinfo.service_length = service_entries.length
             $scope.host_lut = host_lut
@@ -288,8 +290,10 @@ angular.module(
             $scope.md_filter_changed()
         $scope.build_sunburst = () ->
             # build burst data
-            _bdat = new hs_node("System")
-            _bdat.check = {"state" : 0, "type" : "system", "idx" : 0, "ct": "system"}
+            _bdat = new hs_node(
+                "System"
+                {"state" : 0, "type" : "system", "idx" : 0, "ct": "system"}
+            )
             _devg_lut = {}
             # lut: dev idx to hs_nodes
             dev_hs_lut = {}
@@ -298,21 +302,22 @@ angular.module(
                     _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
                     if _dev.device_group_name not of _devg_lut
                         # we use the same index for devicegroups and services ...
-                        _devg = new hs_node(_dev.device_group_name)
-                        _devg.check = {
-                            "ct"    : "group"
-                            "state" : 0
-                            "type"  : "group"
-                            "group_name" : _dev.device_group_name
-                        }
+                        _devg = new hs_node(
+                            _dev.device_group_name
+                            {
+                                "ct"    : "group"
+                                "state" : 0
+                                "type"  : "group"
+                                "group_name" : _dev.device_group_name
+                            }
+                        )
                         _devg_lut[_devg.name] = _devg
                         _bdat.add_child(_devg)
                     else
                         _devg = _devg_lut[_dev.device_group_name]
                     # sunburst struct for device
                     entry.group_name = _dev.device_group_name
-                    _dev_sbs = new hs_node(_dev.full_name)
-                    _dev_sbs.check = entry
+                    _dev_sbs = new hs_node(_dev.full_name, entry)
                     _devg.add_child(_dev_sbs)
                     # set devicegroup state
                     _devg.check.state = Math.max(_devg.check.state, _dev_sbs.check.state)
@@ -322,19 +327,16 @@ angular.module(
                     # create sunburst for mon locations
                     if _dev.idx of $scope.dev_gfx_lut
                         for dml in $scope.dev_gfx_lut[_dev.idx]
-                            dml_sb = new hs_node(_dev.full_name)
-                            dml_sb.check = entry
+                            dml_sb = new hs_node(_dev.full_name, entry)
                             dev_hs_lut[_dev.idx].push(dml_sb)
                             # link sunburst with dml
                             dml.sunburst = dml_sb
-            for entry in $scope.entries
+            for entry in $scope.service_entries
                 # sanitize entries
                 if entry.custom_variables.device_pk of $scope.dev_tree_lut
-                    _srv_node = new hs_node(entry.description)
-                    _srv_node.check = entry
+                    _srv_node = new hs_node(entry.description, entry)
                     for node in dev_hs_lut[entry.custom_variables.device_pk]
-                        _srv_node = new hs_node(entry.description)
-                        _srv_node.check = entry
+                        _srv_node = new hs_node(entry.description, entry)
                         node.add_child(_srv_node)
             # remove empty devices
             for _devg in _bdat.children
@@ -349,7 +351,7 @@ angular.module(
                else
                    return false
             # filter entries for table
-            $scope.filtered_entries = _.filter($scope.entries, (_v) -> return _apply_filter(_v, true))
+            $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return _apply_filter(_v, true))
             if $scope.burstData?
                 # filter burstData
                 # handle clicks, filter data
@@ -377,10 +379,12 @@ angular.module(
                 $scope.redrawSunburst++
             $scope.lsinfo.filtered_service_length = $scope.filtered_entries.length
         _apply_filter = (check, show) ->
-            if $scope.lsfilter? and not $scope.lsfilter.mds[check.state]
-                show = false
-            if $scope.lsfilter? and not $scope.lsfilter.shs[check.state_type]
-                show = false
+            if $scope.lsfilter?
+                if $scope.lsfilter.mds?
+                    if not $scope.lsfilter.mds[check.state]
+                        show = false
+                    if not $scope.lsfilter.shs[check.state_type]
+                        show = false
             if show
                 if not $scope.selected_mcs.length
                    show = false
@@ -468,10 +472,17 @@ angular.module(
             redrawBurst: "=redraw"
             recalcBurst: "=recalc"
             serviceFocus: "=serviceFocus"
+            filter: "=filter"
         }
         link: (scope, element, attrs) ->
             # omitted segments
             scope.omittedSegments = 0
+            scope.$watch(
+                "filter"
+                (new_f) ->
+                    console.log new_f
+                true
+            )
     }
 ]).directive('icswDeviceLivestatusFilter', ["$templateCache", ($templateCache) ->
     return {
@@ -754,6 +765,7 @@ angular.module(
             recalc_burst: "=recalc"
             serviceFocus: "=serviceFocus"
             omittedSegments: "=omittedSegments"
+            filter: "=filter"
         link: (scope, element, attrs) ->
             scope.nodes = []
             scope.inner = parseInt(attrs["innerradius"] or 20)
@@ -763,6 +775,10 @@ angular.module(
             scope.show_name = parseInt(attrs["showname"] or 0)
             scope.noninteractive = attrs["noninteractive"]  # defaults to false
             scope.hidegroup = attrs["hidegroup"]  # defaults to false
+            if attrs["drawAll"]?
+                scope.draw_all = true
+            else
+                scope.draw_all = false
             scope.create_node = (name, settings) ->
                 ns = 'http://www.w3.org/2000/svg'
                 node = document.createElementNS(ns, name)
@@ -803,6 +819,12 @@ angular.module(
             scope.$watch("redraw_burst", (data) ->
                 if scope.sunburst_data?
                     scope.draw_data()
+            )
+            scope.$watch(
+                "filter"
+                (new_f) ->
+                    console.log "sb", new_f
+                true
             )
             scope.set_focus_service = (srvc) ->
                 if "serviceFocus" of attrs
@@ -860,7 +882,7 @@ angular.module(
                             start_cos = Math.cos(start_arc)
                             end_num += part.width
                             end_arc = 2 * Math.PI * end_num / _len
-                            if (end_arc - start_arc) * outer < 3
+                            if (end_arc - start_arc) * outer < 3 and not scope.draw_all
                                 # arc is too small, do not draw
                                 omitted_segments++
                             else
