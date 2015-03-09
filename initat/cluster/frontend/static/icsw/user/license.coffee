@@ -3,8 +3,11 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload",
     ]
-).controller("icswUserLicenseCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal", "$window", "ICSW_URLS", 'FileUploader', 'blockUI',
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal, $window, ICSW_URLS, FileUploader, blockUI) ->
+).controller("icswUserLicenseCtrl",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "$modal",
+     "$window", "ICSW_URLS", 'FileUploader', 'blockUI', 'icswParseXMLResponseService'
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, $modal,
+     $window, ICSW_URLS, FileUploader, blockUI, icswParseXMLResponseService) ->
         $scope.licenses = []
         wait_list = restDataSource.add_sources([
             [ICSW_URLS.REST_CLUSTER_LICENSE_LIST, {}]
@@ -54,12 +57,16 @@ angular.module(
         $scope.upload_list = []
         $scope.uploader.onBeforeUploadItem = () ->
             blockUI.start()
+        $scope.uploader.onCompleteItem = (item, response, status, headers) ->
+            # must not give direct response to the parse service
+            response = "<document>" + response + "</document>"
+            icswParseXMLResponseService(response)
         $scope.uploader.onCompleteAll = () ->
             blockUI.stop()
             $scope.uploader.clearQueue()
 ]).directive("icswUserLicenseOverview",
-    ["$templateCache", 'FileUploader', 'blockUI', 'ICSW_URLS', '$window',
-    ($templateCache, FileUploader, blockUI, ICSW_URLS, $window) ->
+    ["$templateCache",
+    ($templateCache) ->
         return {
             restrict : "EA"
             controller: 'icswUserLicenseCtrl'

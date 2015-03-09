@@ -24,6 +24,7 @@
 
 import json
 import logging
+import pprint
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -38,6 +39,7 @@ from initat.cluster.backbone.serializers import group_object_permission_serializ
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
+from initat.cluster.licadmin.license_file_reader import LicenseFileReader
 from lxml.builder import E  # @UnresolvedImport
 import config_tools
 import server_command
@@ -249,10 +251,16 @@ class global_license(View):
 
 class upload_license_file(View):
     @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
     def post(self, request):
         lic_file = request.FILES['license_file']
-        lic_file.read()
 
+        try:
+            reader = LicenseFileReader(lic_file).read()
+        except LicenseFileReader.InvalidLicenseFile as e:
+            request.xml_response.error(unicode(e), logger=logger)
+        else:
+            request.xml_response.info("Successfully uploaded license file")
 
 
 class background_job_info(View):

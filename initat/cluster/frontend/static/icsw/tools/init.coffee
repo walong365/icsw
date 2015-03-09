@@ -140,6 +140,9 @@ angular.module(
     toasterConfig["tap-to-dismiss"] = true
 ]).service("icswParseXMLResponseService", ["toaster", (toaster) ->
     return (xml, min_level, show_error=true) ->
+        # use in combination with icswCallAjaxService, or otherwise make sure to wrap
+        # the <response> from the server in some outer tag (similar to usage in license.coffee)
+
         success = false
         if $(xml).find("response header").length
             ret_state = $(xml).find("response header").attr("code")
