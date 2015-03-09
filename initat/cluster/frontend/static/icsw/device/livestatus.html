@@ -95,9 +95,12 @@
 <script type="text/ng-template" id="icsw.device.livestatus.fullburst">
     <div class="row">
         <div class="col-md-6">
-            <h4 ng-show="omittedSegments">
-                {{ omittedSegments }} omitted segments
-            </h4>
+            <h3>
+                Burst graph
+                <span ng-show="omittedSegments">
+                    , {{ omittedSegments }} omitted segments
+                </span>
+            </h3>
             <svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
                 <g transform="translate(300,160)">
                     <newburst
@@ -133,7 +136,7 @@
             </div>
         </div>
         <div class="col-md-6">
-            <icsw-device-livestatus-cat-tree></icsw-device-livestatus-cat-tree>
+            <icsw-device-livestatus-cat-tree filter="lsfilter" ng-show="cat_tree_show"></icsw-device-livestatus-cat-tree>
         </div>
     </div>
     <div icsw-device-livestatus-fullburst ng_show="burst_show" host-lut="host_lut" filter="lsfilter" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
@@ -250,8 +253,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.cat.tree">
-    <h4 ng-show="cat_tree_show">Monitoring categories</h4>
-    <tree treeconfig="cat_tree" ng-show="cat_tree_show"></tree>
+    <h3>Monitoring categories</h3>
+    <tree treeconfig="cat_tree"></tree>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.serviceinfo">

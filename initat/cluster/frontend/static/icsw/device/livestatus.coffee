@@ -149,10 +149,10 @@ angular.module(
     }
 ]).controller("icswDeviceLiveStatusCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "$timeout",
-     "icswTools", "ICSW_URLS", "icswDeviceLivestatusCategoryTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
+     "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
      "icswCachingCall",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
-     $q, $modal, $timeout, icswTools, ICSW_URLS, icswDeviceLivestatusCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService,
+     $q, $modal, $timeout, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService,
      icswCachingCall) ->
         $scope.host_entries = []
         $scope.service_entries = []
@@ -183,37 +183,28 @@ angular.module(
         $scope.$watch(
             "lsfilter"
             (new_filter) ->
+                # console.log "nf", new_filter
                 $scope.md_filter_changed()
             true
         )
         $scope.$watch("recalcSunburst", (red) ->
             $scope.md_filter_changed()
         )
-        # category tree
-        $scope.cat_tree = new icswDeviceLivestatusCategoryTreeService($scope, {})
         # selected categories
-        $scope.selected_mcs = []
-        $scope.master_cat_pk = 0
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
             $scope.devsel_list = _dev_sel
             $scope.load_static_data()
-        $scope.new_mc_selection = (new_sel) ->
-            $scope.selected_mcs = new_sel
-            $scope.md_filter_changed()
-        $scope.get_header_class = (entry) ->
-            return "nowrap"
         $scope.load_static_data = () ->
             wait_list = [
-                icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_CATEGORY_LIST, {}, [])
                 icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_DEVICE_TREE_LIST, {"with_meta_devices" : false, "ignore_cdg" : true, "pks": "<PKS>"}, $scope.devsel_list)
                 icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": "<PKS>", "_distinct": true}, $scope.devsel_list)
                 icswCachingCall.fetch($scope.$id, ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": "<PKS>"}, $scope.devsel_list)
                 icswDeviceLivestatusDataService.retain($scope.$id, $scope.devsel_list)
             ]
             $q.all(wait_list).then((data) ->
-                $scope.location_gfx_list = data[2]
+                $scope.location_gfx_list = data[1]
                 $scope.lsinfo.gfx_num = $scope.location_gfx_list.length
                 gfx_lut = {}
                 for entry in $scope.location_gfx_list
@@ -221,38 +212,15 @@ angular.module(
                     entry.dml_list = []
                 # lut: device_idx -> list of dml_entries
                 dev_gfx_lut = {}
-                for entry in data[3]
+                for entry in data[2]
                     if entry.device not of dev_gfx_lut
                         dev_gfx_lut[entry.device] = []
                     dev_gfx_lut[entry.device].push(entry)
                     entry.redraw = 0
                     gfx_lut[entry.location_gfx].dml_list.push(entry)
                 $scope.dev_gfx_lut = dev_gfx_lut
-                cat_tree_lut = {}
-                $scope.cat_tree.clear_root_nodes()
-                $scope.selected_mcs = []
-                # add dummy entry
-                for entry in data[0]
-                    if entry.full_name.match(/^\/mon/)
-                        entry.short_name = entry.full_name.substring(5)
-                        t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 1, selected: true})
-                        cat_tree_lut[entry.idx] = t_entry
-                        if entry.parent and entry.parent of cat_tree_lut
-                            cat_tree_lut[entry.parent].add_child(t_entry)
-                        else
-                            # hide selection from root nodes
-                            $scope.master_cat_pk = entry.idx
-                            $scope.cat_tree.add_root_node(t_entry)
-                        $scope.selected_mcs.push(entry.idx)
-                # dummy entry for unspecified
-                entry = {idx:0, short_name:"unspecified", full_name:"/unspec", depth:1}
-                d_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:false,selected:true})
-                cat_tree_lut[$scope.master_cat_pk].add_child(d_entry)
-                $scope.selected_mcs.push(entry.idx)
-                $scope.cat_tree_lut = cat_tree_lut
-                $scope.cat_tree.show_selected(false)
-                $scope.dev_tree_lut = icswTools.build_lut(data[1])
-                $scope.on_new_data(data[4][0], data[4][1], data[4][2])
+                $scope.dev_tree_lut = icswTools.build_lut(data[0])
+                $scope.on_new_data(data[3][0], data[3][1], data[3][2])
             )
         $scope.on_new_data = (host_entries, service_entries, host_lut) ->
             $scope.host_entries = host_entries
@@ -281,13 +249,8 @@ angular.module(
                 if entry.custom_variables and entry.custom_variables.cat_pks?
                     used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
 
-            for pk of $scope.cat_tree_lut
-                entry = $scope.cat_tree_lut[pk]
-                if parseInt(pk) in used_cats
-                    entry._show_select = true
-                else
-                    entry.selected = false
-                    entry._show_select = false
+            $scope.lsfilter.usedcats = used_cats
+
             $scope.build_sunburst()
             $scope.md_filter_changed()
         $scope.build_sunburst = () ->
@@ -387,16 +350,16 @@ angular.module(
                         show = false
                     if not $scope.lsfilter.shs[check.state_type]
                         show = false
-            if show
-                if not $scope.selected_mcs.length
-                   show = false
-                else
+                if $scope.lsfilter.cats? and show
+                    _cats = $scope.lsfilter.cats
+                    if not _cats.length
+                        show = false
                     if check.custom_variables and check.custom_variables.cat_pks?
                         # only show if there is an intersection
-                        show = if _.intersection($scope.selected_mcs, check.custom_variables.cat_pks).length then true else false
+                        show = if _.intersection(_cats, check.custom_variables.cat_pks).length then true else false
                     else
                         # show entries with unset / empty category
-                        show = 0 in $scope.selected_mcs
+                        show = 0 in _cats
             check._show = show
             return show
 
@@ -497,10 +460,8 @@ angular.module(
             "info": "=info"
         }
         link: (scope, elem, attrs) ->
-            scope.filter = {
-                "mds" : {}
-                "shs" : {}
-            }
+            scope.filter.mds = {}
+            scope.filter.shs = {}
             scope.md_states = [
                 [0, "O", true, "show OK states"]
                 [1, "W", true, "show warning states"]
@@ -566,7 +527,7 @@ angular.module(
                     _cv[single_key] = parseInt(_cv[single_key][0])
             for int_mkey in ["cat_pks"]
                 if int_mkey of _cv
-                    _cv[int_mkey] = (parseInt(_sv) for _sv in _cv[int_mkey])
+                    _cv[int_mkey] = (parseInt(_sv) for _sv in _cv[int_mkey] when _sv != "-")
         return _cv
 
     watchers_present = () ->
@@ -712,7 +673,7 @@ angular.module(
                 else
                     return []
             )
-            @scope.new_mc_selection(sel_list)
+            @scope.new_cat_selection(sel_list)
         get_name : (t_entry) ->
             cat = t_entry.obj
             if cat.depth > 1
@@ -1008,8 +969,8 @@ angular.module(
         link : (scope, el, attrs) ->
             scope.get_categories = (entry) ->
                 if entry.custom_variables
-                    if entry.custom_variables.cat_pks?
-                        return (scope.cat_tree_lut[_pk].obj.short_name for _pk in entry.custom_variables.cat_pks).join(", ")
+                    if entry.custom_variables.cat_pks? and scope.lsfilter.cat_name_lut?
+                        return (scope.lsfilter.cat_name_lut[_pk] for _pk in entry.custom_variables.cat_pks).join(", ")
                     else
                         return "---"
                 else
@@ -1030,11 +991,68 @@ angular.module(
                     scope.new_devsel([data], [])
             )
     }
-]).directive("icswDeviceLivestatusCatTree", ["$templateCache", ($templateCache) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.cat.tree")
-    }
+]).directive("icswDeviceLivestatusCatTree",
+    ["$templateCache", "icswDeviceLivestatusCategoryTreeService", "icswCachingCall", "$q", "ICSW_URLS",
+    ($templateCache, icswDeviceLivestatusCategoryTreeService, icswCachingCall, $q, ICSW_URLS) ->
+        return {
+            restrict: "EA"
+            template: $templateCache.get("icsw.device.livestatus.cat.tree")
+            scope:
+                filter: "=filter"
+            link: (scope, elem, attrs) ->
+                # category tree
+                scope.cat_tree = new icswDeviceLivestatusCategoryTreeService(scope, {})
+                # add categories to filter
+                scope.filter.cats = []
+                $q.all([icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_CATEGORY_LIST, {}, [])]).then((data) ->
+                    cat_tree_lut = {}
+                    scope.cat_tree.clear_root_nodes()
+                    # list of all pks
+                    selected_mcs = []
+                    # name lut
+                    name_lut = {}
+                    # add dummy entry
+                    for entry in data[0]
+                        if entry.full_name.match(/^\/mon/)
+                            entry.short_name = entry.full_name.substring(5)
+                            t_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 1, selected: true})
+                            t_entry._show_select = false
+                            cat_tree_lut[entry.idx] = t_entry
+                            name_lut[entry.idx] = entry.short_name
+                            if entry.parent and entry.parent of cat_tree_lut
+                                cat_tree_lut[entry.parent].add_child(t_entry)
+                            else
+                                # hide selection from root nodes
+                                _mc_pk = entry.idx
+                                scope.cat_tree.add_root_node(t_entry)
+                                # dummy entry for unspecified
+                                entry = {idx:0, short_name:"unspecified", full_name:"/unspecified", depth:1}
+                                d_entry = scope.cat_tree.new_node({folder:false, obj:entry, expand:false,selected:true})
+                                cat_tree_lut[_mc_pk].add_child(d_entry)
+                            selected_mcs.push(entry.idx)
+                    selected_mcs.push(entry.idx)
+                    scope.cat_tree_lut = cat_tree_lut
+                    scope.cat_tree.show_selected(false)
+                    scope.filter.cat_name_lut = name_lut
+                    scope.filter.cats = selected_mcs
+                    # check for active categories
+                    scope.$watch(
+                        () ->
+                            return scope.filter.usedcats
+                        (uc) ->
+                            if uc?
+                                for pk of scope.cat_tree_lut
+                                    entry = scope.cat_tree_lut[pk]
+                                    if parseInt(pk) in uc
+                                        entry._show_select = true
+                                    else
+                                        entry.selected = false
+                                        entry._show_select = false
+                    )
+                )
+                scope.new_cat_selection = (new_sel) ->
+                    scope.filter.cats = new_sel
+        }
 ]).directive("monmap", ["$templateCache", "$compile", "$modal", "Restangular", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
