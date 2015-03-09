@@ -257,7 +257,18 @@ class home_export_list(object):
             yield self.exp_dict[pk]["entry"]
 
 
+class DeviceVariableManager(models.Manager):
+
+    def get_cluster_id(self):
+        try:
+            return self.get(name="CLUSTER_ID").val_str
+        except device_variable.DoesNotExist:
+            return None
+
+
 class device_variable(models.Model):
+    objects = DeviceVariableManager()
+
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
     device = models.ForeignKey("device")
     is_public = models.BooleanField(default=True)
