@@ -33,7 +33,7 @@ from django.views.generic import View
 from django.http.response import HttpResponse
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
-    user_object_permission, device, License
+    user_object_permission, device, License, device_variable
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
@@ -261,10 +261,21 @@ class upload_license_file(View):
             request.xml_response.error(unicode(e), logger=logger)
         else:
             try:
+                # check based on content, not filename
                 License.objects.get(license_file=lic_file_content)
             except License.DoesNotExist:
-                License(license_file=lic_file_content).save()
-                request.xml_response.info("Successfully uploaded license file")
+
+                local_cluster_id = device_variable.objects.get_cluster_id()
+                file_cluster_ids = reader.get_referenced_cluster_ids()
+                if local_cluster_id not in file_cluster_ids:
+                    msg = u"This license file contains licenses for the following clusters: {}.".\
+                        format(", ".join(file_cluster_ids))
+                    msg += "\nThis cluster has the id {}.".format(local_cluster_id)
+                    request.xml_response.error(msg)
+                else:
+
+                    License(file_name=lic_file.name, license_file=lic_file_content).save()
+                    request.xml_response.info("Successfully uploaded license file")
             else:
                 request.xml_response.warn("This license file has already been uploaded")
 
