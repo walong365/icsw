@@ -122,7 +122,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.overview">
-    <icsw-device-livestatus-filter filter="lsfilter" info="lsinfo"></icsw-device-livestatus-filter>
+    <icsw-device-livestatus-filter info="lsinfo"></icsw-device-livestatus-filter>
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
@@ -136,10 +136,10 @@
             </div>
         </div>
         <div class="col-md-6">
-            <icsw-device-livestatus-cat-tree filter="lsfilter" ng-show="cat_tree_show"></icsw-device-livestatus-cat-tree>
+            <icsw-device-livestatus-cat-tree ng-show="cat_tree_show"></icsw-device-livestatus-cat-tree>
         </div>
     </div>
-    <div icsw-device-livestatus-fullburst ng_show="burst_show" host-lut="host_lut" filter="lsfilter" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
+    <div icsw-device-livestatus-fullburst ng_show="burst_show" host-lut="host_lut" data="burstData" redraw="redrawSunburst" recalc="recalcSunburst"></div>
     <tabset ng-show="map_show">
         <tab ng-repeat="loc_gfx in location_gfx_list">
             <tab-heading>
@@ -179,7 +179,7 @@
                 </tr>
             </thead>
             <tbody>
-                <tr icsw-device-livestatus-check-service icsw-interpret-monitoring-check-result ng-repeat="entry in entries_displayed">
+                <tr icsw-device-livestatus-check-service ng-repeat="entry in entries_displayed">
                 </tr>
             </tbody>
         </table>
@@ -259,7 +259,7 @@
 
 <script type="text/ng-template" id="icsw.device.livestatus.serviceinfo">
     <h3 ng-show="service.ct">Level: {{ service.ct }}</h3>
-    <div icsw-interpret-monitoring-check-result ng-switch="service.ct">
+    <div ng-switch="service.ct">
         <div ng-switch-when="system">
            <ul class="list-group">
                <li class="list-group-item">System</li>
@@ -267,8 +267,18 @@
         </div>
         <div ng-switch-when="group">
            <ul class="list-group">
-               <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-               <li class="list-group-item">State<span class="pull-right label" ng-class="get_service_state_class(service, 'label-')">{{ get_service_state_string(service) }}</span></li>
+               <li class="list-group-item">
+                   Devicegroup
+                   <span class="pull-right">
+                       {{ service.group_name }}
+                   </span>
+               </li>
+               <li class="list-group-item">
+                   State
+                   <span class="pull-right label" ng-class="get_service_state_class(service, 'label-')">
+                       {{ get_service_state_string(service) }}
+                   </span>
+               </li>
            </ul>
         </div>
         <div ng-switch-when="host">
@@ -297,7 +307,12 @@
                         {{ get_host_last_change(service) }}
                     </span>
                 </li>
-                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
+                <li class="list-group-item">
+                    <p class="list-group-item-heading">Output</p>
+                    <div class=" list-group-item-text">
+                        {{ service.plugin_output || 'N/A' }}
+                    </div>
+                </li>
             </ul>
         </div>
         <div ng-switch-when="service">
@@ -328,7 +343,18 @@
                         {{ get_last_change(service) }}
                     </span>
                 </li>
-                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output || 'N/A' }}</span></li>
+                <li class="list-group-item">
+                    categories
+                    <span class="pull-right">
+                        {{ get_categories(service) }}
+                    </span>
+                </li>
+                <li class="list-group-item">
+                    <p class="list-group-item-heading">Output</p>
+                    <div class=" list-group-item-text">
+                        {{ service.plugin_output || 'N/A' }}
+                    </div>
+                </li>
             </ul>
         </div>
     </div>
