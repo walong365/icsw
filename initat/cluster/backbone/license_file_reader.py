@@ -22,21 +22,23 @@
 
 import base64
 import bz2
+import glob
 from lxml import etree
-import M2Crypto
 import datetime
-from dateutil import relativedelta
-import logging_tools
-import process_tools
 import logging
+import M2Crypto
+from dateutil import relativedelta
+import django
+import process_tools
+import pytz
 
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP
+from initat.cluster.settings import TIME_ZONE
 
 
 logger = logging.getLogger("cluster.licadmin")
 
-CERT_FILE = "/home/mallinger/cert.pem"
-# CERT_FILE = "/home/mallinger/ca3_cert1"
+CERT_DIR = "/opt/cluster/share/cert"
 
 
 class LicenseFileReader(object):
@@ -130,16 +132,31 @@ class LicenseFileReader(object):
         signed_string = LicenseFileReader._extract_string_for_signature(lic_file_xml)
         signature = base64.b64decode(signature_xml.text)
 
-        cert = M2Crypto.X509.load_cert(CERT_FILE)
+        cert_files = glob.glob(u"{}/*.pem".format(CERT_DIR))
 
-        evp_verify_pkey = M2Crypto.EVP.PKey()
-        evp_verify_pkey.assign_rsa(cert.get_pubkey().get_rsa())
-        evp_verify_pkey.verify_init()
-        evp_verify_pkey.verify_update(signed_string)
-        result = evp_verify_pkey.verify_final(signature)
-        # Result of verification: 1 for success, 0 for failure, -1 on other error.
+        if not cert_files:
+            raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
 
-        return (result == 1)
+        for cert_file in cert_files:
+            try:
+                cert = M2Crypto.X509.load_cert(cert_file)
+            except M2Crypto.X509.X509Error as e:
+                logger.warn("Failed to read certificate file {}: {}".format(cert_file, e))
+            else:
+                # only use certs which are currently valid
+                now = datetime.datetime.now(tz=pytz.timezone(TIME_ZONE))
+                if cert.get_not_before().get_datetime() <= now <= cert.get_not_after().get_datetime():
+                    evp_verify_pkey = M2Crypto.EVP.PKey()
+                    evp_verify_pkey.assign_rsa(cert.get_pubkey().get_rsa())
+                    evp_verify_pkey.verify_init()
+                    evp_verify_pkey.verify_update(signed_string)
+                    result = evp_verify_pkey.verify_final(signature)
+                    # Result of verification: 1 for success, 0 for failure, -1 on other error.
+
+                    if result == 1:
+                        return True
+
+        return False
 
     @staticmethod
     def _extract_string_for_signature(content):
