@@ -24,7 +24,6 @@
 
 import json
 import logging
-import pprint
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -34,12 +33,12 @@ from django.views.generic import View
 from django.http.response import HttpResponse
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
-    user_object_permission, device
+    user_object_permission, device, License
 from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
+from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
-from initat.cluster.licadmin.license_file_reader import LicenseFileReader
 from lxml.builder import E  # @UnresolvedImport
 import config_tools
 import server_command
@@ -254,13 +253,20 @@ class upload_license_file(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         lic_file = request.FILES['license_file']
+        lic_file_content = lic_file.read()
 
         try:
-            reader = LicenseFileReader(lic_file).read()
+            reader = LicenseFileReader(lic_file_content)
         except LicenseFileReader.InvalidLicenseFile as e:
             request.xml_response.error(unicode(e), logger=logger)
         else:
-            request.xml_response.info("Successfully uploaded license file")
+            try:
+                License.objects.get(license_file=lic_file_content)
+            except License.DoesNotExist:
+                License(license_file=lic_file_content).save()
+                request.xml_response.info("Successfully uploaded license file")
+            else:
+                request.xml_response.warn("This license file has already been uploaded")
 
 
 class background_job_info(View):
