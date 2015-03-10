@@ -22,23 +22,26 @@
 
 import base64
 import bz2
+import codecs
 import glob
 from lxml import etree
 import datetime
 import logging
 import M2Crypto
 from dateutil import relativedelta
-import django
 import process_tools
 import pytz
 
-from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP
+from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, Feature
 from initat.cluster.settings import TIME_ZONE
 
 
 logger = logging.getLogger("cluster.licadmin")
 
 CERT_DIR = "/opt/cluster/share/cert"
+
+
+LICENSE_FEATURE_MAP_FILE = "/opt/cluster/share/cert/license_feature_map.xml"
 
 
 class LicenseFileReader(object):
@@ -49,9 +52,10 @@ class LicenseFileReader(object):
                 msg if msg is not None else "Invalid license file format"
             )
 
-    def __init__(self, file_content):
+    def __init__(self, file_content, file_name=None):
         # contains the license-file tag, i.e. information relevant for program without signature
         self.content_xml = self._read(file_content)
+        self.file_name = file_name
 
     def _read(self, file_content):
         try:
@@ -78,7 +82,9 @@ class LicenseFileReader(object):
 
         # print etree.tostring(content_xml, pretty_print=True)
 
-        # TODO: move this to cluster-backbone-sql including schema
+    def get_referenced_cluster_ids(self):
+        q = "//icsw:package-list/icsw:package/icsw:cluster-id"
+        return set(elem.get('id') for elem in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP))
 
     def get_license_state(self, license):
         """Returns a LicenseState for the local cluster_id and the given license combination
@@ -168,3 +174,30 @@ class LicenseFileReader(object):
                                 el.text.strip() if el.text is not None else u"")
              for el in content.iter())
         )
+
+    def __repr__(self):
+        return "LicenseFileReader(file_name={})".format(self.file_name)
+
+
+class LicenseFeatureMapReader(object):
+    def __init__(self):
+        signed_map_file_xml = etree.fromstring(codecs.open(LICENSE_FEATURE_MAP_FILE, "r", "utf-8").read())
+        map_xml = signed_map_file_xml.find("icsw:license-feature-map", ICSW_XML_NS_MAP)
+        signature_xml = signed_map_file_xml.find("icsw:signature", ICSW_XML_NS_MAP)
+
+        if not LicenseFileReader.verify_signature(map_xml, signature_xml):
+            raise Exception("Invalid license feature map signature")
+
+        self.map_xml = map_xml
+
+    def get_licenses_providing_feature(self, feature):
+        licenses_xml = self.map_xml.xpath("//icsw:license[icsw:feature/text()='{}']".format(feature.name),
+                                          namespaces=ICSW_XML_NS_MAP)
+        return [lic.get('id') for lic in licenses_xml]
+
+    def get_all_features(self):
+        features_xml = self.map_xml.xpath("//icsw:license/icsw:feature/text()", namespaces=ICSW_XML_NS_MAP)
+        return set(Feature[unicode(i)] for i in features_xml)
+
+
+

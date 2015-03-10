@@ -30,7 +30,7 @@ from django.utils.functional import cached_property
 import enum
 
 __all__ = [
-    "Features",
+    "Feature",
     "LicenseState",
     "License",
 ]
@@ -41,32 +41,33 @@ __all__ = [
 
 # in code, licenses are usually passed by their identifying string and features as their enum
 
-Features = enum.Enum("Features",
-                     ['webfrontend', 'md-config-server', 'peering', 'monitoring-overview',
-                      'graphing', 'discovery-server'])
+Feature = enum.Enum("Features",
+                    ['webfrontend', 'md-config-server', 'peering', 'monitoring-overview',
+                     'graphing', 'discovery-server'])
 
 
 class LicenseState(enum.IntEnum):
     # NOTE: this is ordered in the sense that if multiple licenses are
     # present, the higher one is actually used
-    valid = 100
-    grace = 80
-    new_install = 60
-    expired = 40
-    valid_in_future = 20
+    valid = 100           # license is valid now
+    grace = 80            # license has expired but we still let the software run
+    new_install = 60      # to be defined
+    expired = 40          # license used to be valid but is not valid anymore
+    valid_in_future = 20  # license will be valid in the future
 
 
 class _LicenseManager(models.Manager):
 
-    LICENSE_FEATURE_MAP_FILE = "/tmp/map"
-
     def get_license_state(self, license):
         """Returns the license state for this license"""
+        # TODO: new_install?
+        if not self._license_readers:
+            return LicenseState.expired
         return max([r.get_license_state(license) for r in self._license_readers])
 
     def has_valid_license(self, license):
         """Returns whether we currently have this license"""
-        return self.get_license_state(license) in (LicenseState.full, LicenseState.grace, LicenseState.new_install)
+        return self.get_license_state(license) in (LicenseState.valid, LicenseState.grace, LicenseState.new_install)
 
     def has_license_for(self, feature):
         """Returns whether we can currently access the feature"""
@@ -75,23 +76,16 @@ class _LicenseManager(models.Manager):
 
     def get_licenses_providing_feature(self, feature):
         """Returns list of license id strings which provide the feature"""
-        signed_map_file_xml = etree.fromstring(open(self.LICENSE_FEATURE_MAP_FILE, "r").read())
-        map_xml = signed_map_file_xml.find("license-feature-map")
-        signature_xml = signed_map_file_xml.find("signature")
+        return self._license_feature_map_reader.get_licenses_providing_feature(feature)
 
-        from initat.cluster.backbone.license_file_reader import LicenseFileReader
-
-        if not LicenseFileReader.verify_signature(map_xml, signature_xml):
-            raise Exception("Invalid license feature map signature")
-
-        features_xml = map_xml.xpath("//icsw:license[icsw:feature/text() = '?'".format(feature.name),
-                                     namespaces=ICSW_XML_NS_MAP)
-        return [feat.get('id') for feat in features_xml]
+    def get_activated_features(self):
+        return [feature for feature in self._license_feature_map_reader.get_all_features()
+                if self.has_license_for(feature)]
 
     @cached_property
     def _license_readers(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
-        return [LicenseFileReader(file_content) for file_content in self.values_list('license_file', flat=True)]
+        return [LicenseFileReader(file_content, file_name) for (file_content, file_name) in self.values_list('license_file', 'file_name')]
 
     def _update_license_readers(self):
         try:
@@ -99,12 +93,18 @@ class _LicenseManager(models.Manager):
         except AttributeError:
             pass
 
+    @cached_property
+    def _license_feature_map_reader(self):
+        from initat.cluster.backbone.license_file_reader import LicenseFeatureMapReader
+        return LicenseFeatureMapReader()
+
 
 class License(models.Model):
-
     objects = _LicenseManager()
 
     idx = models.AutoField(primary_key=True)
+
+    file_name = models.CharField(max_length=512)
     license_file = models.TextField()  # contains the exact file content of the respective license files
 
 
