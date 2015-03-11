@@ -120,7 +120,7 @@ class render_me(object):
         self.my_dict["CLUSTER_ID"] = _cid.get("CLUSTER_ID", "")
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
-        self.my_dict["ACTIVATED_FEATURES"] = json.dumps([feat.name for feat in License.objects.get_activated_features()])
+        #self.my_dict["ACTIVATED_FEATURES"] = json.dumps([feat.name for feat in License.objects.get_activated_features()])
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
         self.my_dict["PASSWORD_CHARACTER_COUNT"] = settings.PASSWORD_CHARACTER_COUNT
         self.my_dict["USER_VARS"] = json.dumps(_vars)

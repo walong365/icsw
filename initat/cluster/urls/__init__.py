@@ -12,7 +12,6 @@ path_name = os.path.dirname(__file__)
 
 for entry in os.listdir(path_name):
     if entry.endswith(".py") and entry not in ["__init__.py"]:
-        print entry
         new_mod = __import__(entry.split(".")[0], globals(), locals())
         urlpatterns += new_mod.url_patterns
 
