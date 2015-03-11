@@ -28,6 +28,8 @@ angular.module(
         else if type == "show"
             ret_obj.css_class = "btn-success"
             ret_obj.icon_class = ""
+        else if type == "enable"
+            ret_obj.icon_class = ""
         else if type == "display"
             ret_obj.css_class = "btn-info"
             ret_obj.icon_class = "fa fa-search"
@@ -36,7 +38,7 @@ angular.module(
             ret_obj.button_value = "download"
             ret_obj.icon_class = "fa fa-download"
         else
-            console.error "Invalid button type: ", type
+            console.error "Invalid button type: #{type}"
         return ret_obj
     return {
         get_config_for_button_type:
@@ -65,6 +67,7 @@ visible-md visible-lg
     """
         scope:
             isShow: '&'
+            isEnable: '&'
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -97,6 +100,16 @@ visible-md visible-lg
                             scope.button_value = "show"
                         else
                             scope.button_value = "hide"
+                )
+            else if attrs.type == "enable"
+                scope.$watch(scope.isEnable
+                    (new_val) ->
+                        if new_val
+                            scope.button_value = "disable"
+                            scope.css_class = "btn-warning"
+                        else
+                            scope.button_value = "enable"
+                            scope.css_class = "btn-success"
                 )
     }
 ])

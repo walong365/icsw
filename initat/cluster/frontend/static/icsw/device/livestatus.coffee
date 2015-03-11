@@ -1177,7 +1177,7 @@ angular.module(
             dml = scope.dml
             scope.transform = "translate(#{dml.pos_x},#{dml.pos_y})"
     }
-]).directive("icswDeviceLivestatusMaplist", ["$compile", "$templateCache", "icswCachingCall", "$q", "ICSW_URLS",($compile, $templateCache, icswCachingCall, $q, ICSW_URLS) ->
+]).directive("icswDeviceLivestatusMaplist", ["$compile", "$templateCache", "icswCachingCall", "$q", "ICSW_URLS", "$timeout", ($compile, $templateCache, icswCachingCall, $q, ICSW_URLS, $timeout) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.device.livestatus.maplist")
@@ -1189,8 +1189,10 @@ angular.module(
             # location gfx list
             scope.gfx_sizes = ["1024x768", "1280x1024", "1920x1200", "800x600"]
             scope.gfx = {"size" : scope.gfx_sizes[0]}
+            scope.autorotate = false
             scope.location_gfx_list = []
             scope.devsel_list = []
+            scope.cur_page = -1
             scope.$watch(
                 scope.ls_devsel.changed
                 (changed) ->
@@ -1205,6 +1207,7 @@ angular.module(
                         scope.ls_filter.set_num_maps(scope.location_gfx_list.length)
                         gfx_lut = {}
                         for entry in scope.location_gfx_list
+                            entry.active = false
                             gfx_lut[entry.idx] = entry
                             entry.dml_list = []
                         # lut: device_idx -> list of dml_entries
@@ -1218,5 +1221,26 @@ angular.module(
                         scope.dev_gfx_lut = dev_gfx_lut
                     )
             )
+            rte = null
+            _activate_rotation = () ->
+                if scope.cur_page >= 0
+                    scope.location_gfx_list[scope.cur_page].active = false
+                scope.cur_page++
+                if scope.cur_page >= scope.location_gfx_list.length
+                    scope.cur_page = 0
+                scope.location_gfx_list[scope.cur_page].active = true
+                rte = $timeout(_activate_rotation, 4000)
+            _deactivate_rotation = () ->
+                if rte
+                    $timeout.cancel(rte)
+            scope.toggle_autorotate = () ->
+                scope.autorotate = !scope.autorotate
+                if scope.autorotate
+                    _activate_rotation()
+                else
+                    _deactivate_rotation()
+            scope.select_settings = () ->
+                scope.autorotate = false
+                _deactivate_rotation()
     }
 ])

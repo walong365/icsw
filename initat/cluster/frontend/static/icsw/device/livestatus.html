@@ -170,13 +170,13 @@
 
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">
     <tabset>
-        <tab ng-repeat="loc_gfx in location_gfx_list">
+        <tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
             <tab-heading>
                 {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
             </tab-heading>
             <icsw-device-livestatus-location-map ls-filter="ls_filter" gfx="loc_gfx" gfx-size="gfx.size"}}></icsw-device-livestatus-location-map>
         </tab>
-        <tab>
+        <tab select="select_settings()">
             <tab-heading>
                 Settings
             </tab-heading>
@@ -190,6 +190,10 @@
                             <div ng-bind-html="value"></div>
                         </ui-select-choices>
                     </ui-select>
+                </div>
+                <div class="list-group-item">
+                    Autorotate:
+                    <icsw-tools-button type="enable" is-enable="autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
                 </div>
             </div>
         </tab>
