@@ -94,7 +94,8 @@ class LicenseFileReader(object):
 
         def get_state_from_license_xml(lic_xml):
 
-            grace_period = relativedelta.relativedelta(months=1)
+            # NOTE: keep in sync with js
+            grace_period = relativedelta.relativedelta(weeks=2)
 
             valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
             valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)
