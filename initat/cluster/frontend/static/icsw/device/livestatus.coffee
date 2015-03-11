@@ -738,7 +738,7 @@ angular.module(
                 $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
                 # filter burstData
                 # handle clicks, filter data
-                if $scope.burst_data?
+                if $scope.burst_data? and $scope.dev_tree_lut?
                     if $scope.burst_data.any_clicked()
                         $scope.burst_data.handle_clicked()
                     srv_entries = $scope.burst_data.get_childs(get_filter)
