@@ -1,5 +1,7 @@
 <script type="text/ng-template" id="icsw.device.livestatus.overview">
-    <icsw-device-livestatus-filter ls-filter="ls_filter"></icsw-device-livestatus-filter>
+    <h3>
+        <icsw-device-livestatus-filter ls-filter="ls_filter"></icsw-device-livestatus-filter>
+    </h3>
     <div class="row">
         <div class="col-md-6">
             <div class="form-group">
@@ -191,32 +193,32 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.filter">
-    <h3>
+    <span ng-show="num_defined()">
         Number of hosts / checks : {{ get_total_num()[0] }} / {{ get_total_num()[1] }}
         <span ng-show="get_total_num()[1] != get_filtered_num()[1]">
             ({{ get_filtered_num()[1] }} shown)
         </span>
-        <span ng-show="get_num_maps()"> on
-            <ng-pluralize count="get_num_maps()" when="{'1' : '1 map', 'other' : '{} maps'}"/>
-        </span>
-        , Filter options:
-        <div class="btn-group">
-            <input ng-repeat="entry in md_states" type="button"
-                ng-class="get_mds_class(entry[0])"
-                ng-value="entry[1]"
-                ng-click="toggle_srv(entry[0])"
-                title="{{ entry[3] }}"
-            />
-        </div>
-        <div class="btn-group">
-            <input ng-repeat="entry in sh_states" type="button"
-                ng-class="get_shs_class(entry[0])"
-                ng-value="entry[1]"
-                ng-click="toggle_sh(entry[0])"
-                title="{{ entry[3] }}"
-            />
-        </div>
-    </h3>
+    </span>
+    <span ng-show="get_num_maps()"> on
+        <ng-pluralize count="get_num_maps()" when="{'1' : '1 map', 'other' : '{} maps'}"/>
+    </span>
+    , Filter options:
+    <div class="btn-group">
+        <input ng-repeat="entry in md_states" type="button"
+            ng-class="get_mds_class(entry[0])"
+            ng-value="entry[1]"
+            ng-click="toggle_srv(entry[0])"
+            title="{{ entry[3] }}"
+        />
+    </div>
+    <div class="btn-group">
+        <input ng-repeat="entry in sh_states" type="button"
+            ng-class="get_shs_class(entry[0])"
+            ng-value="entry[1]"
+            ng-click="toggle_sh(entry[0])"
+            title="{{ entry[3] }}"
+        />
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.brief">

@@ -84,6 +84,7 @@ angular.module(
         _sh_defined = false
         _srv_defined = false
         _cat_defined = false
+        _num_defined = false
         _num_maps = 0
         _iter = 0
         _num_hosts = 0
@@ -147,7 +148,10 @@ angular.module(
                 _num_maps = val
             get_num_maps: () ->
                 return _num_maps
+            num_defined: () ->
+                return _num_defined
             set_total_num: (h, s) ->
+                _num_defined = true
                 _num_hosts = h
                 _num_services = s
             get_total_num: () ->
@@ -288,7 +292,7 @@ angular.module(
         $scope.burst_show = true
         $scope.map_show = true
         $scope.table_show = true
-        $scope.ls_filter = new icswLivestatusFilterFactory()
+        $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
         $scope.ls_devsel = new icswLivestatusDevSelFactory()
         $scope.$watch(
             $scope.ls_filter.changed

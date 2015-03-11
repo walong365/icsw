@@ -752,14 +752,15 @@ angular.module(
                 }
             )          
         $scope.reload()
-]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service) ->
+]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "icswLivestatusFilterFactory",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, icswLivestatusFilterFactory) ->
         access_level_service.install($scope)
         $scope.graph_sel = "sel"
         $scope.show_livestatus = false
         $scope.devices = []
         $scope.new_devsel = (_dev_sel) ->
             $scope.devices = _dev_sel
+        $scope.ls_filter = new icswLivestatusFilterFactory()
 ]).directive("icswDeviceNetworkNodeTransform", [() ->
     return {
         restrict: "A"
@@ -790,16 +791,10 @@ angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.network.host.livestatus")
-        controller: "icswDeviceLiveStatusCtrl"
         scope:
              devicepk: "=devicepk"
-             redrawSunburst: "=redrawSunburst"
+             ls_filter: "=lsFilter"
         replace: true
-        link : (scope, element, attrs) ->
-            scope.$watch("devicepk", (data) ->
-                if data
-                    scope.new_devsel([data], [])
-            )
     }
 ]).directive("icswDeviceNetworkHostNode", ["dragging", "$templateCache", (dragging, $templateCache) ->
     return {
@@ -810,7 +805,6 @@ angular.module(
             node: "=node"
             redraw: "=redraw"
         template: $templateCache.get("icsw.device.network.host.node")
-        # template:  '<icsw-device-livestatus-brief devicepk="node.id" redraw-sunburst="ignore_shit"></icsw-device-livestatus>
         link : (scope, element, attrs) ->
             scope.stroke_width = 1
             scope.focus = true

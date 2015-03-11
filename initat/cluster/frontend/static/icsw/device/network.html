@@ -336,11 +336,12 @@
 <script type="text/ng-template" id="icsw.device.network.host.livestatus">
     <g class="node draggable" node_id="{{ node.id }}">
         <newburst
-            data="burstData"
+            ls-filter="ls_filter"
+            device-pk="devicepk"
             innerradius="20"
             outerradius="30"
             noninteractive="true"
-            hidegroup="true"
+            zoom-level="d"
         ></newburst>
         <text text-anchor="middle" alignment-baseline="middle" cursor="crosshair">{{ node.name }}</text>
     </g>
@@ -376,10 +377,10 @@
             <icsw-device-network-host-livestatus
                 ng-if="show_livestatus"
                 devicepk="node.id"
-                redraw-sunburst="ignore"
                 icsw-device-network-node-transform="node"
                 icsw-device-network-node-dbl-click="node"
                 ng-repeat="node in nodes"
+                ls-filter="ls_filter"
                 redraw="redraw_nodes"
                 ng-dblclick="double_click($event)"
             ></icsw-device-network-host-livestatus>
@@ -428,8 +429,9 @@
                         <icsw-tools-button type="show" value="Show Livestatus" size="sm" is-show="!show_livestatus" ng-click="show_livestatus = !show_livestatus"></icsw-tools-button>
                         livestatus
                     </div>
+                    <icsw-device-livestatus-filter ng-show="show_livestatus" ls-filter="ls_filter"></icsw-device-livestatus-filter>
                 </form>
-                <icsw-device-network-graph></icsw-device-network-graph>
+                <icsw-device-network-graph ls-filter="ls_filter"></icsw-device-network-graph>
             </div>
         </tab>
         <tab heading="clusters" ng-show="acl_read(null, 'backbone.network.show_clusters') && true || false" ng-controller="icswDeviceNetworkClusterCtrl">
