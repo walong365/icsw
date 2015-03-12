@@ -89,11 +89,17 @@ angular.module(
                                 for k, ref_list of related_objects
                                     for ref in ref_list
                                         ref.actions = []
+                                        # only have default action if it is a "safe" one
                                         if ref.null
                                             ref.actions.push('set null')
                                             ref.selected_action = ref.actions[0]
-                                        ref.actions.push('delete cascade')
-                                        # only have default action if it is a safe one
+
+                                        if ref.objects.num_refs_of_refs == 0
+                                            ref.actions.push('delete object')
+                                            if ! ref.selected_action?
+                                                ref.selected_action = ref.actions[0]
+                                        else
+                                            ref.actions.push('delete cascade')
 
                                 # related_objs is dict { obj_pk : [ related_obj_info ] }
                                 # check we there were some which we couldn't delete

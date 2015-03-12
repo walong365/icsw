@@ -302,14 +302,17 @@ class force_delete_object(View):
             dict_key = (rel_obj.model._meta.object_name, rel_obj.field.name)
             strat = delete_strategies.get(dict_key, None)
             if strat == "set null":
+                logger.info("set null on {} ".format(rel_obj))
                 for db_obj in rel_obj.ref_list:
                     setattr(db_obj, rel_obj.field.name, None)
                     db_obj.save()
             elif strat == "delete cascade":
-                # we can't tell which deletions this will cause.
                 for db_obj in rel_obj.ref_list:
-                    logger.info("Doing delete cascade for {} ({})".format(db_obj, rel_obj))
-                    # print can_delete_obj(db_obj, logger).msg
+                    logger.info("delete cascade for {} ({})".format(db_obj, rel_obj))
+                    db_obj.delete()
+            elif strat == "delete object":
+                logger.info("delete object on {}".format(rel_obj))
+                for db_obj in rel_obj.ref_list:
                     db_obj.delete()
             else:
                 raise ValueError("Invalid strategy for {}: {}; available strategies: {}".format(

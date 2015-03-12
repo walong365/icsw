@@ -15,8 +15,8 @@
                 <tr>
                     <th>Table</th>
                     <th>Field</th>
-                    <th>References</th>
-                    <th>References of<br/>referenced objects</th>
+                    <th>First level references</th>
+                    <th>Second level references</th>
                     <th>Action</th>
                 </tr>
 
@@ -28,11 +28,11 @@
                         {{entry.field_name}}
                     </td>
                     <td class="text-right">
-                        {{entry.objects.list.length}}
                         <icsw-tools-button type="show" size="xs" is-show="!entry.show_details"
-                                           ng-click="entry.show_details = !entry.show_details"></icsw-tools-button>
+                                           ng-click="entry.show_details = !entry.show_details"
+                                           show-value="show ({{ entry.objects.list.length }})" hide-value="hide ({{ entry.objects.list.length }})"></icsw-tools-button>
                     </td>
-                    <td class="text-right">
+                    <td ng-class="(entry.objects.num_refs_of_refs == 0) ? 'text-right' : 'text-right text-danger'">
                         {{entry.objects.num_refs_of_refs}}
                     </td>
                     <td>

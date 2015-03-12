@@ -100,7 +100,8 @@ visible-md visible-lg
 
             if attrs.disabled?
                 scope.$watch(
-                    () -> return scope.disabled()
+                    () ->
+                        return scope.disabled()
                     (new_val) ->
                         scope.is_disabled = new_val
                 )
