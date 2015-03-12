@@ -413,7 +413,7 @@ PIPELINE_JS = {
             "js/angular-noVNC.js",
             "js/FileSaver.js",
             "js/mousewheel.js",
-            "js/smart-table.debug.js",
+            "js/smart-table.js",
             "js/angular-google-maps.min.js",
             "js/bootstrap-dialog.js",
         ),
