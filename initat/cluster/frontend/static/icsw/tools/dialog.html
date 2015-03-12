@@ -1,0 +1,79 @@
+<script type="text/ng-template" id="icsw.dialog.delete_popup">
+
+    <div class="panel panel-default" ng-repeat="(obj_idx, ref_list) in related_objects"
+            style="font-size: 12px"> <!-- bootstrap dialog would otherwise increase font size to 14px -->
+        <!-- obj_idx is string! -->
+        <div class="panel-heading">
+            <h3>
+                Hard references of {{ get_object_by_idx(obj_idx).name }}
+            </h3>
+        </div>
+
+        <div class="panel-body">
+
+            <table st-table="entries_displayed" st-safe-src="ref_list" class="table icsw-striped-4 table-condensed">
+                <tr>
+                    <th>Table</th>
+                    <th>Field</th>
+                    <th>References</th>
+                    <th>References of<br/>referenced objects</th>
+                    <th>Action</th>
+                </tr>
+
+                <tr ng-repeat-start="entry in entries_displayed">
+                    <td>
+                        {{entry.model}}
+                    </td>
+                    <td>
+                        {{entry.field_name}}
+                    </td>
+                    <td class="text-right">
+                        {{entry.objects.list.length}}
+                        <icsw-tools-button type="show" size="xs" is-show="!entry.show_details"
+                                           ng-click="entry.show_details = !entry.show_details"></icsw-tools-button>
+                    </td>
+                    <td class="text-right">
+                        {{entry.objects.num_refs_of_refs}}
+                    </td>
+                    <td>
+                        <select class="select form-control"
+                                ng-model="entry.selected_action" required="true"
+                                ng-options="value for value in entry.actions"></select>
+                    </td>
+                </tr>
+                <tr ng-repeat-end ng-show="entry.show_details">
+                    <td colspan="99">
+                        <div style="width: 825px; max-height: 450px; overflow: scroll;">
+
+                            <table st-table="refs_displayed" st-safe-src="entry.objects.list"
+                                   class="table table-condensed table-striped">
+                                <tr>
+                                    <td colspan="99">
+                                        <div icsw-tools-pagination st-items-by-page="5" possible-items-by-page="5,10,20,50,100">
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th ng-repeat="(k, v) in entry.objects.list[0]">{{k}}</th>
+                                </tr>
+                                <tr ng-repeat="obj in refs_displayed">
+                                    <td ng-repeat="(k, v) in obj">{{v}}</td>
+                                </tr>
+                            </table>
+
+                        </div>
+                    </td>
+                </tr>
+            </table>
+
+            <div class="text-right">
+                <div ng-show="!all_actions_defined(obj_idx)" class="text-danger">
+                    Please select actions for all references.
+                </div>
+
+                <icsw-tools-button type="delete" value="force delete" disabled="!all_actions_defined(obj_idx)" ng-click="force_delete(obj_idx)"></icsw-tools-button>
+            </div>
+
+        </div>
+    </div>
+</script>

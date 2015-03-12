@@ -53,7 +53,8 @@ angular.module(
     return {
         restrict: "EA",
         template: """
-    <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}">
+    <button ng-attr-type="{{button_type}}" name="button" class="btn {{css_class}} {{additional_class}} {{icon_class}}"
+            ng-disabled="is_disabled">
         {{ button_value }}
     </button>
 <!--
@@ -65,14 +66,17 @@ visible-md visible-lg
     """
         scope:
             isShow: '&'
+            disabled: '&'
         link: (scope, element, attrs) ->
 
             # attrs:
             # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"
             # - click: gets executed on click
-            # - value: Custom text to display in button
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
+            # - value: Custom text to display in button
+            # - showValue: Custom text to show for show buttons if state is show
+            # - hideValue: Custom text to show for show buttons if state is hide
 
             b_type = attrs.type
             angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
@@ -90,13 +94,20 @@ visible-md visible-lg
             else
                 scope.additional_class = ""
 
+            if attrs.disabled?
+                scope.$watch(
+                    () -> return scope.disabled()
+                    (new_val) ->
+                        scope.is_disabled = new_val
+                )
+
             if attrs.type == "show"
                 scope.$watch(scope.isShow
                     (new_val) ->
                         if new_val
-                            scope.button_value = "show"
+                            scope.button_value = attrs.showValue or "show"
                         else
-                            scope.button_value = "hide"
+                            scope.button_value = attrs.hideValue or "hide"
                 )
     }
 ])

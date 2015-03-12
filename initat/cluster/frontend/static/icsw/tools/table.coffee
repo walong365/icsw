@@ -2,6 +2,19 @@ angular.module(
     "icsw.tools.table", [
         "restangular"
     ]
+).directive('icswToolsPaginationTr', () ->
+    return {
+        restrict: 'E'
+        replace: true
+        template: """
+<tr>
+    <td colspan="99">
+        <div icsw-tools-pagination st-items-per-page="10" possible-items-per-page="10,20,50,100">
+        </div>
+    </td>
+</tr>
+"""
+    }
 ).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
     return {
         restrict: 'EA',
