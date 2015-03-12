@@ -1,10 +1,11 @@
 
 <script type="text/ng-template" id="icsw.monitoring.device">
 
-    <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceService">
-        <h2>Devices ({{ entries.length }} entries)</h2>
+    <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceService"
+                           st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+        <h2>Devices ({{ entries_filtered.length }} entries)</h2>
         <h3 ng-show="entries.length == 0">Please select devices in the tree to the left.</h3>
-        <table st-table="entries_displayed" st-safe-src="entries"
+        <table
                class="table table-condensed table-hover" style="width:auto;">
             <thead>
                 <tr>

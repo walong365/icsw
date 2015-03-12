@@ -2,7 +2,29 @@ angular.module(
     "icsw.tools.table", [
         "restangular"
     ]
-).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
+).directive('icswToolsTableFilteredElements', () ->
+    return {
+        restrict: 'E'
+        require: '^stTable',
+        scope: {}
+        template: "{{num_filtered}}"
+        link: (scope, element, attrs, ctrl) ->
+            scope.$watch(
+                () -> return ctrl.getFilteredCollection().length
+                (new_val) -> scope.num_filtered = new_val
+            )
+    }
+).directive('icswToolsTableLeakFiltered', ["$parse", ($parse) ->
+    return {
+        restrict: 'EA'
+        require: '^stTable',
+        link: (scope, element, attrs, ctrl) ->
+            scope.$watch(
+                ctrl.getFilteredCollection
+                (new_val) -> $parse(attrs.icswToolsTableLeakFiltered).assign(scope, new_val)
+            )
+    }
+]).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
     return {
         restrict: 'EA',
         require: '^stTable',
