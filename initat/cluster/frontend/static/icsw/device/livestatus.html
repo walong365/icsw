@@ -59,7 +59,7 @@
 
 <script type="text/ng-template" id="icsw.device.livestatus.location.map">
     <h4>{{ loc_gfx.name }}<span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span></h4>
-    <svg icsw-svg-set-viewbox="loc_gfx" ng-show="loc_gfx" width="1024" height="768" preserveAspectRatio="xMidYMid meet">
+    <svg icsw-svg-set-viewbox="loc_gfx" ng-show="loc_gfx" ng-attr-width="{{ width }}" ng-attr-height="{{ height }}" preserveAspectRatio="xMidYMid meet">
         <g>
             <image
                 xlink:href="{{ loc_gfx.image_url }}"
@@ -127,28 +127,16 @@
 
 <script type="text/ng-template" id="icsw.device.livestatus.device.node">
     <g ng-attr-transform="{{ transform }}" ng-switch="data_source">
-        <g ng-switch-when="">
-            <circle r='20' fill='grey' stroke='black' stroke-width='1'></circle>
-            <text text-anchor="middle" alignment-baseline="middle" stroke="white" font-weight="bold" stroke-width="2">{{ dml.device_name }}</text>
-            <text text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold" stroke-width="0">{{ dml.device_name }}</text>
-        </g>
-        <g ng-switch-when="b">
-            <newburst
-                ls-filter="ls_filter"
-                device-pk="dml.device"
-                innerradius="20"
-                outerradius="50"
-                showname="1"
-                fontstroke="1"
-                draw-all="1"
-                zoom-level="d"
-            ></newburst>
-        </g>
-        <g ng-switch-default>
-            <path d="M-40,0 a40,40 0 0,1 80,0 z"
-                fill="red" stroke="black" stroke-width="1"
-            />
-        </g>
+        <newburst
+            ls-filter="ls_filter"
+            device-pk="dml.device"
+            innerradius="20"
+            outerradius="50"
+            showname="1"
+            fontstroke="1"
+            draw-all="1"
+            zoom-level="d"
+        ></newburst>
     </g>
 </script>
 
@@ -181,13 +169,33 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">
-    <!-- dummy element to get device selection -->
     <tabset>
-        <tab ng-repeat="loc_gfx in location_gfx_list">
+        <tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
             <tab-heading>
                 {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
             </tab-heading>
-            <icsw-device-livestatus-location-map ls-filter="ls_filter" gfx="loc_gfx"></icsw-device-livestatus-location-map>
+            <icsw-device-livestatus-location-map ls-filter="ls_filter" gfx="loc_gfx" gfx-size="gfx.size"}}></icsw-device-livestatus-location-map>
+        </tab>
+        <tab select="select_settings()">
+            <tab-heading>
+                Settings
+            </tab-heading>
+            <h4>Graph settings</h4>
+            <div class="list-group" style="width:400px;">
+                <div class="list-group-item">
+                    Graph size:
+                    <ui-select ng-model="gfx.size" style="width:200px;">
+                        <ui-select-match placeholder="choose size ...">{{$select.selected}}</ui-select-match>
+                        <ui-select-choices repeat="value in gfx_sizes track by $index">
+                            <div ng-bind-html="value"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="list-group-item">
+                    Autorotate:
+                    <icsw-tools-button type="enable" is-enable="autorotate" ng-click="toggle_autorotate()"></icsw-tools-button>
+                </div>
+            </div>
         </tab>
     </tabset>
 </script>

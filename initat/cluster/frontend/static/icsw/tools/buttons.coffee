@@ -28,6 +28,8 @@ angular.module(
         else if type == "show"
             ret_obj.css_class = "btn-success"
             ret_obj.icon_class = ""
+        else if type == "enable"
+            ret_obj.icon_class = ""
         else if type == "display"
             ret_obj.css_class = "btn-info"
             ret_obj.icon_class = "fa fa-search"
@@ -36,7 +38,7 @@ angular.module(
             ret_obj.button_value = "download"
             ret_obj.icon_class = "fa fa-download"
         else
-            console.error "Invalid button type: ", type
+            console.error "Invalid button type: #{type}"
         return ret_obj
     return {
         get_config_for_button_type:
@@ -67,6 +69,7 @@ visible-md visible-lg
         scope:
             isShow: '&'
             disabled: '&'
+            isEnable: '&'
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -77,6 +80,7 @@ visible-md visible-lg
             # - value: Custom text to display in button
             # - showValue: Custom text to show for show buttons if state is show
             # - hideValue: Custom text to show for show buttons if state is hide
+            # - disabled: whether button is enabled
 
             b_type = attrs.type
             angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
@@ -108,6 +112,16 @@ visible-md visible-lg
                             scope.button_value = attrs.showValue or "show"
                         else
                             scope.button_value = attrs.hideValue or "hide"
+                )
+            else if attrs.type == "enable"
+                scope.$watch(scope.isEnable
+                    (new_val) ->
+                        if new_val
+                            scope.button_value = "disable"
+                            scope.css_class = "btn-warning"
+                        else
+                            scope.button_value = "enable"
+                            scope.css_class = "btn-success"
                 )
     }
 ])

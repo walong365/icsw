@@ -1,6 +1,6 @@
 class hs_node
     # hierarchical structure node
-    constructor: (@name, @check, @collapsible=false, @placeholder=false) ->
+    constructor: (@name, @check, @filter=false, @placeholder=false, @dummy=false) ->
         # name
         # check (may also be a dummy dict)
         @value = 1
@@ -9,6 +9,12 @@ class hs_node
         @show = true
         @depth = 0
         @clicked = false
+    valid_device: () ->
+        _r = false
+        if @children.length == 1
+            if @children[0].children.length == 1
+                _r = true
+        return _r
     reduce: () ->
         if @children.length
             return @children[0]
@@ -727,12 +733,6 @@ angular.module(
         )
 
         $scope.md_filter_changed = () ->
-            get_filter = (node) ->
-               if node.check?
-                   # filter for services
-                   return node.collapsible
-               else
-                   return false
             # filter entries for table
             if $scope.ls_filter?
                 $scope.filtered_entries = _.filter($scope.service_entries, (_v) -> return $scope.ls_filter.apply_filter(_v, true))
@@ -741,7 +741,7 @@ angular.module(
                 if $scope.burst_data? and $scope.dev_tree_lut?
                     if $scope.burst_data.any_clicked()
                         $scope.burst_data.handle_clicked()
-                    srv_entries = $scope.burst_data.get_childs(get_filter)
+                    srv_entries = $scope.burst_data.get_childs((node) -> return node.filter)
                     # called when new entries are set or a filter rule has changed
                     # create a list of all unique ids which are actually displayed
                     _filter_list = (entry.check._srv_id for entry in srv_entries when _check_filter(entry))
@@ -795,9 +795,14 @@ angular.module(
             for idx, dev of dev_hs_lut
                 if not dev.children.length
                     # add placeholder for non-existing services
-                    dev.add_child(new hs_node("", {"state": 0, "state_type": 0, "idx": 0}, true, true))
+                    dev.add_child(new hs_node("", {}, true, true))
             if $scope.zoom_level == "d"
-                return _bdat.reduce().reduce()
+                if _bdat.valid_device()
+                    # valid device substructure, add dummy
+                    return _bdat.reduce().reduce()
+                else
+                    _dev = new hs_node("", {}, false, true, true)
+                    return _dev
             else if $scope.zoom_level == "g"
                 return _bdat.reduce()
             else
@@ -878,7 +883,7 @@ angular.module(
                 scope.name = name
                 # struct: dict of concentric circles, beginning with the innermost
                 struct = {}
-                _size = scope.get_children(scope.sunburst_data, 0, struct)
+                scope.get_children(scope.sunburst_data, 0, struct)
                 scope.max_depth = (idx for idx of struct).length
                 scope.nodes = []
                 omitted_segments = 0
@@ -897,7 +902,8 @@ angular.module(
                 omitted_segments = 0
                 outer = scope.get_inner(idx)
                 inner = scope.get_outer(idx)
-                if not _len
+                # no nodes defined or first node is a dummy node (== no devices / checks found)
+                if not _len or nodes[0].dummy
                     # create a dummy part
                     dummy_part = {}
                     dummy_part.children = {}
@@ -1131,7 +1137,12 @@ angular.module(
         scope:
             loc_gfx : "=gfx"
             ls_filter: "=lsFilter"
+            gfx_size: "=gfxSize"
         link : (scope, element, attrs) ->
+            scope.$watch("gfx_size", (new_val) ->
+                scope.width = parseInt(new_val.split("x")[0])
+                scope.height = parseInt(new_val.split("x")[1])
+            )
     }
 ]).directive("icswSvgSetViewbox", [() ->
     return {
@@ -1164,61 +1175,72 @@ angular.module(
         }
         link: (scope, element, attrs) ->
             dml = scope.dml
-            scope.data_source = ""
             scope.transform = "translate(#{dml.pos_x},#{dml.pos_y})"
-            scope.$watch("device", (new_dev) ->
-                scope.data_source = "b"
-                # console.log scope.$id, new_dev
-            )
-            scope.$watch("dml.sunburst", (dml) ->
-                # to be removed ? TODO, FIXME
-                if dml?
-                    scope.data_source = "b"
-            )
     }
-]).directive(
-    "icswDeviceLivestatusMaplist",
-    [
-        "$compile", "$templateCache", "icswCachingCall", "$q", "ICSW_URLS",
-        ($compile, $templateCache, icswCachingCall, $q, ICSW_URLS) ->
-            return {
-                restrict: "EA"
-                template: $templateCache.get("icsw.device.livestatus.maplist")
-                scope: {
-                    ls_filter: "=lsFilter"
-                    ls_devsel: "=lsDevsel"
-                }
-                link: (scope, element, attrs) ->
-                    # location gfx list
-                    scope.location_gfx_list = []
-                    scope.devsel_list = []
-                    scope.$watch(
-                        scope.ls_devsel.changed
-                        (changed) ->
-                            _dev_sel = scope.ls_devsel.get()
-                            scope.devsel_list = _dev_sel
-                            wait_list = [
-                                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": "<PKS>", "_distinct": true}, scope.devsel_list)
-                                icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": "<PKS>"}, scope.devsel_list)
-                            ]
-                            $q.all(wait_list).then((data) ->
-                                scope.location_gfx_list = data[0]
-                                scope.ls_filter.set_num_maps(scope.location_gfx_list.length)
-                                gfx_lut = {}
-                                for entry in scope.location_gfx_list
-                                    gfx_lut[entry.idx] = entry
-                                    entry.dml_list = []
-                                # lut: device_idx -> list of dml_entries
-                                dev_gfx_lut = {}
-                                for entry in data[1]
-                                    if entry.device not of dev_gfx_lut
-                                        dev_gfx_lut[entry.device] = []
-                                    dev_gfx_lut[entry.device].push(entry)
-                                    entry.redraw = 0
-                                    gfx_lut[entry.location_gfx].dml_list.push(entry)
-                                scope.dev_gfx_lut = dev_gfx_lut
-                            )
+]).directive("icswDeviceLivestatusMaplist", ["$compile", "$templateCache", "icswCachingCall", "$q", "ICSW_URLS", "$timeout", ($compile, $templateCache, icswCachingCall, $q, ICSW_URLS, $timeout) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.livestatus.maplist")
+        scope: {
+            ls_filter: "=lsFilter"
+            ls_devsel: "=lsDevsel"
+        }
+        link: (scope, element, attrs) ->
+            # location gfx list
+            scope.gfx_sizes = ["1024x768", "1280x1024", "1920x1200", "800x600"]
+            scope.gfx = {"size" : scope.gfx_sizes[0]}
+            scope.autorotate = false
+            scope.location_gfx_list = []
+            scope.devsel_list = []
+            scope.cur_page = -1
+            scope.$watch(
+                scope.ls_devsel.changed
+                (changed) ->
+                    _dev_sel = scope.ls_devsel.get()
+                    scope.devsel_list = _dev_sel
+                    wait_list = [
+                        icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": "<PKS>", "_distinct": true}, scope.devsel_list)
+                        icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": "<PKS>"}, scope.devsel_list)
+                    ]
+                    $q.all(wait_list).then((data) ->
+                        scope.location_gfx_list = data[0]
+                        scope.ls_filter.set_num_maps(scope.location_gfx_list.length)
+                        gfx_lut = {}
+                        for entry in scope.location_gfx_list
+                            entry.active = false
+                            gfx_lut[entry.idx] = entry
+                            entry.dml_list = []
+                        # lut: device_idx -> list of dml_entries
+                        dev_gfx_lut = {}
+                        for entry in data[1]
+                            if entry.device not of dev_gfx_lut
+                                dev_gfx_lut[entry.device] = []
+                            dev_gfx_lut[entry.device].push(entry)
+                            entry.redraw = 0
+                            gfx_lut[entry.location_gfx].dml_list.push(entry)
+                        scope.dev_gfx_lut = dev_gfx_lut
                     )
-            }
-    ]
-)
+            )
+            rte = null
+            _activate_rotation = () ->
+                if scope.cur_page >= 0
+                    scope.location_gfx_list[scope.cur_page].active = false
+                scope.cur_page++
+                if scope.cur_page >= scope.location_gfx_list.length
+                    scope.cur_page = 0
+                scope.location_gfx_list[scope.cur_page].active = true
+                rte = $timeout(_activate_rotation, 4000)
+            _deactivate_rotation = () ->
+                if rte
+                    $timeout.cancel(rte)
+            scope.toggle_autorotate = () ->
+                scope.autorotate = !scope.autorotate
+                if scope.autorotate
+                    _activate_rotation()
+                else
+                    _deactivate_rotation()
+            scope.select_settings = () ->
+                scope.autorotate = false
+                _deactivate_rotation()
+    }
+])
