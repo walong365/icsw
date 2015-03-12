@@ -18,6 +18,8 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
         mon_host_cluster    : get_rest(ICSW_URLS.REST_MON_HOST_CLUSTER_LIST.slice(1))
         mon_check_command   : get_rest(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1))
         mon_service_cluster : get_rest(ICSW_URLS.REST_MON_SERVICE_CLUSTER_LIST.slice(1))
+        mon_host_dependency : get_rest(ICSW_URLS.REST_MON_HOST_DEPENDENCY_LIST.slice(1))
+        mon_service_dependency        : get_rest(ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_LIST.slice(1))
         mon_host_dependency_templ     : get_rest(ICSW_URLS.REST_MON_HOST_DEPENDENCY_TEMPL_LIST.slice(1))
         mon_service_dependency_templ  : get_rest(ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_TEMPL_LIST.slice(1))
     }
@@ -31,7 +33,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return data
 ]).service('icswMonitoringHostClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret = {
-        rest_url           : ICSW_URLS.REST_MON_HOST_CLUSTER_LIST
+        rest_handle        : icswMonitoringClusterRestService.mon_host_cluster
         edit_template      : "mon.host.cluster.form"
         delete_confirm_str : (obj) ->
             return "Really delete host cluster '#{obj.name}' ?"
@@ -52,7 +54,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringServiceClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_CLUSTER_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_service_cluster
         edit_template       : "mon.service.cluster.form"
         delete_confirm_str  : (obj) ->
             return "Really delete service cluster '#{obj.name}' ?"
@@ -74,7 +76,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringHostDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret = {
-        rest_url            : ICSW_URLS.REST_MON_HOST_DEPENDENCY_TEMPL_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_host_dependency_templ
         edit_template       : "mon.host.dependency.templ.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Host dependency template '#{obj.name}' ?"
@@ -98,7 +100,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringServiceDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_TEMPL_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_service_dependency_templ
         edit_template       : "mon.service.dependency.templ.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Service dependency template '#{obj.name}' ?"
@@ -121,7 +123,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringHostDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_HOST_DEPENDENCY_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_host_dependency
         edit_template       : "mon.host.dependency.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Host-dependency ?"
@@ -135,7 +137,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringServiceDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_service_dependency
         edit_template       : "mon.service.dependency.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Service-dependency ?"

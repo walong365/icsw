@@ -8,14 +8,27 @@ monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
         restrict     : "EA"
         templateUrl  : "icsw.monitoring.escalation"
     }
-).service('icswMonitoringServiceEscalationService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
-    get_rest = (url) -> return Restangular.all(url).getList().$object
-    mon_period  = get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
+).service('icswMonitoringEscalationRestService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
+    get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
+    data = {
+        mon_period  : get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
+        mon_device_esc_templ    : get_rest(ICSW_URLS.REST_MON_DEVICE_ESC_TEMPL_LIST.slice(1))
+        mon_service_esc_templ   : get_rest(ICSW_URLS.REST_MON_SERVICE_ESC_TEMPL_LIST.slice(1))
+    }
+    _rest_data_present = (tables) ->
+        ok = true
+        for table in tables
+            if not data[table].length
+                ok = false
+        return ok
+    data['_rest_data_present'] = _rest_data_present
 
+    return data
+]).service('icswMonitoringServiceEscalationService', ["icswMonitoringEscalationRestService", (icswMonitoringEscalationRestService) ->
     return {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_ESC_TEMPL_LIST
+        rest_handle         : icswMonitoringEscalationRestService.mon_service_esc_templ
         edit_template       : "mon.service.esc.templ.form"
-        mon_period          : mon_period
+        mon_period          : icswMonitoringEscalationRestService.mon_period
         delete_confirm_str  : (obj) ->
             return "Really delete Service escalation template '#{obj.name}' ?"
         new_object          : () ->
@@ -23,28 +36,21 @@ monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
                 "name" : ""
                 "first_notification" : 1
                 "last_notification" : 2
-                "esc_period" : (entry.idx for entry in mon_period)[0]
+                "esc_period" : (entry.idx for entry in icswMonitoringEscalationRestService.mon_period)[0]
                 "ninterval" : 2
                 "nrecovery" : true
                 "ncritical" : true
             }
         object_created  : (new_obj) -> new_obj.name = ""
-        rest_data_present : () ->
-            ok = true
-            for table in [mon_period]
-                if not table.length
-                    ok = false
-            return ok
+        rest_data_present  : () ->
+            return icswMonitoringEscalationRestService._rest_data_present(["mon_period"])
     }
-]).service('icswMonitoringDeviceEscalationService', ["ICSW_URLS", "Restangular", (ICSW_URLS, Restangular) ->
-    get_rest = (url) -> return Restangular.all(url).getList().$object
-    mon_period            = get_rest(ICSW_URLS.REST_MON_PERIOD_LIST.slice(1))
-    mon_service_esc_templ = get_rest(ICSW_URLS.REST_MON_SERVICE_ESC_TEMPL_LIST.slice(1))
+]).service('icswMonitoringDeviceEscalationService', ["icswMonitoringEscalationRestService", (icswMonitoringEscalationRestService) ->
     return  {
-        rest_url              : ICSW_URLS.REST_MON_DEVICE_ESC_TEMPL_LIST
+        rest_handle           : icswMonitoringEscalationRestService.mon_device_esc_templ
         edit_template         : "mon.device.esc.templ.form"
-        mon_period            : mon_period
-        mon_service_esc_templ : mon_service_esc_templ
+        mon_period            : icswMonitoringEscalationRestService.mon_period
+        mon_service_esc_templ : icswMonitoringEscalationRestService.mon_service_esc_templ
         delete_confirm_str    : (obj) ->
             return "Really delete Device escalation template '#{obj.name}' ?"
         new_object          : () ->
@@ -52,18 +58,14 @@ monitoring_cluster_module.directive('icswMonitoringEscalation', () ->
                 "name" : ""
                 "first_notification" : 1
                 "last_notification" : 2
-                "esc_period" : (entry.idx for entry in mon_period)[0]
-                "mon_service_esc_templ" : (entry.idx for entry in mon_service_esc_templ)[0]
+                "esc_period" : (entry.idx for entry in icswMonitoringEscalationRestService.mon_period)[0]
+                "mon_service_esc_templ" : (entry.idx for entry in icswMonitoringEscalationRestService.mon_service_esc_templ)[0]
                 "ninterval" : 2
                 "nrecovery" : true
                 "ndown" : true
             }
         object_created  : (new_obj) -> new_obj.name = ""
-        rest_data_present : ($scope) ->
-            ok = true
-            for table in [mon_period, mon_service_esc_templ]
-                if not table.length
-                    ok = false
-            return ok
+        rest_data_present  : () ->
+            return icswMonitoringEscalationRestService._rest_data_present(["mon_period", "mon_service_esc_templ"])
     }
 ])
