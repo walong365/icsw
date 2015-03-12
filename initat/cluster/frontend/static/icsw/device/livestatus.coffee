@@ -417,10 +417,24 @@ angular.module(
             serviceFocus: "=serviceFocus"
             ls_filter: "=lsFilter"
             ls_devsel: "=lsDevsel"
+            size: "=icswElementSize"
         }
         link: (scope, element, attrs) ->
             # omitted segments
+            scope.width = parseInt(attrs["initialWidth"] ? "600")
             scope.omittedSegments = 0
+            scope.$watch(
+                "size",
+                (new_val) ->
+                    if new_val
+                        _w = new_val.width / 2
+                        if _w != scope.width
+                            svg_el = element.find("svg")[0]
+                            g_el = element.find("svg > g")[0]
+                            scope.width = _w
+                            svg_el.setAttribute("width", _w)
+                            g_el.setAttribute("transform", "translate(#{_w / 2}, 160)")
+            )
     }
 ]).directive('icswDeviceLivestatusFilter', ["$templateCache", ($templateCache) ->
     return {
