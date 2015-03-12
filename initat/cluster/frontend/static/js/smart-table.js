@@ -52,16 +52,29 @@ ng.module('smart-table')
     var pipeAfterSafeCopy = true;
     var ctrl = this;
     var lastSelected;
+    var numSelected;
+    function getSelected(src) {
+          var _sel=0;
+          for (var i = 0; i < src.length; i++) {
+              if (src[i].isSelected) {
+                  _sel++;
+              }
+          };
+        numSelected=_sel;
+        return _sel;
+    };
 
     function copyRefs (src) {
       return src ? [].concat(src) : [];
     }
 
+    getSelected(safeCopy);
     function updateSafeCopy () {
       safeCopy = copyRefs(safeGetter($scope));
       if (pipeAfterSafeCopy === true) {
         ctrl.pipe();
       }
+      getSelected(safeCopy);
     }
 
     if ($attrs.stSafeSrc) {
@@ -160,6 +173,7 @@ ng.module('smart-table')
           rows[index].isSelected = !rows[index].isSelected;
         }
       }
+      getSelected(safeCopy);
     };
 
     /**
@@ -209,6 +223,14 @@ ng.module('smart-table')
     this.preventPipeOnWatch = function preventPipe () {
       pipeAfterSafeCopy = false;
     };
+    // PATCH: BM Jan 2014
+    this.getNumberOfTotalEntries = function() {
+        return safeCopy.length;
+    };
+    // PATCH: AL Mar 2015
+    this.getNumberOfSelectedEntries = function() {
+        return numSelected;
+    }
   }])
   .directive('stTable', function () {
     return {
