@@ -57,14 +57,11 @@ angular.module(
         restrict : "EA"
         templateUrl : "icsw.device.status_history_device"
         require: '^icswDeviceStatusHistoryOverview'
+        scope: {
+            "deviceid" : "="
+        }
         link : (scope, el, attrs, status_history_ctrl) ->
             scope.devicepks = []
-            scope.device_id = attrs.device
-            scope.device_chart_id = "device_chart_" + scope.device_id
-            scope.device_rest = undefined
-            Restangular.one(ICSW_URLS.REST_DEVICE_LIST.slice(1)).get({'idx': scope.device_id}).then((new_data)->
-                scope.device_rest = new_data[0]
-            )
 
             scope.extract_service_value = (service, key) ->
                 entries = _.filter(service, (e) -> e.state == key)
@@ -87,10 +84,17 @@ angular.module(
                 return serv_name
             scope.float_format = (n) -> return (n*100).toFixed(2) + "%"
 
+            scope.get_time_frame = () ->
+                return status_history_ctrl.time_frame
+
             scope.calc_pie_data = (name, service_data) ->
                 [unused, pie_data] = status_utils_functions.preprocess_service_state_data(service_data)
                 return pie_data
             scope.update = () ->
+
+                Restangular.one(ICSW_URLS.REST_DEVICE_LIST.slice(1)).get({'idx': scope.deviceid}).then((new_data)->
+                    scope.device_rest = new_data[0]
+                )
                 if status_history_ctrl.time_frame?
                     serv_cont_done = $q.defer()
                     serv_cont = (new_data) ->
@@ -123,18 +127,20 @@ angular.module(
                         )
 
                     time_frame = status_history_ctrl.time_frame
-                    status_utils_functions.get_service_data([scope.device_id], time_frame.date_gui, time_frame.duration_type, serv_cont)
+                    status_utils_functions.get_service_data([scope.deviceid], time_frame.date_gui, time_frame.duration_type, serv_cont)
                     if time_frame.duration_type != 'year'
-                        status_utils_functions.get_service_data([scope.device_id], time_frame.date_gui, time_frame.duration_type, serv_line_graph_cont, 0, true)
+                        status_utils_functions.get_service_data([scope.deviceid], time_frame.date_gui, time_frame.duration_type, serv_line_graph_cont, 0, true)
                 else
                     scope.service_data = []
 
-            scope.$watch(
-                () -> status_history_ctrl.time_frame
-                (unused) -> scope.update()
+            scope.$watchGroup(
+                ['deviceid', () -> return status_history_ctrl.time_frame]
+                (unused) ->
+                    if scope.deviceid?
+                        scope.update()
             )
     }
-]).directive("icswDeviceStatusHistoryOverview", ["status_utils_functions", (status_utils_functions) ->
+]).directive("icswDeviceStatusHistoryOverview", ["status_utils_functions", "Restangular", "ICSW_URLS", (status_utils_functions, Restangular, ICSW_URLS) ->
     return {
         restrict : "EA"
         templateUrl : "icsw.device.status_history_overview"
@@ -148,9 +154,13 @@ angular.module(
             scope.startdate = moment().startOf("day").subtract(1, "days")
             scope.duration_type = 'day'
 
+
             if false  # debug
                 scope.duration_type = 'day'
                 scope.startdate = moment('Tue Feb 17 2015 00:00:00 GMT+0100 (CET)')
+
+                scope.duration_type = 'month'
+                scope.startdate = moment('Tue Feb 17 2014 00:00:00 GMT+0100 (CET)')
 
             scope.set_duration_type = (d) ->
                 scope.duration_type = d
@@ -185,8 +195,18 @@ angular.module(
                 if moment(scope.startdate).isValid()
                     status_utils_functions.get_timespan(scope.startdate, scope.duration_type, cont)
 
+            # used only in template
+            scope.enabled_device_lut = {}
+
+            scope.devices_rest = {}
             scope.new_devsel = (new_val) ->
                 scope.devicepks = new_val
+
+                for devicepk in scope.devicepks
+                    do (devicepk) ->
+                        Restangular.one(ICSW_URLS.REST_DEVICE_LIST.slice(1)).get({'idx': devicepk}).then((new_data)->
+                            scope.devices_rest[devicepk] = new_data[0]
+                        )
             scope.$watchGroup(['duration_type', 'startdate'],  (new_values, old_values) -> scope.update_time_frame(new_values, old_values) )
     }
 ])

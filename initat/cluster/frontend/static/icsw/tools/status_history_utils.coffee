@@ -86,7 +86,10 @@ angular.module(
             else
                 scope.$watchGroup(
                     ['deviceid', () -> return status_history_ctrl.time_frame]
-                    (unused) -> scope.update_from_server())
+                    (unused) ->
+                        if scope.deviceid?
+                            scope.update_from_server()
+                )
     }
 ]).directive('icswToolsServiceHistStatusOverview', ["$parse", "status_utils_functions", ($parse, status_utils_functions) ->
     # shows piechart of state of service. shows how many service are in which state at a given time frame
@@ -130,7 +133,9 @@ angular.module(
             else
                 scope.$watchGroup(
                     ['deviceid', () -> return status_history_ctrl.time_frame]
-                    (unused) -> scope.update_from_server())
+                    (unused) ->
+                        if scope.deviceid?
+                            scope.update_from_server())
     }
 ]).service('status_utils_functions', ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     service_colors = {
