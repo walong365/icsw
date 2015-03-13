@@ -434,8 +434,19 @@ angular.module(
             'enabled' : '&'
         }
         template: """
-<table class="table table-condensed table-striped" ng-show="actual_data.length > 0">
+<table class="table table-condensed table-striped" ng-show="actual_data.length > 0" st-table="log_entries_displayed"  st-safe-src="actual_data">
     <thead>
+        <tr>
+            <td colspan="99">
+                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="99">
+                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+            </td>
+        </tr>
         <tr>
             <th>Date</th>
             <th>State</th>
@@ -443,7 +454,7 @@ angular.module(
         </tr>
     </thead>
     <tbody>
-        <tr ng-repeat="entry in actual_data" class="text-left">
+        <tr ng-repeat="entry in log_entries_displayed" class="text-left">
             <td ng-bind="entry.date | datetime_concise"></td>
             <td ng-bind="entry.state | limit_text_no_dots:3"></td>
             <td ng-bind="entry.msg"></td>
