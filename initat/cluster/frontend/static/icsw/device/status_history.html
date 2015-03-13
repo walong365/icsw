@@ -116,9 +116,10 @@
                 </div>
 
                 <div class="col-md-12" style="margin-top: 10px" ng-show="service_data.length > 0">
-                    <table class="table table-condensed table-hover table-striped">
+                    <table class="table table-condensed table-hover icsw-striped-4">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>Service</th>
                                 <th style="width: 10%;" class="text-center"><!-- chart --></th>
                                 <th style="width: 50px;" class="text-center">Ok</th>
@@ -132,8 +133,10 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat-start="entry in service_data"
-                                ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled">
-                                <td> {{ entry.name }}</td>
+                                    ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled"
+                                    style="cursor: pointer">
+                                <td><i ng-class="entry.log_viewer_enabled && 'glyphicon glyphicon-chevron-down' || 'glyphicon glyphicon-chevron-right'"></i></td>
+                                <td>{{ entry.name }}</td>
                                 <td class="text-right">
                                     <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
                                 </td>
