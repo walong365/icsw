@@ -1,4 +1,22 @@
-
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 class tree_node
     constructor: (args) ->
         # is selected
@@ -91,6 +109,9 @@ class tree_node
         while cur_p
             cur_p._num_descendants += 1 + child._num_descendants
             cur_p._num_nd_descendants += child._num_nd_descendants
+            cur_p._sel_descendants += child._sel_descendants
+            if child.selected
+                cur_p._sel_descendants += 1
             if not child.folder
                cur_p._num_nd_descendants += 1
             cur_p = cur_p.parent
@@ -101,6 +122,9 @@ class tree_node
         while cur_p
             cur_p._num_descendants -= 1 + child._num_descendants
             cur_p._num_nd_descendants -= child._num_nd_descendants
+            cur_p._sel_descendants -= child._sel_descendants
+            if child.selected
+                cur_p._sel_descendants -= 1
             if not child.folder
                cur_p._num_nd_descendants -= 1
             cur_p = cur_p.parent
@@ -236,8 +260,9 @@ class tree_config
                 show = entry.selected
         entry.expand = show
         return entry.expand
-    toggle_expand_node: (entry) -> 
-        entry.expand = not entry.expand
+    toggle_expand_node: (entry) ->
+        if entry.children.length
+            entry.expand = not entry.expand
     toggle_checkbox_node: (entry) =>
         if @change_select
             entry.set_selected(!entry.selected)
@@ -330,36 +355,36 @@ class tree_config
         @iter((entry) -> entry.active=false)
     get_icon_class: (entry) ->
         # override
-        return "dynatree-icon"
+        return "fancytree-icon"
     get_span_class: (entry, last) ->
         r_class = []
-        r_class.push "dynatree-node"
+        r_class.push "fancytree-node"
         if entry.folder
-            r_class.push "dynatree-folder"
+            r_class.push "fancytree-folder"
         if entry.active
-            r_class.push "dynatree-active"
-        if last
-            r_class.push "dynatree-lastsib"
+            r_class.push "fancytree-active"
+        #if last
+        #    r_class.push "fancytree-lastsib"
         if entry.selected
-            r_class.push "dynatree-selected"
+            r_class.push "fancytree-selected"
         if entry.children.length or entry.always_folder?
-            r_class.push "dynatree-has-children"
+            r_class.push "fancytree-has-children"
             if entry.expand
-                r_class.push "dynatree-expanded" 
-                r_class.push "dynatree-ico-ef"
+                r_class.push "fancytree-expanded"
+                r_class.push "fancytree-ico-ef"
                 if last # or not depth, depth was the 3rd argument, not needed ?
-                    r_class.push "dynatree-exp-el"
+                    r_class.push "fancytree-exp-el"
                 else
-                    r_class.push "dynatree-exp-e"
+                    r_class.push "fancytree-exp-e"
             else
-                r_class.push "dynatree-ico-cf"
+                r_class.push "fancytree-ico-cf"
                 if last # or not depth
-                    r_class.push "dynatree-exp-cl"
+                    r_class.push "fancytree-exp-cl"
                 else
-                    r_class.push "dynatree-exp-cl"
+                    r_class.push "fancytree-exp-c"
         else
-            r_class.push "dynatree-ico-c"
-            r_class.push "dynatree-exp-c"
+            r_class.push "fancytree-ico-c"
+            r_class.push "fancytree-exp-n"
         return r_class
 
 tree_module = angular.module(

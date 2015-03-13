@@ -2,7 +2,7 @@
     <nav icsw-element-size="navbar_size" class="navbar navbar-default navbar-fixed-top" role="navigation" ng-controller="menu_base" ng-cloak ng-show="is_authenticated">
         <ul class="nav navbar-nav">
             <li>
-                <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="glyphicon glyphicon-home"></span></a>
+                <a href="{{ ICSW_URLS.MAIN_INDEX }}"><span class="glyphicon glyphicon-home" title="Home"></span></a>
             </li>
             <li ng-show="
                 check_perm('user.modify_tree') || check_perm('user.modify_domain_name_tree') ||
@@ -85,9 +85,7 @@
                     <li><a href="{{ ICSW_URLS.LIC_LICENSE_LIVEVIEW }}">License LiveView</a></li>
                 </ul>
             </li>
-            <!-- {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
-                {% include add_menu %}
-            {% endfor %} -->
+            <icsw-layout-menubar-addons></icsw-layout-menubar-addons>
             <li class="visible-lg">
                 <div ng-show="num_gauges" ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
                     <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></progressbar>

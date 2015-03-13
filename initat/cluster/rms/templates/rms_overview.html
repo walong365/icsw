@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
+{% load i18n %}
 
 {% block title %}{% trans "RMS Overview" %}{% endblock %}
 
@@ -12,27 +12,25 @@
 
 {% verbatim %}
 
-<div>
+<div ng-controller="icswRmsOverviewCtrl">
     <h2>RMS Overview</h2>
-    <div ng-controller="icswRmsOverviewCtrl">
-        <tabset>
-            <tab heading="{{ get_running_info() }}">
-                <icsw-rms-job-running-table></icsw-rms-job-running-table>
-            </tab>
-            <tab heading="{{ get_waiting_info() }}">
-                <icsw-rms-job-waiting-table></icsw-rms-job-waiting-table>
-            </tab>
-            <tab heading="{{ get_done_info() }}">
-                <icsw-rms-job-done-table></icsw-rms-job-done-table>
-            </tab>
-            <tab heading="{{ get_node_info() }}">
-                <icsw-rms-node-table></icsw-rms-node-table>
-            </tab>
-            <tab ng-repeat="io_struct in io_dict" heading="{{ io_struct.get_name() }}" active="io_struct.active">
-                <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>
-            </tab>
-        </tabset>
-    </div>
+    <tabset>
+        <tab heading="{{ get_running_info() }}">
+            <icsw-rms-job-running-table></icsw-rms-job-running-table>
+        </tab>
+        <tab heading="{{ get_waiting_info() }}">
+            <icsw-rms-job-waiting-table></icsw-rms-job-waiting-table>
+        </tab>
+        <tab heading="{{ get_done_info() }}">
+            <icsw-rms-job-done-table></icsw-rms-job-done-table>
+        </tab>
+        <tab heading="{{ get_node_info() }}">
+            <icsw-rms-node-table></icsw-rms-node-table>
+        </tab>
+        <tab ng-repeat="io_struct in io_dict" heading="{{ io_struct.get_name() }}" active="io_struct.active">
+            <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>
+        </tab>
+    </tabset>
 </div>
 
 {% endverbatim %}

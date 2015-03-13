@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -357,17 +357,21 @@ class get_file_content(View):
             srv_com = server_command.srv_command(command="get_file_content")
             srv_com["file_list"] = srv_com.builder(
                 "file_list",
-                *[srv_com.builder("file", name=_file_name) for _file_name in fetch_lut.iterkeys()]
+                *[srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.iterkeys()]
                 )
             result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
             if result is not None:
                 for cur_file in result.xpath(".//ns:file", smart_strings=False):
                     # print etree.tostring(cur_file)
                     if cur_file.attrib.get("error", "1") == "1":
-                        request.xml_response.error("error reading %s (job %s): %s" % (
-                            cur_file.attrib["name"],
-                            job_id,
-                            cur_file.attrib["error_str"]), logger)
+                        request.xml_response.error(
+                            "error reading {} (job {}): {}".format(
+                                cur_file.attrib["name"],
+                                job_id,
+                                cur_file.attrib["error_str"]
+                            ),
+                            logger
+                        )
                     else:
                         _resp_list.append(
                             E.file_info(

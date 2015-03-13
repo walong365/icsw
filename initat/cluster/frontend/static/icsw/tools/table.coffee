@@ -1,8 +1,49 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 angular.module(
     "icsw.tools.table", [
         "restangular"
     ]
-).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
+).directive('icswToolsTableFilteredElements', () ->
+    return {
+        restrict: 'E'
+        require: '^stTable',
+        scope: {}
+        template: "{{num_filtered}}"
+        link: (scope, element, attrs, ctrl) ->
+            scope.$watch(
+                () -> return ctrl.getFilteredCollection().length
+                (new_val) -> scope.num_filtered = new_val
+            )
+    }
+).directive('icswToolsTableLeakFiltered', ["$parse", ($parse) ->
+    return {
+        restrict: 'EA'
+        require: '^stTable',
+        link: (scope, element, attrs, ctrl) ->
+            scope.$watch(
+                ctrl.getFilteredCollection
+                (new_val) -> $parse(attrs.icswToolsTableLeakFiltered).assign(scope, new_val)
+            )
+    }
+]).directive('icswToolsPagination', ["$templateCache", "$parse", ($templateCache, $parse) ->
     return {
         restrict: 'EA',
         require: '^stTable',

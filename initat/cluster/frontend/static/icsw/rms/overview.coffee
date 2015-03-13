@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
@@ -191,8 +210,8 @@ rms_module = angular.module(
         lineNumbers: true
         matchBrackets: true
     }
-}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+}).controller("icswRmsOverviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, $sce, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         $scope.rms_headers = angular.fromJson($templateCache.get("icsw.rms.rms_headers"))
         $scope.pagRun = paginatorSettings.get_paginator("run", $scope)
@@ -879,8 +898,8 @@ rms_module = angular.module(
             else
                 scope.jfiles = []
     }
-]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswRmsLicenseLiveviewCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $modal, access_level_service, $timeout, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.servers = []
         $scope.licenses = []
         $scope.lic_overview = []

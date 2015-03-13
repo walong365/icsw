@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,6 +21,7 @@
 #
 
 """ monitoring views """
+import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.db.models.query import Prefetch
@@ -31,7 +32,7 @@ from django.views.generic import View
 import pytz
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-
+from django.core.cache import cache
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
     net_ip, peer_information, mon_ext_host, get_related_models, monitoring_hint, mon_check_command, \
     parse_commandline, mon_check_command_special
@@ -54,9 +55,13 @@ import base64
 import itertools
 import json
 import logging
+import logging_tools
 import process_tools
 import server_command
 import socket
+import cairosvg
+import StringIO
+import uuid
 from collections import defaultdict
 
 logger = logging.getLogger("cluster.monitoring")
@@ -470,7 +475,7 @@ class _device_status_history_util(object):
 
         try:
             return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID,
-                                                                  start_date__range=(start, end))
+                                                                  start_date__range=(start, end - datetime.timedelta(seconds=1)))
         except mon_icinga_log_aggregated_timespan.DoesNotExist:
             return None
 
@@ -522,11 +527,12 @@ class _device_status_history_util(object):
             # they might be active before and after, but not during the time frame, in which case
             # they are not relevant to us
 
+            # add first and last in case they are not contained in range already
             entry_before = last_before_entries.get(key, None)
-            if entry_before is not None:
+            if entry_before is not None and amended_list[0].date != entry_before['date']:
                 amended_list = [entry_before] + amended_list
             entry_after = first_after_entries.get(key, None)
-            if entry_after is not None:
+            if entry_after is not None and amended_list[-1].date != entry_after['date']:
                 amended_list = amended_list + [entry_after]
 
             l = []
@@ -562,7 +568,6 @@ class get_hist_timespan(RetrieveAPIView):
                 pass  # no data at all, can't do anything useful
             else:
                 date = duration_utils.parse_date(request.GET["date"])
-                date = date.replace(tzinfo=pytz.UTC)
                 if latest_timespan_db.end_date < date:
                     data = {'status': 'found earlier', 'start': latest_timespan_db.start_date, 'end': latest_timespan_db.end_date}
 
@@ -579,7 +584,10 @@ class get_hist_device_data(ListAPIView):
 
         data = []
         if timespan_db:
-            data = mon_icinga_log_aggregated_host_data.objects.filter(device_id__in=device_ids, timespan=timespan_db).values('device_id', 'state', 'state_type', 'value')
+            data = mon_icinga_log_aggregated_host_data.objects.filter(
+                device_id__in=device_ids,
+                timespan=timespan_db
+            ).values('device_id', 'state', 'state_type', 'value')
 
         trans = dict((k, v.capitalize()) for (k, v) in mon_icinga_log_aggregated_host_data.STATE_CHOICES)
         data_per_device = {device_id: [] for device_id in device_ids}
@@ -644,8 +652,12 @@ class get_hist_service_data(ListAPIView):
             return_data = {}
             # merge state types for each service in each device
             for device_id, device_service_data in data_per_device.iteritems():
-                return_data[device_id] = {service_key: _device_status_history_util.merge_state_types(service_data, trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]) for
-                                          service_key, service_data in device_service_data.iteritems()}
+                return_data[device_id] = {
+                    service_key: _device_status_history_util.merge_state_types(
+                        service_data,
+                        trans[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+                    ) for service_key, service_data in device_service_data.iteritems()
+                }
             return return_data
 
         data_per_device = get_data_per_device(device_ids, [timespan_db])
@@ -708,3 +720,31 @@ class get_hist_service_line_graph_data(ListAPIView):
 
         return Response([return_data])  # fake a list, see coffeescript
         """
+
+
+class svg_to_png(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        _out = StringIO.StringIO()
+        cairosvg.svg2png(bytestring=_post["svg"], write_to=_out)
+        _png_content = _out.getvalue()
+        _cache_key = "SVG2PNG_{}".format(uuid.uuid4().get_urn().split("-")[-1])
+        cache.set(_cache_key, _png_content, 60)
+        logger.info(
+            "converting svg with {} to png with {} (cache_key is {})".format(
+                logging_tools.get_size_str(len(_post["svg"])),
+                logging_tools.get_size_str(len(_png_content)),
+                _cache_key,
+            )
+        )
+        request.xml_response["cache_key"] = _cache_key
+
+
+class fetch_png_from_cache(View):
+    def get(self, request, cache_key=None):
+        _val = cache.get(cache_key)
+        if _val:
+            return HttpResponse(_val, content_type="image/png")
+        else:
+            return HttpResponse("", content_type="image/png")

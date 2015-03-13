@@ -21,14 +21,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import datetime
+import pytz
 from initat.cluster.backbone.models.functions import duration
 
 
 class duration_utils(object):
 
     @staticmethod
-    def parse_date(date):
-        return datetime.datetime.fromtimestamp(int(date))
+    def parse_date(date, is_utc=True):
+        date = datetime.datetime.fromtimestamp(int(date))
+        if is_utc:
+            date = date.replace(tzinfo=pytz.UTC)
+        return date
 
     @staticmethod
     def parse_duration_from_request(request):

@@ -1,10 +1,81 @@
-sidebar_module = angular.module(
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+angular.module(
     "icsw.layout.sidebar",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.info",
     ]
-).controller("icswSidebarCtrl", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService, icswCallAjaxService, icswParseXMLResponseService) ->
+).service("icswDeviceTreeService", ["$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools", ($q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools) ->
+    rest_map = [
+        [
+            ICSW_URLS.REST_DEVICE_TREE_LIST,
+            {
+                "ignore_cdg" : false
+                "tree_mode" : true
+                "all_devices" : true
+                "with_categories" : true
+                "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
+            }
+        ]
+        [ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST, {}]
+        [ICSW_URLS.REST_CATEGORY_LIST, {}]
+        [ICSW_URLS.REST_DEVICE_SELECTION_LIST, {}]
+    ]
+    _fetch_dict = {}
+    _result = []
+    load_data = (client) ->
+        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
+        _defer = $q.defer()
+        $q.all(_wait_list).then((data) ->
+            _result = data
+            # build luts
+            _result.push(icswTools.build_lut(data[0]))
+            _defer.resolve(_result)
+            for client of _fetch_dict
+                # resolve clients
+                _fetch_dict[client].resolve(_result)
+            # reset fetch_dict
+            _fetch_dict = {}
+        )
+        return _defer
+    fetch_data = (client) ->
+        if client not of _fetch_dict
+            # register client
+            _defer = $q.defer()
+            _fetch_dict[client] = _defer
+        if _result.length
+            # resolve immediately
+            _fetch_dict[client].resolve(_result)
+        return _fetch_dict[client]
+    return {
+        "load": (client) ->
+            # loads from server
+            return load_data(client).promise
+        "fetch": (client) ->
+            # fetch when data is present (after sidebar)
+            return fetch_data(client).promise
+    }
+    console.log rest_map
+
+]).controller("icswSidebarCtrl", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window", "msgbus", "DeviceOverviewService", "ICSW_URLS", "icswLayoutSidebarTreeService", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceTreeService",
+    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window, msgbus, DeviceOverviewService, ICSW_URLS, icswLayoutSidebarTreeService, icswCallAjaxService, icswParseXMLResponseService, icswDeviceTreeService) ->
         $scope.index_view = $window.INDEX_VIEW
         $scope.DeviceOverviewService = DeviceOverviewService
         $scope.msgbus = msgbus
@@ -84,24 +155,7 @@ sidebar_module = angular.module(
         $scope.tabs = {}
         for tab_short in ["g", "f", "c"]
             $scope.tabs[tab_short] = tab_short == $scope.active_tab
-        $scope.rest_data = {}
         # olp is the object level permission
-        $scope.rest_map = [
-            {
-                "short" : "device_tree",
-                "url" : ICSW_URLS.REST_DEVICE_TREE_LIST
-                "options" : {
-                    "ignore_cdg" : false
-                    "tree_mode" : true
-                    "all_devices" : true
-                    "with_categories" : true
-                    "olp" : $window.DEVICE_OBJECT_LEVEL_PERMISSION
-                }
-            } 
-            {"short" : "domain_tree_node", "url" : ICSW_URLS.REST_DOMAIN_TREE_NODE_LIST}
-            {"short" : "category", "url" : ICSW_URLS.REST_CATEGORY_LIST}
-            {"short" : "device_sel", "url" : ICSW_URLS.REST_DEVICE_SELECTION_LIST}
-        ]
         $scope.reload = (pk_list) ->
             if pk_list?
                 # only reload the given devices
@@ -111,13 +165,13 @@ sidebar_module = angular.module(
                     $scope.update_device(data, prev_list)
                 )
             else
-                wait_list = []
-                for value, idx in $scope.rest_map
-                    $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
-                    wait_list.push($scope.rest_data[value.short])
-                $q.all(wait_list).then((data) ->
-                    for value, idx in data
-                        $scope.rest_data[$scope.rest_map[idx].short] = value
+                icswDeviceTreeService.load($scope.$id).then((data) ->
+                    $scope.rest_data = {
+                        "device_tree" : data[0]
+                        "domain_tree_node": data[1]
+                        "category": data[2]
+                        "device_sel": data[3]
+                    }
                     $scope.rest_data_set()
                 )
         # load from server

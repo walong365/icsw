@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 angular.module(
     "icsw.config.category_tree",
@@ -5,11 +24,11 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
 ).controller("icswConfigCategoryTreeCtrl", [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window",
-    "sharedDataSource", "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
+    "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
     "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, sharedDataSource, $q, $modal, access_level_service,
-     FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+   ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, $q, $modal, access_level_service,
+    FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
@@ -115,12 +134,35 @@ angular.module(
             ]
             $q.all(wait_list).then((data) ->
                 $scope.entries = data[0]
+                for entry in $scope.entries
+                    entry.open = false
                 $scope.location_gfxs = data[1]
                 $scope.dml_list = data[2]
                 $scope.edit_mixin.create_list = $scope.entries
                 $scope.edit_mixin.delete_list = $scope.entries
                 $scope.rebuild_cat()
         )
+        if false
+            $scope.redrawn = {"test" : 0}
+            _el = $compile("<icsw-device-livestatus-brief devicepk='3' redraw-sunburst='redrawn.test'></icsw-device-livestatus-brief>")($scope)
+            $scope.$watch('redrawn.test', (new_val) ->
+                if new_val
+                    $timeout(
+                        () ->
+                            icswCallAjaxService
+                                url : ICSW_URLS.MON_SVG_TO_PNG
+                                data :
+                                    svg : _el[0].innerHTML
+                                success : (xml) ->
+                                    if icswParseXMLResponseService(xml)
+                                        _url = ICSW_URLS.MON_FETCH_PNG_FROM_CACHE.slice(0, -1) + $(xml).find("value[name='cache_key']").text()
+                                        $scope.$apply(
+                                            for loc in $scope.locations
+                                                # do not set _icon
+                                                loc._icon = _url
+                                        )
+                    )
+            )
         $scope.edit_obj = (cat, event) ->
             $scope.create_mode = false
             $scope.cat.clear_active()
@@ -180,16 +222,26 @@ angular.module(
                         "comment": if _entry.comment then "#{_entry.name} (#{_entry.comment})" else _entry.name
                         "options": {
                             "draggable": not _entry.locked
-                            "title":_entry.full_name
+                            "title": _entry.full_name
                         }
+                        "icon": null
                     }
                 )
                 marker_lut[_entry.idx] = _entry
             $scope.locations = new_list
             $scope.marker_lut = marker_lut
-        $scope.locate = (loc) ->
+        $scope.locate = (loc, $event) ->
             $scope.map.control.refresh({"latitude":loc.latitude, "longitude":loc.longitude})
             $scope.map.control.getGMap().setZoom(11)
+            $event.stopPropagation()
+            $event.preventDefault()
+        $scope.toggle_lock = ($event, loc) ->
+            loc.locked = !loc.locked
+            loc.put()
+            _entry = (entry for entry in $scope.locations when entry.key == loc.idx)[0]
+            _entry.options.draggable = not loc.locked
+            $event.stopPropagation()
+            $event.preventDefault()
         $scope.new_object = () ->
             if $scope.new_top_level
                 _parent = (value for value in $scope.entries when value.depth == 1 and value.name == $scope.new_top_level)[0]
@@ -269,6 +321,8 @@ angular.module(
                 data.num_dml = 0
                 loc.location_gfxs.push(data)
             )
+            $event.stopPropagation()
+            $event.preventDefault()
         $scope.modify_location_gfx = ($event, loc) ->
             $scope.preview_gfx = undefined
             $scope.cur_location_gfx = loc

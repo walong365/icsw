@@ -101,7 +101,7 @@ class device_info_form(ModelForm):
     helper.layout = Layout(
         Div(
             HTML(
-                "<h2>Details for '{% verbatim %}{{ _edit_obj.full_name }}'&nbsp;"
+                "<h2>Details for '{% verbatim %}{{ get_full_name() }}'&nbsp;"
                 "<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"
             ),
             Fieldset(
@@ -767,6 +767,10 @@ class device_variable_form(ModelForm):
             Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
             Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
         ),
+        Fieldset(
+            "Flags",
+            Field("inherit"),
+        ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
         ),
@@ -823,6 +827,10 @@ class device_variable_new_form(ModelForm):
             Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),
             Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
             Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
+        ),
+        Fieldset(
+            "Flags",
+            Field("inherit"),
         ),
         FormActions(
             Submit("submit", "", css_class="primaryAction", ng_value="action_string"),

@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 {% load staticfiles %}
 
 # Naming conventions
@@ -79,6 +98,9 @@ ics_app = angular.module(
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
+        {% for app in ADDITIONAL_ANGULAR_APPS %}
+        "{{ app }}",
+        {% endfor %}
     ]
 ).config(() ->
     # console.log "config"
@@ -148,6 +170,7 @@ ics_app = angular.module(
     "MON_DELETE_HINT": "{% url 'mon:delete_hint' %}"
     "MON_DEVICE_CONFIG": "{% url 'mon:device_config' %}"
     "MON_FETCH_PARTITION": "{% url 'mon:fetch_partition' %}"
+    "MON_FETCH_PNG_FROM_CACHE": "{% url 'mon:fetch_png_from_cache' 0 %}"
     "MON_GET_HIST_DEVICE_DATA": "{% url 'mon:get_hist_device_data' %}"
     "MON_GET_HIST_SERVICE_DATA": "{% url 'mon:get_hist_service_data' %}"
     "MON_GET_HIST_SERVICE_LINE_GRAPH_DATA": "{% url 'mon:get_hist_service_line_graph_data' %}"
@@ -162,6 +185,7 @@ ics_app = angular.module(
     "MON_SETUP_CLUSTER": "{% url 'mon:setup_cluster' %}"
     "MON_SETUP_ESCALATION": "{% url 'mon:setup_escalation' %}"
     "MON_SETUP": "{% url 'mon:setup' %}"
+    "MON_SVG_TO_PNG": "{% url 'mon:svg_to_png' %}"
     "MON_USE_PARTITION": "{% url 'mon:use_partition' %}"
     "NETWORK_COPY_NETWORK": "{% url 'network:copy_network' %}"
     "NETWORK_DEVICE_NETWORK": "{% url 'network:device_network' %}"
@@ -226,8 +250,8 @@ ics_app = angular.module(
     "REST_KERNEL_LIST": "{% url 'rest:kernel_list' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
-    "REST_LOG_SOURCE_LIST": "{% url 'rest:log_source_list' %}"
-    "REST_LOG_STATUS_LIST": "{% url 'rest:log_status_list' %}"
+    "REST_LOG_SOURCE_LIST": "{% url 'rest:LogSourceList' %}"
+    "REST_LOG_LEVEL_LIST": "{% url 'rest:LogLevelList' %}"
     "REST_MACBOOTLOG_LIST": "{% url 'rest:macbootlog_list' %}"
     "REST_MIN_ACCESS_LEVELS": "{% url 'rest:min_access_levels' %}"
     "REST_MON_CHECK_COMMAND_DETAIL": "{% url 'rest:mon_check_command_detail' 1 %}"
@@ -318,4 +342,7 @@ ics_app = angular.module(
     "USER_OVERVIEW": "{% url 'user:overview' %}"
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"
     "USER_SYNC_USERS": "{% url 'user:sync_users' %}"
+    {% for name, url in ADDITIONAL_URLS %}
+    "{{ name }}": "{{ url }}"
+    {% endfor %}
 })
