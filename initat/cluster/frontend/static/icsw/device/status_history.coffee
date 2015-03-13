@@ -154,7 +154,6 @@ angular.module(
             scope.startdate = moment().startOf("day").subtract(1, "days")
             scope.duration_type = 'day'
 
-
             if false  # debug
                 scope.duration_type = 'day'
                 scope.startdate = moment('Tue Feb 17 2015 00:00:00 GMT+0100 (CET)')
