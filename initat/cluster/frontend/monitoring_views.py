@@ -526,11 +526,12 @@ class _device_status_history_util(object):
             # they might be active before and after, but not during the time frame, in which case
             # they are not relevant to us
 
+            # add first and last in case they are not contained in range already
             entry_before = last_before_entries.get(key, None)
-            if entry_before is not None:
+            if entry_before is not None and amended_list[0].date != entry_before['date']:
                 amended_list = [entry_before] + amended_list
             entry_after = first_after_entries.get(key, None)
-            if entry_after is not None:
+            if entry_after is not None and amended_list[-1].date != entry_after['date']:
                 amended_list = amended_list + [entry_after]
 
             l = []
