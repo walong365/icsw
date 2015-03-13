@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<icsw:signed-license-feature-map xmlns:icsw="http://www.initat.org/lxml/ns">
+  <icsw:license-feature-map>
+
+    <icsw:license id="base">
+        <icsw:feature>webfrontend</icsw:feature>
+        <icsw:feature>md-config-server</icsw:feature>
+        <icsw:feature>peering</icsw:feature>
+    </icsw:license>
+
+    <icsw:license id="perf">
+        <icsw:feature>md-config-server</icsw:feature>
+        <icsw:feature>monitoring-overview</icsw:feature>
+    </icsw:license>
+
+    <icsw:license id="continuity">
+        <icsw:feature>peering</icsw:feature>
+        <icsw:feature>graphing</icsw:feature>
+        <icsw:feature>discovery-server</icsw:feature>
+    </icsw:license>
+
+</icsw:license-feature-map>
+  <icsw:signature>Zc9t4XN6NMxlvazHXbQB4FynMamHFdefqjnCiavxSTSB5BVFdDQiKIrAsfr6R81Q+qEyLCoS17qh9Qs3tf44R/1k5xqkMiTYvLgnqyR75Sa0ugWLWXEhaQs0f2UWxXNjmVaTGcfH2C3qG+pnPzM0MJbKopXa5CL9nuXqgawLvqI=</icsw:signature>
+</icsw:signed-license-feature-map>
