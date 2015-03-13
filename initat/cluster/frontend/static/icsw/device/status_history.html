@@ -6,7 +6,7 @@
             <h4>
                 Showing data
                 <span ng-if="!timespan_error ">
-                    from <b>{{ get_time_frame().start_str }}</b> to <b>{{ get_time_frame().end_str }}</b>:
+                    from <strong>{{ get_time_frame().start_str }}</strong> to <strong>{{ get_time_frame().end_str }}</strong>:
                 </span>
             </h4>
         </div>
@@ -80,28 +80,33 @@
             <h4 class="alert alert-danger" style="width: 300px" ng-if="timespan_error ">{{timespan_error}}</h4>
 
         </div>
-
     </div>
 
-    <div ng-repeat="device in devicepks">
-        <icsw-device-status-history-device device="{{device}}"></icsw-device-status-history-device>
-    </div>
+    <tabset>
+        <tab ng-repeat="device in devicepks" heading="{{devices_rest[device].full_name}}" select="enabled_device_lut[device] = device">
+            <icsw-device-status-history-device deviceid="enabled_device_lut[device]"></icsw-device-status-history-device>
+        </tab>
+    </tabset>
+
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_device">
-
     <div class="panel panel-default">
-
         <div class="panel-heading">
-            <h3>{{device_rest.full_name}}</h3>
+            <h3>
+                {{device_rest.full_name}}
+                <small>
+                    (<ng-pluralize count="service_data.length" when="{'0': 'No services', 'one': '1 service', 'other': '{} services'}"></ng-pluralize>
+                    from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }})
+                </small>
+            </h3>
         </div>
         <div class="panel-body">
-
             <div style="width: 650px">
                 <div class="col-md-12">
                     <div style="width: auto">
                         <icsw-tools-device-hist-status-overview
-                            deviceid="device_id"
+                            deviceid="deviceid"
                             detailed-view="true"
                         ></icsw-tools-device-hist-status-overview>
                     </div>
@@ -112,9 +117,10 @@
                 </div>
 
                 <div class="col-md-12" style="margin-top: 10px" ng-show="service_data.length > 0">
-                    <table class="table table-condensed table-hover table-striped">
+                    <table class="table table-condensed table-hover icsw-table-striped-4">
                         <thead>
                             <tr>
+                                <th></th>
                                 <th>Service</th>
                                 <th style="width: 10%;" class="text-center"><!-- chart --></th>
                                 <th style="width: 50px;" class="text-center">Ok</th>
@@ -128,8 +134,10 @@
                         </thead>
                         <tbody>
                             <tr ng-repeat-start="entry in service_data"
-                                ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled">
-                                <td> {{ entry.name }}</td>
+                                    ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled"
+                                    style="cursor: pointer">
+                                <td><i ng-class="entry.log_viewer_enabled && 'glyphicon glyphicon-chevron-down' || 'glyphicon glyphicon-chevron-right'"></i></td>
+                                <td>{{ entry.name }}</td>
                                 <td class="text-right">
                                     <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
                                 </td>

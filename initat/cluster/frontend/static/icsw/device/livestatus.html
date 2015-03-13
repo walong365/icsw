@@ -14,47 +14,56 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+    </div>
+    <div class="row">
+        <div class="col-md-4 col-xs-12 col-lg-3">
             <icsw-device-livestatus-cat-tree ls-filter="ls_filter" ng-show="cat_tree_show"></icsw-device-livestatus-cat-tree>
         </div>
+        <div class="col-md-4 col-xs-12 col-lg-3">
+            <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter" ng_show="burst_show"></div>
+        </div>
+        <div class="col-md-4 col-xs-12 col-lg-3">
+            <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter" ng_show="map_show"></div>
+        </div>
     </div>
-    <div icsw-device-livestatus-fullburst ls-devsel="ls_devsel" ls-filter="ls_filter" ng_show="burst_show"></div>
-    <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter" ng_show="map_show"></div>
-    <hr ng-show="table_show"/>
-    <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService">
-        <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
-            <thead>
-                <tr>
-                    <td colspan="99">
-                        <div class="form-inline">
-                            <div icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></div>
-                            <input placeholder="filter..." st-search="" class="form-control input-sm">
-                            </input>
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="99">
-                        <icsw-tools-show-hide-columns ng-show="table_show" columns="state state_type flags description cats output"></icsw-tools-show-hide-columns>
-                    </td>
-                </tr>
-                <tr>
-                    <th st-sort="host_name" st-sort-default="true">device</th>
-                    <th ng-show="show_column.state" st-sort="state">state</th>
-                    <th ng-show="show_column.flags">flags</th>
-                    <th ng-show="show_column.description" st-sort="description">description</th>
-                    <th ng-show="show_column.cats">categories</th>
-                    <th st-sort="last_check">last check</th>
-                    <th st-sort="last_state_change">last change</th>
-                    <th ng-show="show_column.output" st-sort="plugin_output">result</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr icsw-device-livestatus-check-service show-column="show_column" service="entry" ls-filter="ls_filter" ng-repeat="entry in entries_displayed">
-                </tr>
-            </tbody>
-        </table>
-    </icsw-tools-rest-table>
+    <div class="row">
+        <div class="col-md-4 col-xs-12 col-lg-3">
+            <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService">
+                <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div class="form-inline">
+                                    <div icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></div>
+                                    <input placeholder="filter..." st-search="" class="form-control input-sm">
+                                    </input>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <icsw-tools-show-hide-columns ng-show="table_show" columns="state state_type flags description cats output"></icsw-tools-show-hide-columns>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="host_name" st-sort-default="true">device</th>
+                            <th ng-show="show_column.state" st-sort="state">state</th>
+                            <th ng-show="show_column.flags">flags</th>
+                            <th ng-show="show_column.description" st-sort="description">description</th>
+                            <th ng-show="show_column.cats">categories</th>
+                            <th st-sort="last_check">last check</th>
+                            <th st-sort="last_state_change">last change</th>
+                            <th ng-show="show_column.output" st-sort="plugin_output">result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr icsw-device-livestatus-check-service show-column="show_column" service="entry" ls-filter="ls_filter" ng-repeat="entry in entries_displayed">
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table>
+        </div>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.location.map">
@@ -142,14 +151,14 @@
 
 <script type="text/ng-template" id="icsw.device.livestatus.fullburst">
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-6 col-sm-6">
             <h3>
                 Burst graph
                 <span ng-show="omittedSegments">
                     , {{ omittedSegments }} omitted segments
                 </span>
             </h3>
-            <svg width="600" height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
+            <svg height="320" font-family="'Open-Sans', sans-serif" font-size="10pt">
                 <g transform="translate(300,160)">
                     <newburst
                         ls-devsel="ls_devsel"
@@ -162,7 +171,7 @@
                 </g>
             </svg>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-6 col-sm-6">
             <icsw-device-livestatus-service-info host-lut="hostLut" service="focusService" ls-filter="ls_filter"></icsw-device-livestatus-service-info>
         </div>
     </div>

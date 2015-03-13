@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 class hs_node
     # hierarchical structure node
     constructor: (@name, @check, @filter=false, @placeholder=false, @dummy=false) ->
@@ -398,10 +417,24 @@ angular.module(
             serviceFocus: "=serviceFocus"
             ls_filter: "=lsFilter"
             ls_devsel: "=lsDevsel"
+            size: "=icswElementSize"
         }
         link: (scope, element, attrs) ->
             # omitted segments
+            scope.width = parseInt(attrs["initialWidth"] ? "600")
             scope.omittedSegments = 0
+            scope.$watch(
+                "size",
+                (new_val) ->
+                    if new_val
+                        _w = new_val.width / 2
+                        if _w != scope.width
+                            svg_el = element.find("svg")[0]
+                            g_el = element.find("svg > g")[0]
+                            scope.width = _w
+                            svg_el.setAttribute("width", _w)
+                            g_el.setAttribute("transform", "translate(#{_w / 2}, 160)")
+            )
     }
 ]).directive('icswDeviceLivestatusFilter', ["$templateCache", ($templateCache) ->
     return {
