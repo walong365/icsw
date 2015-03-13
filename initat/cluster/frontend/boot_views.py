@@ -1,7 +1,7 @@
 #!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -34,7 +34,7 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
-    kernel, image, partition_table, status, network, devicelog
+    kernel, image, partition_table, status, network, DeviceLogEntry
 from initat.cluster.backbone.serializers import device_serializer_boot
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -263,10 +263,13 @@ class get_devlog_info(View):
             logging_tools.get_plural("device", len(lp_dict)),
             oldest_pk))
         _lines = []
-        dev_logs = devicelog.objects \
-            .filter(Q(pk__gt=oldest_pk) & Q(device__in=devs)) \
-            .select_related("log_source", "log_status", "user") \
-            .order_by("pk")
+        dev_logs = DeviceLogEntry.objects.filter(
+            Q(pk__gt=oldest_pk) & Q(device__in=devs)
+        ).select_related(
+            "source",
+            "level",
+            "user",
+        ).order_by("pk")
         logs_transfered = dict([(key, 0) for key in lp_dict.iterkeys()])
         for dev_log in dev_logs:
             if dev_log.pk > lp_dict[dev_log.device_id]:
@@ -274,9 +277,9 @@ class get_devlog_info(View):
                 _lines.append([
                     dev_log.pk,
                     dev_log.device_id,
-                    dev_log.log_source_id,
+                    dev_log.source_id,
                     dev_log.user_id,
-                    dev_log.log_status_id,
+                    dev_log.level_id,
                     dev_log.text,
                     time.mktime(cluster_timezone.normalize(dev_log.date).timetuple()),
                 ])

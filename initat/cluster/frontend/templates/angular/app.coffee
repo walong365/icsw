@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 {% load staticfiles %}
 
 # Naming conventions
@@ -235,8 +254,8 @@ ics_app = angular.module(
     "REST_KPI_SELECTED_DEVICE_MONITORING_CATEGORY_TUPLE": "{% url 'rest:kpi_selected_device_monitoring_category_tuple_list' %}"
     "REST_LOCATION_GFX_DETAIL": "{% url 'rest:location_gfx_detail' 1 %}"
     "REST_LOCATION_GFX_LIST": "{% url 'rest:location_gfx_list' %}"
-    "REST_LOG_SOURCE_LIST": "{% url 'rest:log_source_list' %}"
-    "REST_LOG_STATUS_LIST": "{% url 'rest:log_status_list' %}"
+    "REST_LOG_SOURCE_LIST": "{% url 'rest:LogSourceList' %}"
+    "REST_LOG_LEVEL_LIST": "{% url 'rest:LogLevelList' %}"
     "REST_MACBOOTLOG_LIST": "{% url 'rest:macbootlog_list' %}"
     "REST_MIN_ACCESS_LEVELS": "{% url 'rest:min_access_levels' %}"
     "REST_MON_CHECK_COMMAND_DETAIL": "{% url 'rest:mon_check_command_detail' 1 %}"

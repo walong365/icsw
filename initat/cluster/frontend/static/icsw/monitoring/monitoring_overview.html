@@ -38,7 +38,7 @@
                     <tr ng-repeat="entry in entries_displayed">
                         <td>{{entry.name}}</td>
                         <td>
-                            <livestatus-brief devicepk="entry.idx" redraw-sunburst="ignore_shit"></livestatus-brief>
+                            <icsw-device-livestatus-brief devicepk="entry.idx" redraw-sunburst="ignore_shit"></icsw-device-livestatus-brief>
                         </td>
                         <td class="text-center">
                             <icsw-tools-device-hist-status-overview data="entry.device_data_yesterday" detailed-view="false"></icsw-tools-device-hist-status-overview>

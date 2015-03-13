@@ -53,12 +53,16 @@ class Command(BaseCommand):
     def handle(self, **options):
         _check_list = [(_key, _value) for _key, _value in globals().iteritems()]
         for _addon_app in settings.ICSW_ADDON_APPS:
-            _addon_form_module = importlib.import_module("initat.cluster.{}.forms".format(_addon_app))
-            _check_list.extend(
-                [
-                    (_key, getattr(_addon_form_module, _key)) for _key in dir(_addon_form_module)
-                ]
-            )
+            try:
+                _addon_form_module = importlib.import_module("initat.cluster.{}.forms".format(_addon_app))
+            except ImportError as e:
+                print 'No forms directory in {}.'.format(_addon_app)
+            else:
+                _check_list.extend(
+                    [
+                        (_key, getattr(_addon_form_module, _key)) for _key in dir(_addon_form_module)
+                    ]
+                )
         render_template = [
             "{% load i18n crispy_forms_tags coffeescript %}",
         ]

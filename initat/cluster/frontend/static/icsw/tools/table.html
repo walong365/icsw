@@ -30,10 +30,10 @@
             <span ng-show="numPages > 1">, </span>
             <span ng-show="numPages < 6">
                 showing entries
-                <span ng-show="table_controller.getNumberOfTotalEntries() == 0">0</span>
-                <span ng-show="table_controller.getNumberOfTotalEntries() > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>
+                <span ng-show="table_controller.getFilteredCollection().length == 0">0</span>
+                <span ng-show="table_controller.getFilteredCollection().length > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>
                 to
-                {{ Math.min(currentPage  * stItemsByPage, table_controller.getNumberOfTotalEntries()) }},
+                {{ Math.min(currentPage  * stItemsByPage, table_controller.getFilteredCollection().length) }},
             </span>
         </span>
         <span ng-show="pages.length == 0">

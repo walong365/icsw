@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 package_module = angular.module(
     "icsw.package.install",
@@ -64,8 +83,8 @@ package_module = angular.module(
         edit_template       : "package_search.html"
         delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
     }
-]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService, icswParseXMLResponseService) ->
         # flags
         $scope.show_enabled_repos = true
         $scope.show_published_repos = true
@@ -89,7 +108,6 @@ package_module = angular.module(
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
-        $scope.shared_data = sharedDataSource.data
         $scope.device_tree_url = ICSW_URLS.REST_DEVICE_TREE_LIST
         wait_list = restDataSource.add_sources([
             [$scope.device_tree_url, {"ignore_meta_devices" : true}]

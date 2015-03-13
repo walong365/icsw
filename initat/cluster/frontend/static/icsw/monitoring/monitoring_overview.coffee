@@ -1,12 +1,31 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 monitoring_overview_module = angular.module("icsw.monitoring.overview",
             ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
              "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"])
 
 monitoring_overview_module.controller("icswMonitoringOverviewCtrl",
-    ["$scope", "$compile", "$filter", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ["$scope", "$compile", "$filter", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal",
      "access_level_service", "$timeout", "msgbus", "status_utils_functions", "ICSW_URLS",
-    ($scope, $compile, $filter, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service,
+    ($scope, $compile, $filter, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service,
      $timeout, msgbus, status_utils_functions, ICSW_URLS) ->
         $scope.filter_settings = {"str_filter": "", "only_selected": true}
 

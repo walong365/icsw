@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 menu_module = angular.module(
     "icsw.layout.menu",
@@ -91,7 +110,7 @@ menu_module = angular.module(
             else
                 return "btn btn-xs btn-danger"
         $scope.rebuild_config = (cache_mode) ->
-            console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
+            # console.log ICSW_URLS.MON_CREATE_CONFIG, "+++"
             icswCallAjaxService
                 url     : ICSW_URLS.MON_CREATE_CONFIG
                 data    : {
