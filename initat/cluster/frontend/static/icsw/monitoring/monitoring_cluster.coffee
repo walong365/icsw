@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 monitoring_cluster_module = angular.module("icsw.monitoring.cluster",
         ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button"])
@@ -18,6 +37,8 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
         mon_host_cluster    : get_rest(ICSW_URLS.REST_MON_HOST_CLUSTER_LIST.slice(1))
         mon_check_command   : get_rest(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1))
         mon_service_cluster : get_rest(ICSW_URLS.REST_MON_SERVICE_CLUSTER_LIST.slice(1))
+        mon_host_dependency : get_rest(ICSW_URLS.REST_MON_HOST_DEPENDENCY_LIST.slice(1))
+        mon_service_dependency        : get_rest(ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_LIST.slice(1))
         mon_host_dependency_templ     : get_rest(ICSW_URLS.REST_MON_HOST_DEPENDENCY_TEMPL_LIST.slice(1))
         mon_service_dependency_templ  : get_rest(ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_TEMPL_LIST.slice(1))
     }
@@ -31,7 +52,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return data
 ]).service('icswMonitoringHostClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret = {
-        rest_url           : ICSW_URLS.REST_MON_HOST_CLUSTER_LIST
+        rest_handle        : icswMonitoringClusterRestService.mon_host_cluster
         edit_template      : "mon.host.cluster.form"
         delete_confirm_str : (obj) ->
             return "Really delete host cluster '#{obj.name}' ?"
@@ -52,7 +73,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringServiceClusterService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_CLUSTER_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_service_cluster
         edit_template       : "mon.service.cluster.form"
         delete_confirm_str  : (obj) ->
             return "Really delete service cluster '#{obj.name}' ?"
@@ -74,7 +95,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringHostDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret = {
-        rest_url            : ICSW_URLS.REST_MON_HOST_DEPENDENCY_TEMPL_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_host_dependency_templ
         edit_template       : "mon.host.dependency.templ.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Host dependency template '#{obj.name}' ?"
@@ -98,7 +119,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringServiceDependencyTemplateService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_TEMPL_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_service_dependency_templ
         edit_template       : "mon.service.dependency.templ.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Service dependency template '#{obj.name}' ?"
@@ -121,7 +142,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringHostDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_HOST_DEPENDENCY_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_host_dependency
         edit_template       : "mon.host.dependency.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Host-dependency ?"
@@ -135,7 +156,7 @@ monitoring_cluster_module.directive('icswMonitoringCluster', () ->
     return ret
 ]).service('icswMonitoringServiceDependencyService', ["ICSW_URLS", "icswMonitoringClusterRestService", (ICSW_URLS, icswMonitoringClusterRestService) ->
     ret =  {
-        rest_url            : ICSW_URLS.REST_MON_SERVICE_DEPENDENCY_LIST
+        rest_handle         : icswMonitoringClusterRestService.mon_service_dependency
         edit_template       : "mon.service.dependency.form"
         delete_confirm_str  : (obj) ->
             return "Really delete Service-dependency ?"

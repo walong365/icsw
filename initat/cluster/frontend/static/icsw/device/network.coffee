@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 angular.module(
     "icsw.svg_tools",
     []
@@ -752,14 +771,15 @@ angular.module(
                 }
             )          
         $scope.reload()
-]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service) ->
+]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "icswLivestatusFilterFactory",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, icswLivestatusFilterFactory) ->
         access_level_service.install($scope)
         $scope.graph_sel = "sel"
         $scope.show_livestatus = false
         $scope.devices = []
         $scope.new_devsel = (_dev_sel) ->
             $scope.devices = _dev_sel
+        $scope.ls_filter = new icswLivestatusFilterFactory()
 ]).directive("icswDeviceNetworkNodeTransform", [() ->
     return {
         restrict: "A"
@@ -790,16 +810,10 @@ angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.network.host.livestatus")
-        controller: "icswDeviceLiveStatusCtrl"
         scope:
              devicepk: "=devicepk"
-             redrawSunburst: "=redrawSunburst"
+             ls_filter: "=lsFilter"
         replace: true
-        link : (scope, element, attrs) ->
-            scope.$watch("devicepk", (data) ->
-                if data
-                    scope.new_devsel([data], [])
-            )
     }
 ]).directive("icswDeviceNetworkHostNode", ["dragging", "$templateCache", (dragging, $templateCache) ->
     return {
@@ -810,7 +824,6 @@ angular.module(
             node: "=node"
             redraw: "=redraw"
         template: $templateCache.get("icsw.device.network.host.node")
-        # template:  '<icsw-device-livestatus-brief devicepk="node.id" redraw-sunburst="ignore_shit"></icsw-device-livestatus>
         link : (scope, element, attrs) ->
             scope.stroke_width = 1
             scope.focus = true

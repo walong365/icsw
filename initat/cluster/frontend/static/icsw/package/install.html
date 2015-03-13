@@ -156,7 +156,7 @@
                     <thead icsw-package-install-repository-head></thead>
                     <tbody>
                         <tr>
-                            <td colspan="5" icsw-tools-pagination paginator-filter="func" paginator-filter-func="fn.filter_repo" st-items-per-page="10" possible-items-per-page="10,20,50,100">
+                            <td colspan="5" icsw-tools-pagination paginator-filter="func" paginator-filter-func="fn.filter_repo" st-items-by-page="10" possible-items-by-page="10,20,50,100">
                             </td>
                             <td>
                                 show:
@@ -184,7 +184,7 @@
                 <table st-table="searches_displayed" st-safe-src="entries.searches" class="table table-condensed table-hover" style="width:auto;">
                     <thead icsw-package-install-search-head></thead>
                     <tbody>
-                        <tr><td colspan="9" icsw-tools-pagination  st-items-per-page="10" possible-items-per-page="10,20,50,100"></td></tr>
+                        <tr><td colspan="9" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td></tr>
                         <tr icsw-package-install-search-row ng-repeat="obj in searches_displayed"></tr>
                     </tbody>
                 </table>
@@ -194,7 +194,7 @@
                 <table st-table="searchresults_displayed" st-safe-src="entries.searchresults" class="table table-condensed table-hover" style="width:auto;">
                     <thead icsw-package-install-search-result-head></thead>
                     <tbody>
-                        <tr><td colspan="9" icsw-tools-pagination  st-items-per-page="10" possible-items-per-page="10,20,50,100"></td></tr>
+                        <tr><td colspan="9" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td></tr>
                         <tr icsw-package-install-search-result-row ng-repeat="obj in searchresults_displayed"></tr>
                     </tbody>
                 </table>
@@ -264,7 +264,7 @@
                 <table st-table="packages_displayed" st-safe-src="entries.packages" class="table table-condensed table-hover" style="width:auto;">
                     <thead icsw-package-install-package-head></thead>
                     <tbody>
-                        <tr><td colspan="9" icsw-tools-pagination  st-items-per-page="10" possible-items-per-page="10,20,50,100"></td></tr>
+                        <tr><td colspan="9" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td></tr>
                         <tr icsw-package-install-package-row ng-repeat="obj in packages_displayed"></tr>
                     </tbody>
                 </table>
