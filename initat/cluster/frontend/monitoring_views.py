@@ -21,6 +21,7 @@
 #
 
 """ monitoring views """
+import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.db.models.query import Prefetch
@@ -474,7 +475,7 @@ class _device_status_history_util(object):
 
         try:
             return mon_icinga_log_aggregated_timespan.objects.get(duration_type=duration_type.ID,
-                                                                  start_date__range=(start, end))
+                                                                  start_date__range=(start, end - datetime.timedelta(seconds=1)))
         except mon_icinga_log_aggregated_timespan.DoesNotExist:
             return None
 
@@ -567,7 +568,6 @@ class get_hist_timespan(RetrieveAPIView):
                 pass  # no data at all, can't do anything useful
             else:
                 date = duration_utils.parse_date(request.GET["date"])
-                date = date.replace(tzinfo=pytz.UTC)
                 if latest_timespan_db.end_date < date:
                     data = {'status': 'found earlier', 'start': latest_timespan_db.start_date, 'end': latest_timespan_db.end_date}
 

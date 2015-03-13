@@ -128,8 +128,8 @@ angular.module(
 
                     time_frame = status_history_ctrl.time_frame
                     status_utils_functions.get_service_data([scope.deviceid], time_frame.date_gui, time_frame.duration_type, serv_cont)
-                    if time_frame.duration_type != 'year'
-                        status_utils_functions.get_service_data([scope.deviceid], time_frame.date_gui, time_frame.duration_type, serv_line_graph_cont, 0, true)
+                    # also query for year currently
+                    status_utils_functions.get_service_data([scope.deviceid], time_frame.date_gui, time_frame.duration_type, serv_line_graph_cont, 0, true)
                 else
                     scope.service_data = []
 
@@ -155,11 +155,8 @@ angular.module(
             scope.duration_type = 'day'
 
             if false  # debug
-                scope.duration_type = 'day'
-                scope.startdate = moment('Tue Feb 17 2015 00:00:00 GMT+0100 (CET)')
-
                 scope.duration_type = 'month'
-                scope.startdate = moment('Tue Feb 17 2014 00:00:00 GMT+0100 (CET)')
+                scope.startdate = moment('Tue Jun 17 2014 00:00:00 GMT+0100 (CET)')
 
             scope.set_duration_type = (d) ->
                 scope.duration_type = d

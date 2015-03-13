@@ -96,7 +96,8 @@
             <h3>
                 {{device_rest.full_name}}
                 <small>
-                    (from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }})
+                    (<ng-pluralize count="service_data.length" when="{'0': 'No services', 'one': '1 service', 'other': '{} services'}"></ng-pluralize>
+                    from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }})
                 </small>
             </h3>
         </div>

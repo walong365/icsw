@@ -245,10 +245,9 @@ angular.module(
         }
         require : "^icswDeviceStatusHistoryOverview"
         template: """
-<div class="icsw-chart" ng-attr-style="width: {{width}}px; height: {{height}}px;"> <!-- this must be same size as svg for tooltip positioning to work -->
+<div class="icsw-chart" ng-attr-style="width: {{width}}px; height: {{height}}px; margin-bottom: 7px;"> <!-- this must be same size as svg for tooltip positioning to work -->
     <svg ng-attr-width="{{width}}" ng-attr-height="{{height}}" >
         <g ng-show="!error">
-
             <rect ng-attr-width="{{width}}" ng-attr-height="{{height}}" x="0" y="0" fill="rgba(0, 0, 0, 0.0)"
             ng-click="entry_clicked(undefined)"></rect>
             <rect ng-repeat="entry in data_display" ng-attr-x="{{entry.pos_x}}" ng-attr-y="{{entry.pos_y}}"
@@ -313,8 +312,6 @@ angular.module(
 
                     if scope.data.length > 5000
                         scope.error = "Too much data to display"
-                    else if time_frame.duration_type == "year" and !scope.forHost()
-                        # no error, but also display nothing
                     else
                         # set time marker
                         time_marker = status_history_ctrl.get_time_marker()
@@ -433,41 +430,28 @@ angular.module(
             'data' : '&'  # takes same data as line graph
             'enabled' : '&'
         }
-        template: """
-<table class="table table-condensed table-striped" ng-show="actual_data.length > 0" st-table="log_entries_displayed"  st-safe-src="actual_data">
-    <thead>
-        <tr>
-            <td colspan="99">
-                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="99">
-                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
-            </td>
-        </tr>
-        <tr>
-            <th>Date</th>
-            <th>State</th>
-            <th>Message</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr ng-repeat="entry in log_entries_displayed" class="text-left">
-            <td ng-bind="entry.date | datetime_concise"></td>
-            <td ng-bind="entry.state | limit_text_no_dots:3"></td>
-            <td ng-bind="entry.msg"></td>
-        </tr>
-    </tbody>
-</table>
-"""
+        templateUrl: "icsw.tools.hist_log_viewer"
         link: (scope, element, attrs) ->
-            scope.$watch('enabled()', () ->
+            scope.view_mode = 'new'
+            scope.$watchGroup(['enabled()', 'view_mode'], () ->
+                scope.actual_data = []
                 if scope.enabled()
-                    scope.actual_data = scope.data()
-                else
-                    scope.actual_data = []
+                    if scope.view_mode == 'all'
+                        scope.actual_data = scope.data()
+
+                    else if scope.view_mode == 'new'
+                        last_line = {'msg': undefined}
+                        for line in scope.data()
+                            if line.msg != last_line.msg
+                                scope.actual_data.push(line)
+                            last_line = line
+
+                    else if scope.view_mode == 'state_change'
+                        last_line = {'state': undefined}
+                        for line in scope.data()
+                            if line.state != last_line.state
+                                scope.actual_data.push(line)
+                            last_line = line
             )
     }
 ])
