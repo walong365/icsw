@@ -29,13 +29,14 @@
     <div class="row">
         <div class="col-md-4 col-xs-12 col-lg-3">
             <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService">
+                {{ filtered_entries.length }}
                 <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
                     <thead>
                         <tr>
                             <td colspan="99">
                                 <div class="form-inline">
                                     <div icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></div>
-                                    <input placeholder="filter..." st-search="" class="form-control input-sm">
+                                    <input placeholder="filter..." st-search="output" class="form-control input-sm" type="search">
                                     </input>
                                 </div>
                             </td>
@@ -145,6 +146,7 @@
             fontstroke="1"
             draw-all="1"
             zoom-level="d"
+            noninteractive="true"
         ></newburst>
     </g>
 </script>
@@ -166,6 +168,7 @@
                         innerradius="60"
                         service-focus="focusService"
                         omitted-segments="omittedSegments"
+                        propagate-filter="1"
                         zoom="1"
                     ></newburst>
                 </g>

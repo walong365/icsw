@@ -28,7 +28,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-device-boot-row ng-repeat-start="dev in devices"></tr>
+            <tr icsw-device-boot-row ng-repeat-start="dev in devices" ng-class="get_row_class(dev)"></tr>
             <tr ng-repeat-end ng-show="bo_enabled['l'] && dev.show_log">
                 <td colspan="100">
                     <icsw-device-boot-log-table></icsw-device-boot-log-table>
