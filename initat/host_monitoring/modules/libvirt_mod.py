@@ -169,7 +169,7 @@ class _general(hm_classes.hm_module):
             self.doms_reg -= rem_doms
             for dom_del in rem_doms:
                 self.log("unregistering domain {}".format(dom_del))
-                mv.unregister_tree("virt.{}".format(dom_del))
+                mv.unregister_tree("virt.{}.".format(dom_del))
                 self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.{}.".format(dom_del))])
 
 
