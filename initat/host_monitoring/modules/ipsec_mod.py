@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2009,2012-2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2008-2009,2012-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,9 +36,11 @@ class _general(hm_classes.hm_module):
             if self.__ipsec_command:
                 com = "{} {}".format(self.__ipsec_command, com[1:])
             else:
-                self.log("no ipsec command found",
-                         logging_tools.LOG_LEVEL_ERROR)
-                com, out = ("", "")
+                self.log(
+                    "no ipsec command found",
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                com, out = (None, "")
         if com:
             c_stat, out = commands.getstatusoutput(com)
             if c_stat:
@@ -155,15 +157,26 @@ class ipsec_tunnel(object):
         self.t_id = t_id
         self.__parts = []
         self.__installed = False
+        self.__rekeying = False
 
     def feed(self, _parts):
         _line = " ".join(_parts)
         if _line.count("INSTALLED"):
             self.__installed = True
+        if _line.count("REKEYING"):
+            self.__rekeying = True
         self.__parts.append(_line)
         # print "*", self.t_id, self.__parts
 
     def is_ok(self):
+        return self.__installed
+
+    @property
+    def rekeying(self):
+        return self.__rekeying
+
+    @property
+    def installed(self):
         return self.__installed
 
 
@@ -204,9 +217,16 @@ class c_con(object):
             self.__tunnels[_id] = ipsec_tunnel(_id)
         self.__tunnels[_id].feed(_parts)
 
-    def tunnel_ok(self):
+    def tunnel_installed(self):
         if self.__tunnels:
-            return any([_tunnel.is_ok() for _tunnel in self.__tunnels.itervalues()])
+            return any([_tunnel.installed for _tunnel in self.__tunnels.itervalues()])
+        else:
+            # no tunnels
+            return False
+
+    def tunnel_rekeying(self):
+        if self.__tunnels:
+            return any([_tunnel.rekeying for _tunnel in self.__tunnels.itervalues()])
         else:
             # no tunnels
             return False
@@ -271,7 +291,10 @@ class ipsec_status_command(hm_classes.hm_command):
                 if _con_dict:
                     ret_state, ret_list = (limits.nag_STATE_OK, [])
                     for con_name in sorted(_con_dict):
-                        if _con_dict[con_name].tunnel_ok():
+                        if _con_dict[con_name].tunnel_rekeying():
+                            ret_list.append("{} is rekeying".format(con_name))
+                            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        elif _con_dict[con_name].tunnel_installed():
                             ret_list.append("{} ok".format(con_name))
                         else:
                             ret_list.append("no installed tunnel for {}".format(con_name))
@@ -282,15 +305,16 @@ class ipsec_status_command(hm_classes.hm_command):
             else:
                 if first_arg in _con_dict:
                     _conn = _con_dict[first_arg]
-                    if _conn.tunnel_ok():
+                    if _conn.tunnel_rekeying():
+                        return limits.nag_STATE_WARNING, "connection {} is defined but tunnel is rekeying".format(_conn.name)
+                    elif _conn.tunnel_installed():
                         return limits.nag_STATE_OK, "connection {} is defined and tunnel is installed".format(_conn.name)
                     else:
                         return limits.nag_STATE_CRITICAL, "connection {} is defined but no tunnel installed".format(_conn.name)
                 else:
                     return limits.nag_STATE_CRITICAL, "connection '{}' not found (defined: {})".format(
                         first_arg,
-                        ", ".join(sorted(_con_dict)) or "none"
-                    )
+                        ", ".join(sorted(_con_dict)) or "none")
         else:
             # old strongswans
             if not first_arg:
