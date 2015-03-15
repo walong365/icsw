@@ -2,68 +2,52 @@
     <h3>
         <icsw-device-livestatus-filter ls-filter="ls_filter"></icsw-device-livestatus-filter>
     </h3>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="form-group">
-                <label>show:</label>
-                <div class="btn-group">
-                    <input type="button" class="btn btn-xs" ng-class="cat_tree_show && 'btn-success' || 'btn-default'" ng-click="cat_tree_show=!cat_tree_show" value="categories"/>
-                    <input type="button" class="btn btn-xs" ng-class="burst_show && 'btn-success' || 'btn-default'" ng-click="burst_show=!burst_show" value="burst"/>
-                    <input type="button" class="btn btn-xs" ng-class="map_show && 'btn-success' || 'btn-default'" ng-click="map_show=!map_show" value="map"/>
-                    <input type="button" class="btn btn-xs" ng-class="table_show && 'btn-success' || 'btn-default'" ng-click="table_show=!table_show" value="table"/>
-                </div>
+    <h4>
+        <div class="form-group">
+            <label>show:</label>
+            <div class="btn-group btn-xs">
+                <input ng-repeat="lo in layouts" type="button" class="btn btn-xs" ng-class="cur_layout == lo && 'btn-success'" ng-value="lo" ng-click="activate_layout(lo)"/>
             </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-md-4 col-xs-12 col-lg-3">
-            <icsw-device-livestatus-cat-tree ls-filter="ls_filter" ng-show="cat_tree_show"></icsw-device-livestatus-cat-tree>
-        </div>
-        <div class="col-md-4 col-xs-12 col-lg-3">
-            <div icsw-device-livestatus-fullburst icsw-element-size="size" ls-devsel="ls_devsel" ls-filter="ls_filter" ng_show="burst_show"></div>
-        </div>
-        <div class="col-md-4 col-xs-12 col-lg-3">
-            <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter" ng_show="map_show"></div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-4 col-xs-12 col-lg-3">
-            <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService">
-                <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;" ng-show="table_show">
-                    <thead>
-                        <tr>
-                            <td colspan="99">
-                                <div class="form-inline">
-                                    <div icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></div>
-                                    <input placeholder="filter..." st-search="output" class="form-control input-sm" type="search">
-                                    </input>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="99">
-                                <icsw-tools-show-hide-columns ng-show="table_show" columns="state state_type flags description cats output"></icsw-tools-show-hide-columns>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th st-sort="host_name" st-sort-default="true">device</th>
-                            <th ng-show="show_column.state" st-sort="state">state</th>
-                            <th ng-show="show_column.flags">flags</th>
-                            <th ng-show="show_column.description" st-sort="description">description</th>
-                            <th ng-show="show_column.cats">categories</th>
-                            <th st-sort="last_check">last check</th>
-                            <th st-sort="last_state_change">last change</th>
-                            <th ng-show="show_column.output" st-sort="plugin_output">result</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr icsw-device-livestatus-check-service show-column="show_column" service="entry" ls-filter="ls_filter" ng-repeat="entry in entries_displayed">
-                        </tr>
-                    </tbody>
-                </table>
-            </icsw-tools-rest-table>
-        </div>
-    </div>
+    </h4>
+    <div ui-view></div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.table.view">
+    <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService">
+        <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;">
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div class="form-inline">
+                            <div icsw-tools-pagination st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></div>
+                            <input placeholder="filter..." st-search="output" class="form-control input-sm" type="search">
+                            </input>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="99">
+                        <icsw-tools-show-hide-columns columns="state state_type flags description cats output"></icsw-tools-show-hide-columns>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="host_name" st-sort-default="true">device</th>
+                    <th ng-show="show_column.state" st-sort="state">state</th>
+                    <th ng-show="show_column.flags">flags</th>
+                    <th ng-show="show_column.description" st-sort="description">description</th>
+                    <th ng-show="show_column.cats">categories</th>
+                    <th st-sort="last_check">last check</th>
+                    <th st-sort="last_state_change">last change</th>
+                    <th ng-show="show_column.output" st-sort="plugin_output">result</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr icsw-device-livestatus-check-service show-column="show_column" service="entry" ls-filter="ls_filter" ng-repeat="entry in entries_displayed">
+                </tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.location.map">
@@ -180,7 +164,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">
-    <tabset>
+    <h3 ng-show="show_maps">{{ location_gfx_list.length }} Maps</h3>
+    <tabset ng-if="show_maps">
         <tab ng-repeat="loc_gfx in location_gfx_list" active="loc_gfx.active">
             <tab-heading>
                 {{ loc_gfx.name }} (<ng-pluralize count="loc_gfx.dml_list.length" when="{'1': '1 device', 'other' : '{} devices'}"></ng-pluralize>)
@@ -209,6 +194,7 @@
             </div>
         </tab>
     </tabset>
+    <h3 ng-show="!show_maps">No maps to show</h3>
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.filter">

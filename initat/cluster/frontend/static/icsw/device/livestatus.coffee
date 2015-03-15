@@ -79,7 +79,7 @@ class hs_node
 angular.module(
     "icsw.device.livestatus",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
 ).factory("icswLivestatusDevSelFactory", [() ->
     return () ->
@@ -278,20 +278,20 @@ angular.module(
 ]).controller("icswDeviceLiveStatusCtrl",
     ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$modal", "$timeout",
      "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "icswDeviceLivestatusDataService",
-     "icswCachingCall", "icswLivestatusFilterFactory", "icswDeviceTreeService", "icswLivestatusDevSelFactory",
+     "icswCachingCall", "icswLivestatusFilterFactory", "icswDeviceTreeService", "icswLivestatusDevSelFactory", "$state",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource,
      $q, $modal, $timeout, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, icswDeviceLivestatusDataService,
-     icswCachingCall, icswLivestatusFilterFactory, icswDeviceTreeService, icswLivestatusDevSelFactory) ->
+     icswCachingCall, icswLivestatusFilterFactory, icswDeviceTreeService, icswLivestatusDevSelFactory, $state) ->
         $scope.host_entries = []
         $scope.service_entries = []
         $scope.filtered_entries = []
-        # display flags
-        $scope.cat_tree_show = false
-        $scope.burst_show = true
-        $scope.map_show = true
-        $scope.table_show = true
+        $scope.layouts = ["simple1", "simple2"]
         $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
         $scope.ls_devsel = new icswLivestatusDevSelFactory()
+        $scope.activate_layout = (name) ->
+            $scope.cur_layout = name
+            $state.go($scope.cur_layout)
+        $scope.activate_layout($scope.layouts[0])
         $scope.$watch(
             $scope.ls_filter.changed
             (new_filter) ->
@@ -1105,6 +1105,19 @@ angular.module(
                     scope.new_devsel([data], [])
             )
     }
+]).directive("icswDeviceLivestatusTableView",
+    ["$templateCache", "icswDeviceLivestatusCategoryTreeService", "icswCachingCall", "$q", "ICSW_URLS",
+    ($templateCache, icswDeviceLivestatusCategoryTreeService, icswCachingCall, $q, ICSW_URLS) ->
+        return {
+            restrict: "EA"
+            template: $templateCache.get("icsw.device.livestatus.table.view")
+            scope: {
+                ls_filter: "=lsFilter"
+                ls_devsel: "=lsDevsel"
+                filtered_entries: "=filteredEntries"
+            }
+            link: (scope, elem, attrs) ->
+        }
 ]).directive("icswDeviceLivestatusCatTree",
     ["$templateCache", "icswDeviceLivestatusCategoryTreeService", "icswCachingCall", "$q", "ICSW_URLS",
     ($templateCache, icswDeviceLivestatusCategoryTreeService, icswCachingCall, $q, ICSW_URLS) ->
@@ -1246,6 +1259,8 @@ angular.module(
             scope.location_gfx_list = []
             scope.devsel_list = []
             scope.cur_page = -1
+            # flag for enclosing div
+            scope.show_maps = false
             scope.$watch(
                 scope.ls_devsel.changed
                 (changed) ->
@@ -1257,6 +1272,10 @@ angular.module(
                     ]
                     $q.all(wait_list).then((data) ->
                         scope.location_gfx_list = data[0]
+                        if scope.location_gfx_list.length
+                            scope.show_maps = true
+                        else
+                            scope.show_maps = false
                         scope.ls_filter.set_num_maps(scope.location_gfx_list.length)
                         gfx_lut = {}
                         for entry in scope.location_gfx_list
