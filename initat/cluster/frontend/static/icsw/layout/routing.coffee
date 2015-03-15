@@ -25,7 +25,6 @@ menu_module = angular.module(
     ]
 ).config(["$stateProvider",
     ($stateProvider) ->
-        console.log $stateProvider
         $stateProvider.state(
             "simple1",
             {

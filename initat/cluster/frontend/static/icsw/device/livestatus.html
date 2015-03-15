@@ -1,15 +1,15 @@
 <script type="text/ng-template" id="icsw.device.livestatus.overview">
     <h3>
+        <div class="btn-group">
+            <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown">
+                Layout ({{ cur_layout}})<span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-click="activate_layout(lo)" ng-repeat="lo in layouts"><a href="#">{{ lo }}</a></li>
+            </ul>
+        </div>
         <icsw-device-livestatus-filter ls-filter="ls_filter"></icsw-device-livestatus-filter>
     </h3>
-    <h4>
-        <div class="form-group">
-            <label>show:</label>
-            <div class="btn-group btn-xs">
-                <input ng-repeat="lo in layouts" type="button" class="btn btn-xs" ng-class="cur_layout == lo && 'btn-success'" ng-value="lo" ng-click="activate_layout(lo)"/>
-            </div>
-        </div>
-    </h4>
     <div ui-view></div>
 </script>
 
