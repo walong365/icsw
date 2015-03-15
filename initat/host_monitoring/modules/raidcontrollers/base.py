@@ -23,6 +23,7 @@ import time
 
 from initat.host_monitoring import hm_classes
 import logging_tools
+import process_tools
 import server_command
 
 
@@ -100,14 +101,14 @@ class ctrl_type(object):
         self.update_ctrl(ctrl_ids)
 
     def get_exec_name(self):
-        if type(self.Meta.exec_name) is []:
+        if type(self.Meta.exec_name) is list:
             return ", ".join(self.Meta.exec_name)
         else:
             return self.Meta.exec_name
 
     def check_for_exec(self):
         if self._check_exec is None:
-            if type(self.Meta.exec_name) is []:
+            if type(self.Meta.exec_name) is list:
                 _cns = self.Meta.exec_name
             else:
                 _cns = [self.Meta.exec_name]
@@ -167,7 +168,18 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
         hm_classes.subprocess_struct.__init__(self, srv_com, ct_struct.get_exec_list(ctrl_list))
 
     def process(self):
-        self.__ct_struct.process(self)
+        try:
+            self.__ct_struct.process(self)
+        except:
+            exc_info = process_tools.exception_info()
+            for _line in exc_info.log_lines:
+                self.log(_line, logging_tools.LOG_LEVEL_ERROR)
+            self.srv_com.set_result(
+                "error in process() call: {}".format(
+                    process_tools.get_except_info()
+                ),
+                server_command.SRV_REPLY_STATE_CRITICAL
+            )
 
     def started(self):
         if hasattr(self.__ct_struct, "started"):

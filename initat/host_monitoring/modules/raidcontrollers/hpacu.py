@@ -62,17 +62,22 @@ class ctrl_type_hpacu(ctrl_type):
         return ["%s ctrl slot=%d show config detail" % (self._check_exec, self._dict[ctrl_id]["config"]["slot"]) for ctrl_id in ctrl_list]
 
     def scan_ctrl(self):
+        slot_re = re.compile(".*in\s+slot\s+(?P<slot>\d+)\s+.*", re.IGNORECASE)
         cur_stat, cur_lines = self.exec_command(" ctrl all show", post="strip")
         if not cur_stat:
             num_ctrl = len([True for line in cur_lines if line.lower().count("smart array")])
             if num_ctrl:
-                for ctrl_num in xrange(1, num_ctrl + 1):
-                    _parts = cur_lines[ctrl_num - 1].strip().split()
-                    try:
-                        slot_num = int(_parts[-2])
-                    except:
-                        slot_num = int(_parts[-4])
-                    _c_stat, c_result = self.exec_command(" ctrl slot=%d show status" % (slot_num))
+                for ctrl_num, _line in enumerate(cur_lines, 1):
+                    _slot_m = slot_re.match(_line)
+                    if _slot_m:
+                        slot_num = int(_slot_m.group("slot"))
+                    else:
+                        _parts = cur_lines[ctrl_num - 1].strip().split()
+                        try:
+                            slot_num = int(_parts[-2])
+                        except:
+                            slot_num = int(_parts[-4])
+                    _c_stat, c_result = self.exec_command(" ctrl slot={:d} show status".format(slot_num))
                     ctrl_stuff = {}
                     ctrl_stuff["config"] = {"slot": slot_num}
                     for key, val in [_split_config_line(line) for line in c_result if line.count(":")]:
@@ -183,7 +188,9 @@ class ctrl_type_hpacu(ctrl_type):
         key = key.strip()
         value = value.strip()
         key = key.replace(" ", "_")
-        if key.count("temperature"):
+        if key.endswith("_status"):
+            pass
+        elif key.count("temperature"):
             value = float(value)
         elif key == "logical_drive_label":
             # remove binary values from label, stupid HP

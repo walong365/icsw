@@ -19,11 +19,12 @@
 
 import argparse
 import cPickle
-import logging_tools
 import marshal
-import server_command
 import subprocess
 import time
+
+import logging_tools
+import server_command
 
 
 def net_to_sys(in_val):
@@ -256,12 +257,10 @@ class hm_command(object):
         self.module.main_proc.log(u"[{}] {}".format(self.name, what), log_level)
 
     def _parser_exit(self, status=0, message=None):
-        raise ValueError, (status, message)
-    # self.parser_exit, self.parser_message = (status, message)
+        raise ValueError(status, message)
 
     def _parser_error(self, message):
-        raise ValueError, (2, message)
-        self.parser_exit, self.parser_message = (2, message)
+        raise ValueError(2, message)
 
     def handle_commandline(self, arg_list):
         # for arguments use "--" to separate them from the commandline arguments
