@@ -53,7 +53,7 @@ def _split_config_line(line):
 class ctrl_type_hpacu(ctrl_type):
     class Meta:
         name = "hpacu"
-        exec_name = "hpacucli"
+        exec_name = ["hpssacli", "hpacucli"]
         description = "HP Acu controller"
 
     def get_exec_list(self, ctrl_list=[]):

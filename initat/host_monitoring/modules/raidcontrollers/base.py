@@ -99,22 +99,36 @@ class ctrl_type(object):
             self._scan()
         self.update_ctrl(ctrl_ids)
 
+    def get_exec_name(self):
+        if type(self.Meta.exec_name) is []:
+            return ", ".join(self.Meta.exec_name)
+        else:
+            return self.Meta.exec_name
+
     def check_for_exec(self):
         if self._check_exec is None:
-            for s_path in ["/opt/cluster/sbin", "/sbin", "/usr/sbin", "/bin", "/usr/bin"]:
-                cur_path = os.path.join(s_path, self.Meta.exec_name)
-                if os.path.islink(cur_path):
-                    self._check_exec = os.path.normpath(os.path.join(cur_path, os.readlink(cur_path)))
-                    break
-                elif os.path.isfile(cur_path):
-                    self._check_exec = cur_path
+            if type(self.Meta.exec_name) is []:
+                _cns = self.Meta.exec_name
+            else:
+                _cns = [self.Meta.exec_name]
+            # iterate over check_names
+            for _cn in _cns:
+                for s_path in ["/opt/cluster/sbin", "/sbin", "/usr/sbin", "/bin", "/usr/bin"]:
+                    cur_path = os.path.join(s_path, _cn)
+                    if os.path.islink(cur_path):
+                        self._check_exec = os.path.normpath(os.path.join(cur_path, os.readlink(cur_path)))
+                        break
+                    elif os.path.isfile(cur_path):
+                        self._check_exec = cur_path
+                        break
+                if self._check_exec is not None:
                     break
         if self._check_exec:
-            self.log("found check binary at '{}'".format(self._check_exec))
+            self.log("found check binary for {} at '{}'".format(_cn, self._check_exec))
         else:
             self.log(
                 "no check binary '{}' found".format(
-                    self.Meta.exec_name
+                    self.get_exec_name(),
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
@@ -136,7 +150,7 @@ class ctrl_type(object):
             return True
         else:
             srv_com.set_result(
-                "monitoring tool '{}' missing".format(self.Meta.exec_name),
+                "monitoring tool '{}' missing".format(self.get_exec_name()),
                 server_command.SRV_REPLY_STATE_ERROR
             )
             return False
