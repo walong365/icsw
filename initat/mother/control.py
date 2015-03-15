@@ -372,36 +372,53 @@ class host(machine):
     def set_maint_ip(self, ip=None):
         if ip:
             if self.maint_ip and (self.maint_ip.ip != ip.ip or self.maint_ip.netdevice.macaddr != ip.netdevice.macaddr):
-                self.log("Changing maintenance IP and MAC from {} ({}) [{}] to {} ({}) [{}] and setting node-flag".format(
-                    self.maint_ip.ip,
-                    self.maint_ip.get_hex_ip(),
-                    self.maint_ip.netdevice.macaddr,
-                    ip.ip,
-                    ip.get_hex_ip(),
-                    ip.netdevice.macaddr))
+                self.log(
+                    "Changing maintenance IP and MAC from {} ({}) [{}] to {} ({}) [{}] and setting node-flag".format(
+                        self.maint_ip.ip,
+                        self.maint_ip.get_hex_ip(),
+                        self.maint_ip.netdevice.macaddr,
+                        ip.ip,
+                        ip.get_hex_ip(),
+                        ip.netdevice.macaddr
+                    )
+                )
             else:
-                self.log("Setting maintenance IP and MAC to {} ({}) [{}] and setting node-flag".format(
-                    ip.ip,
-                    ip.get_hex_ip(),
-                    ip.netdevice.macaddr))
+                self.log(
+                    "Setting maintenance IP and MAC to {} ({}) [{}] and setting node-flag".format(
+                        ip.ip,
+                        ip.get_hex_ip(),
+                        ip.netdevice.macaddr
+                    )
+                )
             self.maint_ip = ip
-            self.is_node = True
         else:
             self.log("Clearing maintenance IP and MAC (and node-flag)")
             self.maint_ip = None
             self.dhcp_mac_written = None
             self.dhcp_ip_written = None
-            self.is_node = False
 
     def get_bnd(self):
         return self.__bnd
+
+    @property
+    def is_node(self):
+        # check if device is a valid node
+        if self.maint_ip and self.bootnetdevice is not None:
+            return True
+        else:
+            return False
 
     def set_bnd(self, val):
         if val is None:
             self.log("clearing bootnetdevice")
             self.__bnd = val
         else:
-            self.log("changing bootnetdevice_name from '{}' to '{}'".format(self.__bnd.devname if self.__bnd else "unset", val))
+            self.log(
+                "changing bootnetdevice_name from '{}' to '{}'".format(
+                    self.__bnd.devname if self.__bnd else "unset",
+                    val
+                )
+            )
             self.__bnd = val
     bootnetdevice = property(get_bnd, set_bnd)
 
@@ -474,7 +491,9 @@ class host(machine):
             self.log(
                 "found {}: {}".format(
                     logging_tools.get_plural("IP-address", len(ip_dict)),
-                    ", ".join(sorted(ip_dict.keys()))))
+                    ", ".join(sorted(ip_dict.keys()))
+                )
+            )
             link_array = []
             if self.etherboot_dir:
                 link_array.extend(
@@ -496,8 +515,10 @@ class host(machine):
             self.log("Setting reachable flag")
             self.device.reachable = True
         else:
-            self.log("Cannot add device {} (empty ip_list -> cannot reach host)".format(self.name),
-                     logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "Cannot add device {} (empty ip_list -> cannot reach host)".format(self.name),
+                logging_tools.LOG_LEVEL_WARN
+            )
             self.device.reachable = False
         self.set_ip_dict(ip_dict)
         self.server_ip_dict = server_ip_dict
@@ -1183,26 +1204,32 @@ class controlling_device(machine):
     def set_maint_ip(self, ip=None):
         if ip:
             if self.maint_ip and (self.maint_ip.ip != ip.ip or self.maint_ip.netdevice.macaddr != ip.netdevice.macaddr):
-                self.log("Changing maintenance IP and MAC from {} ({}) [{}] to {} ({}) [{}] and setting node-flag".format(
-                    self.maint_ip.ip,
-                    self.maint_ip.get_hex_ip(),
-                    self.maint_ip.netdevice.macaddr,
-                    ip.ip,
-                    ip.get_hex_ip(),
-                    ip.netdevice.macaddr))
+                self.log(
+                    "Changing maintenance IP and MAC from {} ({}) [{}] to {} ({}) [{}] and setting node-flag".format(
+                        self.maint_ip.ip,
+                        self.maint_ip.get_hex_ip(),
+                        self.maint_ip.netdevice.macaddr,
+                        ip.ip,
+                        ip.get_hex_ip(),
+                        ip.netdevice.macaddr
+                    )
+                )
             else:
-                self.log("Setting maintenance IP and MAC to {} ({}) [{}] and setting node-flag".format(
-                    ip.ip,
-                    ip.get_hex_ip(),
-                    ip.netdevice.macaddr))
+                self.log(
+                    "Setting maintenance IP and MAC to {} ({}) [{}] and setting node-flag".format(
+                        ip.ip,
+                        ip.get_hex_ip(),
+                        ip.netdevice.macaddr
+                    )
+                )
             self.maint_ip = ip
-            self.is_node = True
+            # self.is_node = True
         else:
             self.log("Clearing maintenance IP and MAC (and node-flag)")
             self.maint_ip = None
             self.dhcp_mac_written = None
             self.dhcp_ip_written = None
-            self.is_node = False
+            # self.is_node = False
 
     def get_bnd(self):
         return self.__bnd
@@ -1212,7 +1239,12 @@ class controlling_device(machine):
             self.log("clearing bootnetdevice")
             self.__bnd = val
         else:
-            self.log("changing bootnetdevice_name from '{}' to '{}'".format(self.__bnd.devname if self.__bnd else "unset", val))
+            self.log(
+                "changing bootnetdevice_name from '{}' to '{}'".format(
+                    self.__bnd.devname if self.__bnd else "unset",
+                    val
+                )
+            )
             self.__bnd = val
     bootnetdevice = property(get_bnd, set_bnd)
 
