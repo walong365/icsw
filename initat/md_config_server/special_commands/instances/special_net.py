@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,11 +19,12 @@
 #
 """ special for network monitoring """
 
+import re
+
 from django.db.models import Q
 from initat.cluster.backbone.models import netdevice
 from initat.md_config_server.special_commands.base import SpecialBase
 import logging_tools
-import re
 
 
 class special_net(SpecialBase):
@@ -44,10 +45,11 @@ class special_net(SpecialBase):
             if not virt_check.match(net_dev.devname):
                 name_with_descr = "{}{}".format(
                     net_dev.devname,
-                    " ({})".format(net_dev.description) if net_dev.description else "")
+                    " ({})".format(net_dev.description) if net_dev.description else ""
+                )
                 _bps = net_dev.netdevice_speed.speed_bps
                 cur_temp = self.get_arg_template(
-                    "{} [HM]".format(name_with_descr),
+                    u"{} [HM]".format(name_with_descr),
                     w="{:.0f}".format(_bps * 0.9) if _bps else "-",
                     c="{:.0f}".format(_bps * 0.95) if _bps else "-",
                     arg_1=net_dev.devname,
