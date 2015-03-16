@@ -23,12 +23,132 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
-).controller("icswConfigCategoryTreeCtrl", [
+).service("icswConfigCategoryTreeFetchService", ["icswCachingCall", "$q", "ICSW_URLS", (icswCachingCall, $q, ICSW_URLS) ->
+    _fetch = (id, pk_list) ->
+        defer =$q.defer()
+        _wait = [
+            icswCachingCall.fetch(id, ICSW_URLS.REST_CATEGORY_LIST, {}, []),
+            icswCachingCall.fetch(id, ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": "<PKS>", "_distinct": true}, pk_list),
+            icswCachingCall.fetch(id, ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": "<PKS>"}, pk_list)
+        ]
+        $q.all(_wait).then((data) ->
+            defer.resolve(data)
+        )
+        return defer.promise
+    return {
+        "fetch": (id, pk_list) ->
+            return _fetch(id, pk_list)
+    }
+]).service("icswConfigCategoryTreeMapService", [() ->
+    _map = null
+    _locations = []
+    _map_id = 0
+    _loc_id = 0
+    return {
+        "map_set": () ->
+            return _map_id
+        "get_map": () ->
+            return _map
+        "set_map": (map) ->
+            _map_id++
+            _map = map
+        "locations_set": () ->
+            return _loc_id
+        "set_locations": (locs) ->
+            _loc_id++
+            _locations = locs
+        "locations_changed": () ->
+            _loc_id++
+        "get_locations": () ->
+            return _locations
+    }
+]).directive("icswConfigCategoryTreeGoogleMap", ["$templateCache", "icswConfigCategoryTreeMapService", ($templateCache, icswConfigCategoryTreeMapService) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.config.category.tree.google.map")
+        scope: {
+        }
+        link: (scope, element, attrs) ->
+            scope.locations = []
+            scope.marker_lut = {}
+            scope.map = {
+                center: {
+                    latitude: 4
+                    longitude: 7
+                }
+                zoom: 2
+                control: {}
+                options: {
+                    "streetViewControl": false
+                    "minZoom" : 1
+                    "maxZoom" : 20
+                }
+                marker: {
+                    events:{
+                        dragend: (marker, event_name, args) ->
+                            _pos = marker.getPosition()
+                            _cat = scope.marker_lut[marker.key]
+                            _cat.latitude = _pos.lat()
+                            _cat.longitude = _pos.lng()
+                            _cat.put()
+                    }
+                }
+                bounds: {
+                    "northeast" : {
+                        "latitude": 4
+                        "longitude": 4
+                    }
+                    "southwest": {
+                        "latitude": 20
+                        "longitude": 30
+                    }
+                    "ne" : {
+                        "latitude": 4
+                        "longitude": 4
+                    }
+                    "sw": {
+                        "latitude": 20
+                        "longitude": 30
+                    }
+                }
+            }
+            icswConfigCategoryTreeMapService.set_map(scope.map)
+            scope.build_markers = () ->
+                new_list = []
+                marker_lut = {}
+                for _entry in scope.locations
+                    new_list.push(
+                        {
+                            "latitude": _entry.latitude
+                            "longitude": _entry.longitude
+                            "key": _entry.idx
+                            "comment": if _entry.comment then "#{_entry.name} (#{_entry.comment})" else _entry.name
+                            "options": {
+                                "draggable": not _entry.locked
+                                "title": _entry.full_name
+                                "opacity": if _entry.locked then 1.0 else 0.7
+                            }
+                            "icon": null
+                        }
+                    )
+                    marker_lut[_entry.idx] = _entry
+                scope.locations = new_list
+                scope.marker_lut = marker_lut
+            scope.$watch(
+                () -> return icswConfigCategoryTreeMapService.locations_set()
+                (new_val) ->
+                    new_locs = icswConfigCategoryTreeMapService.get_locations()
+                    scope.locations = new_locs
+                    scope.build_markers()
+            )
+    }
+]).controller("icswConfigCategoryTreeCtrl", [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$window", "$timeout",
     "$q", "$modal", "access_level_service", "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryTreeService",
-    "icswCallAjaxService", "icswParseXMLResponseService", "toaster",
+    "icswCallAjaxService", "icswParseXMLResponseService", "toaster", "icswConfigCategoryTreeMapService", "icswConfigCategoryTreeFetchService",
    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $window, $timeout, $q, $modal, access_level_service,
-    FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster) ->
+    FileUploader, blockUI, icswTools, ICSW_URLS, icswConfigCategoryTreeService, icswCallAjaxService, icswParseXMLResponseService, toaster,
+    icswConfigCategoryTreeMapService, icswConfigCategoryTreeFetchService) ->
         $scope.cat = new icswConfigCategoryTreeService($scope, {})
         $scope.pagSettings = paginatorSettings.get_paginator("cat_base", $scope)
         $scope.entries = []
@@ -54,6 +174,12 @@ angular.module(
         $scope.gfx_mixin.edit_template = "location.gfx.form"
         $scope.form = {}
         $scope.locations = []
+        $scope.map = null
+        $scope.$watch(
+            () -> return icswConfigCategoryTreeMapService.map_set()
+            (new_val) ->
+                $scope.map = icswConfigCategoryTreeMapService.get_map()
+        )
         $scope.uploader = new FileUploader(
             scope : $scope
             url : ICSW_URLS.BASE_UPLOAD_LOCATION_GFX
@@ -85,54 +211,8 @@ angular.module(
                     for _copy in ["width", "height", "uuid", "content_type", "locked", "image_stored", "icon_url", "image_name", "image_url"]
                         $scope.cur_location_gfx[_copy] = data[_copy]
                 )
-        $scope.map = {
-            center: {
-                latitude: 4
-                longitude: 7
-            }
-            zoom: 2
-            control: {}
-            options: {
-                "streetViewControl": false
-                "minZoom" : 1
-                "maxZoom" : 20
-            }
-            marker: {
-                events:{
-                    dragend: (marker, event_name, args) ->
-                        _pos = marker.getPosition()
-                        _cat = $scope.marker_lut[marker.key]
-                        _cat.latitude = _pos.lat()
-                        _cat.longitude = _pos.lng()
-                        _cat.put()
-                }
-            }
-            bounds: {
-                "northeast" : {
-                    "latitude": 4
-                    "longitude": 4
-                }
-                "southwest": {
-                    "latitude": 20
-                    "longitude": 30
-                }
-                "ne" : {
-                    "latitude": 4
-                    "longitude": 4
-                }
-                "sw": {
-                    "latitude": 20
-                    "longitude": 30
-                }
-            }
-        }
         $scope.reload = () ->
-            wait_list = [
-                restDataSource.reload([ICSW_URLS.REST_CATEGORY_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_LOCATION_GFX_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST])
-            ]
-            $q.all(wait_list).then((data) ->
+            icswConfigCategoryTreeFetchService.fetch($scope.$id, null).then((data) ->
                 $scope.entries = data[0]
                 for entry in $scope.entries
                     entry.open = false
@@ -140,8 +220,15 @@ angular.module(
                 $scope.dml_list = data[2]
                 $scope.edit_mixin.create_list = $scope.entries
                 $scope.edit_mixin.delete_list = $scope.entries
+                $scope.build_locations()
                 $scope.rebuild_cat()
         )
+        $scope.build_locations = () ->
+            _locs = (entry for entry in $scope.entries when entry.depth > 1 and entry.full_name.split("/")[1] == "location" and entry.latitude and entry.longitude)
+            $scope.locations = _locs
+            icswConfigCategoryTreeMapService.set_locations(_locs)
+        $scope.get_valid_locations = () ->
+            return icswConfigCategoryTreeMapService.get_locations()
         if false
             $scope.redrawn = {"test" : 0}
             _el = $compile("<icsw-device-livestatus-brief devicepk='3' redraw-sunburst='redrawn.test'></icsw-device-livestatus-brief>")($scope)
@@ -178,7 +265,7 @@ angular.module(
                             else
                                 entry.obj.full_name = "/#{entry.obj.name}"
                     )
-                    $scope.build_markers()
+                    icswConfigCategoryTreeMapService.locations_changed()
                 else
                     $scope.reload()
             )
@@ -207,39 +294,16 @@ angular.module(
                 else
                     $scope.cat.add_root_node(t_entry)
             $scope.cat_lut = cat_lut
-            $scope.build_markers()
-        $scope.get_valid_locations = () ->
-            return (entry for entry in $scope.entries when entry.depth > 1 and entry.full_name.split("/")[1] == "location" and entry.latitude and entry.longitude)
-        $scope.build_markers = () ->
-            new_list = []
-            marker_lut = {}
-            for _entry in $scope.get_valid_locations()
-                new_list.push(
-                    {
-                        "latitude": _entry.latitude
-                        "longitude": _entry.longitude
-                        "key": _entry.idx
-                        "comment": if _entry.comment then "#{_entry.name} (#{_entry.comment})" else _entry.name
-                        "options": {
-                            "draggable": not _entry.locked
-                            "title": _entry.full_name
-                        }
-                        "icon": null
-                    }
-                )
-                marker_lut[_entry.idx] = _entry
-            $scope.locations = new_list
-            $scope.marker_lut = marker_lut
+            icswConfigCategoryTreeMapService.locations_changed()
         $scope.locate = (loc, $event) ->
-            $scope.map.control.refresh({"latitude":loc.latitude, "longitude":loc.longitude})
+            $scope.map.control.refresh({"latitude": loc.latitude, "longitude": loc.longitude})
             $scope.map.control.getGMap().setZoom(11)
             $event.stopPropagation()
             $event.preventDefault()
         $scope.toggle_lock = ($event, loc) ->
             loc.locked = !loc.locked
             loc.put()
-            _entry = (entry for entry in $scope.locations when entry.key == loc.idx)[0]
-            _entry.options.draggable = not loc.locked
+            icswConfigCategoryTreeMapService.locations_changed()
             $event.stopPropagation()
             $event.preventDefault()
         $scope.new_object = () ->
@@ -338,60 +402,8 @@ angular.module(
             )
         $scope.show_preview = (obj) ->
             $scope.preview_gfx = obj
-        $scope.rotate = (obj, degrees) ->
-            $scope.modify_image(
-                 obj
-                 {
-                    "id": obj.idx
-                    "mode": "rotate"
-                    "degrees" : degrees
-                 }
-            )
-        $scope.brightness = (obj, factor) ->
-            $scope.modify_image(
-                 obj
-                 {
-                    "id": obj.idx
-                    "mode": "brightness"
-                    "factor" : factor
-                 }
-            )
-        $scope.sharpen = (obj, factor) ->
-            $scope.modify_image(
-                 obj
-                 {
-                    "id": obj.idx
-                    "mode": "sharpen"
-                    "factor" : factor
-                 }
-            )
-        $scope.restore = (obj) ->
-            $scope.modify_image(obj, "restore")
-        $scope.undo = (obj) ->
-            $scope.modify_image(obj, "undo")
-        $scope.emboss = (obj) ->
-            $scope.modify_image(obj, "emboss")
-        $scope.contour = (obj) ->
-            $scope.modify_image(obj, "contour")
-        $scope.edge_enhance = (obj) ->
-            $scope.modify_image(obj, "edge_enhance")
-        $scope.find_edges = (obj) ->
-            $scope.modify_image(obj, "find_edges")
-        $scope.modify_image = (obj, data) ->
-            $scope.show_preview(obj)
-            if angular.isString(data)
-                data = {"id" : obj.idx, "mode": data}
-            blockUI.start()
-            icswCallAjaxService
-                url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
-                data: data
-                success: (xml) ->
-                    blockUI.stop()
-                    if icswParseXMLResponseService(xml)
-                        $scope.$apply(() ->
-                            obj.image_url = $(xml).find("value[name='image_url']").text()
-                            obj.icon_url = $(xml).find("value[name='icon_url']").text()
-                        )
+        $scope.close_preview = () ->
+            $scope.preview_gfx = undefined
         $scope.reload()
 ]).service("icswConfigCategoryTreeService", () ->
     class category_tree_edit extends tree_config
@@ -430,7 +442,81 @@ angular.module(
             else if cat.depth == 1
                 @scope.create_new(event, cat.full_name.split("/")[1])
 
-).directive("icswConfigCategoryTreeHead", ["$templateCache", ($templateCache) ->
+).directive("icswConfigCategoryTreeMapEnhance", ["$templateCache", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "blockUI", ($templateCache, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, blockUI) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.category.tree.map.enhance")
+        scope: {
+            preview_gfx: "=previewGfx"
+            close_call: "=closeCall"
+        }
+        link: (scope, element, attrs) ->
+            console.log attrs
+            scope.$watch(
+                attrs["previewGfx"]
+                (new_val) ->
+                    scope.preview_gfx = new_val
+            )
+            scope.close_preview = () ->
+                if attrs["closeCall"]
+                    scope.close_call()
+            scope.rotate = (degrees) ->
+                scope.modify_image(
+                     {
+                        "id": scope.preview_gfx.idx
+                        "mode": "rotate"
+                        "degrees" : degrees
+                     }
+                )
+            scope.resize = (factor) ->
+                scope.modify_image(
+                     {
+                        "id": scope.preview_gfx.idx
+                        "mode": "resize"
+                        "factor": factor
+                     }
+                )
+            scope.brightness = (factor) ->
+                scope.modify_image(
+                     {
+                        "id": scope.preview_gfx.idx
+                        "mode": "brightness"
+                        "factor" : factor
+                     }
+                )
+            scope.sharpen = (factor) ->
+                scope.modify_image(
+                     {
+                        "id": scope.preview_gfx.idx
+                        "mode": "sharpen"
+                        "factor" : factor
+                     }
+                )
+            scope.restore = () ->
+                scope.modify_image("restore")
+            scope.undo = (obj) ->
+                scope.modify_image("undo")
+            scope.modify_image = (data) ->
+                # scope.show_preview(obj)
+                if angular.isString(data)
+                    data = {"id" : scope.preview_gfx.idx, "mode": data}
+                blockUI.start()
+                icswCallAjaxService
+                    url : ICSW_URLS.BASE_MODIFY_LOCATION_GFX
+                    data: data
+                    success: (xml) ->
+                        blockUI.stop()
+                        if icswParseXMLResponseService(xml)
+                            scope.$apply(() ->
+                                scope.preview_gfx.image_url = $(xml).find("value[name='image_url']").text()
+                                scope.preview_gfx.icon_url = $(xml).find("value[name='icon_url']").text()
+                                scope.preview_gfx.width = parseInt($(xml).find("value[name='width']").text())
+                                scope.preview_gfx.height = parseInt($(xml).find("value[name='height']").text())
+                            )
+
+    }
+
+]).directive("icswConfigCategoryTreeHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.category.tree.head")

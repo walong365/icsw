@@ -330,9 +330,15 @@ angular.module(
     class LoadInfo
         constructor: (@key, @url, @options) ->
             @client_dict = {}
-            @pk_list = []
+            # initial value is null (== no filtering)
+            @pk_list = null
         add_pk_list: (client, pk_list) =>
-            @pk_list = @pk_list.concat(pk_list)
+            if pk_list != null
+                # got a non-null pk_list
+                if @pk_list == null
+                    # init pk_list if the list was still null
+                    @pk_list = []
+                @pk_list = @pk_list.concat(pk_list)
             _defer = $q.defer()
             @client_dict[client] = _defer
             return _defer
@@ -340,7 +346,9 @@ angular.module(
             opts = {}
             for key, value of @options
                 if value == "<PKS>"
-                    opts[key] = angular.toJson(@pk_list)
+                    if @pk_list != null
+                        # only set options when pk_list was not null
+                        opts[key] = angular.toJson(@pk_list)
                 else
                     opts[key] = value
             Restangular.all(@url.slice(1)).getList(opts).then(
@@ -578,6 +586,7 @@ angular.module(
                                 host_lut[entry.custom_variables.device_pk] = entry
                             srv_id = 0
                             for entry in service_entries
+                                entry.search_str = "#{entry.plugin_output} #{entry.display_name}"
                                 srv_id++
                                 # sanitize entries
                                 _sanitize_entries(entry)
@@ -1243,76 +1252,76 @@ angular.module(
             dml = scope.dml
             scope.transform = "translate(#{dml.pos_x},#{dml.pos_y})"
     }
-]).directive("icswDeviceLivestatusMaplist", ["$compile", "$templateCache", "icswCachingCall", "$q", "ICSW_URLS", "$timeout", ($compile, $templateCache, icswCachingCall, $q, ICSW_URLS, $timeout) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.livestatus.maplist")
-        scope: {
-            ls_filter: "=lsFilter"
-            ls_devsel: "=lsDevsel"
-        }
-        link: (scope, element, attrs) ->
-            # location gfx list
-            scope.gfx_sizes = ["1024x768", "1280x1024", "1920x1200", "800x600"]
-            scope.gfx = {"size" : scope.gfx_sizes[0]}
-            scope.autorotate = false
-            scope.location_gfx_list = []
-            scope.devsel_list = []
-            scope.cur_page = -1
-            # flag for enclosing div
-            scope.show_maps = false
-            scope.$watch(
-                scope.ls_devsel.changed
-                (changed) ->
-                    _dev_sel = scope.ls_devsel.get()
-                    scope.devsel_list = _dev_sel
-                    wait_list = [
-                        icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_LOCATION_GFX_LIST, {"device_mon_location__device__in": "<PKS>", "_distinct": true}, scope.devsel_list)
-                        icswCachingCall.fetch(scope.$id, ICSW_URLS.REST_DEVICE_MON_LOCATION_LIST, {"device__in": "<PKS>"}, scope.devsel_list)
-                    ]
-                    $q.all(wait_list).then((data) ->
-                        scope.location_gfx_list = data[0]
-                        if scope.location_gfx_list.length
-                            scope.show_maps = true
-                        else
-                            scope.show_maps = false
-                        scope.ls_filter.set_num_maps(scope.location_gfx_list.length)
-                        gfx_lut = {}
-                        for entry in scope.location_gfx_list
-                            entry.active = false
-                            gfx_lut[entry.idx] = entry
-                            entry.dml_list = []
-                        # lut: device_idx -> list of dml_entries
-                        dev_gfx_lut = {}
-                        for entry in data[1]
-                            if entry.device not of dev_gfx_lut
-                                dev_gfx_lut[entry.device] = []
-                            dev_gfx_lut[entry.device].push(entry)
-                            entry.redraw = 0
-                            gfx_lut[entry.location_gfx].dml_list.push(entry)
-                        scope.dev_gfx_lut = dev_gfx_lut
-                    )
-            )
-            rte = null
-            _activate_rotation = () ->
-                if scope.cur_page >= 0
-                    scope.location_gfx_list[scope.cur_page].active = false
-                scope.cur_page++
-                if scope.cur_page >= scope.location_gfx_list.length
-                    scope.cur_page = 0
-                scope.location_gfx_list[scope.cur_page].active = true
-                rte = $timeout(_activate_rotation, 4000)
-            _deactivate_rotation = () ->
-                if rte
-                    $timeout.cancel(rte)
-            scope.toggle_autorotate = () ->
-                scope.autorotate = !scope.autorotate
-                if scope.autorotate
-                    _activate_rotation()
-                else
-                    _deactivate_rotation()
-            scope.select_settings = () ->
+]).directive(
+    "icswDeviceLivestatusMaplist",
+    ["$compile", "$templateCache", "icswCachingCall", "$q", "ICSW_URLS", "$timeout", "icswConfigCategoryTreeFetchService", (
+        $compile, $templateCache, icswCachingCall, $q, ICSW_URLS, $timeout, icswConfigCategoryTreeFetchService
+    ) ->
+        return {
+            restrict: "EA"
+            template: $templateCache.get("icsw.device.livestatus.maplist")
+            scope: {
+                ls_filter: "=lsFilter"
+                ls_devsel: "=lsDevsel"
+            }
+            link: (scope, element, attrs) ->
+                # location gfx list
+                scope.gfx_sizes = ["1024x768", "1280x1024", "1920x1200", "800x600", "640x400"]
+                scope.gfx = {"size" : scope.gfx_sizes[0]}
                 scope.autorotate = false
-                _deactivate_rotation()
-    }
+                scope.location_gfx_list = []
+                scope.devsel_list = []
+                scope.cur_page = -1
+                # flag for enclosing div
+                scope.show_maps = false
+                scope.$watch(
+                    scope.ls_devsel.changed
+                    (changed) ->
+                        _dev_sel = scope.ls_devsel.get()
+                        scope.devsel_list = _dev_sel
+                        icswConfigCategoryTreeFetchService.fetch(scope.$id, scope.devsel_list).then((data) ->
+                            scope.location_gfx_list = data[1]
+                            if scope.location_gfx_list.length
+                                scope.show_maps = true
+                            else
+                                scope.show_maps = false
+                            scope.ls_filter.set_num_maps(scope.location_gfx_list.length)
+                            gfx_lut = {}
+                            for entry in scope.location_gfx_list
+                                entry.active = false
+                                gfx_lut[entry.idx] = entry
+                                entry.dml_list = []
+                            # lut: device_idx -> list of dml_entries
+                            dev_gfx_lut = {}
+                            for entry in data[2]
+                                if entry.device not of dev_gfx_lut
+                                    dev_gfx_lut[entry.device] = []
+                                dev_gfx_lut[entry.device].push(entry)
+                                entry.redraw = 0
+                                gfx_lut[entry.location_gfx].dml_list.push(entry)
+                            scope.dev_gfx_lut = dev_gfx_lut
+                        )
+                )
+                rte = null
+                _activate_rotation = () ->
+                    if scope.cur_page >= 0
+                        scope.location_gfx_list[scope.cur_page].active = false
+                    scope.cur_page++
+                    if scope.cur_page >= scope.location_gfx_list.length
+                        scope.cur_page = 0
+                    scope.location_gfx_list[scope.cur_page].active = true
+                    rte = $timeout(_activate_rotation, 4000)
+                _deactivate_rotation = () ->
+                    if rte
+                        $timeout.cancel(rte)
+                scope.toggle_autorotate = () ->
+                    scope.autorotate = !scope.autorotate
+                    if scope.autorotate
+                        _activate_rotation()
+                    else
+                        _deactivate_rotation()
+                scope.select_settings = () ->
+                    scope.autorotate = false
+                    _deactivate_rotation()
+        }
 ])
