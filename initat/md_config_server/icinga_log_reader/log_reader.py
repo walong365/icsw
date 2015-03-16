@@ -421,7 +421,12 @@ class icinga_log_reader(threading_tools.process_obj):
             else:
                 actual_logfilepath = logfilepath
 
-            with codecs.open(actual_logfilepath, 'r', 'utf-8', errors='replace') as logfile:
+            try:
+                logfile = codecs.open(actual_logfilepath, "r", "utf-8", errors='replace')
+            except IOError as e:
+                self.log(u"failed to open archive log file {} : {}".format(logfilepath, e),
+                         logging_tools.LOG_LEVEL_ERROR)
+            else:
                 last_read_timestamp = self.parse_log_file(logfile, logfilepath, start_at)
                 if retval is None:
                     retval = last_read_timestamp
