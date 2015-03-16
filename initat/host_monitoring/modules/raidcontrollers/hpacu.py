@@ -17,10 +17,11 @@
 #
 """ checks for HPACU Controllers """
 
+import re
+
 from initat.host_monitoring import limits, hm_classes
 import logging_tools
 import server_command
-
 from initat.host_monitoring.modules.raidcontrollers.base import ctrl_type, ctrl_check_struct
 
 
