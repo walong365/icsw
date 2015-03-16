@@ -96,8 +96,11 @@
             <h3>
                 {{device_rest.full_name}}
                 <small>
-                    (<ng-pluralize count="service_data.length" when="{'0': 'No services', 'one': '1 service', 'other': '{} services'}"></ng-pluralize>
-                    from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }})
+                    (<ng-pluralize count="service_data.length" when="{'0': 'No services', 'one': '1 service', 'other': '{} services'}">
+                    <!-- weird formatting here because there shouldn't be a space before ')' in any case -->
+                    </ng-pluralize><span ng-show="get_time_frame() != undefined">
+                    from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }}
+                    </span>)
                 </small>
             </h3>
         </div>
