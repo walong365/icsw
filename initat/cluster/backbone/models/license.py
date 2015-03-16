@@ -20,6 +20,7 @@
 # -*- coding: utf-8 -*-
 #
 """ database definitions for licenses """
+import logging
 
 from lxml import etree
 
@@ -44,6 +45,8 @@ __all__ = [
 Feature = enum.Enum("Features",
                     ['webfrontend', 'md-config-server', 'peering', 'monitoring-overview',
                      'graphing', 'discovery-server'])
+
+logger = logging.getLogger("cluster.icsw_license")
 
 
 class LicenseState(enum.IntEnum):
@@ -82,10 +85,28 @@ class _LicenseManager(models.Manager):
         return [feature for feature in self._license_feature_map_reader.get_all_features()
                 if self.has_license_for(feature)]
 
+    def get_all_licenses(self):
+        """Returns list of dicts containing 'id', 'name' and 'description' of all available licenses."""
+        return self._license_feature_map_reader.get_all_licenses()
+
+    def get_license_packages(self):
+        """Returns license packages in custom format."""
+        from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        return LicenseFileReader.get_license_packages(self._license_readers)
+
     @cached_property
     def _license_readers(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
-        return [LicenseFileReader(file_content, file_name) for (file_content, file_name) in self.values_list('license_file', 'file_name')]
+        readers = []
+        for file_content, file_name in self.values_list('license_file', 'file_name'):
+            try:
+                readers.append(
+                    LicenseFileReader(file_content, file_name)
+                )
+            except LicenseFileReader.InvalidLicenseFile as e:
+                logger.info("Invalid license file in database {}: {}".format(file_name, e))
+
+        return readers
 
     def _update_license_readers(self):
         try:
@@ -156,6 +177,9 @@ LIC_FILE_RELAX_NG_DEFINITION = """
                             <text/>
                         </element>
                         <element name="package-uuid">
+                            <text/>
+                        </element>
+                        <element name="package-version">
                             <text/>
                         </element>
                         <element name="package-type-id">

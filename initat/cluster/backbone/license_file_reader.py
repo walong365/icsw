@@ -129,6 +129,53 @@ class LicenseFileReader(object):
 
         return state
 
+    def get_license_packages_xml(self):
+        return self.content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP)
+
+    def get_customer_xml(self):
+        return self.content_xml.find("icsw:customer", namespaces=ICSW_XML_NS_MAP)
+
+    @classmethod
+    def get_license_packages(cls, license_readers):
+        # this has to be called on all license readers to work out (packages can be contained in multiple files and some
+        # might contain deprecated versions)
+        package_uuid_map = {}
+        package_customer_map = {}
+        for reader in license_readers:
+            packages_xml = reader.get_license_packages_xml()
+            customer_xml = reader.get_customer_xml()
+            # packages might be contained in multiple package files; we need to take each exactly once in the highest id
+            for pack_xml in packages_xml:
+                uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
+                if uuid in package_uuid_map:
+                    map_version = int(package_uuid_map[uuid].findtext("icsw:package-meta/icsw:package-version",
+                                                                      namespaces=ICSW_XML_NS_MAP))
+                    new_version = int(pack_xml.findtext("icsw:package-meta/icsw:package-version",
+                                                        namespaces=ICSW_XML_NS_MAP))
+                    if new_version > map_version:
+                        package_uuid_map[uuid] = pack_xml
+                else:
+                    package_uuid_map[uuid] = pack_xml
+                package_customer_map[pack_xml] = customer_xml
+
+        def extract_package_data(pack_xml):
+            return {
+                'name': pack_xml.findtext("icsw:package-meta/icsw:package-name", namespaces=ICSW_XML_NS_MAP),
+                'customer': package_customer_map[pack_xml].findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
+                'type_name': pack_xml.findtext("icsw:package-meta/icsw:package-type-name", namespaces=ICSW_XML_NS_MAP),
+                'cluster_licenses': {cluster_xml.get("id"): extract_cluster_data(cluster_xml) for cluster_xml in
+                                     pack_xml.xpath("icsw:cluster-id", namespaces=ICSW_XML_NS_MAP)}
+            }
+
+        def extract_cluster_data(cluster_xml):
+            return [{
+                'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
+                'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
+                'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+            } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)]
+
+        return [extract_package_data(pack_xml) for pack_xml in package_uuid_map.itervalues()]
+
     @staticmethod
     def verify_signature(lic_file_xml, signature_xml):
         """
@@ -142,13 +189,17 @@ class LicenseFileReader(object):
         cert_files = glob.glob(u"{}/*.pem".format(CERT_DIR))
 
         if not cert_files:
-            raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
+            # raise Exception("No certificate files in certificate dir {}.".format(CERT_DIR))
+            # currently it's not clear whether this is only bad or actually critical
+            logger.error("No certificate files in certificate dir {}.".format(CERT_DIR))
 
         for cert_file in cert_files:
             try:
                 cert = M2Crypto.X509.load_cert(cert_file)
             except M2Crypto.X509.X509Error as e:
                 logger.warn("Failed to read certificate file {}: {}".format(cert_file, e))
+            except IOError as e:
+                logger.warn("Failed to open certificate file {}: {}".format(cert_file, e))
             else:
                 # only use certs which are currently valid
                 now = datetime.datetime.now(tz=pytz.timezone(TIME_ZONE))
@@ -160,8 +211,12 @@ class LicenseFileReader(object):
                     result = evp_verify_pkey.verify_final(signature)
                     # Result of verification: 1 for success, 0 for failure, -1 on other error.
 
+                    logger.debug("Cert file {} verification result: {}".format(cert_file, result))
+
                     if result == 1:
                         return True
+                else:
+                    logger.debug("Cert file {} is not valid at this point in time".format(cert_file))
 
         return False
 
@@ -200,5 +255,11 @@ class LicenseFeatureMapReader(object):
         features_xml = self.map_xml.xpath("//icsw:license/icsw:feature/text()", namespaces=ICSW_XML_NS_MAP)
         return set(Feature[unicode(i)] for i in features_xml)
 
-
+    def get_all_licenses(self):
+        licenses_xml = self.map_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)
+        return [{
+            'id': lic_xml.get("id"),
+            'name': lic_xml.findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
+            'description': lic_xml.findtext("icsw:description", namespaces=ICSW_XML_NS_MAP),
+        } for lic_xml in licenses_xml]
 
