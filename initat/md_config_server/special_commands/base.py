@@ -131,8 +131,10 @@ class SpecialBase(object):
         pers_dict = {
             _hint.key: _hint for _hint in self.__cache if _hint.persistent and _hint.call_idx == call_idx
         }
-        cache_keys = set([_hint.key for _hint in hint_list])
+        _hd = {_hint.key: _hint for _hint in hint_list}
+        cache_keys = set(_hd.keys())
         missing_keys = set(pers_dict.keys()) - cache_keys
+        same_keys = set(pers_dict.keys()) & cache_keys
         if missing_keys:
             self.log(
                 "add {} to hint_list: {}".format(
@@ -147,6 +149,16 @@ class SpecialBase(object):
                 hint_list.append(_hint)
                 # for later storage
                 self.__hint_list.append(_hint)
+        if same_keys:
+            self.log("checking {}".format(logging_tools.get_plural("same key", len(same_keys))))
+            for s_key in same_keys:
+                # persistent hint
+                _p_hint = pers_dict[s_key]
+                # current hint
+                _c_hint = _hd[s_key]
+                # copy enabled field
+                if _p_hint.enabled != _c_hint.enabled:
+                    _c_hint.enabled = _p_hint.enabled
 
     def cleanup(self):
         self.build_process = None

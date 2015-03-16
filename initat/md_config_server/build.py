@@ -904,8 +904,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.not_period_id].name
                     # removed because this line screws active / passive checks
                     # act_host["checks_enabled"] = 1
-                    # we allow passive and active checks
-                    act_host["active_checks_enabled"] = 1
+                    # only allow active checks if this the active monitor master, very important for anovis
+                    act_host["active_checks_enabled"] = 1 if host_is_actively_checked else 0
+                    # we always allow passive checks
                     act_host["passive_checks_enabled"] = 1
                     # act_host["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
                     # act_host["{}_checks_enabled".format("passive" if checks_are_active else "active")] = 0
