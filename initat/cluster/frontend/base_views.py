@@ -231,35 +231,46 @@ class delete_object(View):
 
         response = {}
         successfully_deleted = []
+        import time
         for obj_pk in obj_pks:
-            obj = model.objects.get(pk=obj_pk)
+            # a = time.time()
 
-            can_delete_answer = can_delete_obj(obj, logger)
-            if can_delete_answer:
-                obj.delete()
-                successfully_deleted.append(obj)
+            try:
+                obj = model.objects.get(pk=obj_pk)
+            except model.DoesNotExist:
+                # problem solved itself..
+                request.xml_response.error("Object {} does not exist any more.".format(obj_pk))
             else:
-                answer_list = []
-                for rel_obj in can_delete_answer.related_objects:
-                    objects_list = []
-                    refs_of_refs = set()
-                    for obj in rel_obj.ref_list:
-                        objects_list.append(
-                            {k: v for (k, v) in obj.__dict__.iteritems() if k != '_state'}
-                        )
-                        # num_refs_of_refs += get_related_models(obj)
-                        refs_of_refs.update(get_related_models(obj, detail=True))
 
-                    answer_list.append({
-                        'model': rel_obj.model._meta.object_name,
-                        'field_name': rel_obj.field.name,
-                        'null': rel_obj.field.null,
-                        'objects': {
-                            'num_refs_of_refs': len(refs_of_refs),
-                            'list': objects_list,
-                        },
-                    })
-                response[obj_pk] = answer_list
+                can_delete_answer = can_delete_obj(obj, logger)
+                # print 'can del took ', time.time() - a, bool(can_delete_answer), len(can_delete_answer.related_objects)
+                if can_delete_answer:
+                    obj.delete()
+                    # print 'actual del', time.time() - a
+                    successfully_deleted.append(obj)
+                else:
+                    answer_list = []
+                    for rel_obj in can_delete_answer.related_objects:
+                        objects_list = []
+                        refs_of_refs = set()
+                        for obj in rel_obj.ref_list:
+                            objects_list.append(
+                                {k: v for (k, v) in obj.__dict__.iteritems() if k != '_state'}
+                            )
+                            refs_of_refs.update(get_related_models(obj, detail=True))
+
+                        answer_list.append({
+                            'model': rel_obj.model._meta.object_name,
+                            'field_name': rel_obj.field.name,
+                            'null': rel_obj.field.null,
+                            'objects': {
+                                'num_refs_of_refs': len(refs_of_refs),
+                                'list': objects_list,
+                            },
+                        })
+                    response[obj_pk] = answer_list
+                    # print 'build 2nd level rel list', time.time() - a
+                # print 'obj', obj_pk, ' took ', time.time() - a
 
         # json can't deal with datetime
         def formatter(x):
