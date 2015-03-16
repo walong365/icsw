@@ -64,7 +64,7 @@ ics_app = angular.module(
         "icsw.user",
         "icsw.user.password",
         "icsw.user.dashboard",
-        "icsw.user.settings",
+        "icsw.user.license",
         "icsw.rrd.graph",
         "icsw.info.background",
         "icsw.server.info",
@@ -150,6 +150,8 @@ ics_app = angular.module(
     "DEVICE_TREE_SMART": "{% url 'device:tree_smart' %}"
     "DEVICE_VARIABLES": "{% url 'device:variables' %}"
     "DYNDOC_PAGE_X": "{% url 'dyndoc:doc_page' 'x' %}"
+    "ICSW_LIC_GET_ALL_LICENSES": "{% url 'icsw_lic:get_all_licenses' %}"
+    "ICSW_LIC_GET_LICENSE_PACKAGES": "{% url 'icsw_lic:get_license_packages' %}"
     "INFO_PAGE": "{% url 'main:info_page' %}"
     "LIC_GET_LICENSE_OVERVIEW_STEPS": "{% url 'lic:get_license_overview_steps' %}"
     "LIC_LICENSE_DEVICE_COARSE_LIST": "{% url 'lic:license_device_coarse_list' %}"

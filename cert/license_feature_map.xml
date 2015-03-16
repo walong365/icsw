@@ -3,22 +3,28 @@
   <icsw:license-feature-map>
 
     <icsw:license id="base">
-        <icsw:feature>webfrontend</icsw:feature>
+        <icsw:name>Base</icsw:name><icsw:description>The base license</icsw:description><icsw:feature>webfrontend</icsw:feature>
         <icsw:feature>md-config-server</icsw:feature>
         <icsw:feature>peering</icsw:feature>
     </icsw:license>
 
     <icsw:license id="perf">
-        <icsw:feature>md-config-server</icsw:feature>
+        <icsw:name>Performance</icsw:name><icsw:description>Yields vast performance increases for your cluster.</icsw:description><icsw:feature>md-config-server</icsw:feature>
         <icsw:feature>monitoring-overview</icsw:feature>
     </icsw:license>
 
     <icsw:license id="continuity">
-        <icsw:feature>peering</icsw:feature>
+        <icsw:name>Continuity Management</icsw:name><icsw:description></icsw:description><icsw:feature>peering</icsw:feature>
         <icsw:feature>graphing</icsw:feature>
         <icsw:feature>discovery-server</icsw:feature>
     </icsw:license>
 
+    <icsw:license id="reliab">
+    <icsw:name>Reliability</icsw:name><icsw:description></icsw:description></icsw:license>
+
+    <icsw:license id="security">
+    <icsw:name>Security</icsw:name><icsw:description></icsw:description></icsw:license>
+
 </icsw:license-feature-map>
-  <icsw:signature>Zc9t4XN6NMxlvazHXbQB4FynMamHFdefqjnCiavxSTSB5BVFdDQiKIrAsfr6R81Q+qEyLCoS17qh9Qs3tf44R/1k5xqkMiTYvLgnqyR75Sa0ugWLWXEhaQs0f2UWxXNjmVaTGcfH2C3qG+pnPzM0MJbKopXa5CL9nuXqgawLvqI=</icsw:signature>
+  <icsw:signature>eP0lqUEpzHh6hfm82uUCNQWdIdX26jY9es5QNBelW+NgPFxVbEzJyorUiZ2gPHNeGt7Ajt8GJp41lRoYodvft47XiKtiCqDqj14Wxfpml58fO8rQ+TrfxzWu/Qhx/0b7iI5unhGf66zyHu9skThSItu/7HPSboG9eS9R2SJOtzI=</icsw:signature>
 </icsw:signed-license-feature-map>

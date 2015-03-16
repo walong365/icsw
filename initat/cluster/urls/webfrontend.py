@@ -6,7 +6,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views, doc_views
+    base_views, setup_views, doc_views, license_views
 from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
@@ -110,6 +110,13 @@ device_patterns = patterns(
     url("change_devices$", device_views.change_devices.as_view(), name="change_devices"),
     url("scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
     url("device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
+)
+
+
+icsw_lic_patterns = patterns(
+    "initat.cluster.license",
+    url("^get_all_licenses$", license_views.get_all_licenses.as_view(), name="get_all_licenses"),
+    url("^get_license_packages$", license_views.get_license_packages.as_view(), name="get_license_packages"),
 )
 
 network_patterns = patterns(
@@ -258,6 +265,7 @@ my_url_patterns = patterns(
     url(r"^config/", include(config_patterns, namespace="config")),
     url(r"^rms/", include(rms_patterns, namespace="rms")),
     url(r"^lic/", include(lic_patterns, namespace="lic")),
+    url(r"^icsw_lic/", include(icsw_lic_patterns, namespace="icsw_lic")),
     url(r"^main/", include(main_patterns, namespace="main")),
     url(r"^device/", include(device_patterns, namespace="device")),
     url(r"^network/", include(network_patterns, namespace="network")),

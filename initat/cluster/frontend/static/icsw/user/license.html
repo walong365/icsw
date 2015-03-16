@@ -1,4 +1,5 @@
 <script type="text/ng-template" id="icsw.user.license.overview">
+    <!--
     <h3>License settings (OLD) ({{ licenses.length }})</h3>
     <table class="table table-condensed table-hover" style="width:auto;">
         <thead>
@@ -21,21 +22,342 @@
             </tr>
         </tbody>
     </table>
+    -->
 
-    <h3>License (NEW)</h3>
+    <h3>License overview</h3>
 
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h4 class="panel-title">Upload license file</h4>
-        </div>
-        <div class="panel-body">
-            <div style="width: 250px; float: left; margin-right: 10px;">
+    <accordion close-others="false">
+
+        <accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
+            <accordion-heading>
+                Your licenses
+                <i class="pull-right glyphicon"
+                   ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"></i>
+            </accordion-heading>
+
+            <icsw-user-license-your-licenses></icsw-user-license-your-licenses>
+        </accordion-group>
+
+
+        <accordion-group is-open="lic_packs_open" is-disabled="license_views_disabled">
+            <accordion-heading>
+                License packages
+                <i class="pull-right glyphicon"
+                   ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"></i>
+            </accordion-heading>
+
+            <alert> TODO: select most recent by default</alert>
+            <alert> TODO: link lic packs with view below</alert>
+            <alert> TODO: license icons placement</alert>
+
+            <icsw-user-license-packages></icsw-user-license-packages>
+        </accordion-group>
+
+        <accordion-group is-open="lic_upload_open">
+            <accordion-heading>
+                Upload license file
+                <i class="pull-right glyphicon"
+                   ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"></i>
+            </accordion-heading>
+
+            <div style="width: 300px; float: left; margin-right: 10px;">
                 <input type="file" nv-file-select="" class="form-control btn btn-default btn-file" uploader="uploader">
             </div>
             <input type="button" ng-show="uploader.queue.length " class="btn btn-warning btn-sm" value="upload"
                    ng-click="uploader.uploadAll()">
-        </div>
-    </div>
+        </accordion-group>
 
+    </accordion>
 
+</script>
+
+<script type="text/ng-template" id="icsw.user.license.your_licenses">
+
+    <table st-table="entries_displayed" st-safe-src="all_licenses" class="table table-condensed table-hover"
+           style="width:auto;">
+        <thead>
+            <tr>
+                <th st-sort="">License</th>
+                TODO: st-sorts
+                <th>Description</th>
+                <th>Status</th>
+                <th></th>
+                <th>Type</th>
+                <th>License package</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="lic in entries_displayed">
+                <td><strong>{{lic.name}}</strong></td>
+                <td>{{lic.description}}</td>
+                <td ng-class="get_license_state_bootstrap_class(get_license_state(lic.id).state_id)">
+                    {{get_license_state(lic.id).state_id}}
+                    {{get_license_state(lic.id).state_str}}
+                </td>
+                <td>{{get_license_state(lic.id).date_info}}</td>
+                <td>{{get_license_state(lic.id).package.type_name}}</td>
+                <td>{{get_license_state(lic.id).package.name}}</td>
+            </tr>
+
+            <!--
+
+            <tr>
+                <td><strong>Base</strong></td>
+                <td>
+                    Kostenfreies und
+umfangreiches Basis-
+modul
+                </td>
+                <td class="success">Valid <i class="fa fa-check-circle-o"/></td><td class="">until XX.YY.ZZZZ</td>
+                <td>Commercial</td>
+                <td>init license package XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td><strong>Security</strong></td>
+                <td>
+                    modul zur Anzeige
+oder Weiterverarbei-
+tung sicherheitsrele-
+vanter Aspekte
+                </td>
+                <td class="success">Valid <i class="fa fa-check-circle-o"></td>
+                <td>until XX.YY.ZZZZ</td>
+                <td>Commercial</td>
+                <td>init license package XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td><strong>Performance</strong></td>
+                <td>
+                    Modul zur Anzeige
+oder Weiterverarbei-
+tung von Performance-
+werten
+                </td>
+                <td class="warning">In grace period <i class="fa fa-check-circle-o"></td><td class="">until XX.YY.ZZZZ</td>
+                <td>Commercial</td>
+                <td>init license package XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td><strong>Continuity</strong></td>
+                <td>
+                    Modul zur Anzeige
+oder Weiterverarbei-
+tung von Langzei
+                </td>
+                <td class="danger">Expired <i class="fa fa-check-circle-o"></td><td class="">since XX.YY.ZZZZ</td>
+                <td>Commercial</td>
+                <td>init license package XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td>Recovery</td>
+                <td>
+                    <span style="max-width: 400px; display: block">
+                    Übersichtliche Darstel-
+lung, Weiterverarbei-
+tung von Signalen.
+Ermöglicht schnelle
+und unmittelbare
+Reaktion auf einen
+Stör- oder Ausfall.
+                        </span>
+                </td>
+                <td class="">Not present</td>
+            </tr>
+            -->
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.user.license.packages">
+    <tabset>
+        <tab ng-repeat="pack in license_packages" heading="{{pack.name}}">
+            <h4>{{pack.name}}</h4>
+
+            <table class="table table-condensed table-hover" style="width: auto;">
+                <tbody>
+                    <tr>
+                        <th>Customer</th>
+                        <td>{{pack.customer}}</td>
+                    </tr>
+                    <tr>
+                        <th>Type</th>
+                        <td>{{pack.type_name}}</td>
+                    </tr>
+                </tbody>
+
+            </table>
+
+            <accordion close-others="true">
+                <accordion-group is-open="cluster_accordion_open[$index]"
+                                 ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:package_order_fun">
+                    <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
+                    <accordion-heading>
+                        <!-- data[0] is cluster_id, data[1] is cluster_licenses -->
+                        {{get_cluster_title(data[0])}}
+                        <i class="pull-right glyphicon"
+                           ng-class="{'glyphicon-chevron-down': cluster_accordion_open[$index], 'glyphicon-chevron-right': !cluster_accordion_open[$index]}"></i>
+                    </accordion-heading>
+                    <table st-table="entries_displayed" st-safe-src="data[1]" class="table table-condensed table-hover"
+                           style="width:auto;">
+                        <thead>
+                            <tr>
+                                <th st-sort="id" st-sort-default="true" width="150">License</th>
+                                <th width="100">State</th>
+                                <th st-sort="valid_from">Valid from</th>
+                                <th st-sort="valid_to">Valid to</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="pack_lic in entries_displayed">
+                                <td>{{get_license_by_id(pack_lic.id).name}}</td>
+                                <td ng-class="get_license_bootstrap_class(pack_lic)">
+                                    {{get_license_state(pack_lic).state_str}}
+                                </td>
+                                <td>{{pack_lic.valid_from | date:'yyyy-MM-dd'}}</td>
+                                <td>{{pack_lic.valid_to | date:'yyyy-MM-dd'}}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </accordion-group>
+            </accordion>
+
+        </tab>
+
+        <!--
+
+        <tab heading="init license package XX.YY.ZZZZ">
+            <h4>Package init license package XX.YY.ZZZZ</h4>
+
+            Customer: foo
+            <br />
+            Type: bar
+            {{ asdf = true }}
+
+            <accordion close-others="true">
+                <accordion-group is-open="asdf">
+                    <accordion-heading>
+                        Current cluster (asdfbc-asdf)
+                        <i class="pull-right glyphicon"
+                           ng-class="{'glyphicon-chevron-down': asdf, 'glyphicon-chevron-right': !asdf}"></i>
+                    </accordion-heading>
+                     <table class="table table-condensed table-hover" style="width:auto;">
+        <thead>
+            <tr>
+                <th>License</th>
+                <th>Valid from</th>
+                <th>Valid to</th>
+            </tr>
+        </thead>
+        <tbody>
+             <tr>
+                <td>Base</td>
+                <td class="success">Valid <i class="fa fa-check-circle-o"></td>
+                <td class="">XX.YY.ZZZZ</td>
+                <td class="">XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td>Performance</td>
+                <td class="danger">Expired <i class="fa fa-check-circle-o"></td>
+                <td class="">XX.YY.ZZZZ</td>
+                <td class="">XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td>Recovery</td>
+                <td class="success">Valid <i class="fa fa-check-circle-o"></td>
+                <td class="">XX.YY.ZZZZ</td>
+                <td class="">XX.YY.ZZZZ</td>
+            </tr>
+                         </tbody>
+    </table>
+
+                </accordion-group>
+                <accordion-group is-open="jkl">
+                    <accordion-heading>
+                        Cluster jkljkl-jklo
+                        <i class="pull-right glyphicon"
+                           ng-class="{'glyphicon-chevron-down': jkl, 'glyphicon-chevron-right': !jkl}"></i>
+                    </accordion-heading>
+                     <table class="table table-condensed table-hover" style="width:auto;">
+        <thead>
+            <tr>
+                <th>License</th>
+                <th>Status</th>
+                <th>Valid from</th>
+                <th>Valid to</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Base</td>
+                <td class="success">Valid</td>
+                <td class="">XX.YY.ZZZZ</td>
+                <td class="">XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td>Performance</td>
+                <td class="danger">Expired</td>
+                <td class="">XX.YY.ZZZZ</td>
+                <td class="">XX.YY.ZZZZ</td>
+            </tr>
+            <tr>
+                <td>Recovery</td>
+                <td class="success">Valid</td>
+                <td class="">XX.YY.ZZZZ</td>
+                <td class="">XX.YY.ZZZZ</td>
+            </tr>
+        </tbody>
+    </table>
+                </accordion-group>
+            </accordion>
+
+        </tab>
+        <tab heading="init license package XX.YY.ZZZZ">
+            <h4>Package init license package XX.YY.ZZZZ</h4>
+
+            Customer: foo
+            <br />
+            Type: bar
+            {{ asdf = true }}
+
+            <accordion close-others="true">
+                <accordion-group is-open="asdf">
+                    <accordion-heading>
+                        Current cluster (asdfbc-asdf)
+                        <i class="pull-right glyphicon"
+                           ng-class="{'glyphicon-chevron-down': asdf, 'glyphicon-chevron-right': !asdf}"></i>
+                    </accordion-heading>
+
+    <table class="table table-condensed table-hover" style="width:auto;">
+        <thead>
+            <tr>
+                <th>License</th>
+                <th>Valid from</th>
+                <th>Valid to</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="success">
+                <td>Base</td>
+                <td>XX.YY.ZZZZ</td>
+                <td>XX.YY.ZZZZ</td>
+            </tr>
+            <tr class="warning">
+                <td>Performance</td>
+                <td>XX.YY.ZZZZ</td>
+                <td>XX.YY.ZZZZ</td>
+            </tr>
+            <tr class="danger">
+                <td>Recovery</td>
+                <td>XX.YY.ZZZZ</td>
+                <td>XX.YY.ZZZZ</td>
+            </tr>
+        </tbody>
+    </table>
+
+                </accordion-group>
+            </accordion>
+        </tab>
+        -->
+
+    </tabset>
 </script>
