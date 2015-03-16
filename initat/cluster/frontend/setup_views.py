@@ -26,8 +26,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import partition_table, \
-    image, architecture
+from initat.cluster.backbone.models import partition_table, image, architecture
 from initat.cluster.frontend.forms import kernel_form, image_form, partition_table_form, \
     partition_form, partition_disc_form, partition_sys_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper

@@ -48,26 +48,17 @@ image_module = angular.module(
                 title   : "scanning for new images"
                 success : (xml) =>
                     new_list = []
-                    $(xml).find("found_images found_image").each (idx, new_img) =>
-                        new_img = $(new_img)
-                        new_obj = {
-                            "name"    : new_img.attr("name")
-                            "vendor"  : new_img.attr("vendor")
-                            "version" : new_img.attr("version")
-                            "arch"    : new_img.attr("arch")
-                            "present" : parseInt(new_img.attr("present"))
-                        }
-                        new_list.push(new_obj)
-                    # dummy object for testing
-                    #new_list.push(
-                    #    {
-                    #        "name"    : "a"
-                    #        "vendor"  : "b"
-                    #        "version" : "v"
-                    #        "arch"    : "d"
-                    #        "present" : 0
-                    #    }
-                    #)
+                    if icswParseXMLResponseService(xml)
+                        $(xml).find("found_images found_image").each (idx, new_img) =>
+                            new_img = $(new_img)
+                            new_obj = {
+                                "name"    : new_img.attr("name")
+                                "vendor"  : new_img.attr("vendor")
+                                "version" : new_img.attr("version")
+                                "arch"    : new_img.attr("arch")
+                                "present" : parseInt(new_img.attr("present"))
+                            }
+                            new_list.push(new_obj)
                     blockUI.stop()
                     $scope.$apply(() ->
                         $scope.new_entries = new_list
