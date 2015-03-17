@@ -978,6 +978,7 @@ angular.module(
                     # legend radii
                     inner_legend = (outer + inner) / 2
                     outer_legend = scope.outer * 1.125
+                    local_omitted = 0
                     for part in nodes
                         if part.width
                             start_arc = end_arc #+ 1 * Math.PI / 180
@@ -985,9 +986,10 @@ angular.module(
                             start_cos = Math.cos(start_arc)
                             end_num += part.width
                             end_arc = 2 * Math.PI * end_num / _len
-                            if (end_arc - start_arc) * outer < 3 and not scope.draw_all
+                            if (end_arc - start_arc) * outer < 300 and not scope.draw_all
                                 # arc is too small, do not draw
                                 omitted_segments++
+                                local_omitted++
                             else if part.placeholder
                                 true
                             else
@@ -1029,6 +1031,19 @@ angular.module(
                                         "A#{inner},#{inner} 0 #{_large_arc_flag} 0 #{start_cos * inner},#{start_sin * inner} " + \
                                         "Z"
                                 scope.nodes.push(part)
+                    if local_omitted
+                        # some segmens were omitted, draw a circle
+                        dummy_part = {children: {}, omitted: true}
+                        dummy_part.path = "M#{outer},0 " + \
+                            "A#{outer},#{outer} 0 1,1 #{-outer},0 " + \
+                            "A#{outer},#{outer} 0 1,1 #{outer},0 " + \
+                            "L#{outer},0 " + \
+                            "M#{inner},0 " + \
+                            "A#{inner},#{inner} 0 1,0 #{-inner},0 " + \
+                            "A#{inner},#{inner} 0 1,0 #{inner},0 " + \
+                            "L#{inner},0 " + \
+                            "Z"
+                        scope.nodes.push(dummy_part)
                 return omitted_segments
             scope.get_inner = (idx) ->
                 _inner = scope.inner + (scope.outer - scope.inner) * idx / scope.max_depth
@@ -1051,12 +1066,16 @@ angular.module(
                             2 : "#ff7777"
                             3 : "#ff0000"
                         }[part.check.state]
+                else if part.omitted?
+                    color = "#ffffff"
                 else
                     color = "#dddddd"
                 return color
             scope.get_fill_opacity = (part) ->
                 if part.mouseover? and part.mouseover
                     return 0.4
+                else if part.omitted
+                    return 0
                 else
                     return 0.8
             scope.mouse_enter = (part) ->
