@@ -216,61 +216,65 @@ class change_category(View):
         request.xml_response["changes"] = json.dumps({"added": _added, "removed": _removed})
 
 
-class delete_object(View):
+class check_delete_object(View):
     """
     This is an advanced delete which handles further actions which might
     be necessary in order to delete an object
+
+    Does not actually delete yet as this can take very long (>30 seconds) but returns
+    data about which objects can be deleted for the client to delete and data about object references.
     """
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        # returns {obj_ok : [related_obj_info] } for objects which have related objects
+        # returns:
+        # - related_objs: {obj_ok : [related_obj_info] } for objects which have related objects
+        # - deletable_objects: [obj_pk]
         _post = request.POST
         obj_pks = json.loads(_post.get("obj_pks"))
         model = getattr(initat.cluster.backbone.models, _post.get("model"))
 
-        response = {}
-        successfully_deleted = []
-        import time
-        for obj_pk in obj_pks:
+        objs_to_delete = model.objects.filter(pk__in=obj_pks)
+
+        if len(objs_to_delete) < len(obj_pks):
+            request.xml_response.error("Could not find all objects to delete.")
+            logger.warn("To delete: {}; found only: {}".format(obj_pks, [o.pk for o in objs_to_delete]))
+
+        related_objects_info = {}
+        deletable_objects = []
+        # import time
+        for obj_to_delete in objs_to_delete:
             # a = time.time()
 
-            try:
-                obj = model.objects.get(pk=obj_pk)
-            except model.DoesNotExist:
-                # problem solved itself..
-                request.xml_response.error("Object {} does not exist any more.".format(obj_pk))
+            can_delete_answer = can_delete_obj(obj_to_delete, logger)
+            # print 'can del took ', time.time() - a, bool(can_delete_answer), len(can_delete_answer.related_objects)
+            if can_delete_answer:
+                deletable_objects.append(obj_to_delete.pk)
             else:
+                info = []
+                # there are django related objects, which describe the fields that are related
+                # and there are referenced objects, which are the actual db objects having these fields
+                for related_object in can_delete_answer.related_objects:
+                    referenced_objects_list = []
+                    refs_of_refs = set()
+                    for referenced_object in related_object.ref_list:
+                        referenced_objects_list.append(
+                            {k: v for (k, v) in referenced_object.__dict__.iteritems() if k != '_state'}
+                        )
+                        refs_of_refs.update(get_related_models(referenced_object, detail=True))
 
-                can_delete_answer = can_delete_obj(obj, logger)
-                # print 'can del took ', time.time() - a, bool(can_delete_answer), len(can_delete_answer.related_objects)
-                if can_delete_answer:
-                    obj.delete()
-                    # print 'actual del', time.time() - a
-                    successfully_deleted.append(obj)
-                else:
-                    answer_list = []
-                    for rel_obj in can_delete_answer.related_objects:
-                        objects_list = []
-                        refs_of_refs = set()
-                        for obj in rel_obj.ref_list:
-                            objects_list.append(
-                                {k: v for (k, v) in obj.__dict__.iteritems() if k != '_state'}
-                            )
-                            refs_of_refs.update(get_related_models(obj, detail=True))
-
-                        answer_list.append({
-                            'model': rel_obj.model._meta.object_name,
-                            'field_name': rel_obj.field.name,
-                            'null': rel_obj.field.null,
-                            'objects': {
-                                'num_refs_of_refs': len(refs_of_refs),
-                                'list': objects_list,
-                            },
-                        })
-                    response[obj_pk] = answer_list
-                    # print 'build 2nd level rel list', time.time() - a
-                # print 'obj', obj_pk, ' took ', time.time() - a
+                    info.append({
+                        'model': related_object.model._meta.object_name,
+                        'field_name': related_object.field.name,
+                        'null': related_object.field.null,
+                        'objects': {
+                            'num_refs_of_refs': len(refs_of_refs),
+                            'list': referenced_objects_list,
+                        },
+                    })
+                related_objects_info[obj_to_delete.pk] = info
+                # print 'build 2nd level rel list', time.time() - a
+            # print 'obj', obj_pk, ' took ', time.time() - a
 
         # json can't deal with datetime
         def formatter(x):
@@ -281,11 +285,20 @@ class delete_object(View):
                 return x.isoformat()
             else:
                 return x
-        request.xml_response['related_objects'] = json.dumps(response, default=formatter)
+        request.xml_response['related_objects'] = json.dumps(related_objects_info, default=formatter)
+        request.xml_response['deletable_objects'] = json.dumps(deletable_objects)
 
-        if successfully_deleted:
-            request.xml_response.info("Successfully deleted {} object{}".format(
-                len(successfully_deleted), "s" if len(successfully_deleted) > 1 else ""))
+
+class do_delete_object(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        obj_pk = int(json.loads(_post.get("obj_pk")))
+        model = getattr(initat.cluster.backbone.models, _post.get("model"))
+        obj_to_delete = model.objects.get(pk=obj_pk)
+        logger.info("deleting obj {} with pk {} from {} directly".format(obj_to_delete, obj_pk, model))
+        model.delete(obj_to_delete)
 
 
 class force_delete_object(View):
@@ -296,7 +309,7 @@ class force_delete_object(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        obj_pk = json.loads(_post.get("obj_pk"))
+        obj_pk = int(json.loads(_post.get("obj_pk")))
         model = getattr(initat.cluster.backbone.models, _post.get("model"))
         delete_strategy_list = json.loads(_post.get("delete_strategies", "{}"))
         delete_strategies = {}
@@ -305,7 +318,7 @@ class force_delete_object(View):
 
         obj_to_delete = model.objects.get(pk=obj_pk)
 
-        logger.info("deleting obj with pk {} from {}".format(obj_pk, model))
+        logger.info("deleting obj {} with pk {} from {} with strategy".format(obj_to_delete, obj_pk, model))
         logger.info("deleting strategies: {}".format(delete_strategies))
 
         can_delete_answer = can_delete_obj(obj_to_delete, logger)

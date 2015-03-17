@@ -5,9 +5,9 @@ angular.module(
     ]
 ).service('icswDialogDeleteObjects',
     ['icswParseXMLResponseService', 'icswCallAjaxService', 'icswToolsSimpleModalService', 'ICSW_URLS', '$rootScope',
-    '$compile', '$templateCache',
+    '$compile', '$templateCache', 'toaster', 'blockUI',
     (icswParseXMLResponseService, icswCallAjaxService, icswToolsSimpleModalService, ICSW_URLS, $rootScope,
-    $compile, $templateCache) ->
+    $compile, $templateCache, toaster, blockUI) ->
         # Ask whether to delete object, then deal with references (show popup querying user for actions)
 
         return (objects_to_delete, model, after_delete) ->
@@ -44,6 +44,7 @@ angular.module(
                             if icswParseXMLResponseService(xml)
                                 if after_delete?
                                     after_delete()
+                                toaster.pop("info", "", "Deleted 1 object")
                                 delete related_objects[obj_idx]
                                 # close if all objects are gone now
                                 if Object.keys(related_objects).length == 0
@@ -70,11 +71,12 @@ angular.module(
                         modal.getModal().find(".modal-body").css("max-height", height)
                 child_scope.modal = modal
 
+
             try_delete = () ->
                 objects_string = if objects_to_delete.length == 1 then objects_to_delete[0].name else objects_to_delete.length+" objects"
                 icswToolsSimpleModalService("Really delete #{ objects_string }?").then(() ->
                     icswCallAjaxService
-                        url: ICSW_URLS.BASE_DELETE_OBJECT
+                        url: ICSW_URLS.BASE_CHECK_DELETE_OBJECT
                         data: {
                             model: model
                             obj_pks: JSON.stringify((obj.idx for obj in objects_to_delete))
@@ -82,28 +84,68 @@ angular.module(
                         success: (xml) ->
                             if icswParseXMLResponseService(xml)
                                 related_objects = JSON.parse($(xml).find("value[name='related_objects']").text())
+                                deletable_objects = JSON.parse($(xml).find("value[name='deletable_objects']").text())
 
-                                if after_delete? and Object.keys(related_objects).length != objects_to_delete.length
-                                    after_delete()
+                                # related objects contains info about undeletable objs,
+                                # deletable_objs is just a list of deletable objects
+                                # we don't delete it on the server right away because it can take a long time (>30 sec)
 
-                                for k, ref_list of related_objects
-                                    for ref in ref_list
-                                        ref.actions = []
-                                        # only have default action if it is a "safe" one
-                                        if ref.null
-                                            ref.actions.push('set null')
-                                            ref.selected_action = ref.actions[0]
+                                has_deletables = deletable_objects.length > 0
+                                has_undeletables = Object.keys(related_objects).length > 0
 
-                                        if ref.objects.num_refs_of_refs == 0
-                                            ref.actions.push('delete object')
-                                            if ! ref.selected_action?
-                                                ref.selected_action = ref.actions[0]
+                                if has_deletables
+                                    # recursive asynchronous delete fun
+                                    actual_delete = (deletable_objects, num_all, done_callback) ->
+                                        if deletable_objects.length
+                                            to_del = deletable_objects.pop(0)
+                                            icswCallAjaxService
+                                                url: ICSW_URLS.BASE_DO_DELETE_OBJECT
+                                                data: {
+                                                    model: model
+                                                    obj_pk: to_del
+                                                }
+                                                success: (xml) ->
+                                                    if icswParseXMLResponseService(xml)
+                                                        toaster.pop("info", "", "Deleted #{num_all - deletable_objects.length} of #{num_all} objects")
+                                                        if after_delete?
+                                                            after_delete()
+                                                        # recurse, elem has been removed from list already
+                                                        actual_delete(deletable_objects, num_all, done_callback)
                                         else
-                                            ref.actions.push('delete cascade')
+                                            if done_callback
+                                                done_callback()
 
-                                # related_objs is dict { obj_pk : [ related_obj_info ] }
-                                # check we there were some which we couldn't delete
-                                if Object.keys(related_objects).length > 0
+                                    if has_undeletables
+                                        # delete in background while dialog shows so user can continue to work there
+
+                                        toaster.pop("info", "", "Deleting #{deletable_objects.length} objects in background")
+                                        actual_delete(deletable_objects, deletable_objects.length)
+                                    else
+                                        # delete blocking, user is waiting for this right now
+                                        blockUI.start("Deleting objects ...")
+                                        actual_delete(deletable_objects, deletable_objects.length, () ->
+                                            blockUI.stop()
+                                        )
+
+
+                                if has_undeletables
+                                    for k, ref_list of related_objects
+                                        for ref in ref_list
+                                            ref.actions = []
+                                            # only have default action if it is a "safe" one
+                                            if ref.null
+                                                ref.actions.push('set null')
+                                                ref.selected_action = ref.actions[0]
+
+                                            if ref.objects.num_refs_of_refs == 0
+                                                ref.actions.push('delete object')
+                                                if ! ref.selected_action?
+                                                    ref.selected_action = ref.actions[0]
+                                            else
+                                                ref.actions.push('delete cascade')
+
+                                    # related_objs is dict { obj_pk : [ related_obj_info ] }
+                                    # check we there were some which we couldn't delete
                                     show_delete_dialog(related_objects)
                 )
 
