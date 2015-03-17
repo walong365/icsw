@@ -416,6 +416,7 @@ PIPELINE_JS = {
             "js/smart-table.js",
             "js/angular-google-maps.min.js",
             "js/bootstrap-dialog.js",
+            "js/angular-gettext.min.js",
         ),
         "output_filename": "pipeline/js/extra1.js"
     },
