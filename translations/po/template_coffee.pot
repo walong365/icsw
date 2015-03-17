@@ -1,0 +1,39 @@
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:29
+msgid "modify"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:33
+msgid "create"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:37
+msgid "delete"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:41
+msgid "reload"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:45
+msgid "clear selection"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:57
+msgid "download"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:119
+msgid "show"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:121
+msgid "hide"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:127
+msgid "disable"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:130
+msgid "enable"
+msgstr ""
