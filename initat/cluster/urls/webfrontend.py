@@ -105,11 +105,12 @@ device_patterns = patterns(
     url("^set_selection$", device_views.set_selection.as_view(), name="set_selection"),
     url("^config$", device_views.show_configs.as_view(), name="show_configs"),
     url("^connections", device_views.connections.as_view(), name="connections"),
-    url("manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
-    url("variables$", device_views.variables.as_view(), name="variables"),
-    url("change_devices$", device_views.change_devices.as_view(), name="change_devices"),
-    url("scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
-    url("device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
+    url("^manual_connection", device_views.manual_connection.as_view(), name="manual_connection"),
+    url("^variables$", device_views.variables.as_view(), name="variables"),
+    url("^change_devices$", device_views.change_devices.as_view(), name="change_devices"),
+    url("^scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
+    url("^device_info/(?P<device_pk>\d+)/(?P<mode>\S+)$", device_views.device_info.as_view(), name="device_info"),
+    url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
 )
 
 network_patterns = patterns(

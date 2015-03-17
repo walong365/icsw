@@ -36,14 +36,14 @@ menu_module = angular.module(
 <div class="col-md-4 col-xs-12 col-lg-6">
     <div icsw-device-livestatus-maplist ls-devsel="ls_devsel" ls-filter="ls_filter"></div>
 </div>
+<div class="col-md-4 col-xs-12 col-lg-8">
+    <icsw-config-category-location-show ls-devsel="ls_devsel" ls-filter="ls_filter"></icsw-config-category-location-show>
+</div>
 <div class="col-md-4 col-xs-12 col-lg-2">
     <icsw-device-livestatus-cat-tree ls-filter="ls_filter"></icsw-device-livestatus-cat-tree>
 </div>
 <div class="col-md-4 col-xs-12 col-lg-8">
     <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
-</div>
-<div class="col-md-4 col-xs-12 col-lg-8">
-    <icsw-config-category-tree-google-map></icsw-config-category-tree-google-map>
 </div>
 '
             }

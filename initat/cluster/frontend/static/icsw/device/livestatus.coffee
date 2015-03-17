@@ -98,6 +98,7 @@ angular.module(
     _filter_id = 0
     return () ->
         _filter_id++
+        _local_id = _filter_id
         # categories
         _categories = []
         # all categories used
@@ -117,7 +118,7 @@ angular.module(
                 if nf not in _filter_funcs
                     _filter_funcs.push(nf)
                     _iter++
-            filter_id: () -> return _filter_id
+            filter_id: () -> return _local_id
             trigger: () ->
                 _iter++
             changed: () -> return _iter
@@ -286,7 +287,9 @@ angular.module(
         $scope.service_entries = []
         $scope.filtered_entries = []
         $scope.layouts = ["simple1", "simple2"]
-        $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
+        if not $scope.ls_filter?
+            # init ls_filter if not set
+            $scope.ls_filter = new icswLivestatusFilterFactory("lsc")
         $scope.ls_devsel = new icswLivestatusDevSelFactory()
         $scope.activate_layout = (name) ->
             $scope.cur_layout = name
@@ -301,7 +304,6 @@ angular.module(
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
-            # console.log "ns", _dev_sel
             wait_list = [
                 icswDeviceTreeService.fetch($scope.$id)
                 icswDeviceLivestatusDataService.retain($scope.$id, _dev_sel)
@@ -356,7 +358,7 @@ angular.module(
                     for c_id, _defer of @client_dict
                         _defer.resolve(result)
                     @client_dict = {}
-                    @pk_list = []
+                    @pk_list = null
             )
     start_timeout = {}
     load_info = {}
@@ -373,19 +375,22 @@ angular.module(
                 1
             )
     add_client = (client, url, options, pk_list) ->
-        url_key = _key(url, options)
+        url_key = _key(url, options, pk_list)
         if url_key not of load_info
             load_info[url_key] = new LoadInfo(url_key, url, options)
         return load_info[url_key].add_pk_list(client, pk_list)
-    _key = (url, options) ->
+    _key = (url, options, pk_list) ->
         url_key = url
         for key, value of options
             url_key = "#{url_key},#{key}=#{value}"
+        if pk_list == null
+            # distinguish calls with pk_list == null (all devices required)
+            url_key = "#{url_key}Z"
         return url_key
     return {
         "fetch" : (client, url, options, pk_list) ->
             _defer = add_client(client, url, options, pk_list)
-            schedule_load(_key(url, options))
+            schedule_load(_key(url, options, pk_list))
             return _defer.promise
     }
 ]).directive('icswDeviceLivestatusFullburst', ["$templateCache", ($templateCache) ->
@@ -440,10 +445,8 @@ angular.module(
             for entry in scope.md_states
                 _srvs[entry[0]] = entry[2]
             _shs = {}
-            # scope.ls_filter.set_srv(entry[0], entry[2])
             for entry in scope.sh_states
                 _shs[entry[0]] = entry[2]
-                # scope.ls_filter.set_sh(entry[0], entry[2])
             scope.toggle_srv = (key) ->
                 _srvs[key] = !_srvs[key]
                 scope.ls_filter.trigger()
@@ -769,7 +772,6 @@ angular.module(
         )
         $scope.apply_click_filter = (check) ->
             if filter_list.length and check._srv_id not in filter_list
-                # console.log check._srv_id, filter_list
                 return false
             else
                 return true
@@ -800,7 +802,6 @@ angular.module(
                         $scope.set_data($scope.burst_data, "")
 
         $scope.build_sunburst = (host_entries, service_entries) ->
-            # console.log host_entries.length, service_entries.length
             # build burst data
             _bdat = new hs_node(
                 "System"
@@ -876,6 +877,7 @@ angular.module(
             omittedSegments: "=omittedSegments"
             ls_filter: "=lsFilter"
             ls_devsel: "=lsDevsel"
+            is_drawn: "=isDrawn"
         link: (scope, element, attrs) ->
             scope.nodes = []
             scope.inner = parseInt(attrs["innerradius"] or 20)
@@ -885,7 +887,6 @@ angular.module(
             scope.show_name = parseInt(attrs["showname"] or 0)
             scope.zoom_level = attrs["zoomLevel"] ? "s"
             scope.noninteractive = attrs["noninteractive"]  # defaults to false
-            scope.hidegroup = attrs["hidegroup"]  # defaults to false
             scope.active_part = null
             scope.propagate_filter = if attrs["propagateFilter"] then true else false
             if not attrs["devicePk"]
@@ -896,7 +897,11 @@ angular.module(
                 )
             scope.$watch("device_pk", (new_val) ->
                 if new_val
-                    scope.burst_sel([new_val], true)
+                    if angular.isString(new_val)
+                        data = (parseInt(_v) for _v in new_val.split(","))
+                    else
+                        data = [new_val]
+                    scope.burst_sel(data, true)
             )
             if attrs["drawAll"]?
                 scope.draw_all = true
@@ -940,6 +945,8 @@ angular.module(
                         omitted_segments += scope.add_circle(parseInt(idx), struct[idx])
                 if attrs["omittedSegments"]?
                     scope.omittedSegments = omitted_segments
+                if attrs["isDrawn"]?
+                    scope.is_drawn = 1
             scope.add_circle = (idx, nodes) ->
                 _len = _.reduce(
                     nodes,
@@ -966,7 +973,6 @@ angular.module(
                         "Z"
                     scope.nodes.push(dummy_part)
                 else
-                    # console.log idx, _len, nodes.length
                     end_arc = 0
                     end_num = 0
                     # legend radii
@@ -1105,13 +1111,31 @@ angular.module(
         controller: "icswDeviceLiveStatusCtrl"
         scope:
              devicepk: "=devicepk"
-             redrawSunburst: "=redrawSunburst"
         replace: true
         link : (scope, element, attrs) ->
             scope.ls_filter = new icswLivestatusFilterFactory()
             scope.$watch("devicepk", (data) ->
                 if data
                     scope.new_devsel([data], [])
+            )
+    }
+]).directive("icswDeviceLivestatusMap", ["icswLivestatusFilterFactory", "$templateCache", (icswLivestatusFilterFactory, $templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.livestatus.map")
+        controller: "icswDeviceLiveStatusCtrl"
+        scope:
+             devicepk: "@devicepk"
+             # flag when svg is finished
+             is_drawn: "=isDrawn"
+             # external filter
+             ls_filter: "=lsFilter"
+        replace: true
+        link : (scope, element, attrs) ->
+            scope.$watch("devicepk", (data) ->
+                if data
+                    data = (parseInt(_v) for _v in data.split(","))
+                    scope.new_devsel(data, [])
             )
     }
 ]).directive("icswDeviceLivestatusTableView",
@@ -1249,6 +1273,7 @@ angular.module(
             "ls_filter": "=lsFilter"
         }
         link: (scope, element, attrs) ->
+            # for network with connections
             dml = scope.dml
             scope.transform = "translate(#{dml.pos_x},#{dml.pos_y})"
     }

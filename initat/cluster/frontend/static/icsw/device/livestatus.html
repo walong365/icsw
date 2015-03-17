@@ -119,7 +119,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.device.node">
-    <g ng-attr-transform="{{ transform }}" ng-switch="data_source">
+    <g ng-attr-transform="{{ transform }}">
         <newburst
             ls-filter="ls_filter"
             device-pk="dml.device"
@@ -158,7 +158,7 @@
             </svg>
         </div>
         <div class="col-md-6 col-sm-6">
-            <icsw-device-livestatus-service-info host-lut="hostLut" service="focusService" ls-filter="ls_filter"></icsw-device-livestatus-service-info>
+            <icsw-device-livestatus-service-info service="focusService" ls-filter="ls_filter"></icsw-device-livestatus-service-info>
         </div>
     </div>
 </script>
@@ -235,9 +235,25 @@
                 innerradius="0"
                 outerradius="19"
                 noninteractive="true"
-                hidegroup="true"
                 draw-all="true"
                 zoom-level="d"
+            ></newburst>
+        </g>
+    </svg>
+</script>
+
+<script type="text/ng-template" id="icsw.device.livestatus.map">
+    <svg width="50" height="50" font-family="'Open-Sans', sans-serif" font-size="10pt">
+        <g transform="translate(25,25)">
+            <newburst
+                ls-filter="ls_filter"
+                device-pk="devicepk"
+                innerradius="5"
+                outerradius="25"
+                noninteractive="true"
+                draw-all="true"
+                zoom-level="g"
+                is-drawn="is_drawn"
             ></newburst>
         </g>
     </svg>

@@ -124,6 +124,7 @@ angular.module(
                         sel_dict[entry.idx] = []
                         entry.location_gfxs = (loc_gfx.idx for loc_gfx in $scope.location_gfxs when loc_gfx.location == entry.idx)
                 for dev in $scope.devices
+                    # check for active locations
                     for _sel in dev.categories
                         if _sel of sel_dict
                             sel_dict[_sel].push(dev.idx)
@@ -270,6 +271,7 @@ angular.module(
                         # check if this device is really associated with the location 
                         _location = scope.loc_tree_lut[scope.active_loc_gfx.location].obj
                         if scope.active_loc_gfx.location in entry.categories and _location.physical
+                        # if _location.physical
                             # allow addition if location is in categorie list and location is physical
                             scope.dev_pks.push(entry.idx)
                         else if not _location.physical
