@@ -76,7 +76,7 @@ menu_module = angular.module(
                     del_pbs = (cur_idx for cur_idx of $scope.cur_gauges when cur_idx not in cur_pb)
                     for del_pb in del_pbs
                         delete $scope.cur_gauges[del_pb]
-                    #for cur_idx, value of $scope.cur_gaugesö
+                    #for cur_idx, value of $scope.cur_gauges
                     $scope.$apply(
                         $scope.num_gauges = cur_pb.length
                         if cur_pb.length or $scope.progress_iters

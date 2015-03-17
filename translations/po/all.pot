@@ -39,6 +39,35 @@ msgstr ""
 msgid "enable"
 msgstr ""
 
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:179
+msgid "Valid"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:180
+msgid "until"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:185
+msgid "In grace period"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:186
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:192
+msgid "since"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:191
+msgid "Expired"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:197
+msgid "Will be valid"
+msgstr ""
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:198
+msgid "on"
+msgstr ""
+
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"

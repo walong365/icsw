@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2015-03-17 15:35+0100\n"
+"PO-Revision-Date: 2015-03-17 15:54+0100\n"
 "Last-Translator: Bernhard Mallinger <mallinger@gmx.at>\n"
 "Language-Team: \n"
 "Language: de\n"
@@ -58,6 +58,35 @@ msgstr "deaktivieren"
 #: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:130
 msgid "enable"
 msgstr "aktivieren"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:179
+msgid "Valid"
+msgstr "Gültig"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:180
+msgid "until"
+msgstr "bis"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:185
+msgid "In grace period"
+msgstr "In Toleranzfrist"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:186
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:192
+msgid "since"
+msgstr "seit"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:191
+msgid "Expired"
+msgstr "Abgelaufen"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:197
+msgid "Will be valid"
+msgstr "Gültig in Zukunft"
+
+#: ../initat/cluster/frontend/static/icsw/user/license.coffee:198
+msgid "on"
+msgstr "am"
 
 #: ../initat/cluster/frontend/static/icsw/tools/table.html:52
 msgid "elements selected"
