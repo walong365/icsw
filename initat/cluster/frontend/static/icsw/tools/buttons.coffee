@@ -21,28 +21,28 @@ angular.module(
     "icsw.tools.button",
     [
     ]
-).service('icswToolsButtonConfigService', () ->
+).service('icswToolsButtonConfigService', ['gettext', (gettext) ->
     get_config_for_button_type = (type) ->
         ret_obj = {}
         if type == "modify"
             ret_obj.css_class = "btn-primary"
-            ret_obj.button_value = "modify"
+            ret_obj.button_value = gettext("modify")
             ret_obj.icon_class = "fa fa-wrench"
         else if type == "create"
             ret_obj.css_class = "btn-success"
-            ret_obj.button_value = "create"
+            ret_obj.button_value = gettext("create")
             ret_obj.icon_class = "fa fa-plus-circle"
         else if type == "delete"
             ret_obj.css_class = "btn-danger"
-            ret_obj.button_value = "delete"
+            ret_obj.button_value = gettext("delete")
             ret_obj.icon_class = "fa fa-trash"
         else if type == "reload"
             ret_obj.css_class = "btn-warning"
-            ret_obj.button_value = "reload"
+            ret_obj.button_value = gettext("reload")
             ret_obj.icon_class = "fa fa-refresh"
         else if type == "clear_selection"
             ret_obj.css_class = "btn-warning"
-            ret_obj.button_value = "clear selection"
+            ret_obj.button_value = gettext("clear selection")
             ret_obj.icon_class = "fa fa-remove"
         else if type == "show"
             ret_obj.css_class = "btn-success"
@@ -54,7 +54,7 @@ angular.module(
             ret_obj.icon_class = "fa fa-search"
         else if type == "download"
             ret_obj.css_class = "btn-success"
-            ret_obj.button_value = "download"
+            ret_obj.button_value = gettext("download")
             ret_obj.icon_class = "fa fa-download"
         else
             console.error "Invalid button type: #{type}"
@@ -70,7 +70,7 @@ angular.module(
             conf = get_config_for_button_type(type)
             return conf.css_class + " " + conf.icon_class
     }
-).directive('icswToolsButton', ["icswToolsButtonConfigService", (icswToolsButtonsConfigService) ->
+]).directive('icswToolsButton', ["icswToolsButtonConfigService", "gettext", (icswToolsButtonsConfigService, gettext) ->
     return {
         restrict: "EA",
         template: """
@@ -116,18 +116,18 @@ visible-md visible-lg
                 scope.$watch(scope.isShow
                     (new_val) ->
                         if new_val
-                            scope.button_value = "show"
+                            scope.button_value = gettext("show")
                         else
-                            scope.button_value = "hide"
+                            scope.button_value = gettext("hide")
                 )
             else if attrs.type == "enable"
                 scope.$watch(scope.isEnable
                     (new_val) ->
                         if new_val
-                            scope.button_value = "disable"
+                            scope.button_value = gettext("disable")
                             scope.css_class = "btn-warning"
                         else
-                            scope.button_value = "enable"
+                            scope.button_value = gettext("enable")
                             scope.css_class = "btn-success"
                 )
     }

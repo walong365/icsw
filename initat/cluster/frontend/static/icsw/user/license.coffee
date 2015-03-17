@@ -169,33 +169,33 @@ angular.module(
             if k != 'add_to_scope'
                 scope[k] = v
     return data
-]).service("icswUserLicenseUtils", [() ->
+]).service("icswUserLicenseUtils", ["gettext", (gettext) ->
     _get_license_state = (lic) ->
         # NOTE: keep grace period in sync with py
         if moment(lic.valid_from) < moment() and moment() < (moment(lic.valid_to).add(2, 'weeks'))
             if moment() < moment(lic.valid_to)
                 return ([[0], {
                     state_id: 'valid'
-                    state_str: 'Valid'
-                    date_info: 'until ' + moment(lic.valid_to).format("YYYY-MM-DD")
+                    state_str: gettext('Valid')
+                    date_info: gettext('until') + ' ' + moment(lic.valid_to).format("YYYY-MM-DD")
                 }])
             else
                 return ([[3], {
                     state_id: 'grace'
-                    state_str: 'In grace period'
-                    date_info: 'since ' + moment(lic.valid_to).format("YYYY-MM-DD")
+                    state_str: gettext('In grace period')
+                    date_info: gettext('since') + ' ' + moment(lic.valid_to).format("YYYY-MM-DD")
                 }])
         else if moment(lic.valid_from) < moment()
             return ([[5, moment(lic.valid_to)], {
                 state_id: 'expired'
-                state_str: 'Expired'
-                date_info: 'since ' + moment(lic.valid_to).format("YYYY-MM-DD")
+                state_str: gettext('Expired')
+                date_info: gettext('since') + ' ' + moment(lic.valid_to).format("YYYY-MM-DD")
             }])
         else
             return ([[8, moment(lic.valid_from)], {
                 state_id: 'valid_in_future'
-                state_str: 'Will be valid'
-                date_info: 'on ' + moment(lic.valid_from).format("YYYY-MM-DD")
+                state_str: gettext('Will be valid')
+                date_info: gettext('on') + ' ' + moment(lic.valid_from).format("YYYY-MM-DD")
             }])
     get_license_state_bootstrap_class = (state) ->
         return {'valid': 'success', 'expired': 'danger', 'in_grace_period': 'warning', 'valid_in_future': 'warning'}[state]
