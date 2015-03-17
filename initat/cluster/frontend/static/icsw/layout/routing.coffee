@@ -42,6 +42,9 @@ menu_module = angular.module(
 <div class="col-md-4 col-xs-12 col-lg-8">
     <icsw-device-livestatus-table-view ls-filter="ls_filter" filtered-entries="filtered_entries" ls-devsel="ls_devsel"></icsw-device-livestatus-table-view>
 </div>
+<div class="col-md-4 col-xs-12 col-lg-8">
+    <icsw-config-category-tree-google-map></icsw-config-category-tree-google-map>
+</div>
 '
             }
         ).state(
