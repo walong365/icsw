@@ -451,6 +451,8 @@ PIPELINE_JS = {
             "js/angular-ladda.js",
             "js/hamster.js",
             "js/toaster.js",
+            "js/angular-gettext.min.js",
+            "js/webfrontend_translation.js",
         ),
         "output_filename": "pipeline/js/base.js"
     },
@@ -483,7 +485,6 @@ PIPELINE_JS = {
             "js/smart-table.js",
             "js/angular-google-maps.min.js",
             "js/bootstrap-dialog.js",
-            "js/angular-gettext.min.js",
         ),
         "output_filename": "pipeline/js/extra1.js"
     },
