@@ -14,7 +14,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.table.view">
-    <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService">
+    <h3 ng-show="!filtered_entries.length">No checks</h3>
+    <icsw-tools-rest-table target-list="service_entries" config-service="icswDeviceLivestatusTableService" ng-if="filtered_entries.length">
         <table st-table="entries_displayed" st-safe-src="filtered_entries" class="table table-condensed table-hover table-striped" style="font-size:100%;width:auto;">
             <thead>
                 <tr>
@@ -435,6 +436,7 @@
                 stroke="white"
                 stroke-width="3"
             >{{ node.name }}</text>
+
             <text
                 ng-attr-x="{{ node.legend_x }}"
                 ng-attr-y="{{ node.legend_y }}"

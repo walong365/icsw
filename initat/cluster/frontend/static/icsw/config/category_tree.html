@@ -93,6 +93,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.list.show">
+    <h3 ng-show="!locations.length">No locations</h3>
     <ul class="list-group">
         <li class="list-group-item" ng-repeat-start="loc in locations">
             <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
