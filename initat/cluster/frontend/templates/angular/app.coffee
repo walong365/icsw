@@ -341,6 +341,7 @@ ics_app = angular.module(
     "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"
     "USER_CLEAR_HOME_DIR_CREATED": "{% url 'user:clear_home_dir_created' %}"
     "USER_GET_DEVICE_IP": "{% url 'user:get_device_ip' %}"
+    "USER_GET_HISTORIC_USER": "{% url 'user:get_historic_user' %}"
     "USER_GLOBAL_SETTINGS": "{% url 'user:global_settings' %}"
     "USER_OVERVIEW": "{% url 'user:overview' %}"
     "USER_SET_USER_VAR": "{% url 'user:set_user_var' %}"

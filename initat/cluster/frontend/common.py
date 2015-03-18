@@ -29,6 +29,10 @@ class duration_utils(object):
 
     @staticmethod
     def parse_date(date, is_utc=True):
+        """
+        Parses a timestamp. There are multiple ways to do these things, but this
+        is the correct one, so avoid pitfalls and just use it.
+        """
         date = datetime.datetime.fromtimestamp(int(date))
         if is_utc:
             date = date.replace(tzinfo=pytz.UTC)

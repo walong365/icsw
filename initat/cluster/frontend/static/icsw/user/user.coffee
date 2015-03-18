@@ -905,6 +905,23 @@ user_module = angular.module(
 
                 scope._edit_obj.start_automatically = vdus.is_running
             
+]).directive("icswUserPermissionHistory", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+    return {
+        restrict: 'EA'
+        templateUrl: "icsw.user.permission-history"
+        link: (scope, el, attrs) ->
+            scope.historic_date = moment("Tue Mar 18 2015 11:59:00 GMT+0100 (CET)")
+            scope.user = []
+            scope.$watch("historic_date", () ->
+                scope.user = Restangular.all(ICSW_URLS.USER_GET_HISTORIC_USER.slice(1)).getList({
+                    'date': moment(scope.historic_date).unix()
+                }).$object
+            )
+            scope.$watch(
+                () -> scope.user.length
+                () -> console.log 'got', scope.user
+            )
+    }
 ])
 
 virtual_desktop_utils = {

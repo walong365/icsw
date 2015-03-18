@@ -81,7 +81,7 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.user.vdu.settings")
+<script type="text/ng-template" id="icsw.user.vdu.settings">
     <fieldset ng-show="true">
         <legend>Virtual Desktops</legend>
         <div ng-show="!virtual_desktop_device_available()">
@@ -346,4 +346,28 @@
             </tr>
         </tbody>
     </table>
+</script>
+
+<script type="text/ng-template" id="icsw.user.permission-history">
+    <div class="col-md-3">
+        <div class="form-group">
+            <div class="input-group">
+                <input type="text" class="form-control" ng-model="historic_date">
+                </input>
+                <span class="dropdown-toggle input-group-addon">
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                        <ul class="dropdown-menu" role="menu">
+                            <datetimepicker ng-model="historic_date"
+                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                        </ul>
+                    </div>
+                </span>
+            </div>
+        </div>
+    </div>
+    {{user}}
+
 </script>
