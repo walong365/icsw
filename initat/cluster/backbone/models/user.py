@@ -39,6 +39,8 @@ from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
+import simple_history
+from simple_history.models import HistoricalRecords
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
@@ -235,6 +237,8 @@ class csw_permission(models.Model):
     # true if this right can be used for object-level permissions
     valid_for_object_level = models.BooleanField(default=True)
 
+    history = HistoricalRecords()
+
     class Meta:
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
@@ -267,6 +271,8 @@ class csw_object_permission(models.Model):
     idx = models.AutoField(primary_key=True)
     csw_permission = models.ForeignKey(csw_permission)
     object_pk = models.IntegerField(default=0)
+
+    history = HistoricalRecords()
 
     def __unicode__(self):
         return "{} | {:d}".format(unicode(self.csw_permission), self.object_pk)
@@ -308,6 +314,8 @@ class group_object_permission(models.Model):
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
+    history = HistoricalRecords()
+
     class Meta:
         app_label = "backbone"
 
@@ -332,6 +340,8 @@ class user_permission(models.Model):
     csw_permission = models.ForeignKey(csw_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
 
     class Meta:
         app_label = "backbone"
@@ -374,6 +384,8 @@ class user_object_permission(models.Model):
     csw_object_permission = models.ForeignKey(csw_object_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
 
     class Meta:
         app_label = "backbone"
@@ -778,6 +790,10 @@ class user(models.Model):
             self.login,
             " ".join(_add_fields),
         )
+
+# can't register user table directly, see Common Issues on
+# https://django-simple-history.readthedocs.org/en/latest/reference.html
+simple_history.register(user)
 
 
 @receiver(signals.m2m_changed, sender=user.perms.through)

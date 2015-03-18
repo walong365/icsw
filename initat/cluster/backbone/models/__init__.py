@@ -420,7 +420,13 @@ class DeviceSNMPInfo(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
+from simple_history.models import HistoricalRecords
+
+
 class device(models.Model):
+
+    history = HistoricalRecords()
+
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
     # no dots allowed (these parts are now in domain_tree_node)
