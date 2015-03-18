@@ -1,5 +1,6 @@
 # Django settings for cluster project.
 # -*- coding: utf-8 -*-
+import glob
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
@@ -327,6 +328,72 @@ STATICFILES_DIRS.append(
 )
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
+
+# add all applications, including backbone
+
+AUTOCOMMIT = True
+
+INSTALLED_APPS = list(INSTALLED_APPS)
+# deprecated ?
+ADDITIONAL_MENU_FILES = []
+ADDITIONAL_ANGULAR_APPS = []
+ADDITIONAL_URLS = []
+ADDITIONAL_JS = []
+
+AUTHENTICATION_BACKENDS = (
+    "initat.cluster.backbone.cluster_auth.db_backend",
+)
+AUTH_USER_MODEL = "backbone.user"
+
+# my authentication backend
+
+
+ICSW_ADDON_APPS = []
+# add everything below cluster
+dir_name = os.path.dirname(__file__)
+for sub_dir in os.listdir(dir_name):
+    full_path = os.path.join(dir_name, sub_dir)
+    if os.path.isdir(full_path):
+        if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
+            add_app = "initat.cluster.{}".format(sub_dir)
+            if add_app not in INSTALLED_APPS:
+                # search for icsw meta
+                icsw_meta = os.path.join(full_path, "ICSW.meta.xml")
+                if os.path.exists(icsw_meta):
+                    try:
+                        _tree = etree.fromstring(file(icsw_meta, "r").read())
+                    except:
+                        pass
+                    else:
+                        ICSW_ADDON_APPS.append(sub_dir)
+                        ADDITIONAL_ANGULAR_APPS.extend(
+                            [_el.attrib["name"] for _el in _tree.findall(".//app")]
+                        )
+                        ADDITIONAL_URLS.extend(
+                            [
+                                (
+                                    _el.attrib["name"],
+                                    _el.attrib["url"],
+                                    [
+                                        _part for _part in _el.get("arguments", "").strip().split() if _part
+                                    ]
+                                ) for _el in _tree.findall(".//url")
+                            ]
+                        )
+                        js_full_paths = glob.glob(os.path.join(full_path, "static", "js", "*.js"))
+                        ADDITIONAL_JS.extend([os.path.join("js", os.path.basename(js_file))
+                                              for js_file in js_full_paths])
+                INSTALLED_APPS.append(add_app)
+
+ADDITIONAL_JS = tuple(ADDITIONAL_JS)
+
+for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
+    add_app = os.environ[add_app_key]
+    if add_app not in INSTALLED_APPS:
+        INSTALLED_APPS.append(add_app)
+
+INSTALLED_APPS = tuple(INSTALLED_APPS)
+
 PIPELINE_COMPILERS = (
     "pipeline.compilers.coffee.CoffeeScriptCompiler",
 )
@@ -384,6 +451,8 @@ PIPELINE_JS = {
             "js/angular-ladda.js",
             "js/hamster.js",
             "js/toaster.js",
+            "js/angular-gettext.min.js",
+            "js/webfrontend_translation.js",
         ),
         "output_filename": "pipeline/js/base.js"
     },
@@ -416,9 +485,12 @@ PIPELINE_JS = {
             "js/smart-table.js",
             "js/angular-google-maps.min.js",
             "js/bootstrap-dialog.js",
-            "js/angular-gettext.min.js",
         ),
         "output_filename": "pipeline/js/extra1.js"
+    },
+    "js_icsw_modules": {
+        "source_filenames": ADDITIONAL_JS,
+        "output_filename": "pipeline/js/icsw_modules.js"
     },
     "icsw_cs1": {
         "source_filenames": (
@@ -428,64 +500,6 @@ PIPELINE_JS = {
         "output_filename": "pipeline/js/icsw1.js"
     }
 }
-
-# add all applications, including backbone
-
-AUTOCOMMIT = True
-
-INSTALLED_APPS = list(INSTALLED_APPS)
-# deprecated ?
-ADDITIONAL_MENU_FILES = []
-ADDITIONAL_ANGULAR_APPS = []
-ADDITIONAL_URLS = []
-
-AUTHENTICATION_BACKENDS = (
-    "initat.cluster.backbone.cluster_auth.db_backend",
-)
-AUTH_USER_MODEL = "backbone.user"
-
-# my authentication backend
-
-
-ICSW_ADDON_APPS = []
-# add everything below cluster
-dir_name = os.path.dirname(__file__)
-for sub_dir in os.listdir(dir_name):
-    full_path = os.path.join(dir_name, sub_dir)
-    if os.path.isdir(full_path):
-        if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
-            add_app = "initat.cluster.{}".format(sub_dir)
-            if add_app not in INSTALLED_APPS:
-                # serach for icsw meta
-                icsw_meta = os.path.join(full_path, "ICSW.meta.xml")
-                if os.path.exists(icsw_meta):
-                    try:
-                        _tree = etree.fromstring(file(icsw_meta, "r").read())
-                    except:
-                        pass
-                    else:
-                        ICSW_ADDON_APPS.append(sub_dir)
-                        ADDITIONAL_ANGULAR_APPS.extend(
-                            [_el.attrib["name"] for _el in _tree.findall(".//app")]
-                        )
-                        ADDITIONAL_URLS.extend(
-                            [
-                                (
-                                    _el.attrib["name"],
-                                    _el.attrib["url"],
-                                    [
-                                        _part for _part in _el.get("arguments", "").strip().split() if _part
-                                    ]
-                                ) for _el in _tree.findall(".//url")
-                            ]
-                        )
-                INSTALLED_APPS.append(add_app)
-for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
-    add_app = os.environ[add_app_key]
-    if add_app not in INSTALLED_APPS:
-        INSTALLED_APPS.append(add_app)
-
-INSTALLED_APPS = tuple(INSTALLED_APPS)
 
 SSI_ROOTS = []
 SSI_FILES = []
