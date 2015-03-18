@@ -1317,6 +1317,7 @@ class log_source(models.Model):
 
     class Meta:
         db_table = u'log_source'
+        verbose_name = u"Log source (old)"
 
 
 class log_status(models.Model):
