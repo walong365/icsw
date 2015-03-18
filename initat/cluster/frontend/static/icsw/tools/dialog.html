@@ -22,10 +22,10 @@
 
                 <tr ng-repeat-start="entry in entries_displayed">
                     <td>
-                        {{entry.model}}
+                        {{entry.model_verbose_name}}
                     </td>
                     <td>
-                        {{entry.field_name}}
+                        {{entry.field_verbose_name}}
                     </td>
                     <td class="text-right">
                         <icsw-tools-button type="show" size="xs" is-show="!entry.show_details"

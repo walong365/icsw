@@ -269,7 +269,9 @@ class check_delete_object(View):
 
                     info.append({
                         'model': related_object.model._meta.object_name,
+                        'model_verbose_name': related_object.model._meta.verbose_name.capitalize(),
                         'field_name': related_object.field.name,
+                        'field_verbose_name': related_object.field.verbose_name.capitalize(),
                         'null': related_object.field.null,
                         'objects': {
                             'num_refs_of_refs': len(refs_of_refs),
