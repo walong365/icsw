@@ -9,7 +9,7 @@ msgstr ""
 "Project-Id-Version: \n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2015-03-17 15:54+0100\n"
+"PO-Revision-Date: 2015-03-18 15:17+0100\n"
 "Last-Translator: Bernhard Mallinger <mallinger@gmx.at>\n"
 "Language-Team: \n"
 "Language: de\n"
@@ -24,7 +24,7 @@ msgstr "ändern"
 
 #: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:33
 msgid "create"
-msgstr "erzeugen"
+msgstr "erstellen"
 
 #: ../initat/cluster/frontend/static/icsw/tools/buttons.coffee:37
 msgid "delete"

@@ -14,7 +14,7 @@
     </icsw:license>
 
     <icsw:license id="continuity">
-        <icsw:name>Continuity Management</icsw:name><icsw:description></icsw:description><icsw:feature>peering</icsw:feature>
+        <icsw:name>Continuity Management</icsw:name><icsw:description>Manage continuity of service</icsw:description><icsw:feature>peering</icsw:feature>
         <icsw:feature>graphing</icsw:feature>
         <icsw:feature>discovery-server</icsw:feature>
     </icsw:license>
@@ -23,8 +23,8 @@
     <icsw:name>Reliability</icsw:name><icsw:description></icsw:description></icsw:license>
 
     <icsw:license id="security">
-    <icsw:name>Security</icsw:name><icsw:description></icsw:description></icsw:license>
+    <icsw:name>Security</icsw:name><icsw:description>Ensures the security of your cluster</icsw:description></icsw:license>
 
 </icsw:license-feature-map>
-  <icsw:signature>eP0lqUEpzHh6hfm82uUCNQWdIdX26jY9es5QNBelW+NgPFxVbEzJyorUiZ2gPHNeGt7Ajt8GJp41lRoYodvft47XiKtiCqDqj14Wxfpml58fO8rQ+TrfxzWu/Qhx/0b7iI5unhGf66zyHu9skThSItu/7HPSboG9eS9R2SJOtzI=</icsw:signature>
+  <icsw:signature>WCuwmZvWKOykq8vIh6ki/UMXwxytDLhqeMTNobvXBuGrU6pjXdfRHcS+ohUHuviGSEnZuYWGb1nla4HpNA0vROoIX1T7TiVOKJ00qHKK7HLuq02Rga8vJy9mLUWTz/4Ka7jq8eui09DlJhoil3fd1UrNXjFQylc6NpkLSVQ/TXw=</icsw:signature>
 </icsw:signed-license-feature-map>
