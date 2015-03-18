@@ -30,7 +30,7 @@
 
         <accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
             <accordion-heading>
-                Your licenses
+                Your licenses for this cluster
                 <i class="pull-right glyphicon"
                    ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"></i>
             </accordion-heading>
@@ -77,9 +77,8 @@
            style="width:auto;">
         <thead>
             <tr>
-                <th st-sort="">License</th>
-                TODO: st-sorts
-                <th>Description</th>
+                <th st-sort="name">License</th>
+                <th st-sort="description">Description</th>
                 <th>Status</th>
                 <th></th>
                 <th>Type</th>
