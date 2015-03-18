@@ -145,6 +145,7 @@ ics_app = angular.module(
     "CONFIG_UPLOAD_CONFIG": "{% url 'config:upload_config' %}"
     "DEVICE_CHANGE_DEVICES": "{% url 'device:change_devices' %}"
     "DEVICE_CONNECTIONS": "{% url 'device:connections' %}"
+    "DEVICE_GET_DEVICE_LOCATION": "{% url 'device:get_device_location' %}"
     "DEVICE_MANUAL_CONNECTION": "{% url 'device:manual_connection' %}"
     "DEVICE_SCAN_DEVICE_NETWORK": "{% url 'device:scan_device_network' %}"
     "DEVICE_SET_SELECTION": "{% url 'device:set_selection' %}"
