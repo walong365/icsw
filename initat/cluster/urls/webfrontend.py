@@ -249,6 +249,11 @@ doc_patterns = patterns(
         }, name="show"),
 )
 
+system_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"^history_overview$", user_views.history_overview.as_view(), name="history_overview"),
+)
+
 my_url_patterns = patterns(
     "",
     url(r"^$", session_views.redirect_to_main.as_view()),
@@ -271,6 +276,7 @@ my_url_patterns = patterns(
     url(r"^doc/", include(doc_patterns, namespace="doc")),
     url(r"^dyndoc/", include(dyndoc_patterns, namespace="dyndoc")),
     url(r"^rest/", include(rest_patterns, namespace="rest")),
+    url(r"^system/", include(system_patterns, namespace="system")),
 )
 
 url_patterns = patterns(

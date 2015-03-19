@@ -342,3 +342,8 @@ class get_historic_user(ListAPIView):
 
         return HttpResponse(json.dumps(d))
 
+
+class history_overview(View):
+    @method_decorator(login_required)
+    def get(self, request, *args, **kwargs):
+        return render_me(request, "history_overview.html")()

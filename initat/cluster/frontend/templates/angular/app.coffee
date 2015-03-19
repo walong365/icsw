@@ -100,6 +100,7 @@ ics_app = angular.module(
         "icsw.config.image",
         "icsw.config.partition_table",
         "icsw.rms",
+        "icsw.history",
         {% for app in ADDITIONAL_ANGULAR_APPS %}
         "{{ app }}",
         {% endfor %}
@@ -336,6 +337,7 @@ ics_app = angular.module(
     "SETUP_RESCAN_KERNELS": "{% url 'setup:rescan_kernels' %}"
     "SETUP_USE_IMAGE": "{% url 'setup:use_image' %}"
     "SETUP_VALIDATE_PARTITION": "{% url 'setup:validate_partition' %}"
+    "SYSTEM_HISTORY_OVERVIEW": "{% url 'system:history_overview' %}"
     "USER_ACCOUNT_INFO": "{% url 'user:account_info' %}"
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"
