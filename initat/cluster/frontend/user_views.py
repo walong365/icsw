@@ -37,7 +37,8 @@ from initat.cluster.backbone.models import group, user, user_variable, csw_permi
     csw_object_permission, group_object_permission, \
     user_object_permission, device
 from initat.cluster.backbone.models.user import user_permission
-from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
+from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer, \
+    user_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.backbone import routing
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
@@ -330,6 +331,14 @@ class get_historic_user(ListAPIView):
                 'login': hist_user.login,
                 'user_permission_set': [(p.level, p.csw_permission.pk, p.level) for p in perms if p.user_id == hist_user.pk],
             })
+
+            ser = user_serializer(hist_user)
+            from pprint import pprint
+            print '\nuser', hist_user.login
+            print hist_user.user_permission_set.all()
+            print hist_user._meta
+            print hist_user.user_permission_set.all()[0]._meta
+            pprint(ser.data)
 
         return HttpResponse(json.dumps(d))
 
