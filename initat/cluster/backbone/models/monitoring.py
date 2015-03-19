@@ -24,6 +24,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals, Max, Min
 from django.dispatch import receiver
+from simple_history.models import HistoricalRecords
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 import datetime
 from collections import defaultdict
@@ -470,6 +471,8 @@ class mon_check_command(models.Model):
     is_active = models.BooleanField(default=True)
     # which tcp port(s) cover this check
     tcp_coverage = models.CharField(default="", max_length=256, blank=True)
+
+    history = HistoricalRecords()
 
     def get_object_type(self):
         return "mon"

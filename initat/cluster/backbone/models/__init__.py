@@ -38,6 +38,7 @@ from initat.cluster.backbone.models.functions import _check_empty_string, \
     get_change_reset_list, get_related_models, cluster_timezone, duration
 from lxml import etree  # @UnresolvedImport
 from lxml.builder import E  # @UnresolvedImport
+from simple_history.models import HistoricalRecords
 import crypt
 import datetime
 import ipvx_tools
@@ -402,6 +403,8 @@ class device_config(models.Model):
     config = models.ForeignKey("backbone.config", db_column="new_config_id")
     date = models.DateTimeField(auto_now_add=True)
 
+    history = HistoricalRecords()
+
     def home_info(self):
         return self.info_str
 
@@ -420,13 +423,7 @@ class DeviceSNMPInfo(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
-from simple_history.models import HistoricalRecords
-
-
 class device(models.Model):
-
-    history = HistoricalRecords()
-
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
     # no dots allowed (these parts are now in domain_tree_node)
@@ -543,6 +540,8 @@ class device(models.Model):
         ],
         blank=True
     )
+
+    history = HistoricalRecords()
 
     @property
     def full_name(self):

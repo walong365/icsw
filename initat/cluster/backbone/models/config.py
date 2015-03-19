@@ -26,6 +26,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.apps import apps
 from django.dispatch import receiver
+from simple_history.models import HistoricalRecords
 from initat.cluster.backbone.models.functions import _check_integer, _check_empty_string
 
 __all__ = [
@@ -81,6 +82,8 @@ class config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
     categories = models.ManyToManyField("backbone.category")
+
+    history = HistoricalRecords()
 
     def get_use_count(self):
         return self.device_config_set.all().count()

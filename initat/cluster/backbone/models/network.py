@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from simple_history.models import HistoricalRecords
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
 from initat.cluster.backbone.signals import bootsettings_changed
@@ -37,6 +38,8 @@ class network_device_type(models.Model):
     # used for matching ?
     for_matching = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
 
     class Meta:
         db_table = u'network_device_type'
@@ -147,6 +150,8 @@ class network(models.Model):
     network_device_type = models.ManyToManyField("backbone.network_device_type")
     enforce_unique_ips = models.BooleanField(default=False)
 
+    history = HistoricalRecords()
+
     class CSW_Meta:
         permissions = (
             ("modify_network", "modify global network settings", False),
@@ -256,6 +261,8 @@ class net_ip(models.Model):
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
 
     def copy(self):
         return net_ip(
@@ -412,6 +419,8 @@ class netdevice(models.Model):
     # admin / oper stats
     snmp_admin_status = models.IntegerField(default=0)
     snmp_oper_status = models.IntegerField(default=0)
+
+    history = HistoricalRecords()
 
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -655,6 +664,8 @@ class peer_information(models.Model):
     autocreated = models.BooleanField(default=False)
     info = models.CharField(default="", max_length=256, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
 
     def __unicode__(self):
         return u"{} [{:d}] {}".format(

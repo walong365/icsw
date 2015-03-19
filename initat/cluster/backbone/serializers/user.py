@@ -44,6 +44,7 @@ __all__ = [
     "virtual_desktop_user_setting_serializer",
     "virtual_desktop_protocol_serializer",
     "window_manager_serializer",
+    "UserHistoricalSerializer",
 ]
 
 
@@ -130,6 +131,11 @@ class user_serializer(serializers.ModelSerializer):
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
             "only_webfrontend", "home", "user_scan_run_set",
         )
+
+
+class UserHistoricalSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = user
 
 
 class user_flat_serializer(serializers.ModelSerializer):
