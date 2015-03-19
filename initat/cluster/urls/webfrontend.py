@@ -252,6 +252,7 @@ doc_patterns = patterns(
 system_patterns = patterns(
     "initat.cluster.frontend",
     url(r"^history_overview$", user_views.history_overview.as_view(), name="history_overview"),
+    url(r"^get_historical_data$", user_views.get_historical_data.as_view(), name="get_historical_data"),
 )
 
 my_url_patterns = patterns(
