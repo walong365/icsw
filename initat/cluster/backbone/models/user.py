@@ -38,7 +38,9 @@ from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
+from django.db.models.signals import post_save
 from django.dispatch import receiver
+import reversion
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
@@ -779,7 +781,6 @@ class user(models.Model):
             " ".join(_add_fields),
         )
 
-
 @receiver(signals.m2m_changed, sender=user.perms.through)
 def user_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
@@ -1273,3 +1274,12 @@ class window_manager(models.Model):
     # devices where this is available
     devices = models.ManyToManyField("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
+
+
+reversion.register(user, follow=["group"])
+reversion.register(group)
+if False:
+    for module in __all__:
+        cls = locals()[module]
+        if inspect.isclass(cls) and issubclass(cls, models.Model):
+            reversion.register(cls)

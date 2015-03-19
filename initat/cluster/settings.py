@@ -241,6 +241,8 @@ MIDDLEWARE_CLASSES = (
     "backbone.middleware.database_debug",
     # "django.middleware.gzip.GZipMiddleware",
     "pipeline.middleware.MinifyHTMLMiddleware",
+
+    "reversion.middleware.RevisionMiddleware",
 )
 
 if not DEBUG:
