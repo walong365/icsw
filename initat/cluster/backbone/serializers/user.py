@@ -23,6 +23,7 @@
 
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
+from rest_framework.relations import PrimaryKeyRelatedField
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
     group_object_permission, user_permission, user_object_permission, user_quota_setting, \
     group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, virtual_desktop_user_setting, \
@@ -134,6 +135,10 @@ class user_serializer(serializers.ModelSerializer):
 
 
 class UserHistoricalSerializer(serializers.ModelSerializer):
+    user_permission_set = PrimaryKeyRelatedField(many=True, read_only=True)
+    user_object_permission_set = PrimaryKeyRelatedField(many=True, read_only=True)
+    user_quota_setting_set = PrimaryKeyRelatedField(many=True, read_only=True)
+
     class Meta:
         model = user
 
