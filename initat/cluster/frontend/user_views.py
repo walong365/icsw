@@ -24,17 +24,18 @@
 
 import json
 import logging
+import datetime
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.apps import apps
+from django.forms import model_to_dict
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.http.response import HttpResponse
-from requests import Response
-from rest_framework import viewsets
-from rest_framework.generics import ListAPIView
 import reversion
+from rest_framework.generics import ListAPIView
+import initat.cluster
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
     user_object_permission, device
@@ -45,7 +46,8 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 import config_tools
 import server_command
-from initat.cluster.frontend.rest_views import rest_logging
+from initat.cluster.frontend.rest_views import rest_logging, get_model_historical_serializer_class
+from initat.cluster.frontend.common import duration_utils
 
 
 logger = logging.getLogger("cluster.user")
@@ -342,6 +344,43 @@ class get_historic_user(ListAPIView):
 
         return HttpResponse(json.dumps(d))
 """
+
+
+class get_historical_data(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        # date = duration_utils.parse_date(request.GET['date'])
+        model_name = request.GET['model']
+        model = getattr(initat.cluster.backbone.models, model_name)
+
+        """
+        model_name_camelcase = ''.join(part.capitalize() for part in model_name.split('_'))
+        serializer_class = get_model_historical_serializer_class(model_name_camelcase)
+
+        historic_fields = {
+            "history_user_id": serializers.IntegerField(read_only=True),
+            "history_date": serializers.DateTimeField(read_only=True),
+            "history_type": serializers.CharField(read_only=True)
+        }
+        historic_serializer_class = type(serializer_class.__name__ + "_historic",
+                                         (serializer_class,), historic_fields)
+        """
+
+        # TODO: can make serializer work? then we could easily do something with foreign keys and m2m
+        # TODO: user DjangoDJSONEncoder
+        def formatter(x):
+            if isinstance(x, datetime.datetime):
+                return x.strftime("%Y-%m-%d %H:%M:%S")
+            elif isinstance(x, datetime.date):
+                # NOTE: datetime is instance of date, so check datetime first
+                return x.isoformat()
+            else:
+                return x
+        return HttpResponse(json.dumps([model_to_dict(i) for i in reversed(model.history.all())], default=formatter))
+        # print model_to_dict(model.history.all()[0])
+        # return HttpResponse([DjangoJSONEncoder().default(model.history.all()[0])])
+        # return HttpResponse(historic_serializer_class(i).data for i in model.history.all())
 
 
 class history_overview(View):
