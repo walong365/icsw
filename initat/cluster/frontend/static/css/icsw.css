@@ -105,3 +105,7 @@ and every even row contains a collapsible row which is hidden by default */
 .icsw-table-striped-4 > tbody > tr:nth-child(4n+1) {
     background-color: #f9f9f9;
 }
+/* striping as bootstrap striping but exactly the other row */
+.icsw-table-striped-other > tbody > tr:nth-child(2n) {
+    background-color: #f9f9f9;
+}
