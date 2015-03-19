@@ -168,6 +168,8 @@ user_patterns = patterns(
     url("^background_info$", user_views.background_job_info.as_view(), name="background_job_info"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
+
+    url("^reversion_view$", user_views.reversion_view.as_view(), name="reversion_view"),
 )
 
 pack_patterns = patterns(
@@ -248,6 +250,11 @@ doc_patterns = patterns(
         }, name="show"),
 )
 
+system_patterns = patterns(
+    "initat.cluster.frontend",
+    url(r"^history_overview$", user_views.history_overview.as_view(), name="history_overview"),
+)
+
 my_url_patterns = patterns(
     "",
     url(r"^$", session_views.redirect_to_main.as_view()),
@@ -270,6 +277,7 @@ my_url_patterns = patterns(
     url(r"^doc/", include(doc_patterns, namespace="doc")),
     url(r"^dyndoc/", include(dyndoc_patterns, namespace="dyndoc")),
     url(r"^rest/", include(rest_patterns, namespace="rest")),
+    url(r"^system/", include(system_patterns, namespace="system")),
 )
 
 url_patterns = patterns(

@@ -31,6 +31,10 @@ from django.apps import apps
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.http.response import HttpResponse
+from requests import Response
+from rest_framework import viewsets
+from rest_framework.generics import ListAPIView
+import reversion
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, \
     user_object_permission, device
@@ -41,6 +45,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 import config_tools
 import server_command
+from initat.cluster.frontend.rest_views import rest_logging
 
 
 logger = logging.getLogger("cluster.user")
@@ -297,3 +302,74 @@ class get_device_ip(View):
             ip = "127.0.0.1"  # try fallback (it might not work, but it will not make things more broken)
 
         return HttpResponse(json.dumps({"ip": ip}), content_type="application/json")
+
+
+"""
+class get_historic_user(ListAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        date = duration_utils.parse_date(request.GET['date'])
+        print 'getting hist users of ', date, date.tzinfo
+
+        # my_user = list(user.history.as_of(date))[1]
+        # my_user = user.objects.get(pk=2)
+        # print my_user
+
+        hist_users = user.history.as_of(date)
+        # print (dir(u))
+        # print 'cur perm', u.user_permission_set.all()
+        # print 'hist perm', u.historicaluser_permission_set.all()
+        # print u.user_permission_set(manager=u"objects")
+
+        perms = list(user_permission.history.as_of(date))
+
+        d = []
+        for hist_user in hist_users:
+            d.append({
+                'idx': hist_user.pk,
+                'login': hist_user.login,
+                'user_permission_set': [(p.level, p.csw_permission.pk, p.level) for p in perms if p.user_id == hist_user.pk],
+            })
+
+            ser = user_serializer(hist_user)
+            from pprint import pprint
+            print '\nuser', hist_user.login
+            print hist_user.user_permission_set.all()
+            print hist_user._meta
+            print hist_user.user_permission_set.all()[0]._meta
+            pprint(ser.data)
+
+        return HttpResponse(json.dumps(d))
+"""
+
+
+class history_overview(View):
+    @method_decorator(login_required)
+    def get(self, request, *args, **kwargs):
+        return render_me(request, "history_overview.html")()
+
+
+class reversion_view(ListAPIView):
+    @rest_logging
+    def list(self, request, pk=None):
+        _object = user.objects.get(pk=5)
+        _versions = reversion.get_for_object(_object)
+
+        l = [{'data': v.serialized_data} for v in _versions]
+
+        for v in _versions:
+            from pprint import pprint
+            # for a in v.serialized_data: pprint (a)
+            pprint(json.loads(v.serialized_data))
+            print 'x'
+            pprint(v.revision)
+            pprint(v.object_version)
+            pprint(v.object_version.object)
+            pprint(v.object_version.m2m_data)
+            print 'z'
+            pprint(v.object_repr)
+            pprint(v.object_id)
+
+
+        return HttpResponse(l)
