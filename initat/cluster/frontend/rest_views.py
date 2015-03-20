@@ -770,35 +770,21 @@ class device_selection_list(APIView):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
         return Response(ser.data)
 
-
-def get_model_serializer_name(model_name):
-    is_camelcase = model_name[0].lower() != model_name[0]
-    pattern = "{}Serializer" if is_camelcase else "{}_serializer"
-    return pattern.format(model_name)
-
-
-def get_model_serializer_class(model_name, src_module=model_serializers):
-    return getattr(src_module, get_model_serializer_name(model_name), None)
-
-
-def get_model_historical_serializer_class(model_name, src_module=model_serializers):
-    hist_serializer_class = get_model_serializer_class(model_name + "Historical")
-    return hist_serializer_class if hist_serializer_class is not None else get_model_serializer_class(model_name)
-
-
 for src_mod, obj_name in REST_LIST:
     is_camelcase = obj_name[0].lower() != obj_name[0]
     if is_camelcase:
+        ser_name = "{}Serializer".format(obj_name)
         modes = [
             ("List", list_view),
             ("Detail", detail_view),
         ]
     else:
+        ser_name = "{}_serializer".format(obj_name)
         modes = [
             ("_list", list_view),
             ("_detail", detail_view),
         ]
-    ser_class = get_model_serializer_class(obj_name, src_mod)
+    ser_class = getattr(src_mod, ser_name)
     for mode_name, mode_impl in modes:
         class_name = "{}{}".format(obj_name, mode_name)
         globals()[class_name] = type(
