@@ -39,7 +39,6 @@ from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
 from django.dispatch import receiver
-import reversion
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
@@ -1273,11 +1272,4 @@ class window_manager(models.Model):
     # devices where this is available
     devices = models.ManyToManyField("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
-
-
-if False:
-    for module in __all__:
-        cls = locals()[module]
-        if inspect.isclass(cls) and issubclass(cls, models.Model):
-            reversion.register(cls)
 
