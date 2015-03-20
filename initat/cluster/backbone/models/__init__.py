@@ -31,6 +31,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.lru_cache import lru_cache
 from django.utils.crypto import get_random_string
+import reversion
 from initat.cluster.backbone.middleware import thread_local_middleware, \
     _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, \
@@ -70,6 +71,7 @@ from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
 from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
+import initat.cluster.backbone.models.model_history
 
 
 # attention: this list is used in create_fixtures.py
@@ -1476,3 +1478,10 @@ class quota_capable_blockdevice(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+
+# register models in history
+for model in (group, device_group, device, csw_permission, csw_object_permission, user, user_permission,
+              user_object_permission):
+    model_history.icsw_register(model)
+del model

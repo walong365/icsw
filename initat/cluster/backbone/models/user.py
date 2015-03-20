@@ -38,7 +38,6 @@ from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.apps import apps
 from django.db.models import Q, signals
-from django.db.models.signals import post_save
 from django.dispatch import receiver
 import reversion
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer, \
@@ -1276,10 +1275,9 @@ class window_manager(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
-reversion.register(user, follow=["group"])
-reversion.register(group)
 if False:
     for module in __all__:
         cls = locals()[module]
         if inspect.isclass(cls) and issubclass(cls, models.Model):
             reversion.register(cls)
+
