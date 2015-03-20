@@ -353,34 +353,36 @@ class get_historical_data(ListAPIView):
         # date = duration_utils.parse_date(request.GET['date'])
         model_name = request.GET['model']
         model = getattr(initat.cluster.backbone.models, model_name)
-
-        """
-        model_name_camelcase = ''.join(part.capitalize() for part in model_name.split('_'))
-        serializer_class = get_model_historical_serializer_class(model_name_camelcase)
-
-        historic_fields = {
-            "history_user_id": serializers.IntegerField(read_only=True),
-            "history_date": serializers.DateTimeField(read_only=True),
-            "history_type": serializers.CharField(read_only=True)
-        }
-        historic_serializer_class = type(serializer_class.__name__ + "_historic",
-                                         (serializer_class,), historic_fields)
-        """
-
-        # TODO: can make serializer work? then we could easily do something with foreign keys and m2m
-        # TODO: user DjangoDJSONEncoder
-        def formatter(x):
-            if isinstance(x, datetime.datetime):
-                return x.strftime("%Y-%m-%d %H:%M:%S")
-            elif isinstance(x, datetime.date):
-                # NOTE: datetime is instance of date, so check datetime first
-                return x.isoformat()
-            else:
-                return x
-        return HttpResponse(json.dumps([model_to_dict(i) for i in reversed(model.history.all())], default=formatter))
-        # print model_to_dict(model.history.all()[0])
-        # return HttpResponse([DjangoJSONEncoder().default(model.history.all()[0])])
-        # return HttpResponse(historic_serializer_class(i).data for i in model.history.all())
+        # TODO
+        return HttpResponse([])
+#
+#        """
+#        model_name_camelcase = ''.join(part.capitalize() for part in model_name.split('_'))
+#        serializer_class = get_model_historical_serializer_class(model_name_camelcase)
+#
+#        historic_fields = {
+#            "history_user_id": serializers.IntegerField(read_only=True),
+#            "history_date": serializers.DateTimeField(read_only=True),
+#            "history_type": serializers.CharField(read_only=True)
+#        }
+#        historic_serializer_class = type(serializer_class.__name__ + "_historic",
+#                                         (serializer_class,), historic_fields)
+#        """
+#
+#        # TODO: can make serializer work? then we could easily do something with foreign keys and m2m
+#        # TODO: user DjangoDJSONEncoder
+#        def formatter(x):
+#            if isinstance(x, datetime.datetime):
+#                return x.strftime("%Y-%m-%d %H:%M:%S")
+#            elif isinstance(x, datetime.date):
+#                # NOTE: datetime is instance of date, so check datetime first
+#                return x.isoformat()
+#            else:
+#                return x
+#        return HttpResponse(json.dumps([model_to_dict(i) for i in reversed(model.history.all())], default=formatter))
+#        # print model_to_dict(model.history.all()[0])
+#        # return HttpResponse([DjangoJSONEncoder().default(model.history.all()[0])])
+#        # return HttpResponse(historic_serializer_class(i).data for i in model.history.all())
 
 
 class history_overview(View):
