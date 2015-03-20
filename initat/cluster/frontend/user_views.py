@@ -46,7 +46,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from lxml.builder import E  # @UnresolvedImport
 import config_tools
 import server_command
-from initat.cluster.frontend.rest_views import rest_logging, get_model_historical_serializer_class
+from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.frontend.common import duration_utils
 
 
