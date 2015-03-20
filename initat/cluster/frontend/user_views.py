@@ -353,7 +353,9 @@ class get_historical_data(ListAPIView):
         # date = duration_utils.parse_date(request.GET['date'])
         model_name = request.GET['model']
         model = getattr(initat.cluster.backbone.models, model_name)
-        # TODO
+        # TODO: return in format {'meta': {..metadata..}, 'data': {..data..}}
+        # data is probably just the serialized data
+        # metadata contains user, date, change id?
         return HttpResponse([])
 #
 #        """
