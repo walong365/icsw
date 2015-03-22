@@ -1149,4 +1149,4 @@ def struct_to_string(in_struct):
 
 
 def reduce_list(in_list):
-    return struct_to_string(list_to_struct(in_list))
+    return struct_to_string(list_to_struct(in_list)[0])
