@@ -654,71 +654,8 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     )
             return _compress_infos(_all_keys), _ret_state, ", ".join(ret_list)
 
-        def _compress_list(in_list):
-            # reduce list
-            if len(in_list) == 1:
-                return in_list
-            # find longest common prefix
-            _len = 0
-            while True:
-                _pfs = set([_value[:_len + 1] for _value in in_list])
-                if len(_pfs) == 1:
-                    _len += 1
-                else:
-                    break
-            if _len:
-                _res = _compress_list(
-                    [_value[_len:] for _value in in_list]
-                )
-                return [(in_list[0][:_len], _res)]
-            else:
-                _pfs = sorted(list(_pfs))
-                # check for integer pfs
-                if all([_pf.isdigit() for _pf in _pfs]):
-                    _dict = {}
-                    _pfs = set()
-                    for _value in in_list:
-                        _pf = _value[0]
-                        if _value[2].isdigit():
-                            _pf = _value[:3]
-                        elif _value[1].isdigit():
-                            _pf = _value[:2]
-                        else:
-                            _pf = _value[0]
-                        _pfs.add(int(_pf))
-                        _dict.setdefault(_pf, []).append(_value[len(_pf):])
-                    _pfs = sorted(list(_pfs))
-                    if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
-                        # all values are the same, return compressed list
-                        return [("[{}]".format(logging_tools.compress_num_list(_pfs)), _compress_list(_dict.values()[0]))]
-                    else:
-                        _pfs = ["{:d}".format(_val) for _val in _pfs]
-                        return [(_pf, _compress_list(_dict[_pf])) for _pf in _pfs]
-                else:
-                    return [(_pf, _compress_list([_value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf])) for _pf in _pfs]
-
-        def _expand_list(in_struct):
-            # recursivly expand a given line_struct
-            _pf, _list = in_struct
-            _r = []
-            for _entry in _list:
-                if isinstance(_entry, basestring):
-                    _r.append(_entry)
-                else:
-                    _r.append(_expand_list(_entry))
-            if len(_r) == 1:
-                return "{}{}".format(
-                    _pf,
-                    _r[0],
-                )
-            else:
-                return "{}[{}]".format(
-                    _pf,
-                    "][".join(_r),
-                )
-
         def _compress_infos(in_list):
-            return _expand_list(_compress_list(in_list)[0])
+            return logging_tools.struct_to_string(logging_tools.list_to_struct(in_list)[0])
 
         # rewrite bbu info
         for _c_id, _c_dict in ctrl_dict.iteritems():
