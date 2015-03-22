@@ -1135,7 +1135,7 @@ def struct_to_string(in_struct):
         if isinstance(_entry, basestring):
             _r.append(_entry)
         else:
-            _r.append(_expand_list(_entry))
+            _r.append(struct_to_string(_entry))
     if len(_r) == 1:
         return "{}{}".format(
             _pf,
