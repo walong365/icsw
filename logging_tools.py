@@ -1096,7 +1096,7 @@ def list_to_struct(in_list):
         else:
             break
     if _len:
-        _res = _compress_list(
+        _res = list_to_struct(
             [_value[_len:] for _value in in_list]
         )
         return [(in_list[0][:_len], _res)]
@@ -1119,12 +1119,12 @@ def list_to_struct(in_list):
             _pfs = sorted(list(_pfs))
             if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
                 # all values are the same, return compressed list
-                return [("[{}]".format(logging_tools.compress_num_list(_pfs)), _compress_list(_dict.values()[0]))]
+                return [("[{}]".format(logging_tools.compress_num_list(_pfs)), list_to_struct(_dict.values()[0]))]
             else:
                 _pfs = ["{:d}".format(_val) for _val in _pfs]
-                return [(_pf, _compress_list(_dict[_pf])) for _pf in _pfs]
+                return [(_pf, list_to_struct(_dict[_pf])) for _pf in _pfs]
         else:
-            return [(_pf, _compress_list([_value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf])) for _pf in _pfs]
+            return [(_pf, list_to_struct([_value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf])) for _pf in _pfs]
 
 
 def struct_to_string(in_struct):
