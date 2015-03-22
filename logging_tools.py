@@ -1086,7 +1086,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
 def list_to_struct(in_list):
     # reduce list and create a strcuture
     if len(in_list) == 1:
-        return in_list
+        return [("", in_list)]
     # find longest common prefix
     _len = 0
     while True:
