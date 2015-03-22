@@ -1119,7 +1119,7 @@ def list_to_struct(in_list):
             _pfs = sorted(list(_pfs))
             if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
                 # all values are the same, return compressed list
-                return [("[{}]".format(logging_tools.compress_num_list(_pfs)), list_to_struct(_dict.values()[0]))]
+                return [("[{}]".format(compress_num_list(_pfs)), list_to_struct(_dict.values()[0]))]
             else:
                 _pfs = ["{:d}".format(_val) for _val in _pfs]
                 return [(_pf, list_to_struct(_dict[_pf])) for _pf in _pfs]
