@@ -27,12 +27,16 @@ import logging
 import datetime
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Q, ForeignKey
 from django.apps import apps
 from django.forms import model_to_dict
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from django.http.response import HttpResponse
+import itertools
+from initat.cluster.backbone.models.model_history import icsw_deletion_record
+from rest_framework.response import Response
 import reversion
 from rest_framework.generics import ListAPIView
 import initat.cluster
@@ -353,10 +357,76 @@ class get_historical_data(ListAPIView):
         # date = duration_utils.parse_date(request.GET['date'])
         model_name = request.GET['model']
         model = getattr(initat.cluster.backbone.models, model_name)
-        # TODO: return in format {'meta': {..metadata..}, 'data': {..data..}}
-        # data is probably just the serialized data
-        # metadata contains user, date, change id?
-        return HttpResponse([])
+        from pprint import pprint
+        pprint(model._meta.concrete_model._meta.local_many_to_many)
+        #pprint(model._meta.concrete_model._meta.local_many_to_many[0].__dict__)
+        #pprint(model._meta.concrete_model._meta.local_many_to_many[0].rel.through)
+        for m in model._meta.concrete_model._meta.local_many_to_many:
+            if not m.rel.through._meta.auto_created:
+                # this is a m2m field with a through table
+                # serializers can't handle them, we need to do it by hand
+                print "\n", m, m.rel.through._meta.auto_created
+                pprint(m.rel.__dict__)
+
+        for f in model._meta.concrete_model._meta.local_fields:
+            if isinstance(f, ForeignKey):
+                f
+
+        def format_version(version):
+            serialized_data = json.loads(version.serialized_data)[0]
+            return_data = serialized_data['fields']
+            return_data['pk'] = serialized_data['pk']
+
+            if version.revision.comment == "Initial version.":
+                type = "initial"
+            else:
+                type = None
+
+            meta = {
+                'date': version.revision.date_created,
+                'user': version.revision.user_id,
+                'type': type
+            }
+            return {'meta': meta, 'data': return_data}
+
+        def format_deletion(deletion):
+            meta = {
+                'date': deletion.date,
+                'user': deletion.user_id,
+                'type': 'deleted'
+            }
+
+            serialized_data = json.loads(deletion.serialized_data)[0]
+            return_data = serialized_data['fields']
+            return_data['pk'] = serialized_data['pk']
+
+            return {'meta': meta, 'data': return_data}
+
+        content_type = ContentType.objects.get_for_model(model)
+        deletion_queryset = icsw_deletion_record.objects.filter(content_type=content_type)
+        version_queryset = reversion.models.Version.objects.filter(content_type=content_type).select_related('revision')
+
+        sorted_data = sorted(
+            itertools.chain(
+                (format_version(ver) for ver in version_queryset),
+                (format_deletion(dele) for dele in deletion_queryset)
+            ),
+            key=lambda elem: elem['meta']['date']
+        )
+
+        # set missing type info
+        pk_seen = set()
+        for entry in sorted_data:
+            if not entry['meta']['type']:
+                if entry['data']['pk'] in pk_seen:
+                    entry['meta']['type'] = 'modified'
+                else:
+                    entry['meta']['type'] = 'created'
+
+            pk_seen.add(entry['data']['pk'])
+
+        return Response(sorted_data)
+
 #
 #        """
 #        model_name_camelcase = ''.join(part.capitalize() for part in model_name.split('_'))
@@ -413,6 +483,5 @@ class reversion_view(ListAPIView):
             print 'z'
             pprint(v.object_repr)
             pprint(v.object_id)
-
 
         return HttpResponse(l)
