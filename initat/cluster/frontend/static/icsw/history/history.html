@@ -17,14 +17,22 @@
 </script>
 
 <script type="text/ng-template" id="icsw.history.model_history">
-    <h3>{{model()}}</h3>
-    <table class="table table-condensed table-hover table-striped" style="width: auto">
+    <h3>{{models_with_history[model()]}}</h3>
+    <table class="table table-condensed table-hover table-striped" style="width: auto"
+            st-table="entries_display" st-safe-src="entries">
         <thead>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
+                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                </td>
+            </tr>
             <tr>
                 <th>Date</th>
                 <th>User</th>
                 <th>Type</th>
                 <th>Object</th>
+                <th>Object ID</th>
                 <th></th>
                 <th>Change</th>
                 <!--
@@ -33,13 +41,12 @@
             </tr>
         </thead>
         <tbody>
-            <tr>
-
-            <tr ng-repeat="entry in entries">
+            <tr ng-repeat="entry in entries_display">
                 <td>{{entry.meta.date | datetime_concise}}</td>
                 <td>{{get_user_by_idx(entry.meta.user).login}}</td>
                 <td>{{entry.meta.type}}
-                <td>{{entry.meta.object_repr}} ({{entry.data['pk']}})</td>
+                <td>{{entry.meta.object_repr}}</td>
+                <td>{{entry.data['pk']}}</td>
                 <td></td>
                 <!--
                 <td ng-repeat="(k, v) in entry.data" ng-class="last_entry_different(entry.data['pk'], $parent.$index, k) && 'danger'">
