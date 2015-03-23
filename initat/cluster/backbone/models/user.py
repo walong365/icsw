@@ -239,6 +239,7 @@ class csw_permission(models.Model):
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
         app_label = "backbone"
+        verbose_name = "Global Permission"
 
     @staticmethod
     def get_permission(in_object, code_name):
@@ -273,6 +274,7 @@ class csw_object_permission(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Object Permission"
 
 
 # permission intermediate models
@@ -335,6 +337,7 @@ class user_permission(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Global Permissions of Users"
 
 
 @receiver(signals.post_save, sender=user_permission)
@@ -377,6 +380,7 @@ class user_object_permission(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Object Permissions of Users"
 
 
 @receiver(signals.post_save, sender=user_object_permission)
@@ -762,6 +766,7 @@ class user(models.Model):
         db_table = u'user'
         ordering = ("login", "group__groupname")
         app_label = "backbone"
+        verbose_name = "User"
 
     def get_info(self):
         return unicode(self)
@@ -936,6 +941,7 @@ class group(models.Model):
         db_table = u'ggroup'
         ordering = ("groupname",)
         app_label = "backbone"
+        verbose_name = u"Group"
 
     def __unicode__(self):
         return u"{} (gid={:d})".format(

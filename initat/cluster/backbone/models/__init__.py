@@ -784,6 +784,7 @@ class device(models.Model):
         db_table = u'device'
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
+        verbose_name = u'Device'
 
 
 class device_selection(object):
@@ -986,6 +987,7 @@ class device_group(models.Model):
     class Meta:
         db_table = u'device_group'
         ordering = ("-cluster_device_group", "name",)
+        verbose_name = u"Device Group"
 
     def __unicode__(self):
         return u"{}{}{}".format(
