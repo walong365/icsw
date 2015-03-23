@@ -987,7 +987,7 @@ class device_group(models.Model):
     class Meta:
         db_table = u'device_group'
         ordering = ("-cluster_device_group", "name",)
-        verbose_name = u"Device Group"
+        verbose_name = u"Device group"
 
     def __unicode__(self):
         return u"{}{}{}".format(
