@@ -2,8 +2,10 @@
 <script type="text/ng-template" id="icsw.history.overview">
     <alert type="danger"><strong>TODO</strong>: serialize something for foreign keys and m2m</alert>
     <h2>System history</h2>
+    <!--
     <icsw-history-model-history model="user_object_permission"></icsw-history-model-history>
     <icsw-history-model-history model="device"></icsw-history-model-history>
+    -->
     <icsw-history-model-history model="user"></icsw-history-model-history>
 </script>
 
@@ -17,7 +19,10 @@
                 <th>Type</th>
                 <th>Object ID</th>
                 <th></th>
+                <th>Change</th>
+                <!--
                 <th ng-repeat="(k, v) in entries[0].data" ng-show="column_visible[k]">{{k}}</th>
+                -->
             </tr>
             <tr>
 
@@ -33,14 +38,38 @@
                 </td>
                 -->
 
-                <td ng-repeat="(k, v) in entry.data" ng-show="column_visible[k]">
+                <td>
+                    <table class="table table-condensed table-hover table-striped" style="width: auto">
+                        <tr>
+                            <th ng-repeat="(k, v) in entry.data"
+                                ng-show="last_entry_different(entry.data['pk'], $parent.$index, k)">
+                                {{k}}
+                            </th>
+                        </tr>
+                        <tr>
+                            <td ng-repeat="(k, v) in entry.data"
+                                ng-show="last_entry_different(entry.data['pk'], $parent.$index, k)">
+                                {{get_last_entry_before(entry.data['pk'], $parent.$index).data[k]}}
+                                &#8594;
+                                {{v}}
+                            </td>
+                        </tr>
+
+
+                    </table>
+                </td>
+
+
+            <!--
+            <td ng-repeat="(k, v) in entry.data" ng-show="column_visible[k]">
                     <div ng-show="last_entry_different(entry.data['pk'], $parent.$index, k)">
                         {{get_last_entry_before(entry.data['pk'], $parent.$index).data[k]}}
                         TO
                         {{v}}
                     </div>
                 </td>
-            </tr>
+            -->
+        </tr>
         </thead>
     </table>
 </script>

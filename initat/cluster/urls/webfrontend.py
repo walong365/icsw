@@ -6,7 +6,7 @@ from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
-    base_views, setup_views, doc_views
+    base_views, setup_views, doc_views, model_history_views
 from initat.cluster.rms import rms_views, lic_views
 # from rest_framework.urlpatterns import format_suffix_patterns
 from django.conf.urls.static import static
@@ -168,8 +168,6 @@ user_patterns = patterns(
     url("^background_info$", user_views.background_job_info.as_view(), name="background_job_info"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
-
-    url("^reversion_view$", user_views.reversion_view.as_view(), name="reversion_view"),
 )
 
 pack_patterns = patterns(
@@ -252,8 +250,8 @@ doc_patterns = patterns(
 
 system_patterns = patterns(
     "initat.cluster.frontend",
-    url(r"^history_overview$", user_views.history_overview.as_view(), name="history_overview"),
-    url(r"^get_historical_data$", user_views.get_historical_data.as_view(), name="get_historical_data"),
+    url(r"^history_overview$", model_history_views.history_overview.as_view(), name="history_overview"),
+    url(r"^get_historical_data$", model_history_views.get_historical_data.as_view(), name="get_historical_data"),
 )
 
 my_url_patterns = patterns(
