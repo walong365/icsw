@@ -1481,7 +1481,8 @@ class quota_capable_blockdevice(models.Model):
 
 
 # register models in history
-for model in (group, device_group, device, csw_permission, csw_object_permission, user, user_permission,
-              user_object_permission):
-    model_history.icsw_register(model)
-del model
+def _register_models():
+    for model in (group, device_group, device, csw_permission, csw_object_permission, user, user_permission,
+                  user_object_permission):
+        model_history.icsw_register(model)
+_register_models()

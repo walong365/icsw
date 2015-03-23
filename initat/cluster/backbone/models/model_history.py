@@ -20,9 +20,9 @@
 # -*- coding: utf-8 -*-
 #
 """ Complementary wrapper around django reversion """
-
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
+from django.core import serializers
 from django.db.models.signals import pre_delete, post_delete
 import reversion
 from initat.cluster.backbone.middleware import thread_local_middleware
@@ -39,6 +39,7 @@ class icsw_deletion_record(models.Model):
 
     object_id_int = models.IntegerField()  # only integer keys supported atm
     content_type = models.ForeignKey(ContentType)
+    serialized_data = models.TextField()
 
     @classmethod
     def register(cls, model):
@@ -46,19 +47,21 @@ class icsw_deletion_record(models.Model):
 
     @staticmethod
     def _on_post_delete(sender, instance, **kwargs):
+        serialized_data = serializers.serialize('json', (instance,))
         content_type = ContentType.objects.get_for_model(sender)
         acting_user = thread_local_middleware().user
 
         if not isinstance(acting_user, user):
             acting_user = None
 
-        record = icsw_deletion_record(user=acting_user, object_id_int=instance.pk, content_type=content_type)
+        record = icsw_deletion_record(user=acting_user, object_id_int=instance.pk, content_type=content_type,
+                                      serialized_data=serialized_data)
         record.save()
 
 
 def icsw_register(model):
     """Registers model with reversion plus additional deletion log.
-    Also makes sure that a revision is created if save() is called manually outside of a revision contect
+    Also makes sure that a revision is created if save() is called manually outside of a revision contact
     """
     reversion.register(model)
     icsw_deletion_record.register(model)
