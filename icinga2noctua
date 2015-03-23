@@ -1,0 +1,6 @@
+#!/bin/bash
+
+MODULE=initat.md_config_server.icinga_migration
+
+python-init -m $MODULE $*
+
