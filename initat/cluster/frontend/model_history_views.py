@@ -95,7 +95,8 @@ class get_historical_data(ListAPIView):
             meta = {
                 'date': version.revision.date_created,
                 'user': version.revision.user_id,
-                'type': type
+                'type': type,
+                'object_repr': version.object_repr
             }
             return {'meta': meta, 'data': return_data}
 
@@ -103,7 +104,8 @@ class get_historical_data(ListAPIView):
             meta = {
                 'date': deletion.date,
                 'user': deletion.user_id,
-                'type': 'deleted'
+                'type': 'deleted',
+                'object_repr': deletion.object_repr
             }
 
             serialized_data = json.loads(deletion.serialized_data)[0]
@@ -151,15 +153,18 @@ class get_historical_data(ListAPIView):
 
             pk_seen.add(entry['data']['pk'])
 
+            # resolve keys to current value or last known one
             for foreign_key in foreign_keys:
-                # resolve keys to current value or last known one
-                if entry['data'][foreign_key.name] is not None:
+                # field might not have existed at the time of saving, so check (and don't resolve null values)
+                if foreign_key.name in entry['data'] and entry['data'][foreign_key.name] is not None:
                     entry['data'][foreign_key.name] =\
                         resolve_reference(foreign_key.rel.to, entry['data'][foreign_key.name])
 
             for m2m in m2ms:
-                entry['data'][m2m.name] =\
-                    list(resolve_reference(m2m.rel.to, m2m_val) for m2m_val in entry['data'][m2m.name])
+                # field might not have existed at the time of saving, so check
+                if m2m.name in entry['data']:
+                    entry['data'][m2m.name] =\
+                        list(resolve_reference(m2m.rel.to, m2m_val) for m2m_val in entry['data'][m2m.name])
 
         return Response(sorted_data)
 

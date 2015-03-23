@@ -2,9 +2,9 @@
 <script type="text/ng-template" id="icsw.history.overview">
     <alert type="danger"><strong>TODO</strong>: serialize something for foreign keys and m2m</alert>
     <h2>System history</h2>
-    <!--
     <icsw-history-model-history model="user_object_permission"></icsw-history-model-history>
     <icsw-history-model-history model="device"></icsw-history-model-history>
+    <!--
     -->
     <icsw-history-model-history model="user"></icsw-history-model-history>
 </script>
@@ -17,7 +17,7 @@
                 <th>Date</th>
                 <th>User</th>
                 <th>Type</th>
-                <th>Object ID</th>
+                <th>Object</th>
                 <th></th>
                 <th>Change</th>
                 <!--
@@ -30,7 +30,7 @@
                 <td>{{entry.meta.date | datetime_concise}}</td>
                 <td>{{get_user_by_idx(entry.meta.user).login}}</td>
                 <td>{{entry.meta.type}}
-                <td>{{entry.data['pk']}}</td>
+                <td>{{entry.meta.object_repr}} ({{entry.data['pk']}})</td>
                 <td></td>
                 <!--
                 <td ng-repeat="(k, v) in entry.data" ng-class="last_entry_different(entry.data['pk'], $parent.$index, k) && 'danger'">
