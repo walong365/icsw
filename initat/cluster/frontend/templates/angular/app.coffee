@@ -339,6 +339,7 @@ ics_app = angular.module(
     "SETUP_VALIDATE_PARTITION": "{% url 'setup:validate_partition' %}"
     "SYSTEM_HISTORY_OVERVIEW": "{% url 'system:history_overview' %}"
     "SYSTEM_GET_HISTORICAL_DATA": "{% url 'system:get_historical_data' %}"
+    "SYSTEM_GET_MODELS_WITH_HISTORY": "{% url 'system:get_models_with_history' %}"
     "USER_ACCOUNT_INFO": "{% url 'user:account_info' %}"
     "USER_BACKGROUND_JOB_INFO": "{% url 'user:background_job_info' %}"
     "USER_CHANGE_OBJECT_PERMISSION": "{% url 'user:change_object_permission' %}"

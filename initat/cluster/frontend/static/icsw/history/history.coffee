@@ -21,45 +21,29 @@ angular.module(
     "icsw.history",
     [
     ]
-).directive("icswHistoryOverview", [() ->
+).directive("icswHistoryOverview", ['icswHistoryDataService', (icswHistoryDataService) ->
     return  {
         restrict: 'EA'
         templateUrl: 'icsw.history.overview'
+        link: (scope, el, attrs) ->
+            icswHistoryDataService.add_to_scope(scope)
     }
 ]).directive("icswHistoryModelHistory", ["$injector", "icswHistoryDataService", ($injector,icswHistoryDataService) ->
     return {
         restrict: 'EA'
         templateUrl: 'icsw.history.model_history'
         scope: {
-            model: '@'
+            model: '&'
         }
         link: (scope, el, attrs) ->
             icswHistoryDataService.add_to_scope(scope)
-            scope.$watch('model',  () ->
-                if scope.model?
-                    icswHistoryDataService.get_historic_data(scope.model).then((new_data) ->
-                        scope.entries = new_data
-                        scope.column_visible = {}
-
-#                        for raw_entry in new_data.plain()
-#                            meta_obj = {}
-#
-#                            meta_obj['id'] = raw_entry['history_id']
-#                            meta_obj['date'] = raw_entry['history_date']
-#                            meta_obj['type'] = switch raw_entry['history_type']
-#                                when "+" then "created"
-#                                when "-" then "deleted"
-#                                when "~" then "changed"
-#                            changer = icswHistoryDataService.user[raw_entry['history_user']] <- WRONG
-#                            meta_obj['user'] = changer.login if changer?
-#
-#                            for key in ['history_id', 'history_date', 'history_type', 'history_user']
-#                                delete raw_entry[key]
-#
-#                            data_obj = raw_entry
-#
-#                            entry = {meta: meta_obj, data: data_obj}
-#                            scope.entries.push(entry)
+            scope.$watch(
+                () -> scope.model(),
+                (new_val) ->
+                    if scope.model()?
+                        icswHistoryDataService.get_historic_data(scope.model()).then((new_data) ->
+                            scope.entries = new_data
+                            scope.column_visible = {}
                     )
             )
             scope.get_last_entry_before = (idx, position) ->
@@ -84,14 +68,17 @@ angular.module(
         return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList({'model': model_name})
 
     user = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
+    models_with_history = Restangular.all(ICSW_URLS.SYSTEM_GET_MODELS_WITH_HISTORY.slice(1)).customGET().$object
     get_user_by_idx = (idx) -> return _.find(user, (elem) -> return elem.idx == idx)
 
     return {
         get_historic_data:  get_historic_data
+        models_with_history:  models_with_history
         user:  user
         get_user_by_idx: get_user_by_idx
         add_to_scope: (scope) ->
             scope.user = user
+            scope.models_with_history = models_with_history
             scope.get_user_by_idx = get_user_by_idx
     }
 ])

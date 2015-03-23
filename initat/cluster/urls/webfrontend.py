@@ -252,6 +252,7 @@ system_patterns = patterns(
     "initat.cluster.frontend",
     url(r"^history_overview$", model_history_views.history_overview.as_view(), name="history_overview"),
     url(r"^get_historical_data$", model_history_views.get_historical_data.as_view(), name="get_historical_data"),
+    url(r"^get_models_with_history$", model_history_views.get_models_with_history.as_view(), name="get_models_with_history"),
 )
 
 my_url_patterns = patterns(

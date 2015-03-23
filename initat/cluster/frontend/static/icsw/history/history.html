@@ -1,16 +1,23 @@
 
 <script type="text/ng-template" id="icsw.history.overview">
-    <alert type="danger"><strong>TODO</strong>: serialize something for foreign keys and m2m</alert>
     <h2>System history</h2>
-    <icsw-history-model-history model="user_object_permission"></icsw-history-model-history>
-    <icsw-history-model-history model="device"></icsw-history-model-history>
+
+
+    <div class="form-inline">
+        <label for="id_sel_mod" class="control-label">
+            Model:
+        </label>
+        <select id="id_sel_mod" class="select form-control" ng-model="selected_model"
+                ng-options="k as v for (k, v) in models_with_history.plain()" style="width: auto"></select>
+    </div>
+
     <!--
     -->
-    <icsw-history-model-history model="user"></icsw-history-model-history>
+    <icsw-history-model-history model="selected_model"></icsw-history-model-history>
 </script>
 
 <script type="text/ng-template" id="icsw.history.model_history">
-    <h3>{{model}}</h3>
+    <h3>{{model()}}</h3>
     <table class="table table-condensed table-hover table-striped" style="width: auto">
         <thead>
             <tr>
@@ -24,6 +31,8 @@
                 <th ng-repeat="(k, v) in entries[0].data" ng-show="column_visible[k]">{{k}}</th>
                 -->
             </tr>
+        </thead>
+        <tbody>
             <tr>
 
             <tr ng-repeat="entry in entries">
@@ -60,16 +69,16 @@
                 </td>
 
 
-            <!--
-            <td ng-repeat="(k, v) in entry.data" ng-show="column_visible[k]">
-                    <div ng-show="last_entry_different(entry.data['pk'], $parent.$index, k)">
-                        {{get_last_entry_before(entry.data['pk'], $parent.$index).data[k]}}
-                        TO
-                        {{v}}
-                    </div>
-                </td>
-            -->
-        </tr>
-        </thead>
+                <!--
+                <td ng-repeat="(k, v) in entry.data" ng-show="column_visible[k]">
+                        <div ng-show="last_entry_different(entry.data['pk'], $parent.$index, k)">
+                            {{get_last_entry_before(entry.data['pk'], $parent.$index).data[k]}}
+                            TO
+                            {{v}}
+                        </div>
+                    </td>
+                -->
+            </tr>
+        </tbody>
     </table>
 </script>

@@ -19,44 +19,6 @@
 #
 # -*- coding: utf-8 -*-
 #
-"""
-class get_historic_user(ListAPIView):
-    @method_decorator(login_required)
-    @rest_logging
-    def list(self, request, *args, **kwargs):
-        date = duration_utils.parse_date(request.GET['date'])
-        print 'getting hist users of ', date, date.tzinfo
-
-        # my_user = list(user.history.as_of(date))[1]
-        # my_user = user.objects.get(pk=2)
-        # print my_user
-
-        hist_users = user.history.as_of(date)
-        # print (dir(u))
-        # print 'cur perm', u.user_permission_set.all()
-        # print 'hist perm', u.historicaluser_permission_set.all()
-        # print u.user_permission_set(manager=u"objects")
-
-        perms = list(user_permission.history.as_of(date))
-
-        d = []
-        for hist_user in hist_users:
-            d.append({
-                'idx': hist_user.pk,
-                'login': hist_user.login,
-                'user_permission_set': [(p.level, p.csw_permission.pk, p.level) for p in perms if p.user_id == hist_user.pk],
-            })
-
-            ser = user_serializer(hist_user)
-            from pprint import pprint
-            print '\nuser', hist_user.login
-            print hist_user.user_permission_set.all()
-            print hist_user._meta
-            print hist_user.user_permission_set.all()[0]._meta
-            pprint(ser.data)
-
-        return HttpResponse(json.dumps(d))
-"""
 import json
 import user
 from django.contrib.auth.decorators import login_required
@@ -69,10 +31,23 @@ from django.views.generic import View
 from rest_framework.response import Response
 import reversion
 import initat
-from initat.cluster.backbone.models.model_history import icsw_deletion_record
-from rest_framework.generics import ListAPIView
+from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.cluster.backbone.render import render_me
+
+
+class history_overview(View):
+    @method_decorator(login_required)
+    def get(self, request, *args, **kwargs):
+        return render_me(request, "history_overview.html")()
+
+
+class get_models_with_history(RetrieveAPIView):
+    @method_decorator(login_required)
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        return Response({model.__name__: model._meta.verbose_name for model in icsw_register.REGISTERED_MODELS})
 
 
 class get_historical_data(ListAPIView):
@@ -168,61 +143,4 @@ class get_historical_data(ListAPIView):
 
         return Response(sorted_data)
 
-#
-#        """
-#        model_name_camelcase = ''.join(part.capitalize() for part in model_name.split('_'))
-#        serializer_class = get_model_historical_serializer_class(model_name_camelcase)
-#
-#        historic_fields = {
-#            "history_user_id": serializers.IntegerField(read_only=True),
-#            "history_date": serializers.DateTimeField(read_only=True),
-#            "history_type": serializers.CharField(read_only=True)
-#        }
-#        historic_serializer_class = type(serializer_class.__name__ + "_historic",
-#                                         (serializer_class,), historic_fields)
-#        """
-#
-#        # TODO: can make serializer work? then we could easily do something with foreign keys and m2m
-#        # TODO: user DjangoDJSONEncoder
-#        def formatter(x):
-#            if isinstance(x, datetime.datetime):
-#                return x.strftime("%Y-%m-%d %H:%M:%S")
-#            elif isinstance(x, datetime.date):
-#                # NOTE: datetime is instance of date, so check datetime first
-#                return x.isoformat()
-#            else:
-#                return x
-#        return HttpResponse(json.dumps([model_to_dict(i) for i in reversed(model.history.all())], default=formatter))
-#        # print model_to_dict(model.history.all()[0])
-#        # return HttpResponse([DjangoJSONEncoder().default(model.history.all()[0])])
-#        # return HttpResponse(historic_serializer_class(i).data for i in model.history.all())
 
-
-class history_overview(View):
-    @method_decorator(login_required)
-    def get(self, request, *args, **kwargs):
-        return render_me(request, "history_overview.html")()
-
-
-class reversion_view(ListAPIView):
-    @rest_logging
-    def list(self, request, pk=None):
-        _object = user.objects.get(pk=5)
-        _versions = reversion.get_for_object(_object)
-
-        l = [{'data': v.serialized_data} for v in _versions]
-
-        for v in _versions:
-            from pprint import pprint
-            # for a in v.serialized_data: pprint (a)
-            pprint(json.loads(v.serialized_data))
-            print 'x'
-            pprint(v.revision)
-            pprint(v.object_version)
-            pprint(v.object_version.object)
-            pprint(v.object_version.m2m_data)
-            print 'z'
-            pprint(v.object_repr)
-            pprint(v.object_id)
-
-        return HttpResponse(l)
