@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015 Bernhard Mallinger, init.at
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -24,6 +24,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.core import serializers
 from django.db.models.signals import pre_delete, post_delete
+from django.utils.encoding import force_text
 import reversion
 from initat.cluster.backbone.middleware import thread_local_middleware
 from initat.cluster.backbone.models import user
@@ -39,7 +40,9 @@ class icsw_deletion_record(models.Model):
 
     object_id_int = models.IntegerField()  # only integer keys supported atm
     content_type = models.ForeignKey(ContentType)
+
     serialized_data = models.TextField()
+    object_repr = models.TextField()
 
     @classmethod
     def register(cls, model):
@@ -55,7 +58,7 @@ class icsw_deletion_record(models.Model):
             acting_user = None
 
         record = icsw_deletion_record(user=acting_user, object_id_int=instance.pk, content_type=content_type,
-                                      serialized_data=serialized_data)
+                                      serialized_data=serialized_data, object_repr=force_text(instance))
         record.save()
 
 
@@ -65,6 +68,8 @@ def icsw_register(model):
     """
     reversion.register(model)
     icsw_deletion_record.register(model)
+
+    icsw_register.REGISTERED_MODELS.append(model)
 
     def create_save_with_reversion(original_save):
         def save_with_reversion(*args, **kwargs):
@@ -79,3 +84,6 @@ def icsw_register(model):
 
     # TODO: bulk_save/delete?
     # TODO: user is currently set to NULL in both reversion and here on deletion
+
+
+icsw_register.REGISTERED_MODELS = []
