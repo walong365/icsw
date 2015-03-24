@@ -339,6 +339,9 @@ class user_permission(models.Model):
         app_label = "backbone"
         verbose_name = "Global permissions of users"
 
+    def __unicode__(self):
+        return "Permission {} for user {}".format(self.csw_permission, self.user)
+
 
 @receiver(signals.post_save, sender=user_permission)
 def user_permission_save(sender, **kwargs):
@@ -377,6 +380,9 @@ class user_object_permission(models.Model):
     csw_object_permission = models.ForeignKey(csw_object_permission)
     level = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "Permission {} for user {}".format(self.csw_object_permission, self.user)
 
     class Meta:
         app_label = "backbone"
