@@ -1113,7 +1113,7 @@ def list_to_struct(in_list, **kwargs):
                 _pf = _value[0]
                 if len(_value) > 2 and _value[1:3].isdigit():
                     _pf = _value[:3]
-                elif _value[1].isdigit():
+                elif len(_value) > 1 and _value[1].isdigit():
                     _pf = _value[:2]
                 else:
                     _pf = _value[0]
