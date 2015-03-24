@@ -28,6 +28,16 @@ angular.module(
         link: (scope, el, attrs) ->
             icswHistoryDataService.add_to_scope(scope)
             scope.selected_model = 'device'
+            scope.$watch(
+                () -> Object.keys(icswHistoryDataService.models_with_history).length
+                () ->
+                    l = []
+                    if icswHistoryDataService.models_with_history? and icswHistoryDataService.models_with_history.plain?
+                        for k, v of icswHistoryDataService.models_with_history.plain()
+                            l.push([v, k])
+                    l.sort()
+                    scope.models_with_history_sorted = l
+            )
     }
 ]).directive("icswHistoryModelHistory", ["$injector", "icswHistoryDataService", ($injector,icswHistoryDataService) ->
     return {
@@ -70,7 +80,7 @@ angular.module(
             #    else
             #        return false
     }
-]).service("icswHistoryDataService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
+]).service("icswHistoryDataService", ["Restangular", "ICSW_URLS", "$rootScope", (Restangular, ICSW_URLS, $rootScope) ->
     get_historic_data = (model_name) ->
         return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList({'model': model_name})
 

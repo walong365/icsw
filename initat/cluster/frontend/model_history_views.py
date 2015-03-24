@@ -30,6 +30,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.response import Response
 import reversion
+from reversion.helpers import generate_patch
 import initat
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
 from rest_framework.generics import ListAPIView, RetrieveAPIView
@@ -62,14 +63,14 @@ class get_historical_data(ListAPIView):
             return_data = serialized_data['fields']
 
             if version.revision.comment == "Initial version.":
-                type = "initial"
+                change_type = "initial"
             else:
-                type = None
+                change_type = None
 
             meta = {
                 'date': version.revision.date_created,
                 'user': version.revision.user_id,
-                'type': type,
+                'type': change_type,
                 'object_repr': version.object_repr,
                 'object_id': serialized_data['pk'],
             }
@@ -151,6 +152,15 @@ class get_historical_data(ListAPIView):
                     new = entry['data'].get(k, None)
                     if old != new:
                         entry['changes'][k] = [old, new]
+                        patch = None
+                        if isinstance(old, basestring) and isinstance(new, basestring):
+                            from diff_match_patch import diff_match_patch
+                            dmp = diff_match_patch()
+                            diffs = dmp.diff_main(old, new)
+                            dmp.diff_cleanupSemantic(diffs)
+                            patch = dmp.diff_prettyHtml(diffs)
+
+                        entry['changes'][k] = [old, new, patch]
             else:
                 entry['changes'] = entry['data']
 
@@ -158,5 +168,4 @@ class get_historical_data(ListAPIView):
             del entry['data']
 
         return Response(sorted_data)
-
 

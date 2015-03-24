@@ -8,7 +8,7 @@
             Model:
         </label>
         <select id="id_sel_mod" class="select form-control" ng-model="selected_model"
-                ng-options="k as v for (k, v) in models_with_history.plain()" style="width: auto"></select>
+                ng-options="v[1] as v[0] for v in models_with_history_sorted" style="width: auto"></select>
     </div>
 
     <!--
@@ -23,7 +23,7 @@
         <thead>
             <tr>
                 <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
+                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
                          possible-items-by-page="10,20,50,100,200,500,1000"></div>
                 </td>
             </tr>
@@ -54,37 +54,52 @@
                 </td>
                 -->
                 <td>
-                        <div ng-repeat="(k, v) in entry.changes" ng-if="entry.meta.type == 'modified'">
-                     Change <strong>{{k}}</strong>
-                                from
-                                <strong>
+                    <div ng-repeat="(k, v) in entry.changes" ng-if="entry.meta.type == 'modified'">
+                        Change <strong>{{k}}</strong><span ng-if="v[2]">:</span>
+                        <span ng-if="v[2]">
+                            <pre ng-bind-html="v[2]"></pre>
+                        </span>
+                        <span ng-if="!v[2]">
+                            from
+                            <strong>
                                 {{format_value(v[0])}}
-                                    </strong>
-                                to
-                                <strong>
+                            </strong>
+                            to
+                            <strong>
                                 {{format_value(v[1])}}
-                                </strong>
-                            </div>
+                            </strong>
+                        </span>
+                    </div>
 
-                    <!--
-                    <table class="table table-condensed" style="width: auto" ng-if="entry.meta.type == 'modified'">
+
+                    <div ng-if="entry.meta.type != 'modified'">
+
+                        <table class="table table-condensed" style="width: auto">
+                            <tr>
+                                <th ng-repeat="(k, v) in entry.changes">
+                                    {{k}}
+                                </th>
+                            </tr>
+                            <tr>
+                                <td ng-repeat="(k, v) in entry.changes">
+                                    {{format_value(v)}}
+                                </td>
+                            </tr>
+
+                            <!--
                         <tr ng-repeat="(k, v) in entry.changes">
-                            <td>
-
-                            </td>
                             <th>
                                 {{k}}
                             </th>
                             <td >
-                                {{format_value(v[0])}}
-                                </td><td>
-                                {{format_value(v[1])}}
+                                {{format_value(v)}}
                             </td>
                         </tr>
+                        -->
 
 
-                    </table>
-                    -->
+                        </table>
+                    </div>
                 </td>
 
 
