@@ -2593,7 +2593,7 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  "
  ><div class="controls col-lg-offset-0 col-sm-9"><label for="id_enabled" class=""><input checked="checked" class="checkboxinput checkbox" id="id_enabled" name="enabled" ng-model="_edit_obj.enabled" type="checkbox" />
  Enabled
- </label></div></div></div></div></div></fieldset></tab><tab heading='History'><icsw-history-model-history on-revert='on_script_revert(changes, type)'style='config' model="'config_script'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
+ </label></div></div></div></div></div></fieldset></tab><tab heading='History'><icsw-history-model-history on-revert='on_script_revert(get_change_list)'style='config' model="'config_script'"object-id='_edit_obj.idx'></icsw-history-model-history></tab></tabset><div class="form-actions"><input type="submit"
  name="submit"
  value=""
  class="btn btn-primary primaryAction"

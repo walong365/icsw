@@ -57,16 +57,30 @@ angular.module(
                 () ->
                     if scope.model()?
                         icswHistoryDataService.get_historic_data(scope.model(), scope.objectId()).then((new_data) ->
-                            scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
                             # don't show empty changes
+                            scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
+                            # NOTE: entries must be in chronological, earliest first
                     )
                 true
             )
             scope.format_value = (val) ->
                 if angular.isArray(val)
-                    return val.join(", ")
+                    if val.length > 0
+                        return val.join(", ")
+                    else
+                        return "no entries"
                 else
                     return val
+            scope.get_get_change_list = (limit_entry) ->
+                # pass as function such that we don't need to generate everything
+                return () ->
+                    # return in order of original application
+                    changes = []
+                    for entry in scope.entries
+                        changes.push(entry.changes)
+                        if entry == limit_entry
+                            break
+                    return changes
     }
 ]).service("icswHistoryDataService", ["Restangular", "ICSW_URLS", "$rootScope", (Restangular, ICSW_URLS, $rootScope) ->
     get_historic_data = (model_name, object_id) ->

@@ -5,7 +5,7 @@
 
     <div class="form-inline">
         <label for="id_sel_mod" class="control-label">
-            Model:
+            Data:
         </label>
         <select id="id_sel_mod" class="select form-control" ng-model="selected_model"
                 ng-options="v[1] as v[0] for v in models_with_history_sorted" style="width: auto"></select>
@@ -49,7 +49,7 @@
 
                     <div ng-if="on_revert_defined">
                         <icsw-tools-button type="revert" value="revert to this version"
-                                           ng-click="onRevert({'changes': entry.changes, 'type': entry.meta.type})"></icsw-tools-button>
+                                           ng-click="onRevert({'get_change_list': get_get_change_list(entry)}); alert('foo')"></icsw-tools-button>
                     </div>
                     <div ng-repeat="(k, v) in entry.changes" ng-if="!entry.changes.full_dump">
                         Changed <strong>{{k}}</strong><span ng-if="v.patch">:</span>

@@ -164,8 +164,8 @@ class get_historical_data(ListAPIView):
                             patch = patch.replace('&para;', "")  # don't show para signs
 
                         entry['changes'][k] = {
+                            'new_data_human': get_human_readable_value(k, new),
                             'old_data_human': get_human_readable_value(k, old),
-                            'new_data_human': get_human_readable_value(k, old),
                             'new_data': new,
                             'old_data': old,
                             'patch': patch,
@@ -180,5 +180,6 @@ class get_historical_data(ListAPIView):
             last_entry_by_pk[pk] = entry['data']
             del entry['data']
 
+        # NOTE: entries must be in chronological, earliest first
         return Response(sorted_data)
 
