@@ -536,7 +536,7 @@ class zypper_install_process(install_process):
             self.log("starting action '{}'".format(zypper_com))
             cur_pdc.attrib["pre_zypper_com"] = zypper_com
             if pack_xml.attrib["target_repo_name"]:
-                _repo_filter = "-r {}".format(pack_xml.attrib["target_repo_name"])
+                _repo_filter = "-r '{}'".format(pack_xml.attrib["target_repo_name"])
             else:
                 _repo_filter = ""
             # flags: xml output, non-interactive
