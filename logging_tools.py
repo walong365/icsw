@@ -1083,7 +1083,9 @@ class logfile(logging.handlers.BaseRotatingHandler):
             self.stream = self._open()
 
 
-def list_to_struct(in_list):
+def list_to_struct(in_list, **kwargs):
+    # minimum size for matching prefixes
+    pf_min_size = kwargs.get("prefix_min_size", 1)
     # reduce list and create a strcuture
     if len(in_list) == 1:
         return [("", in_list)]
@@ -1097,7 +1099,8 @@ def list_to_struct(in_list):
             break
     if _len:
         _res = list_to_struct(
-            [_value[_len:] for _value in in_list]
+            [_value[_len:] for _value in in_list],
+            **kwargs
         )
         return [(in_list[0][:_len], _res)]
     else:
@@ -1119,12 +1122,14 @@ def list_to_struct(in_list):
             _pfs = sorted(list(_pfs))
             if len(_pfs) > 1 and len(set(["".join(_val) for _val in _dict.itervalues()])) == 1:
                 # all values are the same, return compressed list
-                return [("[{}]".format(compress_num_list(_pfs)), list_to_struct(_dict.values()[0]))]
+                return [("[{}]".format(compress_num_list(_pfs)), list_to_struct(_dict.values()[0], **kwargs))]
             else:
                 _pfs = ["{:d}".format(_val) for _val in _pfs]
-                return [(_pf, list_to_struct(_dict[_pf])) for _pf in _pfs]
+                return [(_pf, list_to_struct(_dict[_pf], **kwargs)) for _pf in _pfs]
         else:
-            return [(_pf, list_to_struct([_value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf])) for _pf in _pfs]
+            if len(_pfs[0]) < pf_min_size and min(len(_v) for _v in in_list) > pf_min_size:
+                _pfs = set(sorted([_value[:pf_min_size] for _value in in_list]))
+            return [(_pf, list_to_struct([_value[len(_pf):] for _value in in_list if _value[:len(_pf)] == _pf], **kwargs)) for _pf in _pfs]
 
 
 def struct_to_string(in_struct):
@@ -1148,5 +1153,5 @@ def struct_to_string(in_struct):
         )
 
 
-def reduce_list(in_list):
-    return struct_to_string(list_to_struct(in_list)[0])
+def reduce_list(in_list, **kwargs):
+    return struct_to_string(list_to_struct(in_list, **kwargs)[0])
