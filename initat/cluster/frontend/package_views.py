@@ -100,6 +100,7 @@ class use_package(View):
         exact = True if int(_post["exact"]) else False
         target_repo = int(_post["target_repo"])
         if target_repo and not exact:
+            # we can only specify a target repo if exact is not used
             t_repo = package_repo.objects.get(Q(pk=target_repo))
         else:
             t_repo = None
@@ -111,9 +112,9 @@ class use_package(View):
             try:
                 _new_p = cur_sr.create_package(exact=exact, target_repo=t_repo)
             except IntegrityError, what:
-                request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
+                request.xml_response.error("error modifying: {}".format(unicode(what)), logger)
             except ValidationError, what:
-                request.xml_response.error("error creating: %s" % (unicode(what)), logger)
+                request.xml_response.error("error creating: {}".format(unicode(what)), logger)
             except:
                 request.xml_response.info("unknown error: {}".format(process_tools.get_except_info()), logger)
             else:
