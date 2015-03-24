@@ -52,7 +52,7 @@ class repo_process(threading_tools.process_obj):
         self.__background_commands = []
         self.register_timer(self._check_delayed, 1)
         # set repository type
-        if os.path.isfile("/etc/centos-release"):
+        if os.path.isfile("/etc/centos-release") or os.path.isfile("/etc/redhat-release"):
             self.repo_type = repo_type_rpm_yum(self)
         else:
             self.repo_type = repo_type_rpm_zypper(self)
