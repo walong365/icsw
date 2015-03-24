@@ -17,7 +17,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.history.model_history">
-    <h3>{{models_with_history[model()]}}</h3>
+    <h3 ng-show="style != 'config'">{{models_with_history[model()]}}</h3>
     <table class="table table-condensed table-hover table-striped" style="width: auto"
             st-table="entries_display" st-safe-src="entries">
         <thead>

@@ -35,6 +35,7 @@ import initat
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from initat.cluster.frontend.rest_views import rest_logging
+from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
 from initat.cluster.backbone.render import render_me
 
 
@@ -57,6 +58,7 @@ class get_historical_data(ListAPIView):
     def list(self, request, *args, **kwargs):
         model_name = request.GET['model']
         model = getattr(initat.cluster.backbone.models, model_name)
+        object_id = request.GET.get("object_id", None)
 
         def format_version(version):
             serialized_data = json.loads(version.serialized_data)[0]
@@ -91,8 +93,14 @@ class get_historical_data(ListAPIView):
             return {'meta': meta, 'data': return_data}
 
         content_type = ContentType.objects.get_for_model(model)
-        deletion_queryset = icsw_deletion_record.objects.filter(content_type=content_type)
-        version_queryset = reversion.models.Version.objects.filter(content_type=content_type).select_related('revision')
+
+        filter_dict = {'content_type': content_type}
+        if object_id is not None:
+            filter_dict['object_id_int'] = object_id
+
+        # get data for deletion and version (they mostly have the same fields)
+        deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict)
+        version_queryset = reversion.models.Version.objects.filter(**filter_dict).select_related('revision')
 
         sorted_data = sorted(
             itertools.chain(
@@ -154,11 +162,12 @@ class get_historical_data(ListAPIView):
                         entry['changes'][k] = [old, new]
                         patch = None
                         if isinstance(old, basestring) and isinstance(new, basestring):
-                            from diff_match_patch import diff_match_patch
                             dmp = diff_match_patch()
                             diffs = dmp.diff_main(old, new)
                             dmp.diff_cleanupSemantic(diffs)
                             patch = dmp.diff_prettyHtml(diffs)
+                            paragraph_sign = u'\xb6'
+                            patch = patch.replace(paragraph_sign, "")
 
                         entry['changes'][k] = [old, new, patch]
             else:

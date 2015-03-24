@@ -39,23 +39,26 @@ angular.module(
                     scope.models_with_history_sorted = l
             )
     }
-]).directive("icswHistoryModelHistory", ["$injector", "icswHistoryDataService", ($injector,icswHistoryDataService) ->
+]).directive("icswHistoryModelHistory", ["icswHistoryDataService", (icswHistoryDataService) ->
     return {
         restrict: 'EA'
         templateUrl: 'icsw.history.model_history'
         scope: {
             model: '&'
+            objectId: '&'
+            style: '@'  # 'config', 'history'
         }
         link: (scope, el, attrs) ->
             icswHistoryDataService.add_to_scope(scope)
             scope.$watch(
-                () -> scope.model(),
-                (new_val) ->
+                () -> [scope.model(), scope.objectId]
+                (nv) ->
                     if scope.model()?
-                        icswHistoryDataService.get_historic_data(scope.model()).then((new_data) ->
+                        icswHistoryDataService.get_historic_data(scope.model(), scope.objectId()).then((new_data) ->
                             scope.entries = new_data
                             scope.column_visible = {}
                     )
+                true
             )
             scope.format_value = (val) ->
                 if angular.isArray(val)
@@ -81,16 +84,20 @@ angular.module(
             #        return false
     }
 ]).service("icswHistoryDataService", ["Restangular", "ICSW_URLS", "$rootScope", (Restangular, ICSW_URLS, $rootScope) ->
-    get_historic_data = (model_name) ->
-        return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList({'model': model_name})
+    get_historic_data = (model_name, object_id) ->
+        params = {
+            model: model_name,
+            object_id: object_id,
+        }
+        return Restangular.all(ICSW_URLS.SYSTEM_GET_HISTORICAL_DATA.slice(1)).getList(params)
 
     user = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
     models_with_history = Restangular.all(ICSW_URLS.SYSTEM_GET_MODELS_WITH_HISTORY.slice(1)).customGET().$object
     get_user_by_idx = (idx) -> return _.find(user, (elem) -> return elem.idx == idx)
 
     return {
-        get_historic_data:  get_historic_data
-        models_with_history:  models_with_history
+        get_historic_data: get_historic_data
+        models_with_history: models_with_history
         user:  user
         get_user_by_idx: get_user_by_idx
         add_to_scope: (scope) ->
