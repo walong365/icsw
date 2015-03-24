@@ -54,6 +54,7 @@ import re
 import server_command
 import time
 import uuid
+import itertools
 
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.models.config import *  # @UnusedWildImport
@@ -1484,7 +1485,10 @@ class quota_capable_blockdevice(models.Model):
 
 # register models in history
 def _register_models():
-    for model in (group, device_group, device, csw_permission, csw_object_permission, user, user_permission,
-                  user_object_permission):
+    user_models = (group, device_group, device, csw_permission, csw_object_permission, user, user_permission,
+                   user_object_permission)
+    net_models = (netdevice, net_ip, peer_information)
+    #config, category, device_conf
+    for model in itertools.chain(user_models, net_models):
         model_history.icsw_register(model)
 _register_models()

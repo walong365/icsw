@@ -287,6 +287,7 @@ class net_ip(models.Model):
     class Meta:
         db_table = u"netip"
         app_label = "backbone"
+        verbose_name = "IP address"
 
 
 @receiver(signals.pre_save, sender=net_ip)
@@ -469,6 +470,7 @@ class netdevice(models.Model):
         db_table = u'netdevice'
         ordering = ("snmp_idx", "devname",)
         app_label = "backbone"
+        verbose_name = "Netdevice"
 
     def delete(self, *args, **kwargs):
         super(netdevice, self).delete(*args, **kwargs)
@@ -666,6 +668,7 @@ class peer_information(models.Model):
     class Meta:
         db_table = u'peer_information'
         app_label = "backbone"
+        verbose_name = "Peer information"
 
 
 @receiver(signals.pre_save, sender=peer_information)

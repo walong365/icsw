@@ -270,7 +270,8 @@ class csw_object_permission(models.Model):
     object_pk = models.IntegerField(default=0)
 
     def __unicode__(self):
-        return "{} | {:d}".format(unicode(self.csw_permission), self.object_pk)
+        obj = self.csw_permission.content_type.model_class().objects.get(pk=self.object_pk)
+        return "{} on {}".format(unicode(self.csw_permission), obj)
 
     class Meta:
         app_label = "backbone"
