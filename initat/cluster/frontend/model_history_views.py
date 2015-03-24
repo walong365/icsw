@@ -166,8 +166,7 @@ class get_historical_data(ListAPIView):
                             diffs = dmp.diff_main(old, new)
                             dmp.diff_cleanupSemantic(diffs)
                             patch = dmp.diff_prettyHtml(diffs)
-                            paragraph_sign = u'\xb6'
-                            patch = patch.replace(paragraph_sign, "")
+                            patch = patch.replace('&para;', "")  # don't show para signs
 
                         entry['changes'][k] = [old, new, patch]
             else:
