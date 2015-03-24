@@ -35,9 +35,6 @@
                 <th>Object ID</th>
                 <th></th>
                 <th>Change</th>
-                <!--
-                <th ng-repeat="(k, v) in entries[0].data" ng-show="column_visible[k]">{{k}}</th>
-                -->
             </tr>
         </thead>
         <tbody>
@@ -48,70 +45,48 @@
                 <td>{{entry.meta.object_repr}}</td>
                 <td>{{entry.meta.object_id}}</td>
                 <td></td>
-                <!--
-                <td ng-repeat="(k, v) in entry.data" ng-class="last_entry_different(entry.data['pk'], $parent.$index, k) && 'danger'">
-                    {{v}}
-                </td>
-                -->
                 <td>
-                    <div ng-repeat="(k, v) in entry.changes" ng-if="entry.meta.type == 'modified'">
-                        Change <strong>{{k}}</strong><span ng-if="v[2]">:</span>
-                        <span ng-if="v[2]">
-                            <pre ng-bind-html="v[2]"></pre>
+
+                    <div ng-if="on_revert_defined">
+                        <icsw-tools-button type="revert" value="revert to this version"
+                                           ng-click="onRevert({'changes': entry.changes, 'type': entry.meta.type})"></icsw-tools-button>
+                    </div>
+                    <div ng-repeat="(k, v) in entry.changes" ng-if="!entry.changes.full_dump">
+                        Changed <strong>{{k}}</strong><span ng-if="v.patch">:</span>
+                        <span ng-if="v.patch">
+                            <pre ng-bind-html="v.patch"></pre>
                         </span>
-                        <span ng-if="!v[2]">
+                        <span ng-if="!v.patch">
                             from
                             <strong>
-                                {{format_value(v[0])}}
+                                {{format_value(v.old_data_human)}}
                             </strong>
                             to
                             <strong>
-                                {{format_value(v[1])}}
+                                {{format_value(v.new_data_human)}}
                             </strong>
                         </span>
                     </div>
 
-
-                    <div ng-if="entry.meta.type != 'modified'">
+                    <div ng-if="entry.changes.full_dump">
 
                         <table class="table table-condensed" style="width: auto">
                             <tr>
-                                <th ng-repeat="(k, v) in entry.changes">
+                                <th ng-repeat="(k, v) in entry.changes.full_dump_human">
                                     {{k}}
                                 </th>
                             </tr>
                             <tr>
-                                <td ng-repeat="(k, v) in entry.changes">
+                                <td ng-repeat="(k, v) in entry.changes.full_dump_human">
                                     {{format_value(v)}}
                                 </td>
                             </tr>
 
-                            <!--
-                        <tr ng-repeat="(k, v) in entry.changes">
-                            <th>
-                                {{k}}
-                            </th>
-                            <td >
-                                {{format_value(v)}}
-                            </td>
-                        </tr>
-                        -->
-
-
                         </table>
                     </div>
+
                 </td>
 
-
-                <!--
-                <td ng-repeat="(k, v) in entry.data" ng-show="column_visible[k]">
-                        <div ng-show="last_entry_different(entry.data['pk'], $parent.$index, k)">
-                            {{get_last_entry_before(entry.data['pk'], $parent.$index).data[k]}}
-                            TO
-                            {{v}}
-                        </div>
-                    </td>
-                -->
             </tr>
         </tbody>
     </table>

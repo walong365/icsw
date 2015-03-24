@@ -110,11 +110,11 @@ class get_historical_data(ListAPIView):
             key=lambda elem: elem['meta']['date'],
         )
 
-        foreign_keys = [foreign_key for foreign_key in model._meta.concrete_model._meta.local_fields
-                        if isinstance(foreign_key, ForeignKey)]
+        foreign_keys = {foreign_key.name: foreign_key for foreign_key in model._meta.concrete_model._meta.local_fields
+                        if isinstance(foreign_key, ForeignKey)}
 
-        m2ms = [m2m for m2m in model._meta.concrete_model._meta.local_many_to_many
-                if m2m.rel.through._meta.auto_created]
+        m2ms = {m2m.name: m2m for m2m in model._meta.concrete_model._meta.local_many_to_many
+                if m2m.rel.through._meta.auto_created}
         # only serialized m2ms, which are by djangos logic the ones which are not autocreated
 
         def resolve_reference(target_model, foreign_key_val):
@@ -126,31 +126,27 @@ class get_historical_data(ListAPIView):
                 # unicode on Version object gives the saved object repr, which we use here
                 return unicode(deleted_queryset.get(object_id=foreign_key_val))
 
+        def get_human_readable_value(key, value):
+            if value is None:
+                return value
+            elif key in foreign_keys:
+                return resolve_reference(foreign_keys[key].rel.to, value)
+            elif key in m2ms:
+                return list(resolve_reference(m2ms[key].rel.to, m2m_val) for m2m_val in value)
+            else:
+                return value
+
         # calc change and type info
-        pk_seen = set()
         last_entry_by_pk = {}
         for entry in sorted_data:
             pk = entry['meta']['object_id']
 
             # set missing type info
             if not entry['meta']['type']:
-                if pk in pk_seen:
+                if pk in last_entry_by_pk:
                     entry['meta']['type'] = 'modified'
                 else:
                     entry['meta']['type'] = 'created'
-            pk_seen.add(pk)
-
-            # TODO: resolve after change info extraction
-            # resolve keys to current value or last known one
-            for foreign_key in foreign_keys:
-                if foreign_key.name in entry['data'] and entry['data'][foreign_key.name] is not None:
-                    entry['data'][foreign_key.name] = \
-                        resolve_reference(foreign_key.rel.to, entry['data'][foreign_key.name])
-
-            for m2m in m2ms:
-                if m2m.name in entry['data']:
-                    entry['data'][m2m.name] = \
-                        list(resolve_reference(m2m.rel.to, m2m_val) for m2m_val in entry['data'][m2m.name])
 
             # extract change info and only transmit that
             if pk in last_entry_by_pk:
@@ -159,7 +155,6 @@ class get_historical_data(ListAPIView):
                     old = last_entry_by_pk[pk].get(k, None)
                     new = entry['data'].get(k, None)
                     if old != new:
-                        entry['changes'][k] = [old, new]
                         patch = None
                         if isinstance(old, basestring) and isinstance(new, basestring):
                             dmp = diff_match_patch()
@@ -168,9 +163,19 @@ class get_historical_data(ListAPIView):
                             patch = dmp.diff_prettyHtml(diffs)
                             patch = patch.replace('&para;', "")  # don't show para signs
 
-                        entry['changes'][k] = [old, new, patch]
+                        entry['changes'][k] = {
+                            'old_data_human': get_human_readable_value(k, old),
+                            'new_data_human': get_human_readable_value(k, old),
+                            'new_data': new,
+                            'old_data': old,
+                            'patch': patch,
+                        }
+
             else:
-                entry['changes'] = entry['data']
+                entry['changes'] = {
+                    'full_dump': entry['data'],
+                    'full_dump_human': {k: get_human_readable_value(k, v) for k, v in entry['data'].iteritems()},
+                }
 
             last_entry_by_pk[pk] = entry['data']
             del entry['data']

@@ -268,7 +268,8 @@ class config_script_form(ModelForm):
             ),
         ),
         HTML("</tab><tab heading='History'>"),
-        HTML("<icsw-history-model-history style='config' model=\"'config_script'\""
+        HTML("<icsw-history-model-history on-revert='on_script_revert(_edit_obj, changes, type)'"
+             "style='config' model=\"'config_script'\""
              "object-id='{% verbatim %}_edit_obj.idx{% endverbatim %}'></icsw-history-model-history>"),
         HTML("</tab></tabset>"),
         FormActions(

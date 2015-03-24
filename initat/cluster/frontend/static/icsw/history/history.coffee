@@ -46,17 +46,19 @@ angular.module(
         scope: {
             model: '&'
             objectId: '&'
+            onRevert: '&'
             style: '@'  # 'config', 'history'
         }
         link: (scope, el, attrs) ->
+            scope.on_revert_defined = attrs.onRevert
             icswHistoryDataService.add_to_scope(scope)
             scope.$watch(
                 () -> [scope.model(), scope.objectId]
-                (nv) ->
+                () ->
                     if scope.model()?
                         icswHistoryDataService.get_historic_data(scope.model(), scope.objectId()).then((new_data) ->
-                            scope.entries = new_data
-                            scope.column_visible = {}
+                            scope.entries = (entry for entry in new_data when entry.meta.type != 'modified' || Object.keys(entry.changes).length > 0)
+                            # don't show empty changes
                     )
                 true
             )
@@ -65,23 +67,6 @@ angular.module(
                     return val.join(", ")
                 else
                     return val
-
-            #scope.get_last_entry_before = (idx, position) ->
-            #    if position > 0
-            #        for i in [(position-1)..0]
-            #            if scope.entries[i].data.pk == idx
-            #                return scope.entries[i]
-            #    return undefined
-            #scope.last_entry_different = (idx, position, key) ->
-            #    last_entry = scope.get_last_entry_before(idx, position)
-            #    if last_entry?
-            #        # angular.equals supports comparing lists as python would
-            #        different = !angular.equals(last_entry.data[key], scope.entries[position].data[key])
-            #        if different
-            #            scope.column_visible[key] = true
-            #        return different
-            #    else
-            #        return false
     }
 ]).service("icswHistoryDataService", ["Restangular", "ICSW_URLS", "$rootScope", (Restangular, ICSW_URLS, $rootScope) ->
     get_historic_data = (model_name, object_id) ->
