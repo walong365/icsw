@@ -112,11 +112,16 @@ class package_search(models.Model):
     user = models.ForeignKey("user")
     num_searches = models.IntegerField(default=0)
     # state diagramm ini (new) -> run -> done -> wait (search again pressed) -> run -> done -> ...
-    current_state = models.CharField(max_length=6, choices=(
-        ("ini", "initialised"),
-        ("wait", "waiting"),
-        ("run", "search running"),
-        ("done", "search done")), default="ini")
+    current_state = models.CharField(
+        max_length=6,
+        choices=(
+            ("ini", "initialised"),
+            ("wait", "waiting"),
+            ("run", "search running"),
+            ("done", "search done")
+        ),
+        default="ini"
+    )
     deleted = models.BooleanField(default=False)
     # number of results for the last search
     results = models.IntegerField(default=0)
@@ -131,6 +136,7 @@ class package_search(models.Model):
 
     class Meta:
         app_label = "backbone"
+        ordering = ("search_string", "results",)
 
 
 @receiver(signals.pre_save, sender=package_search)
