@@ -344,6 +344,7 @@ class mon_check_command_special(models.Model):
 
     class Meta:
         app_label = "backbone"
+        verbose_name = "Special check command"
 
     def __unicode__(self):
         return "mccs_{}".format(self.name)
@@ -478,6 +479,7 @@ class mon_check_command(models.Model):
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
         app_label = "backbone"
+        verbose_name = "Check command"
 
     class CSW_Meta:
         permissions = (

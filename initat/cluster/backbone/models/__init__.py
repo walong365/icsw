@@ -54,7 +54,6 @@ import re
 import server_command
 import time
 import uuid
-import itertools
 
 from initat.cluster.backbone.models.domain import *  # @UnusedWildImport
 from initat.cluster.backbone.models.config import *  # @UnusedWildImport
@@ -365,6 +364,7 @@ class device_variable(models.Model):
         db_table = u'device_variable'
         unique_together = ("name", "device",)
         ordering = ("name",)
+        verbose_name = "Device variable"
 
 
 @receiver(signals.pre_save, sender=device_variable)
@@ -410,6 +410,7 @@ class device_config(models.Model):
 
     class Meta:
         db_table = u'device_config'
+        verbose_name = "Device configuration"
 
 
 class DeviceSNMPInfo(models.Model):
@@ -1485,10 +1486,20 @@ class quota_capable_blockdevice(models.Model):
 
 # register models in history
 def _register_models():
-    user_models = (group, device_group, device, csw_permission, csw_object_permission, user, user_permission,
-                   user_object_permission)
-    net_models = (netdevice, net_ip, peer_information)
-    #config, category, device_conf
-    for model in itertools.chain(user_models, net_models):
+    models = (
+        # user
+        group, csw_permission, csw_object_permission, user, user_permission, user_object_permission,
+        # net
+        netdevice, net_ip, peer_information,
+        # device
+        device, device_group, device_config, device_variable,
+        # config
+        config, config_catalog, config_script, config_int, config_bool, config_str, config_blob,
+        # category
+        category,
+        # mon
+        mon_check_command, mon_check_command_special,
+    )
+    for model in models:
         model_history.icsw_register(model)
 _register_models()
