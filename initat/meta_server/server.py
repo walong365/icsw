@@ -241,6 +241,11 @@ class main_process(threading_tools.process_pool):
                     _com = msi_block.stop_command
                     if not command.count("force"):
                         _com = _com.replace("force-stop", "stop")
+                    self._force_stop = _com.replace("force-stop", "stop").replace("stop", "force-stop")
+                    if self._force_stop != _com:
+                        self.log("registering force-stop command {}".format(self._force_stop))
+                    else:
+                        self._force_stop = None
                     self._call_command(msi_block.stop_command, srv_com)
                 else:
                     srv_com.set_result("no stop_command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
@@ -268,10 +273,12 @@ class main_process(threading_tools.process_pool):
             self._call_command(_com)
 
     def _alarm(self, *args, **kwargs):
-        self.log("sigalarm called, starting force-stop", logging_tools.LOG_LEVEL_ERROR)
         signal.signal(signal.SIGALRM, signal.SIG_IGN)
         if self._force_stop:
+            self.log("sigalarm called, starting force-stop", logging_tools.LOG_LEVEL_ERROR)
             self._call_command(self._force_stop, self._srv_com, merge_reply=True, init_alarm=False)
+        else:
+            self.log("sigalarm called but no force-stop command set", logging_tools.LOG_LEVEL_ERROR)
 
     def _call_command(self, act_command, srv_com=None, merge_reply=False, init_alarm=True):
         # call command directly
