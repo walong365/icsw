@@ -60,7 +60,6 @@ class get_historical_data(ListAPIView):
         def format_version(version):
             serialized_data = json.loads(version.serialized_data)[0]
             return_data = serialized_data['fields']
-            return_data['pk'] = serialized_data['pk']
 
             if version.revision.comment == "Initial version.":
                 type = "initial"
@@ -71,21 +70,22 @@ class get_historical_data(ListAPIView):
                 'date': version.revision.date_created,
                 'user': version.revision.user_id,
                 'type': type,
-                'object_repr': version.object_repr
+                'object_repr': version.object_repr,
+                'object_id': serialized_data['pk'],
             }
             return {'meta': meta, 'data': return_data}
 
         def format_deletion(deletion):
+            serialized_data = json.loads(deletion.serialized_data)[0]
+            return_data = serialized_data['fields']
+
             meta = {
                 'date': deletion.date,
                 'user': deletion.user_id,
                 'type': 'deleted',
-                'object_repr': deletion.object_repr
+                'object_repr': deletion.object_repr,
+                'object_id': serialized_data['pk'],
             }
-
-            serialized_data = json.loads(deletion.serialized_data)[0]
-            return_data = serialized_data['fields']
-            return_data['pk'] = serialized_data['pk']
 
             return {'meta': meta, 'data': return_data}
 
@@ -98,7 +98,7 @@ class get_historical_data(ListAPIView):
                 (format_version(ver) for ver in version_queryset),
                 (format_deletion(dele) for dele in deletion_queryset)
             ),
-            key=lambda elem: elem['meta']['date']
+            key=lambda elem: elem['meta']['date'],
         )
 
         foreign_keys = [foreign_key for foreign_key in model._meta.concrete_model._meta.local_fields
@@ -112,34 +112,50 @@ class get_historical_data(ListAPIView):
             try:
                 return unicode(target_model.objects.get(pk=foreign_key_val))
             except target_model.DoesNotExist:
+                # field might not have existed at the time of saving, so check
                 deleted_queryset = reversion.get_deleted(target_model)
                 # unicode on Version object gives the saved object repr, which we use here
                 return unicode(deleted_queryset.get(object_id=foreign_key_val))
 
-        # TODO: only transmit changes (save last state per pk during iteration)
-        # set missing type info
+        # calc change and type info
         pk_seen = set()
+        last_entry_by_pk = {}
         for entry in sorted_data:
+            pk = entry['meta']['object_id']
+
+            # set missing type info
             if not entry['meta']['type']:
-                if entry['data']['pk'] in pk_seen:
+                if pk in pk_seen:
                     entry['meta']['type'] = 'modified'
                 else:
                     entry['meta']['type'] = 'created'
+            pk_seen.add(pk)
 
-            pk_seen.add(entry['data']['pk'])
-
+            # TODO: resolve after change info extraction
             # resolve keys to current value or last known one
             for foreign_key in foreign_keys:
-                # field might not have existed at the time of saving, so check (and don't resolve null values)
                 if foreign_key.name in entry['data'] and entry['data'][foreign_key.name] is not None:
-                    entry['data'][foreign_key.name] =\
+                    entry['data'][foreign_key.name] = \
                         resolve_reference(foreign_key.rel.to, entry['data'][foreign_key.name])
 
             for m2m in m2ms:
-                # field might not have existed at the time of saving, so check
                 if m2m.name in entry['data']:
-                    entry['data'][m2m.name] =\
+                    entry['data'][m2m.name] = \
                         list(resolve_reference(m2m.rel.to, m2m_val) for m2m_val in entry['data'][m2m.name])
+
+            # extract change info and only transmit that
+            if pk in last_entry_by_pk:
+                entry['changes'] = {}
+                for k in set(itertools.chain(entry['data'].iterkeys(), last_entry_by_pk[pk].iterkeys())):
+                    old = last_entry_by_pk[pk].get(k, None)
+                    new = entry['data'].get(k, None)
+                    if old != new:
+                        entry['changes'][k] = [old, new]
+            else:
+                entry['changes'] = entry['data']
+
+            last_entry_by_pk[pk] = entry['data']
+            del entry['data']
 
         return Response(sorted_data)
 

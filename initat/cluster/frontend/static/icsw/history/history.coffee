@@ -27,6 +27,7 @@ angular.module(
         templateUrl: 'icsw.history.overview'
         link: (scope, el, attrs) ->
             icswHistoryDataService.add_to_scope(scope)
+            scope.selected_model = 'device'
     }
 ]).directive("icswHistoryModelHistory", ["$injector", "icswHistoryDataService", ($injector,icswHistoryDataService) ->
     return {
@@ -46,22 +47,28 @@ angular.module(
                             scope.column_visible = {}
                     )
             )
-            scope.get_last_entry_before = (idx, position) ->
-                if position > 0
-                    for i in [(position-1)..0]
-                        if scope.entries[i].data.pk == idx
-                            return scope.entries[i]
-                return undefined
-            scope.last_entry_different = (idx, position, key) ->
-                last_entry = scope.get_last_entry_before(idx, position)
-                if last_entry?
-                    different =  last_entry.data[key] != scope.entries[position].data[key]
-                    different =  !angular.equals(last_entry.data[key], scope.entries[position].data[key])
-                    if different
-                        scope.column_visible[key] = true
-                    return different
+            scope.format_value = (val) ->
+                if angular.isArray(val)
+                    return val.join(", ")
                 else
-                    return false
+                    return val
+
+            #scope.get_last_entry_before = (idx, position) ->
+            #    if position > 0
+            #        for i in [(position-1)..0]
+            #            if scope.entries[i].data.pk == idx
+            #                return scope.entries[i]
+            #    return undefined
+            #scope.last_entry_different = (idx, position, key) ->
+            #    last_entry = scope.get_last_entry_before(idx, position)
+            #    if last_entry?
+            #        # angular.equals supports comparing lists as python would
+            #        different = !angular.equals(last_entry.data[key], scope.entries[position].data[key])
+            #        if different
+            #            scope.column_visible[key] = true
+            #        return different
+            #    else
+            #        return false
     }
 ]).service("icswHistoryDataService", ["Restangular", "ICSW_URLS", (Restangular, ICSW_URLS) ->
     get_historic_data = (model_name) ->
