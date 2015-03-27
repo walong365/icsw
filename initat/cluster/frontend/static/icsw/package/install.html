@@ -242,7 +242,7 @@
                         <input ng-model="package_filter" class="form-control input-sm"/>
                     </div>,
                     <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"/>&nbsp;
-                    <icsw-tools-button type="reload" value="sync" size="sm" ng-click="send_sync()"></icsw-tools-button>
+                    <icsw-tools-button type="reload" value="sync" size="sm" title="send a resync to all registered clients" ng-click="send_sync()"></icsw-tools-button>
                     <icsw-tools-button type="delete" value="clear caches" size="sm" ng-click="send_clear_caches()"></icsw-tools-button>
                     show
                     <div class="btn-group btn-group-sm">

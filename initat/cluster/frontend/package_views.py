@@ -63,7 +63,7 @@ class repo_overview(permission_required_mixin, View):
             srv_com = server_command.srv_command(command=cur_mode)
             _result = contact_server(request, "package", srv_com, timeout=10, log_result=True)
         else:
-            request.xml_response.error("unknown mode '%s'" % (cur_mode))
+            request.xml_response.error("unknown mode '{}'".format(cur_mode))
 
 
 def reload_searches(request):
@@ -162,9 +162,9 @@ class add_package(View):
             else:
                 num_error += 1
         if num_ok:
-            request.xml_response.info("added %s" % (logging_tools.get_plural("connection", num_ok)), logger)
+            request.xml_response.info("added {}".format(logging_tools.get_plural("connection", num_ok)), logger)
         if num_error:
-            request.xml_response.warn("%s already existed" % (logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.warn("{} already existed".format(logging_tools.get_plural("connection", num_error)), logger)
         request.xml_response["result"] = JSONRenderer().render(package_device_connection_serializer(new_pdcs, many=True).data)
 
 
