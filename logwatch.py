@@ -70,7 +70,7 @@ def parse_args():
     except:
         print("cannot interpret '{}', using default".format(opts.node_filter))
         opts.node_re = re.compile("^$")
-    opts.line_format = "{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}} {{msg}}".format(
+    opts.line_format = "{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}}{{msg}}".format(
         max_system_len
     )
     opts.used_systems = [_entry for _entry in opts.systems if opts.system_re.match(_entry)]
@@ -104,7 +104,7 @@ class LogLine(object):
         )
         self.datetime = datetime.datetime.strftime(self.dt, opts.format)
         _info, _line = _parts[3].split(")", 1)
-        self.msg = _line.strip()
+        self.msg = _line.rstrip()
         self.level = _info.split("(")[0].strip()
         self.process = _info.split("(")[1].strip()
 
