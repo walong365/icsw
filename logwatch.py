@@ -23,11 +23,13 @@
 """ show and follow cluster logs """
 
 import argparse
-import sys
-import process_tools
 import os
+import re
 import datetime
 import time
+
+import logging_tools
+import process_tools
 
 global opts
 
@@ -41,8 +43,11 @@ def parse_args():
     parser.add_argument("-n", type=int, default=400, help="show latest [%(default)d] lines")
     parser.add_argument("--format", type=str, default="%a %b %d %H:%M:%S %Y", help="argument for parsing loglines [%(default)s]")
     parser.add_argument("-f", dest="follow", default=False, action="store_true", help="enable follow mode [%(default)s]")
+    parser.add_argument("--system-filter", type=str, default=".*", help="regexp filter for system [%(default)s]")
+    parser.add_argument("--with-nodes", default=False, action="store_true", help="add node logs [%(default)s]")
+    parser.add_argument("--node-filter", type=str, default=".*", help="regexp filter for nodes [%(default)s]")
+    parser.add_argument("--verbose", default=False, action="store_true", help="enable verbose mode [%(default)s]")
     opts = parser.parse_args()
-    print opts
     rd = os.path.join(opts.root, opts.machine)
     if not os.path.isdir(rd):
         raise ValueError(
@@ -55,52 +60,85 @@ def parse_args():
     opts.rootdir = rd
     opts.systems = [_entry for _entry in os.listdir(opts.rootdir) if not _entry.count(".") and not _entry.count("-server-direct")]
     max_system_len = max([len(_entry) for _entry in opts.systems])
-    opts.line_format = "{{}} : {{:<{:d}s}} {{:<5s}} {{:<30s}} {{}}".format(max_system_len)
+    try:
+        opts.system_re = re.compile(opts.system_filter)
+    except:
+        print("cannot interpret '{}', using default".format(opts.system_filter))
+        opts.system_re = re.compile("^$")
+    try:
+        opts.node_re = re.compile(opts.node_filter)
+    except:
+        print("cannot interpret '{}', using default".format(opts.node_filter))
+        opts.node_re = re.compile("^$")
+    opts.line_format = "{{datetime}} : {{device:<14s}}/{{system:<{:d}s}}/{{node:<14s}} {{level:<5s}} {{process:<20s}} {{msg}}".format(
+        max_system_len
+    )
+    opts.used_systems = [_entry for _entry in opts.systems if opts.system_re.match(_entry)]
+    _nodes = set()
+    if opts.with_nodes:
+        for _system in opts.used_systems:
+            _subdir = os.path.join(opts.rootdir, "{}.d".format(_system))
+            if os.path.isdir(_subdir):
+                for _entry in os.listdir(_subdir):
+                    _last = _entry.split(".")[-1]
+                    if _last not in ["gz", "bz2", "xz", "zip"]:
+                        _nodes.add(_entry)
+    opts.nodes = sorted(list(_nodes))
+    opts.used_nodes = [_entry for _entry in opts.nodes if opts.node_re.match(_entry)]
 
 
 class LogLine(object):
-    def __init__(self, system, line):
+    microsecond = 0
+
+    def __init__(self, system, device, node, line):
         self.system = system
+        self.device = device
+        self.node = node or "---"
         # print "L:", line.strip()
         _parts = line.split(":", 3)
-        # print line
-        # print "*", ":".join(_parts[:3])
-        self.dt = datetime.datetime.strptime(":".join(_parts[:3]).strip(), opts.format)
+        # ensure unique datetimes
+        LogLine.microsecond += 1
+        self.dt = datetime.datetime.strptime(
+            "{} {:06d}".format(":".join(_parts[:3]).strip(), LogLine.microsecond),
+            "{} %f".format(opts.format)
+        )
+        self.datetime = datetime.datetime.strftime(self.dt, opts.format)
         _info, _line = _parts[3].split(")", 1)
-        self.line = _line.strip()
+        self.msg = _line.strip()
         self.level = _info.split("(")[0].strip()
-        self.processinfo = _info.split("(")[1].strip()
+        self.process = _info.split("(")[1].strip()
 
-    def append_line(self, line):
-        self.line = "{}\n{}".format(self.line, line)
+    def append_msg(self, msg):
+        self.msg = "{}\n{}".format(self.msg, msg)
 
     def __unicode__(self):
-        return opts.line_format.format(
-            datetime.datetime.strftime(self.dt, opts.format),
-            self.system,
-            self.level,
-            "({})".format(self.processinfo),
-            self.line,
-        )
+        return opts.line_format.format(**self.__dict__)
 
     def __repr__(self):
         return unicode(self)
 
 
 class LogWatcher(object):
-    def __init__(self, sysname, logcache):
+    def __init__(self, sysname, device, logcache, node=None):
         self.name = sysname
-        self.path = os.path.join(opts.rootdir, sysname)
+        self.device = device
+        self.node = node
+        if self.node:
+            self.path = os.path.join(opts.rootdir, "{}.d".format(sysname), self.node)
+        else:
+            self.path = os.path.join(opts.rootdir, sysname)
         self.valid = True
         self.__logcache = logcache
         self.open()
-        self.rewind()
+        if self.valid:
+            self.rewind()
 
     def open(self):
         try:
             self.fd = open(self.path)
         except:
-            print("Cannot open {}: {}".format(self.path, process_tools.get_except_info()))
+            if opts.verbose:
+                print("Cannot open {}: {}".format(self.path, process_tools.get_except_info()))
             self.valid = False
             self.fd = None
 
@@ -117,15 +155,16 @@ class LogWatcher(object):
 
     def _interpret(self, content):
         _prev_line = None
+        LogLine.microsecond = 0
         for _line in content.split("\n"):
             _line = _line.strip()
             if _line:
                 try:
-                    _ll = LogLine(self.name, _line)
+                    _ll = LogLine(self.name, self.device, self.node, _line)
                 except:
                     if _prev_line:
                         # some lines already present, append line to pure line content
-                        _prev_line.append_line(_line)
+                        _prev_line.append_msg(_line)
                     else:
                         print(
                             "Error parsing line '{}' for system {}: {}".format(
@@ -170,20 +209,44 @@ class LogCache(object):
 
 def main():
     parse_args()
+    if opts.verbose:
+        print(
+            "{:d} systems found: {}".format(
+                len(opts.systems),
+                ", ".join(sorted(opts.systems))
+            )
+        )
     print(
-        "{:d} systems found: {}".format(
-            len(opts.systems),
-            ", ".join(sorted(opts.systems))
+        "{:d} systems to use: {}".format(
+            len(opts.used_systems),
+            ", ".join(sorted(opts.used_systems))
         )
     )
+    if opts.with_nodes:
+        if opts.verbose:
+            print(
+                "{} found: {}".format(
+                    logging_tools.get_plural("node", len(opts.nodes)),
+                    ", ".join(sorted(opts.nodes))
+                )
+            )
+        print(
+            "{} to use: {}".format(
+                logging_tools.get_plural("node", len(opts.used_nodes)),
+                ", ".join(sorted(opts.used_nodes))
+            )
+        )
     _lc = LogCache()
-    _lws = [_lw for _lw in [LogWatcher(_entry, _lc) for _entry in opts.systems] if _lw.valid]
+    _lws = [_lw for _lw in [LogWatcher(_entry, opts.machine, _lc) for _entry in opts.used_systems] if _lw.valid]
+    if opts.with_nodes:
+        for _node in opts.used_nodes:
+            _lws.extend([_lw for _lw in [LogWatcher(_entry, opts.machine, _lc, node=_node) for _entry in opts.used_systems] if _lw.valid])
     _lc.sort()
     _lc.prune()
     _lc.show()
     if opts.follow:
         while True:
-            time.sleep(1)
+            time.sleep(0.25)
             [_lw.read() for _lw in _lws]
             _lc.sort()
             _lc.show()
