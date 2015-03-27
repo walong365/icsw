@@ -64,7 +64,7 @@ class MachineVector(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "machine_vector"
+        return u"MachineVector for device {}".format(unicode(self.device))
 
 
 class MVStructEntry(models.Model):
@@ -72,6 +72,7 @@ class MVStructEntry(models.Model):
     idx = models.AutoField(primary_key=True)
     machine_vector = models.ForeignKey("MachineVector")
     file_name = models.CharField(max_length=256, default="")
+    # needed ?
     se_type = models.CharField(
         max_length=6,
         choices=[
@@ -81,8 +82,8 @@ class MVStructEntry(models.Model):
         ],
     )
     # we ignore the 'host' field for pdes because it seems to be a relict from the original PerformanceData sent from icinga
-    # info is set for mvl structural entries
-    info = models.CharField(max_length=256, default="")
+    # info is set for mvl structural entries, is now ignored
+    # info = models.CharField(max_length=256, default="")
     # type instance is set for certains PDEs (for instance windows disk [C,D,E,...], SNMP netifaces [eth0,eth1,...])
     type_instance = models.CharField(max_length=16, default="")
     # position in RRD-tree this nodes resides in, was name
@@ -93,6 +94,9 @@ class MVStructEntry(models.Model):
     last_update = models.DateTimeField(auto_now=True, auto_now_add=True)
     # was init_time
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return u"MVStructEntry ({}, {})".format(self.se_type, self.key)
 
 
 class MVValue(models.Model):
