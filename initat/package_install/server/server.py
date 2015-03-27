@@ -30,6 +30,7 @@ import cluster_location
 import configfile
 import logging_tools
 import os
+import config_tools
 import process_tools
 import server_command
 import server_mixins
@@ -58,7 +59,7 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
         self.add_process(repo_process("repo"), start=True)
         # close DB connection
         connection.close()
-        self.register_timer(self._send_update, 3600, instant=True)
+        self.reconnect_to_clients()
         self.register_func("delayed_result", self._delayed_result)
         self.send_to_process("repo", "rescan_repos")
 
@@ -166,15 +167,18 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
                             srv_com.set_result("up and running")
                         else:
                             self.log(
-                                "unknown uid {} (command {}), not known".format(
+                                "unknown uuid {} (command {}), not known".format(
                                     c_uid,
                                     cur_com,
                                 ),
                                 logging_tools.LOG_LEVEL_CRITICAL
                             )
                             srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
-                        zmq_sock.send_unicode(c_uid, zmq.SNDMORE)  # @UndefinedVariable
-                        zmq_sock.send_unicode(unicode(srv_com))
+                        try:
+                            zmq_sock.send_unicode(c_uid, zmq.SNDMORE)  # @UndefinedVariable
+                            zmq_sock.send_unicode(unicode(srv_com))
+                        except:
+                            self.log("error sending to {}: {}".format(c_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     else:
                         cur_client.new_command(srv_com)
         else:
@@ -188,7 +192,7 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
     def _delayed_result(self, src_name, src_pid, ext_id, ret_str, ret_state, **kwargs):
         in_uid, srv_com = self.__delayed_struct[ext_id]
         del self.__delayed_struct[ext_id]
-        self.log("sending delayed return for %s" % (unicode(srv_com)))
+        self.log("sending delayed return for {}".format(unicode(srv_com)))
         srv_com.set_result(ret_str, ret_state)
         zmq_sock = self.main_socket
         zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)  # @UndefinedVariable
@@ -203,27 +207,53 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
         immediate_return = True
         srv_com.set_result("result not set", server_command.SRV_REPLY_STATE_UNSET)
         if in_com == "new_config":
-            all_devs = srv_com.xpath(".//ns:device_command/@name", smart_strings=False)
-            if not all_devs:
+            # command devices
+            com_devs = srv_com.xpath(".//ns:device_command/@name", smart_strings=False)
+            if not com_devs:
                 valid_devs = list(client.name_set)
+                self.log(
+                    "no devices requested, using {} found".format(
+                        logging_tools.get_plural("device", len(valid_devs))
+                    )
+                )
             else:
                 valid_devs = [name for name in all_devs if name in client.name_set]
-            self.log("{} requested, {} found".format(
-                logging_tools.get_plural("device", len(all_devs)),
-                logging_tools.get_plural("device", len(valid_devs))))
-            for cur_dev in all_devs:
+                self.log(
+                    "{} requested, {} found".format(
+                        logging_tools.get_plural("device", len(com_devs)),
+                        logging_tools.get_plural("device", len(valid_devs))
+                    )
+                )
+            for cur_dev in com_devs:
+                # update config_sent attribte
                 srv_com.xpath(
-                    ".//ns:device_command[@name='%s']" % (cur_dev), smart_strings=False
+                    ".//ns:device_command[@name='{}']".format(cur_dev),
+                    smart_strings=False
                 )[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:
-                self._send_update(command="new_config", dev_list=valid_devs)
-            srv_com.set_result(
-                "send update to {:d} of {}".format(
-                    len(valid_devs),
-                    logging_tools.get_plural("device", len(all_devs))
-                ),
-                server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN
-            )
+                ok_list, error_list = self._send_command("new_config", dev_list=valid_devs)
+                if error_list:
+                    _state = server_command.SRV_REPLY_STATE_ERROR
+                else:
+                    _state = server_command.SRV_REPLY_STATE_OK
+                srv_com.set_result(
+                    "sent update to {} ({})".format(
+                        logging_tools.get_plural("device", len(valid_devs)),
+                        ", ".join(
+                            [
+                                _entry for _entry in [
+                                    "{:d} OK".format(len(ok_list)) if ok_list else "",
+                                    "{:d} error".format(len(error_list)) if error_list else "",
+                                ] if _entry.strip()
+                            ]
+                        )
+                    ),
+                    _state,
+                )
+            else:
+                srv_com.set_result(
+                    "no devices registered", server_command.SRV_REPLY_STATE_WARN
+                )
         elif in_com == "reload_searches":
             self.send_to_process("repo", "reload_searches")
             srv_com.set_result("ok reloading")
@@ -237,7 +267,7 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
             all_devs = list(client.name_set)
             self.log("sending sync_repos to {}".format(logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
-                self._send_update(command="sync_repos", dev_list=all_devs)
+                self._send_command("sync_repos", dev_list=all_devs)
             srv_com.set_result(
                 "send sync_repos to {}".format(
                     logging_tools.get_plural("device", len(all_devs))
@@ -251,7 +281,7 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
                 self.send_to_process("repo", "clear_cache", unicode(srv_com))
             self.log("sending clear_cache to %s" % (logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
-                self._send_update(command="clear_cache", dev_list=all_devs)
+                self._send_command("clear_cache", dev_list=all_devs)
             srv_com.set_result(
                 "send clear_cache to {}".format(
                     logging_tools.get_plural("device", len(all_devs))
@@ -274,15 +304,23 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
             ext_call=True,
         )
 
+    def connect_client(self, device, ip):
+        _conn_str = "tcp://{}:2003".format(ip)
+        self.log("connecting to {}".format(_conn_str))
+        self.main_socket.connect(_conn_str)
+
     def send_reply(self, t_uid, srv_com):
         send_sock = self.main_socket
+        _ok = True
         try:
             send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)  # @UndefinedVariable
             send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)  # @UndefinedVariable
         except:
             self.log("error sending to {}: {}".format(t_uid, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            _ok = False
+        return _ok
 
-    def _send_update(self, command="send_info", dev_list=[], **kwargs):
+    def _send_command(self, command, dev_list=[], **kwargs):
         send_list = dev_list or client.name_set
         self.log(
             "send command {} to {} ({})".format(
@@ -292,9 +330,53 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
             )
         )
         send_com = server_command.srv_command(command=command, **kwargs)
+        ok_list, error_list = ([], [])
         for target_name in send_list:
             cur_c = client.get(target_name)
             if cur_c is not None:
-                self.send_reply(cur_c.uid, send_com)
+                if self.send_reply(cur_c.uid, send_com):
+                    ok_list.append(target_name)
+                else:
+                    error_list.append(target_name)
             else:
                 self.log("no client with name '{}' found".format(target_name), logging_tools.LOG_LEVEL_WARN)
+                error_list.append(target_name)
+        return ok_list, error_list
+
+    def reconnect_to_clients(self):
+        router_obj = config_tools.router_object(self.log)
+        self.log("reconnecting to {}".format(logging_tools.get_plural("client", len(client.name_set))))
+        all_servers = config_tools.device_with_config("package_server")
+        if "package_server" not in all_servers:
+            self.log("no package_server defined, strange...", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            _pserver = all_servers["package_server"][0]
+            if _pserver.effective_device.pk != global_config["SERVER_IDX"]:
+                self.log(
+                    "effective_device pk differs from SERVER_IDX: {:d} != {:d}".format(
+                        _pserver.effective_device.pk,
+                        global_config["SERVER_IDX"]
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            else:
+                for target_name in client.name_set:
+                    cur_c = client.get(target_name)
+                    dev_sc = config_tools.server_check(
+                        device=cur_c.device,
+                        config="",
+                        server_type="node",
+                        fetch_network_info=True
+                    )
+                    act_routing_info = _pserver.get_route_to_other_device(
+                        router_obj,
+                        dev_sc,
+                        allow_route_to_other_networks=True
+                    )
+                    if act_routing_info:
+                        _ip = act_routing_info[0][3][1][0]
+                        self.log("found routing_info for {}, IP is {}".format(unicode(cur_c.device), _ip))
+                        self.connect_client(cur_c.device, _ip)
+                        # self.send_reply(cur_c.uid, server_command.srv_command(command="hello"))
+                    else:
+                        self.log("no routing_info found for {}".format(unicode(cur_c.device)))

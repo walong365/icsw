@@ -143,7 +143,8 @@ class repo_type_rpm_yum(repo_type):
                 "delayed_result",
                 s_struct.src_id,
                 "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos))),
-                server_command.SRV_REPLY_STATE_OK)
+                server_command.SRV_REPLY_STATE_OK
+            )
         self.master_process._reload_searches()
 
     def search_result(self, s_struct):
@@ -478,6 +479,8 @@ class client(object):
 
     @staticmethod
     def register(uid, name):
+        if not uid.endswith(":pclient:"):
+            uid = "{}:pclient:".format(uid)
         if uid not in client.uid_set:
             try:
                 new_client = client(uid, name)
@@ -507,8 +510,14 @@ class client(object):
                 client.lut[name] = new_client
                 client.srv_process.log("added client {} ({})".format(name, uid))
                 cur_el = client.xml.xpath(".//package_client[@name='{}']".format(name), smart_strings=False)
+                _rewrite = False
                 if not len(cur_el):
                     client.xml.append(E.package_client(uid, name=name))
+                    _rewrite = True
+                elif cur_el[0].text != uid:
+                    cur_el[0].text = uid
+                    _rewrite = True
+                if _rewrite:
                     file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))  # @UndefinedVariable
 
     def close(self):
@@ -580,34 +589,59 @@ class client(object):
         ).select_related("package", "package__target_repo")
         # send to client
         send_list = []
+        # pre-delete list
+        pre_delete_list = []
         for cur_pdc in pdc_list:
             take = True
+            pre_delete = False
             if cur_pdc.image_dep:
                 if cur_image not in cur_pdc.image_list.all():
-                    self.log("ignoring package '{}' because image '{}' not in image_list '{}'".format(
-                        unicode(cur_pdc.package),
-                        unicode(cur_image),
-                        ", ".join([unicode(_v) for _v in cur_pdc.image_list.all()]),
-                        ))
+                    self.log(
+                        "appending package '{}' to pre-delete list because image '{}' not in image_list '{}'".format(
+                            unicode(cur_pdc.package),
+                            unicode(cur_image),
+                            ", ".join([unicode(_v) for _v in cur_pdc.image_list.all()]),
+                        )
+                    )
+                    pre_delete = True
                     take = False
             if cur_pdc.kernel_dep:
                 if cur_kernel not in cur_pdc.kernel_list.all():
-                    self.log("ignoring package '{}' because kernel '{}' not in kernel_list '{}'".format(
-                        unicode(cur_pdc.package),
-                        unicode(cur_kernel),
-                        ", ".join([unicode(_v) for _v in cur_pdc.kernel_list.all()]),
-                        ))
+                    self.log(
+                        "appending package '{}' to pre-delete list because kernel '{}' not in kernel_list '{}'".format(
+                            unicode(cur_pdc.package),
+                            unicode(cur_kernel),
+                            ", ".join([unicode(_v) for _v in cur_pdc.kernel_list.all()]),
+                        )
+                    )
+                    pre_delete = True
                     take = False
+            if pre_delete:
+                pre_delete_list.apped(cur_pdc)
             if take:
                 send_list.append(cur_pdc)
-        self.log("{} in source list, {} in send_list".format(
-            logging_tools.get_plural("package", len(pdc_list)),
-            logging_tools.get_plural("package", len(send_list)),))
+        self.log(
+            "{} in source list, {} in send_list, {} in pre-delete list".format(
+                logging_tools.get_plural("package", len(pdc_list)),
+                logging_tools.get_plural("package", len(send_list)),
+                logging_tools.get_plural("package", len(pre_delete_list)),
+            )
+        )
         if self.__client_gen == 1:
+            # new generation
+            _pre_del_xml = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(pre_delete_list, many=True).data))
             resp = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(send_list, many=True).data))  # @UndefinedVariable
+            for _entry in resp:
+                _entry.append(E.pre_delete("False"))
+            if len(_pre_del_xml):
+                for _entry in _pre_del_xml:
+                    _entry.append(E.pre_delete("True"))
+                    # insert at top of the list
+                    resp.insert(0, _entry)
         else:
             resp = srv_com.builder(
                 "packages",
+                # we don't support pre_delete
                 *[cur_pdc.get_xml(with_package=True) for cur_pdc in send_list]
             )
         srv_com["package_list"] = resp
@@ -656,23 +690,29 @@ class client(object):
             self._set_version(srv_com["package_client_version"].text)
         self._modify_device_variable(LAST_CONTACT_VAR_NAME, "last contact of the client", "d", datetime.datetime(*time.localtime()[0:6]))
         srv_com.update_source()
-        send_reply = False
         if cur_com == "get_package_list":
+            send_reply = True
             srv_com["command"] = "package_list"
             self._get_package_list(srv_com)
-            send_reply = True
         elif cur_com == "get_repo_list":
+            send_reply = True
             srv_com["command"] = "repo_list"
             self._get_repo_list(srv_com)
-            send_reply = True
         elif cur_com == "package_info":
+            send_reply = False
             self._package_info(srv_com)
         else:
-            self.log("unknown command '{}'".format(cur_com),
-                     logging_tools.LOG_LEVEL_ERROR)
+            send_reply = True
+            self.log(
+                "unknown command '{}'".format(cur_com),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         if send_reply:
             self.send_reply(srv_com)
         e_time = time.time()
-        self.log("handled command {} in {}".format(
-            cur_com,
-            logging_tools.get_diff_time_str(e_time - s_time)))
+        self.log(
+            "handled command {} in {}".format(
+                cur_com,
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )

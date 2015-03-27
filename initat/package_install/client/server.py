@@ -62,7 +62,7 @@ class server_process(threading_tools.process_pool):
         if self._get_package_server_id():
             self._init_network_sockets()
             self.register_func("send_to_server", self._send_to_server)
-            if os.path.isfile("/etc/centos-release"):
+            if os.path.isfile("/etc/centos-release") or os.path.isfile("/etc/redhat-release"):
                 self.add_process(yum_install_process("install"), start=True)
             else:
                 self.add_process(zypper_install_process("install"), start=True)
@@ -102,12 +102,8 @@ class server_process(threading_tools.process_pool):
         self.__msi_block = msi_block
 
     def _show_config(self):
-        try:
-            for log_line, log_level in global_config.get_log():
-                self.log("Config info : [{:d}] {}".format(log_level, log_line))
-        except:
-            self.log("error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+        for log_line, log_level in global_config.get_log():
+            self.log("Config info : [{:d}] {}".format(log_level, log_line))
         conf_info = global_config.get_config_info()
         self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
@@ -178,7 +174,7 @@ class server_process(threading_tools.process_pool):
             identity="{}:ptest:".format(uuid_tools.get_uuid().get_urn()),
         )
         check_sock.connect(self.srv_conn_str)
-        self.log("init test socket, connected to {}".format(self.srv_conn_str))
+        self.log("fetch srv_id socket, connected to {}".format(self.srv_conn_str))
         check_sock.send_unicode(unicode(server_command.srv_command(command="get_0mq_id")))
         _timeout = 10
         my_poller = zmq.Poller()
@@ -275,7 +271,13 @@ class server_process(threading_tools.process_pool):
 
     def _send_to_server(self, src_proc, *args, **kwargs):
         _src_pid, com_name, send_com, send_info = args
-        self.log("sending {} ({}) to server {}".format(com_name, send_info, self.srv_conn_str))
+        self.log(
+            "sending {} ({}) to server {}".format(
+                com_name,
+                send_info,
+                self.srv_conn_str
+            )
+        )
         try:
             self.client_socket.send_unicode(self.__package_server_id, zmq.SNDMORE)  # @UndefinedVariable
             self.client_socket.send_unicode(send_com)
@@ -314,6 +316,7 @@ class server_process(threading_tools.process_pool):
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
+                send_reply = True
                 srv_com.update_source()
                 cur_com = srv_com["command"].text
                 self.log("got {} (length: {:d}) from {}".format(cur_com, len(data), src_id))
@@ -329,13 +332,21 @@ class server_process(threading_tools.process_pool):
                         "everything OK :-)"
                     )
                 elif cur_com == "new_config":
+                    # no reply for this command
+                    send_reply = False
                     self._get_new_config()
                 elif cur_com == "sync_repos":
+                    # no reply for this command
+                    send_reply = False
                     self._get_repos()
                 else:
+                    # no reply for this command
+                    send_reply = False
                     batch_list.append(srv_com)
-                zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                zmq_sock.send_unicode(unicode(srv_com))
+                if send_reply:
+                    self.log("send reply for command {}".format(cur_com))
+                    zmq_sock.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+                    zmq_sock.send_unicode(unicode(srv_com))
                 del srv_com
         else:
             self.log(

@@ -74,7 +74,8 @@ def get_srv_command(**kwargs):
     return server_command.srv_command(
         package_client_version=VERSION_STRING,
         debian="1" if global_config["DEBIAN"] else "0",
-        **kwargs)
+        **kwargs
+    )
 
 
 class install_process(threading_tools.process_obj):
@@ -83,7 +84,8 @@ class install_process(threading_tools.process_obj):
         threading_tools.process_obj.__init__(
             self,
             name,
-            loop_timer=1000.0)
+            loop_timer=1000.0
+        )
         self.commands = []
         self.register_func("command_batch", self._command_batch)
         # commands pending becaus of missing package list
@@ -115,7 +117,8 @@ class install_process(threading_tools.process_obj):
             zmq=True,
             zmq_debug=global_config["ZMQ_DEBUG"],
             context=self.zmq_context,
-            init_logger=True)
+            init_logger=True
+        )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -168,7 +171,8 @@ class install_process(threading_tools.process_obj):
                     log_com=self.log,
                     info="install package",
                     command_stage="pre",
-                    data=cur_init)
+                    data=cur_init
+                )
             else:
                 cur_init.append(E.main_result(E.info("nothing to do")))
                 self.pdc_done(cur_init)
@@ -190,11 +194,14 @@ class install_process(threading_tools.process_obj):
             try:
                 xml_out = etree.fromstring(cur_out)  # @UndefinedVariable
             except:
-                self.log("error parsing XML string ({:d} bytes, first 100: '{}'): {}".format(
-                    len(cur_out),
-                    cur_out[:100],
-                    process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error parsing XML string ({:d} bytes, first 100: '{}'): {}".format(
+                        len(cur_out),
+                        cur_out[:100],
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 xml_out = E.stdout(cur_out)
         else:
             # todo: transform output to XML for sending back to server
@@ -285,9 +292,7 @@ class install_process(threading_tools.process_obj):
             first_com = self.pending_commands.pop(0)
             cur_com = first_com["command"].text
             self.log("try to handle {}".format(cur_com))
-            if cur_com in ["send_info"]:
-                self.log("... ignoring", logging_tools.LOG_LEVEL_WARN)
-            elif cur_com in ["repo_list"]:
+            if cur_com in ["repo_list"]:
                 self._handle_repo_list(first_com)
                 self._process_commands()
             elif cur_com in ["clear_cache"]:
@@ -295,17 +300,19 @@ class install_process(threading_tools.process_obj):
                 self._process_commands()
             elif cur_com in ["package_list"]:
                 # print first_com.pretty_print()
+                _added = 0
                 if len(first_com.xpath(".//ns:package_list/root/list-item")):
                     # clever enqueue ? FIXME
                     for _cur_pdc in first_com.xpath(".//ns:package_list/root/list-item"):
                         # rewrite
+                        # print etree.tostring(_cur_pdc, pretty_print=True)
                         cur_pdc = E.package_device_connection()
                         for entry in _cur_pdc:
                             if entry.tag in ["target_state", "installed", "device", "idx"]:
                                 cur_pdc.attrib[entry.tag] = entry.text or ""
                                 if entry.tag == "idx":
                                     cur_pdc.attrib["pk"] = entry.text or ""
-                            elif entry.tag in ["force_flag", "nodeps_flag"]:
+                            elif entry.tag in ["force_flag", "nodeps_flag", "pre_delete"]:
                                 cur_pdc.attrib[entry.tag] = "1" if entry.text.lower() in ["true"] else "0"
                             else:
                                 # ignore the rest
@@ -328,17 +335,26 @@ class install_process(threading_tools.process_obj):
                         cur_pdc.attrib["send_return"] = "1"
                         # retry count
                         cur_pdc.attrib["retry_count"] = "0"
+                        _added += 1
                         self.package_commands.append(cur_pdc)
-                    self.log(logging_tools.get_plural("package command", len(self.package_commands)))
+                    self.log(
+                        "{} present (added {:d})".format(
+                            logging_tools.get_plural("package command", len(self.package_commands)),
+                            _added,
+                        )
+                    )
                     self._process_commands()
                 else:
                     self.log("empty package_list, removing")
             else:
                 self.log("unknown command '{}', ignoring...".format(cur_com), logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            self.log("handle_pending_commands: {:d} pending, {:d} package".format(
-                len(self.pending_commands),
-                len(self.package_commands)))
+            self.log(
+                "handle_pending_commands: {:d} pending, {:d} package".format(
+                    len(self.pending_commands),
+                    len(self.package_commands)
+                )
+            )
 
     def get_always_latest(self, pack_xml):
         return int(pack_xml.attrib.get("always_latest", "0"))
@@ -401,13 +417,17 @@ class yum_install_process(install_process):
         if (is_installed and yum_com in ["install", "upgrade"]) or (not is_installed and yum_com in ["erase"]):
             self.log("doing nothing, running post_command")
             if is_installed:
-                cur_pdc.append(E.main_result(
-                    E.stdout("package {} is installed".format(package_name))
-                ))
+                cur_pdc.append(
+                    E.main_result(
+                        E.stdout("package {} is installed".format(package_name))
+                    )
+                )
             else:
-                cur_pdc.append(E.main_result(
-                    E.stdout("package {} is not installed".format(package_name))
-                ))
+                cur_pdc.append(
+                    E.main_result(
+                        E.stdout("package {} is not installed".format(package_name))
+                    )
+                )
             return True
         else:
             if not is_installed and yum_com == "update" and always_latest:
@@ -417,7 +437,7 @@ class yum_install_process(install_process):
             yum_com = "/usr/bin/yum -y {} {}".format(
                 yum_com,
                 package_name,
-                )
+            )
             simple_command(
                 yum_com,
                 short_info="package",
@@ -425,7 +445,8 @@ class yum_install_process(install_process):
                 command_stage="main",
                 log_com=self.log,
                 info="handle package",
-                data=cur_pdc)
+                data=cur_pdc
+            )
             # return False, None
 
     def _handle_repo_list(self, in_com):
@@ -435,9 +456,12 @@ class yum_install_process(install_process):
         # manual comparision, better modify them with zypper, FIXME ?
         repo_dir = "/etc/yum.repos.d"
         cur_repo_names = [entry[:-5] for entry in os.listdir(repo_dir) if entry.endswith(".repo")]
-        self.log("{} found in {}".format(
-            logging_tools.get_plural("repository", len(cur_repo_names)),
-            repo_dir))
+        self.log(
+            "{} found in {}".format(
+                logging_tools.get_plural("repository", len(cur_repo_names)),
+                repo_dir
+            )
+        )
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
         old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read()) for f_name in cur_repo_names])
@@ -521,13 +545,17 @@ class zypper_install_process(install_process):
         ) or (not is_installed and zypper_com in ["rm"]):
             self.log("doing nothing")
             if is_installed:
-                cur_pdc.append(E.main_result(
-                    E.stdout("package {} is installed".format(package_name))
-                ))
+                cur_pdc.append(
+                    E.main_result(
+                        E.stdout("package {} is installed".format(package_name))
+                    )
+                )
             else:
-                cur_pdc.append(E.main_result(
-                    E.stdout("package {} is not installed".format(package_name))
-                ))
+                cur_pdc.append(
+                    E.main_result(
+                        E.stdout("package {} is not installed".format(package_name))
+                    )
+                )
             return True
         else:
             if not is_installed and zypper_com == "up" and always_latest:
@@ -553,7 +581,8 @@ class zypper_install_process(install_process):
                 command_stage="main",
                 log_com=self.log,
                 info="handle package",
-                data=cur_pdc)
+                data=cur_pdc
+            )
             return False
             # return False, None
 #     def _post_decide(self, hc_sc, cur_out):
