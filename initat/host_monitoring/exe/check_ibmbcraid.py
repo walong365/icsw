@@ -28,15 +28,18 @@ import marshal
 
 CLI_STR = "<CLI>"
 
+
 class ctrl_command(object):
     target_dict = {}
     com_list = []
     run_time = 0.0
+
     def __init__(self, command, wait_for=None, targ_key=None):
         self.command = command
         self.wait_for = wait_for or CLI_STR
         self.targ_key = targ_key
         self.send_str = "%s\n" % (self.command)
+
     def read(self, cur_con):
         if self.command:
             ctrl_command.com_list.append(self.send_str)
@@ -54,13 +57,19 @@ class ctrl_command(object):
                     break
         ctrl_command.com_list.append(cur_str)
         if self.targ_key:
-            ctrl_command.target_dict[self.targ_key] = self._interpret(self.interpret_list([line.rstrip() for line in "".join(cur_str).split("\r\n") if line.rstrip() and line.strip() != CLI_STR]))
+            ctrl_command.target_dict[self.targ_key] = self._interpret(
+                self.interpret_list(
+                    [line.rstrip() for line in "".join(cur_str).split("\r\n") if line.rstrip() and line.strip() != CLI_STR]
+                )
+            )
         e_time = time.time()
         ctrl_command.run_time += e_time - s_time
+
     def interpret_list(self, in_list):
         return in_list
+
     def _interpret(self, in_value):
-        if type(in_value) == type({}):
+        if type(in_value) is dict:
             for key, value in in_value.iteritems():
                 if type(value) == type(""):
                     if value.isdigit() and "%d" % (int(value)) == value:
@@ -76,11 +85,13 @@ class ctrl_command(object):
                 self._interpret(value)
         return in_value
     
+
 class ctrl_list(ctrl_command):
     def interpret_list(self, in_list):
         line_re = re.compile("^\|\s*(?P<num>\d+)\s*\|\s*(?P<name>\S+)\s*\|\s*(?P<status>\S+)\s*\|\s*(?P<ports>\S+)\s*\|\s*(?P<luns>\S+)\s*\|$")
         return [cur_re.groupdict() for cur_re in [line_re.match(cur_line) for cur_line in in_list] if cur_re]
     
+
 class ctrl_detail(ctrl_command):
     def interpret_list(self, in_list):
         keyvalue_re = re.compile("^\s+(?P<key>.*?):(?P<value>.+)$")
@@ -89,6 +100,7 @@ class ctrl_detail(ctrl_command):
         kv_dict["volumes"] = [cur_re.groupdict() for cur_re in [volume_re.match(cur_line) for cur_line in in_list] if cur_re]
         return kv_dict
     
+
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--host", type=str, default="", help="address of raidcontroller [%(default)s]", required=True)
@@ -105,11 +117,11 @@ def main():
         ctrl_detail("detail controller -ctlr 0", targ_key="ctrl_0"),
         ctrl_detail("detail controller -ctlr 1", targ_key="ctrl_1"),
         ctrl_command("exit")]]
-    #pprint.pprint(ctrl_command.target_dict)
+    # pprint.pprint(ctrl_command.target_dict)
     # total runtime
-    #print ctrl_command.run_time
+    # print ctrl_command.run_time
     file(options.target, "w").write(marshal.dumps(ctrl_command.target_dict))
+
 
 if __name__ == "__main__":
     main()
-    
