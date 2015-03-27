@@ -434,6 +434,9 @@ class host(machine):
     server_ip_dict = property(get_sip_d, set_sip_d)
 
     def check_network_settings(self):
+        if self.device is None:
+            self.log("device is non in check_network_settings", logging_tools.LOG_LEVEL_WARN)
+            return
         # bootnet device name
         self.bootnetdevice = None
         nd_list, nd_lut = (set(), {})
