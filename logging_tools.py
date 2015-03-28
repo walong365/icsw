@@ -1154,4 +1154,4 @@ def struct_to_string(in_struct):
 
 
 def reduce_list(in_list, **kwargs):
-    return struct_to_string(list_to_struct(in_list, **kwargs)[0])
+    return ",".join([struct_to_string(_sub_list) for _sub_list in list_to_struct(in_list, **kwargs)])
