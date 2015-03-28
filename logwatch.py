@@ -27,6 +27,7 @@ import os
 import re
 import datetime
 import time
+import stat
 
 import logging_tools
 import process_tools
@@ -141,6 +142,14 @@ class LogWatcher(object):
                 print("Cannot open {}: {}".format(self.path, process_tools.get_except_info()))
             self.valid = False
             self.fd = None
+        else:
+            self.inode_num = os.stat(self.path)[stat.ST_INO]
+
+    def close(self):
+        if self.fd:
+            self.fd.close()
+            self.fd = None
+            self.inode_num = 0
 
     def rewind(self):
         try:
@@ -151,7 +160,17 @@ class LogWatcher(object):
         self._interpret(_content)
 
     def read(self):
-        self._interpret(self.fd.read())
+        try:
+            cur_inode = os.stat(self.path)[stat.ST_INO]
+        except:
+            self.close()
+        else:
+            if cur_inode != self.inode_num:
+                self.close()
+        if self.fd is None:
+            self.open()
+        if self.fd is not None:
+            self._interpret(self.fd.read())
 
     def _interpret(self, content):
         _prev_line = None
@@ -176,10 +195,6 @@ class LogWatcher(object):
                 else:
                     self.__logcache.feed(_ll)
                     _prev_line = _ll
-
-    def close(self):
-        if self.fd:
-            self.fd.close()
 
     def __unicode__(self):
         return u"LogWatcher for {}".format(self.name)
@@ -244,12 +259,16 @@ def main():
     _lc.sort()
     _lc.prune()
     _lc.show()
-    if opts.follow:
-        while True:
-            time.sleep(0.25)
-            [_lw.read() for _lw in _lws]
-            _lc.sort()
-            _lc.show()
+    try:
+        if opts.follow:
+            while True:
+                time.sleep(0.25)
+                [_lw.read() for _lw in _lws]
+                _lc.sort()
+                _lc.show()
+    except KeyboardInterrupt:
+        print("exit...")
+        pass
 
 
 if __name__ == "__main__":
