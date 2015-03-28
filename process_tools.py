@@ -21,6 +21,7 @@
 
 import atexit
 import codecs
+import base64
 import inspect
 import locale
 import logging_tools
@@ -41,9 +42,19 @@ import time
 import traceback
 import uuid_tools
 import zmq
+import json
+import bz2
 if sys.version_info[0] == 3:
     unicode = str  # @ReservedAssignment
     long = int  # @ReservedAssignment
+
+
+def compress_struct(input):
+    return base64.b64encode(bz2.compress(json.dumps(input)))
+
+
+def decompress_struct(b64_str):
+    return json.loads(bz2.decompress((base64.b64decode(b64_str))))
 
 
 if sys.platform in ["linux2", "linux3", "linux"]:
