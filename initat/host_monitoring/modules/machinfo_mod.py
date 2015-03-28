@@ -405,6 +405,7 @@ class _general(hm_classes.hm_module):
                 ] + extra_block_devs
                 # resolve according to slave_dict
                 dev_list = list(set(sum([_slave_dict.get(key, [key]) for key in dev_list], [])))
+                del_list = set()
                 for dl in set(dev_list):
                     try:
                         bname = os.path.basename(dl)
@@ -412,24 +413,26 @@ class _general(hm_classes.hm_module):
                             bname = "cciss!%s" % (bname)
                         cur_bs = int(file("/sys/block/{}/queue/hw_sector_size".format(bname), "r").read().strip())
                     except:
-                        cur_bs = 512
                         self.log(
-                            "cannot get bs of {} (using {:d}): {}".format(
+                            "cannot get bs of {}, removing it from list: {}".format(
                                 dl,
-                                cur_bs,
                                 process_tools.get_except_info()
                             ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
-                    disk_stat[dl] = (
-                        ds_dict[dl][4],
-                        ds_dict[dl][8],
-                        ds_dict[dl][5],
-                        ds_dict[dl][9],
-                        ds_dict[dl][11],
-                        ds_dict[dl][4] * cur_bs,
-                        ds_dict[dl][8] * cur_bs,
-                    )
+                        del_list.add(dl)
+                    else:
+                        disk_stat[dl] = (
+                            ds_dict[dl][4],
+                            ds_dict[dl][8],
+                            ds_dict[dl][5],
+                            ds_dict[dl][9],
+                            ds_dict[dl][11],
+                            ds_dict[dl][4] * cur_bs,
+                            ds_dict[dl][8] * cur_bs,
+                        )
+                for _dd in del_list:
+                    dev_list.remove(_dd)
                 # pprint.pprint(disk_stat)
                 # pprint.pprint(psutil.disk_io_counters(perdisk=False))
                 # pprint.pprint(psutil.disk_io_counters(perdisk=True))
