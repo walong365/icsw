@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,6 +19,7 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
 import check_scripts
 import cluster_location
@@ -191,7 +192,7 @@ class get_0mq_id(cs_base_class.server_com):
         show_execution_time = False
 
     def _call(self, cur_inst):
-        zmq_id = "{}:clusterserver:".format(uuid_tools.get_uuid().get_urn())
+        zmq_id = routing.get_server_uuid("server")
         cur_inst.srv_com["zmq_id"] = zmq_id
         cur_inst.srv_com.set_result(
             "0MQ_ID is {}".format(zmq_id),
