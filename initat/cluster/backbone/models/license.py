@@ -179,6 +179,9 @@ LIC_FILE_RELAX_NG_DEFINITION = """
                         <element name="package-uuid">
                             <text/>
                         </element>
+                        <element name="package-date">
+                            <text/>
+                        </element>
                         <element name="package-version">
                             <text/>
                         </element>
