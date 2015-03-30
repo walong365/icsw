@@ -8,16 +8,19 @@
         <icsw:feature>peering</icsw:feature>
     </icsw:license>
 
-    <icsw:license id="perf">
-        <icsw:name>Performance</icsw:name><icsw:description>Yields vast performance increases for your cluster.</icsw:description><icsw:feature>md-config-server</icsw:feature>
-        <icsw:feature>monitoring-overview</icsw:feature>
-    </icsw:license>
-
     <icsw:license id="continuity">
         <icsw:name>Continuity Management</icsw:name><icsw:description>Manage continuity of service</icsw:description><icsw:feature>peering</icsw:feature>
         <icsw:feature>graphing</icsw:feature>
         <icsw:feature>discovery-server</icsw:feature>
     </icsw:license>
+
+    <icsw:license id="perf">
+        <icsw:name>Performance</icsw:name><icsw:description>Yields vast performance increases for your cluster.</icsw:description><icsw:feature>md-config-server</icsw:feature>
+        <icsw:feature>monitoring-overview</icsw:feature>
+    </icsw:license>
+
+    <icsw:license id="recovery">
+    <icsw:name>Recovery</icsw:name><icsw:description>Fast recovery in case of failure</icsw:description></icsw:license>
 
     <icsw:license id="reliab">
     <icsw:name>Reliability</icsw:name><icsw:description></icsw:description></icsw:license>
@@ -26,5 +29,5 @@
     <icsw:name>Security</icsw:name><icsw:description>Ensures the security of your cluster</icsw:description></icsw:license>
 
 </icsw:license-feature-map>
-  <icsw:signature>WCuwmZvWKOykq8vIh6ki/UMXwxytDLhqeMTNobvXBuGrU6pjXdfRHcS+ohUHuviGSEnZuYWGb1nla4HpNA0vROoIX1T7TiVOKJ00qHKK7HLuq02Rga8vJy9mLUWTz/4Ka7jq8eui09DlJhoil3fd1UrNXjFQylc6NpkLSVQ/TXw=</icsw:signature>
+  <icsw:signature>B6JmS1Rd0iO9+KNaksarKcRBrjjWGtSU//AlhY1exHicX+0V7fvqYaQkgkRgIWo7OHSuVyqW/7ZFBQXsNSJePYLW4Uysl7wi7T20O8EzHVowVc7W1ZwCckVTJj1ZljFb4pXQ+lds/c9JvITr0re7In19wBVKLFfQKZVCcUPCbDE=</icsw:signature>
 </icsw:signed-license-feature-map>
