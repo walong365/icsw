@@ -15,6 +15,29 @@ angular.module(
             # model: name in initat.cluster.backbone.models which contains the objects
             # after_delete: called after deletions have occurred, use to refresh your data
 
+            # recursive asynchronous delete fun
+            actual_delete = (deletable_objects, num_all, done_callback) ->
+                if deletable_objects.length
+                    to_del = deletable_objects.pop(0)
+                    icswCallAjaxService
+                        url: ICSW_URLS.BASE_DO_DELETE_OBJECT
+                        data: {
+                            model: model
+                            obj_pk: to_del
+                        }
+                        timeout: 600000  # 10 minutes: it would be bad to stop a deletion in process
+                        success: (xml) ->
+                            if icswParseXMLResponseService(xml)
+                                toaster.pop("info", "", "Deleted #{num_all - deletable_objects.length} of #{num_all} objects")
+                                if after_delete?
+                                    after_delete()
+                                # recurse, elem has been removed from list already
+                                actual_delete(deletable_objects, num_all, done_callback)
+                else
+                    if done_callback
+                        done_callback()
+
+
             show_delete_dialog = (related_objects, deletable_objects) ->
                 # shows dialog if objs to delete have hard references
                 # related_objs is dict { obj_pk : [ related_obj_info ] }
@@ -23,6 +46,24 @@ angular.module(
 
                 child_scope.related_objects = related_objects
                 child_scope.deletable_objects = deletable_objects
+
+                child_scope.delete_deletable_dict = {}
+                for pk in deletable_objects
+                    child_scope.delete_deletable_dict[pk] = true
+                child_scope.delete_deletable_action = () ->
+                    to_delete = []
+                    for k, v of child_scope.delete_deletable_dict
+                        if v
+                            k_int = parseInt(k)  # yay, javascript!
+                            to_delete.push(k_int)
+                            # remove from gui
+                            _.remove(child_scope.deletable_objects, (elem) -> return elem == k_int)
+                            delete child_scope.delete_deletable_dict[k_int]
+
+                    toaster.pop("info", "", "Deleting #{to_delete.length} objects in background")
+                    actual_delete(to_delete, to_delete.length)
+
+
                 child_scope.all_actions_defined = (obj_idx) ->
                     return _.all(related_objects[obj_idx], (elem) -> return elem.selected_action?)
                 child_scope.force_delete = (obj_idx) ->
@@ -96,27 +137,6 @@ angular.module(
                                 has_undeletables = Object.keys(related_objects).length > 0
 
                                 if has_deletables
-                                    # recursive asynchronous delete fun
-                                    actual_delete = (deletable_objects, num_all, done_callback) ->
-                                        if deletable_objects.length
-                                            to_del = deletable_objects.pop(0)
-                                            icswCallAjaxService
-                                                url: ICSW_URLS.BASE_DO_DELETE_OBJECT
-                                                data: {
-                                                    model: model
-                                                    obj_pk: to_del
-                                                }
-                                                timeout: 600000  # 10 minutes: it would be bad to stop a deletion in process
-                                                success: (xml) ->
-                                                    if icswParseXMLResponseService(xml)
-                                                        toaster.pop("info", "", "Deleted #{num_all - deletable_objects.length} of #{num_all} objects")
-                                                        if after_delete?
-                                                            after_delete()
-                                                        # recurse, elem has been removed from list already
-                                                        actual_delete(deletable_objects, num_all, done_callback)
-                                        else
-                                            if done_callback
-                                                done_callback()
 
                                     if has_undeletables
                                         # NEW BEHAVIOUR:
@@ -127,6 +147,7 @@ angular.module(
                                         #actual_delete(deletable_objects, deletable_objects.length)
                                         true
                                     else
+                                        # only deletables
                                         # delete blocking, user is waiting for this right now
                                         blockUI.start("Deleting objects ...")
                                         actual_delete(deletable_objects, deletable_objects.length, () ->

@@ -1,27 +1,36 @@
 <script type="text/ng-template" id="icsw.dialog.delete_popup">
+    <div ng-show="deletable_objects.length > 0">
 
-    The following devices are deletable:
+        <h3>
+            Only following devices are deletable without deleting references:
+        </h3>
 
-    <div class="form">
-        <div class="checkbox" ng-repeat="del_obj_pk in deletable_objects">
-            <label>
-                <input type="checkbox" value="true"/>
-                {{ get_object_by_idx(obj_idx).name }}
-            </label>
+        <div class="form">
+            <div class="checkbox" ng-repeat="del_obj_pk in deletable_objects">
+                <label>
+                    <input type="checkbox" class="checkbox" ng-model="delete_deletable_dict[del_obj_pk]"/>
+                    {{ get_object_by_idx(del_obj_pk).name }}
+                </label>
+            </div>
         </div>
+
+        <icsw-tools-button type="delete" value="delete" ng-click="delete_deletable_action()"></icsw-tools-button>
+
+        <p>&nbsp;</p>
     </div>
 
-
-    <alert type="warning">
-        The following devices can only be deleted if references of them are also deleted, which can cause delete cascades.
+    <h4>
+        The following devices can only be deleted if references of them are also deleted, which can cause delete
+        cascades.
+        <br/>
         Please select actions for each of these devices.
-    </alert>
+    </h4>
 
     <div class="panel panel-default" ng-repeat="(obj_idx, ref_list) in related_objects"
             style="font-size: 12px"> <!-- bootstrap dialog would otherwise increase font size to 14px -->
         <!-- obj_idx is string! -->
         <div class="panel-heading">
-            <h3>
+            <h3 style="margin-top: 4px; margin-bottom: 0px;">
                 Hard references of {{ get_object_by_idx(obj_idx).name }}
             </h3>
         </div>
