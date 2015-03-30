@@ -81,9 +81,7 @@ angular.module(
             # must not give direct response to the parse service
             response = "<document>" + response + "</document>"
             icswParseXMLResponseService(response)
-            icswUserLicenseDataService.license_packages.getList().then((new_list) ->
-                icswUserLicenseDataService.license_packages = new_list
-            )
+            icswUserLicenseDataService.reload_data()
         $scope.uploader.onCompleteAll = () ->
             blockUI.stop()
             $scope.uploader.clearQueue()
@@ -152,18 +150,30 @@ angular.module(
                     return "Cluster #{cluster_id}"
     }
 ]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "icswUserLicenseUtils", (Restangular, ICSW_URLS, icswUserLicenseUtils) ->
-
-    get_rest = (url, opts={}) -> return Restangular.all(url).getList(opts).$object
-
-    all_licenses = get_rest(ICSW_URLS.ICSW_LIC_GET_ALL_LICENSES.slice(1))
-    license_packages = get_rest(ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES.slice(1))
-
     data = {
-        all_licenses : all_licenses
-        license_packages : license_packages
-        get_license_by_id : (id) ->
-            return _.find(all_licenses, (elem) -> return elem.id == id)
+        all_licenses: []
+        license_packages: []
     }
+
+    reload_data = () ->
+        Restangular.all(ICSW_URLS.ICSW_LIC_GET_ALL_LICENSES.slice(1)).getList().then((new_list) ->
+            data.all_licenses.length = 0
+            for entry in new_list
+                data.all_licenses.push(entry)
+        )
+
+        Restangular.all(ICSW_URLS.ICSW_LIC_GET_LICENSE_PACKAGES.slice(1)).getList().then((new_list) ->
+            data.license_packages.length = 0
+            for entry in new_list
+                data.license_packages.push(entry)
+        )
+    reload_data()
+
+    data.reload_data = reload_data
+
+    data.get_license_by_id = (id) ->
+        return _.find(data.all_licenses, (elem) -> return elem.id == id)
+
     angular.extend(data, icswUserLicenseUtils)
     data.add_to_scope = (scope) ->
         for k, v of data
