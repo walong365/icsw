@@ -153,6 +153,9 @@ LIC_FILE_RELAX_NG_DEFINITION = """
             <element name="creation-datetime">
                 <text/> <!-- date validation supported? -->
             </element>
+            <element name="file-format-version">
+                <text/>
+            </element>
         </element>
 
         <element name="customer">
@@ -200,9 +203,6 @@ LIC_FILE_RELAX_NG_DEFINITION = """
                             <oneOrMore>
                                  <element name="license">
                                      <element name="id">
-                                         <text/>
-                                     </element>
-                                     <element name="name">
                                          <text/>
                                      </element>
                                      <element name="uuid">
