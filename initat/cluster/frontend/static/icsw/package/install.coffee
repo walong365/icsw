@@ -34,16 +34,15 @@ package_module = angular.module(
         toggle : (obj) ->
             obj.publish_to_nodes = if obj.publish_to_nodes then false else true
             obj.put()
-        filter_repo : (obj, $scope) ->
-            _show = true
-            if $scope.show_enabled and not obj.enabled
-                _show = false
-            if $scope.show_published and not obj.publish_to_nodes
-                _show = false
-            return _show
     }
-]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).service("icswPackageInstallSearchService", ["Restangular", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService", "$timeout", (Restangular, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService, $timeout) ->
     user_rest = Restangular.all(ICSW_URLS.REST_USER_LIST.slice(1)).getList().$object
+    _scope = undefined
+    reload_func = () ->
+        if _scope.searches?
+            if (obj.current_state for obj in _scope.searches when obj.current_state != "done").length
+                $timeout(reload_func, 5000)
+        _scope.reload()
     return {
         user_rest           : user_rest
         rest_url            : ICSW_URLS.REST_PACKAGE_SEARCH_LIST
@@ -61,13 +60,15 @@ package_module = angular.module(
                 success : (xml) ->
                     icswParseXMLResponseService(xml)
                     $scope.reload()
+        reload: () ->
+            reload_func()
         init_fn: (scope) ->
-            scope.init_search(scope)
+            _scope = scope
     }
 ]).service("icswPackageInstallPackageListService", ["ICSW_URLS", (ICSW_URLS) ->
+    _scope = undefined
     return {
         rest_url            : ICSW_URLS.REST_PACKAGE_LIST
-        #edit_template       : "package_search.html"
         delete_confirm_str  : (obj) -> return "Really delete Package '#{obj.name}-#{obj.version}' ?"
         init_fn: (scope) ->
             scope.init_package_list(scope)
@@ -77,26 +78,34 @@ package_module = angular.module(
             $scope.dp_style = !$scope.dp_style
         get_grid_style : ($scope) ->
             return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
+        reload: (scope) ->
+            _scope.reload()
+        init_fn: (scope) ->
+            _scope = scope
     }
 ]).service("icswPackageInstallSearchResultService", ["ICSW_URLS", (ICSW_URLS)->
+    _scope = undefined
     return {
         edit_template       : "package_search.html"
         delete_confirm_str  : (obj) -> return "Really delete Package search result '#{obj.name}-#{obj.version}' ?"
+        init_fn: (scope) ->
+            _scope = scope
+        set_data: (new_data) ->
+            _scope.searchresults = new_data
+        set_repos: (repo_list) ->
+            _scope.repos = repo_list
     }
 ]).controller("icswPackageInstallCtrl", ["$scope", "$injector", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "$q", "$timeout", "blockUI", "icswTools", "ICSW_URLS", "$window", "icswCallAjaxService", "icswParseXMLResponseService",
     ($scope, $injector, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout, blockUI, icswTools, ICSW_URLS, $window, icswCallAjaxService, icswParseXMLResponseService) ->
         # flags
-        $scope.show_enabled_repos = true
-        $scope.show_published_repos = true
+        $scope.show_enabled_repos = false
+        $scope.show_published_repos = false
         # lists
         $scope.entries =
             "repos" : []
             "searches": []
-            "searchresults": []
             # installable packages
             "packages" : []
-        # active search
-        $scope.active_search = undefined
         # devices
         $scope.devices = []
         # image / kernel list
@@ -131,69 +140,30 @@ package_module = angular.module(
                     blockUI.stop()
                     if icswParseXMLResponseService(xml)
                         reload_func()
-        $scope.clear_active_search = (del_obj) ->
-            if $scope.active_search and $scope.active_search.idx == del_obj.idx
-                $scope.active_search = undefined
-        $scope.retry_search = (obj, reload_func) ->
-            if $scope.active_search?
-                $scope.active_search = undefined
-            icswCallAjaxService
-                url     : ICSW_URLS.PACK_RETRY_SEARCH
-                data    : {
-                    "pk" : obj.idx
-                }
-                success : (xml) ->
-                    icswParseXMLResponseService(xml)
-                    reload_func()
-        $scope.reload_searches = () ->
-            # check all search states
-            if (obj.current_state for obj in $scope.entries.searches when obj.current_state != "done").length and not $scope.modal_active
-                $scope.search_scope.reload()
-            $timeout($scope.reload_searches, 5000)
-        $scope.show_search_result = (obj) ->
-            $scope.active_search = obj
-            if $scope.active_search?
-                blockUI.start()
-                Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_RESULT_LIST.slice(1)).getList({"package_search" : $scope.active_search.idx}).then((new_data) ->
-                    blockUI.stop()
-                    $scope.entries.searchresults = new_data
-                    for entry in $scope.entries
-                        entry.target_repo = 0
-                )
-            else
-                $scope.entries.searchresults = []
-        $scope.create_search = () ->
-            if $scope.search_scope.search_string
-                Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_scope.search_string, "user" : $window.CURRENT_USER.idx}).then((data) ->
-                    icswCallAjaxService
-                        url     : ICSW_URLS.PACK_REPO_OVERVIEW
-                        data    : {
-                            "mode" : "reload_searches"
-                        }
-                        success : (xml) ->
-                            icswParseXMLResponseService(xml)
-                            $scope.search_scope.reload()
-                    $scope.search_scope.search_string = ""
-                )
-        $scope.init_search = (local_scope) ->
-            local_scope.search_string = ""
-            $scope.search_scope = local_scope
-            $timeout($scope.reload_searches, 5000)
-        $scope.take_search_result = (obj, exact) ->
-            obj.copied = 1
-            icswCallAjaxService
-                url     : ICSW_URLS.PACK_USE_PACKAGE
-                data    : {
-                    "pk"          : obj.idx
-                    "exact"       : if exact then 1 else 0
-                    "target_repo" : if obj.target_repo then obj.target_repo else obj.package_repo
-                }
-                success : (xml) ->
-                    if icswParseXMLResponseService(xml)
-                        # reload package list
-                        $scope.package_list_scope.reload()
-                    else
-                        obj.copied = 0
+        $scope.$watch(
+            "entries.repos",
+            (new_val) ->
+                $scope.apply_repo_filter()
+            true
+        )
+        $scope.apply_repo_filter = () ->
+            _list = []
+            for entry in $scope.entries.repos
+                _show = true
+                if $scope.show_enabled_repos and not entry.enabled
+                    _show = false
+                if $scope.show_published_repos and not entry.publish_to_nodes
+                    _show = false
+                if _show
+                    _list.push(entry)
+            $scope.entries.filtered_repos = _list
+
+        $scope.toggle_enabled_repos = () ->
+            $scope.show_enabled_repos = !$scope.show_enabled_repos
+            $scope.apply_repo_filter()
+        $scope.toggle_published_repos = () ->
+            $scope.show_published_repos = !$scope.show_published_repos
+            $scope.apply_repo_filter()
         $scope.show_repo = (obj) ->
             if obj.target_repo
                 return (entry for entry in $scope.entries.repos when obj.target_repo == entry.idx)[0].name
@@ -492,6 +462,7 @@ package_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.overview")
+        controller: "icswPackageInstallCtrl"
         link : (scope, el, attrs) ->
             if not attrs["devicepk"]?
                 msgbus.emit("devselreceiver")
@@ -508,6 +479,7 @@ package_module = angular.module(
 ]).directive("icswPackageInstallRepositoryHead", ["$templateCache", ($templateCache) ->
     return {
         restrict : "EA"
+        replace: true
         template : $templateCache.get("icsw.package.install.package.repo.head")
     }
 ]).directive("icswPackageInstallSearchRow", ["$templateCache", ($templateCache) ->
@@ -534,6 +506,84 @@ package_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.package.install.package.list.head")
+    }
+]).controller(
+    "icswPackageInstallSearchController",
+    [
+        "$scope", "$templateCache", "$window", "ICSW_URLS", "icswCallAjaxService", "Restangular", "blockUI", "icswParseXMLResponseService", "icswPackageInstallSearchService", "icswPackageInstallPackageListService", "$timeout", "icswPackageInstallSearchResultService",
+        ($scope, $templateCache, $window, ICSW_URLS, icswCallAjaxService, Restangular, blockUI, icswParseXMLResponseService, icswPackageInstallSearchService, icswPackageInstallPackageListService, $timeout, icswPackageInstallSearchResultService) ->
+            $scope.search_string = ""
+            $scope.searchresults = undefined
+            # active search
+            $scope.active_search = undefined
+            $scope.clear_active_search = (del_obj) ->
+                if $scope.active_search and $scope.active_search.idx == del_obj.idx
+                    $scope.active_search = undefined
+            $scope.retry_search = (obj, reload_func) ->
+                if $scope.active_search?
+                    $scope.active_search = undefined
+                obj.current_state = "pending"
+                icswCallAjaxService
+                    url     : ICSW_URLS.PACK_RETRY_SEARCH
+                    data    : {
+                        "pk" : obj.idx
+                    }
+                    success : (xml) ->
+                        icswParseXMLResponseService(xml)
+                        icswPackageInstallSearchService.reload()
+            $scope.show_search_result = (obj) ->
+                $scope.active_search = obj
+                if $scope.active_search?
+                    blockUI.start()
+                    Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_RESULT_LIST.slice(1)).getList({"package_search" : $scope.active_search.idx}).then((new_data) ->
+                        blockUI.stop()
+                        for entry in new_data
+                            entry.target_repo = null
+                        icswPackageInstallSearchResultService.set_data(new_data)
+                        icswPackageInstallSearchResultService.set_repos($scope.repositories)
+                    )
+                else
+                    icswPackageInstallSearchResultService.set_data([])
+            $scope.create_search = () ->
+                if $scope.search_string
+                    Restangular.all(ICSW_URLS.REST_PACKAGE_SEARCH_LIST.slice(1)).post({"search_string" : $scope.search_string, "user" : $window.CURRENT_USER.idx}).then((data) ->
+                        icswCallAjaxService
+                            url     : ICSW_URLS.PACK_REPO_OVERVIEW
+                            data    : {
+                                "mode" : "reload_searches"
+                            }
+                            success : (xml) ->
+                                icswParseXMLResponseService(xml)
+                                icswPackageInstallSearchService.reload()
+                                $timeout(icswPackageInstallSearchService.reload, 500)
+                        $scope.search_string = ""
+                    )
+            $scope.take_search_result = (obj, exact) ->
+                obj.copied = 1
+                icswCallAjaxService
+                    url     : ICSW_URLS.PACK_USE_PACKAGE
+                    data    : {
+                        "pk"          : obj.idx
+                        "exact"       : if exact then 1 else 0
+                        "target_repo" : if obj.target_repo then obj.target_repo else 0
+                    }
+                    success : (xml) ->
+                        if icswParseXMLResponseService(xml)
+                            # reload package list
+                            icswPackageInstallPackageListService.reload()
+                        else
+                            obj.copied = 0
+
+
+]).directive("icswPackageInstallSearchOverview", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.package.install.search.overview")
+        controller: "icswPackageInstallSearchController"
+        scope: {
+            repositories: "=repositories"
+        }
+        link: (scope, element, attrs) ->
     }
 ]).directive("icswPackageInstallPackageRow", ["$templateCache", ($templateCache) ->
     return {

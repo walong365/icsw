@@ -291,9 +291,6 @@ device_module = angular.module(
                 $scope.device_lut[new_obj.idx] = new_obj
                 $scope.device_group_lut[new_obj.device_group].num_devices++
 
-                #$scope.pagSettings.set_entries($scope.entries)
-                # TODO: adapt this to smart table
-
                 # increase postfix of device name
                 node_re = new RegExp(/^(.*?)(\d+)(.*)$/)
                 name_m = node_re.exec(new_obj.name)
@@ -303,7 +300,7 @@ device_module = angular.module(
                 reload_sidebar_tree()
                 $scope.update_entries_st_attrs()
             else if $scope._array_name == "device_group"
-                $scope.reload()
+                # $scope.reload()
                 reload_sidebar_tree()
         $scope.new_object = (a_name, parent_obj) ->
             new_obj = {
