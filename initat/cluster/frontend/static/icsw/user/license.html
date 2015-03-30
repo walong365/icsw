@@ -46,9 +46,7 @@
                    ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"></i>
             </accordion-heading>
 
-            <alert> TODO: select most recent by default</alert>
             <alert> TODO: link lic packs with view below</alert>
-            <alert> TODO: license icons placement</alert>
 
             <icsw-user-license-packages></icsw-user-license-packages>
         </accordion-group>
@@ -79,7 +77,7 @@
             <tr>
                 <th st-sort="name">License</th>
                 <th st-sort="description">Description</th>
-                <th>Status</th>
+                <th colspan="2">Status</th>
                 <th></th>
                 <th>Type</th>
                 <th>License package</th>
@@ -89,6 +87,9 @@
             <tr ng-repeat="lic in entries_displayed">
                 <td><strong>{{lic.name}}</strong></td>
                 <td>{{lic.description}}</td>
+                <td ng-class="get_license_state_bootstrap_class(get_license_state(lic.id).state_id)">
+                    <i ng-attr-class="{{get_license_state_icon_class(get_license_state(lic.id).state_id)}}"></i>
+                </td>
                 <td ng-class="get_license_state_bootstrap_class(get_license_state(lic.id).state_id)">
                     {{get_license_state(lic.id).state_str}}
                 </td>
@@ -102,7 +103,7 @@
 
 <script type="text/ng-template" id="icsw.user.license.packages">
     <tabset>
-        <tab ng-repeat="pack in license_packages" heading="{{pack.name}}">
+        <tab ng-repeat="pack in license_packages | orderBy:package_order_fun:true" heading="{{pack.name}}">
             <h4>{{pack.name}}</h4>
 
             <table class="table table-condensed table-hover" style="width: auto;">
@@ -121,7 +122,7 @@
 
             <accordion close-others="true">
                 <accordion-group is-open="cluster_accordion_open[$index]"
-                                 ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:package_order_fun">
+                                 ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun">
                     <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
                     <accordion-heading>
                         <!-- data[0] is cluster_id, data[1] is cluster_licenses -->
@@ -134,7 +135,7 @@
                         <thead>
                             <tr>
                                 <th st-sort="id" st-sort-default="true" width="150">License</th>
-                                <th width="100">State</th>
+                                <th width="100" colspan="2">State</th>
                                 <th st-sort="valid_from">Valid from</th>
                                 <th st-sort="valid_to">Valid to</th>
                             </tr>
@@ -142,6 +143,9 @@
                         <tbody>
                             <tr ng-repeat="pack_lic in entries_displayed">
                                 <td>{{get_license_by_id(pack_lic.id).name}}</td>
+                                <td ng-class="get_license_bootstrap_class(pack_lic)">
+                                    <i ng-attr-class="{{get_license_state_icon_class(get_license_state(pack_lic).state_id)}}"></i>
+                                </td>
                                 <td ng-class="get_license_bootstrap_class(pack_lic)">
                                     {{get_license_state(pack_lic).state_str}}
                                 </td>

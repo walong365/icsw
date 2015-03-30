@@ -132,7 +132,9 @@ angular.module(
             scope.cluster_accordion_open = {
                 0: true  # show first accordion which is the cluster id of this cluster by the ordering below
             }
-            scope.package_order_fun = (data) ->
+            scope.package_order_fun = (pack) ->
+                return moment(pack.date).unix()
+            scope.cluster_order_fun = (data) ->
                 # order by is_this_cluster, cluster_id
                 prio = 0
                 if data[0] == $window.CLUSTER_ID
@@ -148,7 +150,6 @@ angular.module(
                     return "Current cluster (#{cluster_id})"
                 else
                     return "Cluster #{cluster_id}"
-
     }
 ]).service("icswUserLicenseDataService", ["Restangular", "ICSW_URLS", "icswUserLicenseUtils", (Restangular, ICSW_URLS, icswUserLicenseUtils) ->
 
@@ -198,7 +199,15 @@ angular.module(
                 date_info: gettextCatalog.getString('on') + ' ' + moment(lic.valid_from).format("YYYY-MM-DD")
             }])
     get_license_state_bootstrap_class = (state) ->
-        return {'valid': 'success', 'expired': 'danger', 'in_grace_period': 'warning', 'valid_in_future': 'warning'}[state]
+        if state?
+            return {'valid': 'success', 'expired': 'danger', 'in_grace_period': 'warning', 'valid_in_future': 'warning'}[state]
+        else
+            return ""
+    get_license_state_icon_class = (state) ->
+        if state?
+            return {'valid': 'fa fa-check', 'expired': 'fa fa-times', 'in_grace_period': 'fa fa-clock-o', 'valid_in_future': 'fa fa-clock-o'}[state]
+        else
+            return ""
     get_license_state = (lic) ->
         state =  _get_license_state(lic)
         return if state? then state[1] else undefined
@@ -208,6 +217,7 @@ angular.module(
             return if state? then get_license_state_bootstrap_class(state.state_id) else undefined
         get_license_state : get_license_state
         get_license_state_bootstrap_class : get_license_state_bootstrap_class
+        get_license_state_icon_class: get_license_state_icon_class
         calculate_license_state: (packages, license_id=undefined, cluster_id=undefined) ->
             # calculate the current state of either all licenses in a package or of a certain one for a given cluster_id or all cluster_ids
 
