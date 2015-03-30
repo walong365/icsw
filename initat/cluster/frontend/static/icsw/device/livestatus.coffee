@@ -805,7 +805,8 @@ angular.module(
             # build burst data
             _bdat = new hs_node(
                 "System"
-                {"state": 0, "idx" : 0, "ct": "system"}
+                # state 4: not set
+                {"state": 4, "idx" : 0, "ct": "system"}
             )
             _devg_lut = {}
             # lut: dev idx to hs_nodes
@@ -823,6 +824,7 @@ angular.module(
                                 "group_name" : _dev.device_group_name
                             }
                         )
+                        _bdat.check.state = 0
                         _devg_lut[_devg.name] = _devg
                         _bdat.add_child(_devg)
                     else
@@ -1053,7 +1055,14 @@ angular.module(
                 return _outer
             scope.get_fill_color = (part) ->
                 if part.check?
-                    if part.check.ct == "host"
+                    if part.check.ct == "system"
+                        color = {
+                            0 : "#66dd66"
+                            1 : "#ff7777"
+                            2 : "#ff0000"
+                            4 : "#eeeeee"
+                        }[part.check.state]
+                    else if part.check.ct == "host"
                         color = {
                             0 : "#66dd66"
                             1 : "#ff7777"

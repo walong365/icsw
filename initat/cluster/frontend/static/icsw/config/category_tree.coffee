@@ -226,6 +226,7 @@ angular.module(
                     $timeout(
                         () ->
                             icswCallAjaxService
+                                hidden: true
                                 url : ICSW_URLS.MON_SVG_TO_PNG
                                 data :
                                     svg : _el[0].outerHTML
