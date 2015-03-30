@@ -931,6 +931,7 @@ class cd_connection(models.Model):
 
     class Meta:
         ordering = ("parent__name", "child__name",)
+        verbose_name = "Controlling device connection"
 
 
 @receiver(signals.pre_save, sender=cd_connection)

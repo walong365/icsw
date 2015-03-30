@@ -1245,6 +1245,7 @@ class monitoring_hint(models.Model):
     class Meta:
         app_label = "backbone"
         ordering = ("m_type", "key",)
+        verbose_name = "Monitoring hint"
 
 
 ########################################
