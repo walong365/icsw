@@ -15,12 +15,14 @@ angular.module(
             # model: name in initat.cluster.backbone.models which contains the objects
             # after_delete: called after deletions have occurred, use to refresh your data
 
-            show_delete_dialog = (related_objects) ->
+            show_delete_dialog = (related_objects, deletable_objects) ->
                 # shows dialog if objs to delete have hard references
                 # related_objs is dict { obj_pk : [ related_obj_info ] }
+                # deletable_objects is [obj_pk]
                 child_scope = $rootScope.$new()
 
                 child_scope.related_objects = related_objects
+                child_scope.deletable_objects = deletable_objects
                 child_scope.all_actions_defined = (obj_idx) ->
                     return _.all(related_objects[obj_idx], (elem) -> return elem.selected_action?)
                 child_scope.force_delete = (obj_idx) ->
@@ -104,6 +106,7 @@ angular.module(
                                                     model: model
                                                     obj_pk: to_del
                                                 }
+                                                timeout: 600000  # 10 minutes: it would be bad to stop a deletion in process
                                                 success: (xml) ->
                                                     if icswParseXMLResponseService(xml)
                                                         toaster.pop("info", "", "Deleted #{num_all - deletable_objects.length} of #{num_all} objects")
@@ -116,17 +119,19 @@ angular.module(
                                                 done_callback()
 
                                     if has_undeletables
+                                        # NEW BEHAVIOUR:
+                                        # don't do anything right now, it's confusing to the user
+                                        # OLD BEHAVIOUR:
                                         # delete in background while dialog shows so user can continue to work there
-
-                                        toaster.pop("info", "", "Deleting #{deletable_objects.length} objects in background")
-                                        actual_delete(deletable_objects, deletable_objects.length)
+                                        #toaster.pop("info", "", "Deleting #{deletable_objects.length} objects in background")
+                                        #actual_delete(deletable_objects, deletable_objects.length)
+                                        true
                                     else
                                         # delete blocking, user is waiting for this right now
                                         blockUI.start("Deleting objects ...")
                                         actual_delete(deletable_objects, deletable_objects.length, () ->
                                             blockUI.stop()
                                         )
-
 
                                 if has_undeletables
                                     for k, ref_list of related_objects
@@ -146,7 +151,7 @@ angular.module(
 
                                     # related_objs is dict { obj_pk : [ related_obj_info ] }
                                     # check we there were some which we couldn't delete
-                                    show_delete_dialog(related_objects)
+                                    show_delete_dialog(related_objects, deletable_objects)
                 )
 
             try_delete()

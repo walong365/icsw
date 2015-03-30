@@ -1,5 +1,22 @@
 <script type="text/ng-template" id="icsw.dialog.delete_popup">
 
+    The following devices are deletable:
+
+    <div class="form">
+        <div class="checkbox" ng-repeat="del_obj_pk in deletable_objects">
+            <label>
+                <input type="checkbox" value="true"/>
+                {{ get_object_by_idx(obj_idx).name }}
+            </label>
+        </div>
+    </div>
+
+
+    <alert type="warning">
+        The following devices can only be deleted if references of them are also deleted, which can cause delete cascades.
+        Please select actions for each of these devices.
+    </alert>
+
     <div class="panel panel-default" ng-repeat="(obj_idx, ref_list) in related_objects"
             style="font-size: 12px"> <!-- bootstrap dialog would otherwise increase font size to 14px -->
         <!-- obj_idx is string! -->
