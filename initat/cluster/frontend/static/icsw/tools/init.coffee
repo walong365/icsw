@@ -322,7 +322,7 @@ angular.module(
         type       : "POST"
         timeout    : 50000
         dataType   : "xml"
-        headers    : { "X-CSRFToken" : $window.CSRF_TOKEN}
+        headers    : {"X-CSRFToken" : $window.CSRF_TOKEN}
         beforeSend : (xhr, settings) ->
             if not settings.hidden
                 xhr.inituuid = local_ajax_info.new_connection(settings)

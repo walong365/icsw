@@ -137,6 +137,8 @@ class modify_location_gfx(View):
             _changed = True
             if _post["mode"] == "rotate":
                 _loc.rotate(int(_post["degrees"]))
+            elif _post["mode"] == "resize":
+                _loc.resize(float(_post["factor"]))
             elif _post["mode"] == "brightness":
                 _loc.brightness(float(_post["factor"]))
             elif _post["mode"] == "sharpen":
@@ -153,6 +155,8 @@ class modify_location_gfx(View):
             if _changed:
                 request.xml_response["image_url"] = _loc.get_image_url()
                 request.xml_response["icon_url"] = _loc.get_icon_url()
+                request.xml_response["width"] = "{:d}".format(_loc.width)
+                request.xml_response["height"] = "{:d}".format(_loc.height)
 
 
 class change_category(View):

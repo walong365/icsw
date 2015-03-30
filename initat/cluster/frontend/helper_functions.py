@@ -273,7 +273,8 @@ def contact_server(request, srv_type, send_com, **kwargs):
             send_com["user_id"] = request.user.pk
         _conn = net_tools.zmq_connection(
             kwargs.get("connection_id", "webfrontend"),
-            timeout=kwargs.get("timeout", 10))
+            timeout=kwargs.get("timeout", 10)
+        )
         # split to node-local servers ?
         if kwargs.get("split_send", True):
             send_list = cur_router.check_for_split_send(srv_type, send_com)

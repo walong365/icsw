@@ -19,7 +19,7 @@
 #
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-device_boot_module = angular.module(
+angular.module(
     "icsw.device.boot",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
@@ -120,6 +120,11 @@ device_boot_module = angular.module(
                     return ""
             else
                 return " (no BS)"
+        $scope.get_row_class = (dev) ->
+            if dev.bootserver
+                return ""
+            else
+                return "danger"
         $scope.num_selected_hc = () ->
             num_hc = 0
             for dev in $scope.devices
