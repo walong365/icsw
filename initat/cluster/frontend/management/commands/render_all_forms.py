@@ -19,7 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" renders all know forms """
+""" renders all know forms (also from other apps) """
 
 from initat.cluster.frontend.forms import *
 from initat.cluster.frontend.forms.boot import *
@@ -41,6 +41,7 @@ import inspect
 import logging
 import logging_tools
 import time
+import importlib
 import os
 
 
@@ -50,15 +51,29 @@ class Command(BaseCommand):
     args = ""
 
     def handle(self, **options):
+        _check_list = [(_key, _value) for _key, _value in globals().iteritems()]
+        for _addon_app in settings.ICSW_ADDON_APPS:
+            try:
+                _addon_form_module = importlib.import_module("initat.cluster.{}.forms".format(_addon_app))
+            except ImportError as e:
+                print 'No forms directory in {}.'.format(_addon_app)
+            else:
+                _check_list.extend(
+                    [
+                        (_key, getattr(_addon_form_module, _key)) for _key in dir(_addon_form_module)
+                    ]
+                )
         render_template = [
             "{% load i18n crispy_forms_tags coffeescript %}",
         ]
         r_dict = {}
         _forms = []
         s_time = time.time()
-        for _key, _value in globals().iteritems():
+        _form_keys = []
+        for _key, _value in _check_list:
             if inspect.isclass(_value):
                 if (issubclass(_value, Form) or issubclass(_value, ModelForm)) and _value != Form and _value != ModelForm:
+                    _form_keys.append(_key)
                     render_template.extend(
                         [
                             "<script type='text/ng-template' id='{}'>".format(_key.lower().replace("_", ".")),
@@ -69,7 +84,29 @@ class Command(BaseCommand):
                     r_dict[_key] = _value()
         _temp_str = "\n".join(render_template)
         _temp = Template(_temp_str)
-        _result = _temp.render(Context(r_dict))
+        try:
+            _result = _temp.render(Context(r_dict))
+        except:
+            print("Error rendering, trying to determine defective form")
+            for _key in _form_keys:
+                _render_template = [
+                    "{% load i18n crispy_forms_tags coffeescript %}",
+                ]
+                _render_template.extend(
+                    [
+                        "<script type='text/ng-template' id='{}'>".format(_key.lower().replace("_", ".")),
+                        "    {{% crispy {0} {0}.helper %}}".format(_key),
+                        "</script>",
+                    ]
+                )
+                _temp = Template("\n".join(_render_template))
+                try:
+                    _result = _temp.render(Context(r_dict))
+                except:
+                    print("Error for key {}".format(_key))
+                    raise
+                else:
+                    print("OK for key {}".format(_key))
         # remove all whitespaces
         _result = _result.replace("\t", " ")
         while True:
@@ -83,7 +120,8 @@ class Command(BaseCommand):
                 break
         e_time = time.time()
         targ_file = os.path.join(
-            settings.SSI_ROOT,
+            # first SSI_ROOT is that from webfrontend
+            settings.SSI_ROOTS[0],
             "forms",
             "all_forms.html"
         )

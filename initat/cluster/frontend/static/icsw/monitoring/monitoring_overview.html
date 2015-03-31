@@ -9,7 +9,6 @@
                     <input class="form-control input-sm" placeholder="filter" ng-model="filter_settings.str_filter"/>
                 </div>
                 ,
-
                 <input type="button" ng-class="filter_settings.only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
                     ng-click="filter_settings.only_selected = ! filter_settings.only_selected" value="only selected"/>
 
@@ -39,12 +38,7 @@
                     <tr ng-repeat="entry in entries_displayed">
                         <td>{{entry.name}}</td>
                         <td>
-                            <!-- unnice workaround to get device pk into directive over the controller. in a nice design, the controller wouldn't be necessary. -->
-                            <!-- TODO: check if we can use controllerAs syntax to make it available in the scope -->
-                            <div style="display: none">{{ devicepk_livestatus_ctrl = entry.idx }}</div>
-                            <div ng-controller='livestatus_ctrl'>
-                                <livestatus-brief devicepk="devicepk"></livestatus-brief>
-                            </div>
+                            <icsw-device-livestatus-brief devicepk="entry.idx" redraw-sunburst="ignore_shit"></icsw-device-livestatus-brief>
                         </td>
                         <td class="text-center">
                             <icsw-tools-device-hist-status-overview data="entry.device_data_yesterday" detailed-view="false"></icsw-tools-device-hist-status-overview>

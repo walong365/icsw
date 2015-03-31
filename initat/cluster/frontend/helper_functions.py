@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -151,13 +151,31 @@ class xml_response(object):
         return E.response(
             E.header(
                 E.messages(
-                    *[E.message(log_str, **{
-                        "log_level": "{:d}".format(log_lev),
-                        "log_level_str": logging_tools.get_log_level_str(log_lev)}) for log_lev, log_str in self.log_buffer]),
-                **{"code": "{:d}".format(max([log_lev for log_lev, log_str in self.log_buffer] + [logging_tools.LOG_LEVEL_OK])),
-                   "errors": "{:d}".format(num_errors),
-                   "warnings": "{:d}".format(num_warnings),
-                   "messages": "{:d}".format(len(self.log_buffer))}),
+                    *[
+                        E.message(
+                            log_str,
+                            **{
+                                "log_level": "{:d}".format(log_lev),
+                                "log_level_str": logging_tools.get_log_level_str(log_lev)
+                            }
+                        ) for log_lev, log_str in self.log_buffer
+                    ]
+                ),
+                **{
+                    "code": "{:d}".format(
+                        max(
+                            [
+                                log_lev for log_lev, log_str in self.log_buffer
+                            ] + [
+                                logging_tools.LOG_LEVEL_OK
+                            ]
+                        )
+                    ),
+                    "errors": "{:d}".format(num_errors),
+                    "warnings": "{:d}".format(num_warnings),
+                    "messages": "{:d}".format(len(self.log_buffer))
+                }
+            ),
             E.values(
                 *[self._get_value_xml(key, value) for key, value in self.val_dict.iteritems()]
             )
@@ -255,7 +273,8 @@ def contact_server(request, srv_type, send_com, **kwargs):
             send_com["user_id"] = request.user.pk
         _conn = net_tools.zmq_connection(
             kwargs.get("connection_id", "webfrontend"),
-            timeout=kwargs.get("timeout", 10))
+            timeout=kwargs.get("timeout", 10)
+        )
         # split to node-local servers ?
         if kwargs.get("split_send", True):
             send_list = cur_router.check_for_split_send(srv_type, send_com)

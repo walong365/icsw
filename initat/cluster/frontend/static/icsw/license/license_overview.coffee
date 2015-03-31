@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 # NOTE: ui.bootstrap and angular-dimple both define a bar directive and therefore can not be used in the same module
 lic_module = angular.module("icsw.license.overview",
@@ -5,9 +24,9 @@ lic_module = angular.module("icsw.license.overview",
          "icsw.tools.angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"])
 
 lic_module.controller("icswLicenseOverviewCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ["$scope", "$compile", "$filter", "$templateCache", "restDataSource", "$q", "$modal", "access_level_service",
      "$timeout", "$sce", "$resource", "d3_service", "dimple_service", "ICSW_URLS",
-    ($scope, $compile, $filter, $templateCache, restDataSource, sharedDataSource, $q, $modal, access_level_service,
+    ($scope, $compile, $filter, $templateCache, restDataSource, $q, $modal, access_level_service,
      $timeout, $sce, $resource, d3_service, dimple_service, ICSW_URLS) ->
         wait_list = restDataSource.add_sources([
             [ICSW_URLS.REST_DEVICE_LIST, {}],

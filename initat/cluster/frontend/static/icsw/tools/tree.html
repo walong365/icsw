@@ -1,7 +1,7 @@
 <script type="text/ng-template" id="tree_root_node">
-<ul class="dynatree-container">
+<ul class="fancytree-container">
     <span ng-show="!treeconfig.root_nodes.length">No entries</span>
-    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'dynatree-lastsib' || ''">
+    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'fancytree-lastsib' || ''">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
         <subtree ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" single="single" treeconfig="treeconfig"></subtree>
     </li>
@@ -10,7 +10,7 @@
 
 <script type="text/ng-template" id="tree_subtree_node">
 <ul>
-    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''" ng-if="!entry.pruned">
+    <li ng-repeat="entry in tree" ng-class="$last && 'fancytree-lastsib' || ''" ng-if="!entry.pruned">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
         <subtree ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" treeconfig="treeconfig"></subtree>
     </li>
@@ -19,7 +19,7 @@
 
 <script type="text/ng-template" id="tree_subtree_node_single">
 <ul>
-    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''" ng-if="!entry.pruned">
+    <li ng-repeat="entry in tree" ng-class="$last && 'fancytree-lastsib' || ''" ng-if="!entry.pruned">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
     </li>
 </ul>
@@ -27,9 +27,9 @@
 
 <script type="text/ng-template" id="tree_subnode">
 <span ng-class="treeconfig.get_span_class(entry, $last)">
-    <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
-    <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
-    <span ng-if="treeconfig.show_select && entry._show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
+    <span ng-show="!entry._num_childs" class="fancytree-connector"></span>
+    <span class="fancytree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
+    <span ng-if="treeconfig.show_select && entry._show_select" class="fancytree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
     <span ng-show="treeconfig.show_icons" ng-class="treeconfig.get_icon_class(entry)" style="width: 16px; margin-left: 0px"></span>
     <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
         <input type="button" ng-class="entry.select_button_class" ng-value="entry.select_button_letter" ng-click="treeconfig.toggle_select_new(entry)" title="select subtree"></input>
@@ -39,7 +39,7 @@
         <input ng-if="treeconfig.show_select" type="button" class="btn btn-primary" value="s" ng-click="treeconfig.toggle_expand_tree(1, true)" title="expand selected"></input>
         <input type="button" class="btn btn-warning" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
     </div>
-    <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)">
+    <a ng-href="#" class="fancytree-title" ng-click="treeconfig.handle_click(entry, $event)">
         <span ng-class="treeconfig.get_name_class(entry)" title="{{ treeconfig.get_title(entry) }}">{{ treeconfig.get_name(entry) }}</span>
         <span ng-if="treeconfig.show_childs && !treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
         <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">

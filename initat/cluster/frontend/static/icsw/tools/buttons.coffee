@@ -1,6 +1,23 @@
-
-
-button_module = angular.module(
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+angular.module(
     "icsw.tools.button",
     [
     ]
@@ -30,17 +47,28 @@ button_module = angular.module(
         else if type == "show"
             ret_obj.css_class = "btn-success"
             ret_obj.icon_class = ""
+        else if type == "toggle"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.icon_class = "fa fa-refresh"
+        else if type == "enable"
+            ret_obj.icon_class = ""
+        else if type == "display"
+            ret_obj.css_class = "btn-info"
+            ret_obj.icon_class = "fa fa-search"
         else if type == "download"
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = "download"
             ret_obj.icon_class = "fa fa-download"
         else
-            console.error "Invalid button type: ", attrs.type
+            console.error "Invalid button type: #{type}"
         return ret_obj
     return {
-        get_config_for_button_type: get_config_for_button_type
-        get_css_class: (type) -> return get_config_for_button_type(type).css_class
-        get_icon_class: (type) -> return get_config_for_button_type(type).icon_class
+        get_config_for_button_type:
+            get_config_for_button_type
+        get_css_class: (type) ->
+            return get_config_for_button_type(type).css_class
+        get_icon_class: (type) ->
+            return get_config_for_button_type(type).icon_class
         get_css_and_icon_class: (type) ->
             conf = get_config_for_button_type(type)
             return conf.css_class + " " + conf.icon_class
@@ -61,6 +89,7 @@ visible-md visible-lg
     """
         scope:
             isShow: '&'
+            isEnable: '&'
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -69,7 +98,9 @@ visible-md visible-lg
             # - value: Custom text to display in button
             # - button-type: inserted into type, so use "button" or "submit" (default is "button")
             # - size: inserted into "btn-{{size}}", no default
-            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(attrs.type))
+
+            b_type = attrs.type
+            angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
 
             if attrs.value?
                 scope.button_value = attrs.value
@@ -91,6 +122,16 @@ visible-md visible-lg
                             scope.button_value = "show"
                         else
                             scope.button_value = "hide"
+                )
+            else if attrs.type == "enable"
+                scope.$watch(scope.isEnable
+                    (new_val) ->
+                        if new_val
+                            scope.button_value = "disable"
+                            scope.css_class = "btn-warning"
+                        else
+                            scope.button_value = "enable"
+                            scope.css_class = "btn-success"
                 )
     }
 ])

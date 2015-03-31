@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 device_module = angular.module(
     "icsw.device.tree",
     [
@@ -5,10 +24,10 @@ device_module = angular.module(
         "icsw.tools.table", "icsw.tools", "icsw.tools.button"
     ]
 ).controller("icswDeviceTreeCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "sharedDataSource", "$q", "$timeout",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular",  "restDataSource", "$q", "$timeout",
      "$modal", "array_lookupFilter", "show_dtnFilter", "msgbus", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
      "icswCallAjaxService", "icswParseXMLResponseService", "icswToolsSimpleModalService", "toaster",
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout,
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, $q, $timeout,
      $modal, array_lookupFilter, show_dtnFilter, msgbus, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
      icswCallAjaxService, icswParseXMLResponseService, icswToolsSimpleModalService, toaster) ->
         $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
@@ -265,9 +284,6 @@ device_module = angular.module(
                 $scope.device_lut[new_obj.idx] = new_obj
                 $scope.device_group_lut[new_obj.device_group].num_devices++
 
-                #$scope.pagSettings.set_entries($scope.entries)
-                # TODO: adapt this to smart table
-
                 # increase postfix of device name
                 node_re = new RegExp(/^(.*?)(\d+)(.*)$/)
                 name_m = node_re.exec(new_obj.name)
@@ -277,7 +293,7 @@ device_module = angular.module(
                 reload_sidebar_tree()
                 $scope.update_entries_st_attrs()
             else if $scope._array_name == "device_group"
-                $scope.reload()
+                # $scope.reload()
                 reload_sidebar_tree()
         $scope.new_object = (a_name, parent_obj) ->
             new_obj = {

@@ -32,6 +32,7 @@
     {% javascript 'js_jquery_new' %}
     {% javascript 'js_base' %}
     {% javascript 'js_extra1' %}
+    {% javascript 'js_icsw_modules' %}
 <script type="text/javascript">
 {% inlinecoffeescript %}
 # attach global permissions and license info to window object (== global variable)
@@ -65,6 +66,7 @@ window.SIDEBAR_MODE = "{{ request.session.sidebar_mode }}"
 window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}"
 window.CSRF_TOKEN = "{{ csrf_token }}"
 window.DEBUG = {% if debug %}true{% else %}false{% endif %}
+window.ADDITIONAL_MENU_FILES = {{ ADDITIONAL_MENU_FILES | safe }}
 window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %}
 {% include "angular/app.coffee" %}
 {% endinlinecoffeescript %}

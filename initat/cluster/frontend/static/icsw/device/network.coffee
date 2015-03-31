@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 angular.module(
     "icsw.svg_tools",
     []
@@ -112,10 +131,10 @@ angular.module(
         "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
     ]
 ).controller("icswDeviceNetworkCtrl",
-    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource",
+    ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource",
      "$q", "$modal", "access_level_service", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource,
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource,
      $q, $modal, access_level_service, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
      icswCallAjaxService, icswParseXMLResponseService
     ) ->
@@ -373,13 +392,17 @@ angular.module(
                         if dev.active_scan != dev.previous_scan
                             if not dev.active_scan
                                 # scan finished
-                                Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"}).then(
-                                    (dev_data) ->
-                                        Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList().then((data) ->
-                                            $scope.networks = data
-                                            $scope.network_lut = icswTools.build_lut($scope.networks)
-                                            $scope.update_device(dev_data[0])
-                                        )
+                                $q.all(
+                                    [
+                                        Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList({"with_network" : true, "pks" : angular.toJson([dev.idx]), "olp" : "backbone.device.change_network"})
+                                        Restangular.all(ICSW_URLS.REST_PEER_INFORMATION_LIST.slice(1)).getList(),
+                                        Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList(),
+                                    ]
+                                ).then((data) ->
+                                    $scope.networks = data[2]
+                                    $scope.peers = data[1]
+                                    $scope.network_lut = icswTools.build_lut($scope.networks)
+                                    $scope.update_device(data[0][0])
                                 )
                         if obj.active_scan
                             any_scans_running = true
@@ -710,8 +733,8 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.network.total")
     }
-]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswDeviceNetworkClusterCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "msgbus", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, msgbus, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         msgbus.receive("devicelist", $scope, (name, args) ->
             $scope.devices = args[1] 
@@ -752,19 +775,56 @@ angular.module(
                 }
             )          
         $scope.reload()
-]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+]).controller("icswDeviceNetworkGraphCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "icswLivestatusFilterFactory",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, icswLivestatusFilterFactory) ->
         access_level_service.install($scope)
         $scope.graph_sel = "sel"
+        $scope.show_livestatus = false
         $scope.devices = []
         $scope.new_devsel = (_dev_sel) ->
             $scope.devices = _dev_sel
+        $scope.ls_filter = new icswLivestatusFilterFactory()
+]).directive("icswDeviceNetworkNodeTransform", [() ->
+    return {
+        restrict: "A"
+        link: (scope, element, attrs) ->
+            scope.$watch(attrs["icswDeviceNetworkNodeTransform"], (transform_node) ->
+                scope.$watch(attrs["redraw"], (new_val) ->
+                    if transform_node.x?
+                        element.attr("transform", "translate(#{transform_node.x},#{transform_node.y})")
+                )
+            )
+    }
+]).directive("icswDeviceNetworkNodeDblClick", ["DeviceOverviewService", (DeviceOverviewService) ->
+    return {
+        restrict: "A"
+        link: (scope, element, attrs) ->
+            scope.click_node = null
+            scope.double_click = (event) ->
+                # beef up node structure
+                if scope.click_node?
+                    scope.click_node.idx = scope.click_node.id
+                    scope.click_node.device_type_identifier = "D"
+                    DeviceOverviewService.NewOverview(event, scope.click_node)
+            scope.$watch(attrs["icswDeviceNetworkNodeDblClick"], (click_node) ->
+                scope.click_node = click_node
+            )
+    }
+]).directive("icswDeviceNetworkHostLivestatus", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.network.host.livestatus")
+        scope:
+             devicepk: "=devicepk"
+             ls_filter: "=lsFilter"
+        replace: true
+    }
 ]).directive("icswDeviceNetworkHostNode", ["dragging", "$templateCache", (dragging, $templateCache) ->
     return {
         restrict : "EA"
         templateNamespace: "svg"
         replace: true
-        scope: 
+        scope:
             node: "=node"
             redraw: "=redraw"
         template: $templateCache.get("icsw.device.network.host.node")
@@ -778,13 +838,6 @@ angular.module(
                 scope.stroke_width = Math.max(Math.min(new_val.num_nds, 3), 1)
                 scope.stroke_color = if new_val.num_nds then "grey" else "red"
             )
-            scope.$watch("redraw", () ->
-                scope.transform()
-            )
-            scope.transform= () ->
-                if scope.node.x?
-                    element.attr("transform", "translate(#{scope.node.x},#{scope.node.y})")
-                scope.fill_color = if scope.node.fixed then "red" else "white"
             scope.mouse_click = () ->
                 if scope.node.ignore_click
                     scope.node.ignore_click = false
@@ -798,9 +851,6 @@ angular.module(
                 scope.focus = false
                 scope.mousedown = false
                 scope.stroke_width--
-            scope.double_click = (event) ->
-                cur_di = new device_info(event, scope.node.id)
-                cur_di.show()
     }
 ]).directive("icswDeviceNetworkHostLink", ["$templateCache", ($templateCache) ->
     return {

@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 device_variable_module = angular.module(
     "icsw.device.variables",
     [
@@ -116,8 +135,8 @@ device_variable_module = angular.module(
                     scope.obj.device_variable_set.push(data)
                 )
     }
-]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+]).controller("icswDeviceVariableCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "blockUI", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, blockUI, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device.variable.new.form"
         $scope.base_edit.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
@@ -237,32 +256,16 @@ device_variable_module = angular.module(
         $scope.create_for_all = (event) ->
             new_obj = {"var_type" : "i", "name" : "var_name"}
             $scope._edit_obj = new_obj
+            $scope.form = {}
             $scope.action_string = "create for all"
-            $scope.edit_div = $compile($templateCache.get("device.variable.new.form"))($scope)
-            $scope.my_modal = BootstrapDialog.show
-                message: $scope.edit_div
-                draggable: true
-                closable: true
-                closeByBackdrop: false
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
-            #$scope.edit_div.simplemodal
-            #    position     : [event.pageY, event.pageX]
-            #    #autoResize   : true
-            #    #autoPosition : true
-            #    onShow: (dialog) =>
-            #        $scope.cur_edit = $scope
-            #        dialog.container.draggable()
-            #        $("#simplemodal-container").css("height", "auto")
-            #    onClose: (dialog) =>
-            #        $scope.close_modal()
-        $scope.close_modal = () =>
-            $scope.my_modal.close()
+            cv_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "New variable")
+            cv_mixin.template = "device.variable.new.form"
+            cv_mixin.edit(new_obj).then((new_var) ->
+                $scope.modify()
+            )
         $scope.modify = () ->
             if not $scope.form.$invalid
                 $scope.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
-                $scope.close_modal()
                 blockUI.start()
                 $scope.add_list = []
                 for entry in $scope.entries

@@ -63,7 +63,7 @@ class repo_overview(permission_required_mixin, View):
             srv_com = server_command.srv_command(command=cur_mode)
             _result = contact_server(request, "package", srv_com, timeout=10, log_result=True)
         else:
-            request.xml_response.error("unknown mode '%s'" % (cur_mode))
+            request.xml_response.error("unknown mode '{}'".format(cur_mode))
 
 
 def reload_searches(request):
@@ -100,6 +100,7 @@ class use_package(View):
         exact = True if int(_post["exact"]) else False
         target_repo = int(_post["target_repo"])
         if target_repo and not exact:
+            # we can only specify a target repo if exact is not used
             t_repo = package_repo.objects.get(Q(pk=target_repo))
         else:
             t_repo = None
@@ -111,9 +112,9 @@ class use_package(View):
             try:
                 _new_p = cur_sr.create_package(exact=exact, target_repo=t_repo)
             except IntegrityError, what:
-                request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
+                request.xml_response.error("error modifying: {}".format(unicode(what)), logger)
             except ValidationError, what:
-                request.xml_response.error("error creating: %s" % (unicode(what)), logger)
+                request.xml_response.error("error creating: {}".format(unicode(what)), logger)
             except:
                 request.xml_response.info("unknown error: {}".format(process_tools.get_except_info()), logger)
             else:
@@ -161,9 +162,9 @@ class add_package(View):
             else:
                 num_error += 1
         if num_ok:
-            request.xml_response.info("added %s" % (logging_tools.get_plural("connection", num_ok)), logger)
+            request.xml_response.info("added {}".format(logging_tools.get_plural("connection", num_ok)), logger)
         if num_error:
-            request.xml_response.warn("%s already existed" % (logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.warn("{} already existed".format(logging_tools.get_plural("connection", num_error)), logger)
         request.xml_response["result"] = JSONRenderer().render(package_device_connection_serializer(new_pdcs, many=True).data)
 
 

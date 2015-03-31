@@ -1,12 +1,31 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-device_boot_module = angular.module(
+angular.module(
     "icsw.device.boot",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
-).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
+).controller("icswDeviceBootCtrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", "$modal", "access_level_service", "$timeout", "msgbus", "icswTools", "ICSW_URLS", "icswCallAjaxService", "icswParseXMLResponseService",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q, $modal, access_level_service, $timeout, msgbus, icswTools, ICSW_URLS, icswCallAjaxService, icswParseXMLResponseService) ->
         access_level_service.install($scope)
         msgbus.emit("devselreceiver")
         msgbus.receive("devicelist", $scope, (name, args) ->
@@ -101,6 +120,11 @@ device_boot_module = angular.module(
                     return ""
             else
                 return " (no BS)"
+        $scope.get_row_class = (dev) ->
+            if dev.bootserver
+                return ""
+            else
+                return "danger"
         $scope.num_selected_hc = () ->
             num_hc = 0
             for dev in $scope.devices
@@ -161,7 +185,7 @@ device_boot_module = angular.module(
                 restDataSource.reload([ICSW_URLS.REST_NETWORK_LIST, {}])
                 # 6
                 restDataSource.reload([ICSW_URLS.REST_LOG_SOURCE_LIST, {}])
-                restDataSource.reload([ICSW_URLS.REST_LOG_STATUS_LIST, {}])
+                restDataSource.reload([ICSW_URLS.REST_LOG_LEVEL_LIST, {}])
                 # 8
                 restDataSource.reload([ICSW_URLS.REST_USER_LIST, {}])
                 restDataSource.reload([ICSW_URLS.REST_DEVICE_TREE_LIST, {"all_mother_servers" : true}])
@@ -180,7 +204,7 @@ device_boot_module = angular.module(
                     dev.num_logs = 0
                     dev.log_lines = []
                 $scope.log_source_lut = icswTools.build_lut(data[6])
-                $scope.log_status_lut = icswTools.build_lut(data[7])
+                $scope.log_level_lut = icswTools.build_lut(data[7])
                 $scope.user_lut = icswTools.build_lut(data[8])
                 $scope.device_lut = icswTools.build_lut($scope.devices)
                 $scope.kernels = data[1]
@@ -321,7 +345,7 @@ device_boot_module = angular.module(
                         success  : (json) =>
                             if json.devlog_lines
                                 for entry in json.devlog_lines
-                                    # format: pk, device_id, log_source_id, user_id, log_status_id, text, seconds
+                                    # format: pk, device_id, log_source_id, user_id, log_level_id, text, seconds
                                     cur_dev = $scope.device_lut[entry[1]]
                                     cur_dev.num_logs++
                                     cur_dev.latest_log = Math.max(entry[0], cur_dev.latest_log)

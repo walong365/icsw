@@ -1,3 +1,22 @@
+# Copyright (C) 2012-2015 init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 angular.module(
     "icsw.device.location",
     [
@@ -105,6 +124,7 @@ angular.module(
                         sel_dict[entry.idx] = []
                         entry.location_gfxs = (loc_gfx.idx for loc_gfx in $scope.location_gfxs when loc_gfx.location == entry.idx)
                 for dev in $scope.devices
+                    # check for active locations
                     for _sel in dev.categories
                         if _sel of sel_dict
                             sel_dict[_sel].push(dev.idx)
@@ -251,6 +271,7 @@ angular.module(
                         # check if this device is really associated with the location 
                         _location = scope.loc_tree_lut[scope.active_loc_gfx.location].obj
                         if scope.active_loc_gfx.location in entry.categories and _location.physical
+                        # if _location.physical
                             # allow addition if location is in categorie list and location is physical
                             scope.dev_pks.push(entry.idx)
                         else if not _location.physical

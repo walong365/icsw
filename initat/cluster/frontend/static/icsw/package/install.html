@@ -50,8 +50,12 @@
     <td>{{ obj.url }}</td>
     <td>{{ obj.priority }}</td>
     <td>{{ fn.get_service_name(this, obj) }}</td>
-    <td><input type="button" class="btn btn-xs btn-primary" ng-click="config_service.toggle(obj)" value="toggle publish"/></td>
-    <td><input type="button" class="btn btn-xs btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td>
+        <icsw-tools-button type="toggle" size="xs" value="toggle publish" ng-click="config_service.toggle(obj)"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.package.search.head">
@@ -75,10 +79,18 @@
     <td>{{ obj.results }}</td>
     <td>{{ obj.last_search_string }}</td>
     <td class="text-right">{{ obj.last_search | datetime1 }}</td>
-    <td><input type="button" class="btn btn-success btn-xs" ng-show="obj.results > 0" ng-click="show_search_result(obj)" value="show"/></td>
-    <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.current_state == 'done'" ng-click="retry_search(obj, reload)" value="retry"/></td>
-    <td><input type="button" class="btn btn-warning btn-xs" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+    <td>
+        <icsw-tools-button type="display" size="xs" value="show results" ng-show="obj.current_state=='done'"" ng-click="show_search_result(obj)"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="reload" size="xs" ng-show="obj.current_state == 'done'" ng-click="retry_search(obj)"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.search.result.head">
@@ -96,25 +108,33 @@
     <td>{{ obj.name }}</td>
     <td>{{ obj.version }}</td>
     <td>{{ obj.kind }}</td>
-    <td>{{ obj.package_repo | array_lookup:entries.repos:"name" }}</td>
+    <td>{{ obj.package_repo | array_lookup:repos:"name" }}</td>
     <td>{{ obj.arch }}</td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-xs btn-primary" ng-click="take_search_result(obj, true)" value="take exact"/></td>
+    <td><input type="button" ng-show="obj.copied == 0 && !obj.target_repo" class="btn btn-xs btn-primary" ng-click="take_search_result(obj, true)" value="take exact"/></td>
     <td>
         <div ng-show="!obj.copied">
             <input type="button" class="btn btn-xs btn-primary" ng-click="take_search_result(obj, false)" value="take latest"/>
-        <div class="btn-group">
-            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
-                from repo <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li><a href="#" ng-click="obj.target_repo=0">ignore</a></li>
-                <li ng-repeat="repo in entries.repos"><a href="#" ng-click="obj.target_repo=repo.idx"><span ng-show="repo.idx == obj.package_repo">(*) </span>{{ repo.name }}</a></li>
-            </ul>
-        </div>
-        {{ show_repo(obj) }}
+            <div class="btn-group">
+                <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+                    from repo <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a href="#" ng-click="obj.target_repo=null">ignore</a></li>
+                    <li ng-repeat="repo in repos">
+                        <a href="#" ng-click="obj.target_repo=repo.idx">
+                            <span ng-show="repo.idx == obj.package_repo">(*) </span>
+                            {{ repo.name }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {{ show_repo(obj) }}
         </div>
     </td>
-    <td><input type="button" class="btn btn-xs btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td>{{ obj.target_repo | array_lookup:repos:"name":"ignore" }}</td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.package.list.head">
@@ -137,10 +157,47 @@
     <td>{{ obj.target_repo | array_lookup:entries.repos:"name":"---" }}</td>
     <td>{{ obj.kind }}</td>
     <td>{{ obj.arch }}</td>
-    <td><input type="button" class="btn btn-primary btn-xs" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
-    <td><input type="button" class="btn btn-warning btn-xs" ng-click="remove(obj)" value="remove" title="remove from selected devices"/></td>
-    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+    <td>
+        <icsw-tools-button type="create" value="attach" size="xs" ng-click="attach(obj)"  title="attach to selected devices"></icsw-tools-button>
+    </td>
+    <td>
+        <input type="button" class="btn btn-warning btn-xs" ng-click="remove(obj)" value="remove" title="remove from selected devices"/>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button>
+    </td>
     <td>{{ get_pdc_list(obj) }}</td>
+</script>
+
+<script type="text/ng-template" id="icsw.package.install.search.overview">
+    <div class="row">
+        <div class="form-inline col-md-8">
+            New search :
+            <input class="form-control input-ms" placeholder="search string ..." type="text" ng-model="search_string" />
+            <!-- <input type="submit" class="btn btn-sm btn-warning" value="create"/>-->
+            <icsw-tools-button type="create" ng-show="search_string" ng-click="create_search()"></icsw-tools-button>
+        </div>
+    </div>
+    <icsw-tools-rest-table target-list="searches" config-service="icswPackageInstallSearchService">
+        <h3>Searches ({{ searches.length }} entries)</h3>
+        <table st-table="searches_displayed" st-safe-src="searches" class="table table-condensed table-hover" style="width:auto;">
+            <thead icsw-package-install-search-head></thead>
+            <tbody>
+                <tr><td colspan="9" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td></tr>
+                <tr icsw-package-install-search-row ng-repeat="obj in searches_displayed"></tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
+    <icsw-tools-rest-table target-list="searchresults" config-service="icswPackageInstallSearchResultService" ng-show="active_search">
+        <h3>Search results for '{{ active_search.last_search_string }}' ({{ entries.searchresults.length }} entries)</h3>
+        <table st-table="searchresults_displayed" st-safe-src="searchresults" class="table table-condensed table-hover" style="width:auto;">
+            <thead icsw-package-install-search-result-head></thead>
+            <tbody>
+                <tr><td colspan="9" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td></tr>
+                <tr icsw-package-install-search-result-row ng-repeat="obj in searchresults_displayed"></tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.overview">
@@ -148,58 +205,35 @@
         <tab heading="Package repositories">
             <icsw-tools-rest-table target-list="entries.repos" config-service="icswPackageInstallRepositoryService">
                 <h3>Repositories ({{ entries.repos.length }} entries, {{ rest_data.service.length }} services),
-                    <input type="button" class="btn btn-primary" value="Rescan" ng-click="rescan_repos(reload)"/>,
-                    <input type="button" class="btn btn-warning" value="Sync to clients" ng-click="sync_repos()"/>,
-                    <input type="button" class="btn btn-warning" value="Clear caches" ng-click="clear_caches()"/>
+                    <icsw-tools-button type="reload" value="rescan repos" ng-click="rescan_repos(reload)"></icsw-tools-button>
+                    <icsw-tools-button type="reload" value="Sync to clients" ng-click="sync_repos()"></icsw-tools-button>
+                    <icsw-tools-button type="delete" value="Clear caches" ng-click="clear_caches()"></icsw-tools-button>
                 </h3>
-                <table st-table="repos_displayed" st-safe-src="entries.repos" class="table table-condensed table-hover" style="width:auto;">
-                    <thead icsw-package-install-repository-head></thead>
-                    <tbody>
+                <table st-table="repos_displayed" st-safe-src="entries.filtered_repos" class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr icsw-package-install-repository-head></tr>
                         <tr>
-                            <td colspan="5" icsw-tools-pagination paginator-filter="func" paginator-filter-func="fn.filter_repo" st-items-per-page="10" possible-items-per-page="10,20,50,100">
+                            <td colspan=5 icsw-tools-pagination st-items-by-page="10" possible-items-by-page="10,20,50,100">
                             </td>
-                            <td>
-                                show:
-                                <input type="button" ng-class="show_enabled_repos && 'btn btn-sm btn-success' || 'btn btn-sm'" value="enabled" ng-click="show_enabled_repos =! show_enabled_repos"/>
-                                <input type="button" ng-class="show_published_repos && 'btn btn-sm btn-success' || 'btn btn-sm'" value="published" ng-click="show_published_repos =! show_published_repos"/>
+                            <td colspan="99">
+                                <div class="form-group">
+                                    only enabled
+                                    <icsw-tools-button type="show" is-show="show_enabled_repos" size="sm" ng-click="toggle_enabled_repos()"></icsw-tools-button>
+                                    only published
+                                    <icsw-tools-button type="show" is-show="show_published_repos" size="sm" ng-click="toggle_published_repos()"></icsw-tools-button>
+                                </div>
                             </td>
                         </tr>
+                    </thead>
+                    <tbody>
                         <tr icsw-package-install-repository-row ng-repeat="obj in repos_displayed"></tr><!--entries | orderBy:'-name':true | paginator:this"></tr>-->
                     </tbody>
                 </table>
             </icsw-tools-rest-table>
         </tab>
         <tab heading="Package search">
-            <icsw-tools-rest-table target-list="entries.searches" config-service="icswPackageInstallSearchService">
-                <h3>Searches ({{ entries.searches.length }} entries)</h3>
-                <div class="row">
-                    <div class="form-inline col-md-8">
-                        <form class="form-inline" ng-submit="create_search()">
-                            New search :
-                            <input class="form-control input-ms" placeholder="search string ..." type="text" ng-model="search_string" />
-                            <input type="submit" class="btn btn-sm btn-warning" value="create"/>
-                        </form>
-                    </div>
-                </div>
-                <table st-table="searches_displayed" st-safe-src="entries.searches" class="table table-condensed table-hover" style="width:auto;">
-                    <thead icsw-package-install-search-head></thead>
-                    <tbody>
-                        <tr><td colspan="9" icsw-tools-pagination  st-items-per-page="10" possible-items-per-page="10,20,50,100"></td></tr>
-                        <tr icsw-package-install-search-row ng-repeat="obj in searches_displayed"></tr>
-                    </tbody>
-                </table>
-            </icsw-tools-rest-table>
-            <icsw-tools-rest-table target-list="entries.searchresults" config-service="icswPackageInstallSearchResultService" ng-show="active_search">
-                <h3>Search results for '{{ active_search.last_search_string }}' ({{ entries.searchresults.length }} entries)</h3>
-                <table st-table="searchresults_displayed" st-safe-src="entries.searchresults" class="table table-condensed table-hover" style="width:auto;">
-                    <thead icsw-package-install-search-result-head></thead>
-                    <tbody>
-                        <tr><td colspan="9" icsw-tools-pagination  st-items-per-page="10" possible-items-per-page="10,20,50,100"></td></tr>
-                        <tr icsw-package-install-search-result-row ng-repeat="obj in searchresults_displayed"></tr>
-                    </tbody>
-                </table>
-            </icsw-tools-rest-table>
-        </tab>
+            <icsw-package-install-search-overview repositories="entries.repos"></icsw-package-install-search-overview>
+       </tab>
         <tab heading="Install">
             <h3>
                 <div class="form-inline">
@@ -208,8 +242,9 @@
                         <input ng-model="package_filter" class="form-control input-sm"/>
                     </div>,
                     <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"/>&nbsp;
-                    <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"/>,
-                    <input type="button" class="btn btn-warning btn-sm" value="Clear caches" ng-click="send_clear_caches()"/>,
+                    <icsw-tools-button type="reload" value="sync" size="sm" title="send a resync to all registered clients" ng-click="send_sync()"></icsw-tools-button>
+                    <icsw-tools-button type="delete" value="clear caches" size="sm" ng-click="send_clear_caches()"></icsw-tools-button>
+                    show
                     <div class="btn-group btn-group-sm">
                         <input type="button" ng-class="is_mode == 'a' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'a'" value="action"/>
                         <input type="button" ng-class="is_mode == 'v' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'v'" value="version"/>
@@ -264,7 +299,7 @@
                 <table st-table="packages_displayed" st-safe-src="entries.packages" class="table table-condensed table-hover" style="width:auto;">
                     <thead icsw-package-install-package-head></thead>
                     <tbody>
-                        <tr><td colspan="9" icsw-tools-pagination  st-items-per-page="10" possible-items-per-page="10,20,50,100"></td></tr>
+                        <tr><td colspan="9" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td></tr>
                         <tr icsw-package-install-package-row ng-repeat="obj in packages_displayed"></tr>
                     </tbody>
                 </table>
