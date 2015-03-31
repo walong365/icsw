@@ -21,6 +21,7 @@
 
 from django.db import connection
 from django.db.models import Q
+from initat.md_config_server.common import live_socket
 from initat.cluster.backbone.models import device
 from initat.md_config_server.config import global_config
 import csv
@@ -32,66 +33,6 @@ import server_command
 import socket
 import threading_tools
 import time
-
-
-class live_query(object):
-    def __init__(self, conn, resource):
-        self._conn = conn
-        self._resource = resource
-        self._columns = []
-        self._filters = []
-
-    def call(self):
-        if self._columns:
-            return self._conn.call(str(self), self._columns)
-        else:
-            return self._conn.call(str(self))
-
-    def __str__(self):
-        r_field = ["GET {}".format(self._resource)]
-        if self._columns:
-            r_field.append("Columns: {}".format(" ".join(self._columns)))
-        r_field.extend(self._filters)
-        return "\n".join(r_field + ["", ""])
-
-    def columns(self, *args):
-        self._columns = args
-        return self
-
-    def filter(self, key, op, value):
-        if type(value) == list:
-            for entry in value:
-                self._filters.append("Filter: {} {} {}".format(key, op, entry))
-            if len(value) > 1:
-                self._filters.append("Or: {:d}".format(len(value)))
-        else:
-            self._filters.append("Filter: {} {} {}".format(key, op, value))
-        return self
-
-
-class live_socket(object):
-    def __init__(self, peer_name):
-        self.peer = peer_name
-
-    def __getattr__(self, name):
-        return live_query(self, name)
-
-    def call(self, request, columns=None):
-        try:
-            if len(self.peer) == 2:
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            else:
-                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            s.connect(self.peer)
-            s.send(request)
-            s.shutdown(socket.SHUT_WR)
-            csv_lines = csv.DictReader(s.makefile(), columns, delimiter=';')
-            _result = list(csv_lines)
-        except:
-            _result = []
-        finally:
-            s.close()
-        return _result
 
 
 class status_process(threading_tools.process_obj):
@@ -121,11 +62,10 @@ class status_process(threading_tools.process_obj):
 
     def _open(self):
         if self.__socket is None:
-            sock_name = "/opt/{}/var/live".format(global_config["MD_TYPE"])
-            if os.path.exists(sock_name):
-                self.__socket = live_socket(sock_name)
-            else:
-                self.log("socket '{}' does not exist".format(sock_name), logging_tools.LOG_LEVEL_ERROR)
+            try:
+                self.__socket = live_socket.get_icinga_live_socket()
+            except Exception as e:
+                self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
 
     def _get_node_status(self, *args, **kwargs):

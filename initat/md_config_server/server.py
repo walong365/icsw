@@ -37,6 +37,7 @@ from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
+from initat.md_config_server.kpi import kpi_process
 from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
 import cluster_location
 import codecs
@@ -79,10 +80,11 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.register_func("ocsp_results", self._ocsp_results)
             self.__external_cmd_file = None
             self.register_func("external_cmd_file", self._set_external_cmd_file)
-            self.add_process(status_process("status"), start=True)
-            self.add_process(syncer_process("syncer"), start=True)
-            self.add_process(dynconfig_process("dynconfig"), start=True)
-            self.add_process(icinga_log_reader("icinga_log_reader"), start=True)
+            #self.add_process(status_process("status"), start=True)
+            #self.add_process(syncer_process("syncer"), start=True)
+            #self.add_process(dynconfig_process("dynconfig"), start=True)
+            #self.add_process(icinga_log_reader("icinga_log_reader"), start=True)
+            self.add_process(kpi_process("kpi_process"), start=True)
             # wait for the processes to start
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
