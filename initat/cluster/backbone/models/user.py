@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,6 +21,16 @@
 #
 """ NOCTUA / CORUVS models, user part """
 
+import base64
+import crypt
+import hashlib
+import inspect
+import os
+import random
+import string
+import smbpasswd
+import datetime
+
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
@@ -33,16 +43,8 @@ from initat.cluster.backbone.models.functions import _check_empty_string, _check
     get_vnc_enc
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     virtual_desktop_user_setting_changed
-import base64
-import crypt
 import django.core.serializers
-import hashlib
-import inspect
-import os
-import random
-import string
-import smbpasswd
-import datetime
+
 
 __all__ = [
     "csw_permission",
@@ -57,7 +59,8 @@ __all__ = [
     "user_object_permission",
     "user_quota_setting",
     "group_quota_setting",
-    "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
+    "AC_MASK_READ", "AC_MASK_MODIFY",
+    "AC_MASK_DELETE", "AC_MASK_CREATE",
     "AC_MASK_DICT",
     "user_scan_run",
     "user_scan_result",

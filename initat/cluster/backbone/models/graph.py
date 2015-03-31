@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" graph models for NOCTUA and CORVUS """
+""" graph models for NOCTUA, CORVUS and NESTOR """
 
 from django.db import models
 from django.db.models import Q, signals
@@ -27,7 +27,9 @@ from django.dispatch import receiver
 import logging_tools
 
 __all__ = [
-    "machine_vector",
+    "MachineVector",
+    "MVStructEntry",
+    "MVValue",
 ]
 
 
@@ -51,7 +53,7 @@ top levels: ['machine_vector']
 """
 
 
-class machine_vector(models.Model):
+class MachineVector(models.Model):
     idx = models.AutoField(primary_key=True)
     # link to device
     device = models.ForeignKey("device")
@@ -62,14 +64,15 @@ class machine_vector(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "machine_vector"
+        return u"MachineVector for device {}".format(unicode(self.device))
 
 
-class mv_struct_entry(models.Model):
+class MVStructEntry(models.Model):
     # structural entry for machine_vector, references an RRD-file on disk
     idx = models.AutoField(primary_key=True)
-    machine_vector = models.ForeignKey("machine_vector")
+    machine_vector = models.ForeignKey("MachineVector")
     file_name = models.CharField(max_length=256, default="")
+    # needed ?
     se_type = models.CharField(
         max_length=6,
         choices=[
@@ -79,8 +82,8 @@ class mv_struct_entry(models.Model):
         ],
     )
     # we ignore the 'host' field for pdes because it seems to be a relict from the original PerformanceData sent from icinga
-    # info is set for mvl structural entries
-    info = models.CharField(max_length=256, default="")
+    # info is set for mvl structural entries, is now ignored
+    # info = models.CharField(max_length=256, default="")
     # type instance is set for certains PDEs (for instance windows disk [C,D,E,...], SNMP netifaces [eth0,eth1,...])
     type_instance = models.CharField(max_length=16, default="")
     # position in RRD-tree this nodes resides in, was name
@@ -92,11 +95,21 @@ class mv_struct_entry(models.Model):
     # was init_time
     date = models.DateTimeField(auto_now_add=True)
 
+    def __unicode__(self):
+        return u"MVStructEntry ({}, {}), file is {}".format(
+            self.se_type,
+            self.key,
+            self.file_name,
+        )
 
-class mv_value(models.Model):
+    class Meta:
+        ordering = ("key",)
+
+
+class MVValue(models.Model):
     # value entry for machine_vector
     idx = models.AutoField(primary_key=True)
-    mv_struct_entry = models.ForeignKey("mv_struct_entry")
+    mv_struct_entry = models.ForeignKey("MVStructEntry")
     # base for generating {k,M,G,T} values, in most cases 1000 or 1024
     base = models.IntegerField(default=1024)
     # factor, a simple multiplicator to get to a sane value (in most cases 1)
@@ -117,3 +130,16 @@ class mv_value(models.Model):
     # full is also not stored because full is always equal to name
     # sane_name is also ignored because this is handled by collectd to generate filesystem-safe filenames ('/' -> '_sl_')
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return u"MVValue ({}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
+            self.key or "NONE",
+            self.info,
+            self.unit,
+            self.base,
+            self.factor,
+            self.v_type,
+        )
+
+    class Meta:
+        ordering = ("key",)

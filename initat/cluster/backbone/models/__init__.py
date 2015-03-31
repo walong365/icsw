@@ -66,6 +66,8 @@ from initat.cluster.backbone.models.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.models.partition import *  # @UnusedWildImport
 from initat.cluster.backbone.models.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.models.graph import *  # @UnusedWildImport
+from initat.cluster.backbone.models.kpi import *  # @UnusedWildImport
+from initat.cluster.backbone.models.license import *  # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, \
     bootsettings_changed, virtual_desktop_user_setting_changed
 
@@ -103,9 +105,6 @@ class cs_timer(object):
         )
         self.start_time = cur_time
         return log_str
-
-# cluster_log_source
-cluster_log_source = None
 
 
 @receiver(request_started)
@@ -259,7 +258,18 @@ class home_export_list(object):
             yield self.exp_dict[pk]["entry"]
 
 
+class DeviceVariableManager(models.Manager):
+
+    def get_cluster_id(self):
+        try:
+            return self.get(name="CLUSTER_ID").val_str
+        except device_variable.DoesNotExist:
+            return None
+
+
 class device_variable(models.Model):
+    objects = DeviceVariableManager()
+
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
     device = models.ForeignKey("device")
     is_public = models.BooleanField(default=True)
@@ -597,8 +607,8 @@ class device(models.Model):
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
 
-    def add_log(self, log_src, log_stat, text, **kwargs):
-        return devicelog.new_log(self, log_src, log_stat, text, **kwargs)
+    def add_log_entry(self, **kwargs):
+        return DeviceLogEntry.new(device=self, **kwargs)  # source=log_src, levlog_stat, text, **kwargs)
 
     def get_simple_xml(self):
         return E.device(
@@ -760,11 +770,13 @@ class device(models.Model):
             ("change_category", "Change device category", True),
             ("show_status_history", "Access to status history", True),
         )
-        fk_ignore_list = ["mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", 
-                          "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
-                          "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
-                          "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
-                          "mon_icinga_log_raw_service_notification_data", "mon_icinga_log_raw_host_notification_data"]
+        fk_ignore_list = [
+            "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "devicelog", "DeviceLogEntry",
+            "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
+            "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",
+            "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
+            "mon_icinga_log_raw_service_notification_data", "mon_icinga_log_raw_host_notification_data",
+        ]
 
     class Meta:
         db_table = u'device'
@@ -806,7 +818,7 @@ def device_post_save(sender, **kwargs):
                         device=_cur_inst,
                         name="CLUSTER_ID",
                         is_public=False,
-                        val_str="{}-{}".format(
+                        val_str="{}-{}".format(  # NOTE: license admin gui checks for this pattern
                             get_random_string(6, "ABCDEFGHKLPRSTUWXYZ123456789"),
                             get_random_string(4, "ABCDEFGHKLPRSTUWXYZ123456789"),
                         ),
@@ -875,11 +887,13 @@ def device_pre_save(sender, **kwargs):
             pass
         else:
             if present_dev.pk != cur_inst.pk:
-                raise ValidationError("UUID clash (={} for {} and {})".format(
-                    cur_inst.uuid,
-                    unicode(cur_inst),
-                    unicode(present_dev),
-                    ))
+                raise ValidationError(
+                    "UUID clash (={} for {} and {})".format(
+                        cur_inst.uuid,
+                        unicode(cur_inst),
+                        unicode(present_dev),
+                    )
+                )
         # check for device group
         if cur_inst.device_group.cluster_device_group and cur_inst.device_type.identifier not in ["MD"]:
             raise ValidationError("no devices allowed in cluster_device_group")
@@ -1099,6 +1113,126 @@ class device_type(models.Model):
         db_table = u'device_type'
 
 
+class DeviceLogEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device")
+    # link to source, required
+    source = models.ForeignKey("LogSource")
+    # link to user or None
+    user = models.ForeignKey("user", null=True)
+    level = models.ForeignKey("LogLevel")
+    text = models.CharField(max_length=765, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def new(**kwargs):
+        _dev = kwargs.get("device")
+        if not _dev:
+            _dev = device.objects.get(Q(device_group__cluster_device_group=True))
+
+        # must be a valid user object
+        _user = kwargs.get("user")
+        source = kwargs.get("source")
+        if source is None:
+            source = log_source_lookup("webfrontend")
+        elif isinstance(source, basestring) or type(source) in [int, long]:
+            source = log_source_lookup(source)
+
+        level = kwargs.get("level")
+        if level is None:
+            level = log_level_lookup("o")
+        elif isinstance(level, basestring) or type(level) in [int, long]:
+            level = log_level_lookup(level)
+
+        cur_log = DeviceLogEntry.objects.create(
+            device=_dev,
+            source=source,
+            level=level,
+            user=_user,
+            text=kwargs.get("text", "no text given"),
+        )
+        return cur_log
+
+    def __unicode__(self):
+        return u"{} ({}, {}:{:d})".format(
+            self.text,
+            self.source.identifier,
+            self.level.identifier,
+            self.level.level,
+        )
+
+
+@lru_cache()
+def log_source_lookup(identifier, device=None):
+    if type(identifier) in [int, long]:
+        return LogSource.objects.get(Q(pk=identifier))
+    elif device is not None:
+        return LogSource.objects.get(Q(identifier=identifier) & Q(device=device))
+    else:
+        return LogSource.objects.get(Q(identifier=identifier))
+
+
+class LogSource(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # server_type or user
+    identifier = models.CharField(max_length=192)
+    # link to device or None
+    device = models.ForeignKey("device", null=True)
+    # long description
+    description = models.CharField(max_length=765, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def new(identifier, **kwargs):
+        ls_dev = kwargs.get("device", None)
+        sources = LogSource.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
+        if len(sources) > 1:
+            print("Too many LogSources present ({}), exiting".format(", ".join([identifier])))
+            cur_source = None
+        elif not len(sources):
+            if ls_dev is not None:
+                new_source = LogSource(
+                    identifier=identifier,
+                    description=u"{} on {}".format(identifier, unicode(ls_dev)),
+                    device=ls_dev,
+                )
+                new_source.save()
+            else:
+                new_source = LogSource(
+                    identifier=identifier,
+                    description=kwargs.get("description", "no description for {}".format(identifier))
+                )
+                new_source.save()
+            cur_source = new_source
+        else:
+            cur_source = sources[0]
+        return cur_source
+
+    def __unicode__(self):
+        return "{} ({})".format(
+            self.identifier,
+            self.description)
+
+
+@lru_cache()
+def log_level_lookup(key):
+    if isinstance(key, basestring):
+        return LogLevel.objects.get(Q(identifier=key))
+    else:
+        return LogLevel.objects.get(Q(level=key))
+
+
+class LogLevel(models.Model):
+    idx = models.AutoField(primary_key=True)
+    identifier = models.CharField(max_length=2, unique=True)
+    level = models.IntegerField(default=logging_tools.LOG_LEVEL_OK)
+    name = models.CharField(max_length=32, unique=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} ({:d})".format(self.name, self.level)
+
+
 class devicelog(models.Model):
     idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -1108,31 +1242,31 @@ class devicelog(models.Model):
     text = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
-    @staticmethod
-    def new_log(cur_dev, log_src, log_stat, text, **kwargs):
-        if log_src and type(log_src) in [int, long]:
-            log_src = short_log_source_lookup(log_src)
-        if log_stat and type(log_stat) in [int, long]:
-            log_stat = log_status_lookup(log_stat)
-        cur_log = devicelog.objects.create(
-            device=cur_dev,
-            log_source=log_src or cluster_log_source,
-            user=kwargs.get("user", None),
-            log_status=log_stat,
-            text=text,
-        )
-        return cur_log
+    # @staticmethod
+    # def new_log(cur_dev, log_src, log_stat, text, **kwargs):
+    # if log_src and type(log_src) in [int, long]:
+    #    log_src = log_source_lookup(log_src)
+    # if log_stat and type(log_stat) in [int, long]:
+    #    log_stat = log_status_lookup(log_stat)
+    # cur_log = devicelog.objects.create(
+    #    device=cur_dev,
+    #    log_source=log_src or cluster_log_source,
+    #    user=kwargs.get("user", None),
+    #    log_status=log_stat,
+    #    text=text,
+    # )
+    # return cur_log
 
     def __unicode__(self):
-        return u"{} ({}, {}:{:d})".format(
+        return u"DEPRECATED, {} ({}, {}:{:d})".format(
             self.text,
             self.log_source.name,
             self.log_status.identifier,
-            self.log_status.log_level)
+            self.log_status.log_level
+        )
 
     class Meta:
         db_table = u'devicelog'
-        ordering = ("date",)
 
 
 class log_source(models.Model):
@@ -1152,7 +1286,7 @@ class log_source(models.Model):
         ls_dev = kwargs.get("device", None)
         sources = log_source.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
         if len(sources) > 1:
-            print "Too many log_source_entries present ({}), exiting".format(", ".join([identifier, name]))
+            print("Too many log_source_entries present ({}), exiting".format(", ".join([identifier, name])))
             cur_source = None
         elif not len(sources):
             if ls_dev is not None:
@@ -1176,35 +1310,13 @@ class log_source(models.Model):
         return cur_source
 
     def __unicode__(self):
-        return "ls {} ({}), {}".format(
+        return "{} ({}), {}".format(
             self.name,
             self.identifier,
             self.description)
 
     class Meta:
         db_table = u'log_source'
-
-
-@lru_cache()
-def log_source_lookup(identifier, log_dev):
-    return log_source.objects.get(Q(identifier=identifier) & Q(device=log_dev))
-
-
-@lru_cache()
-def short_log_source_lookup(idx):
-    return log_source.objects.get(Q(pk=idx))
-
-
-@lru_cache()
-def log_status_lookup(key):
-    if isinstance(key, basestring):
-        return log_status.objects.get(Q(identifier=key))
-    else:
-        return log_status.objects.get(Q(log_level={
-            logging_tools.LOG_LEVEL_OK: 0,
-            logging_tools.LOG_LEVEL_WARN: 50,
-            logging_tools.LOG_LEVEL_ERROR: 100,
-            logging_tools.LOG_LEVEL_CRITICAL: 200}[key]))
 
 
 class log_status(models.Model):

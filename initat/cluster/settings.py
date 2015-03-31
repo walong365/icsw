@@ -1,11 +1,13 @@
 # Django settings for cluster project.
 # -*- coding: utf-8 -*-
+import glob
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 import logging_tools
 import os
 import sys
+from lxml import etree
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
@@ -195,16 +197,6 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
 
-SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", "frontend", "static", "icsw"))
-SSI_FILES = []
-for _dir, _dirlist, _filelist in os.walk(SSI_ROOT):
-    if _dir == SSI_ROOT:
-        continue
-    for _file in _filelist:
-        if _file.endswith(".html"):
-            SSI_FILES.append(os.path.join(_dir, _file))
-ALLOWED_INCLUDE_ROOTS = [SSI_ROOT]
-
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 # URL prefix for static files.
@@ -304,18 +296,6 @@ CRISPY_FAIL_SILENTLY = not DEBUG
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 # STATIC_PRECOMPILER_CACHE = not DEBUG
 
-try:
-    import crispy_forms
-except ImportError:
-    pass
-else:
-    _required = "1.4.0"
-    if crispy_forms.__version__ != _required:
-        raise ImproperlyConfigured("Crispy forms has version '{}' (required: '{}')".format(
-            crispy_forms.__version__,
-            _required,
-        ))
-
 # pipeline settings
 PIPELINE_YUGLIFY_BINARY = "/opt/cluster/lib/node_modules/yuglify/bin/yuglify"
 if not SLAVE_MODE:
@@ -350,6 +330,72 @@ STATICFILES_DIRS.append(
 )
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
+
+# add all applications, including backbone
+
+AUTOCOMMIT = True
+
+INSTALLED_APPS = list(INSTALLED_APPS)
+# deprecated ?
+ADDITIONAL_MENU_FILES = []
+ADDITIONAL_ANGULAR_APPS = []
+ADDITIONAL_URLS = []
+ADDITIONAL_JS = []
+
+AUTHENTICATION_BACKENDS = (
+    "initat.cluster.backbone.cluster_auth.db_backend",
+)
+AUTH_USER_MODEL = "backbone.user"
+
+# my authentication backend
+
+
+ICSW_ADDON_APPS = []
+# add everything below cluster
+dir_name = os.path.dirname(__file__)
+for sub_dir in os.listdir(dir_name):
+    full_path = os.path.join(dir_name, sub_dir)
+    if os.path.isdir(full_path):
+        if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
+            add_app = "initat.cluster.{}".format(sub_dir)
+            if add_app not in INSTALLED_APPS:
+                # search for icsw meta
+                icsw_meta = os.path.join(full_path, "ICSW.meta.xml")
+                if os.path.exists(icsw_meta):
+                    try:
+                        _tree = etree.fromstring(file(icsw_meta, "r").read())
+                    except:
+                        pass
+                    else:
+                        ICSW_ADDON_APPS.append(sub_dir)
+                        ADDITIONAL_ANGULAR_APPS.extend(
+                            [_el.attrib["name"] for _el in _tree.findall(".//app")]
+                        )
+                        ADDITIONAL_URLS.extend(
+                            [
+                                (
+                                    _el.attrib["name"],
+                                    _el.attrib["url"],
+                                    [
+                                        _part for _part in _el.get("arguments", "").strip().split() if _part
+                                    ]
+                                ) for _el in _tree.findall(".//url")
+                            ]
+                        )
+                        js_full_paths = glob.glob(os.path.join(full_path, "static", "js", "*.js"))
+                        ADDITIONAL_JS.extend([os.path.join("js", os.path.basename(js_file))
+                                              for js_file in js_full_paths])
+                INSTALLED_APPS.append(add_app)
+
+ADDITIONAL_JS = tuple(ADDITIONAL_JS)
+
+for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
+    add_app = os.environ[add_app_key]
+    if add_app not in INSTALLED_APPS:
+        INSTALLED_APPS.append(add_app)
+
+INSTALLED_APPS = tuple(INSTALLED_APPS)
+
 PIPELINE_COMPILERS = (
     "pipeline.compilers.coffee.CoffeeScriptCompiler",
 )
@@ -362,14 +408,14 @@ PIPELINE_CSS = {
         "source_filenames": {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "css/main.css",
-            "css/ui.dynatree.css",
+            "css/ui.fancytree.css",
             "css/jqModal.css",
             "css/codemirror.css",
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
             "css/angular-block-ui.css",
-            "js/ui-select/select.css",
+            "css/select.css",
             "css/ladda.min.css",
             "css/tooltip.css",
             "css/smart-table.css",
@@ -407,6 +453,8 @@ PIPELINE_JS = {
             "js/angular-ladda.js",
             "js/hamster.js",
             "js/toaster.js",
+            "js/angular-gettext.min.js",
+            "js/webfrontend_translation.js",
         ),
         "output_filename": "pipeline/js/base.js"
     },
@@ -425,7 +473,7 @@ PIPELINE_JS = {
             "js/angular-file-upload.js",
             "js/restangular.min.js",
             "js/angular-block-ui.js",
-            "js/ui-select/select.js",
+            "js/select.js",
             "js/ui-bootstrap-tpls.min.js",
             "js/angular-ui-router.js",
             # must use minified version, otherwise the minifier destroys injection info
@@ -436,11 +484,15 @@ PIPELINE_JS = {
             "js/angular-noVNC.js",
             "js/FileSaver.js",
             "js/mousewheel.js",
-            "js/smart-table.debug.js",
+            "js/smart-table.js",
             "js/angular-google-maps.min.js",
             "js/bootstrap-dialog.js",
         ),
         "output_filename": "pipeline/js/extra1.js"
+    },
+    "js_icsw_modules": {
+        "source_filenames": ADDITIONAL_JS,
+        "output_filename": "pipeline/js/icsw_modules.js"
     },
     "icsw_cs1": {
         "source_filenames": (
@@ -451,41 +503,19 @@ PIPELINE_JS = {
     }
 }
 
-# add all applications, including backbone
-
-AUTOCOMMIT = True
-
-INSTALLED_APPS = list(INSTALLED_APPS)
-ADDITIONAL_MENU_FILES = []
-
-AUTHENTICATION_BACKENDS = (
-    "initat.cluster.backbone.cluster_auth.db_backend",
-)
-AUTH_USER_MODEL = "backbone.user"
-
-# my authentication backend
-
-# add everything below cluster
-dir_name = os.path.dirname(__file__)
-for sub_dir in os.listdir(dir_name):
-    full_path = os.path.join(dir_name, sub_dir)
-    if os.path.isdir(full_path):
-        if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
-            add_app = "initat.cluster.{}".format(sub_dir)
-            if add_app not in INSTALLED_APPS:
-                # search for menu file
-                templ_dir = os.path.join(full_path, "templates")
-                if os.path.isdir(templ_dir):
-                    for templ_name in os.listdir(templ_dir):
-                        if templ_name.endswith("_menu.html"):
-                            ADDITIONAL_MENU_FILES.append(templ_name)
-                INSTALLED_APPS.append(add_app)
-for add_app_key in [key for key in os.environ.keys() if key.startswith("INIT_APP_NAME")]:
-    add_app = os.environ[add_app_key]
-    if add_app not in INSTALLED_APPS:
-        INSTALLED_APPS.append(add_app)
-
-INSTALLED_APPS = tuple(INSTALLED_APPS)
+SSI_ROOTS = []
+SSI_FILES = []
+for _local_ssi_root in ["frontend"] + ICSW_ADDON_APPS:
+    _SSI_ROOT = os.path.normpath(os.path.join(__file__, "..", _local_ssi_root, "static", "icsw"))
+    if os.path.exists(_SSI_ROOT):
+        for _dir, _dirlist, _filelist in os.walk(_SSI_ROOT):
+            if _dir == _SSI_ROOT:
+                continue
+            for _file in _filelist:
+                if _file.endswith(".html"):
+                    SSI_FILES.append(os.path.join(_dir, _file))
+        SSI_ROOTS.append(_SSI_ROOT)
+ALLOWED_INCLUDE_ROOTS = SSI_ROOTS
 
 HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
 
@@ -502,6 +532,7 @@ HANDBOOK_CHUNKS_PRESENT = True if len(HANDBOOK_CHUNKS) else False
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
 _config_ok = False
+
 if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
@@ -531,7 +562,11 @@ INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 
 TEST_RUNNER = 'django.test.runner.DiscoverRunner'
 
-rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []) + [
+rest_renderers = (
+    [
+        "rest_framework.renderers.BrowsableAPIRenderer"
+    ] if DEBUG else []
+) + [
     "rest_framework.renderers.JSONRenderer",
     # "rest_framework_csv.renderers.CSVRenderer",
     "rest_framework.renderers.XMLRenderer",

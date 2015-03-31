@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -51,7 +51,7 @@ import time
 import uuid
 
 from initat.cluster.backbone.models import device, device_selection, device_config, device_variable, \
-    log_source, log_status, device_group, cluster_license, device_type, mac_ignore, \
+    LogSource, LogLevel, device_group, cluster_license, device_type, mac_ignore, \
     macbootlog, status, wc_files, mon_dist_slave, mon_dist_master, cd_connection, \
     quota_capable_blockdevice, window_manager, virtual_desktop_protocol, virtual_desktop_user_setting, \
     DeviceSNMPInfo
@@ -67,6 +67,7 @@ from initat.cluster.backbone.serializers.hints import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.rms import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.setup import *  # @UnusedWildImport
 from initat.cluster.backbone.serializers.partition import *  # @UnusedWildImport
+from initat.cluster.backbone.serializers.kpi import *  # @UnusedWildImport
 
 
 class device_variable_serializer(serializers.ModelSerializer):
@@ -131,14 +132,14 @@ class device_type_serializer(serializers.ModelSerializer):
         model = device_type
 
 
-class log_source_serializer(serializers.ModelSerializer):
+class LogSourceSerializer(serializers.ModelSerializer):
     class Meta:
-        model = log_source
+        model = LogSource
 
 
-class log_status_serializer(serializers.ModelSerializer):
+class LogLevelSerializer(serializers.ModelSerializer):
     class Meta:
-        model = log_status
+        model = LogLevel
 
 
 class mac_ignore_serializer(serializers.ModelSerializer):
@@ -178,7 +179,7 @@ class mon_dist_master_serializer(serializers.ModelSerializer):
         model = mon_dist_master
 
 
-class DeviceSNMPSerializer(serializers.ModelSerializer):
+class DeviceSNMPInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceSNMPInfo
 
@@ -204,17 +205,15 @@ class device_serializer(serializers.ModelSerializer):
     client_version = serializers.Field(source="client_version")
     monitor_type = serializers.Field(source="get_monitor_type")
     snmp_schemes = snmp_scheme_serializer(many=True, read_only=True)
-    DeviceSNMPInfo = DeviceSNMPSerializer(read_only=True)
+    DeviceSNMPInfo = DeviceSNMPInfoSerializer(read_only=True)
 
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
         super(device_serializer, self).__init__(*args, **kwargs)
-        _optional_fields = set(
-            [
-                "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
-                "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set", "device_mon_location_set",
-            ]
-        )
+        _optional_fields = {
+            "act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
+            "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set", "device_mon_location_set",
+        }
         for _to_remove in _optional_fields - set(fields):
             # in case we have been subclassed
             if _to_remove in self.fields:

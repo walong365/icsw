@@ -32,6 +32,7 @@ from django.db.models import Q
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
+from initat.cluster.backbone.models.license import License
 from initat.cluster.backbone.models import cluster_license_cache, background_job, device_variable
 import django.template
 
@@ -119,6 +120,7 @@ class render_me(object):
         self.my_dict["CLUSTER_ID"] = _cid.get("CLUSTER_ID", "")
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
+        # self.my_dict["ACTIVATED_FEATURES"] = json.dumps([feat.name for feat in License.objects.get_activated_features()])
         self.my_dict["GOOGLE_MAPS_KEY"] = settings.GOOGLE_MAPS_KEY
         self.my_dict["PASSWORD_CHARACTER_COUNT"] = settings.PASSWORD_CHARACTER_COUNT
         self.my_dict["USER_VARS"] = json.dumps(_vars)
@@ -133,6 +135,11 @@ class render_me(object):
         self.my_dict["DJANGO_CLUSTER_LICENSE"] = cur_clc.licenses
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
         self.my_dict["NUM_BACKGROUND_JOBS"] = _num_bg_jobs
+        self.my_dict["ADDITIONAL_MENU_FILES"] = json.dumps(settings.ADDITIONAL_MENU_FILES)
+        self.my_dict["ADDITIONAL_ANGULAR_APPS"] = settings.ADDITIONAL_ANGULAR_APPS
+        self.my_dict["ADDITIONAL_URLS"] = [
+            (_name, reverse(_url, args=_args)) for _name, _url, _args in settings.ADDITIONAL_URLS
+        ]
         return render_to_response(
             self.template,
             self.my_dict,

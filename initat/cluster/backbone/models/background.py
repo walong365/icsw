@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -88,8 +88,10 @@ class background_job_run(models.Model):
     background_job = models.ForeignKey("backbone.background_job")
     # where the job was run
     server = models.ForeignKey("backbone.device")
-    # log source
+    # log source, old style
     log_source = models.ForeignKey("backbone.log_source", null=True, default=None)
+    # log source, new style
+    source = models.ForeignKey("backbone.LogSource", null=True, default=None)
     # command as XML
     command_xml = models.TextField(null=False)
     # result

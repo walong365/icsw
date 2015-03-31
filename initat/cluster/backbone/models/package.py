@@ -112,11 +112,16 @@ class package_search(models.Model):
     user = models.ForeignKey("user")
     num_searches = models.IntegerField(default=0)
     # state diagramm ini (new) -> run -> done -> wait (search again pressed) -> run -> done -> ...
-    current_state = models.CharField(max_length=6, choices=(
-        ("ini", "initialised"),
-        ("wait", "waiting"),
-        ("run", "search running"),
-        ("done", "search done")), default="ini")
+    current_state = models.CharField(
+        max_length=6,
+        choices=(
+            ("ini", "initialised"),
+            ("wait", "waiting"),
+            ("run", "search running"),
+            ("done", "search done")
+        ),
+        default="ini"
+    )
     deleted = models.BooleanField(default=False)
     # number of results for the last search
     results = models.IntegerField(default=0)
@@ -131,6 +136,7 @@ class package_search(models.Model):
 
     class Meta:
         app_label = "backbone"
+        ordering = ("search_string", "results",)
 
 
 @receiver(signals.pre_save, sender=package_search)
@@ -286,7 +292,7 @@ class package_device_connection(models.Model):
     kernel_dep = models.BooleanField(default=False)
     kernel_list = models.ManyToManyField("backbone.kernel", blank=True)
 
-    def get_xml(self, with_package=False):
+    def get_xml(self, with_package=False, pre_delete=False):
         pdc_xml = E.package_device_connection(
             pk="{:d}".format(self.pk),
             key="pdc__{:d}".format(self.pk),
@@ -296,6 +302,7 @@ class package_device_connection(models.Model):
             installed="{}".format(self.installed),
             force_flag="1" if self.force_flag else "0",
             nodeps_flag="1" if self.nodeps_flag else "0",
+            pre_delete="1" if pre_delete else "0",
         )
         if with_package:
             pdc_xml.append(self.package.get_xml())

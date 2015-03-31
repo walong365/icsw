@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone-sql
 #
@@ -458,7 +458,7 @@ class mon_check_command(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
     volatile = models.BooleanField(default=False)
-    # categories for this device
+    # categories for this check
     categories = models.ManyToManyField("backbone.category", blank=True)
     # device to exclude
     exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
@@ -1421,6 +1421,9 @@ class raw_service_alert_manager(models.Manager):
                     additional_fields_query = obj_man.filter(device_id=k, date=v[1])
                 else:
                     additional_fields_query = obj_man.filter(device_id=k[0], service_id=k[1], service_info=k[2], date=v[1])
+
+                if len(additional_fields_query) == 0:  # must be dev independent
+                    additional_fields_query = obj_man.filter(device_independent=True, date=v[1])
 
                 v[0].update(additional_fields_query.values(*additional_fields)[0])
 

@@ -658,6 +658,11 @@ class location_gfx(models.Model):
         _img.save(file(self.image_file_name_last, "wb"), format="PNG")
         return _img
 
+    def resize(self, factor):
+        _img = self._read_image()
+        _img = _img.resize((int(_img.size[0] * factor), int(_img.size[1] * factor)), Image.BICUBIC)
+        self.store_graphic(_img, self.content_type, self.image_name)
+
     def rotate(self, degrees):
         _img = self._read_image().rotate(degrees)
         self.store_graphic(_img, self.content_type, self.image_name)

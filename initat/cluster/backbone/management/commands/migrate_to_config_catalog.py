@@ -34,10 +34,10 @@ class Command(BaseCommand):
         num_cc = config_catalog.objects.all().count()
         if not num_cc:
             def_cc = config_catalog.create_local_catalog()
-            print "created config_catalog '{}'".format(unicode(def_cc))
+            print("created config_catalog '{}'".format(unicode(def_cc)))
             for conf in config.objects.all():
                 conf.config_catalog = def_cc
                 conf.save()
-            print "migrated {:d} configs".format(config.objects.all().count())
+            print("migrated {:d} configs".format(config.objects.all().count()))
         else:
-            print "{} already present".format(logging_tools.get_plural("config catalog", num_cc))
+            print("{} already present".format(logging_tools.get_plural("config catalog", num_cc)))

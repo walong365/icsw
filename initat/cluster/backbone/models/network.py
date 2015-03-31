@@ -663,6 +663,40 @@ class peer_information(models.Model):
             self.d_netdevice.devname
         )
 
+    def store_before_delete(self, del_device):
+        if self.s_netdevice.device_id == del_device.pk:
+            other_nd = self.d_netdevice
+            other_spec = self.d_spec
+            my_name = self.s_netdevice.devname
+            my_spec = self.s_spec
+        else:
+            other_nd = self.s_netdevice
+            other_spec = self.s_spec
+            my_name = self.d_netdevice.devname
+            my_spec = self.d_spec
+        return {
+            "s_spec": self.s_spec,
+            "penalty": self.penalty,
+            "autocreated": self.autocreated,
+            "info": self.info,
+            "other_netdevice": other_nd,
+            "my_name": my_name,
+            "my_spec": my_spec,
+            "other_spec": other_spec,
+        }
+
+    @staticmethod
+    def create_from_store(peer_dict, new_nd):
+        return peer_information.objects.create(
+            s_netdevice=new_nd,
+            s_spec=peer_dict["my_spec"],
+            d_netdevice=peer_dict["other_netdevice"],
+            d_spec=peer_dict["other_spec"],
+            penalty=peer_dict["penalty"],
+            autocreated=peer_dict["autocreated"],
+            info=peer_dict["info"],
+        )
+
     class Meta:
         db_table = u'peer_information'
         app_label = "backbone"

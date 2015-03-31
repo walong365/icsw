@@ -46,7 +46,7 @@ MIGRATION_DIRS = [
     "initat/cluster/liebherr",
 ]
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
-SYNC_APPS = ["liebherr"]
+SYNC_APPS = ["liebherr", "licadmin"]
 
 NEEDED_DIRS = ["/var/log/cluster"]
 
@@ -522,6 +522,7 @@ def call_update_funcs(opts):
     create_fixtures()
     call_manage(["create_cdg --name {}".format(opts.system_group_name)])
     call_manage(["migrate_to_domain_name"])
+    call_manage(["migrate_to_new_logging_scheme"])
     call_manage(["migrate_to_config_catalog"])
     call_manage(["ensure_cluster_id"])
 
