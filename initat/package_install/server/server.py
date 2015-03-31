@@ -208,8 +208,8 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
         srv_com.set_result("result not set", server_command.SRV_REPLY_STATE_UNSET)
         if in_com == "new_config":
             # command devices
-            com_devs = srv_com.xpath(".//ns:device_command/@name", smart_strings=False)
-            if not com_devs:
+            com_uuids = srv_com.xpath(".//ns:device_command/@uuid", smart_strings=False)
+            if not com_uuids:
                 valid_devs = list(client.name_set)
                 self.log(
                     "no devices requested, using {} found".format(
@@ -217,19 +217,21 @@ class server_process(threading_tools.process_pool, server_mixins.network_bind_mi
                     )
                 )
             else:
-                valid_devs = [name for name in all_devs if name in client.name_set]
+                full_uuids = [client.full_uuid(uuid) for uuid in com_uuids]
+                valid_uuids = [uuid for uuid in full_uuids if uuid in client.uuid_set]
+                valid_devs = [client.get(uuid).name for uuid in valid_uuids]
                 self.log(
                     "{} requested, {} found".format(
-                        logging_tools.get_plural("device", len(com_devs)),
+                        logging_tools.get_plural("device", len(com_uuids)),
                         logging_tools.get_plural("device", len(valid_devs))
                     )
                 )
-            for cur_dev in com_devs:
+            for cur_uuid in com_uuids:
                 # update config_sent attribte
                 srv_com.xpath(
-                    ".//ns:device_command[@name='{}']".format(cur_dev),
+                    ".//ns:device_command[@uuid='{}']".format(cur_uuid),
                     smart_strings=False
-                )[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
+                )[0].attrib["config_sent"] = "1" if cur_uuid in valid_uuids else "0"
             if valid_devs:
                 ok_list, error_list = self._send_command("new_config", dev_list=valid_devs)
                 if error_list:

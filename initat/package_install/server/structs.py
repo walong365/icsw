@@ -464,7 +464,7 @@ class client(object):
     @staticmethod
     def init(srv_process):
         client.srv_process = srv_process
-        client.uid_set = set()
+        client.uuid_set = set()
         client.name_set = set()
         client.lut = {}
         if not os.path.exists(CONFIG_NAME):
@@ -474,6 +474,10 @@ class client(object):
             client.register(client_el.text, client_el.attrib["name"])
 
     @staticmethod
+    def full_uuid(in_uuid):
+        return "urn:uuid:{}:pclient:".format(in_uuid)
+
+    @staticmethod
     def get(key):
         return client.lut[key]
 
@@ -481,7 +485,7 @@ class client(object):
     def register(uid, name):
         if not uid.endswith(":pclient:"):
             uid = "{}:pclient:".format(uid)
-        if uid not in client.uid_set:
+        if uid not in client.uuid_set:
             try:
                 new_client = client(uid, name)
             except device.DoesNotExist:
@@ -504,7 +508,7 @@ class client(object):
                     else:
                         client.srv_process.log("successfull with name", logging_tools.LOG_LEVEL_WARN)
             if new_client is not None:
-                client.uid_set.add(uid)
+                client.uuid_set.add(uid)
                 client.name_set.add(name)
                 client.lut[uid] = new_client
                 client.lut[name] = new_client
