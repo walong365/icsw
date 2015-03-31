@@ -439,6 +439,7 @@ package_module = angular.module(
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "new_config"
+                    "pks": (_dev.idx for _dev in $scope.devices)
                 }
                 success : (xml) ->
                     blockUI.stop()
@@ -449,6 +450,7 @@ package_module = angular.module(
                 url     : ICSW_URLS.PACK_REPO_OVERVIEW
                 data    : {
                     "mode" : "clear_caches"
+                    "pks": (_dev.idx for _dev in $scope.devices)
                 }
                 success : (xml) ->
                     blockUI.stop()
