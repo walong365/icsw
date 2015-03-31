@@ -180,6 +180,7 @@ class server_process(threading_tools.process_pool):
         my_poller = zmq.Poller()
         my_poller.register(check_sock, zmq.POLLIN)  # @UndefinedVariable
         s_time = time.time()
+        _last_log = time.time()
         while True:
             _list = my_poller.poll(2)
             if _list:
@@ -191,13 +192,15 @@ class server_process(threading_tools.process_pool):
                 _result = None
                 break
             else:
-                self.log(
-                    "timeout, still waiting ({:.2f} of {:.2f})".format(
-                        abs(cur_time - s_time),
-                        _timeout,
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
-                )
+                if abs(cur_time - _last_log) > 0.5:
+                    _last_log = cur_time
+                    self.log(
+                        "timeout, still waiting ({:.2f} of {:.2f})".format(
+                            abs(cur_time - s_time),
+                            _timeout,
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
         my_poller.unregister(check_sock)
         del my_poller
         check_sock.close()
