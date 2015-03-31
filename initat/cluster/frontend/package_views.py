@@ -59,8 +59,17 @@ class repo_overview(permission_required_mixin, View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         cur_mode = request.POST.get("mode", None)
+        _node_pks = request.POST.getlist("pks[]", [])
         if cur_mode in ["rescan_repos", "reload_searches", "sync_repos", "new_config", "clear_caches"]:
             srv_com = server_command.srv_command(command=cur_mode)
+            if _node_pks:
+                _bldr = srv_com.builder()
+                srv_com["device_commands"] = [
+                    _bldr.device_command(
+                        name=cur_dev.full_name,
+                        uuid=cur_dev.uuid
+                    ) for cur_dev in device.objects.filter(Q(pk__in=_node_pks))
+                ]
             _result = contact_server(request, "package", srv_com, timeout=10, log_result=True)
         else:
             request.xml_response.error("unknown mode '{}'".format(cur_mode))
