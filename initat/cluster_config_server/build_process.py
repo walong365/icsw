@@ -139,7 +139,8 @@ class build_process(threading_tools.process_obj):
             dev_sc = config_tools.server_check(
                 host_name=cur_c.name,
                 server_type="node",
-                fetch_network_info=True)
+                fetch_network_info=True
+            )
             cur_c.log("server_check report(): %s" % (dev_sc.report()))
             cur_net_tree = network_tree()
             # sanity checks
@@ -257,11 +258,17 @@ class build_process(threading_tools.process_obj):
         if not def_servers:
             cur_c.log("no Servers found", logging_tools.LOG_LEVEL_ERROR, state="done")
         else:
-            srv_names = sorted(["%s%s" % (cur_srv.short_host_name, act_prod_net.postfix) for cur_srv in def_servers])
-            cur_c.log("%s found: %s" % (
-                logging_tools.get_plural("server", len(def_servers)),
-                ", ".join(srv_names)
-            ))
+            srv_names = sorted(
+                [
+                    "{}{}".format(cur_srv.short_host_name, act_prod_net.postfix) for cur_srv in def_servers
+                ]
+            )
+            cur_c.log(
+                "{} found: {}".format(
+                    logging_tools.get_plural("server", len(def_servers)),
+                    ", ".join(srv_names)
+                )
+            )
             # store in act_prod_net
             conf_dict = {}
             conf_dict["servers"] = srv_names
