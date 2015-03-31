@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,8 +21,9 @@
 
 from django.db import transaction
 from django.db.models import Q
-from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
-    partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, netdevice_speed
+from initat.cluster.backbone.models import device, partition, partition_disc, \
+    partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
+    netdevice_speed, peer_information
 from initat.discovery_server.config import global_config
 from initat.snmp.struct import ResultNode
 import base64
@@ -66,7 +67,7 @@ class nd_struct(object):
             penalty=1,
             dhcp_device=False,
             is_bridge=True if self.br_dict else False,
-            )
+        )
         cur_nd.save()
         self.nd = cur_nd
         self.log("created netdevice")
@@ -187,7 +188,7 @@ class hm_mixin(object):
                     else:
                         raise ValueError("it seems the client is using pickled transfers")
                     partition_name, partition_info = (
-                        "%s_part" % (target_dev.full_name),
+                        "{}_part".format(target_dev.full_name),
                         "generated partition_setup from device '%s'" % (target_dev.full_name))
                     prev_th_dict = {}
                     try:
@@ -435,7 +436,7 @@ class hm_mixin(object):
         )
         conn_str = "tcp://{}:{:d}".format(
             scan_address,
-            2001
+            2001,
         )
         self.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
         zmq_con.add_connection(
@@ -474,6 +475,17 @@ class hm_mixin(object):
                 else:
                     # clear current network
                     sid = transaction.savepoint()
+                    # store current peers
+                    _peers = [
+                        _obj.store_before_delete(target_dev) for _obj in peer_information.objects.filter(
+                            Q(s_netdevice__in=target_dev.netdevice_set.all()) |
+                            Q(d_netdevice__in=target_dev.netdevice_set.all())
+                        )
+                    ]
+                    _old_peer_dict = {}
+                    for _old_peer in _peers:
+                        _old_peer_dict.setdefault(_old_peer["my_name"], []).append(_old_peer)
+                    # pprint.pprint(_old_peer_dict)
                     self.log("removing current network devices")
                     target_dev.netdevice_set.all().delete()
                     all_ok = True
@@ -500,6 +512,18 @@ class hm_mixin(object):
                             all_ok = False
                         else:
                             num_taken += 1
+                            # relink peers
+                            if cur_nd.nd.devname in _old_peer_dict:
+                                for _peer in _old_peer_dict[cur_nd.nd.devname]:
+                                    _new_peer = peer_information.create_from_store(_peer, cur_nd.nd)
+                                del _old_peer_dict[cur_nd.nd.devname]
+                    if _old_peer_dict.keys():
+                        _err_str = "not all peers migrated: {}".format(", ".join(_old_peer_dict.keys()))
+                        if strict_mode:
+                            res_node.error(_err_str)
+                            all_ok = False
+                        else:
+                            res_node.warning(_err_str)
                     [nd_struct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(nd_struct.dict.keys())]
                     if not all_ok and strict_mode:
                         self.log("rolling back to savepoint because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
