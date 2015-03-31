@@ -474,63 +474,64 @@ class hm_mixin(object):
                     res_node.error(u"{}: error missing keys in dict".format(target_dev))
                 else:
                     # clear current network
-                    sid = transaction.savepoint()
-                    # store current peers
-                    _peers = [
-                        _obj.store_before_delete(target_dev) for _obj in peer_information.objects.filter(
-                            Q(s_netdevice__in=target_dev.netdevice_set.all()) |
-                            Q(d_netdevice__in=target_dev.netdevice_set.all())
-                        )
-                    ]
-                    _old_peer_dict = {}
-                    for _old_peer in _peers:
-                        _old_peer_dict.setdefault(_old_peer["my_name"], []).append(_old_peer)
-                    # pprint.pprint(_old_peer_dict)
-                    self.log("removing current network devices")
-                    target_dev.netdevice_set.all().delete()
-                    all_ok = True
-                    _all_devs = set(networks)
-                    _br_devs = set(bridges)
-                    nd_struct.setup(self, target_dev, default_nds)
-                    for dev_name in sorted(list(_all_devs & _br_devs)) + sorted(list(_all_devs - _br_devs)):
-                        if any([dev_name.startswith(_ignore_pf) for _ignore_pf in IGNORE_LIST]):
-                            self.log("ignoring device {}".format(dev_name))
-                            num_ignored += 1
-                            continue
-                        _struct = networks[dev_name]
-                        cur_nd = nd_struct(dev_name, _struct, bridges.get(dev_name, None))
-                        try:
-                            cur_nd.create()
-                        except:
-                            err_str = "error creating netdevice {}: {}".format(
-                                dev_name,
-                                process_tools.get_except_info())
-                            if strict_mode:
-                                res_node.error(err_str)
-                            for _log in process_tools.exception_info().log_lines:
-                                self.log("  {}".format(_log), logging_tools.LOG_LEVEL_CRITICAL)
-                            all_ok = False
-                        else:
-                            num_taken += 1
-                            # relink peers
-                            if cur_nd.nd.devname in _old_peer_dict:
+                    with transaction.atomic():
+                        sid = transaction.savepoint()
+                        # store current peers
+                        _peers = [
+                            _obj.store_before_delete(target_dev) for _obj in peer_information.objects.filter(
+                                Q(s_netdevice__in=target_dev.netdevice_set.all()) |
+                                Q(d_netdevice__in=target_dev.netdevice_set.all())
+                            )
+                        ]
+                        _old_peer_dict = {}
+                        for _old_peer in _peers:
+                            _old_peer_dict.setdefault(_old_peer["my_name"], []).append(_old_peer)
+                        # pprint.pprint(_old_peer_dict)
+                        self.log("removing current network devices")
+                        target_dev.netdevice_set.all().delete()
+                        all_ok = True
+                        _all_devs = set(networks)
+                        _br_devs = set(bridges)
+                        nd_struct.setup(self, target_dev, default_nds)
+                        for dev_name in sorted(list(_all_devs & _br_devs)) + sorted(list(_all_devs - _br_devs)):
+                            if any([dev_name.startswith(_ignore_pf) for _ignore_pf in IGNORE_LIST]):
+                                self.log("ignoring device {}".format(dev_name))
+                                num_ignored += 1
+                                continue
+                            _struct = networks[dev_name]
+                            cur_nd = nd_struct(dev_name, _struct, bridges.get(dev_name, None))
+                            try:
+                                cur_nd.create()
+                            except:
+                                err_str = "error creating netdevice {}: {}".format(
+                                    dev_name,
+                                    process_tools.get_except_info())
+                                if strict_mode:
+                                    res_node.error(err_str)
+                                for _log in process_tools.exception_info().log_lines:
+                                    self.log("  {}".format(_log), logging_tools.LOG_LEVEL_CRITICAL)
+                                all_ok = False
+                            else:
+                                num_taken += 1
+                            if cur_nd.nd is not None and cur_nd.nd.devname in _old_peer_dict:
+                                #  relink peers
                                 for _peer in _old_peer_dict[cur_nd.nd.devname]:
                                     _new_peer = peer_information.create_from_store(_peer, cur_nd.nd)
                                 del _old_peer_dict[cur_nd.nd.devname]
-                    if _old_peer_dict.keys():
-                        _err_str = "not all peers migrated: {}".format(", ".join(_old_peer_dict.keys()))
-                        if strict_mode:
-                            res_node.error(_err_str)
-                            all_ok = False
+                        if _old_peer_dict.keys():
+                            _err_str = "not all peers migrated: {}".format(", ".join(_old_peer_dict.keys()))
+                            if strict_mode:
+                                res_node.error(_err_str)
+                                all_ok = False
+                            else:
+                                res_node.warn(_err_str)
+                        [nd_struct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(nd_struct.dict.keys())]
+                        if not all_ok and strict_mode:
+                            self.log("rolling back to savepoint because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
+                            num_taken -= target_dev.netdevice_set.all().count()
+                            transaction.savepoint_rollback(sid)
                         else:
-                            res_node.warning(_err_str)
-                    [nd_struct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(nd_struct.dict.keys())]
-                    if not all_ok and strict_mode:
-                        self.log("rolling back to savepoint because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
-                        num_taken -= target_dev.netdevice_set.all().count()
-                        transaction.savepoint_rollback(sid)
-                    else:
-                        transaction.savepoint_commit(sid)
+                            transaction.savepoint_commit(sid)
         if num_taken:
             res_node.ok("{} taken".format(logging_tools.get_plural("netdevice", num_taken)))
         if num_ignored:
