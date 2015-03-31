@@ -462,7 +462,7 @@ class mon_check_command(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
     volatile = models.BooleanField(default=False)
-    # categories for this device
+    # categories for this check
     categories = models.ManyToManyField("backbone.category", blank=True)
     # device to exclude
     exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
