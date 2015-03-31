@@ -24,6 +24,9 @@
 
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import TIME_FORMAT
+from initat.host_monitoring.long_running_checks import (
+    LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
+)
 from initat.host_monitoring.hm_inotify import inotify_process
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.hm_resolve import resolve_process
@@ -44,6 +47,7 @@ import time
 import uuid
 import uuid_tools
 import zmq
+from multiprocessing import Process, Queue
 
 
 # defaults to 10 seconds
@@ -105,6 +109,31 @@ class server_code(threading_tools.process_pool):
             self._sigint("error init")
         self.register_timer(self._check_cpu_usage, 30, instant=True)
         # self["exit_requested"] = True
+
+        # Datastructure for managing long running checks:
+        # A tuple of (Process, queue, zmq_socket, src_id, srv_com)
+        self.long_running_checks = []
+        self.register_timer(self.long_running_checks_timer, 10)
+
+    def long_running_checks_timer(self):
+        checks = enumerate(self.long_running_checks)
+        for i, (process, queue, zmq_sock, src_id, srv_com) in checks:
+            if not process.is_alive():
+                if process.exitcode == 0:
+                    srv_com[LONG_RUNNING_CHECK_RESULT_KEY] = queue.get()
+                    self._send_return(zmq_sock, src_id, srv_com)
+                    self.log("Long running check {!r} finished".format(process.name))
+                else:
+                    srv_com.set_result(
+                        "Long running check {!r} failed".format(process.name),
+                        server_command.SRV_REPLY_STATE_ERROR
+                    )
+                    self._send_return(zmq_sock, src_id, srv_com)
+                    self.log(
+                        "Long running check {!r} failed".format(process.name),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                del self.long_running_checks[i]
 
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -557,7 +586,13 @@ class server_code(threading_tools.process_pool):
                     "unknown command '{}', {}".format(cur_com, cm_str),
                     server_command.SRV_REPLY_STATE_ERROR
                 )
-            if delayed:
+            if isinstance(delayed, LongRunningCheck):
+                queue = Queue()
+                process = delayed.start(queue)
+                self.long_running_checks.append(
+                    (process, queue, zmq_sock, src_id, srv_com)
+                )
+            elif delayed:
                 # delayed is a subprocess_struct
                 delayed.set_send_stuff(self, src_id, zmq_sock)
                 com_usage = len([True for cur_del in self.__delayed if cur_del.command == cur_com])
