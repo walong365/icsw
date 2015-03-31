@@ -40,7 +40,6 @@ import uuid_tools
 import zmq
 
 
-
 class server_process(threading_tools.process_pool, notify_mixin, server_mixins.network_bind_mixin):
     def __init__(self, options):
         self.__log_cache, self.__log_template = ([], None)
@@ -325,13 +324,14 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
                         # salt com_obj with some settings
                         print 'com_obj', com_obj
                         print 'com_obj met', com_obj.Meta.__dict__
-                        if com_obj.Meta.background:
-                            from initat.cluster_server.modules.delete_objects_mod import MyProc
-                            proc = MyProc('process name')
-                            self.add_process(proc, start=True)
-                            com_obj.link(proc)
                         option_dict = dict([(key, srv_com["*server_key:{}".format(key)]) for key in com_obj.Meta.needed_option_keys])
                         cur_inst = com_obj(srv_com, option_dict)
+                        if com_obj.Meta.background:
+                            from initat.cluster_server.modules.delete_objects_mod import MyProc
+                            proc = MyProc(cur_inst.new_bg_name)
+                            self.add_process(proc, start=True)
+                            self.send_to_process("process name", "test", 1234)
+                            # com_obj.link(proc)
                         print 'cur_inst', cur_inst
                         print 'opts', option_dict
                         print 'srv_com', srv_com

@@ -24,7 +24,7 @@ from django.db.models.query_utils import Q
 from django.db import transaction
 import time
 import threading_tools
-from initat.cluster.backbone.models import DeleteRequest
+# from initat.cluster.backbone.models import DeleteRequest
 import initat
 from initat.cluster.backbone.models.functions import can_delete_obj
 
@@ -34,6 +34,12 @@ class MyProc(threading_tools.process_obj):
     def process_init(self):
         super(MyProc, self).process_init()
         print 'proc inited', self
+        from initat.cluster_server.modules import command_dict
+        print command_dict
+        self.register_func("test", self._test)
+
+    def _test(self, *args, **kwargs):
+        print "test", args, kwargs
 
 
 class handle_delete_requests(cs_base_class.server_com):
