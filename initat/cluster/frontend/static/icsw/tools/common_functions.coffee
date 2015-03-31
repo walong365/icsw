@@ -279,12 +279,16 @@ class angular_modal_mixin
         else
             return "has-error"
     modify : () ->
-        if not @scope.form.$invalid
+        if @scope.form
+            if not @scope.form.$invalid
+                @close_modal()
+                return @_prom.resolve(@scope._edit_obj)
+            else
+                # fixme, todo, move to toaster
+                console.log "form validation problem"
+        else
             @close_modal()
             return @_prom.resolve(@scope._edit_obj)
-        else
-            # fixme, todo, move to toaster
-            console.log "form validation problem"
 
 reload_sidebar_tree = (pk_list) ->
     sidebar_div = $("div[id='icsw.sidebar'] > div[id='sidebar-wrapper']")

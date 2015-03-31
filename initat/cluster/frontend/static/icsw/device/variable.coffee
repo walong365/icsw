@@ -256,32 +256,16 @@ device_variable_module = angular.module(
         $scope.create_for_all = (event) ->
             new_obj = {"var_type" : "i", "name" : "var_name"}
             $scope._edit_obj = new_obj
+            $scope.form = {}
             $scope.action_string = "create for all"
-            $scope.edit_div = $compile($templateCache.get("device.variable.new.form"))($scope)
-            $scope.my_modal = BootstrapDialog.show
-                message: $scope.edit_div
-                draggable: true
-                closable: true
-                closeByBackdrop: false
-                onshow: (modal) =>
-                    height = $(window).height() - 100
-                    modal.getModal().find(".modal-body").css("max-height", height)
-            #$scope.edit_div.simplemodal
-            #    position     : [event.pageY, event.pageX]
-            #    #autoResize   : true
-            #    #autoPosition : true
-            #    onShow: (dialog) =>
-            #        $scope.cur_edit = $scope
-            #        dialog.container.draggable()
-            #        $("#simplemodal-container").css("height", "auto")
-            #    onClose: (dialog) =>
-            #        $scope.close_modal()
-        $scope.close_modal = () =>
-            $scope.my_modal.close()
+            cv_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $q, "New variable")
+            cv_mixin.template = "device.variable.new.form"
+            cv_mixin.edit(new_obj).then((new_var) ->
+                $scope.modify()
+            )
         $scope.modify = () ->
             if not $scope.form.$invalid
                 $scope.create_rest_url = Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1))
-                $scope.close_modal()
                 blockUI.start()
                 $scope.add_list = []
                 for entry in $scope.entries
