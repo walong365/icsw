@@ -108,6 +108,7 @@ class com_instance(object):
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
                 new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, com_instance.bg_idx)
+                print 'sc obj', self.sc_obj, self.sc_obj.main_proc
                 self.sc_obj.main_proc.send_to_process(
                     new_bg_name,
                     "set_option_dict",
