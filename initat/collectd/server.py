@@ -1,7 +1,7 @@
 #
 # this file is part of collectd-init
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -30,6 +30,7 @@ from initat.collectd.resize import resize_process
 from initat.collectd.aggregate import aggregate_process
 from initat.collectd.config import global_config, IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.collectd.struct import host_info, var_cache, ext_com, host_matcher, file_creator
+from initat.collectd.dbsync import SyncProcess
 from initat.snmp.process import snmp_process_container
 from lxml import etree
 from lxml.builder import E  # @UnresolvedImports
@@ -90,12 +91,8 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         self.register_timer(self._check_cached_stats, 30, first_timeout=5)
         self.add_process(resize_process("resize"), start=True)
         self.add_process(aggregate_process("aggregate"), start=True)
+        self.add_process(SyncProcess("dbsync"), start=True)
         connection.close()
-        # self.register_func("send_command", self._send_command)
-        # self.register_timer(self._clear_old_graphs, 60, instant=True)
-        # self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
-        # self.register_timer(self._connect_to_collectd, 300, instant=True)
-        # data_store.setup(self)
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
@@ -160,11 +157,11 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collectd-init")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, fuzzy_ceiling=2, process_name="manager")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, fuzzy_ceiling=3, process_name="manager")
         msi_block.start_command = "/etc/init.d/collectd-init start"
         msi_block.stop_command = "/etc/init.d/collectd-init force-stop"
         msi_block.kill_pids = True
@@ -192,17 +189,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             self.com_socket = client
             # self.md_target = self.zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
             self.__last_md_send_error = None
-            # for flag, value in [
-            #    (zmq.IDENTITY, get_self.zmq_id),  # @UndefinedVariable
-            #    (zmq.SNDHWM, 4),  # @UndefinedVariable
-            #    (zmq.RCVHWM, 4),  # @UndefinedVariable
-            #    (zmq.TCP_KEEPALIVE, 1),  # @UndefinedVariable
-            #    (zmq.IMMEDIATE, 1),  # @UndefinedVariable
-            #    (zmq.TCP_KEEPALIVE_IDLE, 300),  # @UndefinedVariable
-            # ]:
-            #    self.md_target.setsockopt(flag, value)
-            self.grapher_id = "{}:grapher:".format(uuid_tools.get_uuid().get_urn())
-            self.__grapher_url = "tcp://localhost:{:d}".format(global_config["GRAPHER_PORT"])
             self.md_target_addr = "tcp://{}:{:d}".format(
                 global_config["MD_SERVER_HOST"],
                 global_config["MD_SERVER_PORT"],
@@ -214,42 +200,11 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             )
             self.com_socket.connect(self.md_target_addr)
             self.log("connection to md-config-server at {}".format(self.md_target_addr))  # , self.md_target_id))
-            self.__grapher_connected = False
             # receiver socket
             self.receiver = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
             listener_url = "tcp://*:{:d}".format(global_config["RECV_PORT"])
             self.receiver.bind(listener_url)
-            self._reconnect_to_grapher()
             self.register_poller(self.receiver, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
-
-    def _reconnect_to_grapher(self):
-        if self.__grapher_connected:
-            try:
-                self.com_socket.disconnect(self.__grapher_url)
-            except:
-                self.log(
-                    "error disconnecting grapher {}: {}".format(
-                        self.__grapher_url,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            else:
-                self.log("closed grapher connection", logging_tools.LOG_LEVEL_WARN)
-            self.__grapher_connected = False
-        try:
-            self.com_socket.connect(self.__grapher_url)
-        except:
-            self.log(
-                "error connecting grapher {}: {}".format(
-                    self.__grapher_url,
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-        else:
-            self.log("connected to grapher at {}".format(self.__grapher_url))
-            self.__grapher_connected = True
 
     def _init_rrd_cached(self):
         self.log("init rrd cached process")
@@ -362,23 +317,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             else:
                 self.log("closed rrdcached socket")
             self.__rrdcached_socket = None
-
-    def send_to_grapher(self, send_xml):
-        try:
-            self.com_socket.send_unicode(self.grapher_id, zmq.DONTWAIT | zmq.SNDMORE)  # @UndefinedVariable
-            self.com_socket.send_unicode(unicode(send_xml), zmq.DONTWAIT)  # @UndefinedVariable
-        except zmq.error.ZMQError:
-            # this will never happen because we are using a REQ socket
-            self.log(
-                "cannot send to grapher: {}".format(
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
-            self._reconnect_to_grapher()
-        else:
-            # print "sent", unicode(send_xml)
-            pass
 
     def send_to_md(self, send_str):
         cur_time = time.time()
@@ -605,19 +543,21 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         st_rate = self.__total_size_trees / diff_time
         bp_rate = self.__pds_read / diff_time
         sp_rate = self.__total_size_pds / diff_time
-        self.log("read {} ({}) from {} (rate [{:.2f}, {}] / sec), {} ({}) from {} (rate [{:.2f}, {}] / sec) in {}".format(
-            logging_tools.get_plural("tree", self.__trees_read),
-            logging_tools.get_size_str(self.__total_size_trees),
-            logging_tools.get_plural("host", len(self.__distinct_hosts_mv)),
-            bt_rate,
-            logging_tools.get_size_str(st_rate),
-            logging_tools.get_plural("perfdata", self.__pds_read),
-            logging_tools.get_size_str(self.__total_size_pds),
-            logging_tools.get_plural("host", len(self.__distinct_hosts_pd)),
-            bp_rate,
-            logging_tools.get_size_str(sp_rate),
-            logging_tools.get_diff_time_str(self.__end_time - self.__start_time),
-        ))
+        self.log(
+            "read {} ({}) from {} (rate [{:.2f}, {}] / sec), {} ({}) from {} (rate [{:.2f}, {}] / sec) in {}".format(
+                logging_tools.get_plural("tree", self.__trees_read),
+                logging_tools.get_size_str(self.__total_size_trees),
+                logging_tools.get_plural("host", len(self.__distinct_hosts_mv)),
+                bt_rate,
+                logging_tools.get_size_str(st_rate),
+                logging_tools.get_plural("perfdata", self.__pds_read),
+                logging_tools.get_size_str(self.__total_size_pds),
+                logging_tools.get_plural("host", len(self.__distinct_hosts_pd)),
+                bp_rate,
+                logging_tools.get_size_str(sp_rate),
+                logging_tools.get_diff_time_str(self.__end_time - self.__start_time),
+            )
+        )
         self._init_vars()
 
     def _create_host_info(self, _dev):
@@ -629,9 +569,9 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
         _host_info = self._create_host_info(_dev)
         if _host_info.update(_xml, self.fc):
             # something changed
-            new_com = server_command.srv_command(command="mv_info")
-            new_com["vector"] = _xml
-            self.send_to_grapher(new_com)
+            # new_com = server_command.srv_command(command="mv_info")
+            # new_com["vector"] = _xml
+            self.send_to_process("dbsync", "mvector", etree.tostring(_xml))
         return _host_info
 
     def _feed_host_info_ov(self, _dev, _xml):
@@ -664,7 +604,14 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
             try:
                 # loop
                 for p_data in getattr(self, handle_name)(_xml, data_len):
-                    self.handle_raw_data(p_data)
+                    _com = p_data[0]
+                    if _com == "mvector":
+                        self._handle_mvector_tree(p_data[1:])
+                    elif _com == "pdata":
+                        # always take the first value of data
+                        self._handle_perfdata(p_data[1])
+                    else:
+                        self.log("unknown data: {}".format(_com), logging_tools.LOG_LEVEL_ERROR)
             except:
                 exc_info = process_tools.exception_info()
                 for _line in exc_info.log_lines:
@@ -733,7 +680,7 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                     mach_values = self._find_matching_pd_handler(_host_info, p_data, perf_value)
                     for pd_vec in mach_values:
                         if pd_vec[2] is not None:
-                            self.send_to_grapher(pd_vec[2])
+                            self.send_to_process("dbsync", "perfdata", etree.tostring(pd_vec[2]))
                         yield ("pdata", pd_vec)
         raise StopIteration
 
@@ -755,16 +702,6 @@ class server_process(threading_tools.process_pool, server_mixins.operational_err
                 logging_tools.LOG_LEVEL_WARN
             )
         return values
-
-    def handle_raw_data(self, data):
-        _com = data[0]
-        if _com == "mvector":
-            self._handle_mvector_tree(data[1:])
-        elif _com == "pdata":
-            # always take the first value of data
-            self._handle_perfdata(data[1])
-        else:
-            self.log("unknown data: {}".format(_com), logging_tools.LOG_LEVEL_ERROR)
 
     def get_time(self, h_tuple, cur_time):
         cur_time = int(cur_time)

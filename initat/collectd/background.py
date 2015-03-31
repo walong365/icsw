@@ -270,14 +270,19 @@ class snmp_job(object):
 
     @staticmethod
     def sync_jobs_with_id_list(id_list):
-        # sync the currently configures jobs with the new id_list
+        # sync the currently configured jobs with the new id_list
         _cur = set(snmp_job.ref_dict.keys())
         _new = set(id_list)
         _to_remove = _cur - _new
         _same = _cur & _new
         _to_create = _new - _cur
         if _to_remove:
-            snmp_job.g_log("{} to remove: {}".format(logging_tools.get_plural("SNMP job", len(_to_remove)), ", ".join(sorted(list(_to_remove)))))
+            snmp_job.g_log(
+                "{} to remove: {}".format(
+                    logging_tools.get_plural("SNMP job", len(_to_remove)),
+                    ", ".join(sorted(list(_to_remove)))
+                )
+            )
             for _rem in _to_remove:
                 snmp_job.ref_dict[_rem].to_remove = True
         return _to_create, _to_remove, _same
@@ -299,9 +304,12 @@ class snmp_job(object):
             )
             for _del in _to_delete:
                 try:
-                    del bg_job.ref_dict[_del]
+                    del snmp_job.ref_dict[_del]
                 except KeyError:
-                    snmp_job.g_log("key {} not in ref_dict, strange...".format(_del), logging_tools.LOG_LEVEL_CRITICAL)
+                    snmp_job.g_log(
+                        "key {} not in ref_dict, strange...".format(_del),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
 
 
 class ipmi_builder(object):

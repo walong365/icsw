@@ -1,8 +1,8 @@
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file belongs to the rrd-grapher package
+# This file belongs to the collectd-init package
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -19,17 +19,18 @@
 #
 """ resize part of collectd-init """
 
+import os
+import stat
+import time
+
 from django.db import connection
 from initat.collectd.config import global_config
 import logging_tools
-import os
-import pprint  # @UnusedImport
 import process_tools
 import rrd_tools
 import server_mixins
-import stat
 import threading_tools
-import time
+
 try:
     import rrdtool  # @UnresolvedImport
 except:
