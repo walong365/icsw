@@ -1,0 +1,7 @@
+# from name and addr
+FROM_NAME=pythonerror
+#FROM_ADDR=localhost.localdomain
+# to addr
+TO_ADDR=lang-nevyjel@init.at
+# mailserver
+MAILSERVER=localhost
