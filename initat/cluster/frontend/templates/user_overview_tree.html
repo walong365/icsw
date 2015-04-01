@@ -1,0 +1,47 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "User Overview" %}{% endblock %}
+
+{% block content %}
+
+{% verbatim %}
+
+<div ng-controller="user_tree">
+    <h2>
+        User / Group tree ({{ group_list.length }} groups, {{ user_list.length }} users)
+    </h2>
+    <div class="col-sm-4">
+        <div class="row">
+            <input type="text" class="form-control" ng-model="filterstr" placeholder="filter ..." ng-change="update_filter()"></input>
+        </div>
+        <div class="row">
+            <input type="button" class="btn btn-success" value="create group" ng-click="create_group()"></input>&nbsp;
+            <input type="button" class="btn btn-primary" value="create user" ng-click="create_user()"></input>&nbsp;
+            <input type="button" class="btn btn-warning" value="sync users" ng-click="sync_users()"></input>
+        </div>
+        <div class="row">
+            <tree treeconfig="tree"></tree>
+        </div>
+    </div>
+    <div class="col-sm-8">
+        <div icsw-user-group-show ng-if="_edit_mode == 'g' && modal_active" class="well well-sm">
+        </div>
+        <div ng-controller="icswUserPasswordCtrl">
+            <div icsw-user-user-show ng-if="_edit_mode == 'u' && modal_active" class="well well-sm">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row" style="margin-top: 200px">
+    <div class="col-md-12">
+        <icsw-user-permission-history></icsw-user-permission-history>
+
+    </div>
+</div>
+
+{% endverbatim %}
+
+{% endblock %}

@@ -1,0 +1,262 @@
+<script type="text/ng-template" id="icsw.device.category.overview">
+    <h3>Categories for {{ device_pks.length }} devices</h3>
+    <tree treeconfig="cat_tree"></tree>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree.head">cat_head.html">
+    <tr>
+        <th>Name</th>
+        <th>Full name</th>   
+        <th>Comment</th>
+        <th>refs</th>
+        <th>lat</th>
+        <th>long</th>
+        <th>lockstate</th>
+        <th>type</th>
+        <th colspan="2">Action</th>
+    </tr>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree.row">
+    <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
+    <td><span ng-show="obj.depth">{{ obj.full_name }}</span></td>
+    <td>{{ obj.comment }}</td>
+    <td><span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span></td>
+    <td><span ng-show="is_location(obj)">{{ obj.latitude }}</span></td>
+    <td><span ng-show="is_location(obj)">{{ obj.longitude }}</span></td>
+    <td><span ng-show="is_location(obj)">{{ obj.locked && 'locked' || 'unlocked' }}</span></td>
+    <td><span ng-show="is_location(obj)">{{ obj.physical && 'physical' || 'structural' }}</span></td>
+    <td><icsw-tools-button type="modify" size="xs" ng-click="edit_obj(obj, $event)" ng-show="obj.depth > 1"/></td>
+    <td><icsw-tools-button type="delete" size="xs" ng-click="delete_obj(obj)" ng-show="obj.depth > 1"/></td>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree.google.map">
+    <div id="map_canvas">
+        <ui-gmap-google-map center="map.center" zoom="map.zoom" pan="true" refresh="true" style="display:block;" draggable="true" bounds="map.bounds" control="map.control" options="map.options">
+            <ui-gmap-marker
+                ng-repeat="marker in marker_list"
+                idKey="marker.key"
+                coords="marker"
+                options="marker.options"
+                events="event_dict"
+                icon="marker.icon"
+            >
+            </ui-gmap-marker>
+        </ui-gmap-google-map>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.list.edit">
+    <accordion close-others="no">
+        <accordion-group ng-repeat="loc in locations" is-open="loc.open">
+            <accordion-heading>
+                <icsw-tools-button type="create" value="add locGfx" size="sm" ng-click="add_location_gfx($event, loc)"></icsw-tools-button>
+                <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+                <button
+                    class="btn btn-sm"
+                    ng-class="loc.locked && 'fa fa-lock btn-success' || 'fa fa-unlock btn-warning'"
+                    ng-ng-value="loc.locked && 'unlock' || 'lock'"
+                    title="{{ loc.locked && 'location is locked' || 'location is unlocked' }}"
+                    ng-click="toggle_lock($event, loc)"
+                />
+                &nbsp;
+                <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+                <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+                {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span>
+                <span ng-show="loc.location_gfxs.length">, {{ loc.location_gfxs.length }} location maps</span>, {{ loc.dev_pks.length }} devices
+                <span class="pull-right" ng-show="loc.location_gfxs.length">
+                    <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': loc.open, 'glyphicon-chevron-right': !loc.open}"></i>
+                </span>
+            </accordion-heading>
+            <ul ng-show="loc.location_gfxs.length" class="list-group">
+                <li class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
+                    <div class="btn-group">
+                        <icsw-tools-button type="modify" size="xs" value="modify" ng-click="modify_location_gfx($event, loc_gfx)"></icsw-tools-button>
+                        <icsw-tools-button type="display" size="xs" ng-class="preview_gfx.idx != loc_gfx.idx && 'btn-primary' || ''" ng-show="loc_gfx.image_stored" value="preview and enhance" ng-click="show_preview(loc_gfx)"></icsw-tools-button>
+                    </div>
+                    {{ loc_gfx.name }}
+                    <span ng-show="loc_gfx.comment"> ({{ loc_gfx.comment }})</span>
+                    <span ng-show="loc_gfx.image_stored">
+                        , {{ loc_gfx.image_name }} {{ loc_gfx.width }} x {{ loc_gfx.height }} ({{ loc_gfx.content_type }})
+                        <image ng-src="{{ loc_gfx.icon_url }}" width="24" height="24"></image>
+                        <ng-pluralize count="loc_gfx.dev_pks.length" when="{'0': ', no devices', '1': 'one device', 'other':'{} devices'}"/>
+                    </span>
+                    <span class="pull-right">
+                        <div class="btn-group" ng-show="loc_gfx.dev_pks.length == 0">
+                            <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_location_gfx($event, loc_gfx)"/>
+                        </div>
+                    </span>
+                </li>
+            </ul>
+        </accordion-group>
+    </accordion>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.list.show">
+    <ul class="list-group">
+        <li class="list-group-item" ng-repeat-start="loc in locations">
+            <icsw-tools-button type="display" value="locate" size="sm" ng-click="locate(loc, $event)" title="({{ loc.latitude }}, {{ loc.longitude }})"></icsw-tools-button>
+            <span class="glyphicon glyphicon-globe" ng-show="loc.physical" title="physical"></span>
+            <span class="glyphicon glyphicon-th-list" ng-show="!loc.physical" title="structural"></span>&nbsp;
+            {{ loc.full_name }}<span ng-show="loc.comment"> ({{ loc.comment }})</span> ({{ loc.dev_pks.length }})
+        </li>
+        <li ng-repeat-end class="list-group-item" ng-repeat="loc_gfx in loc.location_gfxs">
+            - {{ loc_gfx.name }} ({{ loc_gfx.dev_pks.length }})
+        </li>
+    </ul>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.edit">
+    <div class="row">
+        <div class="col-md-6">
+            <icsw-config-category-tree-google-map locations="locations"></icsw-config-category-tree-google-map>
+        </div>
+        <div class="col-md-6">
+            <icsw-config-category-location-list-edit></icsw-config-category-location-list-edit>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.location.show">
+    <div class="row">
+        <div class="col-md-6">
+            <icsw-config-category-tree-google-map locations="locations"></icsw-config-category-tree-google-map>
+        </div>
+        <div class="col-md-6">
+            <icsw-config-category-location-list-show></icsw-config-category-location-list-show>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree">
+    <h2>
+        Category tree ({{entries.length}} entries)
+    </h2>
+    <tabset>
+        <tab heading="Locations" select="activate_map()">
+            <h3>Map view, {{ locations.length }} locations</h3>
+            <icsw-config-category-location-edit preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-location-edit>
+            <hr ng-show="preview_gfx"/>
+            <icsw-config-category-tree-map-enhance preview-gfx="preview_gfx" preview-close="close_preview"></icsw-config-category-tree-map-enhance>
+        </tab>
+        <tab heading="Categories">
+            <h3>Actions:
+                <icsw-tools-button type="create" value="create new" ng-click="create_new($event, '')" size="sm"/>
+                <input type="button" value="prune tree" class="btn btn-sm btn-warning" ng-click="prune_tree()"/>
+            </h3>
+            <div class="row">
+                <div class="col-sm-4">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <h3>Tree view</h3>
+                            <tree treeconfig="cat"></tree>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-12" ng-if="modal_active && !settings.use_modal && active_aem == 'cat'" >
+                            <h3 ng-show="create_mode">Create</h3>
+                            <h3 ng-show="!create_mode">Modify</h3>
+                            <div icsw-config-category-tree-edit-template class="well well-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-8">
+                    <h3>Table view</h3>
+                    <table class="table table-condensed table-hover" style="width:auto;">
+                        <thead icsw-config-category-tree-head></thead>
+                        <tbody>
+                            <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                            <tr icsw-config-category-tree-row ng-repeat="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </tab>
+    </tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree.map.enhance">
+    <div class="row panel panel-default" ng-show="preview_gfx">
+        <div class="col-md-12 panel-heading">
+            <h3>Modify and enhance '{{ preview_gfx.name }}', size is {{ preview_gfx.width }} x {{ preview_gfx.height }}</h3>
+            <div class="btn-group">
+                <button type="button" class="btn btn-warning" title="Close" ng-click="close_preview()">close</button>
+            </div>
+            Display:
+            <div class="btn-group">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                    {{ display_style }} <span class="caret"/>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a ng-click="display_size('scaled')">Scaled</a></li>
+                    <li><a ng-click="display_size('original')">Original</a></li>
+                </ul>
+            </div>
+            Rotate:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-success'" ng-click="rotate(90)" title="rotate left">
+                    <span class="fa fa-rotate-left"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-success'" ng-click="rotate(-90)" title="rotate right">
+                    <span class="fa fa-rotate-right"></span>
+                </button>
+            </div>
+            Size:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-default'" ng-click="resize(1.125)" title="increase size">
+                    <span class="glyphicon glyphicon-upload"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-default'" ng-click="resize(0.875)" title="decrease size">
+                    <span class="glyphicon glyphicon-download"></span>
+                </button>
+            </div>
+            Brightness:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-default'" ng-click="brightness(1.25)" title="increase brightness">
+                    <span class="glyphicon glyphicon-upload"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-default'" ng-click="brightness(0.75)" title="decrease brightness">
+                    <span class="glyphicon glyphicon-download"></span>
+                </button>
+            </div>
+            Sharpen:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-warning'" ng-click="sharpen(1.25)" title="sharpen image">
+                    <span class="glyphicon glyphicon-zoom-in"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-warning'" ng-click="sharpen(0.75)" title="unsharpen image">
+                    <span class="glyphicon glyphicon-zoom-out"></span>
+                </button>
+            </div>
+            <div class="btn-group">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                    Filter<span class="caret"/>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a ng-click="modify_image('af_emboss')">Emboss</a></li>
+                    <li><a ng-click="modify_image('af_contour')">Contour</a></li>
+                    <li><a ng-click="modify_image('af_detail')">Detail</a></li>
+                    <li><a ng-click="modify_image('af_edge_enhance')">Edge enhance</a></li>
+                    <li><a ng-click="modify_image('af_edge_enhance_more')">Edge enhance (more)</a></li>
+                    <li><a ng-click="modify_image('af_find_edges')">Find edges</a></li>
+                    <li><a ng-click="modify_image('af_smooth')">Smooth</a></li>
+                    <li><a ng-click="modify_image('af_smooth_more')">Smooth more</a></li>
+                    <li><a ng-click="modify_image('af_sharpen')">Sharpen</a></li>
+                </ul>
+            </div>
+            Undo / reset:
+            <div class="btn-group">
+                <button type="button" ng-class="'btn btn-warning'" ng-click="undo()" title="undo last step">
+                    <span class="glyphicon glyphicon-repeat"></span>
+                </button>
+                <button type="button" ng-class="'btn btn-danger'" ng-click="restore()" title="restore original image">
+                    <span class="glyphicon glyphicon-off"></span>
+                </button>
+            </div>
+        </div>
+        <div class="col-md-12 panel-body">
+            <image ng-src="{{ preview_gfx.image_url }}" ng-attr-style="{{ img_style }}"></image>
+        </div>
+    </div>
+</script>

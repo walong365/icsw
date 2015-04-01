@@ -1,0 +1,13 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Device connections" %}{% endblock %}
+
+{% block content %}
+
+<div ng-controller="icswDeviceConnectionCtrl">
+    <icsw-device-connection-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d"></icsw-device-connection-overview>
+</div>
+
+{% endblock %}

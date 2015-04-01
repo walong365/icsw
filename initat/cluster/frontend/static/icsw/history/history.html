@@ -1,0 +1,46 @@
+
+<script type="text/ng-template" id="icsw.history.overview">
+    <h2>System history</h2>
+    <icsw-history-model-history model="user"></icsw-history-model-history>
+</script>
+
+<script type="text/ng-template" id="icsw.history.model_history">
+    <h3>{{model}}</h3>
+    <alert type="danger"><strong>TODO</strong>: how to identify objects in a human readable fashion?</alert>
+    <alert type="danger"><strong>TODO</strong>: serialize something for foreign keys and m2m</alert>
+    <alert type="danger"><strong>TODO</strong>: m2m through?</alert>
+    <table class="table table-condensed table-hover table-striped" style="width: auto">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>User</th>
+                <th></th>
+                <th ng-repeat="(k, v) in entries[0].data" ng-show="column_visible[k]">{{k}}</th>
+            </tr>
+            <tr>
+
+            <tr ng-repeat="entry in entries">
+                <td>{{entry.meta.id}}</td>
+                <td>{{entry.meta.date}}</td>
+                <td>{{entry.meta.type}}</td>
+                <td>{{entry.meta.user}}</td>
+                <td></td>
+                <!--
+                <td ng-repeat="(k, v) in entry.data" ng-class="last_entry_different(entry.data['idx'], $parent.$index, k) && 'danger'">
+                    {{v}}
+                </td>
+                -->
+
+                <td ng-repeat="(k, v) in entry.data" ng-show="column_visible[k]">
+                    <div ng-show="last_entry_different(entry.data['idx'], $parent.$index, k)">
+                        {{get_last_entry_before(entry.data['idx'], $parent.$index).data[k]}}
+                        TO
+                        {{v}}
+                    </div>
+                </td>
+            </tr>
+        </thead>
+    </table>
+</script>

@@ -1,0 +1,11 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Monitoring - livestatus" %}{% endblock %}
+
+{% block content %}
+
+<icsw-device-livestatus icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-device-livestatus>
+
+{% endblock %}

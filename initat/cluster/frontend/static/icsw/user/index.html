@@ -1,0 +1,102 @@
+<script type="text/ng-template" id="icsw.user.index">
+    <h2 class="center">Please select a device from the tree on the left side</h2>
+    <accordion close-others="no">
+        <accordion-group is-open="quick_open">
+            <accordion-heading>
+                Quicklinks
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': quick_open, 'glyphicon-chevron-right': !quick_open}"></i>
+            </accordion-heading>
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Change account settings (password, contact data)
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ ICSW_URLS.USER_ACCOUNT_INFO }}">Account Info</a>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item" ng-show="check_perm('backbone.user.modify_tree')">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Add a new device
+                        </div>
+                        <div class="col-md-4">
+                            <a href="{{ ICSW_URLS.MON_CREATE_DEVICE }}">Create device</a>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </accordion-group>
+        <accordion-group is-open="ext_open">
+            <accordion-heading>
+                External links
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': ext_open, 'glyphicon-chevron-right': !ext_open}"></i>
+            </accordion-heading>
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Changelog of the current development master
+                        </div>
+                        <div class="col-md-4">
+                            <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >Changelog</a>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Software support forum (register, discuss and ask questions)
+                        </div>
+                        <div class="col-md-4">
+                            <a href="http://www.initat.org/phpBB3/index.php" target="_blank">Forum</a>
+                        </div>
+                    </div>
+                </li>
+                <li class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-4">
+                            Mailing list (subscribe)
+                        </div>
+                        <div class="col-md-4">
+                            <a href="http://www.initat.org/mailman/listinfo" target="_blank">MailMan</a>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </accordion-group>
+        <accordion-group is-open="diskusage_open">
+            <accordion-heading>
+                Disk usage and Quota info from <ng-pluralize count="NUM_QUOTA_SERVERS" when="{'0' : 'no quota servers', 'one' : 'one quota server', 'other' : '{} quota servers'}"></ng-pluralize>
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': diskusage_open, 'glyphicon-chevron-right': !diskusage_open}"></i>
+            </accordion-heading>
+            <div ng-controller="icswUserAccountCtrl">
+                <icsw-user-quota-settings object='edit_obj' type='user'/>
+                <icsw-user-disk-usage object="edit_obj" type="user"/>
+            </div>
+        </accordion-group>
+        <accordion-group is-open="vdesktop_open">
+            <accordion-heading>
+                Virtual desktops
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': vdesktop_open, 'glyphicon-chevron-right': !vdesktop_open}"></i>
+            </accordion-heading>
+
+            <div ng-controller="icswUserAccountCtrl">
+                <icsw-user-vdu-overview object="edit_obj"/>
+            </div>
+
+        </accordion-group>
+        <accordion-group is-open="jobinfo_open" ng-show="CLUSTER_LICENSE.rms.enabled">
+            <accordion-heading>
+                Job info
+                <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': jobinfo_open, 'glyphicon-chevron-right': !jobinfo_open}"></i>
+            </accordion-heading>
+            <div ng-controller="icswUserJobInfoCtrl">
+                <icsw-user-job-info/>
+            </div>
+        </accordion-group>
+    </accordion>
+</script>
+

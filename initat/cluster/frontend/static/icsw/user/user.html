@@ -1,0 +1,373 @@
+<script type="text/ng-template" id="icsw.user.vdu.overview">
+    <!-- vnc viewer mode -->
+    <div ng-if="show_single_vdus && ips_loaded">
+        <vnc host="{{ ips_for_devices[single_vdus.device] }}" port="{{ single_vdus.websockify_effective_port  }}" is-connected="show_single_vdus" password="{{ single_vdus.password }}" ></vnc>
+    </div>
+    <!-- dashboard mode -->
+    <div ng-if="virtual_desktop_sessions.length == 0">
+        No virtual desktop sessions
+    </div>
+    <div ng-if="(!show_single_vdus) && ips_loaded">
+        <div class="panel panel-success" ng-repeat="vdus in virtual_desktop_sessions" style="width:650px">
+            <div class="panel-heading">
+                <h4 class="ng-binding panel-title">
+                    {{ get_virtual_desktop_protocol(vdus.virtual_desktop_protocol).description }} session on {{ get_device_by_index(vdus.device).name }} ({{ips_for_devices[vdus.device]}}:{{vdus.effective_port }}) running {{ get_window_manager(vdus.window_manager).description }}
+                </h4>
+            </div>
+            <div class="panel-body">
+
+                <table class="table">
+                    <tr>
+                        <td>Status</td>
+                        <td ng-class="(vdus.state == 1) && 'text-danger'">{{ vdus.state_description }}</td>
+                    </tr>
+                    <tr>
+                        <td>Server</td>
+                        <td>{{ips_for_devices[vdus.device]}}:{{ vdus.effective_port }}</td>
+                    </tr>
+                    <tr>
+                        <td>Password</td>
+                        <td>{{ vdus.password }}</td>
+                    </tr>
+                    <tr>
+                        <td>Command line</td>
+                        <td>{{ vdus.viewer_cmd_line }}</td>
+                    </tr>
+
+                    <tr ng-if="vdus.state != 1">
+                        <td colspan="2">
+                            <button type="button" ng-click="open_vdus_in_new_tab(vdus)" class="btn btn-default">Open in new tab</button>
+                            <button type="button" ng-click="download_vdus_start_script(vdus)" class="btn btn-default">Download .vnc configuration file</button>
+                        </td>
+                    </tr>
+                </table>
+                <table>
+                    <!--
+                        <tr>
+                            <td>
+                                <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
+                                <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
+                                    {{vdus.viewer_cmd_line}}
+                                </div>
+                            </td>
+                        </tr>
+                    -->
+                    <tr ng-if="vdus.state != 1">
+                        <td>
+                        </td>
+                        <td colspan="2">
+
+                            <accordion close-others="false">
+                               <accordion-group is-open="web_viewer">
+                                   <accordion-heading>
+                                       Web viewer
+                                       <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
+                                   </accordion-heading>
+                                   <div ng-if="web_viewer">
+                                       <!--
+                                       ie10 warns about leaving the page if a vnc directive is in the dom, this way it is only the case if the user has explicitly opened it
+                                       -->
+                                       <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
+                                   </div>
+                               </accordion-group>
+                               </accordion>
+
+                        </td>
+                    </tr>
+                </table>
+
+            </div>
+       </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.user.vdu.settings">
+    <fieldset ng-show="true">
+        <legend>Virtual Desktops</legend>
+        <div ng-show="!virtual_desktop_device_available()">
+            <p>No device supporting a virtual desktop protocol and a window manager found</p>
+        </div>
+        <div id="div_id_device" class="form-group" ng_show="virtual_desktop_device_available()">
+            <label for="id_device" class="control-label col-sm-2">
+               Device
+            </label>
+            <div class="controls col-sm-8">
+                <div class='input-group' style='max-width:400px; min-width:240px;'>
+                    <ui-select ng-model='_edit_obj.device' ng-disabled='false' ng-change="on_device_change()">
+                        <ui-select-match placeholder='Select a device'>{{$select.selected.name}}</ui-select-match>
+                        <ui-select-choices repeat='value.idx as value in virtual_desktop_devices()' group-by='&#39;model_name&#39;'>
+                            <div ng-bind-html='value.name | highlight: $select.search'></div>
+                        </ui-select-choices>
+                    </ui-select>
+                    <span class='input-group-btn'>
+                    <button type="button" ng-click="_edit_obj.device = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span></div>
+                </div>
+            </div>
+
+            <div id="div_id_virtual_desktop_protocol" class="form-group " ng_show="_edit_obj.device" >
+                <label for="id_virtual_desktop_protocol" class="control-label col-sm-2">
+                    Virtual desktop protocol
+                </label>
+                <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='Select an virtual desktop protocol'>{{$select.selected.description}}</ui-select-match><ui-select-choices repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='&#39;model_name&#39;'><div ng-bind-html='value.description | highlight: $select.search'></div></ui-select-choices></ui-select></div>
+            </div>
+
+            <div id="div_id_port" class="form-group " ng_show="_edit_obj.device" >
+                <label for="id_port" class="control-label col-sm-2">
+                    Port
+                 </label>
+                <div class="controls col-sm-8">
+                    <input class="numberinput form-control" id="id_port" max="65535" min="0" name="port" ng-model="_edit_obj.port" placeholder="0" type="number" />
+                </div>
+            </div>
+
+            <div id="div_id_web_vnc_port" class="form-group " ng_show="_edit_obj.device" >
+                <label for="id_web_vnc_port" class="control-label col-sm-2">
+                    Web VNC Port
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="numberinput form-control" id="id_web_vnc_port" max="65535" min="0" name="port" ng-model="_edit_obj.websockify_port" placeholder="0" type="number" />
+                </div>
+            </div>
+
+            <div id="div_id_window_manager" class="form-group " ng_show="_edit_obj.device" ><label for="id_window_manager" class="control-label col-sm-2">
+                    Window manager
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model='_edit_obj.window_manager' style='max-width:400px; min-width:240px;' ng-disabled='false'>
+                        <ui-select-match placeholder='Select a wm'>{{$select.selected.description}}</ui-select-match>
+                        <ui-select-choices repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='&#39;model_name&#39;'>
+                            <div ng-bind-html='value.description | highlight: $select.search'></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+
+            <div id="div_id_screen_size" class="form-group " ng_show="_edit_obj.device" >
+                <label for="id_screen_size" class="control-label col-sm-2">
+                    Screen size
+                </label>
+                <div class="controls col-sm-8"><ui-select  ng-model='_edit_obj.screen_size' style='max-width:400px; min-width:240px;' ng-disabled='false'><ui-select-match placeholder='...'>{{$select.selected.name}}</ui-select-match><ui-select-choices repeat='value as value in available_screen_sizes'><div ng-bind-html='value.name | highlight: $select.search'></div></ui-select-choices></ui-select></div>
+            </div>
+
+
+            <div>
+                <div class="control-label col-sm-2" > &nbsp; </div>
+                <div class="controls form-inline" ng_show="_edit_obj.device && _edit_obj.screen_size.manual">
+                    <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_x"></input> x <input class="numberinput form-control" type="number" min="200", max="6000" ng-model="_edit_obj.manual_screen_size_y"></input>
+                </div>
+            </div>
+
+            <div  ng-show="_edit_obj.device">
+            <!--<div  class="control-label col-sm-2" > &nbsp; </div>-->
+            <div class="form-group">
+                <div id="div_id_start_automatically" class="checkbox " >
+                    <div class="controls col-lg-offset-0 col-sm-8">
+                        <label for="id_start_automatically" class="">
+                            <input class="checkboxinput checkbox" id="id_start_automatically" name="start_automatically" ng-model="_edit_obj.start_automatically" type="checkbox" />
+                    Enabled (Check to make sure the server is always running)
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <input type="button" name="" value="{{ get_virtual_desktop_submit_mode() }}" class="btn btn btn-sm btn-success" id="button-id-" ng-click="create_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
+        <input type="button" name="" value="cancel" class="btn btn btn-sm btn-danger" id="button-id-" ng-click="cancel_virtual_desktop_user_setting()" ng-show="_edit_obj.device" />
+    </fieldset>
+
+    <table class="table table-condensed table-hover table-striped" style="width:100%;">
+        <thead>
+            <tr>
+                <th>Device</th>
+                <th>Protocol</th>
+                <th>Port</th>
+                <th>Web VNC Port</th>
+                <th>Window<br/>manager</th>
+                <th>Screen size</th>
+                <th>Enabled</th>
+                <th>State</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="vdus in get_virtual_desktop_user_setting_of_user(_edit_obj)">
+                <td> {{ get_device_by_index(vdus.device).name }} </td>
+                <td> {{ get_virtual_desktop_protocol_by_index(vdus.virtual_desktop_protocol).description }} </td>
+                <td> {{ vdus.port }} </td>
+                <td> {{ vdus.websockify_port }} </td>
+                <td> {{ get_window_manager_by_index(vdus.window_manager).description }} </td>
+                <td> {{ vdus.screen_size }} </td>
+                <td> {{ vdus.is_running | yesno2 }} </td>
+                <td> {{ vdus.state_description }} </td>
+                <td>
+                    <button type="button" popover-placement="top" popover-title="Viewer command line" popover="{{ vdus.viewer_cmd_line }}" class="btn btn-xs btn-info">info</button>
+                    <button type="button" class="btn btn-xs btn-success" value="modify" ng-click="modify_virtual_desktop_user_setting(vdus)">modify</button>
+                    <button type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_virtual_desktop_user_setting(vdus)">delete</button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.user.job.info">
+    <table class="table table-hover table-bordered table-condensed" style="width:100%;" ng-show="jobinfo_valid">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Number of jobs</th>
+                <th>Job ids</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            <tr>
+                <td> Jobs waiting </td>
+                <td> {{ jobs_waiting.length }} </td>
+                <td> {{ longListToString(jobs_waiting) }} </td>
+            </tr>
+            <tr>
+                <td> Jobs running </td>
+                <td> {{ jobs_running.length }} </td>
+                <td> {{ longListToString(jobs_running) }} </td>
+            </tr>
+            <tr>
+                <td>
+                    Jobs finished in
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                            <span class="glyphicon glyphicon-dashboard"></span>
+                            {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)"><a href="#">{{ ts.name }}</a></li>
+                        </ul>
+                     </div>
+                </td>
+                <td>{{ jobs_finished.length }}</td>
+                <td>{{ longListToString(jobs_finished) }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <h4 ng-show="!jobinfo_valid">waiting for jobinfo ...</h4>
+</script>
+
+<script type="text/ng-template" id="icsw.user.disk.usage">
+    <h4>{{ scan_run_info() }}<span ng-show="current_scan_run">, </span><input ng-show="current_scan_run" type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"></input></h4>
+    <div ng-show="current_scan_run">
+        <tree treeconfig="du_tree"></tree>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.user.quota.settings">
+    <table class="table table-hover table-bordered table-condensed table-striped" style="width:100%;" ng-show="quota_settings.length">
+        <thead>
+            <tr>
+                <th>Device</th>
+                <th>Path</th>
+                <th>Size</th>
+                <th>Flags</th>
+                <th>Bytes Graph</th>
+                <th>Bytes used</th>
+                <th>Bytes limit</th>
+                <th>INode Graph</th>
+                <th>INodes used</th>
+                <th>INodes limit</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="qs in quota_settings" ng-class="get_line_class(qs)">
+                <td>{{ qs.qcb.device.full_name }}</td>
+                <td>{{ qs.qcb.mount_path }}</td>
+                <td>{{ qs.qcb.size | get_size:1:1024 }}</td>
+                <td class="center">{{ qs.quota_flags }}</td>
+                <td style="width:300px;">
+                    <div class="row">
+                        <div class="col-xs-2">
+                            <span class="label label-primary" ng_click="qs.show_abs = !qs.show_abs"><span ng-show="qs.show_abs">Total:</span><span ng-show="!qs.show_abs">Relative:</span></span>
+                        </div>
+                        <div class="col-xs-10">
+                            <progress ng-show="qs.bytes_quota && qs.show_abs">
+                                <bar ng-repeat="stack in qs.bytes_stacked_abs track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+                            </progress>
+                            <progress ng-show="qs.bytes_quota && !qs.show_abs">
+                                <bar ng-repeat="stack in qs.bytes_stacked_rel track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+                            </progress>
+                        </div>
+                    </div>
+                </td>
+                <td class="text-center">{{ qs.bytes_used | get_size:1:1024 }}</td>
+                <td class="text-center">{{ get_bytes_limit(qs) }}</td>
+                <td style="width:120px;">
+                    <progress ng-show="qs.files_quota">
+                        <bar ng-repeat="stack in qs.files_stacked track by $index" value="stack.value" title="{{ stack.title }}" type="{{ stack.type }}">{{ stack.out }}</bar>
+                    </progress>
+                </td>
+                <td class="text-center">{{ qs.files_used | get_size:1:1000:'' }}</td>
+                <td class="text-center">{{ get_files_limit(qs) }}</td>
+            </tr>
+        </tbody>
+    </table>
+    <h4 ng-show="!quota_settings.length">no quota info</h4>
+</script>
+
+<script type="text/ng-template" id="icsw.user.permissions">
+    <table class="table table-condensed table-hover table-striped" style="width:100%;">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>Code</th>
+                <th>Level</th>
+                <th>Object</th>
+                <th>Application</th>
+                <th>Model</th>
+                <th ng-show="action">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="perm in get_permission_set()">
+                <td>global</td>
+                <td>{{ perm.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
+                <td>{{ perm.csw_permission | array_lookup:csw_permission_list:'codename' }}</td>
+                <td>{{ get_perm_level(perm) }}</td>
+                <td>&nbsp;</td>
+                <td>{{ get_perm_app(perm) }}</td>
+                <td>{{ get_perm_model(perm) }}</td>
+                <td ng-show="action"><input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_permission(perm)"></input></td>
+            </tr>
+            <tr ng-repeat="perm in get_object_permission_set()">
+                <td>local</td>
+                <td>{{ perm.csw_object_permission.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
+                <td>{{ perm.csw_object_permission.csw_permission | array_lookup:csw_permission_list:'codename' }}</td>
+                <td>{{ get_perm_level(perm) }}</td>
+                <td>{{ get_perm_object(perm) }}</td>
+                <td>{{ get_perm_app(perm.csw_object_permission) }}</td>
+                <td>{{ get_perm_model(perm.csw_object_permission) }}</td>
+                <td ng-show="action"><input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_object_permission(perm)"></input></td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.user.permission-history">
+    <div class="col-md-3">
+        <div class="form-group">
+            <div class="input-group">
+                <input type="text" class="form-control" ng-model="historic_date">
+                </input>
+                <span class="dropdown-toggle input-group-addon">
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle btn-xs" data-toggle="dropdown">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                        <ul class="dropdown-menu" role="menu">
+                            <datetimepicker ng-model="historic_date"
+                                            data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                        </ul>
+                    </div>
+                </span>
+            </div>
+        </div>
+    </div>
+    {{user}}
+
+</script>
