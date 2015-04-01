@@ -1,0 +1,136 @@
+
+<script type="text/ng-template" id="icsw.config.kpi">
+
+    <h2>Key performance indicators</h2>
+
+    <tabset>
+        <tab heading="Show KPIs">
+
+            <div class="alert alert-info" role="alert" style="margin-top: 2em; margin-left: 2em">
+                No KPIs defined. <a class="alert-link" ng-click="configure_kpi_active = true">Click here to configure KPIs.</a>
+            </div>
+            TODO: create button here as currently on other page
+
+        </tab>
+        <tab heading="Configure KPIs" active="configure_kpi_active || true"> <!-- TODO: remove true here -->
+
+            <icsw-config-kpi-configure></icsw-config-kpi-configure>
+
+        </tab>
+    </tabset>
+
+</script>
+
+<script type="text/ng-template" id="icsw.config.kpi.configure">
+    <div class="alert alert-danger"><strong>TODO</strong>: show current kpis with modify btn in 'Show KPIs'
+    </div>
+
+    <div class="alert alert-danger"><strong>TODO</strong>: make this into a modal dialog with 2 tabs: configure data source and configure expression.
+        <p>
+        handle create and edit nicely -> edit mixin? (how do we deal with tuple selection table with custom save code?)
+    </div>
+
+    <div class="alert alert-danger"><strong>TODO</strong>: only one rest notification when creating a kpi
+    </div>
+
+    <div class="alert alert-danger"><strong>TODO</strong>: don't save available_..dev..mon.. as hard index but list of integers serialized;
+
+<p>
+    show full list of selected tuples (support changing checkbox selection without hard selection of tuples changing)
+    </div>
+
+    <div ng-show="!get_cur_edit_kpi()">
+
+        <icsw-tools-button type="create" ng-click="create_new()"></icsw-tools-button>
+
+    </div>
+
+    <div ng-show="get_cur_edit_kpi()">
+
+        <accordion close-others="false">
+            <accordion-group heading="Basic properties" is-open="true">
+                <form class="form-inline">
+                    <div class="form-group">
+                        <label class="control-label col-sm-3">Name:</label>
+
+                        <div class="controls col-sm-7">
+                            <input class="form-control" ng-model="get_cur_edit_kpi().name" type="text"
+                                   placeholder="name"/>
+                        </div>
+                    </div>
+                </form>
+            </accordion-group>
+        </accordion>
+
+        <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
+
+        <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
+
+        TODO: probably make this into modal button as other dialogs, then this button must also change accordingly
+        <icsw-tools-button type="modify" ng-click="on_submit()"></icsw-tools-button>
+
+    </div>
+
+</script>
+
+
+<script type="text/ng-template" id="icsw.config.kpi.dev_mon_selection">
+    <accordion close-others="false">
+        <accordion-group heading="Select device and monitoring categories" is-open="true">
+            <div class="row">
+                <div class="col-md-4">
+                    <h3 style="margin-top: 8px"> <!-- else too much margin at top --> Device categories</h3>
+                    <tree treeconfig="device_category_tree"></tree>
+                </div>
+                <div class="col-md-4">
+                    <h3 style="margin-top: 8px">Monitoring categories</h3>
+                    <tree treeconfig="monitoring_category_tree"></tree>
+                </div>
+            </div>
+        </accordion-group>
+    </accordion>
+</script>
+
+
+<script type="text/ng-template" id="icsw.config.kpi.dev_mon_linker">
+
+    <accordion close-others="false">
+        <accordion-group heading="Select which monitoring categories apply to which device categories" is-open="true">
+
+            <div class="alert alert-warning"
+                 ng-show="get_cur_device_categories().length == 0 && get_cur_monitoring_categories().length == 0">
+                Please select device and monitoring categories.
+            </div>
+            <div class="alert alert-warning"
+                 ng-show="get_cur_device_categories().length == 0 && get_cur_monitoring_categories().length >  0">
+                Please select device categories.
+            </div>
+            <div class="alert alert-warning"
+                 ng-show="get_cur_device_categories().length >  0 && get_cur_monitoring_categories().length == 0">
+                Please select monitoring categories.
+            </div>
+            <!--
+            <div class="alert alert-info alert-dismissible" role="alert" ng-show="get_device_categories().length >  0 && get_monitoring_categories().length >  0">
+                Please make appropriate marks to select which checks from monitoring categories should apply to which device categories.
+            </div>
+            -->
+
+            <table class="table table-condensed table-hover" style="width: auto;">
+                <tr>
+                    <td></td>
+                    <th ng-repeat="mon_cat in get_cur_monitoring_categories()">
+                        {{get_mon_cat(mon_cat).name}}
+                    </th>
+                </tr>
+                <tr ng-repeat="dev_cat in get_cur_device_categories()">
+                    <th>{{get_dev_cat(dev_cat).name}}</th>
+                    <td ng-repeat="mon_cat in get_cur_monitoring_categories()"
+                        icsw-tools-td-checkbox is-checked="is_checked(dev_cat, mon_cat)"
+                        on-click="toggle_dev_mon_cat(dev_cat, mon_cat)">
+                    </td>
+                </tr>
+            </table>
+
+        </accordion-group>
+    </accordion>
+</script>

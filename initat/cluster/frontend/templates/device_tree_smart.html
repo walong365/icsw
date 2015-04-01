@@ -1,0 +1,17 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Device tree" %}{% endblock %}
+
+{% block content %}
+
+{% verbatim %}
+
+<div ng-cloack ng-controller="icswDeviceTreeCtrl">
+    <icsw-device-tree-overview></icsw-device-tree-overview>
+</div>
+
+{% endverbatim %}
+
+{% endblock %}

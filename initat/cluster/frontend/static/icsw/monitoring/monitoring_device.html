@@ -1,0 +1,68 @@
+
+<script type="text/ng-template" id="icsw.monitoring.device">
+
+    <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceService"
+                           st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+        <h2>Devices ({{ entries_filtered.length }} entries)</h2>
+        <h3 ng-show="entries.length == 0">Please select devices in the tree to the left.</h3>
+        <table
+               class="table table-condensed table-hover" style="width:auto;">
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="99">
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                             possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="full_name" st-sort-default="true">Name</th>
+                    <th st-sort="monitor_checks">Checks</th>
+                    <th st-sort="mon_resolve_name">Resolve</th>
+                    <th st-sort="mon_device_templ">Template</th>
+                    <th st-sort="md_cache_mode">Cache mode</th>
+                    <th st-sort="act_partition_table">Disk layout</th>
+                    <th st-sort="mon_ext_host">Image</th>
+                    <th st-sort="enable_perfdata">PerfData</th>
+                    <th st-sort="flap_detection_enabled">Flap</th>
+                    <th st-sort="automap_root_nagvis">NVroot</th>
+                    <th st-sort="nagvis_parent">NVparent</th>
+                    <th st-sort="monitor_server">MonServer</th>
+                    <th colspan="1" class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>{{ obj.full_name }}</td>
+                    <td>{{ obj.monitor_checks | yesno1 }}</td>
+                    <td>{{ obj.mon_resolve_name | yesno2 }}</td>
+                    <td>{{ obj.mon_device_templ | array_lookup:config_service.mon_device_templ:"name" }}</td>
+                    <td>{{ obj.md_cache_mode | array_lookup:config_service.md_cache_modes:"name" }}</td>
+                    <td>{{ obj.act_partition_table | yesno1 }}</td>
+                    <td class="text-center">
+        <span ng-if="obj.mon_ext_host">
+            <img ng-src="{{ obj.mon_ext_host | array_lookup:config_service.mon_ext_host:'data_image' }}" width="24px"
+                 height="24px"></img>
+        </span>
+        <span ng-if="obj.mon_ext_host == null">
+            ---
+        </span>
+                    </td>
+                    <td>{{ obj.enable_perfdata | yesno1 }}</td>
+                    <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
+                    <td>{{ obj.automap_root_nagvis | yesno1 }}</td>
+                    <td>{{ obj.nagvis_parent | array_lookup:entries:"name" }}</td>
+                    <td>{{ obj.monitor_server | array_lookup:config_service.mon_server:"full_name":"Master" }}</td>
+                    <td>
+                        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </icsw-tools-rest-table>
+
+</script>

@@ -1,0 +1,14 @@
+{% extends "main.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Info page" %}{% endblock %}
+
+{% block content %}
+
+<div ng-controller="icswServerInfoOverviewCtrl">
+    <icsw-layout-server-info-overview></icsw-layout-server-info-overview>
+</div>
+
+{% endblock %}
+
