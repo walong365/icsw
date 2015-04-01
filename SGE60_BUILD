@@ -1,0 +1,13 @@
+o db entpacken
+o cd build_unix
+o ../dist/configure -enable-rpc --prefix=/opt/libs/db-4.2.52 --exec-prefix=/opt/libs/db-4.2.52/{glinux|lx24-amd64|lx24-x86}/ --enable-compat185 ;make;make install
+o im SGE-source scripts/distinst.site und aimk.site anpassen 
+o ./aimk -only-depend
+o ./scripts/zerodepend
+o ./aimk
+o Auszug aus aimk.site:
+  set BERKELEYDB_HOME = /opt/libs/db-4.2.52/lx24-amd64
+  #set BERKELEYDB_HOME = /vol2/SW/db-4.3.3/$buildarch
+  set BDB_INCLUDE_SUBDIR = 
+  set BDB_LIB_SUBDIR = /opt/libs/db-4.2.52/lx24-amd64/lib/
+  set BDB_LIB_SUFFIX =
