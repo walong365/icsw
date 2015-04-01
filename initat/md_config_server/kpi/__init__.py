@@ -18,6 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import json
+# noinspection PyUnresolvedReferences
 import pprint
 from django.db import connection
 import memcache
@@ -126,11 +127,3 @@ class kpi_process(threading_tools.process_obj):
                 for val in values_list:
                     vector_entry = initat.collectd.aggregate.ve(*val)
                     print vector_entry, vector_entry.get_value()
-
-
-
-
-
-
-
-
