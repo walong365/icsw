@@ -141,6 +141,10 @@ def main():
         ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
         ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
         ("MODIFY_RRD_COVERAGE", configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)),
+        # NOTE: one of (host, port) and address is probably superfluous // BM 20150401
+        ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
+        ("MEMCACHE_PORT", configfile.int_c_var(11211, help_string="port on which memcache is reachable [%(default)s]")),
+        ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
         ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1:11211", help_string="memcache address")),
         ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
         ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
@@ -149,9 +153,6 @@ def main():
         ("GRAPHER_PORT", configfile.int_c_var(8003, help_string="grapher port, do not change [%(default)s]")),
         ("MD_SERVER_HOST", configfile.str_c_var("127.0.0.1", help_string="md-config-server host [%(default)s]")),
         ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
-        ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
-        ("MEMCACHE_PORT", configfile.int_c_var(11211, help_string="port on which memcache is reachable [%(default)s]")),
-        ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
         ("RRD_CACHED_WRITETHREADS", configfile.int_c_var(4, help_string="number of write threads for RRD-cached")),
         ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
     ])

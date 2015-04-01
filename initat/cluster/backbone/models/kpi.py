@@ -36,6 +36,12 @@ __all__ = [
 class kpi(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(blank=False)
+
+    # pretend as if all device/monitoring tuples were checked
+    # TODO: implement in gui
+    uses_all_data = models.BooleanField(default=False)
+
+    # TODO: make this into jsonified lists or something else with no hard reference
     available_device_categories = models.ManyToManyField('category', related_name="available_device_category")
     available_monitoring_categories = models.ManyToManyField('category', related_name="available_monitoring_category")
 
