@@ -39,7 +39,7 @@ angular.module(
                             url: ICSW_URLS.BASE_ADD_DELETE_REQUEST
                             data: {
                                 model: model
-                                obj_pk: JSON.stringify([obj_pk])
+                                obj_pks: JSON.stringify([obj_pk])
                                 delete_strategies: delete_strategies
                             }
                             success: (xml) ->
