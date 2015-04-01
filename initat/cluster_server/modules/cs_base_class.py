@@ -111,19 +111,18 @@ class com_instance(object):
             if self.Meta.cur_running < self.Meta.max_instances:
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
-                new_bg_name = self.new_bg_name
                 print 'sc obj', self.sc_obj, self.sc_obj.main_proc
                 self.sc_obj.main_proc.send_to_process(
-                    new_bg_name,
+                    self.new_bg_name,
                     "set_option_dict",
                     self.option_dict)
                 self.sc_obj.main_proc.send_to_process(
-                    new_bg_name,
+                    self.new_bg_name,
                     "set_srv_com",
                     unicode(self.srv_com),
                 )
                 self.sc_obj.main_proc.send_to_process(
-                    new_bg_name,
+                    self.new_bg_name,
                     "start_command",
                     self.sc_obj.name,
                 )

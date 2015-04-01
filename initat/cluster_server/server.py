@@ -29,6 +29,7 @@ import cluster_location
 import configfile
 import datetime
 import initat.cluster_server.modules
+from initat.cluster_server.modules.cs_base_class import bg_process
 import logging_tools
 import os
 import process_tools
@@ -322,19 +323,10 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
                         )
                     else:
                         # salt com_obj with some settings
-                        print 'com_obj', com_obj
-                        print 'com_obj met', com_obj.Meta.__dict__
                         option_dict = dict([(key, srv_com["*server_key:{}".format(key)]) for key in com_obj.Meta.needed_option_keys])
                         cur_inst = com_obj(srv_com, option_dict)
                         if com_obj.Meta.background:
-                            from initat.cluster_server.modules.delete_objects_mod import MyProc
-                            proc = MyProc(cur_inst.new_bg_name)
-                            self.add_process(proc, start=True)
-                            self.send_to_process("process name", "test", 1234)
-                            # com_obj.link(proc)
-                        print 'cur_inst', cur_inst
-                        print 'opts', option_dict
-                        print 'srv_com', srv_com
+                            self.add_process(bg_process(cur_inst.new_bg_name), start=True)
                         cur_inst.write_start_log()
                         cur_inst()
                         cur_inst.write_end_log()

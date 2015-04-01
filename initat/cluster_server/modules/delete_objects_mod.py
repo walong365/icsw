@@ -17,29 +17,15 @@
 #
 """contains command for deleting objects in background (we are the background)"""
 
+import json
+import time
+
+from django.db import transaction
 
 from initat.cluster_server.modules import cs_base_class
-import json
-from django.db.models.query_utils import Q
-from django.db import transaction
-import time
-import threading_tools
-# from initat.cluster.backbone.models import DeleteRequest
+from initat.cluster.backbone.models import DeleteRequest
 import initat
 from initat.cluster.backbone.models.functions import can_delete_obj
-
-
-class MyProc(threading_tools.process_obj):
-
-    def process_init(self):
-        super(MyProc, self).process_init()
-        print 'proc inited', self
-        from initat.cluster_server.modules import command_dict
-        print command_dict
-        self.register_func("test", self._test)
-
-    def _test(self, *args, **kwargs):
-        print "test", args, kwargs
 
 
 class handle_delete_requests(cs_base_class.server_com):
@@ -49,13 +35,8 @@ class handle_delete_requests(cs_base_class.server_com):
         max_instances = 8
 
     def _call(self, cur_inst):
-        cur_inst.log("Checking pending deletion requests")
-        cur_inst.log("DISABLED")
-        return
-
-        has_reqs = True
-
         deletions = 0
+        has_reqs = True
 
         while has_reqs:
             req = None
@@ -67,23 +48,23 @@ class handle_delete_requests(cs_base_class.server_com):
                     req.delete()
 
             if req is not None:
-                self.handle_req(req, cur_inst)
+                self.handle_deletion(req.obj_pk, req.model, req.delete_strategies, cur_inst)
                 deletions += 1
         cur_inst.log("Deleted {} objects".format(deletions))
 
-    def handle_request(self, req, cur_inst):
-        model = getattr(initat.cluster.backbone.models, req.model)
+    def handle_deletion(self, obj_pk, model, delete_strategies, cur_inst):
+        model = getattr(initat.cluster.backbone.models, model)
         try:
-            obj_to_delete = model.objects.get(pk=req.obj_pk)
+            obj_to_delete = model.objects.get(pk=obj_pk)
         except model.DoesNotExist:
-            cur_inst.log("Object with pk {} from model {} does not exist any more".format(req.obj_pk, req.model))
+            cur_inst.log("Object with pk {} from model {} does not exist any more".format(obj_pk, model))
         else:
-            cur_inst.log("Deleting {} ({}; pk:{})".format(obj_to_delete, req.model, req.obj_pk))
+            cur_inst.log("Deleting {} ({}; pk:{})".format(obj_to_delete, model, obj_pk))
 
             start_time = time.time()
-            if req.delete_strategies:
+            if delete_strategies:
                 # have to do elaborate deletion of references
-                delete_strategy_list = json.loads(req.delete_strategies)
+                delete_strategy_list = json.loads(delete_strategies)
 
                 delete_strategies = {}
                 for entry in delete_strategy_list:

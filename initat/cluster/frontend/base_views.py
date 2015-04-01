@@ -295,9 +295,6 @@ class CheckDeleteObject(View):
         request.xml_response['related_objects'] = json.dumps(related_objects_info, default=formatter)
         request.xml_response['deletable_objects'] = json.dumps(deletable_objects)
 
-        #srv_com = server_command.srv_command(command="handle_delete_requests")
-        #result = contact_server(request, "server", srv_com)
-        #print 'res', result
 
 
 
@@ -315,12 +312,17 @@ class AddDeleteRequest(View):
             obj.disabled = True
             obj.save()
 
-        del_req = DeleteRequest(
-            pk=obj_pk,
-            model=model_name,
-            delete_strategies=request.POST.get("delete_strategies", None)
-        )
-        del_req.save()
+        with transaction.atomic():
+            del_req = DeleteRequest(
+                obj_pk=obj_pk,
+                model=model_name,
+                delete_strategies=request.POST.get("delete_strategies", None)
+            )
+            del_req.save()
+
+        srv_com = server_command.srv_command(command="handle_delete_requests")
+        result = contact_server(request, "server", srv_com)
+        print 'res', result
 
         #TODO: finish transaction, delete request must be there right away for cluster server to see
         #TODO # notify cluster server
