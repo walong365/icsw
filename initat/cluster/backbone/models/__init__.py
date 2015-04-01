@@ -1486,5 +1486,8 @@ class DeleteRequest(models.Model):
     model = models.TextField()
     delete_strategies = models.TextField(null=True, blank=True)
 
+    class Meta:
+        app_label = "backbone"
+        unique_together = ("obj_pk", "model")
 
 
