@@ -29,7 +29,7 @@ import cluster_location
 import configfile
 import datetime
 import initat.cluster_server.modules
-from initat.cluster_server.modules.cs_base_class import bg_process
+from initat.cluster_server.modules.cs_base_class import BackgroundProcess
 import logging_tools
 import os
 import process_tools
@@ -326,7 +326,7 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
                         option_dict = dict([(key, srv_com["*server_key:{}".format(key)]) for key in com_obj.Meta.needed_option_keys])
                         cur_inst = com_obj(srv_com, option_dict)
                         if com_obj.Meta.background:
-                            self.add_process(bg_process(cur_inst.new_bg_name), start=True)
+                            self.add_process(BackgroundProcess(cur_inst.new_bg_name), start=True)
                         cur_inst.write_start_log()
                         cur_inst()
                         cur_inst.write_end_log()

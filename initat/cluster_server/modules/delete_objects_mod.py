@@ -52,7 +52,8 @@ class handle_delete_requests(cs_base_class.server_com):
                 deletions += 1
         cur_inst.log("Deleted {} objects".format(deletions))
 
-    def handle_deletion(self, obj_pk, model, delete_strategies, cur_inst):
+    @staticmethod
+    def handle_deletion(obj_pk, model, delete_strategies, cur_inst):
         model = getattr(initat.cluster.backbone.models, model)
         try:
             obj_to_delete = model.objects.get(pk=obj_pk)
@@ -92,7 +93,7 @@ class handle_delete_requests(cs_base_class.server_com):
                             dict_key, strat, delete_strategies
                         ))
 
-                cur_inst.log("finished with refs")
+                cur_inst.log("all refs have been deleted")
                 can_delete_answer_after = can_delete_obj(obj_to_delete)
                 if can_delete_answer_after:
                     # all references cleared

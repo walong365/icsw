@@ -296,8 +296,6 @@ class CheckDeleteObject(View):
         request.xml_response['deletable_objects'] = json.dumps(deletable_objects)
 
 
-
-
 class AddDeleteRequest(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -321,16 +319,11 @@ class AddDeleteRequest(View):
             del_req.save()
 
         srv_com = server_command.srv_command(command="handle_delete_requests")
-        result = contact_server(request, "server", srv_com)
-        print 'res', result
-
-        #TODO: finish transaction, delete request must be there right away for cluster server to see
-        #TODO # notify cluster server
-        # make cluster server do deletions on start?
-
+        contact_server(request, "server", srv_com, log_result=False)
 
 
 class CheckDeletionStatus(View):
+    # Returns how many of certain objects are already deleted
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -341,5 +334,3 @@ class CheckDeletionStatus(View):
 
         request.xml_response['num_remaining'] = num_remaining_objs
         request.xml_response['msg'] = "Deleted {} of {} objects".format(len(obj_pks) - num_remaining_objs, len(obj_pks))
-
-

@@ -45,71 +45,47 @@ angular.module(
 
                 last_msg = undefined
                 interval_promise = null
-                interval_promise = $interval(
-                    () ->
-                        icswCallAjaxService
-                            url: ICSW_URLS.BASE_CHECK_DELETION_STATUS
-                            data:
-                                model: model
-                                obj_pks: JSON.stringify(del_pks)
-                            success: (xml) ->
-                                if icswParseXMLResponseService(xml)
-                                    # handle msg
-                                    msg = $(xml).find("value[name='msg']").text()
-                                    if async
-                                        if last_msg != msg
-                                            toaster.pop("info", "", msg)
-                                    else
-                                        blockUI.message(msg)
+                interval_fn = () ->
+                    icswCallAjaxService
+                        url: ICSW_URLS.BASE_CHECK_DELETION_STATUS
+                        data:
+                            model: model
+                            obj_pks: JSON.stringify(del_pks)
+                        success: (xml) ->
+                            if icswParseXMLResponseService(xml)
+                                # handle msg
+                                msg = $(xml).find("value[name='msg']").text()
+                                if async
+                                    if last_msg != msg
+                                        toaster.pop("info", "", msg)
+                                else
+                                    blockUI.message(msg)
 
-                                    last_msg = msg
+                                last_msg = msg
 
-                                    # check if we are done
-                                    num_remaining = parseInt($(xml).find("value[name='num_remaining']").text())
-                                    if num_remaining == 0
-                                        if after_delete?
-                                            after_delete()
+                                # check if we are done
+                                num_remaining = parseInt($(xml).find("value[name='num_remaining']").text())
+                                if num_remaining == 0
+                                    if after_delete?
+                                        after_delete()
 
-                                        if !async
-                                            blockUI.stop()
+                                    if !async
+                                        blockUI.stop()
 
-                                        $interval.cancel(interval_promise)
-                    1500
-                )
+                                    $interval.cancel(interval_promise)
+                interval_promise = $interval(interval_fn, 1500)
 
-                #        # close if all objects are gone now
-                #            if Object.keys(related_objects).length == 0
-                #                child_scope.modal.close()
-
-
-#            # recursive asynchronous delete fun
-#            actual_delete = (deletable_objects, num_all, done_callback) ->
-#                if deletable_objects.length
-#                    to_del = deletable_objects.pop(0)
-#                    icswCallAjaxService
-#                        url: ICSW_URLS.BASE_DO_DELETE_OBJECT
-#                        data: {
-#                            model: model
-#                            obj_pk: to_del
-#                        }
-#                        timeout: 1200000  # 20 minutes: it would be bad to stop a deletion in process
-#                        success: (xml) ->
-#                            if icswParseXMLResponseService(xml)
-#                                toaster.pop("info", "", "Deleted #{num_all - deletable_objects.length} of #{num_all} objects")
-#                                if after_delete?
-#                                    after_delete()
-#                                # recurse, elem has been removed from list already
-#                                actual_delete(deletable_objects, num_all, done_callback)
-#                else
-#                    if done_callback
-#                        done_callback()
-#
+                interval_fn()  # check right away as well
 
             show_delete_dialog = (related_objects, deletable_objects) ->
                 # shows dialog if objs to delete have hard references
                 # related_objs is dict { obj_pk : [ related_obj_info ] }
                 # deletable_objects is [obj_pk]
                 child_scope = $rootScope.$new()
+
+                _check_dialog_empty = () ->
+                    if child_scope.deletable_objects.length == 0 && Object.keys(child_scope.related_objects).length == 0
+                        child_scope.modal.close()
 
                 child_scope.async_delete = true
                 child_scope.related_objects = related_objects
@@ -127,6 +103,7 @@ angular.module(
                             # remove from gui
                             _.remove(child_scope.deletable_objects, (elem) -> return elem == k_int)
                             delete child_scope.delete_deletable_dict[k_int]
+                            _check_dialog_empty()
 
                     actual_delete(to_delete, child_scope.async_delete)
 
@@ -149,20 +126,7 @@ angular.module(
                     )
 
                     delete related_objects[obj_pk]
-
-#                    icswCallAjaxService
-#                        url: ICSW_URLS.BASE_FORCE_DELETE_OBJECT
-#                        data: {
-#                            model: model
-#                            obj_pk: obj_pk
-#                            delete_strategies: JSON.stringify(delete_strategies)
-#                        }
-#                        success: (xml) ->
-#                            if icswParseXMLResponseService(xml)
-#                                if after_delete?
-#                                    after_delete()
-#                                toaster.pop("info", "", "Deleted 1 object")
-
+                    _check_dialog_empty()
 
                 child_scope.get_object_by_idx = (idx) ->
                     idx = parseInt(idx)

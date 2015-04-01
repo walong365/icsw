@@ -30,7 +30,7 @@ import threading_tools
 import time
 
 
-class bg_process(threading_tools.process_obj):
+class BackgroundProcess(threading_tools.process_obj):
     class Meta:
         background = False
         show_execution_time = True
@@ -111,7 +111,6 @@ class com_instance(object):
             if self.Meta.cur_running < self.Meta.max_instances:
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
-                print 'sc obj', self.sc_obj, self.sc_obj.main_proc
                 self.sc_obj.main_proc.send_to_process(
                     self.new_bg_name,
                     "set_option_dict",
