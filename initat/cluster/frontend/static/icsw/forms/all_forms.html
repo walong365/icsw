@@ -1890,8 +1890,8 @@ Network topology connection information from {{ get_peer_src_info(_edit_obj) }}
  class="checkbox
  "
  ><div class="controls col-lg-offset-0 col-sm-7"><label for="id_strict_mode" class=""><input class="checkboxinput checkbox" id="id_strict_mode" name="strict_mode" ng-model="_edit_obj.strict_mode" type="checkbox" />
- all netdevices must be recognizable
- </label></div></div></div></fieldset></tab><tab heading='SNMP' select='set_scan_mode("snmp")' active='_current_dev.scan_snmp_active'><fieldset 
+ all netdevices must be recognizable and all existing peers must be conserverd
+ </label></div></div></div><div class="alert alert-danger" ng-show="!_edit_obj.strict_mode">attention: peers might get lost</div></fieldset></tab><tab heading='SNMP' select='set_scan_mode("snmp")' active='_current_dev.scan_snmp_active'><fieldset 
  ><legend>Base data</legend><div id="div_id_snmp_community"
  class="form-group 
  "
