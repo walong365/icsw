@@ -77,21 +77,6 @@ class angular_edit_mixin
                     modal.getModal().find(".modal-body").css("max-height", height)
                 onshown: () =>
                     @scope.modal_active = true
-            #@edit_div.simplemodal
-            #    #opacity      : 50
-            #    position     : [event.clientY - 50, event.clientX - 50]
-            #    minWidth : @min_width
-            #    #autoResize   : true
-            #    #autoPosition : true
-            #    onShow: (dialog) =>
-            #        dialog.container.draggable()
-            #        $("#simplemodal-container").css("height", "auto")
-            #        @_modal_close_ok = false
-            #        @scope.modal_active = true
-            #        # set active angular edit mixin to @name to distinguish between different mixins
-            #        @scope.active_aem = @name
-            #    onClose: (dialog) =>
-            #        @close_modal()
         else
             @child_scope = @scope
             @scope.modal_active = true
@@ -279,12 +264,16 @@ class angular_modal_mixin
         else
             return "has-error"
     modify : () ->
-        if not @scope.form.$invalid
+        if @scope.form
+            if not @scope.form.$invalid
+                @close_modal()
+                return @_prom.resolve(@scope._edit_obj)
+            else
+                # fixme, todo, move to toaster
+                console.log "form validation problem"
+        else
             @close_modal()
             return @_prom.resolve(@scope._edit_obj)
-        else
-            # fixme, todo, move to toaster
-            console.log "form validation problem"
 
 reload_sidebar_tree = (pk_list) ->
     sidebar_div = $("div[id='icsw.sidebar'] > div[id='sidebar-wrapper']")

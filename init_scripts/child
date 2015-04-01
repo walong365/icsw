@@ -1,0 +1,39 @@
+#! /bin/sh
+#
+# Copyright (c) 2002,2012 init.at
+#
+
+### BEGIN INIT INFO
+# Provides:      child
+# Required-Start: $network hoststatus
+# Required-Stop:
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
+# Description:   send child message
+### END INIT INFO
+
+. /etc/rc.status
+
+rc_reset
+
+if [ -f /etc/motherserver ] ; then
+  MSERVER=`cat /etc/motherserver`
+  lev=`/sbin/runlevel | cut -d " " -f 2`
+  case "$1" in
+      start)	echo -n "Sending start message to mother"
+                  /sbin/tell_mother $MSERVER 8000 "up ${CRL_MESG} $lev" || rc_failed
+	  	  rc_status -v
+		  ;;
+      stop)	echo -n "Sending stop message to mother"
+                  /sbin/tell_mother $MSERVER 8000 "down ${CRL_MESG} $lev" || rc_failed
+	  	  rc_status -v
+  		  ;;
+      *)	  echo "Usage: $0 {start|stop}"
+	          exit 1
+  esac
+else
+  echo -n "No motherserver found (/etc/motherserver)"
+  rc_status -s
+fi
+
+exit $return

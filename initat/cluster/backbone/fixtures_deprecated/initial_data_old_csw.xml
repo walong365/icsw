@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="utf-8"?>
+<django-objects version="1.0">
+    <object pk="1" model="backbone.log_source">
+        <field type="CharField" name="identifier">user</field>
+        <field type="CharField" name="name">Cluster user</field>
+        <field type="CharField" name="description">Clusteruser</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+    <object pk="1" model="backbone.device_type">
+        <field type="CharField" name="identifier">H</field>
+        <field type="CharField" name="description">Host</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="2" model="backbone.device_type">
+        <field type="CharField" name="identifier">AM</field>
+        <field type="CharField" name="description">APC Masterswitch</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="3" model="backbone.device_type">
+        <field type="CharField" name="identifier">NB</field>
+        <field type="CharField" name="description">Netbotz</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="4" model="backbone.device_type">
+        <field type="CharField" name="identifier">S</field>
+        <field type="CharField" name="description">Manageable Switch</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="5" model="backbone.device_type">
+        <field type="CharField" name="identifier">R</field>
+        <field type="CharField" name="description">Raid box</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="6" model="backbone.device_type">
+        <field type="CharField" name="identifier">P</field>
+        <field type="CharField" name="description">Printer</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="7" model="backbone.device_type">
+        <field type="CharField" name="identifier">MD</field>
+        <field type="CharField" name="description">Meta device</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="8" model="backbone.device_type">
+        <field type="CharField" name="identifier">IBC</field>
+        <field type="CharField" name="description">IBM Blade Center</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="1" model="backbone.config_type">
+        <field type="CharField" name="name">soft</field>
+        <field type="CharField" name="description">Software settings</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:48:58+00:00</field>
+    </object>
+    <object pk="2" model="backbone.config_type">
+        <field type="CharField" name="name">hard</field>
+        <field type="CharField" name="description">Hardware setting</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:48:58+00:00</field>
+    </object>
+    <object pk="3" model="backbone.config_type">
+        <field type="CharField" name="name">Server properties</field>
+        <field type="CharField" name="description">identifier (s)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
+    </object>
+    <object pk="4" model="backbone.config_type">
+        <field type="CharField" name="name">Node properties</field>
+        <field type="CharField" name="description">identifier (n)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
+    </object>
+    <object pk="5" model="backbone.config_type">
+        <field type="CharField" name="name">Hardware properties</field>
+        <field type="CharField" name="description">identifier (h)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
+    </object>
+    <object pk="6" model="backbone.config_type">
+        <field type="CharField" name="name">Export entries</field>
+        <field type="CharField" name="description">identifier (e)</field>
+        <field type="DateTimeField" name="date">2006-06-01T13:49:10+00:00</field>
+    </object>
+    <object pk="1" model="backbone.partition_fs">
+        <field type="CharField" name="name">reiserfs</field>
+        <field type="CharField" name="identifier">f</field>
+        <field type="CharField" name="descr">ReiserFS Filesystem</field>
+        <field type="CharField" name="hexid">83</field>
+        <field type="DateTimeField" name="date">2006-06-01T07:44:27+00:00</field>
+    </object>
+    <object pk="2" model="backbone.partition_fs">
+        <field type="CharField" name="name">ext2</field>
+        <field type="CharField" name="identifier">f</field>
+        <field type="CharField" name="descr">Extended 2 Filesystem</field>
+        <field type="CharField" name="hexid">83</field>
+        <field type="DateTimeField" name="date">2006-06-01T07:44:27+00:00</field>
+    </object>
+    <object pk="3" model="backbone.partition_fs">
+        <field type="CharField" name="name">ext3</field>
+        <field type="CharField" name="identifier">f</field>
+        <field type="CharField" name="descr">Extended 3 Filesystem</field>
+        <field type="CharField" name="hexid">83</field>
+        <field type="DateTimeField" name="date">2006-06-01T07:44:27+00:00</field>
+    </object>
+    <object pk="4" model="backbone.partition_fs">
+        <field type="CharField" name="name">swap</field>
+        <field type="CharField" name="identifier">s</field>
+        <field type="CharField" name="descr">SwapSpace</field>
+        <field type="CharField" name="hexid">82</field>
+        <field type="DateTimeField" name="date">2006-06-01T07:44:27+00:00</field>
+    </object>
+    <object pk="5" model="backbone.partition_fs">
+        <field type="CharField" name="name">ext</field>
+        <field type="CharField" name="identifier">e</field>
+        <field type="CharField" name="descr">Extended Partition</field>
+        <field type="CharField" name="hexid">f</field>
+        <field type="DateTimeField" name="date">2006-06-01T07:44:27+00:00</field>
+    </object>
+    <object pk="6" model="backbone.partition_fs">
+        <field type="CharField" name="name">empty</field>
+        <field type="CharField" name="identifier">d</field>
+        <field type="CharField" name="descr">Empty Partition</field>
+        <field type="CharField" name="hexid">0</field>
+        <field type="DateTimeField" name="date">2006-06-01T07:44:27+00:00</field>
+    </object>
+    <object pk="7" model="backbone.partition_fs">
+        <field type="CharField" name="name">lvm</field>
+        <field type="CharField" name="identifier">l</field>
+        <field type="CharField" name="descr">LVM Partition</field>
+        <field type="CharField" name="hexid">8e</field>
+        <field type="DateTimeField" name="date">2007-06-08T06:21:19+00:00</field>
+    </object>
+    <object pk="1" model="backbone.log_status">
+        <field type="CharField" name="identifier">c</field>
+        <field type="IntegerField" name="log_level">200</field>
+        <field type="CharField" name="name">critical</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="2" model="backbone.log_status">
+        <field type="CharField" name="identifier">e</field>
+        <field type="IntegerField" name="log_level">100</field>
+        <field type="CharField" name="name">error</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="3" model="backbone.log_status">
+        <field type="CharField" name="identifier">w</field>
+        <field type="IntegerField" name="log_level">50</field>
+        <field type="CharField" name="name">warning</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="4" model="backbone.log_status">
+        <field type="CharField" name="identifier">i</field>
+        <field type="IntegerField" name="log_level">0</field>
+        <field type="CharField" name="name">info</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="5" model="backbone.log_status">
+        <field type="CharField" name="identifier">n</field>
+        <field type="IntegerField" name="log_level">-50</field>
+        <field type="CharField" name="name">notice</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="1" model="backbone.hw_entry_type">
+        <field type="CharField" name="identifier">cpu</field>
+        <field type="CharField" name="description">CPU</field>
+        <field type="CharField" name="iarg0_descr">Speed in MHz</field>
+        <field type="CharField" name="iarg1_descr"></field>
+        <field type="CharField" name="sarg0_descr">Model Type</field>
+        <field type="CharField" name="sarg1_descr"></field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="2" model="backbone.hw_entry_type">
+        <field type="CharField" name="identifier">mem</field>
+        <field type="CharField" name="description">Memory</field>
+        <field type="CharField" name="iarg0_descr">Phyiskal Memory</field>
+        <field type="CharField" name="iarg1_descr">Virtual Memory</field>
+        <field type="CharField" name="sarg0_descr"></field>
+        <field type="CharField" name="sarg1_descr"></field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="3" model="backbone.hw_entry_type">
+        <field type="CharField" name="identifier">disks</field>
+        <field type="CharField" name="description">Harddisks</field>
+        <field type="CharField" name="iarg0_descr">Number of harddisks</field>
+        <field type="CharField" name="iarg1_descr">total Size</field>
+        <field type="CharField" name="sarg0_descr"></field>
+        <field type="CharField" name="sarg1_descr"></field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="4" model="backbone.hw_entry_type">
+        <field type="CharField" name="identifier">cdroms</field>
+        <field type="CharField" name="description">CDRoms</field>
+        <field type="CharField" name="iarg0_descr">Number of CD-Roms</field>
+        <field type="CharField" name="iarg1_descr"></field>
+        <field type="CharField" name="sarg0_descr"></field>
+        <field type="CharField" name="sarg1_descr"></field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="5" model="backbone.hw_entry_type">
+        <field type="CharField" name="identifier">gfx</field>
+        <field type="CharField" name="description">Graphicscard</field>
+        <field type="CharField" name="iarg0_descr"></field>
+        <field type="CharField" name="iarg1_descr"></field>
+        <field type="CharField" name="sarg0_descr">Type of Gfx</field>
+        <field type="CharField" name="sarg1_descr"></field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="1" model="backbone.snmp_class">
+        <field type="CharField" name="name">default_class</field>
+        <field type="CharField" name="descr">Standard Class for SNMP-devices (v2c)</field>
+        <field type="CharField" name="read_community">public</field>
+        <field type="CharField" name="write_community">private</field>
+        <field type="IntegerField" name="snmp_version">2</field>
+        <field type="IntegerField" name="update_freq">60</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="2" model="backbone.snmp_class">
+        <field type="CharField" name="name">default_class</field>
+        <field type="CharField" name="descr">Standard Class for SNMP-devices (v1)</field>
+        <field type="CharField" name="read_community">public</field>
+        <field type="CharField" name="write_community">private</field>
+        <field type="IntegerField" name="snmp_version">1</field>
+        <field type="IntegerField" name="update_freq">60</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="1" model="backbone.device_class">
+        <field type="CharField" name="classname">normal</field>
+        <field type="IntegerField" name="priority">0</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="1" model="backbone.device_location">
+        <field type="CharField" name="location">room00</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:18+00:00</field>
+    </object>
+    <object pk="1" model="backbone.status">
+        <field type="CharField" name="status">memtest</field>
+        <field type="IntegerField" name="prod_link">0</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+    <object pk="2" model="backbone.status">
+        <field type="CharField" name="status">boot_local</field>
+        <field type="IntegerField" name="prod_link">0</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+    <object pk="3" model="backbone.status">
+        <field type="CharField" name="status">boot_clean</field>
+        <field type="IntegerField" name="prod_link">1</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+    <object pk="4" model="backbone.status">
+        <field type="CharField" name="status">installation_clean</field>
+        <field type="IntegerField" name="prod_link">1</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+    <object pk="5" model="backbone.status">
+        <field type="CharField" name="status">boot</field>
+        <field type="IntegerField" name="prod_link">1</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+    <object pk="6" model="backbone.status">
+        <field type="CharField" name="status">installation</field>
+        <field type="IntegerField" name="prod_link">1</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+    <object pk="1" model="backbone.genstuff">
+        <field type="CharField" name="name">AUTO_RELOAD</field>
+        <field type="CharField" name="description">default auto_reload time</field>
+        <field type="CharField" name="value">60</field>
+        <field type="DateTimeField" name="date">2012-04-14T18:13:19+00:00</field>
+    </object>
+  <object pk="1" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">lo</field>
+    <field type="CharField" name="description">loopback devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="2" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">eth</field>
+    <field type="CharField" name="description">ethernet devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="3" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">myri</field>
+    <field type="CharField" name="description">myrinet devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="4" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">xenbr</field>
+    <field type="CharField" name="description">xen bridge devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="5" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">tun</field>
+    <field type="CharField" name="description">ethernet tunnel devices</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="6" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">ib</field>
+    <field type="CharField" name="description">infiniband devices</field>
+    <field type="IntegerField" name="mac_bytes">20</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="1" model="backbone.network_type">
+    <field type="CharField" name="identifier">b</field>
+    <field type="CharField" name="description">boot network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="2" model="backbone.network_type">
+    <field type="CharField" name="identifier">p</field>
+    <field type="CharField" name="description">production network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="3" model="backbone.network_type">
+    <field type="CharField" name="identifier">s</field>
+    <field type="CharField" name="description">slave network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="4" model="backbone.network_type">
+    <field type="CharField" name="identifier">o</field>
+    <field type="CharField" name="description">other network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+  <object pk="5" model="backbone.network_type">
+    <field type="CharField" name="identifier">l</field>
+    <field type="CharField" name="description">local network</field>
+    <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
+  </object>
+</django-objects>
+

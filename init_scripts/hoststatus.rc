@@ -1,0 +1,104 @@
+#! /bin/bash
+#
+# Copyright (c) 2001-2004,2006-2007,2012-2014 init.at
+#
+
+#
+# RedHat stuff
+# chkconfig: 2345 14 86
+# description: hoststatus daemon
+#
+### BEGIN INIT INFO
+# Provides:      hoststatus
+# Required-Start: $network
+# Should-Start: mother
+# Required-Stop:
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
+# Description:   start hoststatus daemon and send message to mother (if possible)
+### END INIT INFO
+
+export SYSTEMD_NO_WRAP="1"
+if [ -f /etc/rc.status ] ; then
+    . /etc/rc.status
+else
+    . /etc/rc.status_suse
+fi
+[ -f /etc/redhat-release ] && . /etc/init.d/functions
+
+HOSTSTAT_BIN=/opt/cluster/sbin/hoststatus_zmq
+CHILD_BIN=/opt/cluster/sbin/tell_mother_zmq
+test -x ${HOSTSTAT_BIN} || exit 5
+test -x ${CHILD_BIN} || exit 5
+
+rc_reset
+
+# set variables
+export CRL_MESG="to runlevel"
+export HOSTSTAT_ARG="running"
+export HOSTNAME=`/bin/hostname`
+
+# runlevel
+runlevel=`/sbin/runlevel | cut -d " " -f 2`
+
+function kill_instances() {
+    pids=$(ps -C $(basename ${HOSTSTAT_BIN}) -o pid= )
+    if [ "${pids:-0}" != "0" ] ; then
+        for pid in $pids ; do
+            kill -${1:-15} $pid
+        done
+        return 0
+    else
+        return 1
+    fi 
+}
+
+[ ! -f /etc/motherserver ] && echo "localhost" > /etc/motherserver
+MOTHER_SERVER=`cat /etc/motherserver`
+
+case "$1" in
+    start)
+        # kill old instances
+        kill_instances 9
+        echo -n "Starting hoststatus (${HOSTSTAT_ARG})"
+        ${HOSTSTAT_BIN} ${HOSTSTAT_ARG}
+        rc_status -v
+        echo -n "Sending start message to mother ${MOTHER_SERVER} "
+        ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "up ${CRL_MESG} $runlevel" >/dev/null
+    rc_status -v
+        ;;
+    stop)
+        echo -n "Sending stop message to mother ${MOTHER_SERVER} "
+        ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "down ${CRL_MESG} $runlevel" >/dev/null || rc_failed
+        rc_status -v
+        echo -n "Stopping hoststatus"
+        kill_instances || rc_failed
+        rc_status -v
+        ;;
+    force-stop)
+        echo -n "Force stopping hoststatus"
+        kill_instances 9 
+        rc_status -v
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        rc_status
+        ;;
+    status)
+        echo -n "Checking for hoststatus..."
+        if [ -f /etc/redhat-release ] ; then
+            status ${HOSTSTAT_BIN}
+        else
+            checkproc ${HOSTSTAT_BIN}
+        fi
+        rc_status -v
+        rc_reset
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|force-stop|status}"
+        exit 1
+esac
+
+exit $return
