@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" graph models for NOCTUA and CORVUS """
+""" graph models for NOCTUA, CORVUS and NESTOR """
 
 from django.db import models
 from django.db.models import Q, signals
@@ -96,7 +96,14 @@ class MVStructEntry(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"MVStructEntry ({}, {})".format(self.se_type, self.key)
+        return u"MVStructEntry ({}, {}), file is {}".format(
+            self.se_type,
+            self.key,
+            self.file_name,
+        )
+
+    class Meta:
+        ordering = ("key",)
 
 
 class MVValue(models.Model):
@@ -123,3 +130,16 @@ class MVValue(models.Model):
     # full is also not stored because full is always equal to name
     # sane_name is also ignored because this is handled by collectd to generate filesystem-safe filenames ('/' -> '_sl_')
     date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return u"MVValue ({}, '{}'), '{}' b/f={:d}/{:d} ({})".format(
+            self.key or "NONE",
+            self.info,
+            self.unit,
+            self.base,
+            self.factor,
+            self.v_type,
+        )
+
+    class Meta:
+        ordering = ("key",)

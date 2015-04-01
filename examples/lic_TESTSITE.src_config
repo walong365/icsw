@@ -1,0 +1,3 @@
+LM_UTIL_PATH /opt/cluster/bin/
+LM_UTIL_COMMAND lmutil
+LICENSE_FILE <PORT>@<SERVER>

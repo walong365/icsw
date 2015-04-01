@@ -1,0 +1,4 @@
+#!/bin/bash
+
+/opt/cluster/bin/send_command_zmq.py -P ipc -S collserver -H command --kv-path arguments --root --split result unregister_file_watch $*
+

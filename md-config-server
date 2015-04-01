@@ -1,0 +1,106 @@
+#!/bin/bash
+#
+# Copyright (c) 2003-2006,2008,2012-2014 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+#
+# RedHat stuff
+# chkconfig: 35 79 21
+# description: md-config-server
+#
+### BEGIN INIT INFO
+# Provides:      md-config-server
+# Required-Start: $network $syslog logging-server host-relay
+# Required-Should-Start: mysql postgresql
+# Required-Stop: $network $syslog logging-server host-relay
+# Required-Should-Stop: mysql postgresql
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
+# Description:   starts md-config-server
+### END INIT INFO
+
+export SYSTEMD_NO_WRAP="1"
+if [ -f /etc/rc.status ] ; then
+    . /etc/rc.status
+else
+    . /etc/rc.status_suse
+fi
+. /etc/init.d/ics_tools.sh
+
+SERVER_BIN=/opt/cluster/sbin/md-config-server.py
+PYTHON_BIN=/usr/bin/python-init
+SERVER_PID=/var/run/md-config-server/md-config-server.pid
+SERVER_ARGS=""
+
+test -x ${SERVER_BIN} || exit 5
+test -x ${PYTHON_BIN} || exit 5
+
+[ ! -d /var/run/md-config-server ] && mkdir /var/run/md-config-server
+
+rc_reset
+
+export HOSTNAME=`/bin/hostname`
+case "$1" in
+    start)
+        echo -n "Starting md-config-server.py"
+        if [ -f ${SERVER_PID} ] ; then
+            echo -n " ... already running"
+        else
+            ${SERVER_BIN} ${SERVER_ARGS}
+        fi
+        rc_status -v
+        ;;
+    stop)
+        echo -n "Stopping md-config-server.py"
+        if [ -f ${SERVER_PID} ] ; then
+            kill -s 15 `cat ${SERVER_PID} | head -n 1` || rc_failed
+        else
+            rc_failed
+        fi
+        rm -f ${SERVER_PID}
+        rc_status -v
+        ;;
+    force-stop)
+        echo -n "Force stopping md-config-server.py"
+        if [ -f ${SERVER_PID} ] ; then
+            kill -9 `cat ${SERVER_PID} ` || rc_failed
+        else
+            rc_failed
+        fi
+        rm -f ${SERVER_PID}
+        rc_status -v
+        ;;
+    status)
+        echo -n "Checking md-config-server.py..."
+        check_threads_ok ${SERVER_PID} && {
+            rc_status -v ; 
+        } || {
+            if ${SERVER_BIN} -C ; then
+            check_threads || rc_failed 
+            rc_status -v
+            else
+            rc_status -s
+            fi
+        } 
+    ;;
+        restart)
+        echo "Restarting $(basename $SERVER_BIN)"
+        $0 stop && sleep 1 ; $0 start || return=$rc_failed
+    ;;
+        force-restart)
+        echo "Force-restarting $(basename $SERVER_BIN)"
+        $0 force-stop && sleep 1 ; $0 start || return=$rc_failed
+    ;;
+    reload)
+        echo -n "Reloading md-config-server.py"
+        if [ -f ${SERVER_PID} ] ; then
+            kill -HUP `cat ${SERVER_PID} | head -n 1` || rc_failed
+        else
+            rc_failed
+        fi
+        rc_status -v
+    ;;
+    *)
+        echo "Usage: $0 {start|stop|status|force-stop|restart|reload|force-restart}"
+        exit 1
+esac
+
+rc_exit

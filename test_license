@@ -1,0 +1,14 @@
+# name of license (for logging)
+NAME=intel license server
+
+# place of lmgrd-binary
+LMGRD_BINARY=/home/andi/development/license_stuff/flexlm/lmgrd.intel
+
+# license file (or directory where all *.lic-files are used for licensing)
+LICENSE_FILE=/home/andi/text/projects/voest/licenses/
+
+# enabled, defaults to yes
+ENABLED=no
+
+# use_root, defaults to no (run without privileges)
+#USE_ROOT=no

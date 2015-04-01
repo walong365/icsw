@@ -1,0 +1,49 @@
+#!/bin/bash
+# -*-  indent-tabs-mode:nil;  -*- 
+#
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+BOLD="\033[1m"
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+OFF="\033[m"
+
+echo "stage3 started..."
+
+echo "deleting initial ramdisk..."
+#lsmod
+echo "MPs are:"
+mount
+echo "umount /initrd"
+umount -l /initrd
+echo "Flushing buffers for /dev/ram0"
+blockdev --flushbufs /dev/ram0
+echo "Flushing buffers for /dev/ram1"
+blockdev --flushbufs /dev/ram1
+echo "createing /initrd"
+rmdir /initrd
+
+rm -f /*chroot*
+
+echo "Remounting '/' readonly ..."
+mount -n -o remount,ro /
+exec /sbin/init q
