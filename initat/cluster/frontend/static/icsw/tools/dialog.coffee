@@ -17,26 +17,42 @@ angular.module(
 
             actual_delete = (objs_to_delete, async) ->
                 if async
-                    toaster.pop("info", "", "Deleting #{objs_to_delete.length} objects in background")
+                    #toaster.pop("info", "", "Deleting #{objs_to_delete.length} objects in background")
+                    true  # just show msgs from server
                 else
                     blockUI.start("Deleting #{objs_to_delete.length} objects")
 
                 del_pks = []
+                regular_deletion_pks = []
                 for obj in objs_to_delete
                     if angular.isNumber(obj)
-                        obj_pk = obj
-                        delete_strategies = undefined
+                        regular_deletion_pks.push(obj)
+                        del_pks.push(obj)
                     else
+                        # delete special ones right away (these only come in singles anyway)
                         obj_pk = obj.obj_pk
                         delete_strategies = JSON.stringify(obj.delete_strategies)
 
-                    del_pks.push(obj_pk)
+                        del_pks.push(obj_pk)
+
+                        icswCallAjaxService
+                            url: ICSW_URLS.BASE_ADD_DELETE_REQUEST
+                            data: {
+                                model: model
+                                obj_pk: JSON.stringify([obj_pk])
+                                delete_strategies: delete_strategies
+                            }
+                            success: (xml) ->
+                                icswParseXMLResponseService(xml)
+
+                if regular_deletion_pks.length > 0
+                    # delete regular objs in bulk
 
                     icswCallAjaxService
                         url: ICSW_URLS.BASE_ADD_DELETE_REQUEST
                         data: {
                             model: model
-                            obj_pk: obj_pk
+                            obj_pks: JSON.stringify(regular_deletion_pks)
                             delete_strategies: delete_strategies
                         }
                         success: (xml) ->

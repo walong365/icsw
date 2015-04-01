@@ -300,23 +300,25 @@ class AddDeleteRequest(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        obj_pk = int(request.POST.get("obj_pk"))
+        obj_pks = json.loads(request.POST.get("obj_pks"))
         model_name = request.POST.get("model")
         model = getattr(initat.cluster.backbone.models, model_name)
 
-        obj = model.objects.get(pk=obj_pk)
+        for obj_pk in obj_pks:
+            obj = model.objects.get(pk=obj_pk)
 
-        if hasattr(obj, "disabled"):
-            obj.disabled = True
-            obj.save()
+            if hasattr(obj, "disabled"):
+                obj.disabled = True
+                obj.save()
 
-        with transaction.atomic():
             del_req = DeleteRequest(
                 obj_pk=obj_pk,
                 model=model_name,
                 delete_strategies=request.POST.get("delete_strategies", None)
             )
-            del_req.save()
+            with transaction.atomic():
+                # save right away, not after request finishes, since cluster server is notified now
+                del_req.save()
 
         srv_com = server_command.srv_command(command="handle_delete_requests")
         contact_server(request, "server", srv_com, log_result=False)
