@@ -61,9 +61,9 @@ base_patterns = patterns(
     url("^modify_loc_gfx$", base_views.modify_location_gfx.as_view(), name="modify_location_gfx"),
     url("^change_category", base_views.change_category.as_view(), name="change_category"),
     url("^prune_cat_tree", base_views.prune_category_tree.as_view(), name="prune_categories"),
-    url("^do_delete_object$", base_views.do_delete_object.as_view(), name="do_delete_object"),
-    url("^check_delete_object$", base_views.check_delete_object.as_view(), name="check_delete_object"),
-    url("^force_delete_object$", base_views.force_delete_object.as_view(), name="force_delete_object"),
+    url("^check_delete_object$", base_views.CheckDeleteObject.as_view(), name="check_delete_object"),
+    url("^add_delete_request$", base_views.AddDeleteRequest.as_view(), name="add_delete_request"),
+    url("^check_deletion_status$", base_views.CheckDeletionStatus.as_view(), name="check_deletion_status"),
 )
 
 setup_patterns = patterns(
