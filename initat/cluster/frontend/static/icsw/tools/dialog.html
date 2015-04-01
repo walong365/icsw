@@ -34,7 +34,9 @@
                 </div>
             </div>
 
-            <icsw-tools-button type="delete" value="delete" ng-click="delete_deletable_action()"></icsw-tools-button>
+            <icsw-tools-button type="delete" value="delete" ng-click="delete_deletable_action()"
+                               disabled="!some_deletable_object_checked()"></icsw-tools-button>
+
 
             <p>&nbsp;</p>
         </div>
@@ -127,7 +129,7 @@
                             </tr>
                         </table>
 
-                        <div class="text-right">
+                        <div>
                             <div ng-show="!all_actions_defined(obj_pk)" class="text-danger">
                                 Please select actions for all references.
                             </div>

@@ -335,4 +335,11 @@ class CheckDeletionStatus(View):
         num_remaining_objs = len(model.objects.filter(pk__in=obj_pks))
 
         request.xml_response['num_remaining'] = num_remaining_objs
-        request.xml_response['msg'] = "Deleted {} of {} objects".format(len(obj_pks) - num_remaining_objs, len(obj_pks))
+
+        if num_remaining_objs == 0:
+            msg = "Finished deleting {} objects".format(len(obj_pks))
+        else:
+            msg = "Deleting {} objects ({} remaining)".format(len(obj_pks), num_remaining_objs)
+
+        request.xml_response['msg'] = msg
+

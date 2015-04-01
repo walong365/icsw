@@ -124,6 +124,12 @@ angular.module(
                     actual_delete(to_delete, child_scope.async_delete)
 
 
+                child_scope.some_deletable_object_checked = () ->
+                    for pk in deletable_objects
+                        if child_scope.delete_deletable_dict[pk]
+                            return true
+                    return false
+
                 child_scope.all_actions_defined = (obj_pk) ->
                     return _.all(related_objects[obj_pk], (elem) -> return elem.selected_action?)
                 child_scope.force_delete = (obj_pk) ->

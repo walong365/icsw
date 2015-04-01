@@ -197,46 +197,13 @@ device_module = angular.module(
                             $scope.my_modal.close()
                             $scope.reload()
                             reload_sidebar_tree()
+        $scope.delete = (a_name, obj) ->
+            icswDialogDeleteObjects([obj], a_name, () -> $scope.reload(false))
         $scope.delete_many = (event) ->
             to_delete_list = (entry for entry in $scope.entries when entry.is_meta_device == false and entry.selected)
             icswDialogDeleteObjects(to_delete_list, "device", () -> $scope.reload(false))
-            #icswToolsSimpleModalService("Really delete " + $scope.num_selected() + " devices ?").then(
-            #    () ->
-            #        icswCallAjaxService
-            #            url     : ICSW_URLS.DEVICE_CHANGE_DEVICES
-            #            data    : {
-            #                "change_dict" : angular.toJson({"delete" : true})
-            #                "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
-            #            }
-            #            success : (xml) ->
-            #                if icswParseXMLResponseService(xml)
-            #                    $scope.reload()
-            #                    reload_sidebar_tree()
-            #)
         $scope.get_action_string = () ->
             return if $scope.create_mode then "Create" else "Modify"
-        $scope.delete = (a_name, obj) ->
-            icswDialogDeleteObjects([obj], "device", () -> $scope.reload(false))
-
-
-            #icswToolsSimpleModalService("Really delete #{a_name} '#{obj.name}' ?").then(
-            #    () ->
-            #        obj.remove().then(
-            #            (resp) ->
-            #                toaster.pop("success", "", "deleted #{a_name} #{obj.name}")
-            #                if a_name == "device"
-            #                    $scope.device_group_lut[obj.device_group].num_devices--
-            #                    icswTools.remove_by_idx($scope.entries, obj.idx)
-            #                    reload_sidebar_tree()
-            #                else
-            #                    icswTools.remove_by_idx($scope.rest_data[a_name], obj.idx)
-            #                    if a_name == "device_group"
-            #                        # remove meta device, now handled via reload_sidebar
-            #                        # remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])
-            #                        reload_sidebar_tree()
-            #                #$scope.pagSettings.set_entries($scope.entries)
-            #        )
-            #)
         $scope.rest_data_set = () ->
             $scope.device_lut = icswTools.build_lut($scope.entries)
             $scope.device_group_lut = icswTools.build_lut($scope.rest_data.device_group)
