@@ -1,0 +1,4 @@
+#!/bin/bash
+
+/usr/local/sbin/send_command.py -m localhost 2005 unregister_file_watcher $*
+
