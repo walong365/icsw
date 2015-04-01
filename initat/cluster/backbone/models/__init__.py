@@ -1478,3 +1478,13 @@ class quota_capable_blockdevice(models.Model):
 
     class Meta:
         app_label = "backbone"
+
+
+class DeleteRequest(models.Model):
+    idx = models.AutoField(primary_key=True)
+    obj_pk = models.IntegerField()
+    model = models.TextField()
+    delete_strategies = models.TextField(null=True, blank=True)
+
+
+

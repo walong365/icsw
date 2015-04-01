@@ -171,7 +171,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
     return used_objs
 
 
-def can_delete_obj(obj, logger):
+def can_delete_obj(obj, logger=None):
     """
     Check is obj is referenced in models which are not in fk_ignore_list
     NOTE: references with SET_NULL are not returned.
@@ -187,9 +187,12 @@ def can_delete_obj(obj, logger):
     delete_ok = False
     msg = u''
     if num_refs:
-        logger.error("lock_list for {} contains {}:".format(unicode(obj), logging_tools.get_plural("entry", len(obj._lock_list))))
+        if logger:
+            logger.error("lock_list for {} contains {}:".format(unicode(obj),
+                                                                logging_tools.get_plural("entry", len(obj._lock_list))))
         for _num, _entry in enumerate(obj._lock_list, 1):
-            logger.error(" - {:2d}: {}".format(_num, _entry))
+            if logger:
+                logger.error(" - {:2d}: {}".format(_num, _entry))
         msg = "cannot delete {}: referenced {}".format(
             obj._meta.object_name,
             logging_tools.get_plural("time", num_refs))
