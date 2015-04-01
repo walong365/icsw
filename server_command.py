@@ -344,7 +344,7 @@ class srv_command(object):
             if sub_el is not None:
                 cur_element = sub_el
             else:
-                sub_el = self.builder(cur_key) # getattr(self.__builder, cur_key)()
+                sub_el = self.builder(cur_key)  # getattr(self.__builder, cur_key)()
                 cur_element.append(sub_el)
             cur_element = sub_el
         return cur_element
