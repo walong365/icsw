@@ -71,7 +71,7 @@ class BackgroundProcess(threading_tools.process_obj):
         )
         self.log("state ({:d}): {}".format(ret_state, ret_str))
         self.send_pool_message("bg_finished", com_name)
-        self._exit_process()
+        self["exit_requested"] = False
 
     def loop_post(self):
         self.__log_template.close()
