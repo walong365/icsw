@@ -73,7 +73,7 @@ angular.module(
                                         blockUI.stop()
 
                                     $interval.cancel(interval_promise)
-                interval_promise = $interval(interval_fn, 1500)
+                interval_promise = $interval(interval_fn, 1000)
 
                 interval_fn()  # check right away as well
 
