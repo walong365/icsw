@@ -462,7 +462,7 @@ class device_network_scan_form(Form):
     helper.ng_submit = "cur_edit.modify(this)"
     snmp_community = CharField(max_length=128)
     snmp_version = ChoiceField(choices=[(1, "1"), (2, "2")])
-    strict_mode = BooleanField(required=False, label="all netdevices must be recognizable")
+    strict_mode = BooleanField(required=False, label="all netdevices must be recognizable and all existing peers must be conserverd")
     remove_not_found = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Scan network of settings device {% verbatim %}{{ _current_dev.full_name }}{% endverbatim %}</h2>"),
@@ -486,6 +486,7 @@ class device_network_scan_form(Form):
         Fieldset(
             "Flags",
             Field("strict_mode"),
+            HTML("""{% verbatim %}<div class="alert alert-danger" ng-show="!_edit_obj.strict_mode">attention: peers might get lost</div>{% endverbatim %}""")
         ),
         HTML("</tab><tab heading='SNMP' select='set_scan_mode(\"snmp\")' active='_current_dev.scan_snmp_active'>"),
         Fieldset(
