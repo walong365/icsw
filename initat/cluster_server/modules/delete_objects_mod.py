@@ -50,7 +50,10 @@ class handle_delete_requests(cs_base_class.server_com):
             if req is not None:
                 self.handle_deletion(req.obj_pk, req.model, req.delete_strategies, cur_inst)
                 deletions += 1
-        cur_inst.log("Deleted {} objects".format(deletions))
+
+        result = "Deleted {} objects".format(deletions)
+        cur_inst.log(result)
+        cur_inst.srv_com.set_result(result)
 
     @staticmethod
     def handle_deletion(obj_pk, model, delete_strategies, cur_inst):
