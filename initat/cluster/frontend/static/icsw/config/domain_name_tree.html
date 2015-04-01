@@ -1,0 +1,59 @@
+<script type="text/ng-template" id="icsw.config.domain.name.tree.head">
+    <tr>
+        <th>Name</th>   
+        <th>Nodename</th>
+        <th>depth</th>
+        <th>comment</th>
+        <th>SN</th>
+        <th>IP</th>
+        <th>NS</th>
+        <th colspan="2">Action</th>
+    </tr>
+</script>
+
+<script type="text/ng-template" id="icsw.config.domain.name.tree.row">
+    <td style="font-family:monospace;"><span ng-bind-html="get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
+    <td><span ng-show="obj.depth">*{{ obj.node_postfix }}.{{ obj.full_name }}</span></td>
+    <td>{{ obj.depth }}</td>
+    <td>{{ obj.comment }}</td>
+    <td>{{ obj.create_short_names | yesno1 }}</td>
+    <td>{{ obj.always_create_ip | yesno1 }}</td>
+    <td>{{ obj.write_nameserver_config | yesno1 }}</td>
+    <td><icsw-tools-button type="modify" ng-click="edit_obj(obj, $event)" ng-show="obj.depth" size="xs"/></td>
+    <td><icsw-tools-button type="delete" ng-click="delete_obj(obj)" ng-show="obj.depth > 0" size="xs"/></td>
+</script>
+
+<script type="text/ng-template" id="icsw.config.domain.name.tree">
+    <h2>Domain name tree ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-click="create_new($event)" size="sm"/></h2>
+    <div class="panel panel-default">
+        <div class="panel-body">
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <h3>Tree view</h3>
+                            <tree treeconfig="dnt"></tree>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-12">
+                            <h3>Create / modify</h3>
+                            <div icsw-config-domain-name-tree-edit-template ng-if="modal_active && !settings.use_modal" class="well well-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <h3>Table view</h3>
+                    <table class="table table-condensed table-hover" style="width:auto;">
+                        <thead icsw-config-domain-name-tree-head dtnhead></thead>
+                        <tbody>
+                            <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                            <tr icsw-config-domain-name-tree-row ng-repeat="obj in entries | paginator:this"></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

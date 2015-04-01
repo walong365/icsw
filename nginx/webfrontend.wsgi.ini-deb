@@ -1,0 +1,16 @@
+[uwsgi]
+
+exec-as-root = /opt/cluster/sbin/webfrontend_pre_start.sh
+
+django_app_dir = /opt/python-init/lib/python/site-packages/initat/cluster/
+django_app = webfrontend
+
+ini=webfrontend-common.include
+
+socket=127.0.0.1:9002
+
+uid=www-data
+gid=www-data
+
+env=USER=%(uid)
+env=GROUP=%(gid)

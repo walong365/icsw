@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+# Copyright (c) 2012 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+#
+#
+# RedHat stuff
+# chkconfig: 2345 15 85
+# description: webfrontend python tasks
+#
+### BEGIN INIT INFO
+# Provides:      webfrontend
+# Required-Start: $network $syslog logging-server memcached
+# Required-Stop: $network $syslog logging-server memcached
+# Should-Start:  mysql postgresql
+# Default-Start: 2 3 5
+# Default-Stop: 0 1 6
+# Description:   start FCGI-tasks of webfrontend
+### END INIT INFO
+
+export SYSTEMD_NO_WRAP="1"
+if [ -f /etc/rc.status ] ; then
+    . /etc/rc.status
+else
+    . /etc/rc.status_suse
+fi
+
+PID_FILE=/var/run/django.webfrontend.pid
+LOG_FILE=/var/log/webfrontend.log
+rc_reset
+
+case "$1" in
+    start)
+        echo "Starting webfrontend"
+
+        /opt/python-init/lib/python/site-packages/initat/cluster/backbone/check_isolation_level.py
+        cd /opt/python-init/lib/python/site-packages/initat/cluster/
+        export START_VIA_RC=1
+        python-init manage.py compress
+        python-init manage.py runfcgi host=127.0.0.1 port=9002 method=prefork maxrequests=64 daemonize=true maxspare=16 pidfile=${PID_FILE} outlog=${LOG_FILE}
+    
+        if [ -f /etc/init.d/nginx ] ; then        
+            /etc/init.d/nginx restart
+        else
+            echo "nginx not found ..."
+        fi
+        rc_status -v
+    
+        ;;
+    stop)
+    
+        echo "Shutting down webfrontend"
+        if [ -f ${PID_FILE} ] ; then
+            kill $(cat ${PID_FILE})
+        fi
+    
+        rc_status -v
+        ;;
+    restart)
+        $0 stop
+        sleep 2
+        $0 start
+    
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+rc_exit
+

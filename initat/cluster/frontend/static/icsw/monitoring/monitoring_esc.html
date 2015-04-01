@@ -1,0 +1,104 @@
+
+<script type="text/ng-template" id="icsw.monitoring.escalation">
+
+    <tabset ng-cloack>
+
+        <tab heading="Service escalation">
+            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceEscalationService">
+                <h2>Service escalation templates ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="first_notification">First notif</th>
+                            <th st-sort="last_notification">Last notif</th>
+                            <th st-sort="ninterval">Interval</th>
+                            <th st-sort="esc_period">Period</th>
+                            <th st-sort="nrecovery">rec</th>
+                            <th st-sort="ncritical">crit</th>
+                            <th st-sort="nwarning">warn</th>
+                            <th st-sort="nunknown">unkn</th>
+                            <th st-sort="nflapping">flapping</th>
+                            <th st-sort="nplanned_downtime">planned</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.first_notification }}</td>
+                            <td>{{ obj.last_notification }}</td>
+                            <td>{{ obj.ninterval }}</td>
+                            <td>{{ obj.esc_period | array_lookup:config_service.mon_period:'name' }}</td>
+                            <td>{{ obj.nrecovery | yesno1 }}</td>
+                            <td>{{ obj.ncritical | yesno1 }}</td>
+                            <td>{{ obj.nwarning | yesno1 }}</td>
+                            <td>{{ obj.nunknown | yesno1 }}</td>
+                            <td>{{ obj.nflapping | yesno1 }}</td>
+                            <td>{{ obj.nplanned_downtime | yesno1 }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table>
+        </tab>
+
+        <tab heading="Device escalation">
+            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringDeviceEscalationService">
+                <h2>Device escalation templates ({{entries.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <table st-table="entries_displayed" st-safe-src="entries"
+                       class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="first_notification">First notif</th>
+                            <th st-sort="last_notification">Last notif</th>
+                            <th st-sort="ninterval">Interval</th>
+                            <th st-sort="esc_period">Period</th>
+                            <th st-sort="mon_service_esc_templ">ServiceEsc</th>
+                            <th st-sort="nrecovery">rec</th>
+                            <th st-sort="ndown">down</th>
+                            <th st-sort="nunreachable">unrch</th>
+                            <th st-sort="nflapping">flapping</th>
+                            <th st-sort="nplanned_downtime">planned</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.first_notification }}</td>
+                            <td>{{ obj.last_notification }}</td>
+                            <td>{{ obj.ninterval }}</td>
+                            <td>{{ obj.esc_period | array_lookup:config_service.mon_period:'name' }}</td>
+                            <td>{{ obj.mon_service_esc_templ | array_lookup:config_service.mon_service_esc_templ:'name' }}</td>
+                            <td>{{ obj.nrecovery | yesno1 }}</td>
+                            <td>{{ obj.ndown | yesno1 }}</td>
+                            <td>{{ obj.nunreachable | yesno1 }}</td>
+                            <td>{{ obj.nflapping | yesno1 }}</td>
+                            <td>{{ obj.nplanned_downtime | yesno1 }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table>
+        </tab>
+
+    </tabset>
+
+</script>

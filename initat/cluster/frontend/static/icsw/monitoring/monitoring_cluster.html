@@ -1,0 +1,300 @@
+
+<script type="text/ng-template" id="icsw.monitoring.cluster">
+    <tabset ng-cloak>
+
+        <tab heading="Host Clusters">
+            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostClusterService"
+                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+                <h2>Host Cluster ({{entries_filtered.length}} entries),  <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="name" st-sort-default="true">Name</th>
+                            <th st-sort="description">Description</th>
+                            <th st-sort="mon_service_templ">ServiceTemplate</th>
+                            <th st-sort="main_device">Main device</th>
+                            <th st-sort="devices">Members</th>
+                            <th st-sort="warn_value">warn</th>
+                            <th st-sort="error_value">error</th>
+                            <th st-sort="user_editable">Edit</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.name }}</td>
+                            <td>{{ obj.description }}</td>
+                            <td>{{ obj.mon_service_templ | array_lookup:config_service.mon_service_templ:'name' }}</td>
+                            <td>{{ obj.main_device | array_lookup:config_service.device:'name' }}</td>
+                            <td>{{ obj.devices | resolve_n2m:config_service.device:'name' }}</td>
+                            <td>{{ obj.warn_value }}</td>
+                            <td>{{ obj.error_value }}</td>
+                            <td>{{ obj.user_editable | yesno1 }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                </icsw-tools-rest-table>
+        </tab>
+
+        <tab heading="Service Clusters">
+             <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceClusterService"
+                 st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+                 <h2>Service Cluster ({{entries_filtered.length}} entries),  <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                 <table class="table table-condensed table-hover" style="width:auto;">
+                     <thead>
+                         <tr>
+                             <td colspan="99">
+                                 <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                             </td>
+                         </tr>
+                         <tr>
+                             <td colspan="99">
+                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                      possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                             </td>
+                         </tr>
+                         <tr>
+                             <th st-sort="name" st-sort-default="true">Name</th>
+                             <th st-sort="description">Description</th>
+                             <th st-sort="mon_service_templ">ServiceTemplate</th>
+                             <th st-sort="main_device">Main device</th>
+                             <th st-sort="mon_check_command">Check command</th>
+                             <th st-sort="devices">Members</th>
+                             <th st-sort="warn_value">warn</th>
+                             <th st-sort="error_value">error</th>
+                             <th st-sort="user_editable">Edit</th>
+                             <th colspan="2" class="text-center">Action</th>
+                         </tr>
+                     </thead>
+                     <tbody>
+                         <tr ng-repeat="obj in entries_displayed">
+                             <td>{{ obj.name }}</td>
+                             <td>{{ obj.description }}</td>
+                             <td>{{ obj.mon_service_templ | array_lookup:config_service.mon_service_templ:'name' }}</td>
+                             <td>{{ obj.main_device | array_lookup:config_service.device:'name' }}</td>
+                             <td>{{ obj.mon_check_command | array_lookup:config_service.mon_check_command:'name' }}</td>
+                             <td>{{ obj.devices | resolve_n2m:config_service.device:'name' }}</td>
+                             <td>{{ obj.warn_value }}</td>
+                             <td>{{ obj.error_value }}</td>
+                             <td>{{ obj.user_editable | yesno1 }}</td>
+                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                         </tr>
+                     </tbody>
+                 </table>
+             </icsw-tools-rest-table>
+        </tab>
+
+        <tab heading="Host dependency templates">
+            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyTemplateService"
+                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+                 <h2>Host dependency templates ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                 <table class="table table-condensed table-hover" style="width:auto;">
+                     <thead>
+                         <tr>
+                             <td colspan="99">
+                                 <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                             </td>
+                         </tr>
+                         <tr>
+                             <td colspan="99">
+                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                      possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                             </td>
+                         </tr>
+                         <tr>
+                             <th st-sort="name" st-sort-default="true">Name</th>
+                             <th st-sort="inherits_parent">Inherits parent</th>
+                             <th st-sort="priority">Priority</th>
+                             <th st-sort="dependency_period">Period</th>
+                             <th st-sort="efc_up">up/E</th>
+                             <th st-sort="efc_down">down/E</th>
+                             <th st-sort="efc_unreachable">unreach/E</th>
+                             <th st-sort="efc_pending">pend/E</th>
+                             <th st-sort="nfc_up">up/N</th>
+                             <th st-sort="nfc_down">down/N</th>
+                             <th st-sort="nfc_unreachable">unreach/N</th>
+                             <th st-sort="nfc_pending">pend/N</th>
+                             <th colspan="2" class="text-center">Action</th>
+                         </tr>
+                     </thead>
+                     <tbody>
+                         <tr ng-repeat="obj in entries_displayed">
+                             <td>{{ obj.name }}</td>
+                             <td>{{ obj.inherits_parent | yesno1 }}</td>
+                             <td>{{ obj.priority }}</td>
+                             <td>{{ obj.dependency_period | array_lookup:config_service.mon_period:'name' }}</td>
+                             <td>{{ obj.efc_up | yesno1 }}</td>
+                             <td>{{ obj.efc_down | yesno1 }}</td>
+                             <td>{{ obj.efc_unreachable | yesno1 }}</td>
+                             <td>{{ obj.efc_pending | yesno1 }}</td>
+                             <td>{{ obj.nfc_up | yesno1 }}</td>
+                             <td>{{ obj.nfc_down | yesno1 }}</td>
+                             <td>{{ obj.nfc_unreachable | yesno1 }}</td>
+                             <td>{{ obj.nfc_pending | yesno1 }}</td>
+                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                         </tr>
+                     </tbody>
+                 </table>
+            </icsw-tools-rest-table>
+        </tab>
+
+        <tab heading="Service dependency templates">
+            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyTemplateService"
+                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+                    <h2>Service dependency templates ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                 <table class="table table-condensed table-hover" style="width:auto;">
+                     <thead>
+                         <tr>
+                             <td colspan="99">
+                                 <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                             </td>
+                         </tr>
+                         <tr>
+                             <td colspan="99">
+                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                      possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                             </td>
+                         </tr>
+                         <tr>
+                             <th st-sort="name" st-sort-default="true">Name</th st-sort="">
+                             <th st-sort="inherits_parent">Inherits parent</th>
+                             <th st-sort="priority">Priority</th>
+                             <th st-sort="dependency_period">Period</th>
+                             <th st-sort="efc_ok">ok/E</th>
+                             <th st-sort="efc_warn">warn/E</th>
+                             <th st-sort="efc_unknown">unknown/E</th>
+                             <th st-sort="efc_critical">critical/E</th>
+                             <th st-sort="efc_pending">pend/E</th>
+                             <th st-sort="nfc_ok">ok/N</th>
+                             <th st-sort="nfc_warn">warn/N</th>
+                             <th st-sort="nfc_unknown">unknown/N</th>
+                             <th st-sort="nfc_critical">critical/N</th>
+                             <th st-sort="nfc_pending">pend/N</th>
+                             <th colspan="2" class="text-center">Action</th>
+                         </tr>
+                     </thead>
+                     <tbody>
+                         <tr ng-repeat="obj in entries_displayed">
+                             <td>{{ obj.name }}</td>
+                             <td>{{ obj.inherits_parent | yesno1 }}</td>
+                             <td>{{ obj.priority }}</td>
+                             <td>{{ obj.dependency_period | array_lookup:config_service.mon_period:'name' }}</td>
+                             <td>{{ obj.efc_ok | yesno1 }}</td>
+                             <td>{{ obj.efc_warn | yesno1 }}</td>
+                             <td>{{ obj.efc_unknown | yesno1 }}</td>
+                             <td>{{ obj.efc_critical | yesno1 }}</td>
+                             <td>{{ obj.efc_pending | yesno1 }}</td>
+                             <td>{{ obj.nfc_ok | yesno1 }}</td>
+                             <td>{{ obj.nfc_warn | yesno1 }}</td>
+                             <td>{{ obj.nfc_unknown | yesno1 }}</td>
+                             <td>{{ obj.nfc_critical | yesno1 }}</td>
+                             <td>{{ obj.nfc_pending | yesno1 }}</td>
+                             <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                             <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                         </tr>
+                     </tbody>
+                 </table>
+            </icsw-tools-rest-table>
+        </tab>
+
+        <tab heading="Host dependencies">
+            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringHostDependencyService"
+                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+                <h2>Host dependencies ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="devices" st-sort-default="true">Devices</th>
+                            <th st-sort="dependent_devices">Dependent devices</th>
+                            <th st-sort="mon_host_dependency_templ">Template</th>
+                            <th st-sort="mon_host_cluster">Cluster</th>
+                            <th colspan="2" class="text-center">action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.devices | resolve_n2m:config_service.device:'name' }}</td>
+                            <td>{{ obj.dependent_devices | resolve_n2m:config_service.device:'name' }}</td>
+                            <td>{{ obj.mon_host_dependency_templ |
+                                array_lookup:config_service.mon_host_dependency_templ:'name' }}
+                            </td>
+                            <td>{{ obj.mon_host_cluster | array_lookup:config_service.mon_host_cluster:'name' }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table>
+        </tab>
+
+        <tab heading="Service dependencies">
+            <icsw-tools-rest-table target-list="entries" config-service="icswMonitoringServiceDependencyService"
+                st-table="entries_displayed" st-safe-src="entries" icsw-tools-table-leak-filtered="entries_filtered">
+                <h2>Service dependencies ({{entries_filtered.length}} entries), <icsw-tools-button type="create" value="create new" ng-show="config_service.rest_data_present()" ng-click="create($event)"></icsw-tools-button></h2>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">
+                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th st-sort="devices" st-sort-default="true">Devices</th>
+                            <th st-sort="mon_check_command">Check</th>
+                            <th st-sort="dependent_devices">Dependent devices</th>
+                            <th st-sort="dependent_mon_check_command">Dependent check</th>
+                            <th st-sort="mon_service_dependency_templ">Template</th>
+                            <th st-sort="mon_service_cluster">Cluster</th>
+                            <th colspan="2" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="obj in entries_displayed">
+                            <td>{{ obj.devices | resolve_n2m:config_service.device:'name' }}</td>
+                            <td>{{ obj.mon_check_command | array_lookup:config_service.mon_check_command:'name' }}</td>
+                            <td>{{ obj.dependent_devices | resolve_n2m:config_service.device:'name' }}</td>
+                            <td>{{ obj.dependent_mon_check_command | array_lookup:config_service.mon_check_command:'name' }} </td>
+                            <td>{{ obj.mon_service_dependency_templ | array_lookup:config_service.mon_service_dependency_templ:'name' }} </td>
+                            <td>{{ obj.mon_service_cluster | array_lookup:config_service.mon_service_cluster:'name' }}</td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete(obj)"></icsw-tools-button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </icsw-tools-rest-table>
+        </tab>
+
+    </tabset>
+</script>

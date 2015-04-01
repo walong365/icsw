@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!-- Consider adding a manifest.appcache: h5bp.com/d/Offline -->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+    {% load i18n coffeescript pipeline staticfiles %}
+
+    <meta charset="utf-8">
+    
+    <!-- Use the .htaccess and remove these lines to avoid edge case issues.
+         More info: h5bp.com/i/378 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    
+    <title>{{ settings.INIT_PRODUCT_NAME }}&reg; - {% block title%}{% trans 'Main Page' %}{% endblock %}</title>
+    <meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <!-- Mobile viewport optimized: h5bp.com/viewport -->
+    <meta name="viewport" content="width=device-width"/>
+    
+    <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
+    <link rel="icon" type="image/png" href="/cluster/static/images/noctua_favicon.png" />
+    {% stylesheet 'part1' %}
+    <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
+    
+    <!-- All JavaScript at the bottom, except this Modernizr build.
+         Modernizr enables HTML5 elements & feature detects for optimal performance.
+         Create your own custom Modernizr build: www.modernizr.com/download/ -->
+    {% javascript 'js_jquery_new' %}
+    {% javascript 'js_base' %}
+    {% javascript 'js_extra1' %}
+    {% javascript 'js_icsw_modules' %}
+<script type="text/javascript">
+{% inlinecoffeescript %}
+# attach global permissions and license info to window object (== global variable)
+window.CSRF_TOKEN = "{{ csrf_token }}"
+window.LOGIN_HINTS = {{ LOGIN_HINTS | safe }}
+# for login screen redirect
+window.NEXT_URL = "{{ NEXT_URL }}"
+window.LOGIN_SCREEN_TYPE = "{{ LOGIN_SCREEN_TYPE }}"
+window.INIT_PRODUCT_NAME = "{{ settings.INIT_PRODUCT_NAME }}"
+window.INIT_PRODUCT_FAMILY = "{{ settings.INIT_PRODUCT_FAMILY }}"
+window.INIT_PRODUCT_VERSION = "{{ settings.INIT_PRODUCT_VERSION }}"
+window.DJANGO_VERSION = "{{ DJANGO_VERSION }}"
+window.PASSWORD_CHARACTER_COUNT = "{{ PASSWORD_CHARACTER_COUNT }}"
+window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }}
+window.CLUSTER_NAME = "{{ CLUSTER_NAME }}"
+window.CLUSTER_ID = "{{ CLUSTER_ID }}"
+window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
+window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
+window.CURRENT_USER = {{ CURRENT_USER | safe }}
+window.NUM_BACKGROUND_JOBS = {{ NUM_BACKGROUND_JOBS }}
+window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }}
+window.NUM_QUOTA_SERVERS = {{ NUM_QUOTA_SERVERS | safe }}
+window.USER_VARS = {{ USER_VARS | safe }}
+window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
+window.IS_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %}
+window.HANDBOOK_PDF_PRESENT = {% if settings.HANDBOOK_PDF_PRESENT %}true {% else %}false{% endif %}
+window.HANDBOOK_CHUNKS_PRESENT = {% if settings.HANDBOOK_CHUNKS_PRESENT %}true {% else %}false{% endif %}
+window.ROUTING = {{ routing | safe }}
+window.LOCAL_DEVICE = "{{ local_device }}"
+window.SIDEBAR_MODE = "{{ request.session.sidebar_mode }}"
+window.DEVICE_OBJECT_LEVEL_PERMISSION = "{{ device_object_level_permission }}"
+window.CSRF_TOKEN = "{{ csrf_token }}"
+window.DEBUG = {% if debug %}true{% else %}false{% endif %}
+window.ADDITIONAL_MENU_FILES = {{ ADDITIONAL_MENU_FILES | safe }}
+window.DOC_PAGE = {% if doc_page %}"{{ doc_page }}"{% else %}null{% endif %}
+{% include "angular/app.coffee" %}
+{% endinlinecoffeescript %}
+</script>
+{# common angular modules #}
+{% javascript 'icsw_cs1' %}
+
+</head>
+<body>
+<!--[if lt IE 8]>
+    <p class=chromeframe>
+        Your browser is <em>ancient!</em>
+        <a href="http://browsehappy.com/">Upgrade to a different browser</a> or
+        <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.
+    </p>
+<![endif]-->
+    <div ng-app="icsw.app">
+        {% for ssi_file in settings.SSI_FILES %}
+            {% ssi ssi_file %}
+        {% endfor %}
+        <icsw-layout-menubar></icsw-layout-menubar>
+        <div block-ui="main" class="block-ui-main"></div>
+        <toaster-container></toaster-container>
+        <div id="icsw-wrapper">
+            <icsw-layout-sidebar></icsw-layout-sidebar>
+            <div id="page-content-wrapper">
+                <div class="container-fluid">
+                    {% block content %}
+                    {% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
