@@ -108,7 +108,7 @@ class KpiSet(object):
         return KpiSet([KpiObject(result=aggregated_result)])
 
     def __repr__(self):
-        return "KpiSet({})".format(list(unicode(obj) for obj in self.objects))
+        return "KpiSet({})".format(self.objects)
 
 
 kpi = """ (
