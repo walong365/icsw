@@ -86,10 +86,6 @@ class com_instance(object):
         self.option_dict = option_dict
         self.Meta = meta_struct
         self.zmq_context = zmq_context
-        if self.Meta.background:
-            self.Meta.cur_running += 1
-            com_instance.bg_idx += 1
-            self.new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, com_instance.bg_idx)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.sc_obj.log(u"[ci] {}".format(what), log_level)
@@ -111,17 +107,21 @@ class com_instance(object):
             if self.Meta.cur_running < self.Meta.max_instances:
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
+                new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, com_instance.bg_idx)
+
+                self.sc_obj.main_proc.add_process(BackgroundProcess(new_bg_name), start=True)
+
                 self.sc_obj.main_proc.send_to_process(
-                    self.new_bg_name,
+                    new_bg_name,
                     "set_option_dict",
                     self.option_dict)
                 self.sc_obj.main_proc.send_to_process(
-                    self.new_bg_name,
+                    new_bg_name,
                     "set_srv_com",
                     unicode(self.srv_com),
                 )
                 self.sc_obj.main_proc.send_to_process(
-                    self.new_bg_name,
+                    new_bg_name,
                     "start_command",
                     self.sc_obj.name,
                 )

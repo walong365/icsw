@@ -325,8 +325,6 @@ class server_process(threading_tools.process_pool, notify_mixin, server_mixins.n
                         # salt com_obj with some settings
                         option_dict = dict([(key, srv_com["*server_key:{}".format(key)]) for key in com_obj.Meta.needed_option_keys])
                         cur_inst = com_obj(srv_com, option_dict)
-                        if com_obj.Meta.background:
-                            self.add_process(BackgroundProcess(cur_inst.new_bg_name), start=True)
                         cur_inst.write_start_log()
                         cur_inst()
                         cur_inst.write_end_log()
